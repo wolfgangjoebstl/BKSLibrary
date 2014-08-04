@@ -1,6 +1,6 @@
-&lt;?
+<?
 
- //F&uuml;gen Sie hier Ihren Skriptquellcode ein
+ //Fügen Sie hier Ihren Skriptquellcode ein
 
 
 Include("AllgemeineDefinitionen.inc.php");
@@ -70,4 +70,4 @@ else
 	}
 
 
-?&gt;
+?>
