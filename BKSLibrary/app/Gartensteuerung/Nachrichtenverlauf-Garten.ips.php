@@ -3,7 +3,7 @@
  //Fügen Sie hier Ihren Skriptquellcode ein
 
 
-Include("AllgemeineDefinitionen.inc.php");
+Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 
 
 // Init

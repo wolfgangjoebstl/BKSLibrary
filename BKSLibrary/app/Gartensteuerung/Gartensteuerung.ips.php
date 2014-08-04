@@ -2,8 +2,8 @@
 
  //Fügen Sie hier Ihren Skriptquellcode ein
 
-Include("AllgemeineDefinitionen.inc.php");
-include(IPS_GetScriptFile(35115));
+Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
 
 /******************************************************
 
