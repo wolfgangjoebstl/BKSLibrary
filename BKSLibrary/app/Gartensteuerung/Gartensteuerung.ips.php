@@ -1,6 +1,18 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+/*
+	 * @defgroup ipstwilight IPSTwilight
+	 * @ingroup modules_weather
+	 * @{
+	 *
+	 * Script zur Ansteuerung der Giessanlage in BKS
+	 *
+	 *
+	 * @file          Gartensteuerung.ips.php
+	 * @author        Wolfgang Joebstl
+	 * @version
+	 *  Version 2.50.50, 04.08.2014<br/>
+*/
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
