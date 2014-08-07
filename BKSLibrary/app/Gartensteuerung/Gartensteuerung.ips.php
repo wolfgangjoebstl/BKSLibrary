@@ -11,7 +11,7 @@
 	 * @file          Gartensteuerung.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
-	 *  Version 2.50.51, 07.08.2014<br/>
+	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
@@ -20,7 +20,7 @@ include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
 /******************************************************
 
 				INIT
-				
+				hghg
 *************************************************************/
 
 $parentid=$_IPS['SELF'];
