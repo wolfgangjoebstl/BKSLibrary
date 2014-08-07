@@ -11,7 +11,7 @@
 	 * @file          Gartensteuerung.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
-	 *  Version 2.50.50, 04.08.2014<br/>
+	 *  Version 2.50.51, 07.08.2014<br/>
 */
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
@@ -48,6 +48,8 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
+//echo "OID: ".$NachrichtenInputID." ".$NachrichtenScriptID."\n";
+
 /* Timerprogrammierung */
 
 $eid1 = @IPS_GetEventIDByName("Timer1", $_IPS['SELF']);
@@ -59,6 +61,15 @@ if ($eid1==false)
 	IPS_SetEventCyclic($eid1, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 10 /* Alle 10 Minuten */);
 	}
 
+$eid2 = @IPS_GetEventIDByName("Timer2", $_IPS['SELF']);
+if ($eid2==false)
+	{
+	$eid2 = IPS_CreateEvent(1);
+	IPS_SetParent($eid2, $_IPS['SELF']);
+	IPS_SetName($eid2, "Timer2");
+	IPS_SetEventCyclicTimeFrom($eid2,22,0,0);  /* immer um 22:00 */
+	}
+	
 $eid3 = @IPS_GetEventIDByName("Timer3", $_IPS['SELF']);
 if ($eid3==false)
 	{
@@ -79,10 +90,14 @@ if ($eid4==false)
 //print_r($alleEreignisse);
 
 $giesstimerID=$eid1;
+$allofftimerID=$eid2;
 $timerDawnID=$eid3;
 $calcgiesstimeID=$eid4;
 
+//echo "Timer OID: ".$giesstimerID." ".$timerDawnID." ".$calcgiesstimeID."\n";
+
 IPS_SetEventActive($calcgiesstimeID,true);
+IPS_SetEventActive($allofftimerID,true);
 
 $name="GiessAnlage";
 $vid = @IPS_GetVariableIDByName($name,$parentid);
@@ -138,7 +153,7 @@ $giessTime=GetValue($GiessTimeID);
 						.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
 	$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n"; */
-	echo "Staus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
+	echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
 	echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n";
 
 	$resultEvent=IPS_GetEvent($calcgiesstimeID);
@@ -312,7 +327,7 @@ if($_IPS['SENDER'] == "TimerEvent")
       		}
 			break;
 
-		case 55302: /* Immer um 22:00 sicherheitshalber alles ausschalten  */
+		case $allofftimerID: /* Immer um 22:00 sicherheitshalber alles ausschalten  */
       	SetValue($GiessCountID,0);
       	IPS_SetEventActive($giesstimerID,false);
 			$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
