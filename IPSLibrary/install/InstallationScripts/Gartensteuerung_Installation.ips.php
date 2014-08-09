@@ -1,9 +1,20 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
-
-	$repository = 'https://10.0.1.6/user/repository/';
-
+	/**@defgroup ipstwilight IPSTwilight
+	 * @ingroup modules_weather
+	 * @{
+	 *
+	 * Script zur Ansteuerung der Giessanlage in BKS
+	 *
+	 *
+	 * @file          Gartensteuerung_Installation.ips.php
+	 * @author        Wolfgang Joebstl
+	 * @version
+	 *  Version 2.50.44, 07.08.2014<br/>
+	 **/
+	 
+	//$repository = 'https://10.0.1.6/user/repository/';
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
@@ -30,12 +41,79 @@
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	echo "\nWebportal installieren: ".$WFC10_Enabled;
+	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+
+	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+
+	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+	
+	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
-	// Add Scripts
+	$scriptName="Allgemeine Definitionen";
+	$file="AllgemeineDefinitionen.inc.php";
+	$categoryId=0;
+	CreateScript($scriptName, $file, $categoryId);
+
+	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
+	
+	$name="GiessAnlage";
+	$vid = @IPS_GetVariableIDByName($name,$categoryId_Gartensteuerung);
+	if($vid === false)
+    	{
+        $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
+        IPS_SetParent($vid, $categoryId_Gartensteuerung);
+        IPS_SetName($vid, $name);
+        IPS_SetInfo($vid, "this variable was created by script #".$categoryId_Gartensteuerung.".");
+        echo "Variable erstellt;\n";
+    	}
+	$pname="GiessAnlagenProfil";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   IPS_SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+  	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   echo "Profil erstellt;\n";
+		}
+   echo "\nInstall Giessanlage OID: ".$vid."\n";
+   
+	$GiessAnlageID=$vid;
+	$GiessCountID=CreateVariable("GiessCount",1,$categoryId_Gartensteuerung,10 ,'','','' ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID = CreateVariable("GiessAnlagePrev",1,$categoryId_Gartensteuerung,20 ,'','',''); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID=CreateVariable("GiessTime",1,$categoryId_Gartensteuerung,  30,'','',''); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
+
+	$input = CreateVariable("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0 );
+	$zeile1 = CreateVariable("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10 );
+	$zeile2 = CreateVariable("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20 );
+	$zeile3 = CreateVariable("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30 );
+	$zeile4 = CreateVariable("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40 );
+	$zeile5 = CreateVariable("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50 );
+	$zeile6 = CreateVariable("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60 );
+	$zeile7 = CreateVariable("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70 );
+	$zeile8 = CreateVariable("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80 );
+	$zeile9 = CreateVariable("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90 );
+	$zeile10 = CreateVariable("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100 );
+	$zeile11 = CreateVariable("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110 );
+	$zeile12 = CreateVariable("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120 );
+	$zeile13 = CreateVariable("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130 );
+	$zeile14 = CreateVariable("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140 );
+	$zeile15 = CreateVariable("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150 );
+	$zeile16 = CreateVariable("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160 );
+
+	// Add Scripts, they have auto install
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	IPS_RunScript($scriptIdGartensteuerung);
 	$scriptIdNachrichtenverlauf   = IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
@@ -45,6 +123,38 @@
 	echo "\nApp  Kategorie : ".$CategoryIdApp;
 	echo "\nScriptID #1    : ".$scriptIdGartensteuerung;
 	echo "\nScriptID #2    : ".$scriptIdNachrichtenverlauf;
+	echo "\n";
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// WebFront Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+	if ($WFC10_Enabled)
+		{
+		echo "\nWebportal Administartor installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+		}
+		
+	if ($WFC10User_Enabled)
+		{
+		echo "\nWebportal User installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+		}
+
+	if ($Mobile_Enabled)
+		{
+		echo "\nWebportal Mobile installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+		}
+
+	if ($Retro_Enabled)
+		{
+		echo "\nWebportal Retro installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+		}
 
 
 ?>

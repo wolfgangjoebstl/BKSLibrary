@@ -20,8 +20,12 @@ include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
 /******************************************************
 
 				INIT
-				hghg
+				
 *************************************************************/
+
+//$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSModuleManagerGUI');
+$baseId  = IPSUtil_ObjectIDByPath('Program.BKSLibrary.data.Gartensteuerung.Gartensteuerung');
+echo "BaseID :".$baseId."\n";
 
 $parentid=$_IPS['SELF'];
 $gartenpumpeID=35462;
@@ -100,13 +104,13 @@ IPS_SetEventActive($calcgiesstimeID,true);
 IPS_SetEventActive($allofftimerID,true);
 
 $name="GiessAnlage";
-$vid = @IPS_GetVariableIDByName($name,$parentid);
+$vid = @IPS_GetVariableIDByName($name,$baseId);
 if($vid === false)
     {
         $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
-        IPS_SetParent($vid, $parentid);
+        IPS_SetParent($vid, $baseId);
         IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$parentid.".");
+        IPS_SetInfo($vid, "this variable was created by script #".$baseId.".");
         echo "Variable erstellt;\n";
     }
 $pname="GiessAnlagenProfil";
@@ -124,9 +128,10 @@ if (IPS_VariableProfileExists($pname) == false)
 	}
 	
 $GiessAnlageID=$vid;
-$GiessCountID=CreateVariableByName($parentid, "GiessCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
-$GiessAnlagePrevID = CreateVariableByName($parentid, "GiessAnlagePrev", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
-$GiessTimeID=CreateVariableByName($parentid, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+echo "Giessanlage OID: ".$GiessAnlageID."\n";
+$GiessCountID=CreateVariableByName($baseId, "GiessCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+$GiessAnlagePrevID = CreateVariableByName($baseId, "GiessAnlagePrev", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+$GiessTimeID=CreateVariableByName($baseId, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $giessTime=GetValue($GiessTimeID);
 
 /******************************************************

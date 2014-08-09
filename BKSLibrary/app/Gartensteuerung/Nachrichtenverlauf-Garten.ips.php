@@ -5,28 +5,28 @@
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 
+$baseId  = IPSUtil_ObjectIDByPath('Program.BKSLibrary.data.Gartensteuerung.Nachrichtenverlauf-Garten');
+//echo "BaseID :".$baseId."\n";
 
 // Init
 
-	$input = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Input", 3);
-	$zeile1 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile01", 3);
-	$zeile2 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile02", 3);
-	$zeile3 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile03", 3);
-	$zeile4 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile04", 3);
-	$zeile5 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile05", 3);
-	$zeile6 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile06", 3);
-	$zeile7 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile07", 3);
-	$zeile8 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile08", 3);
-	$zeile9 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile09", 3);
-	$zeile10 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile10", 3);
-	$zeile11 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile11", 3);
-	$zeile12 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile12", 3);
-	$zeile13 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile13", 3);
-	$zeile14 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile14", 3);
-	$zeile15 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile15", 3);
-	$zeile16 = CreateVariableByName($_IPS['SELF'], "Nachricht_Garten_Zeile16", 3);
-
-
+	$input = CreateVariableByName($baseId, "Nachricht_Garten_Input", 3);
+	$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
+	$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
+	$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);
+	$zeile4 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile04", 3);
+	$zeile5 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile05", 3);
+	$zeile6 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile06", 3);
+	$zeile7 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile07", 3);
+	$zeile8 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile08", 3);
+	$zeile9 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile09", 3);
+	$zeile10 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile10", 3);
+	$zeile11 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile11", 3);
+	$zeile12 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile12", 3);
+	$zeile13 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile13", 3);
+	$zeile14 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile14", 3);
+	$zeile15 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile15", 3);
+	$zeile16 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile16", 3);
 
 if ($_IPS['SENDER']=="Execute")
 	{
