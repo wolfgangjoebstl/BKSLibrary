@@ -101,6 +101,7 @@ $calcgiesstimeID=$eid4;
 //echo "Timer OID: ".$giesstimerID." ".$timerDawnID." ".$calcgiesstimeID."\n";
 
 IPS_SetEventActive($calcgiesstimeID,true);
+IPS_SetEventActive($timerDawnID,true);
 IPS_SetEventActive($allofftimerID,true);
 
 $name="GiessAnlage";
