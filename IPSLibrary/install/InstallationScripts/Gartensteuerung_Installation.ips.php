@@ -89,29 +89,29 @@
    echo "\nInstall Giessanlage OID: ".$vid."\n";
    
 	$GiessAnlageID=$vid;
-	$GiessCountID=CreateVariable("GiessCount",1,$categoryId_Gartensteuerung,10 ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID = CreateVariable("GiessAnlagePrev",1,$categoryId_Gartensteuerung,20); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID=CreateVariable("GiessTime",1,$categoryId_Gartensteuerung,  30); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID=CreateVariable("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID = CreateVariable("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID=CreateVariable("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
-	$input = CreateVariable("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0 );
-	$zeile1 = CreateVariable("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10 );
-	$zeile2 = CreateVariable("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20 );
-	$zeile3 = CreateVariable("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30 );
-	$zeile4 = CreateVariable("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40 );
-	$zeile5 = CreateVariable("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50 );
-	$zeile6 = CreateVariable("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60 );
-	$zeile7 = CreateVariable("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70 );
-	$zeile8 = CreateVariable("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80 );
-	$zeile9 = CreateVariable("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90 );
-	$zeile10 = CreateVariable("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100 );
-	$zeile11 = CreateVariable("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110 );
-	$zeile12 = CreateVariable("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120 );
-	$zeile13 = CreateVariable("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130 );
-	$zeile14 = CreateVariable("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140 );
-	$zeile15 = CreateVariable("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150 );
-	$zeile16 = CreateVariable("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160 );
+	$input = CreateVariable("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$zeile1 = CreateVariable("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
+	$zeile2 = CreateVariable("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
+	$zeile3 = CreateVariable("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
+	$zeile4 = CreateVariable("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
+	$zeile5 = CreateVariable("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
+	$zeile6 = CreateVariable("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
+	$zeile7 = CreateVariable("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
+	$zeile8 = CreateVariable("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
+	$zeile9 = CreateVariable("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
+	$zeile10 = CreateVariable("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
+	$zeile11 = CreateVariable("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
+	$zeile12 = CreateVariable("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
+	$zeile13 = CreateVariable("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
+	$zeile14 = CreateVariable("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
+	$zeile15 = CreateVariable("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
+	$zeile16 = CreateVariable("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
 
 	// Add Scripts, they have auto install
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
