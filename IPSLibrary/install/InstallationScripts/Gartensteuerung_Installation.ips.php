@@ -89,9 +89,9 @@
    echo "\nInstall Giessanlage OID: ".$vid."\n";
    
 	$GiessAnlageID=$vid;
-	$GiessCountID=CreateVariable("GiessCount",1,$categoryId_Gartensteuerung,10 ,'','','' ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID = CreateVariable("GiessAnlagePrev",1,$categoryId_Gartensteuerung,20 ,'','',''); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID=CreateVariable("GiessTime",1,$categoryId_Gartensteuerung,  30,'','',''); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID=CreateVariable("GiessCount",1,$categoryId_Gartensteuerung,10 ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID = CreateVariable("GiessAnlagePrev",1,$categoryId_Gartensteuerung,20); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID=CreateVariable("GiessTime",1,$categoryId_Gartensteuerung,  30); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
