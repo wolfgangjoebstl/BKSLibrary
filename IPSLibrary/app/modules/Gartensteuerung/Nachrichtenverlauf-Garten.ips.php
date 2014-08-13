@@ -5,7 +5,7 @@
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 
-$baseId  = IPSUtil_ObjectIDByPath('Program.BKSLibrary.data.Gartensteuerung.Nachrichtenverlauf-Garten');
+$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
 //echo "BaseID :".$baseId."\n";
 
 // Init

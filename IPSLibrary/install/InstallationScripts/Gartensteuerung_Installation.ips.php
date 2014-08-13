@@ -62,7 +62,8 @@
 
 	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
-	
+
+   $includefile="\n".'$ParamList = array('."\n";
 	$name="GiessAnlage";
 	$vid = @IPS_GetVariableIDByName($name,$categoryId_Gartensteuerung);
 	if($vid === false)
@@ -88,7 +89,7 @@
 		}
    echo "\nInstall Giessanlage OID: ".$vid."\n";
    
-   $includefile='<?'."\n".'$ParamList = array('."\n";
+
 
 	$GiessAnlageID=$vid;
 	$GiessCountID=CreateVariable2("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -116,7 +117,7 @@
 	$zeile16 = CreateVariable2("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
 
 	$includefile.=');'."\n".'?>';
-	echo $includefile;
+	echo ".....".$includefile."\n";
 
 	// Add Scripts, they have auto install
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
