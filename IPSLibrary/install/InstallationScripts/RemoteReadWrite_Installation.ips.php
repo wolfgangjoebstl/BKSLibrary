@@ -19,7 +19,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
+		$moduleManager = new IPSModuleManager('RemoteReadWrite',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
@@ -33,22 +33,26 @@
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Gartensteuerung');
-	echo "\nGartensteuerung Version : ".$ergebnis;
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('RemoteReadWrite');
+	echo "\nRemoteReadWrite Version : ".$ergebnis;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+	echo "\nWF10 ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
+	echo "WF10User ";
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
 
+	echo "Mobile ";
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
 	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 	
+	echo "Retro \n";
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
@@ -69,28 +73,28 @@
 		{
 		echo "\nWebportal Administartor installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+
 		}
 		
 	if ($WFC10User_Enabled)
 		{
 		echo "\nWebportal User installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+
 		}
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+
 		}
 
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+
 		}
 
 
