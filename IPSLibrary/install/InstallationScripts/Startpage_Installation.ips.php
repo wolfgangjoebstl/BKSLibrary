@@ -59,13 +59,6 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
-	$scriptName="Allgemeine Definitionen";
-	$file="AllgemeineDefinitionen.inc.php";
-	$categoryId=0;
-	CreateScript($scriptName, $file, $categoryId);
-
-
-
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
