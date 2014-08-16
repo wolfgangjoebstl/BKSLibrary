@@ -37,20 +37,21 @@ $pauseTime=1;
 $object= new ipsobject($parentid);
 $object2= new ipsobject($object->oparent());
 //$object2->oprint("Nachricht");
-$NachrichtenScriptID=$object2->osearch("Nachricht");
+$tempOID=$object2->osearch("Nachricht");
+$NachrichtenScriptID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
 
 if (isset($NachrichtenScriptID))
 	{
-	$object3= new ipsobject($NachrichtenScriptID);
+	$object3= new ipsobject($tempOID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
 	//echo $NachrichtenScriptID."   ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID);
+	$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID,$NachrichtenInputID);
 	}
 else break;
 
-//echo "OID: ".$NachrichtenInputID." ".$NachrichtenScriptID."\n";
+echo "NachrichtenInput OID: ".$NachrichtenInputID." Script OID: ".$NachrichtenScriptID."\n";
 
 /* Timerprogrammierung */
 

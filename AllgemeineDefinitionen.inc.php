@@ -439,7 +439,7 @@ $einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 	$ergebnisBewegung=$ergebnisBewegung.GetValue(45878)."\n";
 
 	$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
-	$baseId  = IPSUtil_ObjectIDByPath('Program.BKSLibrary.data.Gartensteuerung.Nachrichtenverlauf-Garten');
+	$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
 	$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
 	$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
 	$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);
