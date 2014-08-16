@@ -63,17 +63,12 @@
 	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
 
-   $includefile="\n".'$ParamList = array('."\n";
+   $includefile="<?";
+   //$includefile="";
+   $includefile.="\n".'function ParamList() {
+		return array('."\n";
 	$name="GiessAnlage";
-	$vid = @IPS_GetVariableIDByName($name,$categoryId_Gartensteuerung);
-	if($vid === false)
-    	{
-        $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
-        IPS_SetParent($vid, $categoryId_Gartensteuerung);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$categoryId_Gartensteuerung.".");
-        echo "Variable erstellt;\n";
-    	}
+	
 	$pname="GiessAnlagenProfil";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
@@ -87,11 +82,10 @@
   	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil erstellt;\n";
 		}
-   echo "\nInstall Giessanlage OID: ".$vid."\n";
-   
 
 
-	$GiessAnlageID=$vid;
+   // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+   $GiessAnlageID = CreateVariable2($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessCountID=CreateVariable2("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessAnlagePrevID = CreateVariable2("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessTimeID=CreateVariable2("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -116,8 +110,15 @@
 	$zeile15 = CreateVariable2("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
 	$zeile16 = CreateVariable2("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
 
-	$includefile.=');'."\n".'?>';
-	echo ".....".$includefile."\n";
+	$includefile.=');'."\n";
+	$includefile.='}'."\n".'?>';
+	//echo ".....".$includefile."\n";
+
+	$filename=IPS_GetKernelDir()."scripts\IPSLibrary/app/modules/Gartensteuerung/Gartensteuerung.inc.php";
+	if (!file_put_contents($filename, $includefile)) {
+        throw new Exception('Create File '.$filename.' failed!');
+    		}
+   echo "\nFilename:".$filename;
 
 	// Add Scripts, they have auto install
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
@@ -167,7 +168,10 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 	{
 	global $includefile;
 	$oid=CreateVariable($Name, $Type, $ParentId, $Position, $Profile, $Action, $ValueDefault, $Icon);
-	$includefile.='\''.$oid.'\','."\n";
+	$includefile.='"'.$Name.'" => array("OID"     => \''.$oid.'\','."\n".
+					'                       "Name"    => \''.$Name.'\','."\n".
+					'                       "Type"    => \''.$Type.'\','."\n".
+					'                       "Profile" => \''.$Profile.'\'),'."\n";
 	return $oid;
 	}
 

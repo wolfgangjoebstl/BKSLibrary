@@ -10,6 +10,8 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
+IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
+
 
 /******************************************************
 
@@ -17,17 +19,70 @@ include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
 
 *************************************************************/
 
-$baseId  = IPSUtil_ObjectIDByPath('Program.BKSLibrary.data.modules.RemoteReadWrite');
+$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.RemoteReadWrite');
 echo "BaseID :".$baseId."\n";
-
 
 /* Typ 0 Boolean 1 Integer 2 Float 3 String */
 $StatusID = CreateVariableByName($baseId, "StatusReadWrite-BKS", 0);
+$letzterWertID = CreateVariableByName($baseId, "LetzterWert-BKS", 3);
+
+//echo "Connect to http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/";
+$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
+
+$ParamList = ParamList();
+//print_r($ParamList);
+
+$ReadWriteList=array();
+SetValueBoolean($StatusID,true);
+foreach ($ParamList as $Key)
+	{
+	//print_r($Key);
+
+	$typ=(integer)$Key["Type"];
+	$oid=(integer)$Key["OID"];
+	if ($Key["Profile"]=="")
+	   { /* keine Formattierung */
+	   $vid = CreateVariableByName($baseId, $Key["Name"], $typ);
+	   }
+	else
+	   {
+	   $vid = CreateVariableByName($baseId, $Key["Name"], 3);
+	   }
+	$ReadWritelist[$Key["Name"]]=array("\"OID\" => ".$Key["OID"],
+												"\"Name\" => ".$Key["Name"],
+												"\"Profile\" => ".$Key["Profile"],
+												"\"Type\" => ".$Key["Type"],
+												"\"LOID\" => ".$vid);
+
+	echo "Variabe augelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
+	if ($Key["Profile"]=="")
+		{
+		$ergebnis=$rpc->GetValue($oid);
+		}
+	else
+		{
+		$ergebnis=$rpc->GetValueFormatted($oid);
+		}
+	if ($ergebnis)
+		{
+		SetValue($vid,$ergebnis);
+		SetValue($letzterWertID,date("d.m.y H:i:s").":".$Key["Name"]);
+		}
+	else
+	   {
+		SetValueBoolean($StatusID,false);
+		}
+	}
+	
+print_r($ReadWritelist);
+
+
+/* Typ 0 Boolean 1 Integer 2 Float 3 String */
 $InnnenTempID = CreateVariableByName($baseId, "Innentemperatur-BKS", 3);
 $AussenTempID = CreateVariableByName($baseId, "Aussentemperatur-BKS", 3);
 $KellerMinTempID = CreateVariableByName($baseId, "KellerMintemperatur-BKS", 3);
 $HeizleistungID = CreateVariableByName($baseId, "Heizleistung-BKS", 3);
-$letzterWertID = CreateVariableByName($baseId, "LetzterWert-BKS", 3);
+
 
 //echo "Connect to http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/";
 $rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
