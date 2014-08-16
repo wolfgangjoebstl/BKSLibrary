@@ -15,7 +15,7 @@
 */
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
-include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
+include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 
 /******************************************************
 
