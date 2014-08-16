@@ -57,10 +57,19 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
+	echo "\nRegister \"Allgemeine Definitionen\"";
 	$scriptName="Allgemeine Definitionen";
 	$file="AllgemeineDefinitionen.inc.php";
 	$categoryId=0;
 	CreateScript($scriptName, $file, $categoryId);
+
+	echo "\nRegister \"Logging Class\"\n";
+	$scriptName="Logging Class";
+	$file="_include/Logging.class.php";
+	$categoryid  = IPSUtil_ObjectIDByPath('Program');
+	CreateCategory('_include', $categoryid, 0);
+	$categoryid  = IPSUtil_ObjectIDByPath('Program._include');
+	CreateScript($scriptName, $file, $categoryid);
 
 	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
