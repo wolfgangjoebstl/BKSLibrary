@@ -119,12 +119,12 @@ class logging
 		   fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
 	   	fclose($handle3);
 			}
-		if ($this->script_Id != "Ohne")
+		/* if ($this->script_Id != "Ohne")
 		   {
 			$object4= new ipsobject($this->script_Id);
 			//$object4->oprint("Input");
-			$this->nachrichteninput_Id=$object4->osearch("Input");
-			}
+			$this->nachrichteninput_Id=$object4->osearch("Input"); 
+			}  */
 	   }
 
 	function message($message)

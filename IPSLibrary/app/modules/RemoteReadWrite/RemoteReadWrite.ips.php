@@ -9,7 +9,7 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 
 
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
-include(IPS_GetKernelDir()."scripts\\".IPS_GetScriptFile(35115));
+include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
 
 
