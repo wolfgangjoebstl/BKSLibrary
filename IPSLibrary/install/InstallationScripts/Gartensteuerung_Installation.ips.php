@@ -40,6 +40,8 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
+
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
@@ -114,12 +116,15 @@
 	$includefile.='}'."\n".'?>';
 	//echo ".....".$includefile."\n";
 
-	$filename=IPS_GetKernelDir()."scripts\IPSLibrary/app/modules/Gartensteuerung/Gartensteuerung.inc.php";
-	if (!file_put_contents($filename, $includefile)) {
-        throw new Exception('Create File '.$filename.' failed!');
-    		}
-   echo "\nFilename:".$filename;
-
+	if ($RemoteVis_Enabled==false)
+	   { /* keine Remote Visualisierung, daher inc File für andere schreiben */
+		$filename=IPS_GetKernelDir()."scripts\IPSLibrary/app/modules/Gartensteuerung/Gartensteuerung.inc.php";
+		if (!file_put_contents($filename, $includefile)) {
+      	  throw new Exception('Create File '.$filename.' failed!');
+    			}
+	   echo "\nFilename:".$filename;
+		}
+		
 	// Add Scripts, they have auto install
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	IPS_RunScript($scriptIdGartensteuerung);
