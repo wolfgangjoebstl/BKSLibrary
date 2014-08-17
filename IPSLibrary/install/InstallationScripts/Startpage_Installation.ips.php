@@ -62,9 +62,7 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	$StartPageTypeID = CreateVariableByName($CategoryIdData, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
 	$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
-
 
 	$name="SwitchScreen";
 	$vid = @IPS_GetVariableIDByName($name,$CategoryIdData);
@@ -90,7 +88,13 @@
 	   echo "Profil erstellt;\n";
 		}
 	IPS_SetVariableCustomProfile($vid, $pname); // Ziel-ID, P-Name
-	IPS_SetVariableCustomAction($vid, $CategoryIdData);
+
+	// Add Scripts, they have auto install
+	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
+	IPS_SetScriptTimer($scriptIdStartpage, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+	IPS_RunScript($scriptIdStartpage);
+
+	IPS_SetVariableCustomAction($vid, $scriptIdStartpage);
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation

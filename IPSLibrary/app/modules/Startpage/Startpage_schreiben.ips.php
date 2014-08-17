@@ -11,7 +11,7 @@ Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+//IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 
 $temperatur=temperatur();
 $innentemperatur=innentemperatur();
@@ -178,10 +178,10 @@ $wert.='
 				</tr>
 			 </table>
      </td>
-    <td><img src="user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
+    <td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
     <td><strg>'.number_format($temperatur, 1, ",", "" ).'°C</strg></td>
   	 <td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle>
-	   <tr> <td> <img src="user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>
+	   <tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>
 		<tr> <td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr>
     </tablestyle> </table> </td>
   	</tr>
@@ -201,8 +201,8 @@ $wert.='
    <td>
 		<table border="0" bgcolor="#f1f1f1">
 	   		<tr>
-   		     <td> <img src="user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
-				  <td> <img src="user/icons/Start/FHZ.png" alt="Innentemperatur">  </td>
+   		     <td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
+				  <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td>
 				</tr>
 				<tr>
    			   <td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td>
