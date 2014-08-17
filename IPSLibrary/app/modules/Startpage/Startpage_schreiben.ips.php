@@ -5,8 +5,8 @@
 
 /********************************************* CONFIG *******************************************************/
 
-$kerneldir=IPS_GetKernelDir();
-Include_once($kerneldir."../IPS-Config/AllgemeineDefinitionen.php");
+Include_once(IPS_GetKernelDir()."../IPS-Config/AllgemeineDefinitionen.php");
+Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 
 $parentid=$_IPS['SELF'];
 IPS_SetScriptTimer($parentid, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
