@@ -11,7 +11,7 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
-
+IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
 
 /******************************************************
 
@@ -48,7 +48,7 @@ foreach ($ParamList as $Key)
 	   {
 	   $vid = CreateVariableByName($baseId, $Key["Name"], 3);
 	   }
-	$ReadWritelist[$Key["Name"]]=array("\"OID\" => ".$Key["OID"],
+	$ReadWriteList[$Key["Name"]]=array("\"OID\" => ".$Key["OID"],
 												"\"Name\" => ".$Key["Name"],
 												"\"Profile\" => ".$Key["Profile"],
 												"\"Type\" => ".$Key["Type"],
@@ -74,7 +74,7 @@ foreach ($ParamList as $Key)
 		}
 	}
 	
-print_r($ReadWritelist);
+print_r($ReadWriteList);
 
 
 /* Typ 0 Boolean 1 Integer 2 Float 3 String */
