@@ -14,8 +14,10 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
-include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
+Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
+IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
+
 
 /******************************************************
 
@@ -26,7 +28,6 @@ include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 //$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSModuleManagerGUI');
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Gartensteuerung');
 
-$gartenpumpeID=35462;
 $pauseTime=1;
 
 //$NachrichtenGartenInputID=19073;
@@ -144,10 +145,10 @@ $giessTime=GetValue($GiessTimeID);
 	{
 	//echo $parentid."\n";
 	/* Berechnung für Giessdauer */
-	$AussenTemperaturGesternMax=GetValue(54386);
-	$AussenTemperaturGestern=GetValue(13320);
-	$RegenGestern=GetValue(21609);
-	$LetzterRegen=time()-GetValue(27703);
+	$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
+	$AussenTemperaturGestern=AussenTemperaturGestern();
+	$RegenGestern=RegenGestern();
+	$LetzterRegen=time()-LetzterRegen();
 	//echo "Aussentemperatur Gestern : ".$AussenTemperaturGestern." Maximum : ".$AussenTemperaturGesternMax."\n";
 	//echo "Regen Gestern : ".$RegenGestern." mm und letzter Regen war vaktuell vor ".($LetzterRegen/60/60)." Stunden.\n";
 	SetValue($GiessTimeID,giessdauer(true));
@@ -224,7 +225,8 @@ $giessTime=GetValue($GiessTimeID);
       	IPS_SetEventActive($giesstimerID,false);
       	IPS_SetEventActive($timerDawnID,true);
  			$log_Giessanlage->message("Gartengiessanlage auf Auto gesetzt");
-			$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+ 			$failure=set_gartenpumpe(false);
+			//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 			/* Vorgeschichte egal, nur bei einmal ein wichtig */
 			SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
 			break;
@@ -238,7 +240,8 @@ $giessTime=GetValue($GiessTimeID);
       		IPS_SetEventActive($timerDawnID,false);
 	      	SetValue($GiessCountID,GetValue($GiessCountID)+1);
  				$log_Giessanlage->message("Gartengiessanlage Weiter geschaltet");
-				$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+ 				$failure=set_gartenpumpe(false);
+				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 			   }
 			else
 			   {
@@ -248,7 +251,8 @@ $giessTime=GetValue($GiessTimeID);
       		IPS_SetEventActive($timerDawnID,false);
 	      	SetValue($GiessCountID,1);
  				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt");
-				$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+ 				$failure=set_gartenpumpe(false);
+				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 				}
 			break;
 
@@ -257,7 +261,8 @@ $giessTime=GetValue($GiessTimeID);
       	IPS_SetEventActive($timerDawnID,false);
       	SetValue($GiessCountID,0);
  			$log_Giessanlage->message("Gartengiessanlage auf Aus gesetzt");
-			$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+ 			$failure=set_gartenpumpe(false);
+			//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 			/* Vorgeschichte egal, nur bei einmal ein wichtig */
 			SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
 			break;
@@ -278,7 +283,8 @@ if($_IPS['SENDER'] == "TimerEvent")
 		   Switch ($GiessCount)
 		      {
 		      case 9:
-					$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+		       	$failure=set_gartenpumpe(false);
+					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
                $GiessCount=0;
             	SetValue($GiessAnlageID, GetValue($GiessAnlagePrevID));
       			IPS_SetEventActive($giesstimerID,false);
@@ -289,7 +295,8 @@ if($_IPS['SENDER'] == "TimerEvent")
       		case 6:
       		case 4:
       		case 2:
-					$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+      		 	$failure=set_gartenpumpe(false);
+					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
 					IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
                $GiessCount+=1;
                break;
@@ -299,21 +306,24 @@ if($_IPS['SENDER'] == "TimerEvent")
 				case 1:     /* Beregner ehemaliges Pool */
 					if ($giessTime>0)
 					   {
-						$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
+					   $failure=set_gartenpumpe(true);
+						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
 						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $giessTime);
       	         $GiessCount+=1;
 						$log_Giessanlage->message("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
 						}
 					else
 						{
-						$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+						$failure=set_gartenpumpe(false);
+						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
    	            $GiessCount=0;
       				IPS_SetEventActive($giesstimerID,false);
 						$log_Giessanlage->message("Gartengiessanlage beginnt nicht, wegen Regen oder geringer Temperatur ");
 						}
 					break;
             case 0:
-					$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+             	$failure=set_gartenpumpe(false);
+					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
             }
       	SetValue($GiessCountID,$GiessCount);
 			break;
@@ -335,7 +345,8 @@ if($_IPS['SENDER'] == "TimerEvent")
 		case $allofftimerID: /* Immer um 22:00 sicherheitshalber alles ausschalten  */
       	SetValue($GiessCountID,0);
       	IPS_SetEventActive($giesstimerID,false);
-			$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+      	$failure=set_gartenpumpe(false);
+			//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
 
 			/* Beginnzeit Timer für morgen ausrechnen */
 			$dawnID = @IPS_GetObjectIDByName("Program",0);
@@ -386,14 +397,15 @@ function giessdauer($debug=false)
 
 	$giessdauer=0;
 	$display=$debug;
-	$AussenTemperaturGesternMax=GetValue(54386);
-	$AussenTemperaturGestern=GetValue(13320);
-	$RegenGestern=GetValue(21609);
-	$LetzterRegen=time()-GetValue(27703);
+
+	$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
+	$AussenTemperaturGestern=AussenTemperaturGestern();
+	$RegenGestern=RegenGestern();
+	$LetzterRegen=time()-LetzterRegen();
 
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
-	$variableID=15620;
+	$variableID=get_raincounterID();
 	$endtime=time();
 	$starttime=$endtime-60*60*2*1;
 	$ergebnis2h=summestartende($starttime, $endtime, true, false);
@@ -439,24 +451,6 @@ function giessdauer($debug=false)
 	return $giessdauer;
 	}
 
-/* wird nicht mehr verwendet */
-
-function log_giessanlage($message)
-	{
-	$file_logGiessanlage="C:\Scripts\Log_Giessanlage.csv";
-
-	if (!file_exists($file_logGiessanlage))
-		{
-      $handle3=fopen($file_logGiessanlage, "a");
-	   fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
-		}
-	else
-		{
-      $handle3=fopen($file_logGiessanlage, "a");
-		}
-   fwrite($handle3, date("d.m.y H:i:s").";$message\r\n");
-   fclose($handle3);
-	}
 
 
 	

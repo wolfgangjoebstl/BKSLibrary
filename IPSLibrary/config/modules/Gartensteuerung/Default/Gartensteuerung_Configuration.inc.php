@@ -31,7 +31,35 @@
 	 */
 
 
+	function set_gartenpumpe($value)
+	   {
+		$gartenpumpeID=35462;
+		$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",$value);
+		return $failure;
+	   }
 
+	function get_raincounterID()
+		{ return 15620; }
+
+	function get_AussenTemperaturGesternMax()
+		{
+		return GetValue(54386);
+		}
+
+	function AussenTemperaturGestern()
+		{
+		return GetValue(13320);
+		}
+		
+	function RegenGestern()
+		{
+		return GetValue(21609);
+		}
+
+	function LetzterRegen()
+		{
+		return GetValue(27703);
+		}
 
 	 
 	 

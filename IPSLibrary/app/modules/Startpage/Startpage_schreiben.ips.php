@@ -5,17 +5,22 @@
 
 /********************************************* CONFIG *******************************************************/
 
-Include_once(IPS_GetKernelDir()."../IPS-Config/AllgemeineDefinitionen.php");
-Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+//Include_once(IPS_GetKernelDir()."../IPS-Config/AllgemeineDefinitionen.php");
+Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
 
-$parentid=$_IPS['SELF'];
-IPS_SetScriptTimer($parentid, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 
-$temperatur=GetValue(11477);
-$innentemperatur=GetValue(21157);
+$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+
+$temperatur=temperatur();
+$innentemperatur=innentemperatur();
 $bilderverzeichnis=IPS_GetKernelDir()."webfront\\user\\pictures\\";
 
 $StartPageTypeID = CreateVariableByName($parentid, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $parentid, 40, '~HTMLBox', null,null,"");
+
 
 $name="SwitchScreen";
 $vid = @IPS_GetVariableIDByName($name,$parentid);
@@ -90,7 +95,7 @@ $showfile=rand(3,$maxcount-1);
 		}
 	}
 
-SetValue(53963,StartPageWrite(GetValue($StartPageTypeID)));
+SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 
 
 /**************************************** FUNCTIONS *********************************************************/
