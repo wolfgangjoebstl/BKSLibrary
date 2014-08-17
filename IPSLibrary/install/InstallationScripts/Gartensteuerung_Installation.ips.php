@@ -151,7 +151,7 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 	if ($WFC10_Enabled)
 		{
-		echo "\nWebportal Administartor installieren: \n";
+		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
 		}

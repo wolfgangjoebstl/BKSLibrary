@@ -13,6 +13,8 @@
 	 *  Version 2.50.44, 07.08.2014<br/>
 	 **/
 	 
+	Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+	 
 	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -58,15 +60,47 @@
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$StartPageTypeID = CreateVariableByName($CategoryIdData, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
+
+
+	$name="SwitchScreen";
+	$vid = @IPS_GetVariableIDByName($name,$CategoryIdData);
+	if($vid === false)
+    	{
+        $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
+        IPS_SetParent($vid, $CategoryIdData);
+        IPS_SetName($vid, $name);
+        IPS_SetInfo($vid, "this variable was created by script #".$CategoryIdData.".");
+        echo "Variable erstellt;\n";
+    	}
+	$pname="StartpageControl";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   IPS_SetVariableProfileValues($pname, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   echo "Profil erstellt;\n";
+		}
+	IPS_SetVariableCustomProfile($vid, $pname); // Ziel-ID, P-Name
+	IPS_SetVariableCustomAction($vid, $CategoryIdData);
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 	if ($WFC10_Enabled)
 		{
-		echo "\nWebportal Administartor installieren: \n";
+		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-
+		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Ansicht', $vid,    $categoryId_WebFront,  20);
 		}
 		
 	if ($WFC10User_Enabled)

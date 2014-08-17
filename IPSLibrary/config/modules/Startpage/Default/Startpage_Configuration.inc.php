@@ -30,13 +30,11 @@
 	 *
 	 */
 
-	function temperatur()
-		{ return GetValue(21416); }
-		
-	function innentemperatur()
-		{ return GetValue(56688); }
 
 
+
+	 
+	 
 
 	/** @}*/
 ?>
