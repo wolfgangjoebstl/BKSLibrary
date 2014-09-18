@@ -6,12 +6,15 @@
 	
 */
 
+$includefile='<?'."\n".'$fileList = array('."\n";
+
 $alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
 foreach ($alleInstanzen as $instanz)
 	{
 	$result=IPS_GetInstance($instanz);
 	//echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-	echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+	/* alle Instanzen dargestellt */
+	//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 	//print_r(IPS_GetInstance($instanz));
 
 	}
@@ -62,9 +65,18 @@ echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+	$includefile.='"'.IPS_GetName($instanz).'" => array("OID" => '.$instanz.', "Adresse" => "'.IPS_GetProperty($instanz,'Address').'", "Name" => "'.IPS_GetName($instanz).'",),'."\n";
 	//print_r(IPS_GetInstance($instanz));
 	
 	}
+$includefile.=');'."\n".'?>';
+$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHarware.inc.php';
+if (!file_put_contents($filename, $includefile)) {
+        throw new Exception('Create File '.$filename.' failed!');
+    		}
+include $filename;
+print_r($fileList);
+
 
 $texte = Array(
     "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
@@ -102,6 +114,9 @@ foreach($msgs as $msg)
 
     echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
 }
+
+
+/********************************************************************************************************************/
 
 function GetInstanceIDFromHMID($sid)
 {
