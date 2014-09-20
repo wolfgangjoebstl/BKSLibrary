@@ -57,6 +57,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
+	/*
 	echo "\nRegister \"Allgemeine Definitionen\"";
 	$scriptName="Allgemeine Definitionen";
 	$file="AllgemeineDefinitionen.inc.php";
@@ -70,7 +71,8 @@
 	CreateCategory('_include', $categoryid, 0);
 	$categoryid  = IPSUtil_ObjectIDByPath('Program._include');
 	CreateScript($scriptName, $file, $categoryid);
-
+	*/
+	
 	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
 
