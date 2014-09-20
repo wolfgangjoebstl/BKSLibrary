@@ -11,7 +11,7 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
-IPSUtils_Include ("RemoteReadWrite.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
 
 /******************************************************

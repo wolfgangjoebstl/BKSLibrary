@@ -70,7 +70,7 @@ foreach ($alleInstanzen as $instanz)
 	
 	}
 $includefile.=');'."\n".'?>';
-$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHarware.inc.php';
+$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHardware.inc.php';
 if (!file_put_contents($filename, $includefile)) {
         throw new Exception('Create File '.$filename.' failed!');
     		}
