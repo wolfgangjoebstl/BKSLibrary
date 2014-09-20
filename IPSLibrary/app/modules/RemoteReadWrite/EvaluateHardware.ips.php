@@ -6,8 +6,8 @@
 	
 */
 
-$includefile='<?'."\n".'$fileList = array('."\n";
-
+//$includefile='<?'."\n".'$fileList = array('."\n";
+$includefile='<?'."\n".'function HomematicList() { return array('."\n";
 $alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
 foreach ($alleInstanzen as $instanz)
 	{
@@ -69,13 +69,14 @@ foreach ($alleInstanzen as $instanz)
 	//print_r(IPS_GetInstance($instanz));
 	
 	}
-$includefile.=');'."\n".'?>';
+/*$includefile.=');'."\n".'?>';*/
+$includefile.=');}'."\n".'?>';
 $filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHardware.inc.php';
 if (!file_put_contents($filename, $includefile)) {
         throw new Exception('Create File '.$filename.' failed!');
     		}
-include $filename;
-print_r($fileList);
+//include $filename;
+//print_r($fileList);
 
 
 $texte = Array(

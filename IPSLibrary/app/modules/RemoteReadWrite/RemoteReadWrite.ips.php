@@ -32,6 +32,8 @@ $rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/")
 
 $ParamList = ParamList();
 //print_r($ParamList);
+$Homematic = HomematicList();
+print_r($Homematic);
 
 $ReadWriteList=array();
 SetValueBoolean($StatusID,true);
