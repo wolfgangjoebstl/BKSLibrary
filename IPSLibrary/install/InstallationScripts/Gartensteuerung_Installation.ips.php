@@ -96,30 +96,30 @@
 
 
    // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $GiessAnlageID = CreateVariable2($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessCountID=CreateVariable2("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID = CreateVariable2("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID=CreateVariable2("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID=CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID = CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID=CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
-	$input = CreateVariable2("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$zeile1 = CreateVariable2("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
-	$zeile2 = CreateVariable2("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
-	$zeile3 = CreateVariable2("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
-	$zeile4 = CreateVariable2("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
-	$zeile5 = CreateVariable2("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
-	$zeile6 = CreateVariable2("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
-	$zeile7 = CreateVariable2("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
-	$zeile8 = CreateVariable2("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
-	$zeile9 = CreateVariable2("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
-	$zeile10 = CreateVariable2("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
-	$zeile11 = CreateVariable2("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
-	$zeile12 = CreateVariable2("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
-	$zeile13 = CreateVariable2("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
-	$zeile14 = CreateVariable2("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
-	$zeile15 = CreateVariable2("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
-	$zeile16 = CreateVariable2("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
+	$input = CreateVariable3("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$zeile1 = CreateVariable3("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
+	$zeile2 = CreateVariable3("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
+	$zeile3 = CreateVariable3("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
+	$zeile4 = CreateVariable3("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
+	$zeile5 = CreateVariable3("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
+	$zeile6 = CreateVariable3("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
+	$zeile7 = CreateVariable3("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
+	$zeile8 = CreateVariable3("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
+	$zeile9 = CreateVariable3("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
+	$zeile10 = CreateVariable3("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
+	$zeile11 = CreateVariable3("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
+	$zeile12 = CreateVariable3("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
+	$zeile13 = CreateVariable3("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
+	$zeile14 = CreateVariable3("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
+	$zeile15 = CreateVariable3("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
+	$zeile16 = CreateVariable3("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
 
 	$includefile.=');'."\n";
 	$includefile.='}'."\n".'?>';
@@ -178,7 +178,7 @@
 		}
 
 
-function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+function CreateVariable3($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	{
 	global $includefile;
 	$oid=CreateVariable($Name, $Type, $ParentId, $Position, $Profile, $Action, $ValueDefault, $Icon);
