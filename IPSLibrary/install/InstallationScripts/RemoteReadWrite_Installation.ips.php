@@ -13,7 +13,7 @@
 	 *  Version 2.50.44, 07.08.2014<br/>
 	 **/
 
-	Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
