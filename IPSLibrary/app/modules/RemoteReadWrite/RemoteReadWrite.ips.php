@@ -8,9 +8,10 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 */
 
 
-Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
+IPSUtils_Include ("RemoteReadWrite.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
 
 /******************************************************
@@ -48,11 +49,11 @@ foreach ($ParamList as $Key)
 	   {
 	   $vid = CreateVariableByName($baseId, $Key["Name"], 3);
 	   }
-	$ReadWriteList[$Key["Name"]]=array("\"OID\" => ".$Key["OID"],
-												"\"Name\" => ".$Key["Name"],
-												"\"Profile\" => ".$Key["Profile"],
-												"\"Type\" => ".$Key["Type"],
-												"\"LOID\" => ".$vid);
+	$ReadWriteList[$Key["Name"]]=array("OID" => $Key["OID"],
+												"Name" => $Key["Name"],
+												"Profile" => $Key["Profile"],
+												"Type" => $Key["Type"],
+												"LOID" => $vid);
 
 	echo "Variabe augelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
 	if ($Key["Profile"]=="")

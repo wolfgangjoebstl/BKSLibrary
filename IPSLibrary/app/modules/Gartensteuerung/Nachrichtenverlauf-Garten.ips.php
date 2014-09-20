@@ -3,7 +3,7 @@
  //Fügen Sie hier Ihren Skriptquellcode ein
 
 
-Include(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
 //echo "BaseID :".$baseId."\n";
