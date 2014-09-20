@@ -14,7 +14,7 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
 
