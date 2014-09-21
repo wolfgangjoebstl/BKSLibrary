@@ -37,6 +37,16 @@
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('RemoteReadWrite');
 	echo "\nRemoteReadWrite Version : ".$ergebnis;
+
+	$gartensteuerung=false;
+ 	$installedModules = $moduleManager->GetInstalledModules();
+	$inst_modules="\nInstallierte Module:\n";
+	foreach ($installedModules as $name=>$modules)
+		{
+		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		if ($name=="Gartensteuerung") { $gartensteuerung=true; }
+		}
+	echo $inst_modules;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -57,43 +67,47 @@
 	echo "Retro \n";
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-
+	echo "Test";
+	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	
-	IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
-	$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.RemoteReadWrite');
-	echo "BaseID :".$baseId."\n";
+	/* check if Gartensteuerung ueberhaupt installiert */
+	if ($gartensteuerung==true)
+	   {
+		IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.RemoteReadWrite');
+		echo "BaseID :".$baseId."\n";
 
-	/* Typ 0 Boolean 1 Integer 2 Float 3 String */
-	$StatusID = CreateVariableByName($baseId, "StatusReadWrite-BKS", 0);
-	$letzterWertID = CreateVariableByName($baseId, "LetzterWert-BKS", 3);
+		/* Typ 0 Boolean 1 Integer 2 Float 3 String */
+		$StatusID = CreateVariableByName($baseId, "StatusReadWrite-BKS", 0);
+		$letzterWertID = CreateVariableByName($baseId, "LetzterWert-BKS", 3);
 
-	$ParamList = ParamList();
+		$ParamList = ParamList();
 
-	$ReadWriteList=array();
-	SetValueBoolean($StatusID,true);
-	foreach ($ParamList as $Key)
-		{
-		$typ=(integer)$Key["Type"];
-		$oid=(integer)$Key["OID"];
-		if ($Key["Profile"]=="")
-		   { /* keine Formattierung */
-	   	$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
-		   }
-		else
-		   {
-	   	$vid = CreateVariableByName($baseId, $Key["Name"], 3);
-		   }
-		$ReadWriteList[$Key["Name"]]=array("OID" => 0, "Name" => 0, "Profile" => 0, "Type" => 0, "LOID" => 0);
-		$ReadWriteList[$Key["Name"]]["OID"]=$oid;
-		$ReadWriteList[$Key["Name"]]["Name"]=$Key["Name"];
-		$ReadWriteList[$Key["Name"]]["Profile"]=$Key["Profile"];
-		$ReadWriteList[$Key["Name"]]["Type"]=$typ;
-		$ReadWriteList[$Key["Name"]]["LOID"]=$vid;
-	}
-	//print_r($ReadWriteList);
-
+		$ReadWriteList=array();
+		SetValueBoolean($StatusID,true);
+		foreach ($ParamList as $Key)
+			{
+			$typ=(integer)$Key["Type"];
+			$oid=(integer)$Key["OID"];
+			if ($Key["Profile"]=="")
+			   { /* keine Formattierung */
+	   		$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
+		   	}
+			else
+			   {
+	   		$vid = CreateVariableByName($baseId, $Key["Name"], 3);
+		   	}
+			$ReadWriteList[$Key["Name"]]=array("OID" => 0, "Name" => 0, "Profile" => 0, "Type" => 0, "LOID" => 0);
+			$ReadWriteList[$Key["Name"]]["OID"]=$oid;
+			$ReadWriteList[$Key["Name"]]["Name"]=$Key["Name"];
+			$ReadWriteList[$Key["Name"]]["Profile"]=$Key["Profile"];
+			$ReadWriteList[$Key["Name"]]["Type"]=$typ;
+			$ReadWriteList[$Key["Name"]]["LOID"]=$vid;
+			}
+		//print_r($ReadWriteList);
+		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -102,10 +116,13 @@
 		{
 		echo "\nWebportal Administrator installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-      foreach ($ReadWriteList as $Key)
-         {
-         print_r($Key);
-			CreateLinkByDestination($Key["Name"], $Key["LOID"],    $categoryId_WebFront,  10);
+		if ($gartensteuerung==true)
+		   {
+	      foreach ($ReadWriteList as $Key)
+   	      {
+      	   print_r($Key);
+				CreateLinkByDestination($Key["Name"], $Key["LOID"],    $categoryId_WebFront,  10);
+				}
 			}
 		}
 		
