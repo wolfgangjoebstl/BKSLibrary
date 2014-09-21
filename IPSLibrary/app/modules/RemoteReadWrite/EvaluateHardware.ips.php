@@ -65,8 +65,35 @@ echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-	$includefile.='"'.IPS_GetName($instanz).'" => array("OID" => '.$instanz.', "Adresse" => "'.IPS_GetProperty($instanz,'Address').'", "Name" => "'.IPS_GetName($instanz).'",),'."\n";
-	//print_r(IPS_GetInstance($instanz));
+	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
+	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+	$includefile.="\n         ".'"COID" => array(';
+	
+	$cids = IPS_GetChildrenIDs($instanz);
+	//print_r($cids);
+   foreach($cids as $cid)
+    	{
+      $o = IPS_GetObject($cid);
+      echo "\nCID :".$cid;
+      print_r($o);
+      if($o['ObjectIdent'] != "")
+		{
+			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
+			$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
+			$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
+			$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
+      	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
+				{
+            echo "Fehler: ".IPS_GetLocation($id)."\n";
+            break;
+            }
+        }
+    }
+
+
+	$includefile.="\n             ".'	),'."\n";
+	$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 	
 	}
 /*$includefile.=');'."\n".'?>';*/

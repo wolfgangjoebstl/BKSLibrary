@@ -33,10 +33,16 @@ $rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/")
 $ParamList = ParamList();
 //print_r($ParamList);
 $Homematic = HomematicList();
-print_r($Homematic);
+//print_r($Homematic);
 
 $ReadWriteList=array();
 SetValueBoolean($StatusID,true);
+
+foreach ($Homematic as $Key)
+	{
+	print_r($Key);
+	}
+	
 foreach ($ParamList as $Key)
 	{
 	//print_r($Key);
@@ -57,7 +63,7 @@ foreach ($ParamList as $Key)
 												"Type" => $Key["Type"],
 												"LOID" => $vid);
 
-	echo "Variabe augelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
+	echo "Variabe ausgelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
 	if ($Key["Profile"]=="")
 		{
 		$ergebnis=$rpc->GetValue($oid);
