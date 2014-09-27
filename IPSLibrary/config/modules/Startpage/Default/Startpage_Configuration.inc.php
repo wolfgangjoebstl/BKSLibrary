@@ -17,19 +17,24 @@
 	 */    
 
 
-	/**@defgroup ipstwilight_configuration IPSTwilight Konfiguration
-	 * @ingroup ipstwilight
+	/**@defgroup startpage_configuration
+	 * @ingroup startpage
 	 * @{
 	 *
-	 * Konfigurations File für IPSTwilight
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          Startpage_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
 	 *
 	 */
 
+
+	function temperatur()
+		{ return GetValue(21416); }
+
+	function innentemperatur()
+		{ return GetValue(56688); }
 
 
 
