@@ -4,6 +4,14 @@
 
    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
+   
+/******************************************************************************************/   
+/*                                                                                        */   
+/*                                        BKS01                                           */
+/*                                                                                        */
+/******************************************************************************************/
+
+   
 /* ObjectID Adresse vom send email server */
 
 $sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
@@ -56,7 +64,7 @@ define("ADR_GBESwitch_Stromversorgung",23695);
 
 /* IP Adressen */
 
-define("ADR_Router","11.0.1.1");
+
 define("ADR_Gateway","10.0.1.200");
 define("ADR_Webcam_innen","10.0.1.2");
 define("ADR_Webcam_innen_Port","2001");
@@ -66,18 +74,554 @@ define("ADR_Webcam_lbg","hupo35.ddns-instar.de");
 define("ADR_Webcam_Outdoor","10.0.1.8");
 define("ADR_Webcam_Outdoor_Port","2002");
 
-//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
-$Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
-$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
-
-/* verzeichnisse */
-
-define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
-
-/****************************************************************************************************/
 
 
-function LogAlles_Configuration() {
+
+
+echo IPS_GetName(0);
+if (IPS_GetName(0)=="LBG70")
+	{
+
+/******************************************************************************************/
+/*                                                                                        */
+/*                                        LBG70                                           */
+/*                                                                                        */
+/******************************************************************************************/
+
+function LogAlles_Bewegung() {
+		return array(
+			"VZB"     => array(	"OID_Sensor"         => 30700,           /* OID Position vom Sensor im WZ */
+			                     "OID_Status"         => 57705, /*???*/
+  			              	  		"Type"               => "Motion",
+			              ),
+			"AZB"     => array(	"OID_Sensor"         => 54389,           /* OID Position vom Sensor im WZ */
+			                     "OID_Status"         => 57705, /*???*/
+  			              	  		"Type"               => "Motion",
+			              ),
+			"WZB"     => array(	"OID_Sensor"         => 11681,           /* OID Position vom Sensor im WZ */
+			                     "OID_Status"         => 57705, /*???*/
+  			              	  		"Type"               => "Motion",
+			              ),
+			"ZZB"     => array(	"OID_Sensor"         => 21581,           /* OID Position vom Sensor im WZ */
+			                     "OID_Status"         => 57705, /*???*/
+  			              	  		"Type"               => "Motion",
+			              ),
+			"BZT"    => array(	"OID_Sensor"         => 25921,           /* OID Position vom Sensor im WG */
+			                     "OID_Status"         => 18901,  /*???*/
+  			              	  		"Type"               => "State",
+			              ),
+			"EGT"    => array(	"OID_Sensor"         => 41275,           /* OID Position vom Sensor im Keller */
+			                     "OID_Status"         => 22562,  /*???*/
+  			              	  		"Type"               => "State",
+			              ),
+			"TOTAL" 	=> array(	"OID_Bewegung"    	=> 23826,   /* einfach Bewegungswerte (Motion) oder verknuepft */
+										"OID_Alarm"    		=> 10840,   /* einfach Alarmwerte (State) oder verknuepft */
+										"OID_Status"    		=> 33623,   /* Indikation ob wir zu Hause sind */
+			              ),
+						);
+	}
+
+function LogAnwesenheit_Configuration()
+	{
+	return array(
+			"VZB"    =>    30700,                                       /* Bewegungsmelder im VZ */
+			"AZB"    =>    54389,                                       /* Bewegungsmelder im AZ */
+			"WZB"    =>    11681,                                       /* Bewegungsmelder in der Kueche */
+			"ZZB"    =>    21581,                                       /* Bewegungsmelder im zentralen VZ */
+			"BZT"    =>    25921,                                       /* Kontakt Badezimmertuere */
+			"EGT"    =>    41275,                                       /* Kontakt Eingangstuere */
+		         );
+	}
+
+	function LogAlles_Configuration() {
+		return array(
+			"AZ"    => array("Leistung"           	 => 190, 				/* zwei Radiatoren 110 Arbeitszimmer und 80 Gaestezimmer */
+							  "OID_PosHT80b"         => 54440,           /* OID Position vom Regler */
+  			              	  "OID_Zeit"           	 => 30741,
+  			              	  "OID_Energie"          => 34120,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_EnergieVortag"    => 38894,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
+  			              	  "OID_EnergieTag"       => 43184,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+			              ),
+			"BZ"    => array("Leistung"           	 => 50, 					/* ein Radiator 50 */
+							  "OID_PosHT80b"         => 14642,           /* OID Position vom Regler */
+  			              	  "OID_Zeit"           	 => 46077,
+  			              	  "OID_Energie"          => 30563,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_EnergieVortag"    => 38725,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
+  			              	  "OID_EnergieTag"       => 41149,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+			              ),
+			"SZ"    => array("Leistung"           	 => 140,					/* ein Radiator 70 doppelt aufgebaut */
+							  "OID_PosHT80b"         => 34186,           /* OID Position vom Regler */
+  			              	  "OID_Zeit"           	 => 56091,
+  			              	  "OID_Energie"          => 29754,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_EnergieVortag"    => 10710,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
+  			              	  "OID_EnergieTag"       => 22670,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+			              ),
+			"WZ"    => array("Leistung"           	 => 170,   				/* zwei Radiatoren Kueche 70 und Essplatz 100 */
+							  "OID_PosHT80b"         => 27073,           /* OID Position vom Regler */
+  			              	  "OID_Zeit"           	 => 52403,
+  			              	  "OID_Energie"          => 46217,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_EnergieVortag"    => 40178,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
+  			              	  "OID_EnergieTag"       => 47674,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+			              ),
+			"TOTAL" => array("OID_Energie"          => 30163,
+  			              	  "OID_EnergieSumme"     => 43589,
+			              ),
+						);
+	}
+
+
+function LogAlles_Temperatur() {
+		return array(
+			"AZ-T"    => array(	"OID_Sensor"         => 39227,           /* OID Position vom Sensor im AZ */
+  			              		"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
+  			              		"Type"               => "Innen",
+			              ),
+			"BZ-T"    => array(	"OID_Sensor"         => 56634,           /* OID Position vom Sensor im BZ */
+								"OID_TempWert"    	=> 36041,           /* OID vom Spiegelregister */
+  			              		"Type"               => "Innen",
+			              ),
+			"SZ-T"    => array(	"OID_Sensor"         => 33694,           /* OID Position vom Sensor im SZ */
+  			              		"OID_TempWert"    	=> 42862,           /* OID vom Spiegelregister */
+  			              		"Type"               => "Innen",
+			              ),
+			"WZ-T"    => array(	"OID_Sensor"         => 17554,           /* OID Position vom Sensor im WZ */
+  			              		"OID_TempWert"    	=> 51550,           /* OID vom Spiegelregister */
+  			              		"Type"               => "Innen",
+			              ),
+			"AUSSEN-OST"  => array(	"OID_Sensor"    => 16433,           /* OID Position vom Sensor AUSSEN OST*/
+  			              		"OID_TempWert"    	=> 16765,           /* OID vom Spiegelregister, kann ruhig versteckt angeordnet werden, oder statt echtem Aussensensorwert */
+  			              		"Type"              => "Aussen",
+			              ),
+			"AUSSEN-WEST"  => array( "OID_Sensor"   => 22695,           /* OID Position vom Sensor AUSSEN WEST*/
+  			              		"OID_TempWert"    	=> 18688,           /* OID vom Spiegelregister, kann ruhig versteckt angeordnet werden, oder statt echtem Aussensensorwert */
+  			              		"Type"               => "Aussen",
+			              ),
+			"TOTAL"   => array(	"OID_TempWert_Aussen"    	=> 11477,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
+			                    "OID_TempWert_Innen"    	=> 21157,
+			                    "OID_TempTagesWert_Aussen" => 34862,   /* Tageswerte sind immer der letzte Tag */
+			                    "OID_TempTagesWert_Innen"  => 29829,
+			              ),
+						);
+	}
+
+ function LogAlles_Hostnames() {
+		return array(
+			"UPC"      => array(	"IP_Adresse"         => "10.0.0.1",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "80-c6-ab-73-fe-1c",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "UPC-Gateway",		 			/* Hostname ist auch zu vergeben */
+			              ),
+			"IP009"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "d8-30-62-32-0b-93",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"LBG70"      => array(	"IP_Adresse"         => "10.0.0.20",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "80-ee-73-32-89-9f",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "LBG70Server",					/* Hostname ist auch zu vergeben */
+			              ),
+			"AVR17"    => array(	"IP_Adresse"         => "10.0.0.23",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-05-cd-2d-c8-0a",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "DENON AVR-1713",		 		/* Hostname ist auch zu vergeben */
+			              ),
+			"IP024"    => array(	"IP_Adresse"         => "10.0.0.24",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-1c-c0-02-2f-05",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"GLA"      => array(	"IP_Adresse"         => "10.0.0.26",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "90-e6-ba-19-43-26",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "GanzLinks",					/* Hostname ist auch zu vergeben */
+			              ),
+			"IP027"    => array(	"IP_Adresse"         => "10.0.0.27",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "78-ca-39-42-87-c3",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP028"    => array(	"IP_Adresse"         => "10.0.0.28",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-e0-4c-bc-89-bd",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "WZ-IPCam",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP030"    => array(	"IP_Adresse"         => "10.0.0.30",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-08-c9-01-65-63",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP032"    => array(	"IP_Adresse"         => "10.0.0.32",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "90-84-0d-cf-c8-89",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP034"    => array(	"IP_Adresse"         => "10.0.0.34",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "4c-ed-de-a2-d9-42",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP038"    => array(	"IP_Adresse"         => "10.0.0.34",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-1d-ba-8f-11-37",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP082"    => array(	"IP_Adresse"         => "10.0.0.82",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-1a-22-00-3a-b1",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IP112"    => array(	"IP_Adresse"         => "10.0.0.112",           		/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "e4-e0-c5-25-66-27",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"AVR33"    => array(	"IP_Adresse"         => "10.0.0.115",           		/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-05-cd-25-91-76",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Denon AVR-3312",		 		/* Hostname ist auch zu vergeben */
+			              ),
+					);
+	}
+
+
+
+/* Verbraucher */
+
+//define("ADR_ArbeitszimmerNetzwerk",37160);
+define("ADR_ArbeitszimmerNetzwerk",36225);   /* jetzt Homematic */
+define("ADR_ArbeitszimmerServer",25840);
+define("ADR_ArbeitszimmerVerstaerker",39136);
+//define("ADR_ArbeitszimmerComputer",21196);
+define("ADR_ArbeitszimmerComputer",55176);   /* jetzt Homematic */
+//define("ADR_ArbeitszimmerFestplatten",10020);
+define("ADR_ArbeitszimmerFestplatten",21427);   /* jetzt Homematic */
+define("ADR_WohnzimmerNetzwerk",24744);
+define("ADR_WohnzimmerXboxPS3",16013);
+define("ADR_WohnzimmerFernseherReceiver",47562);
+
+
+/* Lampen */
+
+define("ADR_GaestezimmerLampe",24122);
+define("ADR_WohnzimmerEckstehlampe",12828);
+define("ADR_WohnzimmerLampe",44267);
+//define("ADR_ArbeitszimmerLampe",40351);
+define("ADR_ArbeitszimmerLampe",34651);   /* jetzt Homematic */
+define("ADR_SchlafzimmerLampe",31970);
+define("ADR_SchlafzimmerKastenlampe",10987);
+
+/* Wohnungszustand */
+
+define("STAT_WohnungszustandInaktiv",0);
+define("STAT_WohnungszustandFerien",1);
+define("STAT_WohnungszustandUnterwegs",2);
+define("STAT_WohnungszustandStandby",3);
+define("STAT_WohnungszustandAktiv",4);
+define("STAT_WohnungszustandTop",5);
+
+/* erkannter Zustand */
+define("STAT_KommtnachHause",8);
+define("STAT_Bewegung",7);
+define("STAT_WenigBewegung",6);
+define("STAT_KeineBewegung",5);
+define("STAT_Unklar",4);
+define("STAT_Undefiniert",3);
+define("STAT_vonzuHauseweg",2);
+define("STAT_nichtzuHause",1);
+define("STAT_Abwesend",0);
+
+$id_sound = 23225;
+$sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
+
+/**********************************************************************************************************************************************************/
+/* immer wenn eine Statusmeldung per email angefragt wird */
+
+
+/* wird später unter Allgemein gespeichert */
+
+function send_status($aktuell)
+{
+
+	$sommerzeit=false;
+	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
+
+/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
+
+	if ($aktuell)
+	   {
+	   $einleitung.="Ausgabe der aktuellen Werte.\n";
+	   //$einleitung.="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
+	   }
+	else
+	   {
+	   $einleitung.="Ausgabe der historischen Werte - Vortag.\n";
+	   }
+	if (date("I")=="1")
+	{
+	$einleitung.="Wir haben jetzt Sommerzeit, daher andere Reihenfolge der Ausgabe.\n";
+	$sommerzeit=true;
+	}
+	$einleitung.="\n";
+
+//   IPS_RunScript(13352);
+//   IPS_RunScript(32860);
+//   IPS_RunScript(45023);
+//   IPS_RunScript(41653);
+
+	if ($aktuell)
+	    {
+		$energieverbrauch="";
+		}
+	else
+		{
+		IPS_RunScript(35787);
+
+		$energieverbrauch="Energieverbrauch der letzten Tage (bei ".GetValue(52478)." Euro pro kWh) :\n";
+		$energieverbrauch.="\nEnergieverbrauch (1/7/30/360) : ".number_format(GetValue(44839), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(33301), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(29148), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(16969), 2, ",", "" )." kWh";
+		$energieverbrauch.="\nEnergiekosten    (1/7/30/360) : ".number_format(GetValue(18976), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(34239), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(20687), 2, ",", "" )." / ";
+		$energieverbrauch.=number_format(GetValue(45647), 2, ",", "" )." Euro\n\n";
+		}
+
+	$guthaben="Guthabenstatus:\n".
+			  "\n".GetValue(24085).
+			  "\n".GetValue(27029).
+			  "\n".GetValue(59623).
+			  "\n".GetValue(39724).
+  			  "\n".GetValue(54406).
+			  "\n".GetValue(50426)."\n\n";
+
+	$cost="Internetkosten:\n".
+			"\nAufgeladen wurde bisher : ".GetValue(32942)." Euro".
+			"\nVerbraucht wurde bisher : ".GetValue(37190)." Euro".
+			"\nÄnderung heute          : ".GetValue(47396)." Euro\n\n";
+
+	$internet="Internet Erreichbarkeit:\n".
+			  "\nLBG70 Server  : ".GetValue(27549)." seit ".date("d.m.y H:i:s",GetValue(26654)).
+  			  "\nBKS01 Server  : ".GetValue(34955)." seit ".date("d.m.y H:i:s",GetValue(23044)).
+  			  "\nFirmentelefon : ".GetValue(30691)." seit ".date("d.m.y H:i:s",GetValue(11781)).
+  			  "\nPrivattelefon : ".GetValue(27870)." seit ".date("d.m.y H:i:s",GetValue(13224))."\n\n";
+
+	$statusverlauf="Verlauf Serverstatus:\n\n".
+	      GetValue(37381)."\n".
+	      GetValue(46979)."\n".
+	      GetValue(23626)."\n".
+	      GetValue(46922)."\n".
+			GetValue(49498)."\n".
+			GetValue(49200)."\n".
+	      GetValue(16415)."\n\n";
+
+
+//	$ergebnis_tagesenergie="Energiewerte Vortag: \n\n";
+//	$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
+
+//  foreach ($arr as $identifier=>$station)
+		{
+//		$EnergieTagFinalID=$station["OID_Tageswert"];
+//	   $ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($EnergieTagFinalID), 2, ",", "" )."kWh ";
+		}
+//	$ergebnis_tagesenergie.="\n\n";
+
+//	$ergebnis_tagesenergie.="Aktuelle Energiewerte : \n\n";
+//   $arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
+
+//	$energieGesTagID = CreateVariableByName(53458,"Summe_EnergieTag", 2);
+//   foreach ($arr as $identifier=>$station)
+		{
+//		if ($identifier=="TOTAL")
+			{
+//   		$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieGesTagID), 2, ",", "" )."kWh \n";
+//			break;
+			}
+//		$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
+//   	$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
+		}
+//	unset($identifier); // break the reference with the last element
+//	$ergebnis_tagesenergie.=   "1/7/30/360 : ".number_format(GetValue(35510), 0, ",", "" )."/"
+//							  				    .number_format(GetValue(25496), 0, ",", "" )."/"
+//											    .number_format(GetValue(54896), 0, ",", "" )."/"
+//											    .number_format(GetValue(30229), 0, ",", "" )." kWh\n";
+
+	if ($aktuell)
+	    {
+		$ergebnis_tabelle="";
+		}
+	else
+		{
+		/* Energiewerte der Vortage als Zeitreihe */
+		$jetzt=time();
+		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+		$starttime=$endtime-60*60*24*7;
+		$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 21762, $starttime, $endtime, 0);
+		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2));
+		//print_r($werte);
+		//	echo "Werte Heizung:\n";
+		$vorigertag=date("d.m.Y",$jetzt);
+		$laufend=1;
+		$ergebnis_tabelle="Heizenergie der letzten Tage: \n".substr("\n                          ",0,12);
+		foreach($werte as $wert)
+			{
+			$zeit=$wert['TimeStamp']-60;
+			if (date("d.m.Y", $zeit)!=$vorigertag)
+			   {
+				$zeile["Datum"][$laufend] = date("D d.m", $zeit);
+				$zeile["Heizung"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
+				$ergebnis_tabelle.= substr($zeile["Datum"][$laufend]."            ",0,12);
+				$laufend+=1;
+				}
+			$vorigertag=date("d.m.Y",$zeit);
+			}
+		$anzahl=$laufend-1;
+		$laufend=0;
+		$ergebnis_tabelle.="\n";
+		//print_r($zeile);
+		while ($laufend<=$anzahl)
+			{
+			$ergebnis_tabelle.=substr($zeile["Heizung"][$laufend]."            ",0,12);
+			$laufend+=1;
+			//echo $ergebnis_tabelle."\n";
+			}
+		$ergebnis_tabelle.="\n\n";
+		}
+
+//	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 13448, $starttime, $endtime, 0);
+	//print_r($werte);
+//	echo "Werte Stromverbrauch:\n";
+//	$vorigertag=date("d.m.Y",$jetzt);
+//	foreach($werte as $wert)
+			{
+//			$zeit=$wert['TimeStamp']-60;
+//			if (date("d.m.Y", $zeit)!=$vorigertag)
+			   {
+//				echo date("d.m.Y", $zeit) . " -> " . number_format($wert['Value'], 2, ",", "" ) ." kWh". PHP_EOL;
+				}
+//			$vorigertag=date("d.m.Y",$zeit);
+			}
+//	$ergebnisTemperatur="\nAktuelle Temperaturwerte :\n\n";
+//   $arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
+
+//	foreach ($arr as $identifier=>$station)
+		{
+//		if ($identifier=="TOTAL")
+			{
+//			break;
+			}
+		//echo $identifier;
+//		$TempWertID = $station["OID_Sensor"];
+//		$ergebnisTemperatur = $ergebnisTemperatur.$identifier." : ".number_format(GetValue($TempWertID), 2, ",", "" )."°C ";
+		}
+//	unset($identifier); // break the reference with the last element
+
+//	$ergebnisRegen="\n\nRegenmenge : ".number_format(GetValue(15200), 2, ",", "" )." mm\n";
+//	$ergebnisRegen.=   "1/7/30/360 : ".number_format(GetValue(37587), 2, ",", "" )."/"
+//							  				    .number_format(GetValue(10370), 2, ",", "" )."/"
+//											    .number_format(GetValue(13883), 2, ",", "" )."/"
+//											    .number_format(GetValue(10990), 2, ",", "" )." mm\n";
+
+//	$ergebnisStrom="\n\nTages-Stromverbrauch : ".GetValue(13448)." kWh\n";
+//	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(52252), 0, ",", "" )."/"
+//							  				    .number_format(GetValue(35513), 0, ",", "" )."/"
+//											    .number_format(GetValue(35289), 0, ",", "" )."/"
+//											    .number_format(GetValue(51307), 0, ",", "" )." kWh\n";
+//	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(29903), 0, ",", "" )."/"
+//							  				    .number_format(GetValue(44005), 0, ",", "" )."/"
+//											    .number_format(GetValue(20129), 0, ",", "" )."/"
+//											    .number_format(GetValue(47761), 0, ",", "" )." Euro\n";
+
+//	$ergebnisStatus="\nAenderungsverlauf Internet Connectivity :\n\n";
+//	$ergebnisStatus=$ergebnisStatus."Downtime Internet :".GetValue(49809)." min\n\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(51715)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(55372)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(52397)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(51343)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(29913)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(27604)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(30167)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(41813)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(11169)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(18739)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(39489)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(12808)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(13641)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(36734)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(46381)."\n";
+//	$ergebnisStatus=$ergebnisStatus.GetValue(24490)."\n";
+
+//	$ergebnisStatus.="\nDatenvolumen Down/Up : ".GetValue(32332)."/".GetValue(37701)." Mbyte\n";
+//	$ergebnisStatus.=  " Down 7/30/30/30/360 : ".GetValue(32642)."/"
+//															  .GetValue(49944)."/"
+//															  .GetValue(49121)."/"
+//															  .GetValue(17604)."/"
+//															  .GetValue(12069)." Mbyte\n";
+//	$ergebnisStatus.=  "   Up 7/30/30/30/360 : ".GetValue(39846)."/"
+//															  .GetValue(46063)."/"
+//															  .GetValue(45333)."/"
+//															  .GetValue(50549)."/"
+//															  .GetValue(21647)." MByte\n";
+
+//	$ergebnisBewegung="\n\nVerlauf der Bewegungen:\n\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(38964)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(23869)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(16966)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(14097)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(14944)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(42042)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(39559)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(36666)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(30427)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(55972)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(57278)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(45148)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(21096)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(46545)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(25902)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(13726)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(22969)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(56534)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(59126)."\n";
+//	$ergebnisBewegung=$ergebnisBewegung.GetValue(45878)."\n";
+
+//	$BrowserExtAdr="http://".trim(GetValue(45252)).":82/";
+//	$BrowserIntAdr="http://".trim(GetValue(33109)).":82/";
+//	$IPStatus="\n\nIP Symcon Aufruf extern unter:".$BrowserExtAdr.
+//	          "\nIP Symcon Aufruf intern unter:".$BrowserIntAdr."\n";
+
+//	$ergebnis=$einleitung.$ergebnis_tagesenergie.$ergebnisTemperatur.$ergebnisRegen.$ergebnisStrom.$ergebnisStatus.$ergebnisBewegung.$IPStatus;
+
+	if ($aktuell)
+	   {
+		$inst_modules="";
+		}
+	else
+		{
+		// Repository
+		$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+
+		$moduleManager = new IPSModuleManager('');
+		$installedModules = $moduleManager->GetInstalledModules();
+
+		//print_r($installedModules);
+		$inst_modules="Installierte Module:\n";
+		foreach ($installedModules as $name=>$modules)
+			{
+			$inst_modules.=str_pad($name,20)." ".$modules."\n";
+			}
+		}
+
+if ($sommerzeit)
+	{
+	$ergebnis=$einleitung.$guthaben.$cost.$internet.$statusverlauf.$energieverbrauch.$ergebnis_tabelle.$inst_modules."\n\n";
+	}
+else
+	{
+	$ergebnis=$einleitung.$energieverbrauch.$ergebnis_tabelle.$guthaben.$cost.$internet.$statusverlauf.$inst_modules."\n\n";
+	}
+
+//	echo $ergebnis;
+//	echo "\n----------------------------------------------------\n";
+   return $ergebnis;
+}
+
+
+
+	/* verzeichnisse */
+	define("DIR_copyscriptsdropbox","C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts-LBG/");
+	define("ADR_Router","10.0.0.1");
+
+	}
+else
+	{
+	function LogAlles_Configuration() {
 		return array(
 			"AZ"    => array("Leistung"           	 => 800, 				/* ein Radiator im Arbeitszimmer 800 Watt, 0.4m2 */
 								  "OID_Temp"             => 38610,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
@@ -111,8 +655,7 @@ function LogAlles_Configuration() {
 						);
 	}
 
-
-function LogAlles_Temperatur() {
+	function LogAlles_Temperatur() {
 		return array(
 			"AZ-T"    => array(	"OID_Sensor"         => 38610,           /* OID Position vom Sensor im AZ */
   			              	  		//"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
@@ -170,7 +713,7 @@ function LogAlles_Temperatur() {
 						);
 	}
 
-function LogAlles_Bewegung() {
+	function LogAlles_Bewegung() {
 		return array(
 			"WZ"    	 => array(	"OID_Sensor"         => 35993,           /* OID Position vom Sensor im WZ */
 			                     "OID_Status"         => 57705,
@@ -195,48 +738,23 @@ function LogAlles_Bewegung() {
 						);
 	}
 
+	/* immer wenn eine Statusmeldung per email angefragt wird */
 
-/* Wohnungszustand */
-
-define("STAT_WohnungszustandInaktiv",0);
-define("STAT_WohnungszustandFerien",1);
-define("STAT_WohnungszustandUnterwegs",2);
-define("STAT_WohnungszustandStandby",3);
-define("STAT_WohnungszustandAktiv",4);
-define("STAT_WohnungszustandTop",5);
-
-/* erkannter Zustand */
-define("STAT_KommtnachHause",8);
-define("STAT_Bewegung",7);
-define("STAT_WenigBewegung",6);
-define("STAT_KeineBewegung",5);
-define("STAT_Unklar",4);
-define("STAT_Undefiniert",3);
-define("STAT_vonzuHauseweg",2);
-define("STAT_nichtzuHause",1);
-define("STAT_Abwesend",0);
-
-
-
-/******************************************************************/
-
-/* immer wenn eine Statusmeldung per email angefragt wird */
-
-function send_status($aktuell)
-{
-
-/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
-
-if (date("I")=="1")
+	function send_status($aktuell)
 	{
-	$sommerzeit=true;
-	}
-else
-	{
-	$sommerzeit=false;
-	}
 
-$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
+	/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
+
+	if (date("I")=="1")
+		{
+		$sommerzeit=true;
+		}
+	else
+		{
+		$sommerzeit=false;
+		}
+
+	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
 	if ($aktuell)   /* aktuelle Werte */
 	   {
@@ -311,7 +829,7 @@ $einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 				}
 			$vorigertag=date("d.m.Y",$zeit);
 			}
-			
+
 	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 13448, $starttime, $endtime, 0);
 	$vorigertag=date("d.m.Y",$jetzt);
 	$anzahl=$laufend-1;
@@ -353,7 +871,7 @@ $einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 	//print_r($zeile);
 
 	//echo"Keller:".GetValue(1);
-	
+
 	$ergebnisTemperatur="\nAktuelle Temperaturwerte :\n\n";
    $arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
 
@@ -516,7 +1034,26 @@ $einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
 	echo "\n----------------------------------------------------\n";
 	return $ergebnis;
-}
+	}
+
+	/******************************************************************/
+
+	/* verzeichnisse */
+	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
+	define("ADR_Router","11.0.1.1");
+	}
+
+//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
+$Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
+$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
+
+/****************************************************************************************************/
+
+
+
+
+
+
 
 /******************************************************************/
 
@@ -540,6 +1077,43 @@ function writeLogEvent($event)
 
 	fclose($handle);
 }
+
+   
+
+
+/**************************************************************************************************************************************/
+
+
+/* Webcam hat zwei Ports, derzeit verwenden wir den WLAN Port, da er immer auf lbgtest (direkt am Thomson) funktioniert
+	10.0.0.27 (es kann auch immer nur ein Dienst auf eine IP Adresse umgeroutet werden, daher immer WLAN verwenden
+	ausser zur Konfiguration */
+	
+//define("ADR_WebCamLBG","10.0.0.27");
+
+/* Cam Positionen : 1-4 : 'Sofa', 'Gang', 'Sessel', 'Terasse'  */
+
+define("ADR_WebCamLBG","hupo35.ddns-instar.de");
+define("ADR_WebCamBKS","sina73.ddns-instar.com");
+define("ADR_GanzLinks","10.0.0.1");
+define("ADR_DenonWZ","10.0.0.115");
+define("ADR_DenonAZ","10.0.0.26");
+
+/* IP Adresse iTunes SOAP Modul  */
+
+define("ADR_SOAPModul","10.0.0.20:8085");
+define("ADR_SoapServer","10.0.0.20:8085");
+
+//define("ADR_Programs","C:/Program Files/");
+define("ADR_Programs",'C:/Program Files (x86)/');
+
+/**************************************************************************************************************************************
+
+	Verschieden brauchbare Funktionen
+
+**************************************************************************************************************************************/
+	
+	
+
 
 /******************************************************************/
 
@@ -661,6 +1235,27 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 		return $VariableId;
 }
 
+/******************************************************************/
+
+function CreateVariableByNameFull($id, $name, $type, $profile = "")
+{
+    $vid = @IPS_GetVariableIDByName($name, $id);
+    if($vid === false)
+    {
+        $vid = IPS_CreateVariable($type);
+        IPS_SetParent($vid, $id);
+        IPS_SetName($vid, $name);
+        IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
+        if($profile !== "") 
+        {
+            IPS_SetVariableCustomProfile($vid, $profile);
+        }
+    }
+    return $vid;
+}
+
+/******************************************************************/
+
 function Get_IdentByName2($name)
 {
 		$ident = str_replace(' ', '', $name);
@@ -671,6 +1266,8 @@ function Get_IdentByName2($name)
 		$ident = str_replace(array('ß'), 'ss', $ident);
 		return $ident;
 }
+
+/******************************************************************/
 
 function UpdateObjectData2($ObjectId, $Position, $Icon="")
 {
@@ -944,6 +1541,33 @@ function summestartende($starttime, $endtime, $increment, $estimate)
 	return $ergebnis;
 	}
 
+/******************************************************************/
+
+function mkdirtree($directory)
+	{
+   $directory = str_replace('\\','/',$directory);
+	$directory=substr($directory,0,strrpos($directory,'/')+1);
+	//$directory=substr($directory,strpos($directory,'/'));
+	while (!is_dir($directory))
+		{
+		$newdir=$directory;
+		while (!is_dir($newdir))
+			{
+			//echo "es gibt noch kein ".$newdir."\n";
+			if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
+			if ($pos==false) break;
+			$newdir=substr($newdir,0,$pos);
+			echo "Mach :".$newdir."\n";
+			try
+				{
+				@mkdir($newdir);
+				}
+			catch (Exception $e) { echo "."; }
+			echo "Verzeichnis ".$newdir." erzeugt.\n";
+			}
+		if ($pos==false) break;
+		}
+	}
 
 
 
