@@ -3,7 +3,7 @@
  //Fügen Sie hier ihren Skriptquellcode ein
 
    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-   
+   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
    
 /******************************************************************************************/   
 /*                                                                                        */   
@@ -1006,16 +1006,40 @@ else
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
+		
+	$Homematic = HomematicList();
+
+	$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
+	foreach ($Homematic as $Key)
+		{
+		/* alle Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   	{
+	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+			$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+
+	$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+	foreach ($Homematic as $Key)
+		{
+		/* alle Feuchtigkeitswerte ausgeben */
+		if (isset($Key["COID"]["HUMIDITY"])==true)
+	   	{
+	      $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+			$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
 
 	if ($aktuell)
 	   {
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie;
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur;
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte;
 		   }
 		}
 	else   /* historische Werte */

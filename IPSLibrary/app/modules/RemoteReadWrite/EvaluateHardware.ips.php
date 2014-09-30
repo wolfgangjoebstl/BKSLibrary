@@ -27,7 +27,7 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 echo "\nFHT Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	}
 
@@ -39,7 +39,7 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 echo "\nFS20EX Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
+	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	}
 
@@ -51,7 +51,7 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
+	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	}
 
@@ -64,7 +64,7 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';

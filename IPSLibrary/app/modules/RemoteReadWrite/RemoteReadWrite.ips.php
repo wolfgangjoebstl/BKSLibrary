@@ -10,7 +10,7 @@ alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
-IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
 
 /******************************************************
@@ -35,10 +35,10 @@ foreach ($installedModules as $name=>$modules)
 	$inst_modules.=str_pad($name,20)." ".$modules."\n";
 	if ($name=="Gartensteuerung") { $gartensteuerung=true; }
 	}
-echo $inst_modules;
+echo $inst_modules."\n\n";
 
 $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.RemoteReadWrite');
-echo "BaseID :".$baseId."\n";
+echo "BaseID :".$baseId."\n\n";
 
 /* Typ 0 Boolean 1 Integer 2 Float 3 String */
 $StatusID = CreateVariableByName($baseId, "StatusReadWrite-BKS", 0);
@@ -56,8 +56,10 @@ foreach ($Homematic as $Key)
 	   {
       $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
 		//print_r($Key["COID"]["TEMPERATURE"]);
+		echo $Key["COID"]["TEMPERATURE"]["OID"]." ";
+		echo date("d.m h:i",IPS_GetVariable($oid)["VariableChanged"])." ";
 		echo $Key["Name"].".".$Key["COID"]["TEMPERATURE"]["Name"]." = ".GetValueFormatted($oid)."\n";
-		//print_r(IPS_GetVariable($oid));
+
 		}
 	}
 
@@ -68,57 +70,6 @@ foreach ($Homematic as $Key)
 
 
 
-if ($gartensteuerung==true)
-	{
-	IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
-	$ParamList = ParamList();
-	//print_r($ParamList);
-
-	$ReadWriteList=array();
-	SetValueBoolean($StatusID,true);
-
-	foreach ($ParamList as $Key)
-		{
-		//print_r($Key);
-
-		$typ=(integer)$Key["Type"];
-		$oid=(integer)$Key["OID"];
-		if ($Key["Profile"]=="")
-		   { /* keine Formattierung */
-	   	$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
-		   }
-		else
-	   	{
-		   $vid = CreateVariableByName($baseId, $Key["Name"], 3);
-		   }
-		$ReadWriteList[$Key["Name"]]=array("OID" => $Key["OID"],
-												"Name" => $Key["Name"],
-												"Profile" => $Key["Profile"],
-												"Type" => $Key["Type"],
-												"LOID" => $vid);
-
-		echo "Variabe ausgelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
-		if ($Key["Profile"]=="")
-			{
-			$ergebnis=$rpc->GetValue($oid);
-			}
-		else
-			{
-			$ergebnis=$rpc->GetValueFormatted($oid);
-			}
-		if ($ergebnis)
-			{
-			SetValue($vid,$ergebnis);
-			SetValue($letzterWertID,date("d.m.y H:i:s").":".$Key["Name"]);
-			}
-		else
-		   {
-			SetValueBoolean($StatusID,false);
-			}
-		}
-	
-	print_r($ReadWriteList);
-	}
 
 	/* Typ 0 Boolean 1 Integer 2 Float 3 String */
 	$InnnenTempID = CreateVariableByName($baseId, "Innentemperatur-BKS", 3);
@@ -127,13 +78,66 @@ if ($gartensteuerung==true)
 	$HeizleistungID = CreateVariableByName($baseId, "Heizleistung-BKS", 3);
 
 
-if (IPS_GetName(0)=="LBG70")
+if ((IPS_GetName(0)=="LBG70") or (IPS_GetName(0)=="BKS01"))
 	{
 	}
 else
 	{
 	//echo "Connect to http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/";
 	$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
+	
+	if ($gartensteuerung==true)
+		{
+		IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
+		$ParamList = ParamList();
+		//print_r($ParamList);
+
+		$ReadWriteList=array();
+		SetValueBoolean($StatusID,true);
+
+		foreach ($ParamList as $Key)
+			{
+			//print_r($Key);
+
+			$typ=(integer)$Key["Type"];
+			$oid=(integer)$Key["OID"];
+			if ($Key["Profile"]=="")
+		   	{ /* keine Formattierung */
+		   	$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
+			   }
+			else
+	   		{
+			   $vid = CreateVariableByName($baseId, $Key["Name"], 3);
+			   }
+			$ReadWriteList[$Key["Name"]]=array("OID" => $Key["OID"],
+												"Name" => $Key["Name"],
+												"Profile" => $Key["Profile"],
+												"Type" => $Key["Type"],
+												"LOID" => $vid);
+
+			echo "Variabe ausgelesen : ".$oid." : ".$Key["Name"]." Typ : ".$Key["Type"]." Profile : ".$Key["Profile"]." und gespeichert auf : ".$vid."\n";
+			if ($Key["Profile"]=="")
+				{
+				$ergebnis=$rpc->GetValue($oid);
+				}
+			else
+				{
+				$ergebnis=$rpc->GetValueFormatted($oid);
+				}
+			if ($ergebnis)
+				{
+				SetValue($vid,$ergebnis);
+				SetValue($letzterWertID,date("d.m.y H:i:s").":".$Key["Name"]);
+				}
+			else
+		   	{
+				SetValueBoolean($StatusID,false);
+				}
+			}
+
+		print_r($ReadWriteList);
+		}
+
 	$ergebnis=$rpc->GetValueFormatted(56688);
 	if ($ergebnis)
 		{
