@@ -304,7 +304,7 @@ if($_IPS['SENDER'] == "TimerEvent")
             case 5:     /* Beregner beim Brunnen */
       		case 3:     /* Schlauchbewaesserung */
 				case 1:     /* Beregner ehemaliges Pool */
-					if ($giessTime>0)
+					if (($giessTime>0) and (GetValue($GiessAnlageID)>0))
 					   {
 					   $failure=set_gartenpumpe(true);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
@@ -329,7 +329,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 			break;
 
 		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den nächsten Wert übernehmen  */
-			if (GetValue($GiessTimeID)>0)
+			if ((GetValue($GiessTimeID)>0) and (GetValue($GiessAnlageID)>0))
 			   {
 				SetValue($GiessCountID,1);
 				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
