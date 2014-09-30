@@ -78,7 +78,7 @@ define("ADR_Webcam_Outdoor_Port","2002");
 
 
 
-echo IPS_GetName(0);
+//echo IPS_GetName(0);
 if (IPS_GetName(0)=="LBG70")
 	{
 
@@ -319,6 +319,148 @@ define("STAT_Abwesend",0);
 $id_sound = 23225;
 $sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
 
+
+
+	/* verzeichnisse */
+	define("DIR_copyscriptsdropbox","C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts-LBG/");
+	define("ADR_Router","10.0.0.1");
+
+	}
+else
+	{
+	function LogAlles_Configuration() {
+		return array(
+			"AZ"    => array("Leistung"           	 => 800, 				/* ein Radiator im Arbeitszimmer 800 Watt, 0.4m2 */
+								  "OID_Temp"             => 38610,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
+								  "OID_PosHT80b"         => 32688,           /* OID Position vom Regler */
+								  "OID_Tageswert"        => 44482,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+			"KZ"    => array("Leistung"           	 => 1050, 				/* ein Radiator mit 600 Watt und im Technikraum ein weiterer mit 450 Watt, zusaetzlicher Radiator nur fuer Zusatzheizung */
+								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
+								  "OID_PosHT80b"         => 10884,           /* OID Position vom Regler */
+								  "OID_Tageswert"        => 40345,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+			"WZ"    => array("Leistung"           	 => 450,					/* ein Radiator mit 450 Watt und 0.24m2 */
+								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
+								  "OID_PosHT80b"         => 17661,           /* OID Position vom Regler */
+								  "OID_Tageswert"        => 28142,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+			"WZZ"   => array("Leistung"           	 => 2000,				/* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
+								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
+								  "OID_PosHT80b"         => 33800,           /* OID Position vom Regler */
+								  "OID_Tageswert"        => 43228,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+			"KZZ"   => array("Leistung"           	 => 800,				   /* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
+								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
+								  "OID_PosHT80b"         => 39253,           /* OID Position vom Regler */
+								  "OID_Tageswert"        => 56994,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+			"TOTAL" => array("OID_Energie"          => 47684,           /* falsche OID, wird nicht verwendet !!! */
+  			              	  "OID_EnergieSumme"     => 58447,           /* falsche OID, wird nicht verwendet !!! */
+								  "OID_Tageswert"        => 24129,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
+			              ),
+						);
+	}
+
+	function LogAlles_Temperatur() {
+		return array(
+			"AZ-T"    => array(	"OID_Sensor"         => 38610,           /* OID Position vom Sensor im AZ */
+  			              	  		//"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
+  			              	  		"OID_Max"            => 53022,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 32252,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Innen",
+			              ),
+			"KZ-T"    => array(	"OID_Sensor"         => 13063,           /* OID Position vom Sensor im BZ */
+										//"OID_TempWert"    	=> 36041,           /* OID vom Spiegelregister */
+  			              	  		"OID_Max"            => 59160,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 52129,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Andere",
+			              ),
+			"WZ-T"    => array(	"OID_Sensor"         => 41873,           /* OID Position vom Sensor im SZ */
+  			              	  		//"OID_TempWert"    	=> 42862,           /* OID vom Spiegelregister */
+  			              	  		"OID_Max"            => 34073,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 24331,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Innen",
+			              ),
+			//"AUSSEN-T" => array(	"OID_Sensor"         => 42413,           /* OID Position vom Sensor AUSSEN*/
+  			//              	  		"OID_Max"            => 38935,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			//              	  		"OID_Min"            => 17481,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			//              	  		"Type"               => "Aussen",
+			//              ),
+			"AUSSE2-T" => array( "OID_Sensor"         => 32563,           /* OID Position vom Sensor AUSSE2 beim Wintergarten Kellerfenster */
+  			              	  		"OID_Max"            => 22884,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 15265,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Aussen",
+			              ),
+			"WETTER-T" => array( "OID_Sensor"         => 31094,           /* OID Position vom Sensor der Wetterstation*/
+  			              	  		"OID_Max"            => 54386,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 30234,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Aussen",
+			              ),
+			"KELLER-T" => array(	"OID_Sensor"         => 48182,           /* OID Position vom Sensor Keller*/
+  			              	  		"OID_Max"            => 28619,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 19040,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Andere",
+			              ),
+			"WINGAR-T" => array(	"OID_Sensor"         => 29970,           /* OID Position vom Sensor Wintergarten*/
+  			              	  		"OID_Max"            => 21658,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 55650,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Andere",
+			              ),
+			"KELLAG-T" => array(	"OID_Sensor"         => 58776,           /* OID Position vom Sensor Wintergarten*/
+  			              	  		"OID_Max"            => 48777,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"OID_Min"            => 17535,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
+  			              	  		"Type"               => "Andere",
+			              ),
+			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
+			                     "OID_TempWert_Innen"    	=> 56688,
+			                     "OID_TempTagesWert_Aussen" => 13320,   /* Tageswerte sind immer der letzte Tag */
+			                     "OID_TempTagesWert_Innen"  => 35271,
+			              ),
+						);
+	}
+
+	function LogAlles_Bewegung() {
+		return array(
+			"WZ"    	 => array(	"OID_Sensor"         => 35993,           /* OID Position vom Sensor im WZ */
+			                     "OID_Status"         => 57705,
+  			              	  		"Type"               => "Motion",
+			              ),
+			"KLA"     => array(	"OID_Sensor"         => 59021,           /* OID Position vom Sensor im Kellerabgang */
+			                     "OID_Status"         => 31481,
+  			              	  		"Type"               => "Motion",
+			              ),
+			"WG-T"    => array(	"OID_Sensor"         => 28444,           /* OID Position vom Sensor im WG */
+			                     "OID_Status"         => 18901,
+  			              	  		"Type"               => "State",
+			              ),
+			"KL-T"    => array(	"OID_Sensor"         => 24013,           /* OID Position vom Sensor im Keller */
+			                     "OID_Status"         => 22562,
+  			              	  		"Type"               => "State",
+			              ),
+			"TOTAL" 	=> array(	"OID_Bewegung"    	=> 14403,   /* einfach Bewegungswerte (Motion) oder verknuepft */
+										"OID_Alarm"    		=> 51833,   /* einfach Alarmwerte (State) oder verknuepft */
+										"OID_Status"    		=> 33827,   /* WirsindzuHause : Indikation ob wir zu Hause sind */
+			              ),
+						);
+	}
+
+
+
+	/******************************************************************/
+
+	/* verzeichnisse */
+	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
+	define("ADR_Router","11.0.1.1");
+	}
+
+//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
+$Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
+$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
+
+/****************************************************************************************************/
+
+
 /**********************************************************************************************************************************************************/
 /* immer wenn eine Statusmeldung per email angefragt wird */
 
@@ -326,12 +468,11 @@ $sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu
 /* wird später unter Allgemein gespeichert */
 
 function send_status($aktuell)
-{
-
+	{
 	$sommerzeit=false;
 	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
-/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
+	/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
 
 	if ($aktuell)
 	   {
@@ -349,10 +490,15 @@ function send_status($aktuell)
 	}
 	$einleitung.="\n";
 
-//   IPS_RunScript(13352);
-//   IPS_RunScript(32860);
-//   IPS_RunScript(45023);
-//   IPS_RunScript(41653);
+
+if (IPS_GetName(0)=="LBG70")
+	{
+
+
+	//   IPS_RunScript(13352);
+	//   IPS_RunScript(32860);
+	//   IPS_RunScript(45023);
+	//   IPS_RunScript(41653);
 
 	if ($aktuell)
 	    {
@@ -598,172 +744,19 @@ function send_status($aktuell)
 			}
 		}
 
-if ($sommerzeit)
+
+	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
+	$ergebnistab_energie=""; $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnistab_heizung="";
+	}
+else        /*  spezielle Routine für BKS01    */
 	{
-	$ergebnis=$einleitung.$guthaben.$cost.$internet.$statusverlauf.$energieverbrauch.$ergebnis_tabelle.$inst_modules."\n\n";
-	}
-else
-	{
-	$ergebnis=$einleitung.$energieverbrauch.$ergebnis_tabelle.$guthaben.$cost.$internet.$statusverlauf.$inst_modules."\n\n";
-	}
-
-//	echo $ergebnis;
-//	echo "\n----------------------------------------------------\n";
-   return $ergebnis;
-}
-
-
-
-	/* verzeichnisse */
-	define("DIR_copyscriptsdropbox","C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts-LBG/");
-	define("ADR_Router","10.0.0.1");
-
-	}
-else
-	{
-	function LogAlles_Configuration() {
-		return array(
-			"AZ"    => array("Leistung"           	 => 800, 				/* ein Radiator im Arbeitszimmer 800 Watt, 0.4m2 */
-								  "OID_Temp"             => 38610,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 32688,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 44482,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"KZ"    => array("Leistung"           	 => 1050, 				/* ein Radiator mit 600 Watt und im Technikraum ein weiterer mit 450 Watt, zusaetzlicher Radiator nur fuer Zusatzheizung */
-								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 10884,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 40345,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"WZ"    => array("Leistung"           	 => 450,					/* ein Radiator mit 450 Watt und 0.24m2 */
-								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 17661,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 28142,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"WZZ"   => array("Leistung"           	 => 2000,				/* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
-								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 33800,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 43228,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"KZZ"   => array("Leistung"           	 => 800,				   /* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
-								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 39253,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 56994,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"TOTAL" => array("OID_Energie"          => 47684,           /* falsche OID, wird nicht verwendet !!! */
-  			              	  "OID_EnergieSumme"     => 58447,           /* falsche OID, wird nicht verwendet !!! */
-								  "OID_Tageswert"        => 24129,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-						);
-	}
-
-	function LogAlles_Temperatur() {
-		return array(
-			"AZ-T"    => array(	"OID_Sensor"         => 38610,           /* OID Position vom Sensor im AZ */
-  			              	  		//"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
-  			              	  		"OID_Max"            => 53022,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 32252,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Innen",
-			              ),
-			"KZ-T"    => array(	"OID_Sensor"         => 13063,           /* OID Position vom Sensor im BZ */
-										//"OID_TempWert"    	=> 36041,           /* OID vom Spiegelregister */
-  			              	  		"OID_Max"            => 59160,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 52129,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"WZ-T"    => array(	"OID_Sensor"         => 41873,           /* OID Position vom Sensor im SZ */
-  			              	  		//"OID_TempWert"    	=> 42862,           /* OID vom Spiegelregister */
-  			              	  		"OID_Max"            => 34073,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 24331,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Innen",
-			              ),
-			//"AUSSEN-T" => array(	"OID_Sensor"         => 42413,           /* OID Position vom Sensor AUSSEN*/
-  			//              	  		"OID_Max"            => 38935,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			//              	  		"OID_Min"            => 17481,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			//              	  		"Type"               => "Aussen",
-			//              ),
-			"AUSSE2-T" => array( "OID_Sensor"         => 32563,           /* OID Position vom Sensor AUSSE2 beim Wintergarten Kellerfenster */
-  			              	  		"OID_Max"            => 22884,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 15265,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Aussen",
-			              ),
-			"WETTER-T" => array( "OID_Sensor"         => 31094,           /* OID Position vom Sensor der Wetterstation*/
-  			              	  		"OID_Max"            => 54386,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 30234,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Aussen",
-			              ),
-			"KELLER-T" => array(	"OID_Sensor"         => 48182,           /* OID Position vom Sensor Keller*/
-  			              	  		"OID_Max"            => 28619,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 19040,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"WINGAR-T" => array(	"OID_Sensor"         => 29970,           /* OID Position vom Sensor Wintergarten*/
-  			              	  		"OID_Max"            => 21658,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 55650,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"KELLAG-T" => array(	"OID_Sensor"         => 58776,           /* OID Position vom Sensor Wintergarten*/
-  			              	  		"OID_Max"            => 48777,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 17535,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
-			                     "OID_TempWert_Innen"    	=> 56688,
-			                     "OID_TempTagesWert_Aussen" => 13320,   /* Tageswerte sind immer der letzte Tag */
-			                     "OID_TempTagesWert_Innen"  => 35271,
-			              ),
-						);
-	}
-
-	function LogAlles_Bewegung() {
-		return array(
-			"WZ"    	 => array(	"OID_Sensor"         => 35993,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705,
-  			              	  		"Type"               => "Motion",
-			              ),
-			"KLA"     => array(	"OID_Sensor"         => 59021,           /* OID Position vom Sensor im Kellerabgang */
-			                     "OID_Status"         => 31481,
-  			              	  		"Type"               => "Motion",
-			              ),
-			"WG-T"    => array(	"OID_Sensor"         => 28444,           /* OID Position vom Sensor im WG */
-			                     "OID_Status"         => 18901,
-  			              	  		"Type"               => "State",
-			              ),
-			"KL-T"    => array(	"OID_Sensor"         => 24013,           /* OID Position vom Sensor im Keller */
-			                     "OID_Status"         => 22562,
-  			              	  		"Type"               => "State",
-			              ),
-			"TOTAL" 	=> array(	"OID_Bewegung"    	=> 14403,   /* einfach Bewegungswerte (Motion) oder verknuepft */
-										"OID_Alarm"    		=> 51833,   /* einfach Alarmwerte (State) oder verknuepft */
-										"OID_Status"    		=> 33827,   /* WirsindzuHause : Indikation ob wir zu Hause sind */
-			              ),
-						);
-	}
-
-	/* immer wenn eine Statusmeldung per email angefragt wird */
-
-	function send_status($aktuell)
-	{
-
-	/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
-
-	if (date("I")=="1")
-		{
-		$sommerzeit=true;
-		}
-	else
-		{
-		$sommerzeit=false;
-		}
-
-	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
 	if ($aktuell)   /* aktuelle Werte */
 	   {
-	   $einleitung.="Ausgabe der aktuellen Werte:\n\n";
 	   $aktheizleistung="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
 	   }
 	else              /* die vom Vortag */
 	   {
-	   $einleitung.="Ausgabe der Werte vom Vortag:\n\n";
 		$aktheizleistung="";
 		}
 
@@ -1006,10 +999,17 @@ else
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-		
-	$Homematic = HomematicList();
 
+	/* Werte die es in BKS nicht gibt zumindest setzen */
+	$guthaben=""; $cost=""; $internet=""; $statusverlauf=""; $energieverbrauch=""; $ergebnis_tabelle="";
+	echo "\n----------------------------------------------------\n";
+	}
+
+	/******************************************************************************************/
+	
 	$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
+
+	$Homematic = HomematicList();
 	foreach ($Homematic as $Key)
 		{
 		/* alle Temperaturwerte ausgeben */
@@ -1020,6 +1020,18 @@ else
 			}
 		}
 
+	$FHT = FHTList();
+	foreach ($FHT as $Key)
+		{
+		/* alle Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TemeratureVar"])==true)
+		   {
+      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+			$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+	
+	
 	$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
 	foreach ($Homematic as $Key)
 		{
@@ -1031,7 +1043,7 @@ else
 			}
 		}
 
-	if ($aktuell)
+	if ($aktuell) /* aktuelle Werte */
 	   {
 	   if ($sommerzeit)
 	      {
@@ -1046,32 +1058,20 @@ else
 	   {
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnistab_energie.$ergebnisRegen.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$ergebnis_tagesenergie.$ergebnistab_heizung.$inst_modules;
+			$ergebnis=$einleitung.$ergebnistab_energie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnistab_heizung.$inst_modules;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$ergebnistab_heizung.$ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisRegen.$ergebnisStrom.
+			$ergebnis=$einleitung.$ergebnistab_heizung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$inst_modules;
 			}
 		}
 
-	echo "\n----------------------------------------------------\n";
-	return $ergebnis;
-	}
+   return $ergebnis;
+}
 
-	/******************************************************************/
 
-	/* verzeichnisse */
-	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
-	define("ADR_Router","11.0.1.1");
-	}
-
-//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
-$Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
-$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
-
-/****************************************************************************************************/
 
 
 

@@ -63,11 +63,21 @@ foreach ($Homematic as $Key)
 		}
 	}
 
-	foreach ($Homematic as $Key)
-		{
-		//print_r($Key);
-		}
+$FHT = FHTList();
 
+foreach ($FHT as $Key)
+	{
+	/* alle Temperaturwerte ausgeben */
+	if (isset($Key["COID"]["TemeratureVar"])==true)
+	   {
+      $oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+		//print_r($Key["COID"]["TEMPERATURE"]);
+		echo $Key["COID"]["TemeratureVar"]["OID"]." ";
+		echo date("d.m h:i",IPS_GetVariable($oid)["VariableChanged"])." ";
+		echo $Key["Name"].".".$Key["COID"]["TemeratureVar"]["Name"]." = ".GetValueFormatted($oid)."\n";
+
+		}
+	}
 
 
 

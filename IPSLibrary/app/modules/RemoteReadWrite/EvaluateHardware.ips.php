@@ -7,7 +7,7 @@
 */
 
 //$includefile='<?'."\n".'$fileList = array('."\n";
-$includefile='<?'."\n".'function HomematicList() { return array('."\n";
+$includefile='<?'."\n"; 
 $alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
 foreach ($alleInstanzen as $instanz)
 	{
@@ -23,13 +23,44 @@ foreach ($alleInstanzen as $instanz)
 $guid = "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
+$includefile.='function FHTList() { return array('."\n";
 
 echo "\nFHT Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
+		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
+	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+	$includefile.="\n         ".'"COID" => array(';
+
+	$cids = IPS_GetChildrenIDs($instanz);
+	//print_r($cids);
+   foreach($cids as $cid)
+    	{
+      $o = IPS_GetObject($cid);
+      echo "\nCID :".$cid;
+      print_r($o);
+      if($o['ObjectIdent'] != "")
+		{
+			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
+			$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
+			$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
+			$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
+      	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
+				{
+            echo "Fehler: ".IPS_GetLocation($id)."\n";
+            break;
+            }
+        }
+    }
+
+
+	$includefile.="\n             ".'	),'."\n";
+	$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 	}
+$includefile.=');}'."\n";
 
 //FS20EX Sender
 $guid = "{56800073-A809-4513-9618-1C593EE1240C}";
@@ -60,6 +91,7 @@ foreach ($alleInstanzen as $instanz)
 $guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
+$includefile.='function HomematicList() { return array('."\n";
 
 echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
@@ -97,7 +129,8 @@ foreach ($alleInstanzen as $instanz)
 	
 	}
 /*$includefile.=');'."\n".'?>';*/
-$includefile.=');}'."\n".'?>';
+$includefile.=');}'."\n";
+$includefile.="\n".'?>';
 $filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHardware.inc.php';
 if (!file_put_contents($filename, $includefile)) {
         throw new Exception('Create File '.$filename.' failed!');
