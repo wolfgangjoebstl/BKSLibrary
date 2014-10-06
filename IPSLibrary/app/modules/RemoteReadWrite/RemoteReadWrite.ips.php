@@ -44,14 +44,13 @@ echo "BaseID :".$baseId."\n\n";
 $StatusID = CreateVariableByName($baseId, "StatusReadWrite-BKS", 0);
 $letzterWertID = CreateVariableByName($baseId, "LetzterWert-BKS", 3);
 
+/*
 $Homematic = HomematicList();
+$FHT = FHTList();
 //print_r($Homematic);
-
-//print_r(IPS_GetObject(16433));
 
 foreach ($Homematic as $Key)
 	{
-	/* alle Temperaturwerte ausgeben */
 	if (isset($Key["COID"]["TEMPERATURE"])==true)
 	   {
       $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
@@ -63,11 +62,8 @@ foreach ($Homematic as $Key)
 		}
 	}
 
-$FHT = FHTList();
-
 foreach ($FHT as $Key)
 	{
-	/* alle Temperaturwerte ausgeben */
 	if (isset($Key["COID"]["TemeratureVar"])==true)
 	   {
       $oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
@@ -78,9 +74,56 @@ foreach ($FHT as $Key)
 
 		}
 	}
+*/
 
+	$Homematic = HomematicList();
+	$FHT = FHTList();
+	$FS20= FS20List();
+	
+	foreach ($Homematic as $Key)
+		{
+		/* alle Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   	{
+	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
 
+	echo "\n";
 
+	foreach ($FHT as $Key)
+		{
+		/* alle Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TemeratureVar"])==true)
+		   {
+      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+		
+	foreach ($Homematic as $Key)
+		{
+		/* alle Feuchtigkeitswerte ausgeben */
+		if (isset($Key["COID"]["HUMIDITY"])==true)
+	   	{
+	      $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+
+	echo "\n";
+
+	foreach ($FS20 as $Key)
+		{
+		/* alle Statuswerte ausgeben */
+		if (isset($Key["COID"]["StatusVariable"])==true)
+		   {
+      	$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+		
 	/* Typ 0 Boolean 1 Integer 2 Float 3 String */
 	$InnnenTempID = CreateVariableByName($baseId, "Innentemperatur-BKS", 3);
 	$AussenTempID = CreateVariableByName($baseId, "Aussentemperatur-BKS", 3);

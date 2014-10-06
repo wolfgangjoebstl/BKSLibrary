@@ -78,13 +78,42 @@ foreach ($alleInstanzen as $instanz)
 $guid = "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
+$includefile.='function FS20List() { return array('."\n";
 
 echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
+	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
+	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+	$includefile.="\n         ".'"COID" => array(';
+
+	$cids = IPS_GetChildrenIDs($instanz);
+	//print_r($cids);
+   foreach($cids as $cid)
+    	{
+      $o = IPS_GetObject($cid);
+      echo "\nCID :".$cid;
+      print_r($o);
+      if($o['ObjectIdent'] != "")
+				{
+				$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
+				$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
+				$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
+				$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
+   	   	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
+					{
+         	   echo "Fehler: ".IPS_GetLocation($id)."\n";
+         	   break;
+            	}
+	        }
+   	 }
+	$includefile.="\n             ".'	),'."\n";
+	$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 	}
+$includefile.=');}'."\n";
 
 
 //Homematic Sender
@@ -110,7 +139,7 @@ foreach ($alleInstanzen as $instanz)
       echo "\nCID :".$cid;
       print_r($o);
       if($o['ObjectIdent'] != "")
-		{
+			{
 			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
 			$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
 			$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
@@ -120,14 +149,12 @@ foreach ($alleInstanzen as $instanz)
             echo "Fehler: ".IPS_GetLocation($id)."\n";
             break;
             }
-        }
-    }
-
-
+        	}
+    	}
 	$includefile.="\n             ".'	),'."\n";
 	$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
-	
 	}
+
 /*$includefile.=');'."\n".'?>';*/
 $includefile.=');}'."\n";
 $includefile.="\n".'?>';
