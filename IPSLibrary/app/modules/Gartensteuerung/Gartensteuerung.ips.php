@@ -421,16 +421,16 @@ function giessdauer($debug=false)
 		echo "Regen letzte 2/48 Stunden : ".$ergebnis2h." mm / ".$ergebnis48h." mm \n";
 		}
 
-	if (($ergebnis48h<10) && ($AussenTemperaturGesternMax>12))
-	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die max Aussentemperatur war groesser 12 Grad*/
+	if (($ergebnis48h<10) && ($AussenTemperaturGestern>20))
+	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser 20 Grad*/
 	   if (($ergebnis2h)==0)
 	      { /* und es regnet aktuell nicht */
 			if ($AussenTemperaturGesternMax>27)
-			   {
+			   { /* es war richtig warm */
 				$giessdauer=20;
 				}
 			else
-			   { /* und der letzte Regen liegt weniger als 12 Stunden zurück */
+			   { /* oder nur gleichmässig warm */
 				$giessdauer=10;
 			   }
 	      }

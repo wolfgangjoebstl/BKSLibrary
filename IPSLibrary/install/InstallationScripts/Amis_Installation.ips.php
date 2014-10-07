@@ -81,7 +81,8 @@
 	/******************* Variable Definition **********************/
 	
 	$ReadMeterID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	
+	$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
