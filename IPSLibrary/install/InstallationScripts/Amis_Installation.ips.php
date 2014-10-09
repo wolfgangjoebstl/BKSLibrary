@@ -82,11 +82,12 @@
 	
 	$ReadMeterID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
+	$AMISReceiveID = CreateVariableByName($parentid, "AMIS Receive", 3);
+	
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
-	IPS_SetScriptTimer($scriptIdMomAbfrage, 15*60);  /* alle 15 Minuten */
+	IPS_SetScriptTimer($scriptIdMomAbfrage, 60);  /* alle Minuten */
 
 
 	

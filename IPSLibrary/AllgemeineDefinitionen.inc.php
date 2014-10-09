@@ -1005,57 +1005,78 @@ else        /*  spezielle Routine für BKS01    */
 	echo "\n----------------------------------------------------\n";
 	}
 
-	/******************************************************************************************/
-	
-	$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
 
-	$Homematic = HomematicList();
-	foreach ($Homematic as $Key)
-		{
-		/* alle Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   	{
-	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-			$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
 
-	$FHT = FHTList();
-	foreach ($FHT as $Key)
-		{
-		/* alle Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TemeratureVar"])==true)
-		   {
-      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-			$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-	
-	
-	$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
-	foreach ($Homematic as $Key)
-		{
-		/* alle Feuchtigkeitswerte ausgeben */
-		if (isset($Key["COID"]["HUMIDITY"])==true)
-	   	{
-	      $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
-			$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-
+	   
+	   
 	if ($aktuell) /* aktuelle Werte */
 	   {
+
+		/******************************************************************************************/
+		/******************************************************************************************/
+
+		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
+
+		$Homematic = HomematicList();
+		foreach ($Homematic as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+		$FHT = FHTList();
+		foreach ($FHT as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TemeratureVar"])==true)
+			   {
+	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+		foreach ($Homematic as $Key)
+			{
+			/* Alle Feuchtigkeitswerte ausgeben */
+			if (isset($Key["COID"]["HUMIDITY"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+				$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+		$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
+		$oid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis.Zaehlervariablen');
+		$AMIS_Werte=IPS_GetChildrenIDs($oid);
+		for($i = 0; $i < sizeof($AMIS_Werte);$i++)
+			{
+				$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
+			}
+		
+		/******************************************************************************************/
+		
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte;
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte.$alleStromWerte;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte;
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleStromWerte;
 		   }
 		}
 	else   /* historische Werte */
 	   {
+
+		/******************************************************************************************/
+		/******************************************************************************************/
+
+		/******************************************************************************************/
+		
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnistab_energie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
