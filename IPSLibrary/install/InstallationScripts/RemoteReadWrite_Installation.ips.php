@@ -75,6 +75,8 @@
 	IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
 	$Homematic = HomematicList();
 	$FHT = FHTList();
+	$FS20= FS20List();
+	
 	//print_r($Homematic);
 	
 	/* check if Gartensteuerung ueberhaupt installiert */
@@ -151,7 +153,8 @@
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
 		$categoryId_WebFrontTemp     = CreateCategoryPath($Retro_Path.".Temperatur");
 		$categoryId_WebFrontHumi     = CreateCategoryPath($Retro_Path.".Feuchtigkeit");
-
+		$categoryId_WebFrontSwitch   = CreateCategoryPath($Retro_Path.".Schalter");
+		
 		foreach ($Homematic as $Key)
 			{
 			/* alle Temperaturwerte ausgeben */
@@ -185,6 +188,29 @@
       		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontHumi,  10);
 				//$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
+
+		foreach ($FS20 as $Key)
+			{
+			/* alle Statuswerte ausgeben */
+			if (isset($Key["COID"]["StatusVariable"])==true)
+			   {
+      		$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitch,  10);
+				}
+			}
+		foreach ($Homematic as $Key)
+			{
+			/* alle Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["STATE"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
+      		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitch,  10);
+				}
+			}
+			
+			
+			
+			
 		}
 
 			

@@ -123,6 +123,15 @@ foreach ($FHT as $Key)
 			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
 		}
+	foreach ($Homematic as $Key)
+		{
+		/* alle Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["STATE"])==true)
+	   	{
+	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
+			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
 		
 	/* Typ 0 Boolean 1 Integer 2 Float 3 String */
 	$InnnenTempID = CreateVariableByName($baseId, "Innentemperatur-BKS", 3);
