@@ -328,6 +328,13 @@ $sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu
 	}
 else
 	{
+	
+/******************************************************************************************/
+/*                                                                                        */
+/*                                        BKS01                                           */
+/*                                                                                        */
+/******************************************************************************************/
+	
 	function LogAlles_Configuration() {
 		return array(
 			"AZ"    => array("Leistung"           	 => 800, 				/* ein Radiator im Arbeitszimmer 800 Watt, 0.4m2 */
@@ -508,12 +515,12 @@ if (IPS_GetName(0)=="LBG70")
 		{
 		IPS_RunScript(35787);
 
-		$energieverbrauch="Energieverbrauch der letzten Tage (bei ".GetValue(52478)." Euro pro kWh) :\n";
-		$energieverbrauch.="\nEnergieverbrauch (1/7/30/360) : ".number_format(GetValue(44839), 2, ",", "" )." / ";
+		$energieverbrauch="Heizenergieverbrauch der letzten Tage (bei ".GetValue(52478)." Euro pro kWh) :\n";
+		$energieverbrauch.="\nHeizenergieverbrauch (1/7/30/360) : ".number_format(GetValue(44839), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(33301), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(29148), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(16969), 2, ",", "" )." kWh";
-		$energieverbrauch.="\nEnergiekosten    (1/7/30/360) : ".number_format(GetValue(18976), 2, ",", "" )." / ";
+		$energieverbrauch.="\nHeizenergiekosten    (1/7/30/360) : ".number_format(GetValue(18976), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(34239), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(20687), 2, ",", "" )." / ";
 		$energieverbrauch.=number_format(GetValue(45647), 2, ",", "" )." Euro\n\n";
@@ -1059,14 +1066,67 @@ else        /*  spezielle Routine für BKS01    */
 			}
 		
 		/******************************************************************************************/
-		
+
+		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n\n";
+		$texte = Array(
+		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
+		    "LOWBAT" => "Batterieladezustand gering",
+		    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
+		    "UNREACH" => "Gerätekommunikation aktuell gestört"
+			);
+
+		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
+		if(sizeof($ids) == 0)
+		   {
+		   //die("Keine HomeMatic Socket Instanz gefunden!");
+		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		   }
+		//echo "\n\nHomatic Socket ID :".$ids[0]."\n";
+      $alleHM_Errors.="Homatic Socket ID :".$ids[0]."\n";
+      
+		$msgs = HM_ReadServiceMessages($ids[0]);
+		if($msgs === false)
+		   {
+			//die("Verbindung zur CCU fehlgeschlagen");
+		   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+		   }
+
+		if(sizeof($msgs) == 0)
+		   {
+			//echo "Keine Servicemeldungen!\n";
+		   $alleHM_Errors.="OK, keine Servicemeldungen!\n";
+			}
+			
+		foreach($msgs as $msg)
+			{
+		   if(array_key_exists($msg['Message'], $texte))
+				{
+      	  	$text = $texte[$msg['Message']];
+		   	}
+			else
+				{
+        		$text = $msg['Message'];
+        		}
+		   $id = GetInstanceIDFromHMID($msg['Address']);
+	    	if(IPS_InstanceExists($id))
+			 	{
+        		$name = IPS_GetLocation($id);
+			   }
+			else
+				{
+        		$name = "Gerät nicht in IP-Symcon eingerichtet";
+    			}
+		  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+		  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+			}
+
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte.$alleStromWerte;
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleStromWerte;
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
 		   }
 		}
 	else   /* historische Werte */
@@ -1095,9 +1155,22 @@ else        /*  spezielle Routine für BKS01    */
 
 
 
+/********************************************************************************************************************/
 
-
-
+function GetInstanceIDFromHMID($sid)
+{
+    $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
+    foreach($ids as $id)
+    {
+        $a = explode(":", HM_GetAddress($id));
+        $b = explode(":", $sid);
+        if($a[0] == $b[0])
+        {
+            return $id;
+        }
+    }
+    return 0;
+}
 
 
 /******************************************************************/
@@ -1179,8 +1252,17 @@ function writeLogEventClass($event,$class)
 	$handle=fopen("C:\Scripts\Log_Events.csv","a");
 	$ausgabewert=date("d.m.y H:i:s").";".$event;
 	fwrite($handle, $class.$ausgabewert."\r\n");
-	SetValue(44647,$ausgabewert);
 
+	/* unterschiedliche Event Speicherorte */
+	
+	if (IPS_GetName(0)=="LBG70")
+		{
+		SetValue(24829,$ausgabewert);
+		}
+	else
+	   {
+		SetValue(44647,$ausgabewert);
+		}
 	fclose($handle);
 }
 
