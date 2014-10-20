@@ -82,13 +82,55 @@
 	
 	$ReadMeterID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$AMISReceiveID = CreateVariableByName($parentid, "AMIS Receive", 3);
+	$AMISReceiveID = CreateVariableByName($CategoryIdData, "AMIS Receive", 3);
 	
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdMomAbfrage, 60);  /* alle Minuten */
 
+	/******************* Module richtig einstellen *******************************/
+
+  	$SerialComPortID = @IPS_GetInstanceIDByName("AMIS Serial Port", 0);
+   if(!IPS_InstanceExists($SerialComPortID))
+      {
+      echo "AMIS Serial Port erstellen !";
+      $SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
+      IPS_SetName($SerialComPortID, "AMIS Serial Port");
+      }
+    COMPort_SetPort($SerialComPortID, 'COM3'); // ComNummer welche dem PC-Interface zugewiesen ist!
+    COMPort_SetBaudRate($SerialComPortID, '300');
+    COMPort_SetDataBits($SerialComPortID, '7');
+    COMPort_SetStopBits($SerialComPortID, '1');
+    COMPort_SetParity($SerialComPortID, 'Even');
+    COMPort_SetOpen($SerialComPortID, true);
+    IPS_ApplyChanges($SerialComPortID);
+
+	$CutterPortID = @IPS_GetInstanceIDByName("AMIS Cutter", 0);
+   if(!IPS_InstanceExists($CutterPortID))
+      {
+      echo "AMIS Cutter erstellen !";
+      $CutterPortID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
+      IPS_SetName($CutterPortID, "AMIS Cutter");
+      }
+	/* Cutter eigentlich gar nicht notwendig, kann ich doch auch selbst machen
+	   vor allem weis nicht wie programmieren */
+
+	//echo "-----".$CutterPortID."\n";
+
+	$scriptIdAMIS   = IPS_GetScriptIDByName('Amis', $CategoryIdApp);
+	echo "\nScript ID für Register Variable :".$scriptIdAMIS."\n";
+
+   $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
+   if(!IPS_InstanceExists($regVarID))
+      {
+      $regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
+      IPS_SetName($regVarID, "AMIS RegisterVariable");
+      IPS_SetParent($regVarID, $SerialComPortID);
+    	RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
+    	IPS_ConnectInstance($regVarID, $SerialComPortID);
+    	IPS_ApplyChanges($regVarID);
+      }
 
 	
 ?>

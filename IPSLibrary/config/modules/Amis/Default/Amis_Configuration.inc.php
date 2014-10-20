@@ -35,7 +35,7 @@
 		{ 
 		return array(
 			"Type" => "Bluetooth", /* Bluetooth oder Serial auswählen */
-         "Adresse" => "34",
+         "Adresse" => "34",         /* keine Funktion, nur damit noch ein Zeile steht */
 					); 
 		}
 					
