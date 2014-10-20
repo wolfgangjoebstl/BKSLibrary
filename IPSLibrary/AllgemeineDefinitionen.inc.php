@@ -507,6 +507,8 @@ if (IPS_GetName(0)=="LBG70")
 	//   IPS_RunScript(45023);
 	//   IPS_RunScript(41653);
 
+	/***************  HEIZUNGSENERGIEVERBRAUCH ********/
+
 	if ($aktuell)
 	    {
 		$energieverbrauch="";
@@ -737,6 +739,43 @@ if (IPS_GetName(0)=="LBG70")
 		}
 	else
 		{
+		
+		/* Energiewerte der Vortage als Zeitreihe */
+		$jetzt=time();
+		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+		$starttime=$endtime-60*60*24*9;
+
+		$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 57237, $starttime, $endtime, 0);
+		$vorigertag=date("d.m.Y",$jetzt);
+		$laufend=1;
+		$ergebnis_tabelle1=substr("                          ",0,12);
+		foreach($werte as $wert)
+			{
+			$zeit=$wert['TimeStamp']-60;
+			if (date("d.m.Y", $zeit)!=$vorigertag)
+			   {
+				$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
+				$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
+				$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
+				$laufend+=1;
+				}
+			$vorigertag=date("d.m.Y",$zeit);
+			}
+		$anzahl2=$laufend-1;
+		$ergebnis_tabelle1.="\n";
+		$laufend=0;
+		while ($laufend<=$anzahl2)
+			{
+			$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
+			$laufend+=1;
+			//echo $ergebnis_tabelle."\n";
+			}
+		$ergebnistab_energie="Stromverbrauch der letzten Tage:\n\n".$ergebnis_tabelle1."\n\n";
+		
+		
+		/**********************************************/
+		
+		
 		// Repository
 		$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 
@@ -753,7 +792,7 @@ if (IPS_GetName(0)=="LBG70")
 
 
 	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
-	$ergebnistab_energie=""; $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnistab_heizung="";
+	 $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; 
 	}
 else        /*  spezielle Routine für BKS01    */
 	{
@@ -865,8 +904,10 @@ else        /*  spezielle Routine für BKS01    */
 		$laufend+=1;
 		//echo $ergebnis_tabelle."\n";
 		}
-	$ergebnistab_heizung=$ergebnis_tabelle."\n\n";
 	$ergebnistab_energie=$ergebnis_tabelle1."\n\n";
+
+
+	$ergebnistab_heizung=$ergebnis_tabelle."\n\n";
 
 	//print_r($zeile);
 
@@ -1139,12 +1180,12 @@ else        /*  spezielle Routine für BKS01    */
 		
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnistab_energie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnistab_heizung.$inst_modules;
+			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$energieverbrauch.$ergebnis_tabelle.$ergebnistab_energie.$ergebnis_tagesenergie.$inst_modules;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$ergebnistab_heizung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$inst_modules;
 			}
 		}
@@ -1560,15 +1601,15 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 /**********************************************************************************************/
 
-function summestartende($starttime, $endtime, $increment, $estimate)
+function summestartende($starttime, $endtime, $increment, $estimate, $archiveHandlerID, $variableID, $display )
 	{
-	global $archiveHandlerID, $variableID, $display;
 
 	$zaehler=0;
 	$initial=true;
 	$ergebnis=0;
 	$vorigertag="";
 
+	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
 	$gepldauer=($endtime-$starttime)/24/60/60;
 	do {
 		/* es könnten mehr als 10.000 Werte sein

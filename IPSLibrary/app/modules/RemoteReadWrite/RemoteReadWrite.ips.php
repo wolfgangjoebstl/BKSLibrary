@@ -2,12 +2,6 @@
 
  //Fügen Sie hier Ihren Skriptquellcode ein
 
-/* Wie beim Webfront Install, für die Wichtigen Register ein Spiegelregister anlegen und
-alle 2 Sekunden lesen, bzw bei Aenderung am Webfront auch schreiben
-
-*/
-
-
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 //IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
