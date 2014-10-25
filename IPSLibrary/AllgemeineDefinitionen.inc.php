@@ -1232,7 +1232,16 @@ function writeLogEvent($event)
 
 	$handle=fopen("C:\Scripts\Log_Events.csv","a");
 	fwrite($handle, date("d.m.y H:i:s").";".$event."\r\n");
-	SetValue(44647,date("d.m.y H:i:s").";".$event);
+		/* unterschiedliche Event Speicherorte */
+
+	if (IPS_GetName(0)=="LBG70")
+		{
+		SetValue(24829,date("d.m.y H:i:s").";".$event);
+		}
+	else
+	   {
+		SetValue(44647,date("d.m.y H:i:s").";".$event);
+		}
 
 	fclose($handle);
 }
