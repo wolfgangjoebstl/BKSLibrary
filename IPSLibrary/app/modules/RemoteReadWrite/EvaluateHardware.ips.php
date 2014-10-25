@@ -30,7 +30,7 @@ foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
-		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 	$includefile.="\n         ".'"COID" => array(';
@@ -40,8 +40,8 @@ foreach ($alleInstanzen as $instanz)
    foreach($cids as $cid)
     	{
       $o = IPS_GetObject($cid);
-      echo "\nCID :".$cid;
-      print_r($o);
+      //echo "\nCID :".$cid;
+      //print_r($o);
       if($o['ObjectIdent'] != "")
 		{
 			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
@@ -83,7 +83,7 @@ $includefile.='function FS20List() { return array('."\n";
 echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
+	echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
@@ -95,8 +95,8 @@ foreach ($alleInstanzen as $instanz)
    foreach($cids as $cid)
     	{
       $o = IPS_GetObject($cid);
-      echo "\nCID :".$cid;
-      print_r($o);
+      //echo "\nCID :".$cid;
+      //print_r($o);
       if($o['ObjectIdent'] != "")
 				{
 				$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
@@ -136,8 +136,8 @@ foreach ($alleInstanzen as $instanz)
    foreach($cids as $cid)
     	{
       $o = IPS_GetObject($cid);
-      echo "\nCID :".$cid;
-      print_r($o);
+      //echo "\nCID :".$cid;
+      //print_r($o);
       if($o['ObjectIdent'] != "")
 			{
 			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
