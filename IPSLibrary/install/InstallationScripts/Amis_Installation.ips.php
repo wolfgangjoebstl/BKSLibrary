@@ -91,20 +91,59 @@
 
 	/******************* Module richtig einstellen *******************************/
 
-  	$SerialComPortID = @IPS_GetInstanceIDByName("AMIS Serial Port", 0);
-   if(!IPS_InstanceExists($SerialComPortID))
-      {
-      echo "AMIS Serial Port erstellen !";
-      $SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
-      IPS_SetName($SerialComPortID, "AMIS Serial Port");
-      }
-    COMPort_SetPort($SerialComPortID, 'COM3'); // ComNummer welche dem PC-Interface zugewiesen ist!
-    COMPort_SetBaudRate($SerialComPortID, '300');
-    COMPort_SetDataBits($SerialComPortID, '7');
-    COMPort_SetStopBits($SerialComPortID, '1');
-    COMPort_SetParity($SerialComPortID, 'Even');
-    COMPort_SetOpen($SerialComPortID, true);
-    IPS_ApplyChanges($SerialComPortID);
+	/* Bluetooth oder Serial Port */
+   IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+   $AmisConfig = get_AmisConfiguration();
+
+  	if ($AmisConfig["Type"] == "Bluetooth")
+	   {
+	   $SerialComPortID = @IPS_GetInstanceIDByName("AMIS Bluetooth COM", 0);
+
+      if(!IPS_InstanceExists($SerialComPortID))
+	      {
+     		echo "\nAMIS Blutooth Port erstellen !";
+	      $SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
+     		IPS_SetName($SerialComPortID, "AMIS Bluetooth COM");
+
+		   COMPort_SetPort($SerialComPortID, 'COM3'); // ComNummer welche dem PC-Interface zugewiesen ist!
+  			COMPort_SetBaudRate($SerialComPortID, '115200');
+		   COMPort_SetDataBits($SerialComPortID, '8');
+  			COMPort_SetStopBits($SerialComPortID, '1');
+	    	COMPort_SetParity($SerialComPortID, 'Keine');
+  			COMPort_SetOpen($SerialComPortID, true);
+	    	IPS_ApplyChanges($SerialComPortID);
+     		echo "Comport Bluetooth aktiviert. \n";
+		   $SerialComPortID = @IPS_GetInstanceIDByName("AMIS Bluetooth COM", 0);
+	      }
+		//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";
+      COMPort_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+		}
+
+	if ($AmisConfig["Type"] == "Serial")
+	   {
+	   $SerialComPortID = @IPS_GetInstanceIDByName("AMIS Serial Port", 0);
+  		$com_Port = $SerialComPortID[0];
+  		
+	   if(!IPS_InstanceExists($SerialComPortID))
+      	{
+	      echo "AMIS Serial Port erstellen !";
+   	   $SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
+      	IPS_SetName($SerialComPortID, "AMIS Serial Port");
+		   COMPort_SetPort($SerialComPortID, 'COM3'); // ComNummer welche dem PC-Interface zugewiesen ist!
+   	 	COMPort_SetBaudRate($SerialComPortID, '300');
+	   	COMPort_SetDataBits($SerialComPortID, '7');
+	   	COMPort_SetStopBits($SerialComPortID, '1');
+   	 	COMPort_SetParity($SerialComPortID, 'Even');
+	    	COMPort_SetOpen($SerialComPortID, true);
+   	 	IPS_ApplyChanges($SerialComPortID);
+      	echo "Comport Serial aktiviert. \n";
+		   $SerialComPortID = @IPS_GetInstanceIDByName("AMIS Serial Port", 0);
+  			$com_Port = $SerialComPortID[0];
+      	}
+		COMPort_SetOpen($com_Port, true); //false für aus
+		IPS_ApplyChanges($com_Port);
+		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
+		}
 
 	$CutterPortID = @IPS_GetInstanceIDByName("AMIS Cutter", 0);
    if(!IPS_InstanceExists($CutterPortID))
