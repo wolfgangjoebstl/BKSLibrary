@@ -792,7 +792,7 @@ if (IPS_GetName(0)=="LBG70")
 
 
 	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
-	 $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; 
+	 $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
 	}
 else        /*  spezielle Routine für BKS01    */
 	{
@@ -1033,6 +1033,41 @@ else        /*  spezielle Routine für BKS01    */
 	$ergebnisGarten=$ergebnisGarten.GetValue($zeile15)."\n";
 	$ergebnisGarten=$ergebnisGarten.GetValue($zeile16)."\n";
 
+	$ergebnisSteuerung="\n\nVerlauf der Steuerung:\n\n";
+	$baseId  = IPSUtil_ObjectIDByPath('Program.Steuerung.Nachrichtenverlauf-Steuerung');
+	$zeile1 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile01", 3);
+	$zeile2 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile02", 3);
+	$zeile3 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile03", 3);
+	$zeile4 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile04", 3);
+	$zeile5 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile05", 3);
+	$zeile6 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile06", 3);
+	$zeile7 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile07", 3);
+	$zeile8 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile08", 3);
+	$zeile9 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile09", 3);
+	$zeile10 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile10", 3);
+	$zeile11 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile11", 3);
+	$zeile12 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile12", 3);
+	$zeile13 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile13", 3);
+	$zeile14 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile14", 3);
+	$zeile15 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile15", 3);
+	$zeile16 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile16", 3);
+
+	$ergebnisSteuerung.=GetValue($zeile1)."\n";
+	$ergebnisSteuerung.=GetValue($zeile2)."\n";
+	$ergebnisSteuerung.=GetValue($zeile3)."\n";
+	$ergebnisSteuerung.=GetValue($zeile4)."\n";
+	$ergebnisSteuerung.=GetValue($zeile5)."\n";
+	$ergebnisSteuerung.=GetValue($zeile6)."\n";
+	$ergebnisSteuerung.=GetValue($zeile7)."\n";
+	$ergebnisSteuerung.=GetValue($zeile8)."\n";
+	$ergebnisSteuerung.=GetValue($zeile9)."\n";
+	$ergebnisSteuerung.=GetValue($zeile10)."\n";
+	$ergebnisSteuerung.=GetValue($zeile11)."\n";
+	$ergebnisSteuerung.=GetValue($zeile12)."\n";
+	$ergebnisSteuerung.=GetValue($zeile13)."\n";
+	$ergebnisSteuerung.=GetValue($zeile14)."\n";
+	$ergebnisSteuerung.=GetValue($zeile15)."\n";
+	$ergebnisSteuerung.=GetValue($zeile16)."\n";
 
 	$BrowserExtAdr="http://".trim(GetValue(45252)).":82/";
 	$BrowserIntAdr="http://".trim(GetValue(33109)).":82/";
@@ -1163,11 +1198,13 @@ else        /*  spezielle Routine für BKS01    */
 
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
+			$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
+			$alleStromWerte.$alleHM_Errors;
 		   }
 		}
 	else   /* historische Werte */
@@ -1181,12 +1218,14 @@ else        /*  spezielle Routine für BKS01    */
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$energieverbrauch.$ergebnis_tabelle.$ergebnistab_energie.$ergebnis_tagesenergie.$inst_modules;
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
+					  $ergebnistab_energie.$ergebnis_tagesenergie.$inst_modules;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$IPStatus.$inst_modules;
+			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.
+			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$IPStatus.$inst_modules;
 			}
 		}
 
