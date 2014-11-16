@@ -1652,15 +1652,18 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 /* Summestartende, Gemeinschaftsfunktion:
 */
 
-function summestartende($starttime, $endtime, $increment, $estimate, $archiveHandlerID, $variableID, $display=false )
+function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
 	{
 
 	$zaehler=0;
 	$initial=true;
 	$ergebnis=0;
 	$vorigertag="";
+	$neuwert=0;
 
 	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+	$increment=(integer)$increment_var;
+	//echo "Increment :".$increment."\n";
 	$gepldauer=($endtime-$starttime)/24/60/60;
 	do {
 		/* es könnten mehr als 10.000 Werte sein
@@ -1707,25 +1710,41 @@ function summestartende($starttime, $endtime, $increment, $estimate, $archiveHan
 
 				$zeit=$wert['TimeStamp'];
 				$tag=date("d.m.Y", $zeit);
-				$aktwert=$wert['Value'];
+				$aktwert=(float)$wert['Value'];
 
 				if ($tag!=$vorigertag)
-			   	{
-				   if ($increment==true)
-						{
-						$ergebnis=$aktwert;
-						}
-					else
-					   {
-						$ergebnis+=$aktwert;
-						}
+			   	{ /* neuer Tag */
+			   	$altwert=$neuwert;
+			   	$neuwert=$aktwert;
+			   	switch ($increment)
+			   		{
+			   		case 1:
+							$ergebnis=$aktwert;
+			   		   break;
+			   		case 2:
+						   if ($altwert<$neuwert)
+						      {
+								$ergebnis+=($neuwert-$altwert);
+								}
+							else
+							   {
+								//$ergebnis+=($altwert-$neuwert);
+								//$ergebnis=$aktwert;
+								}
+							break;
+						case 0:
+							$ergebnis+=$aktwert;
+	                  break;
+	               default:
+	               }
 				   $vorigertag=$tag;
 				   }
 
 				if ($display==true)
 					{
 			   	/* jeden Eintrag ausgeben */
-					echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($wert['Value'], 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+			   	//print_r($wert);
+					echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 					}
 				$zaehler+=1;
 				}
@@ -1734,29 +1753,32 @@ function summestartende($starttime, $endtime, $increment, $estimate, $archiveHan
 
 	$dauer=($ersterzeit-$letzterzeit)/24/60/60;
 	echo "   Bearbeitete Werte:".$zaehler." für ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
-	if ($increment==true)
-		{
-		if ($estimate==true)
-			{
-			$ergebnis=($ersterwert-$letzterwert);
-			echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-			$ergebnis=($ergebnis)*$gepldauer/$dauer;
-	     	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-			}
-		else
-		   {
-			$ergebnis=($ersterwert-$letzterwert);
-			}
-		}
-	else
+	switch ($increment)
 	   {
-		if ($estimate==true)
-			{
-			echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
-			$ergebnis=($ergebnis)*$gepldauer/$dauer;
-	     	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
-			}
-		}
+	   case 0:
+  	   case 2:
+			if ($estimate==true)
+				{
+				echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
+				$ergebnis=($ergebnis)*$gepldauer/$dauer;
+		     	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
+				}
+	      break;
+	   case 1:
+			if ($estimate==true)
+				{
+				$ergebnis=($ersterwert-$letzterwert);
+				echo "   Vor Hochrechnung ".number_format($ergebnis, 3, ".", "");
+				$ergebnis=($ergebnis)*$gepldauer/$dauer;
+	   	  	echo " und nach Hochrechnung ".number_format($ergebnis, 3, ".", "")." \n";
+				}
+			else
+			   {
+				$ergebnis=($ersterwert-$letzterwert);
+				}
+	      break;
+	   default:
+	   }
 	return $ergebnis;
 	}
 
