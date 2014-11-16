@@ -1649,7 +1649,10 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 /**********************************************************************************************/
 
-function summestartende($starttime, $endtime, $increment, $estimate, $archiveHandlerID, $variableID, $display )
+/* Summestartende, Gemeinschaftsfunktion:
+*/
+
+function summestartende($starttime, $endtime, $increment, $estimate, $archiveHandlerID, $variableID, $display=false )
 	{
 
 	$zaehler=0;
