@@ -91,12 +91,15 @@ if ($_IPS['SENDER'] == "Execute")
 	$disp_vorigertag="";
 	$neuwert=0;
 	
+	
 	$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-	$endtime=mktime(0,0,0,"3", date("d", $jetzt), date("Y", $jetzt));
+	$endtime=mktime(0,0,0,3 /* Monat */, 1/* Tag */, date("Y", $jetzt));
 
 	$starttime=$endtime-60*60*24*360;
-	
+	$starttime=mktime(0,0,0,2 /* Monat */, 1/* Tag */, date("Y", $jetzt));
+
 	$display=true;
+	$delete=false;
 	
 	$vorwert=0;
 
@@ -140,13 +143,6 @@ if ($_IPS['SENDER'] == "Execute")
 
 		foreach($werte as $wert)
 				{
-				if ($initial)
-					{
-					//print_r($wert);
-					$initial=false;
-					//echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
-					}
-
 				$zeit=$wert['TimeStamp'];
 				$tag=date("d.m.Y", $zeit);
 				$aktwert=(float)$wert['Value'];
@@ -156,12 +152,20 @@ if ($_IPS['SENDER'] == "Execute")
 					//print_r($wert);
 					$initial=false;
 					$vorwert=$aktwert;
-					//echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+					echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
 					}
-				if ($aktwert<$vorwert)
+				if (($aktwert>$vorwert) or ($aktwert==0))
 				   {
+				 	if ($delete==true)
+			   		{
+						AC_DeleteVariableData($archiveHandlerID, $variableID, $zeit, $zeit);
+						}
 					echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 				   }
+				else
+				   {
+					$vorwert=$aktwert;
+					}
 				if ($tag!=$vorigertag)
 			   	{ /* neuer Tag */
 			   	$altwert=$neuwert;
@@ -202,6 +206,27 @@ if ($_IPS['SENDER'] == "Execute")
 				}
 				$endtime=$zeit;
 		} while (count($werte)==10000);
+
+//Alle Datensätze vom 01.01.2013 bis zum 31.12.2013 abfragen (Tägliche Aggregationsstufe)
+//z.B. um den Verbrauch am jeweiligen Tag zu ermitteln oder die Durchschnittstemperatur am jeweiligen Tag (1) Monat (3)
+$werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1 , mktime(0, 0, 0, 1, 2, 2014), mktime(23, 59, 59, 02, 31, 2014), 0); //55554 ist die ID der Variable, 12345 vom Archiv
+
+//Alle heutigen Datensätze abfragen (Tägliche Aggregationsstufe)
+//z.B. um den heutigen Verbrauch er ermitteln oder die heutige Durchschnittstemperatur
+//$werte = AC_GetAggregatedValues(12345, 55554, 1 /* Täglich */, strtotime("today 00:00"), time(), 0); //55554 ist die ID der Variable, 12345 vom Archiv
+
+//Alle gestrigen Datensätze abfragen (Stündlichen Aggregationsstufe)
+//z.B. um den gesterigen Verbrauch oder die durchschittliche Windgeschwindigkeit jeder Stunde zu begutachten
+//$werte = AC_GetAggregatedValues(12345, 55554, 0 /* Stündlich */, strtotime("yesterday 00:00"), strtotime("today 00:00")-1, 0); //55554 ist die ID der Variable, 12345 vom Archiv
+
+//Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+foreach($werte as $wert) {
+	echo date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . $wert['Avg'] . PHP_EOL;
+}
+
+
+
+
 
 	}
 	   
