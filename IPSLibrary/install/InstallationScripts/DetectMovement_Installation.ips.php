@@ -1,6 +1,6 @@
 <?
 
-	/**@defgroup ipstwilight IPSTwilight
+	/**@defgroup DetectMovement
 	 * @ingroup modules_weather
 	 * @{
 	 *
@@ -50,58 +50,7 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-	echo "\nWF10 ";
-	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-
-	echo "WF10User ";
-	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-
-	echo "Mobile ";
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-	
-	echo "Retro \n";
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-	echo "Test";
-	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	
-
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-	if ($WFC10_Enabled)
-		{
-		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		}
-		
-	if ($WFC10User_Enabled)
-		{
-		echo "\nWebportal User installieren auf ".$WFC10User_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-
-		}
-
-	if ($Mobile_Enabled)
-		{
-		echo "\nWebportal Mobile installieren auf ".$Mobile_Path.": \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-
-		}
-
-	if ($Retro_Enabled)
-		{
-		echo "\nWebportal Retro installieren auf ".$Retro_Path.": \n";
-		createPortal($Retro_Path);
-		}
-
-
-
-
 
 ?>
