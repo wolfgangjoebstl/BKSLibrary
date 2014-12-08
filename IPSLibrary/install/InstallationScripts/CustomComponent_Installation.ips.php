@@ -21,7 +21,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('DetectMovement',$repository);
+		$moduleManager = new IPSModuleManager('CustomComponent',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
@@ -35,7 +35,7 @@
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('DetectMovement');
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent');
 	echo "\nRemoteAccess Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();

@@ -21,7 +21,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('RemoteReadWrite',$repository);
+		$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
