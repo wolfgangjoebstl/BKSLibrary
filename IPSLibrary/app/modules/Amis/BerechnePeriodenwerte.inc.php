@@ -15,6 +15,13 @@
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+
+/************************************************************
+
+				INIT
+
+*************************************************************/
 
 $display=false;       /* alle Eintraege auf der Console ausgeben */
 
@@ -23,6 +30,7 @@ $archiveHandlerID = $archiveHandlerID[0];
 //echo "Handler ID:".$archiveHandlerID;
 
 //$ID_ArchivHandler = 50532;
+$MeterConfig = get_MeterConfiguration();
 
 $Tag=1;
 $Monat=1;
@@ -34,51 +42,56 @@ $variableID = IPS_GetObjectIDByName ( 'Default-Wirkenergie' , $parentid );
 //$variableID=57237;
 
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-$PeriodenwerteID = CreateVariableByName($parentid1, "Periodenwerte", 3);
 
-$KostenID = CreateVariableByName($PeriodenwerteID, "Kosten kWh", 2);
+foreach ($MeterConfig as $meter)
+	{
+	echo "Create Variableset for :".$meter["NAME"]." \n";
+   $ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
+   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
-$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
-$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
-$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
-$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
+	$letzterTagID = CreateVariableByName($ID, "Wirkenergie_letzterTag", 2);
+	$letzte7TageID = CreateVariableByName($ID, "Wirkenergie_letzte7Tage", 2);
+	$letzte30TageID = CreateVariableByName($ID, "Wirkenergie_letzte30Tage", 2);
+	$letzte360TageID = CreateVariableByName($ID, "Wirkenergie_letzte360Tage", 2);
 
-$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
-$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
-$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
-$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
+	$letzterTagEurID = CreateVariableByName($ID, "Wirkenergie_Euro_letzterTag", 2);
+	$letzte7TageEurID = CreateVariableByName($ID, "Wirkenergie_Euro_letzte7Tage", 2);
+	$letzte30TageEurID = CreateVariableByName($ID, "Wirkenergie_Euro_letzte30Tage", 2);
+	$letzte360TageEurID = CreateVariableByName($ID, "Wirkenergie_Euro_letzte360Tage", 2);
 
-$vorwert=0;
-$zaehler=0;
-$jetzt=time();
+	$vorwert=0;
+	$zaehler=0;
+	$jetzt=time();
 
-$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-$starttime=$endtime-60*60*24*1;
-echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-echo "Variable: ".IPS_GetName($variableID)."\n";
+	$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+	$starttime=$endtime-60*60*24*1;
+	echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+	echo "Variable: ".IPS_GetName($variableID)."\n";
 
-$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
-echo "Ergebnis Wert letzter Tag : ".$ergebnis."kWh \n";
-SetValue($letzterTagID,$ergebnis);
-SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
+	$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
+	echo "Ergebnis Wert letzter Tag : ".$ergebnis."kWh \n";
+	SetValue($letzterTagID,$ergebnis);
+	SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
 
-$starttime=$endtime-60*60*24*7;
-$ergebnis=summestartende($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
-echo "Ergebnis Wert letzte 7 Tage : ".$ergebnis."kWh \n";
-SetValue($letzte7TageID,$ergebnis);
-SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
+	$starttime=$endtime-60*60*24*7;
+	$ergebnis=summestartende($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
+	echo "Ergebnis Wert letzte 7 Tage : ".$ergebnis."kWh \n";
+	SetValue($letzte7TageID,$ergebnis);
+	SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
 
-$starttime=$endtime-60*60*24*30;
-$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
-echo "Ergebnis Wert letzte 30 Tage : ".$ergebnis."kWh \n";
-SetValue($letzte30TageID,$ergebnis);
-SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
+	$starttime=$endtime-60*60*24*30;
+	$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+	echo "Ergebnis Wert letzte 30 Tage : ".$ergebnis."kWh \n";
+	SetValue($letzte30TageID,$ergebnis);
+	SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
 
-$starttime=$endtime-60*60*24*360;
-$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
-echo "Ergebnis Wert letzte 360 Tage : ".$ergebnis."kWh \n";
-SetValue($letzte360TageID,$ergebnis);
-SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
+	$starttime=$endtime-60*60*24*360;
+	$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+	echo "Ergebnis Wert letzte 360 Tage : ".$ergebnis."kWh \n";
+	SetValue($letzte360TageID,$ergebnis);
+	SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
+   }
 
 if ($_IPS['SENDER'] == "Execute")
 	{

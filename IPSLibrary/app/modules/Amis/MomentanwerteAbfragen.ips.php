@@ -143,7 +143,7 @@ else
 
 if ($_IPS['SENDER']=="Execute")
    {
-	echo "\n\n************************************************************************************************************************\n";
+	echo "************************************************************************************************************************\n";
 
 	$SerialComPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 	//print_r($PortID);
@@ -161,11 +161,11 @@ if ($_IPS['SENDER']=="Execute")
 	foreach ($alleInstanzen as $instanz)
 	   {
 	   $datainstanz=IPS_GetInstance($instanz);
-	   echo "****".$instanz." Name : ".IPS_GetName($instanz)."\n";
+	   echo " ".$instanz." Name : ".IPS_GetName($instanz)."\n";
 	   if ($instanz==$SerialComPortID[0])
 	      {
-	   	echo "\nRegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
-		   print_r($datainstanz);
+	   	echo "**RegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
+		   //print_r($datainstanz);
 		   }
 	   //print_r($datainstanz);
 		//print_r($instanz);
@@ -238,6 +238,17 @@ if ($_IPS['SENDER']=="Execute")
 	      
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
   	      IPS_SetVariableCustomProfile($LeistungID,'kW');
+
+	      $energie=GetValue($meter["WirkenergieID"])/1000;
+  	      IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
+	      $energievorschub=$energie-GetValue($HM_EnergieID);
+			//SetValue($HM_EnergieID,$energie);
+			$energie_neu=GetValue($EnergieID)+$energievorschub;
+			//SetValue($EnergieID,$energie_neu);
+			//SetValue($LeistungID,$energievorschub*4);
+	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
+	      echo "Energiezählerstand :".$energie_neu." kWh Leistung :".($energievorschub*4)." kW \n";
+
   	      }
   	   }
   	   
@@ -273,12 +284,13 @@ function writeEnergyHomematic($MConfig)
 	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
   	      IPS_SetVariableCustomProfile($LeistungID,'kW');
-	      $energie=GetValue($meter["WirkenergieID"]);
-	      $energievorschub=$energie-GetValue($HM_EnergieID)/1000;
-			SetValue($HM_EnergieID,$energie/1000);
+	      $energie=GetValue($meter["WirkenergieID"])/1000;
+  	      IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
+	      $energievorschub=$energie-GetValue($HM_EnergieID);
+			SetValue($HM_EnergieID,$energie);
 			$energie_neu=GetValue($EnergieID)+$energievorschub;
 			SetValue($EnergieID,$energie_neu);
-			SetValue($LeistungID,$energievorschub/1000*4);
+			SetValue($LeistungID,$energievorschub*4);
 	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
 	      echo "Energiezählerstand :".$energie_neu." kWh Leistung :".GetValue($LeistungID)." Wh \n";
 			//print_r($meter);
