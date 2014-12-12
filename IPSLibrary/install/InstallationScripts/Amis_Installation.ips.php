@@ -84,6 +84,48 @@
 	$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$AMISReceiveID = CreateVariableByName($CategoryIdData, "AMIS Receive", 3);
 	
+	$pname="kWh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kWh');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Wh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Wh');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="kW";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kW');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   print_r(IPS_GetVariableProfile($pname));
+	   }
+	   
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
@@ -145,19 +187,7 @@
 		COMPort_SetDTR($SerialComPortID , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 		}
 
-	$CutterPortID = @IPS_GetInstanceIDByName("AMIS Cutter", 0);
-   if(!IPS_InstanceExists($CutterPortID))
-      {
-      echo "AMIS Cutter erstellen !";
-      $CutterPortID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
-      IPS_SetName($CutterPortID, "AMIS Cutter");
-      }
-	/* Cutter eigentlich gar nicht notwendig, kann ich doch auch selbst machen
-	   vor allem weis nicht wie programmieren */
-
-	//echo "-----".$CutterPortID."\n";
-
-	$scriptIdAMIS   = IPS_GetScriptIDByName('Amis', $CategoryIdApp);
+	$scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
 	echo "\nScript ID für Register Variable :".$scriptIdAMIS."\n";
 
    $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
