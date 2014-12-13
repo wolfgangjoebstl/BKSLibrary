@@ -143,7 +143,7 @@ else
 
 if ($_IPS['SENDER']=="Execute")
    {
-	echo "************************************************************************************************************************\n";
+	echo "********************************************CONFIG**************************************************************\n";
 
 	$SerialComPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 	//print_r($PortID);
@@ -164,7 +164,7 @@ if ($_IPS['SENDER']=="Execute")
 	   echo " ".$instanz." Name : ".IPS_GetName($instanz)."\n";
 	   if ($instanz==$SerialComPortID[0])
 	      {
-	   	echo "**RegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
+	   	//echo "**RegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
 		   //print_r($datainstanz);
 		   }
 	   //print_r($datainstanz);
@@ -220,12 +220,14 @@ if ($_IPS['SENDER']=="Execute")
 	   }
 
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	$homematic=false;
 	foreach ($MeterConfig as $meter)
 		{
 		//print_r($meter);
 		echo "Create Variableset for :".$meter["NAME"]." \n";
 		if ($meter["TYPE"]=="Homematic")
 	   	{
+	   	$homematic=true;
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($EnergieID,'kWh');
@@ -251,19 +253,21 @@ if ($_IPS['SENDER']=="Execute")
 
   	      }
   	   }
-  	   
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-	$archiveHandlerID = $archiveHandlerID[0];
-	AC_SetLoggingStatus($archiveHandlerID,$EnergieID, true);
 
-	$jetzt=time();
-	$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-	$starttime=$endtime-60*60*24*1;
-	echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-	echo "Variable: ".IPS_GetName($EnergieID)."\n";
+	if ($homematic)
+	   {
+		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+		$archiveHandlerID = $archiveHandlerID[0];
+		AC_SetLoggingStatus($archiveHandlerID,$EnergieID, true);
 
-	$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$EnergieID,true);
+		$jetzt=time();
+		$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+		$starttime=$endtime-60*60*24*1;
+		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+		echo "Variable: ".IPS_GetName($EnergieID)."\n";
 
+		$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$EnergieID,true);
+		}
 	
 	}
 

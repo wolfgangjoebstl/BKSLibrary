@@ -39,7 +39,29 @@
 					); 
 		}
 					
-					
+						
+	function get_MeterConfiguration()
+		{
+		return array(
+			"AMIS" => array(
+				"NAME"            => 'Arbeitszimmer',
+				"TYPE"            => 'Amis',
+				"VariableName"    => 'Default-Wirkenergie',     /* wenn es bereits eine Variablenneamen gibt, hier eintragen */
+				"WirkenergieID"   => 57237,
+				"WirkleistungID"  => 17354,
+				"Periodenwerte"   => 34315
+													),
+			"HM-Wohnzimmer" => array(
+				"NAME"            => 'Wohnzimmer',
+				"TYPE"            => 'Homematic',
+				"VariableName"    => 'WZ-Wirkenergie',
+				"WirkenergieID"   => 24399,
+				"WirkleistungID"  => 17354,
+				"Periodenwerte"   => 34315
+													),
+
+					);
+		}				
 
 
 	 
