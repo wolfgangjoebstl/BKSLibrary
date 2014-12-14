@@ -177,96 +177,22 @@ if ($_IPS['SENDER']=="Execute")
 //		IPS_Sleep(1550);
 //		COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
 
-	$pname="kWh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kWh');
-	   print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Wh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Wh');
-	   print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="kW";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kW');
-	   print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-	$homematic=false;
-	foreach ($MeterConfig as $meter)
-		{
-		//print_r($meter);
-		echo "Create Variableset for :".$meter["NAME"]." \n";
-		if ($meter["TYPE"]=="Homematic")
-	   	{
-	   	$homematic=true;
-	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      IPS_SetVariableCustomProfile($EnergieID,'kWh');
-	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	      $result=IPS_SetVariableCustomProfile($HM_EnergieID,"kWh");
-	      //echo "Change Profile for :".$HM_EnergieID." ".$result."\n";
-	      //$vprof=IPS_GetVariableProfile("Wh");
-	      //print_r($vprof);
-	      
-	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-  	      IPS_SetVariableCustomProfile($LeistungID,'kW');
-
-	      $energie=GetValue($meter["WirkenergieID"])/1000;
-  	      IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
-	      $energievorschub=$energie-GetValue($HM_EnergieID);
-			//SetValue($HM_EnergieID,$energie);
-			$energie_neu=GetValue($EnergieID)+$energievorschub;
-			//SetValue($EnergieID,$energie_neu);
-			//SetValue($LeistungID,$energievorschub*4);
-	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
-	      echo "Energiezählerstand :".$energie_neu." kWh Leistung :".($energievorschub*4)." kW \n";
-
-  	      }
-  	   }
-
+	$homematic=writeEnergyHomematic($MeterConfig);
 	if ($homematic)
 	   {
 		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 		$archiveHandlerID = $archiveHandlerID[0];
-		AC_SetLoggingStatus($archiveHandlerID,$EnergieID, true);
+		AC_SetLoggingStatus($archiveHandlerID,$MeterConfig["HM-Wohnzimmer"]["WirkenergieID"], true);
 
 		$jetzt=time();
 		$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 		$starttime=$endtime-60*60*24*1;
+		$endtime=time();
 		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-		echo "Variable: ".IPS_GetName($EnergieID)."\n";
+		echo "Variable: ".IPS_GetName($MeterConfig["HM-Wohnzimmer"]["WirkenergieID"])."\n";
 
-		$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$EnergieID,true);
+		$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$MeterConfig["HM-Wohnzimmer"]["WirkenergieID"],true);
 		}
 	
 	}
@@ -276,11 +202,13 @@ if ($_IPS['SENDER']=="Execute")
 
 function writeEnergyHomematic($MConfig)
 	{
+	$homematic=false;
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	foreach ($MConfig as $meter)
 		{
 		if ($meter["TYPE"]=="Homematic")
 	   	{
+	   	$homematic=true;
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($EnergieID,'kWh');
@@ -288,7 +216,7 @@ function writeEnergyHomematic($MConfig)
 	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
   	      IPS_SetVariableCustomProfile($LeistungID,'kW');
-	      $energie=GetValue($meter["WirkenergieID"])/1000;
+	      $energie=GetValue($meter["HM_EnergieID"])/1000;
   	      IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
 	      $energievorschub=$energie-GetValue($HM_EnergieID);
 			SetValue($HM_EnergieID,$energie);
@@ -300,7 +228,7 @@ function writeEnergyHomematic($MConfig)
 			//print_r($meter);
 			}
 		}
-
+	return ($homematic);
 	}
 
 

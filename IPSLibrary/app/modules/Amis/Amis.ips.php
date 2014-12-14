@@ -18,7 +18,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 
 /******************************************************
 
-				INIT
+				WIRD NICHT MEHR VERWENDET !!!!!
 				
 *************************************************************/
 

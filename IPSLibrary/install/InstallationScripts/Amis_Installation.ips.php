@@ -95,7 +95,7 @@
 		}
 	else
 	   {
-	   print_r(IPS_GetVariableProfile($pname));
+	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 
 	$pname="Wh";
@@ -109,7 +109,7 @@
 		}
 	else
 	   {
-	   print_r(IPS_GetVariableProfile($pname));
+	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 
 	$pname="kW";
@@ -123,9 +123,23 @@
 		}
 	else
 	   {
-	   print_r(IPS_GetVariableProfile($pname));
+	   //print_r(IPS_GetVariableProfile($pname));
 	   }
-	   
+
+	$pname="Euro";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Euro');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
