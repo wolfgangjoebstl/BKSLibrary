@@ -498,6 +498,12 @@ function send_status($aktuell)
 	$einleitung.="\n";
 
 
+	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
+	$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
+	//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
+   IPS_RunScript($updatePeriodenwerteID);
+
+
 if (IPS_GetName(0)=="LBG70")
 	{
 
@@ -507,7 +513,7 @@ if (IPS_GetName(0)=="LBG70")
 	//   IPS_RunScript(45023);
 	//   IPS_RunScript(41653);
 
-	/***************  HEIZUNGSENERGIEVERBRAUCH ********/
+	/***************  HEIZUNGSENERGIEVERBRAUCH LBG70 spezifisch ********/
 
 	if ($aktuell)
 	    {
@@ -598,7 +604,7 @@ if (IPS_GetName(0)=="LBG70")
 		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 		$starttime=$endtime-60*60*24*7;
 		$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 21762, $starttime, $endtime, 0);
-		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2));
+		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
 		//print_r($werte);
 		//	echo "Werte Heizung:\n";
 		$vorigertag=date("d.m.Y",$jetzt);
@@ -733,46 +739,6 @@ if (IPS_GetName(0)=="LBG70")
 
 //	$ergebnis=$einleitung.$ergebnis_tagesenergie.$ergebnisTemperatur.$ergebnisRegen.$ergebnisStrom.$ergebnisStatus.$ergebnisBewegung.$IPStatus;
 
-	if ($aktuell)
-	   {
-		$inst_modules="";
-		}
-	else
-		{
-		
-		/* Energiewerte der Vortage als Zeitreihe */
-		$jetzt=time();
-		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-		$starttime=$endtime-60*60*24*9;
-
-		$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 57237, $starttime, $endtime, 0);
-		$vorigertag=date("d.m.Y",$jetzt);
-		$laufend=1;
-		$ergebnis_tabelle1=substr("                          ",0,12);
-		foreach($werte as $wert)
-			{
-			$zeit=$wert['TimeStamp']-60;
-			if (date("d.m.Y", $zeit)!=$vorigertag)
-			   {
-				$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
-				$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
-				$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
-				$laufend+=1;
-				}
-			$vorigertag=date("d.m.Y",$zeit);
-			}
-		$anzahl2=$laufend-1;
-		$ergebnis_tabelle1.="\n";
-		$laufend=0;
-		while ($laufend<=$anzahl2)
-			{
-			$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
-			$laufend+=1;
-			//echo $ergebnis_tabelle."\n";
-			}
-		$ergebnistab_energie="Stromverbrauch der letzten Tage:\n\n".$ergebnis_tabelle1."\n\n";
-		
-		
 		/**********************************************/
 		
 		
@@ -788,8 +754,6 @@ if (IPS_GetName(0)=="LBG70")
 			{
 			$inst_modules.=str_pad($name,20)." ".$modules."\n";
 			}
-		}
-
 
 	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
 	 $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
@@ -1140,7 +1104,7 @@ else        /*  spezielle Routine für BKS01    */
 			{
 				$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
 			}
-		
+
 		/******************************************************************************************/
 
 		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n\n";
@@ -1212,6 +1176,70 @@ else        /*  spezielle Routine für BKS01    */
 
 		/******************************************************************************************/
 		/******************************************************************************************/
+
+		$ergebnistab_energie="";
+
+		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+		$MeterConfig = get_MeterConfiguration();
+		foreach ($MeterConfig as $meter)
+			{
+			//echo "Create Variableset for :".$meter["NAME"]." \n";
+			$variableID = $meter["WirkenergieID"];
+
+			/* Energiewerte der Vortage als Zeitreihe */
+			$jetzt=time();
+			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+			$starttime=$endtime-60*60*24*10;
+
+			$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], $variableID, $starttime, $endtime, 0);
+			$vorigertag=date("d.m.Y",$jetzt);
+			//echo "Voriger Tag :".$vorigertag."\n";
+			$laufend=1;
+			$alterWert=0;
+			$ergebnis_tabelle1=substr("                          ",0,12);
+			foreach($werte as $wert)
+				{
+				$zeit=$wert['TimeStamp']-60;
+				if (date("d.m.Y", $zeit)!=$vorigertag)
+				   {
+					$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
+					$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
+					if ($laufend>1) {$zeile["EnergieVS"][$laufend-1] = number_format(($alterWert-$wert['Value']), 2, ",", "" ) ." kWh";}
+					$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
+					$laufend+=1;
+					$alterWert=$wert['Value'];
+					//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+					}
+				$vorigertag=date("d.m.Y",$zeit);
+				}
+			$anzahl2=$laufend-2;
+			$ergebnis_datum="";
+			$ergebnis_tabelle1="";
+			$ergebnis_tabelle2="";
+			$laufend=0;
+			while ($laufend<=$anzahl2)
+				{
+				$ergebnis_datum.=substr($zeile["Datum2"][$laufend]."            ",0,12);
+				$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
+				$ergebnis_tabelle2.=substr(($zeile["EnergieVS"][$laufend])."            ",0,12);
+				$laufend+=1;
+				//echo $ergebnis_tabelle."\n";
+				}
+			$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n".$ergebnis_datum."\n".$ergebnis_tabelle1."\n".$ergebnis_tabelle2."\n\n";
+
+  			$parentID = $meter["Periodenwerte"];
+			$ergebnistab_energie.="Stromverbrauchs-Statistik von ".$meter["NAME"]." :\n\n";
+			$ergebnistab_energie.="Stromverbrauch (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$parentID)), 2, ",", "" )." kWh \n";
+			$ergebnistab_energie.="Stromkosten    (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$parentID)), 2, ",", "" );
+			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$parentID)), 2, ",", "" )." Euro \n\n\n";
+
+			}
+		//print_r($zeile);
 
 		/******************************************************************************************/
 		
@@ -1659,6 +1687,7 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 	$initial=true;
 	$ergebnis=0;
 	$vorigertag="";
+	$disp_vorigertag="";
 	$neuwert=0;
 
 	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
@@ -1744,7 +1773,18 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 					{
 			   	/* jeden Eintrag ausgeben */
 			   	//print_r($wert);
-					echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+			   	if ($gepldauer>100)
+			   	   {
+						if ($tag!=$disp_vorigertag)
+						   {
+   						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+   						$disp_vorigertag=$tag;
+   						}
+			   	   }
+			   	else
+			   	   {
+						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+						}
 					}
 				$zaehler+=1;
 				}

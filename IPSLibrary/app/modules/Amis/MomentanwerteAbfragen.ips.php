@@ -217,14 +217,16 @@ function writeEnergyHomematic($MConfig)
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
   	      IPS_SetVariableCustomProfile($LeistungID,'kW');
 	      $energie=GetValue($meter["HM_EnergieID"])/1000;
-  	      IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
+  	      //IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
 	      $energievorschub=$energie-GetValue($HM_EnergieID);
 			SetValue($HM_EnergieID,$energie);
 			$energie_neu=GetValue($EnergieID)+$energievorschub;
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
 	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
-	      echo "Energiezählerstand :".$energie_neu." kWh Leistung :".GetValue($LeistungID)." Wh \n";
+	      echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+	      echo "Energievorschub aktuell:".$energievorschub."kWh\n";
+	      echo "Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
 			//print_r($meter);
 			}
 		}

@@ -42,6 +42,7 @@ $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
 foreach ($MeterConfig as $meter)
 	{
+	echo"-------------------------------------------------------------\n";
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$variableID = $meter["WirkenergieID"];
 	//print_r($meter);
@@ -110,6 +111,7 @@ foreach ($MeterConfig as $meter)
 
 if ($_IPS['SENDER'] == "Execute")
 	{
+	echo"-------------------------------------------------------------\n";
 	echo "Plausi-Check von Logged Variablen.\n";
 
 	$zaehler=0;
@@ -121,15 +123,17 @@ if ($_IPS['SENDER'] == "Execute")
 	
 	
 	$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-	$endtime=mktime(0,0,0,3 /* Monat */, 1/* Tag */, date("Y", $jetzt));
+	//$endtime=mktime(0,0,0,3 /* Monat */, 1/* Tag */, date("Y", $jetzt));
+	$endtime=time();
 
 	$starttime=$endtime-60*60*24*360;
 	$starttime=mktime(0,0,0,2 /* Monat */, 1/* Tag */, date("Y", $jetzt));
 
-	$display=false;
+	$display=true;
 	$delete=false;
 	
 	$vorwert=0;
+	$variableID=44113;
 
 	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
 	$increment=1;
@@ -182,7 +186,7 @@ if ($_IPS['SENDER'] == "Execute")
 					$vorwert=$aktwert;
 					echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
 					}
-				if (($aktwert>$vorwert) or ($aktwert==0))
+				if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
 				   {
 				 	if ($delete==true)
 			   		{
