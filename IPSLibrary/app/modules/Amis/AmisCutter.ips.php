@@ -141,11 +141,12 @@ if ($_IPS['SENDER'] == "RegisterVariable")
 if ($_IPS['SENDER'] == "Execute")
 	{
 	echo "Testweise letztes Ergebnis auswerten.\n";
-   $content=GetValue($AMISReceiveID);
-   //echo $content;
+	$content=GetValue($AMISReceiveID);
+   echo $content."\n";
 	echo "Fehlerregister : ".Auswerten($content,'F.F(',')')."\n";
 	echo "Default Wirkenergie : ".Auswerten($content,'1.8.0(','*kWh)')."kWh \n";
-
+	$letzterWertID = CreateVariableByName($parentid1, "Letzter Wert", 1);
+	echo "Zuletzt berechnet/ausgelesen : ".date("d.m.y H:i:s",GetValue($letzterWertID))."\n";
 	$oid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis.Zaehlervariablen');
 	$wirkenergie_ID = IPS_GetObjectIDByName ( 'Default-Wirkenergie' , $oid );
 	echo "Default Wirkenergie : ".GetValue($wirkenergie_ID)." kWh\n";

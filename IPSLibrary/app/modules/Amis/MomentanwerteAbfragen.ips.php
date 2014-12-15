@@ -171,12 +171,15 @@ if ($_IPS['SENDER']=="Execute")
 		//print_r($instanz);
 	   }
 
-//  COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-//		IPS_Sleep(1550);
-//		COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-//		IPS_Sleep(1550);
-//		COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
-
+	if (false)
+	   {
+		COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+		IPS_Sleep(1550);
+		COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+		IPS_Sleep(1550);
+		COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
+		}
+		
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	$homematic=writeEnergyHomematic($MeterConfig);
 	if ($homematic)
