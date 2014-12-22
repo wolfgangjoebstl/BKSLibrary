@@ -64,6 +64,23 @@
 	$GuthabenConfig = get_GuthabenConfiguration();
 	//print_r($GuthabenConfig);
 
+	$pname="Euro";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Euro');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+	   
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+	$archiveHandlerID = $archiveHandlerID[0];
+
 	foreach ($GuthabenConfig as $TelNummer)
 		{
 		$handle2=fopen("c:/Users/Wolfgang/Documents/iMacros/Macros/dreiat_".$TelNummer["NUMMER"].".iim","w");
@@ -95,13 +112,33 @@
      	$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
      	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Bonus", 3);
 		$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
+		IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
+	  	IPS_SetPosition($phone_nCost_ID, 130);
+		AC_SetLoggingStatus($archiveHandlerID,$phone_nCost_ID,true);
+		AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,1);
+		IPS_ApplyChanges($archiveHandlerID);
      	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
+		IPS_SetVariableCustomProfile($phone_nLoad_ID,'Euro');
+	  	IPS_SetPosition($phone_nLoad_ID, 140);
+		AC_SetLoggingStatus($archiveHandlerID,$phone_nLoad_ID,true);
+		AC_SetAggregationType($archiveHandlerID,$phone_nLoad_ID,1);
+		IPS_ApplyChanges($archiveHandlerID);
       }
 
   	$phone_CL_Change_ID = CreateVariableByName($CategoryIdData, "Phone_CL_Change", 2);
+	IPS_SetVariableCustomProfile($phone_CL_Change_ID,'Euro');
+	
 	$phone_Cost_ID = CreateVariableByName($CategoryIdData, "Phone_Cost", 2);
-  	$phone_Load_ID = CreateVariableByName($CategoryIdData, "Phone_Load", 2);
-
+	IPS_SetVariableCustomProfile($phone_Cost_ID,'Euro');
+	AC_SetLoggingStatus($archiveHandlerID,$phone_Cost_ID,true);
+	AC_SetAggregationType($archiveHandlerID,$phone_Cost_ID,1);
+	IPS_ApplyChanges($archiveHandlerID);
+	
+	$phone_Load_ID = CreateVariableByName($CategoryIdData, "Phone_Load", 2);
+	IPS_SetVariableCustomProfile($phone_Load_ID,'Euro');
+	AC_SetLoggingStatus($archiveHandlerID,$phone_Load_ID,true);
+	AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,1);
+	IPS_ApplyChanges($archiveHandlerID);
 
 	/* initialize timer */
 
