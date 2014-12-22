@@ -20,6 +20,7 @@ if ($tim1ID==false)
 	$tim1ID = IPS_CreateEvent(1);
 	IPS_SetParent($tim1ID, $_IPS['SELF']);
 	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
 	IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
 	}
 IPS_SetEventActive($tim1ID,true);

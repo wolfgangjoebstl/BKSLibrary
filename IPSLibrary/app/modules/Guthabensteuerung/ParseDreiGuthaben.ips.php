@@ -134,12 +134,15 @@ function parsetxtfile($nummer)
     			}
 	    	}
     	 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
-    	 $phone_User_ID = CreateVariableByName($parentid, "Phone_".$nummer."_User", 3);
-     	 $phone_Status_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Status", 3);
-     	 $phone_Date_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Date", 3);
-     	 $phone_unchangedDate_ID = CreateVariableByName($parentid, "Phone_".$nummer."_unchangedDate", 3);
-     	 $phone_Bonus_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Bonus", 3);
-     	 $phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
+ 		 $phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$nummer, 3);
+    	 $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
+     	 $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
+     	 $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
+     	 $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
+     	 $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
+     	 $phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
+     	 $phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
+    	 $phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
      	 $phone_Load_ID = CreateVariableByName($parentid, "Phone_Load", 2);
      	 $phone_CL_Change_ID = CreateVariableByName($parentid, "Phone_CL_Change", 2);
 		 //$ergebnis="User:".$result1." Status:".$result4." Guthaben:".$result5." Euro\n";
@@ -153,11 +156,13 @@ function parsetxtfile($nummer)
  		 if ($new_cost < $old_cost)
  		   {
  		   SetValue($phone_Cost_ID, GetValue($phone_Cost_ID)+$old_cost-$new_cost);
+ 		   SetValue($phone_nCost_ID, GetValue($phone_nCost_ID)+$old_cost-$new_cost);
  		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
  		   }
  		 if ($new_cost > $old_cost)
  		   {
  		   SetValue($phone_Load_ID, GetValue($phone_Cost_ID)-$old_cost+$new_cost);
+ 		   SetValue($phone_nLoad_ID, GetValue($phone_nLoad_ID)-$old_cost+$new_cost);
  		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
  		   }
   		 SetValue($phone_Bonus_ID,$result5);

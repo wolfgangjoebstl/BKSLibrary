@@ -50,22 +50,35 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-	echo "\nWF10 ";
+	/* Create Web Pages */
+
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	if ($WFC10_Enabled==true)
+	   {
+		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+		echo "\nWF10 ";
+		}
 
-	echo "WF10User ";
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+	if ($WFC10User_Enabled==true)
+	   {
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		echo "WF10User ";
+		}
 
-	echo "Mobile ";
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-	
-	echo "Retro \n";
+	if ($Mobile_Enabled==true)
+	   {
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile ";
+		}
+
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-	echo "Test";
+	if ($Retro_Enabled==true)
+	   {
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		}
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');

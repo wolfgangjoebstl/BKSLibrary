@@ -57,11 +57,12 @@
 
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
+	$GuthabensteuerungID=IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
 
 	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
 	$GuthabenConfig = get_GuthabenConfiguration();
-	print_r($GuthabenConfig);
+	//print_r($GuthabenConfig);
 
 	foreach ($GuthabenConfig as $TelNummer)
 		{
@@ -86,11 +87,108 @@
       fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:nav_user'."\n");
       fwrite($handle2,'TAB CLOSE'."\n");
 		fclose($handle2);
+
+		$phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$TelNummer["NUMMER"], 3);
+    	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+     	$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Status", 3);
+     	$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
+     	$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
+     	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Bonus", 3);
+		$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
+     	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
       }
 
+  	$phone_CL_Change_ID = CreateVariableByName($CategoryIdData, "Phone_CL_Change", 2);
+	$phone_Cost_ID = CreateVariableByName($CategoryIdData, "Phone_Cost", 2);
+  	$phone_Load_ID = CreateVariableByName($CategoryIdData, "Phone_Load", 2);
+
+
+	/* initialize timer */
+
+	echo "Guthabensteuerung ScriptID:".$GuthabensteuerungID."\n";
+
+	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $GuthabensteuerungID);
+	if ($tim1ID==false)
+		{
+		echo "Timer erstellen.\n";
+		$tim1ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim1ID, $GuthabensteuerungID);
+		IPS_SetName($tim1ID, "Aufruftimer");
+		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+		}
+	IPS_SetEventActive($tim1ID,true);
 
 
 
 	/* Create Web Pages */
+
+	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+	if ($WFC10_Enabled==true)
+	   {
+		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+		echo "\nWF10 ";
+		}
+
+	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+	if ($WFC10User_Enabled==true)
+	   {
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		echo "WF10User ";
+		}
+		
+	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+	if ($Mobile_Enabled==true)
+	   {
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile ";
+		}
+
+	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+	if ($Retro_Enabled==true)
+	   {
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		}
+
+	//echo "Test";
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// WebFront Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+	if ($WFC10_Enabled)
+		{
+		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		}
+
+	if ($WFC10User_Enabled)
+		{
+		echo "\nWebportal User installieren auf ".$WFC10User_Path.": \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+
+		}
+
+	if ($Mobile_Enabled)
+		{
+		echo "\nWebportal Mobile installieren auf ".$Mobile_Path.": \n";
+		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+
+		}
+
+	if ($Retro_Enabled)
+		{
+		echo "\nWebportal Retro installieren auf ".$Retro_Path.": \n";
+		createPortal($Retro_Path);
+		}
+
+
+
+
+
 
 ?>
