@@ -2,75 +2,205 @@
 
  //Fügen Sie hier Ihren Skriptquellcode ein
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-/******************************************************
 
-				INIT
+$kerneldir=IPS_GetKernelDir();
+Include_once($kerneldir."../IPS-Config/AllgemeineDefinitionen.php");
 
-*************************************************************/
+$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
-$ScriptCounterID=CreateVariableByName($_IPS['SELF'],"ScriptCounter",1);
+	$nummer="06607625474";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis=$ergebnis1."\n";
 
-if ($_IPS['SENDER']=="TimerEvent")
+	$nummer="06602765645";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis.=$ergebnis1."\n";
+
+	$nummer="06605960456";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis.=$ergebnis1."\n";
+
+	$nummer="06603192670";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis.=$ergebnis1."\n";
+
+	$nummer="06603404350";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis.=$ergebnis1."\n";
+
+	$nummer="06603404332";
+	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+	$ergebnis1=parsetxtfile($nummer);
+	SetValue($phone1ID,$ergebnis1);
+	$ergebnis.=$ergebnis1."\n";
+
+if ($_IPS['SENDER']=="Execute")
+	   {
+	   echo $ergebnis;
+	   }
+
+
+
+/**************************************************************************************************/
+
+function parsetxtfile($nummer)
 	{
-	SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
-   IPS_SetScriptTimer($_IPS['SELF'], 150);
- 	switch(GetValue($ScriptCounterID))
-		 {
-   	 case 1:
-		   //IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06607625474.iim", false, false, 1);
-        	break;
-   	 case 2:
-		   //IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06602765645.iim", false, false, 1);
-   	   break;
-   	 case 3:
-		   //IPS_ExecuteEX(ADR_Programs."/Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06603192670.iim", false, false, 1);
-   	   break;
-   	 case 4:
-		   //IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06603404350.iim", false, false, 1);
-   	   break;
-   	 case 5:
-		   //IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06605960456.iim", false, false, 1);
-   	   break;
-   	 case 6:
-		   //IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=drei_06603404332.iim", false, false, 1);
-   	   break;
-   	 case 7:
-  	   	IPS_RunScript(38018);
-		 default:
-         SetValue($ScriptCounterID,0);
-         IPS_SetScriptTimer($_IPS['SELF'], 0);
-		   break;
-		}
 
-	}
+	//$startdatenguthaben=7;
+	$startdatenguthaben=0;
+	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
-
-if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
-	{
-   SetValue($ScriptCounterID,0);
-   IPS_SetScriptTimer($_IPS['SELF'], 1);
-   //echo ADR_Programs."Mozilla Firefox/firefox.exe";
-   
-   //$repository = 'https://10.0.1.6/user/repository/';
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
-	}
-	$gartensteuerung=false;
-	$installedModules = $moduleManager->GetInstalledModules();
-	$inst_modules="\nInstallierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
+	$handle = @fopen("C:/Users/Wolfgang/Documents/iMacros/Downloads/report_dreiat_".$nummer.".txt", "r");
+	$result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
+	$result4g="";$result4v="";$result4f="";
+	if ($handle)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+   	while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
+			{
+      	//echo $buffer;
+      	if(preg_match('/Willkommen/i',$buffer))
+	   		{
+	   		$pos=strpos($buffer,"kommen");
+				if ($pos!=false)
+					{
+					$result1=trim(substr($buffer,$pos+7,200));
+					}
+				//echo "*********Ausgabe User : ".$result1."\n<br>";
+				}
+      	if(preg_match('/660/i',$buffer))
+	   		{
+	   		$result2=trim($buffer);
+	   		//echo "*********Ausgabe Nummer : ".$result2."\n<br>";
+				}
+      	if(preg_match('/Aktualisierung/i',$buffer))
+	   		{
+	   		$pos=strpos($buffer,"Aktualisierung");
+				if ($pos!=false)
+					{
+					$result3=trim(substr($buffer,$pos+16,200));
+					}
+				//echo "*********Wert von : ".$result3."\n<br>";
+				}
+			//echo "-----------------------------------------\n";
+			//echo $buffer;
+
+      	if(preg_match('/MB/i',$buffer) and ($result4g==""))
+      	//if (preg_match('/MB/i',$buffer))
+	   		{
+				$result4g=trim(substr($buffer,$startdatenguthaben,200));
+	   		//echo "*********Datenmenge : ".$result4g."\n<br>";
+				}
+
+			if (preg_match('/MB verbr/i',$buffer))
+	   		{
+				$result4v=trim(substr($buffer,$startdatenguthaben,200));
+	   		//echo "*********verbraucht : ".$result4v."\n<br>";
+				}
+
+			if (preg_match('/MB frei/i',$buffer))
+	   		{
+				$result4f=trim(substr($buffer,$startdatenguthaben,200));
+	   		//echo "*********frei : ".$result4f."\n<br>";
+				}
+
+			if (preg_match('/bis:/i',$buffer))
+	   		{
+				$result7=trim(substr($buffer,12,200));
+	   		//echo "*********Gültig bis : ".$result7."\n<br>";
+				}
+
+
+      	if (preg_match('/haben:/i',$buffer))
+	   		{
+	   		$pos=strpos($buffer,"haben:");
+		  		$Ende=strpos($buffer,"€");
+				if ($pos!=false)
+					{
+					$pos=$pos+6;
+					$result5=trim(substr($buffer,$pos,$Ende-$pos));
+					}
+				//echo "*********Geldguthaben :".$result5."\n<br>";
+    			}
+	    	}
+    	 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
+    	 $phone_User_ID = CreateVariableByName($parentid, "Phone_".$nummer."_User", 3);
+     	 $phone_Status_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Status", 3);
+     	 $phone_Date_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Date", 3);
+     	 $phone_unchangedDate_ID = CreateVariableByName($parentid, "Phone_".$nummer."_unchangedDate", 3);
+     	 $phone_Bonus_ID = CreateVariableByName($parentid, "Phone_".$nummer."_Bonus", 3);
+     	 $phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
+     	 $phone_Load_ID = CreateVariableByName($parentid, "Phone_Load", 2);
+     	 $phone_CL_Change_ID = CreateVariableByName($parentid, "Phone_CL_Change", 2);
+		 //$ergebnis="User:".$result1." Status:".$result4." Guthaben:".$result5." Euro\n";
+		 SetValue($phone_User_ID,$result1);
+		 SetValue($phone_Status_ID,$result4);   /* die eigentlich interessante Information */
+		 //echo ":::::".$result4."::::::\n";
+ 		 SetValue($phone_Date_ID,$result3);
+ 		 $old_cost=(float)GetValue($phone_Bonus_ID);
+ 		 $new_cost=(float)$result5;
+	    SetValue($phone_CL_Change_ID,$new_cost-$old_cost);
+ 		 if ($new_cost < $old_cost)
+ 		   {
+ 		   SetValue($phone_Cost_ID, GetValue($phone_Cost_ID)+$old_cost-$new_cost);
+ 		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
+ 		   }
+ 		 if ($new_cost > $old_cost)
+ 		   {
+ 		   SetValue($phone_Load_ID, GetValue($phone_Cost_ID)-$old_cost+$new_cost);
+ 		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
+ 		   }
+  		 SetValue($phone_Bonus_ID,$result5);
+
+  		 if ($result4!="")
+  		   {
+	  		 $Anfang=strpos($result4,"verbraucht")+10;
+  			 $Ende=strpos($result4,"frei");
+  			 $result6=trim(substr($result4,($Anfang),($Ende-$Anfang)));
+
+	  		 $Anfang=strpos($result4,"bis:")+5;
+  			 $result7=trim(substr($result4,($Anfang),20));
+			}
+
+  		 if ($result4g!="")
+			{
+			//$result6=" von ".$result4g." wurden ".$result4v." und daher sind  ".$result4f.".";
+			$result6=" von ".$result4g." sind ".$result4f;
+			}
+
+
+  		 //echo $result1.":".$result6."bis:".$result7.".\n";
+  		 if ($result6=="")
+			{
+		   $ergebnis=$nummer." (".$result1.") Guthaben:".$result5." Euro";
+			}
+		 else
+		   {
+		   $ergebnis=$nummer." (".$result1.")".$result6." bis ".$result7." Guthaben:".$result5." Euro";
+			}
+
+   	 if (!feof($handle))
+		 	{
+      	$ergebnis="Fehler: unerwarteter fgets() Fehlschlag\n";
+	    	}
+   	fclose($handle);
 		}
-	echo $inst_modules."\n\n";
-   
+	else
+		{
+      $ergebnis="Handle nicht definiert\n";
+		}
+	//$ergebnis.=$result4g." ".$result4v." ".$result4f;
+	return $ergebnis;
 	}
 
 

@@ -53,4 +53,44 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	/* Create Variables */
+
+	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+	$ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
+
+	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+	$GuthabenConfig = get_GuthabenConfiguration();
+	print_r($GuthabenConfig);
+
+	foreach ($GuthabenConfig as $TelNummer)
+		{
+		$handle2=fopen("c:/Users/Wolfgang/Documents/iMacros/Macros/dreiat_".$TelNummer["NUMMER"].".iim","w");
+      fwrite($handle2,'VERSION BUILD=8300326 RECORDER=FX'."\n");
+      fwrite($handle2,'TAB T=1'."\n");
+      fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+      fwrite($handle2,'SET !EXTRACT NULL'."\n");
+      fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
+      fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
+      fwrite($handle2,'URL GOTO=https://www.drei.at/portal/de/privat/index.html'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:nav_user'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=NAME:loginForm ATTR=ID:userName CONTENT={{!VAR0}}'."\n");
+      fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=NAME:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=BUTTON ATTR=TXT:Einloggen'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=DIV ATTR=ID:account-balance EXTRACT=TXT'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Link_B2C_CoCo'."\n");
+      fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+      fwrite($handle2,'\'Ausloggen'."\n");
+      fwrite($handle2,'FRAME NAME="topbar"'."\n");
+      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:nav_user'."\n");
+      fwrite($handle2,'TAB CLOSE'."\n");
+		fclose($handle2);
+      }
+
+
+
+
+	/* Create Web Pages */
+
 ?>
