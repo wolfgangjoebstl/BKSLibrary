@@ -134,7 +134,7 @@ function parsetxtfile($nummer)
     			}
 	    	}
     	 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
- 		 $phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$nummer, 3);
+ 		 $phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
     	 $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
      	 $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
      	 $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
