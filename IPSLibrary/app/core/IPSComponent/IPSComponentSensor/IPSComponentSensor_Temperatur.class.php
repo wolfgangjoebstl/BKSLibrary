@@ -11,7 +11,8 @@
     */
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
-
+	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+			
 	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
 
 
@@ -30,8 +31,9 @@
 		 */
 		public function __construct($var1, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
-			$this->RemoteOID = $var1;
+			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
+			$this->remServer    = RemoteAccess_GetConfiguration();
 		}
 	
 		/**
@@ -49,11 +51,14 @@
 			//print_r($this);
 			//print_r($module);
 			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			$rpc = new JSONRPC(IPSMessageHandler_RPC());
-			echo "Remote OID: ".$this->RemoteOID."\n";
-			$roid=(integer)$this->RemoteOID;
-			$rpc->SetValue($roid, $value);
-			
+			foreach ($this->remServer as $Server)
+				{
+				echo "Server : ".$Server."\n";
+				$rpc = new JSONRPC($Server);
+				echo "Remote OID: ".$this->RemoteOID."\n";
+				$roid=(integer)$this->RemoteOID;
+				$rpc->SetValue($roid, $value);
+				}
 		}
 
 		/**

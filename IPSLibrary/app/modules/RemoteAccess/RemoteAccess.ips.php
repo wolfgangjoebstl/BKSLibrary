@@ -11,10 +11,15 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
-	$configuration=RemoteAccess_GetConfiguration();
+	$remServer=RemoteAccess_GetConfiguration();
 	//print_r($configuration);
 
-	$rpc = new JSONRPC($configuration["ADDRESS"]);
+	foreach ($remServer as $Server)
+		{
+		$rpc = new JSONRPC($Server);
+		}
+
+	/* nimmt vorerst immer die zweite Adresse */
 
 	$result=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 	echo "OID = ".$result." \n";
@@ -57,6 +62,23 @@ echo $inst_modules."\n\n";
 if ($_IPS['SENDER']=="Execute")
 	{
 	
+	$pname="Temperatur";
+	if ($rpc->IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+	   //print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	   
+	/***************** INSTALLATION **************/
+
 	echo "Update Konfiguration und register Events\n";
 	
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
@@ -73,6 +95,7 @@ if ($_IPS['SENDER']=="Execute")
 	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
 			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			$result=RPC_CreateVariableByName($rpc, $tempID, $Key["Name"], 2);
+			$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
