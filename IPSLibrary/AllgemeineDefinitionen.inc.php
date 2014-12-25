@@ -2,6 +2,7 @@
 
  //Fügen Sie hier ihren Skriptquellcode ein
 
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
    
@@ -741,22 +742,9 @@ if (IPS_GetName(0)=="LBG70")
 
 		/**********************************************/
 		
-		
-		// Repository
-		$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-
-		$moduleManager = new IPSModuleManager('');
-		$installedModules = $moduleManager->GetInstalledModules();
-
-		//print_r($installedModules);
-		$inst_modules="Installierte Module:\n";
-		foreach ($installedModules as $name=>$modules)
-			{
-			$inst_modules.=str_pad($name,20)." ".$modules."\n";
-			}
 
 	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
-	 $ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
+	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
 	}
 else        /*  spezielle Routine für BKS01    */
 	{
@@ -1038,23 +1026,52 @@ else        /*  spezielle Routine für BKS01    */
 	$IPStatus="\n\nIP Symcon Aufruf extern unter:".$BrowserExtAdr.
 	          "\nIP Symcon Aufruf intern unter:".$BrowserIntAdr."\n";
 
-   $moduleManager = new IPSModuleManager('');
-   $installedModules = $moduleManager->GetInstalledModules();
-	//print_r($installedModules);
-	$inst_modules="Installierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
-		}
-
 	/* Werte die es in BKS nicht gibt zumindest setzen */
 	$guthaben=""; $cost=""; $internet=""; $statusverlauf=""; $energieverbrauch=""; $ergebnis_tabelle="";
 	echo "\n----------------------------------------------------\n";
-	}
 
 
+	}  /************** das war spezielle Routine BKS01  */
 
-	   
+
+	// Repository
+	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+
+
+	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+
+	/*
+	$moduleManager = new IPSModuleManager('');
+	$installedModules = $moduleManager->GetInstalledModules();
+	print_r($installedModules);
+	$inst_modules="Installierte Module:\n";
+	foreach ($installedModules as $name=>$modules)
+			{
+			$inst_modules.=str_pad($name,20)." ".$modules."\n";
+			}
+	*/
+
+	$versionHandler = $moduleManager->VersionHandler();
+	$versionHandler->BuildKnownModules();
+	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
+	$inst_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+	foreach ($knownModules as $module=>$data)
+		{
+		$infos   = $moduleManager->GetModuleInfos($module);
+		$inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
+		if (array_key_exists($module, $installedModules))
+			{
+			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
+			$inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
+			}
+		else
+			{
+			$inst_modules .= "nicht installiert            ";
+		   }
+		$inst_modules .=  $infos['Description']."\n";
+		}
 	   
 	if ($aktuell) /* aktuelle Werte */
 	   {
