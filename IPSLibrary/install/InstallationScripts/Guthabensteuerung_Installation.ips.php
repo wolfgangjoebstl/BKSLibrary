@@ -77,10 +77,26 @@
 	   {
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
+
+	$pname="MByte";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'',' MByte');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
 	   
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
-
+	
+	$phoneID=array();
+	$i=0;
 	foreach ($GuthabenConfig as $TelNummer)
 		{
 		$handle2=fopen("c:/Users/Wolfgang/Documents/iMacros/Macros/dreiat_".$TelNummer["NUMMER"].".iim","w");
@@ -106,17 +122,27 @@
 		fclose($handle2);
 
 		$phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$TelNummer["NUMMER"], 3);
+		$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+		$phoneID[$i++]=$phone_Summ_ID;
     	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
      	$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Status", 3);
      	$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
      	$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
      	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Bonus", 3);
+
+   	$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
+		IPS_SetVariableCustomProfile($phone_Volume_ID,'MByte');
+		AC_SetLoggingStatus($archiveHandlerID,$phone_Volume_ID,true);
+		AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,1);
+		IPS_ApplyChanges($archiveHandlerID);
+		
 		$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
 		IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
 	  	IPS_SetPosition($phone_nCost_ID, 130);
 		AC_SetLoggingStatus($archiveHandlerID,$phone_nCost_ID,true);
 		AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,1);
 		IPS_ApplyChanges($archiveHandlerID);
+
      	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
 		IPS_SetVariableCustomProfile($phone_nLoad_ID,'Euro');
 	  	IPS_SetPosition($phone_nLoad_ID, 140);
@@ -201,6 +227,10 @@
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		foreach ($phoneID as $phone)
+		   {
+		   CreateLinkByDestination(IPS_GetName($phone), $phone,    $categoryId_WebFront,  10);
+		   }
 		}
 
 	if ($WFC10User_Enabled)

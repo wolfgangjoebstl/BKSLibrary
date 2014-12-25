@@ -135,11 +135,13 @@ function parsetxtfile($nummer)
 	    	}
     	 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
  		 $phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+  		 $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
     	 $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
-     	 $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
+     	 //$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Status", 3);
      	 $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
      	 $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
      	 $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
+     	 $phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Volume", 2);
      	 $phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
      	 $phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
     	 $phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
@@ -147,7 +149,7 @@ function parsetxtfile($nummer)
      	 $phone_CL_Change_ID = CreateVariableByName($parentid, "Phone_CL_Change", 2);
 		 //$ergebnis="User:".$result1." Status:".$result4." Guthaben:".$result5." Euro\n";
 		 SetValue($phone_User_ID,$result1);
-		 SetValue($phone_Status_ID,$result4);   /* die eigentlich interessante Information */
+		 //SetValue($phone_Status_ID,$result4);   /* die eigentlich interessante Information */
 		 //echo ":::::".$result4."::::::\n";
  		 SetValue($phone_Date_ID,$result3);
  		 $old_cost=(float)GetValue($phone_Bonus_ID);
@@ -181,6 +183,10 @@ function parsetxtfile($nummer)
 			{
 			//$result6=" von ".$result4g." wurden ".$result4v." und daher sind  ".$result4f.".";
 			$result6=" von ".$result4g." sind ".$result4f;
+			$Ende=strpos($result4,"MB");
+			$restvolumen=(float)trim(substr($result4f,0,($Ende-1)));
+		   //echo "Restvolumen ist : ".$restvolumen." MB \n";
+		   SetValue($phone_Volume_ID,$restvolumen);
 			}
 
 
@@ -205,6 +211,7 @@ function parsetxtfile($nummer)
       $ergebnis="Handle nicht definiert\n";
 		}
 	//$ergebnis.=$result4g." ".$result4v." ".$result4f;
+	SetValue($phone_Summ_ID,$ergebnis);
 	return $ergebnis;
 	}
 

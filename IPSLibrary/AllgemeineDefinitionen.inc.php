@@ -535,14 +535,6 @@ if (IPS_GetName(0)=="LBG70")
 		$energieverbrauch.=number_format(GetValue(45647), 2, ",", "" )." Euro\n\n";
 		}
 
-	$guthaben="Guthabenstatus:\n".
-			  "\n".GetValue(24085).
-			  "\n".GetValue(27029).
-			  "\n".GetValue(59623).
-			  "\n".GetValue(39724).
-  			  "\n".GetValue(54406).
-			  "\n".GetValue(50426)."\n\n";
-
 	$cost="Internetkosten:\n".
 			"\nAufgeladen wurde bisher : ".GetValue(32942)." Euro".
 			"\nVerbraucht wurde bisher : ".GetValue(37190)." Euro".
@@ -1037,7 +1029,6 @@ else        /*  spezielle Routine für BKS01    */
 	// Repository
 	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 
-
 	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 
 	/*
@@ -1050,6 +1041,8 @@ else        /*  spezielle Routine für BKS01    */
 			$inst_modules.=str_pad($name,20)." ".$modules."\n";
 			}
 	*/
+
+	$guthabensteuerung=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -1065,6 +1058,7 @@ else        /*  spezielle Routine für BKS01    */
 			{
 			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
 			$inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
+			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
 			}
 		else
 			{
@@ -1072,6 +1066,32 @@ else        /*  spezielle Routine für BKS01    */
 		   }
 		$inst_modules .=  $infos['Description']."\n";
 		}
+
+	if ($guthabensteuerung)
+	   {
+	   $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+   	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+		$GuthabenConfig = get_GuthabenConfiguration();
+		$guthaben="Guthabenstatus:\n";
+     	foreach ($GuthabenConfig as $TelNummer)
+     	   {
+   		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+   		$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+   		$guthaben .= "\n".GetValue($phone_Summ_ID);
+			  //"\n".GetValue(24085).
+			  //"\n".GetValue(27029).
+			  //"\n".GetValue(59623).
+			  //"\n".GetValue(39724).
+  			  //"\n".GetValue(54406).
+			  //"\n".GetValue(50426)."\n\n";
+			}
+		$guthaben .= "\n\n";
+		}
+	else
+		{
+		$guthaben="";
+		}
+
 	   
 	if ($aktuell) /* aktuelle Werte */
 	   {
