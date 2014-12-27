@@ -34,9 +34,12 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
-		public function __construct($instanceId, $result, $var, $supportsOnTime=true) {
+		public function __construct($var1, $instanceId, $supportsOnTime=true) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->supportsOnTime = $supportsOnTime;
+			$this->RemoteOID    = $var1;
+			echo "InstanceID gesucht : ".$this->instanceId."\n";
+			$this->remServer    = RemoteAccess_GetConfiguration();
 		}
 
 		/**
@@ -51,6 +54,18 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module){
 			//$module->SyncState($value, $this);
+			echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//print_r($this);
+			//print_r($module);
+			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+			foreach ($this->remServer as $Server)
+				{
+				echo "Server : ".$Server."\n";
+				$rpc = new JSONRPC($Server);
+				echo "Remote OID: ".$this->RemoteOID."\n";
+				$roid=(integer)$this->RemoteOID;
+				$rpc->SetValue($roid, $value);
+				}
 		}
 
 		/**
