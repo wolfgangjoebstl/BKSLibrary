@@ -44,9 +44,18 @@ foreach ($MeterConfig as $meter)
 	{
 	echo"-------------------------------------------------------------\n";
 	echo "Create Variableset for :".$meter["NAME"]." \n";
-	$variableID = $meter["WirkenergieID"];
-	//print_r($meter);
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	if ($meter["TYPE"]=="Homematic")
+	   {
+		/* Variable ID selbst bestimmen */
+	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	   }
+	else
+	   {
+		$variableID = $meter["WirkenergieID"];
+		}
+	//print_r($meter);
+
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
    $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
@@ -129,11 +138,26 @@ if ($_IPS['SENDER'] == "Execute")
 	$starttime=$endtime-60*60*24*360;
 	$starttime=mktime(0,0,0,2 /* Monat */, 1/* Tag */, date("Y", $jetzt));
 
-	$display=true;
+	$display=false;
 	$delete=false;
-	
+
+foreach ($MeterConfig as $meter)
+	{
+	echo"-------------------------------------------------------------\n";
+	echo "Create Variableset for :".$meter["NAME"]." \n";
+	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	if ($meter["TYPE"]=="Homematic")
+	   {
+		/* Variable ID selbst bestimmen */
+	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	   }
+	else
+	   {
+		$variableID = $meter["WirkenergieID"];
+		}
+		
 	$vorwert=0;
-	$variableID=44113;
+	//$variableID=44113;
 
 	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
 	$increment=1;
@@ -257,7 +281,7 @@ foreach($werte as $wert) {
 }
 
 
-
+	}
 
 
 	}

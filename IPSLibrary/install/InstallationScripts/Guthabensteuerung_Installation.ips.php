@@ -62,6 +62,7 @@
 	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
 	$GuthabenConfig = get_GuthabenConfiguration();
+	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
 	//print_r($GuthabenConfig);
 
 	$pname="Euro";
@@ -99,7 +100,7 @@
 	$i=0;
 	foreach ($GuthabenConfig as $TelNummer)
 		{
-		$handle2=fopen("c:/Users/Wolfgang/Documents/iMacros/Macros/dreiat_".$TelNummer["NUMMER"].".iim","w");
+		$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["NUMMER"].".iim","w");
       fwrite($handle2,'VERSION BUILD=8300326 RECORDER=FX'."\n");
       fwrite($handle2,'TAB T=1'."\n");
       fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");

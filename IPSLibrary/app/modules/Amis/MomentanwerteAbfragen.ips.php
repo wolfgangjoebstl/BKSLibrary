@@ -182,22 +182,6 @@ if ($_IPS['SENDER']=="Execute")
 		
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	$homematic=writeEnergyHomematic($MeterConfig);
-	if ($homematic)
-	   {
-		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-		$archiveHandlerID = $archiveHandlerID[0];
-		AC_SetLoggingStatus($archiveHandlerID,$MeterConfig["HM-Wohnzimmer"]["WirkenergieID"], true);
-
-		$jetzt=time();
-		$endtime=mktime(0,0,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-		$starttime=$endtime-60*60*24*1;
-		$endtime=time();
-		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-		echo "Variable: ".IPS_GetName($MeterConfig["HM-Wohnzimmer"]["WirkenergieID"])."\n";
-
-		$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$MeterConfig["HM-Wohnzimmer"]["WirkenergieID"],true);
-		}
-	
 	}
 
 
@@ -207,6 +191,8 @@ function writeEnergyHomematic($MConfig)
 	{
 	$homematic=false;
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+	$archiveHandlerID = $archiveHandlerID[0];
 	foreach ($MConfig as $meter)
 		{
 		if ($meter["TYPE"]=="Homematic")
@@ -215,6 +201,9 @@ function writeEnergyHomematic($MConfig)
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($EnergieID,'kWh');
+	      AC_SetLoggingStatus($archiveHandlerID,$EnergieID,true);
+			AC_SetAggregationType($archiveHandlerID,$EnergieID,1);
+			IPS_ApplyChanges($archiveHandlerID);
 	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
