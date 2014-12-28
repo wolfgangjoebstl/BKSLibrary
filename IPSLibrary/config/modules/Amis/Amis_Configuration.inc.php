@@ -39,7 +39,32 @@
 					); 
 		}
 					
-					
+	function get_MeterConfiguration()
+		{
+		return array(
+			"AMIS" => array(
+				"NAME"            => 'BKS01',                   /* eintragen, das ist die Kategorie unter der die Variablen gespeichert sind, nachher nicht mehr aendern */
+				"TYPE"            => 'Amis',
+				"ORDER"           => 'Main',
+				"VariableName"    => 'Default-Wirkenergie',     /* wenn es bereits eine Variablennamen gibt, hier eintragen */
+				"WirkenergieID"   => 52333,                     /* bei AMIS meist in einem anderen Verzeichnis, haendisch eintragen */
+				"WirkleistungID"  => 11777,
+				"Periodenwerte"   => 34315
+						),
+			"HM-Keller" => array(
+				"NAME"            => 'Keller',                  /* eintragen, das ist die Kategorie unter der die Variablen gespeichert sind, nachher nicht mehr aendern */
+				"TYPE"            => 'Homematic',               /* wird abgefragt, damit man weis wie zu behandeln ist */
+				"ORDER"           => 'Sub',
+				//"VariableName"    => 'Wirkenergie',             /* herausnehmen, braucht glaub ich keiner ... */
+				//"WirkenergieID"   => 46557,							/* spaeter eintragen, sobald installiert wurden, muss geloggt werden */
+				"WirkleistungID"  => 53240,                     /* spaeter eintragen, sobald installiert wurden */
+				"HM_EnergieID"    => 57928,                     /* eintragen, von hier kommen die Werte fuer die Berechnung */
+				"HM_LeistungID"   => 33654,							/* eintragen, von hier kommen die Werte fuer die Berechnung */
+				"Periodenwerte"   => 50795
+													),				
+					);					
+		}
+
 
 
 	 

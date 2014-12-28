@@ -32,6 +32,45 @@
 
 
 
+	function get_GuthabenConfiguration()
+		{
+		return array(
+			"Nummer1" => array(
+				"NAME"            => 'Nummer1',
+				"NUMMER"          => '06602765645',
+				"PASSWORD"        => 'cloudg06',
+													),
+			"Nummer2" => array(
+				"NAME"            => 'Nummer2',
+				"NUMMER"          => '06603192670',
+				"PASSWORD"        => 'Cloudg06',
+													),
+			"Nummer3" => array(
+				"NAME"            => 'Nummer3',
+				"NUMMER"          => '06603404332',
+				"PASSWORD"        => 'Cloudg06',
+													),
+			"Nummer4" => array(
+				"NAME"            => 'Nummer4',
+				"NUMMER"          => '06603404350',
+				"PASSWORD"        => 'Cloudg06',
+													),
+			"Nummer5" => array(
+				"NAME"            => 'Nummer5',
+				"NUMMER"          => '06605960456',
+				"PASSWORD"        => 'cloudg06',
+													),
+			"Nummer6" => array(
+				"NAME"            => 'Nummer6',
+				"NUMMER"          => '06607625474',
+				"PASSWORD"        => 'cloudg06',
+													),
+
+					);
+		}
+
+	
+
 
 	 
 	 
