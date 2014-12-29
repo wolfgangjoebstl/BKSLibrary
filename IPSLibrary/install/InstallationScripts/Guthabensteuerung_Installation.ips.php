@@ -228,10 +228,12 @@
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
 		foreach ($phoneID as $phone)
 		   {
-		   CreateLinkByDestination(IPS_GetName($phone), $phone,    $categoryId_WebFront,  10);
+		   CreateLinkByDestination(IPS_GetName($phone), $phone,    $phone_summary_ID,  10);
 		   }
+		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
 		}
 
 	if ($WFC10User_Enabled)

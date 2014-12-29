@@ -1887,6 +1887,91 @@ function mkdirtree($directory)
 		}
 	}
 
+/******************************************************************/
+
+function RPC_CreateVariableByName($rpc, $id, $name, $type)
+	{
+
+	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+
+	$result="";
+	$struktur=$rpc->IPS_GetChildrenIDs($id);
+	foreach ($struktur as $category)
+	   {
+	   $oname=$rpc->IPS_GetName($category);
+	   //echo str_pad($oname,20)." ".$category."\n";
+	   if ($name==$oname) {$result=$name;$vid=$category;}
+	   }
+	if ($result=="")
+	   {
+      $vid = $rpc->IPS_CreateVariable($type);
+      $rpc->IPS_SetParent($vid, $id);
+      $rpc->IPS_SetName($vid, $name);
+      $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+      }
+    return $vid;
+	}
+
+/******************************************************************/
+
+function RPC_CreateCategoryByName($rpc, $id, $name)
+	{
+
+	/* erzeugt eine Category am Remote Server */
+
+	$result="";
+	$struktur=$rpc->IPS_GetChildrenIDs($id);
+	foreach ($struktur as $category)
+	   {
+	   $oname=$rpc->IPS_GetName($category);
+	   //echo str_pad($oname,20)." ".$category."\n";
+	   if ($name==$oname) {$result=$name;$vid=$category;}
+	   }
+	if ($result=="")
+	   {
+      $vid = $rpc->IPS_CreateCategory();
+      $rpc->IPS_SetParent($vid, $id);
+      $rpc->IPS_SetName($vid, $name);
+      $rpc->IPS_SetInfo($vid, "this category was created by script. ");
+      }
+    return $vid;
+	}
+
+/******************************************************************/
+
+function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile, $RPCarchiveHandlerID)
+	{
+
+	foreach ($Homematic as $Key)
+		{
+		/* alle Feuchtigkeitswerte ausgeben */
+		if (isset($Key["COID"][$keyword])==true)
+	   	{
+	      $oid=(integer)$Key["COID"][$keyword]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			$result=RPC_CreateVariableByName($rpc, $roid, $Key["Name"], 2);
+
+			$rpc->IPS_SetVariableCustomProfile($result,$profile);
+			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
+			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$result.',626','IPSModuleSensor_Temperatur,1,2,3');
+			}
+		}
+
+	}
 
 
 ?>
