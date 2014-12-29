@@ -4,46 +4,30 @@
 
 
 
-$kerneldir=IPS_GetKernelDir();
-Include_once($kerneldir."../IPS-Config/AllgemeineDefinitionen.php");
+	$kerneldir=IPS_GetKernelDir();
+	Include_once($kerneldir."../IPS-Config/AllgemeineDefinitionen.php");
 
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
-	$nummer="06607625474";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis=$ergebnis1."\n";
+	$GuthabenConfig = get_GuthabenConfiguration();
+	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
+	
+	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
+	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+	/* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
 
-	$nummer="06602765645";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis.=$ergebnis1."\n";
+	//print_r($GuthabenConfig);
+	$ergebnis="";
 
-	$nummer="06605960456";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis.=$ergebnis1."\n";
+	foreach ($GuthabenConfig as $TelNummer)
+		{
+		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
-	$nummer="06603192670";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis.=$ergebnis1."\n";
-
-	$nummer="06603404350";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis.=$ergebnis1."\n";
-
-	$nummer="06603404332";
-	$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
-	$ergebnis1=parsetxtfile($nummer);
-	SetValue($phone1ID,$ergebnis1);
-	$ergebnis.=$ergebnis1."\n";
+		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+		$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
+		SetValue($phone1ID,$ergebnis1);
+		$ergebnis.=$ergebnis1."\n";
+		}
 
 if ($_IPS['SENDER']=="Execute")
 	   {
@@ -54,14 +38,14 @@ if ($_IPS['SENDER']=="Execute")
 
 /**************************************************************************************************/
 
-function parsetxtfile($nummer)
+function parsetxtfile($verzeichnis, $nummer)
 	{
 
 	//$startdatenguthaben=7;
 	$startdatenguthaben=0;
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
-	$handle = @fopen("C:/Users/Wolfgang/Documents/iMacros/Downloads/report_dreiat_".$nummer.".txt", "r");
+	$handle = @fopen($verzeichnis."/report_dreiat_".$nummer.".txt", "r");
 	$result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
 	$result4g="";$result4v="";$result4f="";
 	if ($handle)

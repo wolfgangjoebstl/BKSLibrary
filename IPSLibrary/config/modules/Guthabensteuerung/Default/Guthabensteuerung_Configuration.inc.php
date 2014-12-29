@@ -35,6 +35,7 @@
 		return array(
 			//"MacroDirectory" 			=> "c:/Users/Wolfgang/Documents/iMacros/Macros/", 	/* Verzeichnis von iMacro */
 			"MacroDirectory" 			=> "C:/Users/wolfg_000/Documents/iMacros/Macros/", 	/* Verzeichnis von iMacro */
+			"DownloadDirectory" 			=> "C:/Users/wolfg_000/Documents/iMacros/Downloads/", 	/* Verzeichnis von iMacro */
 			);
 		}
 

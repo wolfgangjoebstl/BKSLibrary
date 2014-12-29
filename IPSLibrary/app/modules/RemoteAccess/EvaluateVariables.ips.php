@@ -108,6 +108,9 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
 
+	//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+
 	$Guthabensteuerung=GuthabensteuerungList();
 	
 	foreach ($Guthabensteuerung as $Key)
@@ -128,10 +131,10 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 			//$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
 			//$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
 			//$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
-		   //$messageHandler = new IPSMessageHandler();
-		   //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   //$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			//$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result.',626','IPSModuleSensor_Remote,1,2,3');
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result,'IPSModuleSensor_Remote');
 	
 		}
 
@@ -145,7 +148,7 @@ function add_variable($variableID,&$includefile,&$count)
 	$variabletyp=IPS_GetVariable($variableID);
 	//print_r($variabletyp);
 	//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
-	$includefile.="\n         ".'"Typ" => "'.$variabletyp["VariableValue"]["ValueType"].'", ';
+	$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableValue"]["ValueType"].', ';
 	$includefile.="\n         ".'"Order" => "'.$count++.'", ';
 	$includefile.="\n             ".'	),'."\n";
 	}
