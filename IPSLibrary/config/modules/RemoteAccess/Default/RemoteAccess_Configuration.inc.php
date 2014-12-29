@@ -31,6 +31,8 @@
 	 */
 
 
+/* comment one of the following remote servers */
+
 function RemoteAccess_GetConfiguration()
 	{
 		return array(
@@ -39,9 +41,6 @@ function RemoteAccess_GetConfiguration()
 						);
 	}
 
-
-	 
-	 
 
 	/** @}*/
 ?>

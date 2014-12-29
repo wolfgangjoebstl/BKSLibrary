@@ -134,21 +134,21 @@
    	$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
 		IPS_SetVariableCustomProfile($phone_Volume_ID,'MByte');
 		AC_SetLoggingStatus($archiveHandlerID,$phone_Volume_ID,true);
-		AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,1);
+		AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,0);
 		IPS_ApplyChanges($archiveHandlerID);
 		
 		$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
 		IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
 	  	IPS_SetPosition($phone_nCost_ID, 130);
 		AC_SetLoggingStatus($archiveHandlerID,$phone_nCost_ID,true);
-		AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,1);
+		AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,0);
 		IPS_ApplyChanges($archiveHandlerID);
 
      	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
 		IPS_SetVariableCustomProfile($phone_nLoad_ID,'Euro');
 	  	IPS_SetPosition($phone_nLoad_ID, 140);
 		AC_SetLoggingStatus($archiveHandlerID,$phone_nLoad_ID,true);
-		AC_SetAggregationType($archiveHandlerID,$phone_nLoad_ID,1);
+		AC_SetAggregationType($archiveHandlerID,$phone_nLoad_ID,0);
 		IPS_ApplyChanges($archiveHandlerID);
       }
 
@@ -158,13 +158,13 @@
 	$phone_Cost_ID = CreateVariableByName($CategoryIdData, "Phone_Cost", 2);
 	IPS_SetVariableCustomProfile($phone_Cost_ID,'Euro');
 	AC_SetLoggingStatus($archiveHandlerID,$phone_Cost_ID,true);
-	AC_SetAggregationType($archiveHandlerID,$phone_Cost_ID,1);
+	AC_SetAggregationType($archiveHandlerID,$phone_Cost_ID,0);
 	IPS_ApplyChanges($archiveHandlerID);
 	
 	$phone_Load_ID = CreateVariableByName($CategoryIdData, "Phone_Load", 2);
 	IPS_SetVariableCustomProfile($phone_Load_ID,'Euro');
 	AC_SetLoggingStatus($archiveHandlerID,$phone_Load_ID,true);
-	AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,1);
+	AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,0);
 	IPS_ApplyChanges($archiveHandlerID);
 
 	/* initialize timer */
