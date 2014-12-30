@@ -22,11 +22,17 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 
 *************************************************************/
 
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+	$MeterConfig = get_MeterConfiguration();
+	//print_r($MeterConfig);
 
-/* macht das selbe wie der Cutter */
+	foreach ($MeterConfig as $meter)
+		{
+		echo"-------------------------------------------------------------\n";
+		echo "Create Variableset for :".$meter["NAME"]." \n";
+		}
 
-
-
+/* macht das selbe wie der eingebaute Cutter, kann aber selbststaendig installiert werden */
 
 //Hier die COM-Port Instanz
 $serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');

@@ -9,6 +9,9 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
+// max. Scriptlaufzeit definieren
+	ini_set('max_execution_time', 120);
+
 $remServer=RemoteAccess_GetConfiguration();
 //print_r($configuration);
 
@@ -39,36 +42,6 @@ foreach ($remServer as $Server)
 
 	$RPCarchiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$RPCarchiveHandlerID = $RPCarchiveHandlerID[0];
-
-	/* macht einmal die Installation, später rueberkopieren, Routine dann eigentlich unnötig */
-
-	$pname="Temperatur";
-	if ($rpc->IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		$rpc->IPS_SetVariableProfileText($pname,'',' °C');
-	   //print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Humidity";
-	if ($rpc->IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-  		$rpc->IPS_SetVariableProfileText($pname,'',' %');
-	   //print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
 
 	/***************** INSTALLATION **************/
 

@@ -71,18 +71,74 @@
 	if ($Retro_Enabled)
 		{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-		echo "Retro \n";
+		echo "Retro ";
 		}
-
+	echo "\n";
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 
 	/******************* Variable Definition **********************/
+
+	$parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
-	$ReadMeterID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$AMISReceiveID = CreateVariableByName($CategoryIdData, "AMIS Receive", 3);
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+	$MeterConfig = get_MeterConfiguration();
+	//print_r($MeterConfig);
+	
+	foreach ($MeterConfig as $meter)
+		{
+		echo"-------------------------------------------------------------\n";
+		echo "Create Variableset for :".$meter["NAME"]." \n";
+		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		if ($meter["TYPE"]=="Homematic")
+		   {
+			/* Variable ID selbst bestimmen */
+		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		   }
+		if ($meter["TYPE"]=="Amis")
+		   {
+		   /* kann derzeit nur ein AMIS Modul installieren */
+			$variableID = $meter["WirkenergieID"];
+			$AmisID = CreateVariableByName($ID, "AMIS", 3);
+			$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+			}
+		print_r($meter);
+
+		$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
+	   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+
+		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
+   	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
+		IPS_SetPosition($letzterTagID, 100);
+		$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
+	   IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
+  		IPS_SetPosition($letzte7TageID, 110);
+		$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
+   	IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
+	  	IPS_SetPosition($letzte30TageID, 120);
+		$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
+	   IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
+  		IPS_SetPosition($letzte360TageID, 130);
+
+		$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
+	   IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
+  		IPS_SetPosition($letzterTagEurID, 200);
+		$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
+   	IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
+	  	IPS_SetPosition($letzte7TageEurID, 210);
+		$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
+	   IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
+  		IPS_SetPosition($letzte30TageEurID, 220);
+		$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
+   	IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
+	  	IPS_SetPosition($letzte360TageEurID, 230);
+   	}
+	
+	
+	/******************* Profile Definition **********************/
 	
 	$pname="kWh";
 	if (IPS_VariableProfileExists($pname) == false)

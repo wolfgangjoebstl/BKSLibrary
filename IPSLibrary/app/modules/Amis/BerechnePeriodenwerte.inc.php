@@ -27,9 +27,7 @@ $display=false;       /* alle Eintraege auf der Console ausgeben */
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 $archiveHandlerID = $archiveHandlerID[0];
-//echo "Handler ID:".$archiveHandlerID;
 
-//$ID_ArchivHandler = 50532;
 $MeterConfig = get_MeterConfiguration();
 
 $Tag=1;

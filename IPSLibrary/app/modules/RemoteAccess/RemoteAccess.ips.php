@@ -42,8 +42,9 @@ foreach ($remServer as $Server)
 	$RPCarchiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$RPCarchiveHandlerID = $RPCarchiveHandlerID[0];
 
-	
-	//$repository = 'https://10.0.1.6/user/repository/';
+
+	/******************** EVALUATION *******************/
+
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -53,6 +54,8 @@ foreach ($remServer as $Server)
 	}
 	$gartensteuerung=false;
 	$guthabensteuerung=false;
+	$amis=false;
+
 	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
@@ -63,15 +66,97 @@ foreach ($remServer as $Server)
 		   case "Guthabensteuerung":
 		   	$guthabensteuerung=true;
 		   	break;
+		   case "Gartensteuerung":
+		   	$gartensteuerung=true;
+		   	break;
+		   case "Amis":
+		   	$amis=true;
+		   	break;
 		   }
 		}
 	echo $inst_modules."\n\n";
-	if ($guthabensteuerung) {echo "Guthabensteuerung installiert und erkannt\n";}
 
-	if ($_IPS['SENDER']=="Execute")
-		{
-	
-		/* macht einmal die Installation, später rueberkopieren, Routine dann eigentlich unnötig */
+	if ($guthabensteuerung) {echo "Guthabensteuerung installiert und erkannt\n";}
+	if ($gartensteuerung) {echo "Gartensteuerung installiert und erkannt\n";}
+	if ($amis) {echo "AMIS Stromverbrauchsmessung installiert und erkannt\n";}
+
+		$includefile='<?'."\n";
+
+		if ($guthabensteuerung)
+			{
+			$includefile.='function GuthabensteuerungList() { return array('."\n";
+         $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+			echo "Guthabensteuerung Data auf :".$parentid."\n";
+			$result=IPS_GetChildrenIDs($parentid);
+			//print_r($result);
+			$count_phone=100;
+			$count_var=500;
+			foreach ($result as $variableID)
+			   {
+		   	//$includefile.='     "'.str_pad(IPS_GetName($variableID),30).'" => '.$variableID.', '."\n";
+
+			   $children=IPS_HasChildren($variableID);
+			   echo "Variable ".IPS_GetName($variableID)."  ".$children."\n";
+				if ($children)
+				   {
+				   add_variable($variableID,$includefile,$count_phone);
+				   $volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
+				   add_variable($volumeID,$includefile,$count_phone);
+				   echo"  VolumeID :".$volumeID."\n";
+			      }
+			   else
+			      {
+				   add_variable($variableID,$includefile,$count_var);
+					}
+			   }
+			//$includefile.="\n      ".'	),'."\n";
+			$includefile.="\n      ".');}'."\n";
+			}
+
+		if ($amis)
+			{
+			$includefile.='function AmisStromverbrauchList() { return array('."\n";
+         $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+			echo "Amis Stromverbrauch Data auf :".$parentid."\n";
+			$result=IPS_GetChildrenIDs($parentid);
+			//print_r($result);
+			/*
+			$count_phone=100;
+			$count_var=500;
+			foreach ($result as $variableID)
+			   {
+		   	//$includefile.='     "'.str_pad(IPS_GetName($variableID),30).'" => '.$variableID.', '."\n";
+
+			   $children=IPS_HasChildren($variableID);
+			   echo "Variable ".IPS_GetName($variableID)."  ".$children."\n";
+				if ($children)
+				   {
+				   add_variable($variableID,$includefile,$count_phone);
+				   $volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
+				   add_variable($volumeID,$includefile,$count_phone);
+				   echo"  VolumeID :".$volumeID."\n";
+			      }
+			   else
+			      {
+				   add_variable($variableID,$includefile,$count_var);
+					}
+			   }
+			//$includefile.="\n      ".'	),'."\n";
+			*/
+			$includefile.="\n      ".');}'."\n";
+			}
+
+
+		$includefile.="\n".'?>';
+		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables.inc.php';
+		if (!file_put_contents($filename, $includefile))
+			{
+        	throw new Exception('Create File '.$filename.' failed!');
+    		}
+
+	/************* PROFILES *******************/
+
+	/* macht einmal die Installation, später rueberkopieren, Routine dann eigentlich unnötig */
 	
 	$pname="Temperatur";
 	if ($rpc->IPS_VariableProfileExists($pname) == false)
@@ -126,7 +211,7 @@ foreach ($remServer as $Server)
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_RHomematic,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
 				}
 		}
-	}
+
 	
 
 /******************************************************************/
