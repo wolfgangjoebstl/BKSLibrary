@@ -114,27 +114,6 @@ foreach ($remServer as $Server)
 
 	foreach ($Homematic as $Key)
 		{
-		/* alle Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   	{
-	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			$result=RPC_CreateVariableByName($rpc, $tempID, $Key["Name"], 2);
-			$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
-			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
-			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$result.',626','IPSModuleSensor_Temperatur,1,2,3');
-			}
-		}
-
-   RPC_CreateVariableField($rpc, $humiID, $Homematic, "HUMIDITY", "Humidity",$RPCarchiveHandlerID);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
-
-	foreach ($Homematic as $Key)
-		{
 		/* alle Schalterzustände ausgeben */
 		if (isset($Key["COID"]["STATE"])==true)
 	   		{
