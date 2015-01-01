@@ -796,7 +796,8 @@ else        /*  spezielle Routine für BKS01    */
 	$starttime=$endtime-60*60*24*9;
 
 	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 24129, $starttime, $endtime, 0);
-	$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2));
+	$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
+	//$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2));
 	$vorigertag=date("d.m.Y",$jetzt);
 	$laufend=1;
 	$ergebnis_tabelle=substr("                          ",0,12);
@@ -1239,21 +1240,26 @@ else        /*  spezielle Routine für BKS01    */
 		/******************************************************************************************/
 
 		$ergebnistab_energie="";
+		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
 
 		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 		$MeterConfig = get_MeterConfiguration();
 		foreach ($MeterConfig as $meter)
 			{
-			//echo "Create Variableset for :".$meter["NAME"]." \n";
+         $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			$variableID = $meter["WirkenergieID"];
 
-			/* Energiewerte der Vortage als Zeitreihe */
+			/* Energiewerte der ketzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
 			$jetzt=time();
 			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 			$starttime=$endtime-60*60*24*10;
 
-			$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], $variableID, $starttime, $endtime, 0);
+			$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
 			$vorigertag=date("d.m.Y",$jetzt);
+
+			echo "Create Variableset for :".$meter["NAME"]." für Variable ".$variableID."  \n";
+			echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+			echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
 			//echo "Voriger Tag :".$vorigertag."\n";
 			$laufend=1;
 			$alterWert=0;
@@ -1265,6 +1271,7 @@ else        /*  spezielle Routine für BKS01    */
 				   {
 					$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
 					$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
+					echo "Werte :".$zeile["Datum2"][$laufend]." ".$zeile["Energie"][$laufend]."\n";
 					if ($laufend>1) {$zeile["EnergieVS"][$laufend-1] = number_format(($alterWert-$wert['Value']), 2, ",", "" ) ." kWh";}
 					$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
 					$laufend+=1;
@@ -1277,6 +1284,8 @@ else        /*  spezielle Routine für BKS01    */
 			$ergebnis_datum="";
 			$ergebnis_tabelle1="";
 			$ergebnis_tabelle2="";
+			echo "Es sind ".$laufend." Eintraege vorhanden.\n";
+			//print_r($zeile);
 			$laufend=0;
 			while ($laufend<=$anzahl2)
 				{
@@ -1985,7 +1994,7 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile, $R
 
 			$rpc->IPS_SetVariableCustomProfile($result,$profile);
 			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
+			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
 			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
 
 		   $messageHandler = new IPSMessageHandler();
