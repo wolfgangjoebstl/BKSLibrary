@@ -1108,7 +1108,7 @@ else        /*  spezielle Routine für BKS01    */
 			if (isset($Key["COID"]["TEMPERATURE"])==true)
 	   		{
 	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			}
 
@@ -1119,7 +1119,7 @@ else        /*  spezielle Routine für BKS01    */
 			if (isset($Key["COID"]["TemeratureVar"])==true)
 			   {
 	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			}
 
@@ -1130,17 +1130,41 @@ else        /*  spezielle Routine für BKS01    */
 			if (isset($Key["COID"]["HUMIDITY"])==true)
 	   		{
 	      	$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
-				$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			}
 
 		$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
-		$oid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis.Zaehlervariablen');
-		$AMIS_Werte=IPS_GetChildrenIDs($oid);
-		for($i = 0; $i < sizeof($AMIS_Werte);$i++)
+
+		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+		$MeterConfig = get_MeterConfiguration();
+
+		foreach ($MeterConfig as $meter)
 			{
-				$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
+			if ($meter["TYPE"]=="Amis")
+			   {
+			   $alleStromWerte.="AMIS Zähler im ".$meter["NAME"].":\n\n";
+				$amismeterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$AmisID = CreateVariableByName($amismeterID, "AMIS", 3);
+				$AmisVarID = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+				$AMIS_Werte=IPS_GetChildrenIDs($AmisVarID);
+				for($i = 0; $i < sizeof($AMIS_Werte);$i++)
+					{
+					//$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
+					if (IPS_GetVariable($AMIS_Werte[$i])["VariableCustomProfile"]!="")
+					   {
+						$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValueFormatted($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValue($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+						}
+					}
+				}
 			}
+
+
 
 		/******************************************************************************************/
 

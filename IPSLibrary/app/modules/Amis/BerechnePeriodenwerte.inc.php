@@ -35,7 +35,6 @@ $Monat=1;
 $Jahr=2011;
 //$variableID=30163;
 
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis.Zaehlervariablen');
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
 foreach ($MeterConfig as $meter)
@@ -133,58 +132,61 @@ if ($_IPS['SENDER'] == "Execute")
 	//$endtime=mktime(0,0,0,3 /* Monat */, 1/* Tag */, date("Y", $jetzt));
 	$endtime=time();
 
-	$starttime=$endtime-60*60*24*360;
-	$starttime=mktime(0,0,0,2 /* Monat */, 1/* Tag */, date("Y", $jetzt));
+	$starttime=$endtime-60*60*24*7;
+	//$starttime=mktime(0,0,0,2 /* Monat */, 1/* Tag */, date("Y", $jetzt));
 
-	$display=false;
+	
+	$display=true;
 	$delete=false;
 
-foreach ($MeterConfig as $meter)
-	{
-	echo"-------------------------------------------------------------\n";
-	echo "Create Variableset for :".$meter["NAME"]." \n";
-	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	if ($meter["TYPE"]=="Homematic")
-	   {
-		/* Variable ID selbst bestimmen */
-	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	   }
-	else
-	   {
-		$variableID = $meter["WirkenergieID"];
-		}
+	foreach ($MeterConfig as $meter)
+		{
+		echo"-------------------------------------------------------------\n";
+		echo "Create Variableset for :".$meter["NAME"]." \n";
+
+		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		if ($meter["TYPE"]=="Homematic")
+	   	{
+			/* Variable ID selbst bestimmen */
+		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	   	}
+		else
+		   {
+			$variableID = $meter["WirkenergieID"];
+			}
 		
-	$vorwert=0;
-	//$variableID=44113;
+		$vorwert=0;
+		//$variableID=44113;
 
-	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
-	$increment=1;
-	//echo "Increment :".$increment."\n";
-	$gepldauer=($endtime-$starttime)/24/60/60;
-	do {
-		/* es könnten mehr als 10.000 Werte sein
-			Abfrage generisch lassen
-		*/
+		echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+		
+		$increment=1;
+		//echo "Increment :".$increment."\n";
+		$gepldauer=($endtime-$starttime)/24/60/60;
+		do {
+			/* es könnten mehr als 10.000 Werte sein
+				Abfrage generisch lassen
+			*/
 
-		$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-		/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-			Nicht mer als 10.000 Werte ...
-		*/
-		//print_r($werte);
-   	$anzahl=count($werte);
+			$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
+			/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+				Nicht mer als 10.000 Werte ...
+			*/
+			//print_r($werte);
+   		$anzahl=count($werte);
+	   	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
-   	//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+			if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
 
-		if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
-
-		if ($initial)
+			if ($initial)
 			   {
 			   /* allererster Durchlauf */
 				$ersterwert=$werte['0']['Value'];
 		   	$ersterzeit=$werte['0']['TimeStamp'];
 		   	}
 
-		if ($anzahl<10000)
+			if ($anzahl<10000)
 		   	{
 	   		/* letzter Durchlauf */
 		   	$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
@@ -193,9 +195,9 @@ foreach ($MeterConfig as $meter)
 				//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
 				}
 
-		$initial=true;
+			$initial=true;
 
-		foreach($werte as $wert)
+			foreach($werte as $wert)
 				{
 				$zeit=$wert['TimeStamp'];
 				$tag=date("d.m.Y", $zeit);
@@ -258,30 +260,15 @@ foreach ($MeterConfig as $meter)
 					}
 				$zaehler+=1;
 				}
-				$endtime=$zeit;
+				
+				//$endtime=$zeit;
 		} while (count($werte)==10000);
 
-//Alle Datensätze vom 01.01.2013 bis zum 31.12.2013 abfragen (Tägliche Aggregationsstufe)
-//z.B. um den Verbrauch am jeweiligen Tag zu ermitteln oder die Durchschnittstemperatur am jeweiligen Tag (1) Monat (3)
-$werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1 , mktime(0, 0, 0, 1, 2, 2014), mktime(23, 59, 59, 02, 31, 2014), 0); //55554 ist die ID der Variable, 12345 vom Archiv
-
-//Alle heutigen Datensätze abfragen (Tägliche Aggregationsstufe)
-//z.B. um den heutigen Verbrauch er ermitteln oder die heutige Durchschnittstemperatur
-//$werte = AC_GetAggregatedValues(12345, 55554, 1 /* Täglich */, strtotime("today 00:00"), time(), 0); //55554 ist die ID der Variable, 12345 vom Archiv
-
-//Alle gestrigen Datensätze abfragen (Stündlichen Aggregationsstufe)
-//z.B. um den gesterigen Verbrauch oder die durchschittliche Windgeschwindigkeit jeder Stunde zu begutachten
-//$werte = AC_GetAggregatedValues(12345, 55554, 0 /* Stündlich */, strtotime("yesterday 00:00"), strtotime("today 00:00")-1, 0); //55554 ist die ID der Variable, 12345 vom Archiv
-
-//Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-foreach($werte as $wert) {
-	echo date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . $wert['Avg'] . PHP_EOL;
-}
-
-
 	}
 
 
 	}
+
+
 	   
 ?>

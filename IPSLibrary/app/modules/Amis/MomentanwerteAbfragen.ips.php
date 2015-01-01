@@ -23,21 +23,44 @@ IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Am
 *************************************************************/
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-$TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-$SendTimeID = CreateVariableByName($parentid, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+	$MeterConfig = get_MeterConfiguration();
+	//print_r($MeterConfig);
+
+	foreach ($MeterConfig as $meter)
+		{
+		echo"-------------------------------------------------------------\n";
+		echo "Create Variableset for :".$meter["NAME"]." \n";
+		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		if ($meter["TYPE"]=="Amis")
+		   {
+		   /* kann derzeit nur ein AMIS Modul installieren */
+			$variableID = $meter["WirkenergieID"];
+			$AmisID = CreateVariableByName($ID, "AMIS", 3);
+			$MeterReadID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
+			$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
+			$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
+
+			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
+			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+
+			//Hier die COM-Port Instanz
+			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+			$com_Port = $serialPortID[0];
+
+			}
+		print_r($meter);
+		}
+
+
 $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
-
-foreach ($MeterConfig as $meter)
-	{
-	//print_r($meter);
-	$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	}
-	
-$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-$com_Port = $serialPortID[0];
-//print_r($serialPortID);
 
 if (Getvalue($MeterReadID))
 	{
