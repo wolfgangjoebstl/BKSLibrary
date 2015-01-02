@@ -147,7 +147,7 @@ if ($_IPS['SENDER'] == "RegisterVariable")
 						$wirkenergie_vwID = CreateVariableByName($AmisID, "Letzter Wert Wirkenergie", 2);
 						$letzterWertID = CreateVariableByName($AmisID, "Letzter Wert", 1);
 						$aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2);
-						$wirkenergie1_ID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+						$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie');
 						$wirkenergie_ID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 						echo "ID:".$wirkenergie_ID."\n";
 

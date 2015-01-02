@@ -1026,6 +1026,12 @@ else        /*  spezielle Routine für BKS01    */
 
 	}  /************** das war spezielle Routine BKS01  */
 
+/******************************************************************************************
+		
+Allgemeiner Teil, unabhängig von Hardware oder Server
+		
+******************************************************************************************/
+
 
 	// Repository
 	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
@@ -1044,6 +1050,7 @@ else        /*  spezielle Routine für BKS01    */
 	*/
 
 	$guthabensteuerung=false;
+	$amis=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -1060,6 +1067,7 @@ else        /*  spezielle Routine für BKS01    */
 			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
 			$inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
 			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
+			if ($module=="Amis") $amis=true;
 			}
 		else
 			{
@@ -1068,37 +1076,14 @@ else        /*  spezielle Routine für BKS01    */
 		$inst_modules .=  $infos['Description']."\n";
 		}
 
-	if ($guthabensteuerung)
-	   {
-	   $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-   	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
-		$GuthabenConfig = get_GuthabenConfiguration();
-		$guthaben="Guthabenstatus:\n";
-     	foreach ($GuthabenConfig as $TelNummer)
-     	   {
-   		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
-   		$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
-   		$guthaben .= "\n".GetValue($phone_Summ_ID);
-			  //"\n".GetValue(24085).
-			  //"\n".GetValue(27029).
-			  //"\n".GetValue(59623).
-			  //"\n".GetValue(39724).
-  			  //"\n".GetValue(54406).
-			  //"\n".GetValue(50426)."\n\n";
-			}
-		$guthaben .= "\n\n";
-		}
-	else
-		{
-		$guthaben="";
-		}
-
-	   
 	if ($aktuell) /* aktuelle Werte */
 	   {
 
-		/******************************************************************************************/
-		/******************************************************************************************/
+		/******************************************************************************************
+		
+		Allgemeiner Teil, Auswertung für aktuelle Werte
+		
+		******************************************************************************************/
 
 		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
 
@@ -1236,83 +1221,135 @@ else        /*  spezielle Routine für BKS01    */
 	else   /* historische Werte */
 	   {
 
-		/******************************************************************************************/
-		/******************************************************************************************/
 
-		$ergebnistab_energie="";
-		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
+		/******************************************************************************************
 
-		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-		$MeterConfig = get_MeterConfiguration();
-		foreach ($MeterConfig as $meter)
-			{
-         $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$variableID = $meter["WirkenergieID"];
+		Allgemeiner Teil, Auswertung für historische Werte
 
-			/* Energiewerte der ketzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
-			$jetzt=time();
-			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-			$starttime=$endtime-60*60*24*10;
+		******************************************************************************************/
 
-			$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-			$vorigertag=date("d.m.Y",$jetzt);
 
-			echo "Create Variableset for :".$meter["NAME"]." für Variable ".$variableID."  \n";
-			echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
-			echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-			//echo "Voriger Tag :".$vorigertag."\n";
-			$laufend=1;
-			$alterWert=0;
-			$ergebnis_tabelle1=substr("                          ",0,12);
-			foreach($werte as $wert)
-				{
-				$zeit=$wert['TimeStamp']-60;
-				if (date("d.m.Y", $zeit)!=$vorigertag)
-				   {
-					$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
-					$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
-					echo "Werte :".$zeile["Datum2"][$laufend]." ".$zeile["Energie"][$laufend]."\n";
-					if ($laufend>1) {$zeile["EnergieVS"][$laufend-1] = number_format(($alterWert-$wert['Value']), 2, ",", "" ) ." kWh";}
-					$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
-					$laufend+=1;
-					$alterWert=$wert['Value'];
-					//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
-					}
-				$vorigertag=date("d.m.Y",$zeit);
-				}
-			$anzahl2=$laufend-2;
-			$ergebnis_datum="";
-			$ergebnis_tabelle1="";
-			$ergebnis_tabelle2="";
-			echo "Es sind ".$laufend." Eintraege vorhanden.\n";
-			//print_r($zeile);
-			$laufend=0;
-			while ($laufend<=$anzahl2)
-				{
-				$ergebnis_datum.=substr($zeile["Datum2"][$laufend]."            ",0,12);
-				$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
-				$ergebnis_tabelle2.=substr(($zeile["EnergieVS"][$laufend])."            ",0,12);
-				$laufend+=1;
-				//echo $ergebnis_tabelle."\n";
-				}
-			$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n".$ergebnis_datum."\n".$ergebnis_tabelle1."\n".$ergebnis_tabelle2."\n\n";
-
-  			$parentID = $meter["Periodenwerte"];
-			$ergebnistab_energie.="Stromverbrauchs-Statistik von ".$meter["NAME"]." :\n\n";
-			$ergebnistab_energie.="Stromverbrauch (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$parentID)), 2, ",", "" )." kWh \n";
-			$ergebnistab_energie.="Stromkosten    (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$parentID)), 2, ",", "" );
-			$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$parentID)), 2, ",", "" )." Euro \n\n\n";
-
-			}
-		//print_r($zeile);
-
-		/******************************************************************************************/
+		/**************Stromverbrauch, Auslesen der Variablen von AMIS *******************************************************************/
 		
+		if ($amis)
+		   {
+			/* nur machen wenn AMIS installiert */
+		
+			$ergebnistab_energie="";
+			$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
+
+			$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+			
+			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+			$MeterConfig = get_MeterConfiguration();
+			foreach ($MeterConfig as $meter)
+				{
+	         $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	         $meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+   	      /* ID von Wirkenergie bestimmen */
+				if ($meter["TYPE"]=="Amis")
+				   {
+					$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
+					$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+					$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+			   	}
+				if ($meter["TYPE"]=="Homematic")
+			   	{
+				   $variableID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			   	}
+
+				/* Energiewerte der ketzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+				$jetzt=time();
+				$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+				$starttime=$endtime-60*60*24*10;
+
+				$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
+				$vorigertag=date("d.m.Y",$jetzt);
+
+				echo "Create Variableset for :".$meter["NAME"]." für Variable ".$variableID."  \n";
+				echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+				echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+				//echo "Voriger Tag :".$vorigertag."\n";
+				$laufend=1;
+				$alterWert=0;
+				$ergebnis_tabelle1=substr("                          ",0,12);
+				foreach($werte as $wert)
+					{
+					$zeit=$wert['TimeStamp']-60;
+					if (date("d.m.Y", $zeit)!=$vorigertag)
+					   {
+						$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
+						$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
+						echo "Werte :".$zeile["Datum2"][$laufend]." ".$zeile["Energie"][$laufend]."\n";
+						if ($laufend>1) {$zeile["EnergieVS"][$laufend-1] = number_format(($alterWert-$wert['Value']), 2, ",", "" ) ." kWh";}
+						$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
+						$laufend+=1;
+						$alterWert=$wert['Value'];
+						//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+						}
+					$vorigertag=date("d.m.Y",$zeit);
+					}
+				$anzahl2=$laufend-2;
+				$ergebnis_datum="";
+				$ergebnis_tabelle1="";
+				$ergebnis_tabelle2="";
+				echo "Es sind ".$laufend." Eintraege vorhanden.\n";
+				//print_r($zeile);
+				$laufend=0;
+				while ($laufend<=$anzahl2)
+					{
+					$ergebnis_datum.=substr($zeile["Datum2"][$laufend]."            ",0,12);
+					$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
+					$ergebnis_tabelle2.=substr(($zeile["EnergieVS"][$laufend])."            ",0,12);
+					$laufend+=1;
+					//echo $ergebnis_tabelle."\n";
+					}
+				$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n".$ergebnis_datum."\n".$ergebnis_tabelle1."\n".$ergebnis_tabelle2."\n\n";
+
+	  			$parentID = $meter["Periodenwerte"];
+				$ergebnistab_energie.="Stromverbrauchs-Statistik von ".$meter["NAME"]." :\n\n";
+				$ergebnistab_energie.="Stromverbrauch (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$parentID)), 2, ",", "" )." kWh \n";
+				$ergebnistab_energie.="Stromkosten    (1/7/30/360) : ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$parentID)), 2, ",", "" );
+				$ergebnistab_energie.=        " / ".number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$parentID)), 2, ",", "" )." Euro \n\n\n";
+
+				}
+			//print_r($zeile);
+			}
+			
+		/************** Guthaben auslesen ****************************************************************************/
+		
+		if ($guthabensteuerung)
+		   {
+		   $guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+	   	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+			$GuthabenConfig = get_GuthabenConfiguration();
+			$guthaben="Guthabenstatus:\n";
+	     	foreach ($GuthabenConfig as $TelNummer)
+   	  	   {
+   			$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
+   			$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+	   		$guthaben .= "\n".GetValue($phone_Summ_ID);
+			  //"\n".GetValue(24085).
+			  //"\n".GetValue(27029).
+			  //"\n".GetValue(59623).
+			  //"\n".GetValue(39724).
+  			  //"\n".GetValue(54406).
+			  //"\n".GetValue(50426)."\n\n";
+				}
+			$guthaben .= "\n\n";
+			}
+		else
+			{
+			$guthaben="";
+			}
+
+		/******************************************************************************************/
+
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.

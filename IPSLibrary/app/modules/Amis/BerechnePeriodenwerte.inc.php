@@ -42,16 +42,17 @@ foreach ($MeterConfig as $meter)
 	echo"-------------------------------------------------------------\n";
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	if ($meter["TYPE"]=="Homematic")
-	   {
-		/* Variable ID selbst bestimmen */
-	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	   }
-	else
-	   {
-		$variableID = $meter["WirkenergieID"];
+   /* ID von Wirkenergie bestimmen */
+	if ($meter["TYPE"]=="Amis")
+		{
+		$AmisID = CreateVariableByName($ID, "AMIS", 3);
+		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+		$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 		}
-	//print_r($meter);
+	if ($meter["TYPE"]=="Homematic")
+	  	{
+	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	  	}
 
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
    $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
