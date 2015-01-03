@@ -38,6 +38,8 @@ echo $inst_modules."\n\n";
 		{
 		if ( (isset($Key["COID"][$keyword])==true) )
 	   	{
+	   	/* alle Bewegungsmelder */
+	   	
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
       	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
@@ -52,6 +54,8 @@ echo $inst_modules."\n\n";
 			
 		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
 	   	{
+	   	/* alle Kontakte */
+	   	
 	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
       	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")

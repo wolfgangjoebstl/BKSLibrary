@@ -1962,6 +1962,8 @@ function RPC_CreateVariableByName($rpc, $id, $name, $type)
 
 	$result="";
 	$struktur=$rpc->IPS_GetChildrenIDs($id);
+	//echo "Struktur :\n";
+	//print_r($struktur);
 	foreach ($struktur as $category)
 	   {
 	   $oname=$rpc->IPS_GetName($category);
@@ -1970,11 +1972,13 @@ function RPC_CreateVariableByName($rpc, $id, $name, $type)
 	   }
 	if ($result=="")
 	   {
+	   echo "Variable ".$name." erzeugen.\n";
       $vid = $rpc->IPS_CreateVariable($type);
       $rpc->IPS_SetParent($vid, $id);
       $rpc->IPS_SetName($vid, $name);
       $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
       }
+     //echo "Fertig mit ".$vid."\n";
     return $vid;
 	}
 

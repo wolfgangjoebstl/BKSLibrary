@@ -200,13 +200,15 @@ foreach ($remServer as $Server)
 	foreach ($Homematic as $Key)
 		{
 		/* alle Schalterzustände ausgeben */
-		if (isset($Key["COID"]["STATE"])==true)
+		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["INHIBIT"]) )
 	   		{
 	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
 				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				$result=RPC_CreateVariableByName($rpc, $switchID, $Key["Name"], 0);
+				//print_r($result);
 			   $messageHandler = new IPSMessageHandler();
-		   	$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
 				}
@@ -215,6 +217,20 @@ foreach ($remServer as $Server)
 	
 
 /******************************************************************/
+
+/******************************************************************/
+
+function add_variable($variableID,&$includefile,&$count)
+	{
+	$includefile.='"'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
+	$includefile.="\n         ".'"Name" => "'.IPS_GetName($variableID).'", ';
+	$variabletyp=IPS_GetVariable($variableID);
+	//print_r($variabletyp);
+	//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
+	$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableValue"]["ValueType"].', ';
+	$includefile.="\n         ".'"Order" => "'.$count++.'", ';
+	$includefile.="\n             ".'	),'."\n";
+	}
 
 
 

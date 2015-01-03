@@ -12,21 +12,27 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-	ini_set('max_execution_time', 120);
+ini_set('max_execution_time', 120);
 
-	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
-	if ($tim1ID==false)
-		{
-		$tim1ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim1ID, $_IPS['SELF']);
-		IPS_SetName($tim1ID, "Aufruftimer");
-		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim1ID,2,30,0);  /* immer um 02:30 */
-		}
-	IPS_SetEventActive($tim1ID,true);
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,2,30,0);  /* immer um 02:30 */
+	}
+IPS_SetEventActive($tim1ID,true);
 
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 
+$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+$result=$moduleManager->GetInstalledModules();
+if (isset ($result["Guthabensteuerung"]))
+  	{
+  	/* nur wenn Guthabensteuerung installiert ist ausführen */
+  	
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 	$remServer=RemoteAccess_GetConfiguration();
 
@@ -50,7 +56,8 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 	//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-
+   
+	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$Guthabensteuerung=GuthabensteuerungList();
 	
 	foreach ($Guthabensteuerung as $Key)
@@ -77,20 +84,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result,'IPSModuleSensor_Remote');
 	
 		}
-
-
-/******************************************************************/
-
-function add_variable($variableID,&$includefile,&$count)
-	{
-	$includefile.='"'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
-	$includefile.="\n         ".'"Name" => "'.IPS_GetName($variableID).'", ';
-	$variabletyp=IPS_GetVariable($variableID);
-	//print_r($variabletyp);
-	//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
-	$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableValue"]["ValueType"].', ';
-	$includefile.="\n         ".'"Order" => "'.$count++.'", ';
-	$includefile.="\n             ".'	),'."\n";
 	}
+
 
 ?>

@@ -6,6 +6,23 @@
 	
 */
 
+/******************************************************
+
+				INIT
+
+*************************************************************/
+
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
+	}
+IPS_SetEventActive($tim1ID,true);
+
 //$includefile='<?'."\n".'$fileList = array('."\n";
 $includefile='<?'."\n"; 
 $alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten

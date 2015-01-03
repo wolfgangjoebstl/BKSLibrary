@@ -9,14 +9,26 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
-IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+// max. Scriptlaufzeit definieren
+ini_set('max_execution_time', 120);
 
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,2,40,0);  /* immer um 02:40 */
+	}
+IPS_SetEventActive($tim1ID,true);
+
+IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 $result=$moduleManager->GetInstalledModules();
 if (isset ($result["Amis"]))
   	{
   	/* nur ausführen wenn AMIS installiert wurde */
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 	$remServer=RemoteAccess_GetConfiguration();
@@ -38,9 +50,10 @@ if (isset ($result["Amis"]))
 	//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-	$Guthabensteuerung=GuthabensteuerungList();
+	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+	$AmisStromverbrauch=AmisStromverbrauchList()();
 	
-	foreach ($Guthabensteuerung as $Key)
+	foreach ($AmisStromverbrauch as $Key)
 		{
 	      $oid=(integer)$Key["OID"];
       	$variabletyp=IPS_GetVariable($oid);
