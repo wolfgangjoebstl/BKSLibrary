@@ -508,12 +508,6 @@ function send_status($aktuell)
 if (IPS_GetName(0)=="LBG70")
 	{
 
-
-	//   IPS_RunScript(13352);
-	//   IPS_RunScript(32860);
-	//   IPS_RunScript(45023);
-	//   IPS_RunScript(41653);
-
 	/***************  HEIZUNGSENERGIEVERBRAUCH LBG70 spezifisch ********/
 
 	if ($aktuell)
@@ -1048,6 +1042,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$inst_modules.=str_pad($name,20)." ".$modules."\n";
 			}
 	*/
+
+	/* gibt alle bekannten und davon installierten Module aus */
 
 	$guthabensteuerung=false;
 	$amis=false;
@@ -2043,5 +2039,17 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile, $R
 
 	}
 
+/******************************************************************
+
+Moudule und Klassendefinitionen
+
+******************************************************************/
+
+
+
+
+
+
+/******************************************************************/
 
 ?>

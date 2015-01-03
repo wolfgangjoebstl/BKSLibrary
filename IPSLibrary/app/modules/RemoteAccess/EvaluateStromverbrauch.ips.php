@@ -9,7 +9,13 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
+IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 
+$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+$result=$moduleManager->GetInstalledModules();
+if (isset ($result["Amis"]))
+  	{
+  	/* nur ausführen wenn AMIS installiert wurde */
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
@@ -21,15 +27,11 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 		}
 	/* nimmt vorerst immer die zweite Adresse */
 
-
-	$result=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-	echo "OID = ".$result." \n";
-
 	$visID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 	$wfID=RPC_CreateCategoryByName($rpc, $visID, "WebFront");
 	$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
 	$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
-	$guthID=RPC_CreateCategoryByName($rpc, $raID, "Guthaben");
+	$amiswebID=RPC_CreateCategoryByName($rpc, $raID, "Stromverbrauch");
 
 	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
 
@@ -62,7 +64,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result,'IPSModuleSensor_Remote');
 	
 		}
-
+	}
 
 /******************************************************************/
 

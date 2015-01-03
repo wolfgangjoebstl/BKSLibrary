@@ -31,6 +31,40 @@ foreach ($installedModules as $name=>$modules)
 echo $inst_modules."\n\n";
 
 
+	IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	$Homematic = HomematicList();
+	$keyword="MOTION";
+	foreach ($Homematic as $Key)
+		{
+		if ( (isset($Key["COID"][$keyword])==true) )
+	   	{
+	      $oid=(integer)$Key["COID"][$keyword]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+			
+		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+	   	{
+	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+		}
 
+//print_r($Homematic);
 
 ?>

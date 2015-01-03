@@ -11,6 +11,17 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 // max. Scriptlaufzeit definieren
 	ini_set('max_execution_time', 120);
+	
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,2,20,0);  /* immer um 02:20 */
+	}
+IPS_SetEventActive($tim1ID,true);
 
 $remServer=RemoteAccess_GetConfiguration();
 //print_r($configuration);
