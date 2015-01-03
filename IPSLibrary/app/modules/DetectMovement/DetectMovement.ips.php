@@ -30,26 +30,21 @@ foreach ($installedModules as $name=>$modules)
 	}
 echo $inst_modules."\n\n";
 
-
+	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+   
 	IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	$Homematic = HomematicList();
 	$keyword="MOTION";
 	foreach ($Homematic as $Key)
 		{
+		$found=false;
 		if ( (isset($Key["COID"][$keyword])==true) )
 	   	{
 	   	/* alle Bewegungsmelder */
 	   	
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
-      	$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-			   {
-				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			else
-			   {
-				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
+	      $found=true;
 			}
 			
 		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
@@ -57,6 +52,10 @@ echo $inst_modules."\n\n";
 	   	/* alle Kontakte */
 	   	
 	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
+	      $found=true;
+			}
+		if ($found)
+		   {
       	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
@@ -66,6 +65,13 @@ echo $inst_modules."\n\n";
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
+			//$result=RPC_CreateVariableByName($rpc, $switchID, $Key["Name"], 0);
+			//print_r($result);
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
 			}
 		}
 
