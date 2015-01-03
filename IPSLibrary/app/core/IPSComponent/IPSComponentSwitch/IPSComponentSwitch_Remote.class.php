@@ -20,12 +20,12 @@
     */
 
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
+	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
 	class IPSComponentSwitch_RHomematic extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;
-		private $rpcADR;
 	
 		/**
 		 * @public
@@ -35,10 +35,12 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
-		public function __construct($instanceId, $rpcADR, $supportsOnTime=true) {
+		public function __construct($var1, $instanceId, $supportsOnTime=true) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->supportsOnTime = $supportsOnTime;
-			$this->rpcADR = $rpcADR;
+			$this->RemoteOID    = $var1;
+			echo "InstanceID gesucht : ".$this->instanceId."\n";
+			$this->remServer    = RemoteAccess_GetConfiguration();
 		}
 
 		/**
@@ -52,7 +54,19 @@
 		 * @param IPSModuleSwitch $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module){
-			$module->SyncState($value, $this);
+			//$module->SyncState($value, $this);
+			echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//print_r($this);
+			//print_r($module);
+			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+			foreach ($this->remServer as $Server)
+				{
+				echo "Server : ".$Server."\n";
+				$rpc = new JSONRPC($Server);
+				echo "Remote OID: ".$this->RemoteOID."\n";
+				$roid=(integer)$this->RemoteOID;
+				$rpc->SetValue($roid, $value);
+				}
 		}
 
 		/**
@@ -77,13 +91,10 @@
 		 * @param integer $onTime Zeit in Sekunden nach der der Aktor automatisch ausschalten soll
 		 */
 		public function SetState($value, $onTime=false) {
-			//echo "Adresse:".$this->rpcADR."\n";
-			$rpc = new JSONRPC($this->rpcADR);
-
 			if ($onTime!==false and $value and $this->supportsOnTime===true) 
-				$rpc->HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
+				HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
 			
-			$rpc->HM_WriteValueBoolean($this->instanceId, "STATE", $value);
+			HM_WriteValueBoolean($this->instanceId, "STATE", $value);
 		}
 
 		/**
