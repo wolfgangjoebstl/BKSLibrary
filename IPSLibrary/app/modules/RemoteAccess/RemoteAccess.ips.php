@@ -208,7 +208,7 @@ foreach ($remServer as $Server)
 			   $messageHandler = new IPSMessageHandler();
 		   	$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_RHomematic,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
 				}
 		}
 
