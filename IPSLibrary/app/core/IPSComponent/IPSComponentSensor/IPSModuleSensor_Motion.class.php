@@ -23,7 +23,7 @@
 	//IPSUtils_Include ("IPSShadowing.inc.php", "IPSLibrary::app::modules::IPSShadowing");
 	IPSUtils_Include ('IPSModuleSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 
-	class IPSModuleSensor_Temperatur extends IPSModuleSensor {
+	class IPSModuleSensor_Motion extends IPSModuleSensor {
 
 		private $instanceId;
 		private $movementId;

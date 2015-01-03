@@ -13,7 +13,7 @@
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			
-	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
+	class IPSComponentSensor_Motion extends IPSComponentSensor {
 
 
 		private $tempObject;
