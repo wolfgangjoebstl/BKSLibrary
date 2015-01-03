@@ -47,18 +47,8 @@
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
-			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			//print_r($this);
-			//print_r($module);
-			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			foreach ($this->remServer as $Server)
-				{
-				echo "Server : ".$Server."\n";
-				$rpc = new JSONRPC($Server);
-				echo "Remote OID: ".$this->RemoteOID."\n";
-				$roid=(integer)$this->RemoteOID;
-				$rpc->SetValue($roid, $value);
-				}
+			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+
 		}
 
 		/**

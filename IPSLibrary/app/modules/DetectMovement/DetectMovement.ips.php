@@ -30,6 +30,13 @@ foreach ($installedModules as $name=>$modules)
 	}
 echo $inst_modules."\n\n";
 
+
+/*
+
+jetzt wird für jeden Bewegungsmelder ein Event registriert. Das führt beim Message handler dazu das die class function handle event aufgerufen woird
+
+*/
+
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
    
@@ -74,7 +81,8 @@ echo $inst_modules."\n\n";
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
 			}
 		}
-
-//print_r($Homematic);
+		
+$fs20List=FS20List();
+print_r($fs20List);
 
 ?>
