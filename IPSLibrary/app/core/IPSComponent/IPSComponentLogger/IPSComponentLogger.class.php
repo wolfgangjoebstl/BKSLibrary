@@ -112,13 +112,15 @@ class ipsobject
 	}
 
 
-class logging
+class Logging
 	{
 	var $log_File="Default";
 	var $script_Id="Default";
 	var $nachrichteninput_Id="Default";
+	
 	function __construct($logfile="No-Output",$scriptid="Ohne",$nachrichteninput_Id="Ohne")
 	   {
+	   echo "Construct\n";
 	   $this->log_File=$logfile;
 	   $this->script_Id=$scriptid;
 	   $this->nachrichteninput_Id=$nachrichteninput_Id;
@@ -139,7 +141,7 @@ class logging
 			}
 	   }
 
-	function message($message)
+	function logmessage($message)
 		{
 		if ($this->log_File != "No-Output")
 		   {
@@ -156,13 +158,32 @@ class logging
 			}
 		}
 
+	function LogValue($value)
+		{
+		echo "logvalue :".$value."\n";
+		if ($this->log_File != "No-Output")
+		   {
+      	$handle3=fopen($this->log_File, "a");
+		   fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+	   	fclose($handle3);
+			//echo $this->log_File."   ".$message."\n";
+			}
+		if ($this->script_Id != "Ohne")
+		   {
+			echo $this->script_Id."  ".$this->nachrichteninput_Id."   \n";
+ 			SetValue($this->nachrichteninput_Id,date("d.m.y H:i:s")." : ".$message);
+			IPS_RunScript($this->script_Id);
+			}
+		}
+
+
 	function status()
 	   {
 	   return true;
 	   }
 	}
 
-
+/********************** Routine nur zum Spass emgefuegt */
 	
 	class IPSComponentLogger {
 

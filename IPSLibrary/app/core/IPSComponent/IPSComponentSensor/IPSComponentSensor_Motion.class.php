@@ -11,6 +11,7 @@
     */
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			
 	class IPSComponentSensor_Motion extends IPSComponentSensor {
@@ -48,7 +49,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-
+			$log=new Motion_Logging();
+			$result=$log->Motion_LogValue($value);
 		}
 
 		/**
@@ -65,6 +67,17 @@
 		}
 
 	}
+	
+	class Motion_Logging extends Logging
+	   {
+	   
+		function Motion_LogValue($value)
+			{
+			parent::LogValue($value);
+			}
+	   
+	   }
+
 
 	/** @}*/
 ?>
