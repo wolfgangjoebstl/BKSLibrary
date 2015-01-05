@@ -89,38 +89,6 @@ if (IPS_GetName(0)=="LBG70")
 /*                                                                                        */
 /******************************************************************************************/
 
-function LogAlles_Bewegung() {
-		return array(
-			"VZB"     => array(	"OID_Sensor"         => 30700,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705, /*???*/
-  			              	  		"Type"               => "Motion",
-			              ),
-			"AZB"     => array(	"OID_Sensor"         => 54389,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705, /*???*/
-  			              	  		"Type"               => "Motion",
-			              ),
-			"WZB"     => array(	"OID_Sensor"         => 11681,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705, /*???*/
-  			              	  		"Type"               => "Motion",
-			              ),
-			"ZZB"     => array(	"OID_Sensor"         => 21581,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705, /*???*/
-  			              	  		"Type"               => "Motion",
-			              ),
-			"BZT"    => array(	"OID_Sensor"         => 25921,           /* OID Position vom Sensor im WG */
-			                     "OID_Status"         => 18901,  /*???*/
-  			              	  		"Type"               => "State",
-			              ),
-			"EGT"    => array(	"OID_Sensor"         => 41275,           /* OID Position vom Sensor im Keller */
-			                     "OID_Status"         => 22562,  /*???*/
-  			              	  		"Type"               => "State",
-			              ),
-			"TOTAL" 	=> array(	"OID_Bewegung"    	=> 23826,   /* einfach Bewegungswerte (Motion) oder verknuepft */
-										"OID_Alarm"    		=> 10840,   /* einfach Alarmwerte (State) oder verknuepft */
-										"OID_Status"    		=> 33623,   /* Indikation ob wir zu Hause sind */
-			              ),
-						);
-	}
 
 function LogAnwesenheit_Configuration()
 	{
