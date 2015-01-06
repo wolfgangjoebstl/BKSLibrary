@@ -1,11 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
-
-
-
-	$kerneldir=IPS_GetKernelDir();
-	Include_once($kerneldir."../IPS-Config/AllgemeineDefinitionen.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
