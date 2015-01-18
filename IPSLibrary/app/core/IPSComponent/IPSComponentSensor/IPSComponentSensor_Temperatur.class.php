@@ -11,8 +11,11 @@
     */
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-			
+
+
 	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
 
 
@@ -48,6 +51,9 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
 			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			
+			$log=new Temperature_Logging($variable);
+			$result=$log->Temperature_LogValue();
 			//print_r($this);
 			//print_r($module);
 			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
@@ -75,6 +81,52 @@
 		}
 
 	}
+
+	class Temperature_Logging extends Logging
+	   {
+
+	   function __construct($variable)
+		   {
+
+			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$result=$moduleManager->GetInstalledModules();
+			if (isset ($result["DetectMovement"]))
+				{
+				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
+				//echo "Datenverzeichnis:".$CategoryIdData."\n";
+				$name="Temperatur-Nachrichten";
+				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+				if ($vid==false)
+				   {
+					$vid = IPS_CreateCategory();
+   	   		IPS_SetParent($vid, $CategoryIdData);
+      			IPS_SetName($vid, $name);
+	      		IPS_SetInfo($vid, "this category was created by script. ");
+	      		}
+				}
+		   //echo "Construct Motion.\n";
+		   $this->variable=$variable;
+		   $result=IPS_GetObject($variable);
+		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+		   $directories=get_IPSComponentLoggerConfig();
+		   $directory=$directories["TemperatureLog"];
+	   	mkdirtree($directory);
+		   $filename=$directory.$this->variablename."_Temperature.csv";
+		   parent::__construct($filename,$vid);
+	   	}
+
+		function Temperature_LogValue()
+			{
+			$result=$this->variable."°C";
+			parent::LogMessage($result);
+			parent::LogNachrichten($this->variablename." mit Wert ".$result);
+			}
+
+	   }
+
 
 	/** @}*/
 ?>

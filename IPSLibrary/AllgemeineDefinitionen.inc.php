@@ -1977,7 +1977,7 @@ function RPC_CreateCategoryByName($rpc, $id, $name)
 
 /******************************************************************/
 
-function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile, $RPCarchiveHandlerID)
+function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="", $RPCarchiveHandlerID=0)
 	{
 
 	foreach ($Homematic as $Key)
@@ -1997,10 +1997,12 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile, $R
 				}
 			$result=RPC_CreateVariableByName($rpc, $roid, $Key["Name"], 2);
 
-			$rpc->IPS_SetVariableCustomProfile($result,$profile);
-			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
-			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+			if ($profile!="") {
+   			$rpc->IPS_SetVariableCustomProfile($result,$profile); }
+   		if ($RPCarchiveHandlerID!=0) {
+				$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+				$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+				$rpc->IPS_ApplyChanges($RPCarchiveHandlerID); }
 
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */

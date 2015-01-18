@@ -1,6 +1,12 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+/*
+
+
+baut die Struktur für die Schalter auf
+
+
+*/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
@@ -30,6 +36,8 @@ foreach ($remServer as $Server)
 	$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
 	$tempID=RPC_CreateCategoryByName($rpc, $raID, "Temperatur");
 	$switchID=RPC_CreateCategoryByName($rpc, $raID, "Schalter");
+	$contactID=RPC_CreateCategoryByName($rpc, $raID, "Kontakte");
+	$motionID=RPC_CreateCategoryByName($rpc, $raID, "Bewegungsmelder");
 	$humiID=RPC_CreateCategoryByName($rpc, $raID, "Feuchtigkeit");
 	echo "Remote VIS-ID                    ".$visID,"\n";
 	echo "Remote WebFront-ID               ".$wfID,"\n";
@@ -185,6 +193,55 @@ foreach ($remServer as $Server)
 	   {
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
+
+	$pname="Switch";
+	if ($rpc->IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xffffff);
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0xffffff);
+
+
+	   //print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Contact";
+	if ($rpc->IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
+
+
+	   //print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+
+	$pname="Motion";
+	if ($rpc->IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff); 
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff); 
+
+
+	   //print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
 	   
 	/***************** INSTALLATION **************/
 
@@ -197,15 +254,29 @@ foreach ($remServer as $Server)
 	
 	$Homematic = HomematicList();
 
+
+	/******************************************** Schalter  *****************************************/
+
 	foreach ($Homematic as $Key)
 		{
 		/* alle Schalterzustände ausgeben */
-		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["INHIBIT"]) )
+		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["INHIBIT"]) and (isset($Key["COID"]["ERROR"])==false) )
 	   		{
 	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+  	      	$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+				   {
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				else
+				   {
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
 				$result=RPC_CreateVariableByName($rpc, $switchID, $Key["Name"], 0);
-				//print_r($result);
+	   		$rpc->IPS_SetVariableCustomProfile($result,"Switch");
+				$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+				$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+				$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);				//print_r($result);
 			   $messageHandler = new IPSMessageHandler();
 			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
@@ -213,6 +284,91 @@ foreach ($remServer as $Server)
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
 				}
 		}
+
+
+	/******************************************* Kontakte ***********************************************/
+
+	$keyword="MOTION";
+	foreach ($Homematic as $Key)
+		{
+		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+	   	{
+	   	/* alle Kontakte */
+
+	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			$result=RPC_CreateVariableByName($rpc, $contactID, $Key["Name"], 0);
+   		$rpc->IPS_SetVariableCustomProfile($result,"Contact");
+			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+			//print_r($result);
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
+			}
+		}
+
+
+	/******************************************* Bewegungsmelder ***********************************************/
+
+   //RPC_CreateVariableField($rpc, $motionID, $Homematic, "MOTION", "Temperatur",$RPCarchiveHandlerID);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
+
+	
+	$keyword="MOTION";
+	foreach ($Homematic as $Key)
+		{
+		if ( (isset($Key["COID"][$keyword])==true) )
+	   	{
+	   	/* alle Bewegungsmelder */
+
+	      $oid=(integer)$Key["COID"][$keyword]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			$result=RPC_CreateVariableByName($rpc, $motionID, $Key["Name"], 0);
+   		$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+			$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+			$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+			$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+			
+			//print_r($result);
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion'.$result,'IPSModuleSensor_Motion');
+			}
+		}
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+	
 
 	
 
