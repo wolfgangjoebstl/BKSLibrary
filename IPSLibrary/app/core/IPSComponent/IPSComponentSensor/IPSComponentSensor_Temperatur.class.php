@@ -10,6 +10,8 @@
     *   Version 2.50.1, 09.06.2012<br/>
     */
 
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
@@ -120,7 +122,7 @@
 
 		function Temperature_LogValue()
 			{
-			$result=$this->variable."°C";
+			$result=GetValue($this->variable)."°C";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}

@@ -22,7 +22,7 @@
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-	class IPSComponentSwitch_RHomematic extends IPSComponentSwitch {
+	class IPSComponentSwitch_Remote extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;

@@ -53,6 +53,16 @@
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();
+			
+			foreach ($this->remServer as $Server)
+				{
+				echo "Server : ".$Server."\n";
+				$rpc = new JSONRPC($Server);
+				echo "Remote OID: ".$this->RemoteOID."\n";
+				$roid=(integer)$this->RemoteOID;
+				$rpc->SetValue($roid, $value);
+				}
+			
 		}
 
 		/**
@@ -81,6 +91,7 @@
 			$result=$moduleManager->GetInstalledModules();
 			if (isset ($result["DetectMovement"]))
 				{
+				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
 				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
 				echo "Datenverzeichnis:".$CategoryIdData."\n";
@@ -93,17 +104,31 @@
       			IPS_SetName($vid, $name);
 	      		IPS_SetInfo($vid, "this category was created by script. ");
 	      		}
+				$name="Motion-Detect";
+				$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+				if ($mdID==false)
+				   {
+					$mdID = IPS_CreateCategory();
+   	   		IPS_SetParent($mdID, $CategoryIdData);
+      			IPS_SetName($mdID, $name);
+	      		IPS_SetInfo($mdID, "this category was created by script. ");
+	      		}
+	      		
+			   echo "Construct Motion.\n";
+		   	$this->variable=$variable;
+			   $result=IPS_GetObject($variable);
+			   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+			   echo "Uebergeordnete Variable : ".$this->variablename."\n";
+		   	$directories=get_IPSComponentLoggerConfig();
+			   $directory=$directories["MotionLog"];
+		   	mkdirtree($directory);
+			   $filename=$directory.$this->variablename."_Motion.csv";
+			   
+  	      	echo "Ereignisspeicher aufsetzen \n";
+	      	CreateVariable($this->variablename."Ereignisspeicher",3,$mdID, 10 );
+				$this->variablename."Ereignisspeicher"=$mdID;
+		   	parent::__construct($filename,$vid);
 				}
-		   echo "Construct Motion.\n";
-		   $this->variable=$variable;
-		   $result=IPS_GetObject($variable);
-		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
-		   echo "Uebergeordnete Variable : ".$this->variablename."\n";
-		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["MotionLog"];
-	   	mkdirtree($directory);
-		   $filename=$directory.$this->variablename."_Motion.csv";
-		   parent::__construct($filename,$vid);
 	   	}
 	   
 		function Motion_LogValue()

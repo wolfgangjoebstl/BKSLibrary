@@ -353,7 +353,7 @@ foreach ($remServer as $Server)
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion'.$result,'IPSModuleSensor_Motion');
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
 			}
 		}
 
