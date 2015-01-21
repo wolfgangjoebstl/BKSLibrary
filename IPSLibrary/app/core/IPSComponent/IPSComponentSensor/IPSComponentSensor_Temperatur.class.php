@@ -122,7 +122,7 @@
 
 		function Temperature_LogValue()
 			{
-			$result=GetValue($this->variable)."°C";
+			$result=number_format(GetValue($this->variable),2,',','.')." °C";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}
