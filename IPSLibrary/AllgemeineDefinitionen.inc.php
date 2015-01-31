@@ -1015,13 +1015,15 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 	$guthabensteuerung=false;
 	$amis=false;
+	$customcomponent=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
 	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
-	$inst_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+	$inst_modules.= "Modulname                  Version    Version      Beschreibung\n";
+	$inst_modules.= "                          verfügbar installiert                   \n";
 	foreach ($knownModules as $module=>$data)
 		{
 		$infos   = $moduleManager->GetModuleInfos($module);
@@ -1029,13 +1031,14 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if (array_key_exists($module, $installedModules))
 			{
 			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
-			$inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
+			$inst_modules .= " ".str_pad($infos['CurrentVersion'],10)."   ";
 			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
 			if ($module=="Amis") $amis=true;
+			if ($module=="CustomComponent") $customcomponent=true;
 			}
 		else
 			{
-			$inst_modules .= "nicht installiert            ";
+			$inst_modules .= "  none        ";
 		   }
 		$inst_modules .=  $infos['Description']."\n";
 		}
@@ -1054,7 +1057,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$Homematic = HomematicList();
 		foreach ($Homematic as $Key)
 			{
-			/* alle Temperaturwerte ausgeben */
+			/* alle Homematic Temperaturwerte ausgeben */
 			if (isset($Key["COID"]["TEMPERATURE"])==true)
 	   		{
 	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
@@ -1065,7 +1068,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$FHT = FHTList();
 		foreach ($FHT as $Key)
 			{
-			/* alle Temperaturwerte ausgeben */
+			/* alle FHT Temperaturwerte ausgeben */
 			if (isset($Key["COID"]["TemeratureVar"])==true)
 			   {
 	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
@@ -1076,13 +1079,35 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
 		foreach ($Homematic as $Key)
 			{
-			/* Alle Feuchtigkeitswerte ausgeben */
+			/* Alle Homematic Feuchtigkeitswerte ausgeben */
 			if (isset($Key["COID"]["HUMIDITY"])==true)
 	   		{
 	      	$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
 				$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			}
+
+		$alleMotionWerte="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
+		foreach ($Homematic as $Key)
+			{
+			/* Alle Homematic Bewegungsmelder ausgeben */
+			if ( (isset($Key["COID"]["MOTION"])==true) )
+		   	{
+	   		/* alle Bewegungsmelder */
+
+		      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+      		$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+			   	{
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				else
+				   {
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				}
+			}
+
 
 		$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
 
@@ -1174,12 +1199,12 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
-			$alleHumidityWerte.$alleStromWerte.$alleHM_Errors;
+			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
-			$alleStromWerte.$alleHM_Errors;
+			$alleMotionWerte.$alleStromWerte.$alleHM_Errors;
 		   }
 		}
 	else   /* historische Werte */
@@ -1312,19 +1337,45 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$guthaben="";
 			}
 
+		/************** Custom Component Motion Detect ****************************************************************************/
+
+		IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+		$Homematic = HomematicList();
+
+		if ($customcomponent)
+		   {
+		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
+		   
+		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+		   		{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log=new Motion_Logging($oid);
+					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				}
+			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
+
+		   }
+
 		/******************************************************************************************/
 
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
-					  $ergebnistab_energie.$ergebnis_tagesenergie.$inst_modules;
+					  $ergebnistab_energie.$ergebnis_tagesenergie.$alleMotionWerte.$inst_modules;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.
 			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$IPStatus.$inst_modules;
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$IPStatus.$alleMotionWerte.$inst_modules;
 			}
 		}
 

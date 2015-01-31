@@ -128,6 +128,12 @@
   	      	$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
 	      	$erID=CreateVariable($variablename,3,$mdID, 10 );
 				$this->EreignisID=$erID;
+				
+  	      	echo "Gesamt Ereignisspeicher aufsetzen \n";
+  	      	$variablename="Gesamt_Ereignisspeicher";
+	      	$erID=CreateVariable($variablename,3,$mdID, 0 );
+				$this->GesamtID=$erID;
+				
 		   	parent::__construct($filename,$vid);
 		   	//print_r($this);
 				}
@@ -136,19 +142,23 @@
 		function Motion_LogValue()
 			{
 			echo "Lets log motion\n";
-			print_r($this);
+			//print_r($this);
 			$EreignisVerlauf=GetValue($this->EreignisID);
+			$GesamtVerlauf=GetValue($this->GesamtID);
 			if (IPS_GetName($this->variable)=="MOTION")
 				{
 				if (GetValue($this->variable))
 					{
 					$result="Bewegung";
 					$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
+					$GesamtVerlauf.=date("H:i").";".STAT_Bewegung.";";
+
 					}
 				else
 					{
 					$result="Ruhe";
 					$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+					$GesamtVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
 					}
 				}
 			else
@@ -163,6 +173,7 @@
 					}
 				}
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
+			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf));
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Status ".$result);
 			}
@@ -191,114 +202,157 @@
 			$EventArray = explode(";", $value);
 		   $array_size = count($EventArray);
          $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */
-			$previous_state=$EventArray[$i];
-			$previous_time=$EventArray[$i-1];
-			//echo "Array Size is ".$i."  : last values are ".$previous_state." ? ".$previous_time."\n";
-			echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." \n";
-			$i=$i-2;
-		 	while($i > 0)
- 				{
-		   	/* Process array data:  Bewegungsmelder kennt nur zwei Zustaende, Bewegung:7 und wenigBewegung:6
-					Wenn zwischen 7 und vorher 6 weniger als 15 Minuten vergangen sind den Zustand 6 loeschen
-					Wenn 7 auf 7 folgt den juengsten wert 7 loeschen
-				*/
-				$now_time=strtotime($previous_time);
-				$bef_time=strtotime($EventArray[$i-1]);
-				$dif_time=(($now_time-$bef_time)/60);
-				echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." und davor ".$EventArray[$i]." um ".$EventArray[$i-1]." Abstand: ".$dif_time."Minute \n";
-				switch ($previous_state)
-     			   {
-		     	   case STAT_Bewegung:
-				      /* Wenn jetzt Bewegung ist unterscheiden ob vorher Bewegung oder wenigBewegung war			   */
-		      		switch ($EventArray[$i]) /* Zustand vorher */
-						 	{
-	 			     	   case STAT_Bewegung:
- 							   $previous_state=$EventArray[$i];
-				   			$previous_time=$EventArray[$i-1];
-		   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
-								echo "--->Bewegung, wir loeschen ".$EventArray[$i+2]." und ".$EventArray[$i+1]."\n";
-   						 	unset($EventArray[$i+2]);
-	  				 			unset($EventArray[$i+1]);
-							 	break;
-						 	case STAT_WenigBewegung:
-							case STAT_KeineBewegung:
-							case STAT_vonzuHauseweg:
-								if (($dif_time<15) and ($dif_time>0))
-								   {
-	  		   					$previous_state=10;    /* default, einen ueberspringen, damit voriger Wert vorerst nicht mehr geloescht werden kann */
-		   					 	/* einfach die letzten zwei Einträge loeschen, nachdem Wert kein zweites Mal geloescht werden kann vorerst mit Default Wert arbeiten */
-									echo "--->WenigBewegung, wir loeschen ".$EventArray[$i+0]." und ".$EventArray[$i-1]."\n";
-   							 	unset($EventArray[$i+0]);
-	   						 	unset($EventArray[$i-1]);
-			   			 		}
-	   					 	else
-	   					 	   {
-				    				$previous_state=$EventArray[$i];
-							      $previous_time=$EventArray[$i-1];
-									}
-							 	break;
-						 	default:
-						 	   /* Wenn der Defaultwert kommt einfach weitermachen, er kommt schon beim naechsten Durchlauf dran */
-			    				$previous_state=$EventArray[$i];
-						      $previous_time=$EventArray[$i-1];
-						    	break;
-						 }
-						break;
-	   	   	case STAT_vonzuHauseweg:
-				       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
-						    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
-						    2 eliminiert den vorigen 2 er und lässt aktuelle Zeit
-					    */
-				       switch ($EventArray[$i])
-						    {
-			 				 case STAT_vonzuHauseweg:
-		   					 $previous_state=10;    /* default */
-		   					 /* einfach von den letzten zwei Einträgen rausloeschen */
-		   					 unset($EventArray[$i+0]);
-				   			 unset($EventArray[$i-1]);
-					 		 break;
-					 		 default:
-							 	 $previous_state=$EventArray[$i];
-					   		 $previous_time=$EventArray[$i-1];
-						 		 break;
-					 		 }
-						break;
-     			   case STAT_Abwesend:
-				       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
-						    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
-						    0 übernimmt die Zeit des Vorgängers und eliminiert 0,1 und 2
-					     */
-				       switch ($EventArray[$i])
-						    {
-		     	   		 case STAT_Abwesend:
-							 case STAT_nichtzuHause:
-			 				 case STAT_vonzuHauseweg:
-				   			 $previous_state=10;    /* default */
-   							 /* einfach von den letzten zwei Einträgen die mittleren Werte rausloeschen */
-		   					 unset($EventArray[$i+1]);
-   							 unset($EventArray[$i+0]);
-						 		 break;
-					 		 default:
-							    $previous_state=$EventArray[$i];
-							    $previous_time=$EventArray[$i-1];
-						 		 break;
-			 				 }
-						break;
-					default:
-					   $previous_state=$EventArray[$i];
-	      			$previous_time=$EventArray[$i-1];
-						break;
+         if ($i>0)
+            {
+            /* Events komprimieren erst wenn gross genug */
+				$previous_state=$EventArray[$i];
+				$previous_time=$EventArray[$i-1];
+				if ($i>40)
+				   {
+				   /* events nicht groesser als 20 Eintraege werden lassen */
+					$timebefordelete=strtotime($previous_time);
+					$indexbefordelete=$i-20;
 					}
-				$i=$i-2; /* immer zwei Werte, Zeit ueberspringen */
-			 	}
+				else
+					{
+					$indexbefordelete=0;
+					}
+
+				//echo "Array Size is ".$i."  : last values are ".$previous_state." ? ".$previous_time."\n";
+				echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." \n";
+				$i=$i-2;
+				$delete=false;
+			 	while($i > 0)
+ 					{
+		   		/* Process array data:  Bewegungsmelder kennt nur zwei Zustaende, Bewegung:7 und wenigBewegung:6
+						Wenn zwischen 7 und vorher 6 weniger als 15 Minuten vergangen sind den Zustand 6 loeschen
+						Wenn 7 auf 7 folgt den juengsten wert 7 loeschen
+					*/
+					$now_time=strtotime($previous_time);
+					$bef_time=strtotime($EventArray[$i-1]);
+					//if ($bef_time>$timebeforedelete) {$delete=true;}
+					if ($i<$indexbefordelete) {$delete=true;}
+					if ($delete==true)
+					   {
+  					   unset($EventArray[$i+0]);
+					   unset($EventArray[$i-1]);
+					   }
+					else
+					   {
+						$dif_time=(($now_time-$bef_time)/60);
+						echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." und davor ".$EventArray[$i]." um ".$EventArray[$i-1]." Abstand: ".$dif_time."Minute \n";
+						switch ($previous_state)
+   	  				   {
+   	  				   /*****************************************************************************
+							 erst einmal Unterscheidung anhand aktuellem Status
+							******************************************************************************/
+			   	  	   case STAT_Bewegung:
+						      /* Wenn jetzt Bewegung ist unterscheiden ob vorher Bewegung oder wenigBewegung war			   */
+		      				switch ($EventArray[$i]) /* Zustand vorher */
+								 	{
+	 			     		   	case STAT_Bewegung:
+		 							   $previous_state=$EventArray[$i];
+						   			$previous_time=$EventArray[$i-1];
+				   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
+										echo "--->Bewegung, wir loeschen ".$EventArray[$i+2]." und ".$EventArray[$i+1]."\n";
+   								 	unset($EventArray[$i+2]);
+	  						 			unset($EventArray[$i+1]);
+									 	break;
+						 			case STAT_WenigBewegung:
+									case STAT_KeineBewegung:
+									case STAT_vonzuHauseweg:
+									   //echo "Wenig Bewegung: ".$dif_time."\n";
+										if (($dif_time<15) and ($dif_time>=0))
+										   {
+										   // Warum mus dif_time >0 sein ????
+	  			   						$previous_state=10;    /* default, einen ueberspringen, damit voriger Wert vorerst nicht mehr geloescht werden kann */
+		   							 	/* einfach die letzten zwei Einträge loeschen, nachdem Wert kein zweites Mal geloescht werden kann vorerst mit Default Wert arbeiten */
+											echo "--->WenigBewegung, wir loeschen ".$EventArray[$i+0]." und ".$EventArray[$i-1]."\n";
+   									 	unset($EventArray[$i+0]);
+	   								 	unset($EventArray[$i-1]);
+				   				 		}
+		   					 		else
+		   						 	   {
+						    				$previous_state=$EventArray[$i];
+									      $previous_time=$EventArray[$i-1];
+											}
+									 	break;
+							 		default:
+								 	   /* Wenn der Defaultwert kommt einfach weitermachen, er kommt schon beim naechsten Durchlauf dran */
+				    					$previous_state=$EventArray[$i];
+							   	   $previous_time=$EventArray[$i-1];
+							    		break;
+								 }
+								break;
+			   	   	case STAT_vonzuHauseweg:
+						       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
+								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
+								    2 eliminiert den vorigen 2 er und lässt aktuelle Zeit
+							    */
+				   	   	 switch ($EventArray[$i])
+								    {
+				 					 case STAT_vonzuHauseweg:
+				   					 $previous_state=10;    /* default */
+				   					 /* einfach von den letzten zwei Einträgen rausloeschen */
+			   						 unset($EventArray[$i+0]);
+						   			 unset($EventArray[$i-1]);
+							 		 break;
+						 			 default:
+									 	 $previous_state=$EventArray[$i];
+						   			 $previous_time=$EventArray[$i-1];
+								 		 break;
+							 		 }
+								break;
+   	  			   	case STAT_Abwesend:
+						       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
+								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
+								    0 übernimmt die Zeit des Vorgängers und eliminiert 0,1 und 2
+							     */
+					   	    switch ($EventArray[$i])
+								    {
+			     	   			 case STAT_Abwesend:
+									 case STAT_nichtzuHause:
+					 				 case STAT_vonzuHauseweg:
+						   			 $previous_state=10;    /* default */
+   									 /* einfach von den letzten zwei Einträgen die mittleren Werte rausloeschen */
+		   							 unset($EventArray[$i+1]);
+   									 unset($EventArray[$i+0]);
+								 		 break;
+					 				 default:
+									    $previous_state=$EventArray[$i];
+								   	 $previous_time=$EventArray[$i-1];
+								 		 break;
+					 				 }
+								break;
+							default:
+							   $previous_state=$EventArray[$i];
+	      					$previous_time=$EventArray[$i-1];
+								break;
+							}
+						}
+					$i=$i-2; /* immer zwei Werte, Zeit ueberspringen */
+				 	}
+				 }
 			$value=implode(";",$EventArray);
 			return ($value);
 			}
 
-		public function writeEvents()
+		public function writeEvents($comp=true,$gesamt=false)
 			{
-			$value=GetValue($this->EreignisID);
-			//$value=$this->evaluateEvents($value);
+			if ($gesamt)
+			   {
+  				$value=GetValue($this->GesamtID);
+  				}
+  			else
+  			   {
+				$value=GetValue($this->EreignisID);
+				}
+			/* es erfolgt zwar eine Kompromierung aber keine Speicherung in den Events, das ist nur bei Auftreten eines Events */
+			if ($comp)
+				{
+				$value=$this->evaluateEvents($value);
+				$value=$this->evaluateEvents($value);
+				}
 			$EventArray = explode(";", $value);
 
 			 /* Umsetzung des kodierten Eventarrays in lesbaren Text */
