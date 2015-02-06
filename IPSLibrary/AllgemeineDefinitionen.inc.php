@@ -432,7 +432,7 @@ else
 
 //$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
 $Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
-$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
+$iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 
 /****************************************************************************************************/
 
@@ -1052,31 +1052,12 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		
 		******************************************************************************************/
 
+
 		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
-
-		$Homematic = HomematicList();
-		foreach ($Homematic as $Key)
-			{
-			/* alle Homematic Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   		{
-	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-
-		$FHT = FHTList();
-		foreach ($FHT as $Key)
-			{
-			/* alle FHT Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TemeratureVar"])==true)
-			   {
-	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
+		$alleTempWerte.=ReadTemperaturWerte();
 
 		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+		$Homematic = HomematicList();
 		foreach ($Homematic as $Key)
 			{
 			/* Alle Homematic Feuchtigkeitswerte ausgeben */
@@ -2033,7 +2014,7 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 
 	foreach ($Homematic as $Key)
 		{
-		/* alle Feuchtigkeitswerte ausgeben */
+		/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
 		if (isset($Key["COID"][$keyword])==true)
 	   	{
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
@@ -2062,6 +2043,38 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 			}
 		}
 
+	}
+
+/******************************************************************/
+
+function ReadTemperaturWerte()
+	{
+	
+   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	
+	$alleTempWerte="";
+		$Homematic = HomematicList();
+		foreach ($Homematic as $Key)
+			{
+			/* alle Homematic Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+		$FHT = FHTList();
+		foreach ($FHT as $Key)
+			{
+			/* alle FHT Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TemeratureVar"])==true)
+			   {
+	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+	return ($alleTempWerte);
 	}
 
 /******************************************************************
