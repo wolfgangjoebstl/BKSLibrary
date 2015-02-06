@@ -70,31 +70,27 @@ foreach ($FHT as $Key)
 	}
 */
 
+/*****************************************************************************************************************************************************
+
+Alle mit Evaluate Hardware gefundenen Module mit Status ausgeben.
+
+
+Registriert keine Events. Funktioniert derzeit nur mit Remote Access ......
+
+RemoteAccess für Motion
+
+
+**********************************************************************************************************************************************************/
+
+
 	$Homematic = HomematicList();
 	$FHT = FHTList();
 	$FS20= FS20List();
+
+	echo ReadTemperaturWerte()."\n\n";
 	
-	foreach ($Homematic as $Key)
-		{
-		/* alle Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   	{
-	      $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-
-	echo "\n";
-
-	foreach ($FHT as $Key)
-		{
-		/* alle Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["TemeratureVar"])==true)
-		   {
-      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
+	/******************************************************************************************************************************************/
+		
 		
 	foreach ($Homematic as $Key)
 		{
