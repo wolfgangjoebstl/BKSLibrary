@@ -75,6 +75,25 @@ define("ADR_Webcam_lbg","hupo35.ddns-instar.de");
 define("ADR_Webcam_Outdoor","10.0.1.8");
 define("ADR_Webcam_Outdoor_Port","2002");
 
+/* Wohnungszustand */
+
+define("STAT_WohnungszustandInaktiv",0);
+define("STAT_WohnungszustandFerien",1);
+define("STAT_WohnungszustandUnterwegs",2);
+define("STAT_WohnungszustandStandby",3);
+define("STAT_WohnungszustandAktiv",4);
+define("STAT_WohnungszustandTop",5);
+
+/* erkannter Zustand */
+define("STAT_KommtnachHause",8);
+define("STAT_Bewegung",7);
+define("STAT_WenigBewegung",6);
+define("STAT_KeineBewegung",5);
+define("STAT_Unklar",4);
+define("STAT_Undefiniert",3);
+define("STAT_vonzuHauseweg",2);
+define("STAT_nichtzuHause",1);
+define("STAT_Abwesend",0);
 
 
 
@@ -265,26 +284,6 @@ define("ADR_ArbeitszimmerLampe",34651);   /* jetzt Homematic */
 define("ADR_SchlafzimmerLampe",31970);
 define("ADR_SchlafzimmerKastenlampe",10987);
 
-/* Wohnungszustand */
-
-define("STAT_WohnungszustandInaktiv",0);
-define("STAT_WohnungszustandFerien",1);
-define("STAT_WohnungszustandUnterwegs",2);
-define("STAT_WohnungszustandStandby",3);
-define("STAT_WohnungszustandAktiv",4);
-define("STAT_WohnungszustandTop",5);
-
-/* erkannter Zustand */
-define("STAT_KommtnachHause",8);
-define("STAT_Bewegung",7);
-define("STAT_WenigBewegung",6);
-define("STAT_KeineBewegung",5);
-define("STAT_Unklar",4);
-define("STAT_Undefiniert",3);
-define("STAT_vonzuHauseweg",2);
-define("STAT_nichtzuHause",1);
-define("STAT_Abwesend",0);
-
 $id_sound = 23225;
 $sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
 
@@ -432,7 +431,7 @@ else
 
 //$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
 $Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
-$iTunes_Verzeichnis="c:/Program Files (x86)/iTunes/iTunes.exe";
+$iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 
 /****************************************************************************************************/
 
@@ -1052,31 +1051,12 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		
 		******************************************************************************************/
 
+
 		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
-
-		$Homematic = HomematicList();
-		foreach ($Homematic as $Key)
-			{
-			/* alle Homematic Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   		{
-	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-
-		$FHT = FHTList();
-		foreach ($FHT as $Key)
-			{
-			/* alle FHT Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TemeratureVar"])==true)
-			   {
-	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
+		$alleTempWerte.=ReadTemperaturWerte();
 
 		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+		$Homematic = HomematicList();
 		foreach ($Homematic as $Key)
 			{
 			/* Alle Homematic Feuchtigkeitswerte ausgeben */
@@ -2033,7 +2013,7 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 
 	foreach ($Homematic as $Key)
 		{
-		/* alle Feuchtigkeitswerte ausgeben */
+		/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
 		if (isset($Key["COID"][$keyword])==true)
 	   	{
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
@@ -2062,6 +2042,38 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 			}
 		}
 
+	}
+
+/******************************************************************/
+
+function ReadTemperaturWerte()
+	{
+	
+   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	
+	$alleTempWerte="";
+		$Homematic = HomematicList();
+		foreach ($Homematic as $Key)
+			{
+			/* alle Homematic Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   		{
+	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+
+		$FHT = FHTList();
+		foreach ($FHT as $Key)
+			{
+			/* alle FHT Temperaturwerte ausgeben */
+			if (isset($Key["COID"]["TemeratureVar"])==true)
+			   {
+	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+	return ($alleTempWerte);
 	}
 
 /******************************************************************
