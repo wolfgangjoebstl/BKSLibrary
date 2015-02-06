@@ -87,11 +87,12 @@ RemoteAccess für Motion
 	$FHT = FHTList();
 	$FS20= FS20List();
 
+	echo "\nHomematic und FS20 Temperaturwerte:\n";
 	echo ReadTemperaturWerte()."\n\n";
 	
 	/******************************************************************************************************************************************/
 		
-		
+	echo "\nHomematic Feuchtigkeitswerte:\n";
 	foreach ($Homematic as $Key)
 		{
 		/* alle Feuchtigkeitswerte ausgeben */
@@ -104,6 +105,7 @@ RemoteAccess für Motion
 
 	echo "\n";
 
+	echo "\nFS20 Statuswerte:\n";
 	foreach ($FS20 as $Key)
 		{
 		/* alle Statuswerte ausgeben */
@@ -113,9 +115,10 @@ RemoteAccess für Motion
 			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
 		}
+	echo "\nHomematic Statuswerte:\n";
 	foreach ($Homematic as $Key)
 		{
-		/* alle Temperaturwerte ausgeben */
+		/* alle Statuswerte ausgeben */
 		if (isset($Key["COID"]["STATE"])==true)
 	   	{
 	      $oid=(integer)$Key["COID"]["STATE"]["OID"];

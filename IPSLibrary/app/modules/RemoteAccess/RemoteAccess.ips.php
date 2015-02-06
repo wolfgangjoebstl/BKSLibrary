@@ -253,13 +253,14 @@ foreach ($remServer as $Server)
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	
 	$Homematic = HomematicList();
-
+	$FHT = FHTList();
+	$FS20= FS20List();
 
 	/******************************************** Schalter  *****************************************/
 
 	foreach ($Homematic as $Key)
 		{
-		/* alle Schalterzustände ausgeben */
+		/* alle Homematic Schalterzustände ausgeben */
 		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["INHIBIT"]) and (isset($Key["COID"]["ERROR"])==false) )
 	   		{
 	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
@@ -283,6 +284,34 @@ foreach ($remServer as $Server)
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
 				}
+		}
+
+	foreach ($FS20 as $Key)
+		{
+		/* FS20 alle Schalterzustände ausgeben */
+		if (isset($Key["COID"]["StatusVariable"])==true)
+		   	{
+      		$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+  	      	$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+				   {
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				else
+				   {
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				$result=RPC_CreateVariableByName($rpc, $switchID, $Key["Name"], 0);
+	   		$rpc->IPS_SetVariableCustomProfile($result,"Switch");
+				$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+				$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+				$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);				//print_r($result);
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$result.',626','IPSModuleSwitch_IPSLight,1,2,3');
+			}
 		}
 
 
