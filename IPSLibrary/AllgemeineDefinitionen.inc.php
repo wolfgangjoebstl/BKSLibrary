@@ -85,8 +85,16 @@ define("STAT_WohnungszustandAktiv",4);
 define("STAT_WohnungszustandTop",5);
 
 /* erkannter Zustand */
-define("STAT_KommtnachHause",8);
-define("STAT_Bewegung",7);
+define("STAT_KommtnachHause",18);
+define("STAT_Bewegung9",15);
+define("STAT_Bewegung8",14);
+define("STAT_Bewegung7",13);
+define("STAT_Bewegung6",12);
+define("STAT_Bewegung5",11);
+define("STAT_Bewegung4",10);
+define("STAT_Bewegung3", 9);
+define("STAT_Bewegung2", 8);
+define("STAT_Bewegung",  7);
 define("STAT_WenigBewegung",6);
 define("STAT_KeineBewegung",5);
 define("STAT_Unklar",4);
@@ -1199,7 +1207,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 
 		/**************Stromverbrauch, Auslesen der Variablen von AMIS *******************************************************************/
-		
+
+		$ergebnistab_energie="";
 		if ($amis)
 		   {
 			/* nur machen wenn AMIS installiert */
@@ -1322,6 +1331,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 		$Homematic = HomematicList();
 
+      $alleMotionWerte="";
 		if ($customcomponent)
 		   {
 		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');

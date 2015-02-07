@@ -83,7 +83,7 @@
 	class Motion_Logging extends Logging
 	   {
 	   
-	   function __construct($variable)
+	   function __construct($variable=null)
 		   {
 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
@@ -114,27 +114,33 @@
 	      		IPS_SetInfo($mdID, "this category was created by script. ");
 	      		}
 	      		
-			   echo "Construct Motion.\n";
-		   	$this->variable=$variable;
-			   $result=IPS_GetObject($variable);
-			   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
-			   echo "Uebergeordnete Variable : ".$this->variablename."\n";
-		   	$directories=get_IPSComponentLoggerConfig();
-			   $directory=$directories["MotionLog"];
-		   	mkdirtree($directory);
-			   $filename=$directory.$this->variablename."_Motion.csv";
-			   
-  	      	echo "Ereignisspeicher aufsetzen \n";
-  	      	$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
-	      	$erID=CreateVariable($variablename,3,$mdID, 10 );
-				$this->EreignisID=$erID;
-				
-  	      	echo "Gesamt Ereignisspeicher aufsetzen \n";
+				if ($variable<>null)
+				   {
+					echo "Construct Motion.\n";
+			   	$this->variable=$variable;
+				   $result=IPS_GetObject($variable);
+				   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+			   	echo "Uebergeordnete Variable : ".$this->variablename."\n";
+			   	$directories=get_IPSComponentLoggerConfig();
+				   $directory=$directories["MotionLog"];
+			   	mkdirtree($directory);
+				   $filename=$directory.$this->variablename."_Motion.csv";
+
+	  	      	echo "Ereignisspeicher aufsetzen \n";
+  		      	$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
+	   	   	$erID=CreateVariable($variablename,3,$mdID, 10 );
+					$this->EreignisID=$erID;
+					parent::__construct($filename,$vid);
+				   }
+				   
   	      	$variablename="Gesamt_Ereignisspeicher";
 	      	$erID=CreateVariable($variablename,3,$mdID, 0 );
 				$this->GesamtID=$erID;
-				
-		   	parent::__construct($filename,$vid);
+				echo "Gesamt Ereignisspeicher aufsetzen: ".$erID." \n";
+  	      	$variablename="Gesamt_Ereigniszaehler";
+	      	$erID=CreateVariable($variablename,1,$mdID, 0 );
+				$this->GesamtCountID=$erID;
+				echo "Gesamt Ereigniszähler aufsetzen: ".$erID." \n";
 		   	//print_r($this);
 				}
 	   	}
@@ -145,20 +151,23 @@
 			//print_r($this);
 			$EreignisVerlauf=GetValue($this->EreignisID);
 			$GesamtVerlauf=GetValue($this->GesamtID);
+			$GesamtZaehler=GetValue($this->GesamtCountID);
+			if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
 			if (IPS_GetName($this->variable)=="MOTION")
 				{
 				if (GetValue($this->variable))
 					{
 					$result="Bewegung";
 					$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
-					$GesamtVerlauf.=date("H:i").";".STAT_Bewegung.";";
-
+					$GesamtZaehler+=1;
+					$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
 					}
 				else
 					{
 					$result="Ruhe";
 					$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
-					$GesamtVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+					$GesamtZaehler-=1;
+					$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
 					}
 				}
 			else
@@ -174,6 +183,7 @@
 				}
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf));
+			SetValue($this->GesamtCountID,$GesamtZaehler);
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Status ".$result);
 			}
@@ -366,6 +376,30 @@
 		     	   {
      			   case STAT_KommtnachHause:
  	   				$event2=$event2."Kommt nach Hause";
+		 	   		break;
+ 	   			case STAT_Bewegung9:
+ 	   				$event2=$event2."Bewegung 9 Sensoren";
+		 	   		break;
+					case STAT_Bewegung8:
+ 	   				$event2=$event2."Bewegung 8 Sensoren";
+		 	   		break;
+ 	   			case STAT_Bewegung7:
+ 	   				$event2=$event2."Bewegung 7 Sensoren";
+		 	   		break;
+					case STAT_Bewegung6:
+ 	   				$event2=$event2."Bewegung 6 Sensoren";
+		 	   		break;
+ 	   			case STAT_Bewegung5:
+ 	   				$event2=$event2."Bewegung 5 Sensoren";
+		 	   		break;
+					case STAT_Bewegung4:
+ 	   				$event2=$event2."Bewegung 4 Sensoren";
+		 	   		break;
+ 	   			case STAT_Bewegung3:
+ 	   				$event2=$event2."Bewegung 3 Sensoren";
+		 	   		break;
+					case STAT_Bewegung2:
+ 	   				$event2=$event2."Bewegung 2 Sensoren";
 		 	   		break;
  	   			case STAT_Bewegung:
  	   				$event2=$event2."Bewegung";
