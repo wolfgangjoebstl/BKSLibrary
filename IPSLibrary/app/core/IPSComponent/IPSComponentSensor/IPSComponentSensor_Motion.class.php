@@ -260,6 +260,14 @@
 						      /* Wenn jetzt Bewegung ist unterscheiden ob vorher Bewegung oder wenigBewegung war			   */
 		      				switch ($EventArray[$i]) /* Zustand vorher */
 								 	{
+	 			     		   	case STAT_Bewegung9:
+	 			     		   	case STAT_Bewegung8:
+	 			     		   	case STAT_Bewegung7:
+	 			     		   	case STAT_Bewegung6:
+	 			     		   	case STAT_Bewegung5:
+	 			     		   	case STAT_Bewegung4:
+	 			     		   	case STAT_Bewegung3:
+	 			     		   	case STAT_Bewegung2:
 	 			     		   	case STAT_Bewegung:
 		 							   $previous_state=$EventArray[$i];
 						   			$previous_time=$EventArray[$i-1];
