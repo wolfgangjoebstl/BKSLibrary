@@ -180,6 +180,18 @@
 					{
 					$result="Geschlossen";
 					}
+				$eid1 = @IPS_GetEventIDByName("Timer_".$this->variable, $_IPS['SELF']);
+				if ($eid1==false)
+						{
+						echo "Timer Ereignis generieren \n";
+						$eid1 = IPS_CreateEvent(1);
+						IPS_SetParent($eid1, $_IPS['SELF']);
+						IPS_SetName($eid1, "Timer_".$this->variable);
+						IPS_SetEventCyclic($eid1, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 5 /* Alle 5 Minuten */);
+						}
+				IPS_SetEventCyclicTimeFrom($eid1,(integer)date('G'),(integer)date('i'),0);
+				IPS_SetEventActive($eid1,true);
+				echo ">>>>>>>Kontakt ".$result.". Wir sind im Script: ".$_IPS['SELF']." und haben den Timer mit ID:".$eid1." gesetzt\n";
 				}
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf));
@@ -256,6 +268,14 @@
    	  				   /*****************************************************************************
 							 erst einmal Unterscheidung anhand aktuellem Status
 							******************************************************************************/
+	 			     		case STAT_Bewegung9:
+	 			     		case STAT_Bewegung8:
+	 			     		case STAT_Bewegung7:
+	 			     		case STAT_Bewegung6:
+	 			     		case STAT_Bewegung5:
+	 			     		case STAT_Bewegung4:
+	 			     		case STAT_Bewegung3:
+	 			     		case STAT_Bewegung2:
 			   	  	   case STAT_Bewegung:
 						      /* Wenn jetzt Bewegung ist unterscheiden ob vorher Bewegung oder wenigBewegung war			   */
 		      				switch ($EventArray[$i]) /* Zustand vorher */
@@ -355,6 +375,13 @@
 			return ($value);
 			}
 
+
+		/*************************************************************************************
+		Ausgabe des Eventspeichers in lesbarer Form
+		erster Parameter true: macht zweimal evaluate
+		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
+		*************************************************************************************/
+
 		public function writeEvents($comp=true,$gesamt=false)
 			{
 			if ($gesamt)
@@ -443,6 +470,14 @@
 	   
 	   }
 
-
+if($_IPS['SENDER'] == "TimerEvent")
+	{
+	$TEventName = $_IPS['EVENT'];
+	echo "************************* EventName : ".$TEventName." \n";
+	$log=new logging("C:\Scripts\Log_TimerEvent.csv");
+	$log->Logmessage("TimerEvent mit ".$TEventName);
+	IPS_SetEventActive($TEventName,false);
+	}
+	
 	/** @}*/
 ?>
