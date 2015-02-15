@@ -64,7 +64,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$name="Autosteuerung";
+	$name="Ventilator_Steuerung";
 	$categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 	
 	$pname="AutosteuerungProfil";
@@ -82,10 +82,12 @@
 		}
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
+	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 	
    // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
    $AutosteuerungID = CreateVariable($name, 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-
+	CreateEvent2($AutosteuerungID, 'OnChange', $scriptIdAutosteuerung);
+	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -118,6 +120,40 @@
 		}
 
 /***************************************************************************************/
+
+		/**
+		 * @public
+		 *
+		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
+		 * aufruft.
+		 *
+		 * @param integer $variableId ID der auslösenden Variable
+		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
+		 */
+		function CreateEvent2($variableId, $eventType, $scriptId)
+			{
+			switch ($eventType) {
+				case 'OnChange':
+					$triggerType = 1;
+					break;
+				case 'OnUpdate':
+					$triggerType = 0;
+					break;
+				default:
+					throw new Exception('Found unknown EventType '.$eventType);
+			}
+			$eventName = $eventType.'_'.$variableId;
+			$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+			if ($eventId === false) {
+				$eventId = IPS_CreateEvent(0);
+				IPS_SetName($eventId, $eventName);
+				IPS_SetIdent($eventId, $eventName);
+				IPS_SetEventTrigger($eventId, $triggerType, $variableId);
+				IPS_SetParent($eventId, $scriptId);
+				IPS_SetEventActive($eventId, true);
+				IPSLogger_Dbg (__file__, 'Created IPSMessageHandler Event for Variable='.$variableId);
+			}
+		}
 
 
 
