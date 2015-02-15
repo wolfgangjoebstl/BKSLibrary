@@ -64,9 +64,6 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
 	$name="Autosteuerung";
 	$categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 	
@@ -84,10 +81,10 @@
 	   echo "Profil erstellt;\n";
 		}
 
-
-   // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $AutosteuerungID = CreateVariable3($name, 1, $categoryId_Autosteuerung, 0, "GiessAnlagenProfil",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-
+	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
+	
+   // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+   $AutosteuerungID = CreateVariable($name, 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -122,15 +119,6 @@
 
 /***************************************************************************************/
 
-function CreateVariable3($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-	{
-	global $includefile;
-	$oid=CreateVariable($Name, $Type, $ParentId, $Position, $Profile, $Action, $ValueDefault, $Icon);
-	$includefile.='"'.$Name.'" => array("OID"     => \''.$oid.'\','."\n".
-					'                       "Name"    => \''.$Name.'\','."\n".
-					'                       "Type"    => \''.$Type.'\','."\n".
-					'                       "Profile" => \''.$Profile.'\'),'."\n";
-	return $oid;
-	}
+
 
 ?>
