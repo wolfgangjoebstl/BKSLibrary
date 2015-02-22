@@ -56,6 +56,45 @@ function LW12_WriteCommand($command, $responseLength) {
 		return bin2hex($out);
 	}
 
+function LW12_WriteCommand2($variableId,$command, $responseLength) {
+
+	   $IP = LW12_getIp2($variableId);
+	   $Port = LW12_getPort2($variableId);
+
+		error_reporting(E_ALL);
+
+		/* Create a TCP/IP socket. */
+		$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+		if ($socket === false) {
+		    echo "socket_create() failed: reason: " .
+		         socket_strerror(socket_last_error()) . "\n";
+		}
+
+
+		//echo "Attempting to connect to '$IP' on port '$Port'...\n";
+		$result = socket_connect($socket, $IP, $Port);
+		if ($result === false) {
+		    echo "socket_connect() failed.\nReason: ($result) " .
+		          socket_strerror(socket_last_error($socket)) . "\n";
+		}
+
+		$in = hex2bin($command);
+		$out = '';
+
+		//echo "Sending LW12 command...\n";
+		socket_write($socket, $in, strlen($in));
+		//echo "OK.\n";
+
+		if ($responseLength > 0 ) {
+			echo "Reading response:\n\n";
+			$out = socket_read($socket, $responseLength);
+			}
+
+		socket_close($socket);
+
+		return bin2hex($out);
+	}
+
 function LW12_getIP() {
    $objektId = @IPS_GetObjectIDByName("!IP",  IPS_GetParent($_IPS['VARIABLE']));
 		if ($objektId === false) $objektId = @IPS_GetObjectIDByName("!IP",  IPS_GetParent(IPS_GetParent($_IPS['VARIABLE'])));
@@ -63,6 +102,13 @@ function LW12_getIP() {
 	return GetValue($objektId);
 	}
 
+function LW12_getIP2($variableId) {
+   $objektId = @IPS_GetObjectIDByName("!IP",  IPS_GetParent($variableId));
+		if ($objektId === false) $objektId = @IPS_GetObjectIDByName("!IP",  IPS_GetParent(IPS_GetParent($variableId)));
+
+	return GetValue($objektId);
+	}
+	
 function LW12_getPort() {
 	$objektId = @IPS_GetObjectIDByName("!TCP-Port",  IPS_GetParent($_IPS['VARIABLE']));
 		if ($objektId === false) $objektId = @IPS_GetObjectIDByName("!TCP-Port",  IPS_GetParent(IPS_GetParent($_IPS['VARIABLE'])));
@@ -70,13 +116,27 @@ function LW12_getPort() {
 	return GetValue($objektId);
 	}
 
+function LW12_getPort2($variableId) {
+	$objektId = @IPS_GetObjectIDByName("!TCP-Port",  IPS_GetParent($variableId));
+		if ($objektId === false) $objektId = @IPS_GetObjectIDByName("!TCP-Port",  IPS_GetParent(IPS_GetParent($variableId)));
+
+	return GetValue($objektId);
+	}
 
 function LW12_setPowerOn() {
 	LW12_WriteCommand('cc2333',0);
 	}
 
+function LW12_setPowerOn2($variableId) {
+	LW12_WriteCommand2($variableId,'cc2333',0);
+	}
+	
 function LW12_setPowerOff() {
 	LW12_WriteCommand('cc2433',0);
+	}
+
+function LW12_setPowerOff2($variableId) {
+	LW12_WriteCommand2($variableId,'cc2433',0);
 	}
 
 
@@ -132,6 +192,18 @@ function LW12_setHexRGB($rgb) {
 	LW12_WriteCommand($command,0);
 	}
 
+function LW12_setDecRGB2($variableID,$rgb) {
+	$hexrgb = dechex($rgb);
+	while (strlen($hexrgb) < 6) {
+	   $hexrgb = '0'.$hexrgb;
+	   }
+
+	$command = '56' . $hexrgb . 'aa';
+	//echo "\n".$command."\n";
+
+	LW12_WriteCommand2($variableID,$command,0);
+	}
+
 function LW12_setDecRGB($rgb) {
 	$hexrgb = dechex($rgb);
 	while (strlen($hexrgb) < 6) {
@@ -144,9 +216,18 @@ function LW12_setDecRGB($rgb) {
 	LW12_WriteCommand($command,0);
 	}
 
+function LW12_PowerToggle2($variableID,$valueID) {
+	   Switch ($valueID) {
+		case true:
+	   	LW12_setPowerOn2($variableID);
+		break;
+		default:
+		   LW12_setPowerOff2($variableID);
+		}
+	}
 
 function LW12_PowerToggle() {
-	   Switch ($_IPS['VALUE']) {
+	   Switch ($valueID) {
 		case true:
 	   	LW12_setPowerOn();
 		break;
@@ -154,7 +235,6 @@ function LW12_PowerToggle() {
 		   LW12_setPowerOff();
 		}
 	}
-
 
 function LW12_ModeToggle() {
 	   Switch ($_IPS['VALUE']) {

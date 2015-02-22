@@ -75,9 +75,9 @@
 			//echo "Hurrah hier angekommen mit Parameter : ".$power." ".$color." ".$level."\n";
 			//print_r($this);
 			//echo IPS_GetKernelDir()."scripts/".GetValue(IPS_GetObjectIDByName("!LW12_CLibrary",  IPS_GetParent($this->instanceId))).".ips.php";
-			require(IPS_GetKernelDir()."scripts/".GetValue(IPS_GetObjectIDByName("!LW12_CLibrary",  IPS_GetParent($this->instanceId))).".ips.php");
-			LW12_PowerToggle($this->instanceId,$power);
-			LW12_setDecRGB($this->instanceId,$color);
+			require(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/LedAnsteuerung/LedAnsteuerung_Library.ips.php");
+			LW12_PowerToggle2($this->instanceId,$power);
+			LW12_setDecRGB2($this->instanceId,$color);
 		}
 
 	}
