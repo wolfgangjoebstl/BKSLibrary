@@ -12,6 +12,7 @@ funktioniert nur mit elektrischen Heizkoerpern
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
+include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 
 /******************************************************
@@ -42,6 +43,8 @@ $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Pro
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
+$configuration = Autosteuerung_GetEventConfiguration();
+print_r($configuration);
 
 
 if ($_IPS['SENDER']=="WebFront")
@@ -59,15 +62,27 @@ if ($_IPS['SENDER']=="Execute")
 if ($_IPS['SENDER']=="Variable")
 	{
 	/* eine Variablenaenderung ist aufgetreten */
-	tts_play(1,'Hallo Claudia Wie gehts','',2);
-	$remServer=array(
+	//tts_play(1,'Hallo Claudia Wie gehts','',2);
+	if (array_key_exists($_IPS['VARIABLE'], $configuration))
+		{
+		$params=$configuration[$_IPS['VARIABLE']];
+		eval($params[1]);
+		}
+	else
+	   {
+  		tts_play(1,'Button pressed'.$_IPS['VARIABLE'],'',2);
+  		}
+	if (false)
+	   {
+		$remServer=array(
 				"BKS-Server"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
 						);
-	foreach ($remServer as $Server)
-		{
-		$rpc = new JSONRPC($Server);
-		}
-	$rpc->IPS_RunScript(10004);
+		foreach ($remServer as $Server)
+			{
+			$rpc = new JSONRPC($Server);
+			}
+		$rpc->IPS_RunScript(10004);
+	   }
 	
 	switch ($_IPS['VARIABLE'])
 		{

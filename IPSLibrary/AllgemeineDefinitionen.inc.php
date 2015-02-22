@@ -1665,15 +1665,26 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
       "sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
 		);
-
-		$id_sk1_musik         = 45034;
-		$id_sk1_musik_status	= 58670;
-		$id_sk1_musik_vol     = 42803;
-   	$id_sk1_ton_status 	  = 38978;
-		$id_sk1_ton           = $playwaves;
-		$id_sk1_tts           = $genspeak;
-		$id_sk1_counter		    = 26227;
-
+		if (IPS_GetName(0)=="LBG70")
+		   {
+			$id_sk1_musik         = 23225;
+			$id_sk1_musik_status	= 10481;
+			$id_sk1_musik_vol     = 27732;
+	   	$id_sk1_ton_status 	  = 34893;
+			$id_sk1_ton           = 28568;
+			$id_sk1_tts           = 50984;
+			$id_sk1_counter		    = 34276;
+		   }
+		else
+			{
+			$id_sk1_musik         = 45034;
+			$id_sk1_musik_status	= 58670;
+			$id_sk1_musik_vol     = 42803;
+   		$id_sk1_ton_status 	  = 38978;
+			$id_sk1_ton           = $playwaves;
+			$id_sk1_tts           = $genspeak;
+			$id_sk1_counter		    = 26227;
+			}
 		switch ($sk)
 		{
 			//---------------------------------------------------------------------
