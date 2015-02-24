@@ -13,8 +13,12 @@
  //
 
 
+if ($_IPS['SENDER']=="WebFront")
+	{
+	/* vom Webfront aus gestartet */
+	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
+	}
 
-SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
 
 
 function LW12_WriteCommand($command, $responseLength) {
@@ -227,7 +231,7 @@ function LW12_PowerToggle2($variableID,$valueID) {
 	}
 
 function LW12_PowerToggle() {
-	   Switch ($valueID) {
+	   Switch ($_IPS['VALUE']) {
 		case true:
 	   	LW12_setPowerOn();
 		break;
