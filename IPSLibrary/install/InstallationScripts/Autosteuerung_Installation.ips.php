@@ -90,6 +90,9 @@
    $AutosteuerungID = CreateVariable($name, 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 	registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
 
+   $AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	registerAutoEvent($AnwesenheitssimulationID, $eventType, "par1", "par2");
+
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
@@ -104,6 +107,7 @@
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Anwesenheitssimulation', $AnwesenheitssimulationID,    $categoryId_WebFront,  10);
 		}
 
 	if ($WFC10User_Enabled)
