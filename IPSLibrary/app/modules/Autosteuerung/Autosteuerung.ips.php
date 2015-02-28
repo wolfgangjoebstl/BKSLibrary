@@ -14,7 +14,8 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung.class.php");
+	
 /******************************************************
 
 				INIT
@@ -43,9 +44,10 @@ $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Pro
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-$name="Ventilator_Steuerung";
+$name="Bedienung";
 $categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 $AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
+$VentilatorsteuerungID = IPS_GetObjectIDByName("Ventilatorsteuerung",$categoryId_Autosteuerung);
 
 $configuration = Autosteuerung_GetEventConfiguration();
 $scenes=Autosteuerung_GetScenes();
@@ -94,6 +96,31 @@ if ($_IPS['SENDER']=="Variable")
 				   {
 				   //Script nicht merh automatisch ausführen
 		 			IPS_SetScriptTimer($_IPS['SELF'], 0);
+				   }
+		      break;
+		   case "Ventilator":
+		   	$eventName = 'OnChange_'.$params[3];
+				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+		      If (GetValue($VentilatorsteuerungID)>0)
+		         {
+					if ($eventId === false)
+						{
+						$eventId = IPS_CreateEvent(0);
+						IPS_SetName($eventId, $eventName);
+						IPS_SetIdent($eventId, $eventName);
+						IPS_SetEventTrigger($eventId, 1, $params[3]);
+						IPS_SetParent($eventId, $scriptId);
+						IPS_SetEventActive($eventId, true);
+						IPSLogger_Dbg (__file__, 'Created IPSMessageHandler Event for Variable='.$params[3]);
+						}
+					else
+			   		{
+			   		echo "EventName uns ID: ".$eventName."  ".$eventId."\n";
+			   		}
+		         }
+				else
+				   {
+					IPS_SetEventActive($eventId, false);
 				   }
 		      break;
 		   default:

@@ -33,8 +33,8 @@
 
 	/* Beispiele zum EInstellen:
 			21675 => array('OnUpdate','tts_play(1,"Hello","",2);','par2',),
-			21675 => array('OnUpdate','IPSLight_SetSwitchByName("Ventilator", true);','par2',),
-			37416 => array('OnUpdate','IPSLight_SetSwitchByName("Ventilator", false);','par2',),
+			21675 => array('OnUpdate','IPSLight_SetSwitchByName("ArbeitszimmerStatusLED", true);','par2',),
+			37416 => array('OnUpdate','IPSLight_SetSwitchByName("ArbeitszimmerStatusLED", false);','par2',),
 			21675 => array('OnUpdate','IPSLight_SetProgramNextByName("WohnzimmerProgram");','par2',),
 			37416 => array('OnUpdate','IPSLight_SetGroupByName("WohnzimmerHue", false);','par2',),
 			24558 => array('OnChange','Anwesenheit','par2',),        für Anwesenheitssimulation, siehe config weiter unten
@@ -44,8 +44,7 @@
 
 	function Autosteuerung_GetEventConfiguration() {
 		$eventConfiguration = array(
-			43480 => array('OnChange','IPSLight_SetSwitchByName("Ventilator", true);','par2',),
-			17598 => array('OnChange','IPSLight_SetSwitchByName("Ventilator", false);Sprechen("Hallo Claudia wie gehts ?");','par2',),
+
 			);
 
 		return $eventConfiguration;
@@ -108,25 +107,6 @@
 	}
 
 
-	function Sprechen($text="Hallo")
-		{
-			$remServer=array(
-				"BKS-Server"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
-						);
-			foreach ($remServer as $Server)
-				{
-				$rpc = new JSONRPC($Server);
-				}
-		$redet=array("Text" => "Claudia");
-		$redet["Text"]=$text;
-		echo $text."\n";
-		//$rpc->IPS_RunScript(10004 /*[Objekt #10004 existiert nicht]*/);
-		$rpc->IPS_RunScriptEx(10004,$redet);
-	   }
-
-
-	 
-	 
 
 
 
