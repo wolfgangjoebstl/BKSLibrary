@@ -387,8 +387,47 @@ foreach ($remServer as $Server)
 		}
 
 	
-	
-	
+	$TypeFS20=RemoteAccess_TypeFS20();
+
+	foreach ($FS20 as $Key)
+		{
+		/* FS20 alle Bewegungsmelder ausgeben */
+		if ((isset($Key["COID"]["StatusVariable"])==true))
+		   	{
+		   	foreach ($TypeFS20 as $Type)
+		   	   {
+		   	   if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+		   	      {
+				   	echo "Bewegungsmelder : ".$Key["Name"]." OID ".$Key["OID"]."\n";
+
+      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+		  	      	$variabletyp=IPS_GetVariable($oid);
+						if ($variabletyp["VariableProfile"]!="")
+						   {
+							echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							}
+						else
+						   {
+							echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							}
+						$result=RPC_CreateVariableByName($rpc, $motionID, $Key["Name"], 0);
+	   				$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+						$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+						$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,0);
+						$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);				//print_r($result);
+
+						$messageHandler = new IPSMessageHandler();
+					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
+
+		   	      }
+		   	   }
+
+			}
+		}
+
 	
 	
 	

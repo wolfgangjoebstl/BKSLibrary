@@ -53,6 +53,26 @@ $configuration = Autosteuerung_GetEventConfiguration();
 $scenes=Autosteuerung_GetScenes();
 //print_r($configuration);
 
+// Sonnenauf.- u. Untergang berechnen
+$longitude = 16.36; //14.074881;
+$latitude = 48.21;  //48.028615;
+$timestamp = time();
+/*php >Funktion: par1: Zeitstempel des heutigen Tages
+					  par2: Format des retourwertes, String, Timestamp, float SUNNFUNCS_RET_xxxxx
+					  par3: north direction (for south use negative)
+					  par4: west direction (for east use negative)
+					  par5: zenith, see example
+							$zenith=90+50/60; Sunrise/sunset
+							$zenith=96; Civilian Twilight Start/end
+							$zenith=102; Nautical Twilight Start/End
+							$zenith=108; Astronomical Twilight start/End
+					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
+					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
+*/
+$sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+$sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+
+echo "Sonnenauf/untergang ".date("H:i",$sunrise)." ".date("H:i",$sunset)." \n";
 
 /*********************************************************************************************/
 
@@ -176,17 +196,19 @@ if ($_IPS['SENDER']=="TimerEvent")
 	if (GetValue($AnwesenheitssimulationID)>0)
  		{//Anwesenheitssimulation aktiv
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
-		print_r($scenes);
+		//print_r($scenes);
 	   foreach($scenes as $scene){
 
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-        	$actualTimeStart = explode(":",$actualTime[0]);
+       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
+       	print_r($actualTime);
+       	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];
         	$actualTimeStartMinute = $actualTimeStart[1];
         	$actualTimeStop = explode(":",$actualTime[1]);
         	$actualTimeStopHour = $actualTimeStop[0];
         	$actualTimeStopMinute = $actualTimeStop[1];
-
+			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
         	$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
         	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
       	$now = time();
