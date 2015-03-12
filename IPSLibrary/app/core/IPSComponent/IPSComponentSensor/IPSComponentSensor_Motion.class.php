@@ -92,7 +92,7 @@
 			if (isset ($result["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
-				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
 				echo "Datenverzeichnis:".$CategoryIdData."\n";
 				$name="Motion-Nachrichten";
@@ -158,16 +158,21 @@
 				if (GetValue($this->variable))
 					{
 					$result="Bewegung";
-					$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
+					//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
+					$EreignisVerlauf.=time().";".STAT_Bewegung.";";
 					$GesamtZaehler+=1;
-					$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+					$GesamtVerlauf.=time().";".$GesamtZaehler.";";
 					}
 				else
 					{
 					$result="Ruhe";
-					$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+					//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+					$EreignisVerlauf.=time().";".STAT_WenigBewegung.";";
 					$GesamtZaehler-=1;
-					$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+					if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
+					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+					$GesamtVerlauf.=time().";".$GesamtZaehler.";";
 					}
 				}
 			else
@@ -180,6 +185,8 @@
 					{
 					$result="Geschlossen";
 					}
+
+				/* timer setzen kann man loeschen, muss anders programmiert werden */
 				$eid1 = @IPS_GetEventIDByName("Timer_".$this->variable, $_IPS['SELF']);
 				if ($eid1==false)
 						{
@@ -192,8 +199,11 @@
 				IPS_SetEventCyclicTimeFrom($eid1,(integer)date('G'),(integer)date('i'),0);
 				IPS_SetEventActive($eid1,false);
 				echo ">>>>>>>Kontakt ".$result.". Wir sind im Script: ".$_IPS['SELF']." und haben den Timer mit ID:".$eid1." gesetzt\n";
+				/********************************/
 				}
+			echo "\n".IPS_GetName($this->EreignisID)." ";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
+			echo "\n".IPS_GetName($this->GesamtID)." ";
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf));
 			SetValue($this->GesamtCountID,$GesamtZaehler);
 			parent::LogMessage($result);
@@ -220,7 +230,8 @@
 
 		private function evaluateEvents($value)
 			{
-			echo $value."\n";
+			/* keine Indizierung auf Herkunft der Variable, nur String Werte evaluieren */
+			echo "Evaluate Eventliste : ".$value."\n";
 			$EventArray = explode(";", $value);
 		   $array_size = count($EventArray);
          $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */
@@ -228,11 +239,10 @@
             {
             /* Events komprimieren erst wenn gross genug */
 				$previous_state=$EventArray[$i];
-				$previous_time=$EventArray[$i-1];
+				$previous_time=(integer)$EventArray[$i-1];
 				if ($i>40)
 				   {
 				   /* events nicht groesser als 20 Eintraege werden lassen */
-					$timebefordelete=strtotime($previous_time);
 					$indexbefordelete=$i-20;
 					}
 				else
@@ -241,7 +251,7 @@
 					}
 
 				//echo "Array Size is ".$i."  : last values are ".$previous_state." ? ".$previous_time."\n";
-				echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." \n";
+				echo "Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." \n";
 				$i=$i-2;
 				$delete=false;
 			 	while($i > 0)
@@ -250,9 +260,9 @@
 						Wenn zwischen 7 und vorher 6 weniger als 15 Minuten vergangen sind den Zustand 6 loeschen
 						Wenn 7 auf 7 folgt den juengsten wert 7 loeschen
 					*/
-					$now_time=strtotime($previous_time);
-					$bef_time=strtotime($EventArray[$i-1]);
-					//if ($bef_time>$timebeforedelete) {$delete=true;}
+					$now_time=$previous_time;
+					$bef_time=(integer)$EventArray[$i-1];
+
 					if ($i<$indexbefordelete) {$delete=true;}
 					if ($delete==true)
 					   {
@@ -262,11 +272,13 @@
 					else
 					   {
 						$dif_time=(($now_time-$bef_time)/60);
-						echo "Betrachteter (".$i.") State jetzt ".$previous_state," um ".$previous_time." und davor ".$EventArray[$i]." um ".$EventArray[$i-1]." Abstand: ".$dif_time."Minute \n";
+						//echo "Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." und davor ".$EventArray[$i]." am ".date("d.m H:i",$EventArray[$i-1])." Abstand: ".number_format($dif_time,1,",",".")." Minute \n";
+						echo "Betrachteter (".$i.") State jetzt ".$EventArray[$i]." am ".date("d.m H:i",$EventArray[$i-1])." Abstand: ".number_format($dif_time,1,",",".")." Minute \n";
 						switch ($previous_state)
    	  				   {
    	  				   /*****************************************************************************
 							 erst einmal Unterscheidung anhand aktuellem Status
+							 Bewegung   ->  um so mehr Bewegungssender aktiv sind um so hoeher der Wert
 							******************************************************************************/
 	 			     		case STAT_Bewegung9:
 	 			     		case STAT_Bewegung8:
@@ -290,11 +302,15 @@
 	 			     		   	case STAT_Bewegung2:
 	 			     		   	case STAT_Bewegung:
 		 							   $previous_state=$EventArray[$i];
-						   			$previous_time=$EventArray[$i-1];
+						   			$previous_time=(integer)$EventArray[$i-1];
 				   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
-										echo "--->Bewegung, wir loeschen ".$EventArray[$i+2]." und ".$EventArray[$i+1]."\n";
-   								 	unset($EventArray[$i+2]);
-	  						 			unset($EventArray[$i+1]);
+				   				 	if (isset($EventArray[$i+2]))
+											{
+											/* nicht zweimal loeschen */
+											echo "--->Bewegung, wir loeschen Eintrag ".($i+2)." mit ".$EventArray[$i+2]." am ".date("d.m H:i",$EventArray[$i+1])."\n";
+   									 	unset($EventArray[$i+2]);
+	  							 			unset($EventArray[$i+1]);
+	  							 			}
 									 	break;
 						 			case STAT_WenigBewegung:
 									case STAT_KeineBewegung:
@@ -305,23 +321,46 @@
 										   // Warum mus dif_time >0 sein ????
 	  			   						$previous_state=10;    /* default, einen ueberspringen, damit voriger Wert vorerst nicht mehr geloescht werden kann */
 		   							 	/* einfach die letzten zwei Einträge loeschen, nachdem Wert kein zweites Mal geloescht werden kann vorerst mit Default Wert arbeiten */
-											echo "--->WenigBewegung, wir loeschen ".$EventArray[$i+0]." und ".$EventArray[$i-1]."\n";
+											echo "--->WenigBewegung, wir loeschen Eintrag ".($i)." mit ".$EventArray[$i+0]." am ".date("d.m H:i",$EventArray[$i-1])."\n";
    									 	unset($EventArray[$i+0]);
 	   								 	unset($EventArray[$i-1]);
 				   				 		}
 		   					 		else
 		   						 	   {
 						    				$previous_state=$EventArray[$i];
-									      $previous_time=$EventArray[$i-1];
+									      $previous_time=(integer)$EventArray[$i-1];
 											}
 									 	break;
 							 		default:
 								 	   /* Wenn der Defaultwert kommt einfach weitermachen, er kommt schon beim naechsten Durchlauf dran */
 				    					$previous_state=$EventArray[$i];
-							   	   $previous_time=$EventArray[$i-1];
+							   	   $previous_time=(integer)$EventArray[$i-1];
 							    		break;
 								 }
 								break;
+			   	  	   case STAT_WenigBewegung:
+						      /* Wenn jetzt wenigBewegung ist unterscheiden ob vorher Bewegung oder wenigBewegung war			   */
+		      				switch ($EventArray[$i]) /* Zustand vorher */
+		      				   {
+	 			     		   	case STAT_WenigBewegung:
+		 							   $previous_state=$EventArray[$i];
+						   			$previous_time=(integer)$EventArray[$i-1];
+				   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
+				   				 	if (isset($EventArray[$i+2]))
+											{
+											/* nicht zweimal loeschen */
+											echo "--->WenigBewegung, wir loeschen Eintrag ".($i+2)." mit ".$EventArray[$i+2]." am ".date("d.m H:i",$EventArray[$i+1])."\n";
+   									 	unset($EventArray[$i+2]);
+	  							 			unset($EventArray[$i+1]);
+	  							 			}
+									 	break;
+							 		default:
+								 	   /* Wenn der Defaultwert kommt einfach weitermachen, er kommt schon beim naechsten Durchlauf dran */
+				    					$previous_state=$EventArray[$i];
+							   	   $previous_time=(integer)$EventArray[$i-1];
+							    		break;
+									}
+			   	  	      break;
 			   	   	case STAT_vonzuHauseweg:
 						       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
 								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
@@ -337,7 +376,7 @@
 							 		 break;
 						 			 default:
 									 	 $previous_state=$EventArray[$i];
-						   			 $previous_time=$EventArray[$i-1];
+						   			 $previous_time=(integer)$EventArray[$i-1];
 								 		 break;
 							 		 }
 								break;
@@ -358,13 +397,13 @@
 								 		 break;
 					 				 default:
 									    $previous_state=$EventArray[$i];
-								   	 $previous_time=$EventArray[$i-1];
+								   	 $previous_time=(integer)$EventArray[$i-1];
 								 		 break;
 					 				 }
 								break;
 							default:
 							   $previous_state=$EventArray[$i];
-	      					$previous_time=$EventArray[$i-1];
+	      					$previous_time=(integer)$EventArray[$i-1];
 								break;
 							}
 						}
@@ -399,13 +438,14 @@
 				$value=$this->evaluateEvents($value);
 				}
 			$EventArray = explode(";", $value);
+			echo "Write Eventliste von ".IPS_GetName($this->EreignisID)." : ".$value."\n";
 
 			 /* Umsetzung des kodierten Eventarrays in lesbaren Text */
 			 $event2="";
 			 $array_size = count($EventArray);
 		 	 for ($k=1; $k<($array_size); $k++ )
 			 	 {
-		 	   $event2=$event2.$EventArray[$k-1]." : ";
+		 	   $event2=$event2.date("d.m H:i",(integer)$EventArray[$k-1])." : ";
 		  	   //echo "check : ".$EventArray[$k]."\n";
 				switch ($EventArray[$k])
 		     	   {

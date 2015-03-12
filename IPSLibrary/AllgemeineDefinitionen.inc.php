@@ -1022,7 +1022,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 	$guthabensteuerung=false;
 	$amis=false;
-	$customcomponent=false;
+	$customcomponent=false; $detectmovement=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -1042,6 +1042,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
 			if ($module=="Amis") $amis=true;
 			if ($module=="CustomComponent") $customcomponent=true;
+			if ($module=="DetectMovement") $detectmovement=true;
 			}
 		else
 			{
@@ -1059,12 +1060,14 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		
 		******************************************************************************************/
 
+		$Homematic = HomematicList();
+		$FS20= FS20List();
 
 		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
 		$alleTempWerte.=ReadTemperaturWerte();
 
 		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
-		$Homematic = HomematicList();
+		
 		foreach ($Homematic as $Key)
 			{
 			/* Alle Homematic Feuchtigkeitswerte ausgeben */
@@ -1093,6 +1096,48 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				   {
 					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
+				}
+			}
+
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$TypeFS20=RemoteAccess_TypeFS20();
+		foreach ($FS20 as $Key)
+			{
+			/* FS20 alle Bewegungsmelder ausgeben */
+			if ( (isset($Key["COID"]["MOTION"])==true) )
+		   	{
+	   		/* alle Bewegungsmelder */
+
+		      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+      		$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+			   	{
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				else
+				   {
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				}
+			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+			if ((isset($Key["COID"]["StatusVariable"])==true))
+		   	{
+		   	foreach ($TypeFS20 as $Type)
+		   	   {
+		   	   if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+		   	      {
+      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+		  	      	$variabletyp=IPS_GetVariable($oid);
+						if ($variabletyp["VariableProfile"]!="")
+						   {
+							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							}
+						else
+						   {
+							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							}
+		   	      }
+		   	   }
 				}
 			}
 
