@@ -52,15 +52,16 @@ $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
 		
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
+	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:
 	      break;
 	   case $tim2ID:
+			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
 		   //IPS_SetScriptTimer($_IPS['SELF'], 150);
-		   if ($ScriptCounterID<$maxcount)
+		   if (GetValue($ScriptCounterID) < $maxcount)
 				{
 			   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[$ScriptCounterID].".iim", false, false, 1);
   	   		}
@@ -90,7 +91,8 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 
 	//IPS_SetScriptTimer($_IPS['SELF'], 1);
 	IPS_SetEventActive($tim2ID,true);
-   echo "timer gestartet, Auslesung beginnt ....\n";
+   echo "Exectimer gestartet, Auslesung beginnt ....\n";
+   echo "Timer täglich ID:".$tim1ID."   ".$tim2ID."\n";
    //echo ADR_Programs."Mozilla Firefox/firefox.exe";
    
  	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
