@@ -20,10 +20,20 @@ if ($tim1ID==false)
 	$tim1ID = IPS_CreateEvent(1);
 	IPS_SetParent($tim1ID, $_IPS['SELF']);
 	IPS_SetName($tim1ID, "Aufruftimer");
-	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
 	IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
 	}
 IPS_SetEventActive($tim1ID,true);
+
+$tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
+if ($tim2ID==false)
+	{
+	$tim2ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim2ID, $_IPS['SELF']);
+	IPS_SetName($tim2ID, "Exectimer");
+	IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
+	//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+	}
 
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Guthabensteuerung');
 $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
@@ -42,17 +52,28 @@ $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
 		
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-	SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
-   IPS_SetScriptTimer($_IPS['SELF'], 150);
-   if ($ScriptCounterID<$maxcount)
-		{
-	   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[$ScriptCounterID].".iim", false, false, 1);
-  	   }
-	else
-		{
-		IPS_RunScript($ParseGuthabenID);
-      SetValue($ScriptCounterID,0);
-      IPS_SetScriptTimer($_IPS['SELF'], 0);
+	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
+	switch ($_IPS['EVENT'])
+	   {
+	   case $tim1ID:
+	      break;
+	   case $tim2ID:
+			SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
+		   //IPS_SetScriptTimer($_IPS['SELF'], 150);
+		   if ($ScriptCounterID<$maxcount)
+				{
+			   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[$ScriptCounterID].".iim", false, false, 1);
+  	   		}
+			else
+				{
+				IPS_RunScript($ParseGuthabenID);
+		      SetValue($ScriptCounterID,0);
+      		//IPS_SetScriptTimer($_IPS['SELF'], 0);
+		      IPS_SetEventActive($tim2ID,false);
+				}
+			break;
+		default:
+		   break;
 		}
 	}
 
@@ -67,7 +88,8 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	echo "Stand ScriptCounter :".GetValue($ScriptCounterID)." von max ".$maxcount."\n";
    SetValue($ScriptCounterID,0);
 
-	IPS_SetScriptTimer($_IPS['SELF'], 1);
+	//IPS_SetScriptTimer($_IPS['SELF'], 1);
+	IPS_SetEventActive($tim2ID,true);
    echo "timer gestartet, Auslesung beginnt ....\n";
    //echo ADR_Programs."Mozilla Firefox/firefox.exe";
    
