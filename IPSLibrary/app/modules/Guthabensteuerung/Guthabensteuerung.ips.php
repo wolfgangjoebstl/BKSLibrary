@@ -63,7 +63,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   //IPS_SetScriptTimer($_IPS['SELF'], 150);
 		   if (GetValue($ScriptCounterID) < $maxcount)
 				{
-			   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[$ScriptCounterID].".iim", false, false, 1);
+			   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, 1);
   	   		}
 			else
 				{
