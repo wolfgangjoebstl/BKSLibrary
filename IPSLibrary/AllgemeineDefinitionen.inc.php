@@ -1094,7 +1094,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				else
 				   {
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
 			}
@@ -1116,7 +1116,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				else
 				   {
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
 			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
@@ -1128,13 +1128,14 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		   	      {
       				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 		  	      	$variabletyp=IPS_GetVariable($oid);
+		  	      	IPS_SetName($oid,"MOTION");
 						if ($variabletyp["VariableProfile"]!="")
 						   {
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 							}
 						else
 						   {
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."    (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 							}
 		   	      }
 		   	   }
@@ -1185,50 +1186,53 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			);
 
 		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-		if(sizeof($ids) == 0)
+		$HomInstanz=sizeof($ids);
+		if($HomInstanz == 0)
 		   {
 		   //die("Keine HomeMatic Socket Instanz gefunden!");
 		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
 		   }
-		//echo "\n\nHomatic Socket ID :".$ids[0]."\n";
-      $alleHM_Errors.="Homatic Socket ID :".$ids[0]."\n";
+		//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
       
-		$msgs = HM_ReadServiceMessages($ids[0]);
-		if($msgs === false)
+		for ($i=0;$i < $HomInstanz; $i++)
 		   {
-			//die("Verbindung zur CCU fehlgeschlagen");
-		   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
-		   }
-
-		if(sizeof($msgs) == 0)
-		   {
-			//echo "Keine Servicemeldungen!\n";
-		   $alleHM_Errors.="OK, keine Servicemeldungen!\n";
-			}
-			
-		foreach($msgs as $msg)
-			{
-		   if(array_key_exists($msg['Message'], $texte))
-				{
-      	  	$text = $texte[$msg['Message']];
-		   	}
-			else
-				{
-        		$text = $msg['Message'];
-        		}
-		   $id = GetInstanceIDFromHMID($msg['Address']);
-	    	if(IPS_InstanceExists($id))
-			 	{
-        		$name = IPS_GetLocation($id);
+	      $alleHM_Errors.="Homatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
+			$msgs = HM_ReadServiceMessages($ids[$i]);
+			if($msgs === false)
+			   {
+				//die("Verbindung zur CCU fehlgeschlagen");
+			   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
 			   }
-			else
-				{
-        		$name = "Gerät nicht in IP-Symcon eingerichtet";
-    			}
-		  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-		  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-			}
 
+			if(sizeof($msgs) == 0)
+			   {
+				//echo "Keine Servicemeldungen!\n";
+		   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
+				}
+			
+			foreach($msgs as $msg)
+				{
+			   if(array_key_exists($msg['Message'], $texte))
+					{
+      		  	$text = $texte[$msg['Message']];
+		   		}
+				else
+					{
+      	  		$text = $msg['Message'];
+        			}
+			   $id = GetInstanceIDFromHMID($msg['Address']);
+		    	if(IPS_InstanceExists($id))
+				 	{
+        			$name = IPS_GetLocation($id);
+			   	}
+				else
+					{
+      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
+    				}
+			  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+			  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+				}
+			}
 	   if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
@@ -1371,17 +1375,19 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$guthaben="";
 			}
 
-		/************** Custom Component Motion Detect ****************************************************************************/
+		/************** Detect Movement Motion Detect ****************************************************************************/
 
 		IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 		$Homematic = HomematicList();
-
+		$FS20= FS20List();
+		
       $alleMotionWerte="";
-		if ($customcomponent)
+		if ($detectmovement)
 		   {
 		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 		   
 		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
 			foreach ($Homematic as $Key)
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
@@ -1394,6 +1400,37 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
 				}
+			echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+			$TypeFS20=RemoteAccess_TypeFS20();
+			foreach ($FS20 as $Key)
+				{
+				/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+		   		{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log=new Motion_Logging($oid);
+					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				if ((isset($Key["COID"]["StatusVariable"])==true))
+			   	{
+		   		foreach ($TypeFS20 as $Type)
+		   		   {
+		   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+			   	      {
+	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			  	      	$variabletyp=IPS_GetVariable($oid);
+			  	      	IPS_SetName($oid,"MOTION");
+							$log=new Motion_Logging($oid);
+							$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+		   		      }
+		   	   	}
+					}
+				}
+
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
 
 		   }
