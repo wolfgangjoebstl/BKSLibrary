@@ -1177,63 +1177,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************/
 
-		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n\n";
-		$texte = Array(
-		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
-		    "LOWBAT" => "Batterieladezustand gering",
-		    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
-		    "UNREACH" => "Gerätekommunikation aktuell gestört"
-			);
-
-		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-		$HomInstanz=sizeof($ids);
-		if($HomInstanz == 0)
-		   {
-		   //die("Keine HomeMatic Socket Instanz gefunden!");
-		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
-		   }
-		//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
-      
-		for ($i=0;$i < $HomInstanz; $i++)
-		   {
-	      $alleHM_Errors.="Homatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
-			$msgs = HM_ReadServiceMessages($ids[$i]);
-			if($msgs === false)
-			   {
-				//die("Verbindung zur CCU fehlgeschlagen");
-			   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
-			   }
-
-			if(sizeof($msgs) == 0)
-			   {
-				//echo "Keine Servicemeldungen!\n";
-		   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
-				}
-			
-			foreach($msgs as $msg)
-				{
-			   if(array_key_exists($msg['Message'], $texte))
-					{
-      		  	$text = $texte[$msg['Message']];
-		   		}
-				else
-					{
-      	  		$text = $msg['Message'];
-        			}
-			   $id = GetInstanceIDFromHMID($msg['Address']);
-		    	if(IPS_InstanceExists($id))
-				 	{
-        			$name = IPS_GetLocation($id);
-			   	}
-				else
-					{
-      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
-    				}
-			  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-			  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-				}
-			}
-	   if ($sommerzeit)
+		$alleHM_Errors=HomematicFehlermeldungen();
+		
+		if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
 			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors;
@@ -2157,7 +2103,70 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 		}
 
 	}
+	
+/******************************************************************/
 
+function HomematicFehlermeldungen()
+	{
+		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n\n";
+		$texte = Array(
+		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
+		    "LOWBAT" => "Batterieladezustand gering",
+		    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
+		    "UNREACH" => "Gerätekommunikation aktuell gestört"
+			);
+
+		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
+		$HomInstanz=sizeof($ids);
+		if($HomInstanz == 0)
+		   {
+		   //die("Keine HomeMatic Socket Instanz gefunden!");
+		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		   }
+		//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
+
+		for ($i=0;$i < $HomInstanz; $i++)
+		   {
+	      $alleHM_Errors.="Homatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
+			$msgs = HM_ReadServiceMessages($ids[$i]);
+			if($msgs === false)
+			   {
+				//die("Verbindung zur CCU fehlgeschlagen");
+			   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+			   }
+
+			if(sizeof($msgs) == 0)
+			   {
+				//echo "Keine Servicemeldungen!\n";
+		   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
+				}
+
+			foreach($msgs as $msg)
+				{
+			   if(array_key_exists($msg['Message'], $texte))
+					{
+      		  	$text = $texte[$msg['Message']];
+		   		}
+				else
+					{
+      	  		$text = $msg['Message'];
+        			}
+			   $id = GetInstanceIDFromHMID($msg['Address']);
+		    	if(IPS_InstanceExists($id))
+				 	{
+        			$name = IPS_GetLocation($id);
+			   	}
+				else
+					{
+      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
+    				}
+			  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+			  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+				}
+			}
+		return($alleHM_Errors);
+	}
+	
 /******************************************************************/
 
 function ReadTemperaturWerte()
