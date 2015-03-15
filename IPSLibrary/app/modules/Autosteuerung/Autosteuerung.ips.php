@@ -88,8 +88,62 @@ if ($_IPS['SENDER']=="WebFront")
 
 if ($_IPS['SENDER']=="Execute")
 	{
-	/* von der Konsole aus gestartet */
 
+	/* von der Konsole aus gestartet */
+	foreach ($configuration as $key=>$entry)
+	   {
+	   echo "Eintraege fuer :".$key."\n";
+	   print_r($entry);
+		switch ($entry[1])
+		   {
+		   case "Anwesenheit":
+		      break;
+		   case "Ventilator":
+		   	$eventName = 'OnChange_'.$key;
+				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+				echo "Eventname :".$eventName." ".$eventId."\n";
+		      break;
+		   case "Parameter":
+		   	$temperatur=GetValue($key);
+		     	tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     	echo "Grad: ".GetValue($key)."\n";
+		     	$moduleParams2 = explode(',', $entry[2]);
+		     	print_r($moduleParams2);
+		     	if ($temperatur>$moduleParams2[1])
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	}
+		     	if ($temperatur<$moduleParams2[3])
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[4]);
+			     	}
+				break;
+		   case "Status":
+		   	$status=GetValue($key);
+		   	if ($status)
+		   	   {
+		     		tts_play(1,'Status geht auf ein.','',2);
+		     		}
+		     	else
+		     	   {
+		     		tts_play(1,'Status geht auf aus.','',2);
+		     		}
+		     	$moduleParams2 = explode(',', $entry[2]);
+		     	print_r($moduleParams2);
+		     	if ($status)
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],true);
+			     	}
+		     	else
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
+			     	}
+				break;
+		   default:
+				break;
+			}
+
+	   }
 	}
 
 /*********************************************************************************************/
@@ -119,7 +173,7 @@ if ($_IPS['SENDER']=="Variable")
 				   }
 		      break;
 		   case "Ventilator":
-		   	$eventName = 'OnChange_'.$params[3];
+		   	$eventName = 'OnChange_'.$_IPS['VARIABLE'];
 				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
 		      If (GetValue($VentilatorsteuerungID)>0)
 		         {
@@ -143,6 +197,41 @@ if ($_IPS['SENDER']=="Variable")
 					IPS_SetEventActive($eventId, false);
 				   }
 		      break;
+		   case "Parameter":
+		   	$temperatur=GetValue($_IPS['VARIABLE']);
+		     	tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     	$moduleParams2 = explode(',', $params[2]);
+		     	print_r($moduleParams2);
+		     	if ($temperatur>$moduleParams2[1])
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	}
+		     	if ($temperatur<$moduleParams2[3])
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[4]);
+			     	}
+				break;
+		   case "Status":
+		   	$status=GetValue($_IPS['VARIABLE']);
+		   	if ($status)
+		   	   {
+		     		tts_play(1,'Status geht auf ein.','',2);
+		     		}
+		     	else
+		     	   {
+		     		tts_play(1,'Status geht auf aus.','',2);
+		     		}
+		     	$moduleParams2 = explode(',', $params[2]);
+		     	print_r($moduleParams2);
+		     	if ($status)
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],true);
+			     	}
+		     	else
+		     	   {
+			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
+			     	}
+				break;
 		   default:
 				eval($params[1]);
 				break;

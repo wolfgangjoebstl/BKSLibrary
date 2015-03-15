@@ -70,6 +70,7 @@
 
 			if (array_key_exists($variableId, $configuration))
 				{
+				echo "Bearbeite :".$moduleParams."\n";
 				$moduleParamsNew = explode(',', $moduleParams);
 				$moduleClassNew  = $moduleParamsNew[0];
 
