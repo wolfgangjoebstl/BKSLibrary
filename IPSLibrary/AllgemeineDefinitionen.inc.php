@@ -16,8 +16,7 @@
 /* ObjectID Adresse vom send email server */
 
 $sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
-$playwaves = 31500;
-$genspeak = 13283;
+
 
 /* Unterschiede getaktete und nicht getaktete Verbindung
 	bei Win8 noch nicht klar. DNS geht scheinbar lokal nicht, drum fixe IP Adresse angeben
@@ -1022,7 +1021,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 	$guthabensteuerung=false;
 	$amis=false;
-	$customcomponent=false; $detectmovement=false;
+	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -1043,6 +1042,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			if ($module=="Amis") $amis=true;
 			if ($module=="CustomComponent") $customcomponent=true;
 			if ($module=="DetectMovement") $detectmovement=true;
+			if ($module=="Sprachsteuerung") $sprchsteuerung=true;
 			}
 		else
 			{
@@ -1727,12 +1727,42 @@ function UpdateObjectData2($ObjectId, $Position, $Icon="")
 function tts_play($sk,$ansagetext,$ton,$modus)
  	{
  	
- 	global $playwaves,$genspeak;
-   	/*
+  	/*
 		modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
 		modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
 		modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
 		*/
+
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager))
+			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
+			echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
+			}
+		$sprachsteuerung=false;
+		$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
+		$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+		foreach ($knownModules as $module=>$data)
+			{
+			$infos   = $moduleManager->GetModuleInfos($module);
+			if (array_key_exists($module, $installedModules))
+				{
+				if ($module=="Sprachsteuerung") $sprachsteuerung=true;
+				}
+			}
+		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+		$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+
+		$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+		$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+		$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+		$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+		$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+		$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+	   $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
 
 		$wav = array
 		(
@@ -1747,26 +1777,6 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
       "sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
 		);
-		if (IPS_GetName(0)=="LBG70")
-		   {
-			$id_sk1_musik         = 23225;
-			$id_sk1_musik_status	= 10481;
-			$id_sk1_musik_vol     = 27732;
-	   	$id_sk1_ton_status 	  = 34893;
-			$id_sk1_ton           = 28568;
-			$id_sk1_tts           = 50984;
-			$id_sk1_counter		    = 34276;
-		   }
-		else
-			{
-			$id_sk1_musik         = 45034;
-			$id_sk1_musik_status	= 58670;
-			$id_sk1_musik_vol     = 42803;
-   		$id_sk1_ton_status 	  = 38978;
-			$id_sk1_ton           = $playwaves;
-			$id_sk1_tts           = $genspeak;
-			$id_sk1_counter		    = 26227;
-			}
 		switch ($sk)
 		{
 			//---------------------------------------------------------------------
@@ -1843,6 +1853,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
    			      $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) echo "Error";
 		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
+		     			echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
 						WAC_Play($id_sk1_ton);
 						}
 

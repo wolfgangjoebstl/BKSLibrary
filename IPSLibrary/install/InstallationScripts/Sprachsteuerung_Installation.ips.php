@@ -34,7 +34,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Sprachsteuerung');
-	echo "\nAutosteuerung Version : ".$ergebnis;
+	echo "\nSprachsteuerung Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -84,6 +84,9 @@
 	   IPS_SetName($MediaPlayerMusikID, "MP Musik");
 		IPS_SetParent($MediaPlayerMusikID,$scriptIdSprachsteuerung);
 		IPS_SetProperty($MediaPlayerMusikID,"DeviceNum",1);
+		IPS_SetProperty($MediaPlayerMusikID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
+		IPS_SetProperty($MediaPlayerMusikID,"UpdateInterval",0);
+		IPS_SetProperty($MediaPlayerMusikID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
 		IPS_ApplyChanges($MediaPlayerMusikID);
 		/*
 		DeviceNum integer 0
@@ -100,6 +103,9 @@
 	   IPS_SetName($MediaPlayerTonID, "MP Ton");
 		IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
 		IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
+		IPS_SetProperty($MediaPlayerTonID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
+		IPS_SetProperty($MediaPlayerTonID,"UpdateInterval",0);
+		IPS_SetProperty($MediaPlayerTonID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
 		IPS_ApplyChanges($MediaPlayerTonID);
 		/*
 		DeviceNum integer 0
@@ -115,7 +121,7 @@
       $TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
 	   IPS_SetName($TextToSpeachID, "Text to Speach");
 		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio");
+		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
 		IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
 		IPS_ApplyChanges($TextToSpeachID);
 		/*
@@ -123,13 +129,20 @@
 		TTSEngine string
 		*/
 		}
+   $SprachCounterID = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
 
-	echo "DeviceName :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
-	echo "DeviceNum :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
-	echo "DeviceName :".IPS_GetProperty(13283,"TTSAudioOutput")."\n";
-	echo "DeviceNum :".IPS_GetProperty(13283,"TTSEngine")."\n";
+	echo "TTSAudioOutput :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
+	echo "TTSEngine :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
+	echo "DeviceName :".IPS_GetProperty($MediaPlayerTonID,"DeviceName")."\n";
+	echo "DeviceNum :".IPS_GetProperty($MediaPlayerTonID,"DeviceNum")."\n";
+	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerTonID,"UpdateInterval")."\n";
+	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerTonID,"DeviceDriver")."\n";
+	echo "DeviceName :".IPS_GetProperty($MediaPlayerMusikID,"DeviceName")."\n";
+	echo "DeviceNum :".IPS_GetProperty($MediaPlayerMusikID,"DeviceNum")."\n";
+	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
+	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
