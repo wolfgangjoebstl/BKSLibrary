@@ -36,6 +36,26 @@ $scriptId  = IPS_GetObjectIDByIdent('Sprachsteuerung', IPSUtil_ObjectIDByPath('P
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
+ //Fügen Sie hier Ihren Skriptquellcode ein
+
+//wird in das Standard Include script kopiert
+
+
+tts_play(1,'Hallo Claudia Wie gehts','',2);
+
+
+/*
+
+Routine tts_play ist schon in Allgemeine Definitionen enthalten, braucht daher nicht nocheinmal definiert werden
+
+Allerdings die Installation der Mediaplayer funktioniert noch nicht muessen haendisch angelegt werden
+
+
+*/
+
+
+
+
 
 /*********************************************************************************************/
 
@@ -73,8 +93,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 
 /*********************************************************************************************/
-
-
 
 
 /*********************************************************************************************/

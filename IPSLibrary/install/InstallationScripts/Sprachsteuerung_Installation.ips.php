@@ -65,9 +65,71 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-	
+	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
 
+	//$listinstalledmodules=IPS_GetModuleList();
+	//print_r($listinstalledmodules);
+	//$moduleProp=IPS_GetModule("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
+	//print_r($moduleProp);
+	echo "Alle Mediaplayermodule:\n";
+	print_r(IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"));
+	echo "Alle Text-to-Speech Module:\n";
+	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
+	
+	$MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+
+   if(!IPS_InstanceExists($MediaPlayerMusikID))
+      {
+      $MediaPlayerMusikID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
+	   IPS_SetName($MediaPlayerMusikID, "MP Musik");
+		IPS_SetParent($MediaPlayerMusikID,$scriptIdSprachsteuerung);
+		IPS_SetProperty($MediaPlayerMusikID,"DeviceNum",1);
+		IPS_ApplyChanges($MediaPlayerMusikID);
+		/*
+		DeviceNum integer 0
+		DeviceName string
+		UpdateInterval integer 0
+		DeviceDriver string
+		*/
+		}
+	$MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+
+   if(!IPS_InstanceExists($MediaPlayerTonID))
+      {
+      $MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
+	   IPS_SetName($MediaPlayerTonID, "MP Ton");
+		IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
+		IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
+		IPS_ApplyChanges($MediaPlayerTonID);
+		/*
+		DeviceNum integer 0
+		DeviceName string
+		UpdateInterval integer 0
+		DeviceDriver string
+		*/
+		}
+	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+
+   if(!IPS_InstanceExists($TextToSpeachID))
+      {
+      $TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
+	   IPS_SetName($TextToSpeachID, "Text to Speach");
+		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
+		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio");
+		IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
+		IPS_ApplyChanges($TextToSpeachID);
+		/*
+		TTSAudioOutput string
+		TTSEngine string
+		*/
+		}
+
+	//print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
+
+	echo "DeviceName :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
+	echo "DeviceNum :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
+	echo "DeviceName :".IPS_GetProperty(13283,"TTSAudioOutput")."\n";
+	echo "DeviceNum :".IPS_GetProperty(13283,"TTSEngine")."\n";
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
