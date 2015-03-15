@@ -40,9 +40,14 @@ echo "Category Script ID:".$scriptId."\n";
 
 //wird in das Standard Include script kopiert
 
-
-tts_play(1,'Hallo Claudia Wie gehts','',2);
-
+if (isset($_IPS['Text']))
+	{
+   tts_play(1,$_IPS['Text'],'',2);
+   }
+else
+	{
+	tts_play(1,'Hallo Claudia Wie gehts','',2);
+	}
 
 /*
 
