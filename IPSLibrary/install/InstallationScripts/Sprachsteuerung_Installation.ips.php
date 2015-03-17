@@ -122,7 +122,11 @@
 	   IPS_SetName($TextToSpeachID, "Text to Speach");
 		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
 		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
-		IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
+		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
+		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Anna - English (United States)");
+		//IPS_SetProperty($TextToSpeachID,"TTSEngine","ScanSoft Steffi_Dri40_16kHz");
+		$SprachConfig=Sprachsteuerung_Configuration();
+		IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
 		IPS_ApplyChanges($TextToSpeachID);
 		/*
 		TTSAudioOutput string
