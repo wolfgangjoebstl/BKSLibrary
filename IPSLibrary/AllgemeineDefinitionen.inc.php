@@ -503,10 +503,10 @@ if (IPS_GetName(0)=="LBG70")
 		$energieverbrauch.=number_format(GetValue(45647), 2, ",", "" )." Euro\n\n";
 		}
 
-	$cost="Internetkosten:\n".
-			"\nAufgeladen wurde bisher : ".GetValue(32942)." Euro".
+	$cost="\n\nInternetkosten:\n".
+			"\nAufgeladen wurde bisher : ".GetValue(29162)." Euro".
 			"\nVerbraucht wurde bisher : ".GetValue(37190)." Euro".
-			"\nÄnderung heute          : ".GetValue(47396)." Euro\n\n";
+			"\nÄnderung heute          : ".GetValue(29370)." Euro\n";
 
 	$internet="Internet Erreichbarkeit:\n".
 			  "\nLBG70 Server  : ".GetValue(27549)." seit ".date("d.m.y H:i:s",GetValue(26654)).

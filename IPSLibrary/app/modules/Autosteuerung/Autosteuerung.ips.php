@@ -105,7 +105,7 @@ if ($_IPS['SENDER']=="Execute")
 		      break;
 		   case "Parameter":
 		   	$temperatur=GetValue($key);
-		     	tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     	//tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
 		     	echo "Grad: ".GetValue($key)."\n";
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
@@ -122,11 +122,11 @@ if ($_IPS['SENDER']=="Execute")
 		   	$status=GetValue($key);
 		   	if ($status)
 		   	   {
-		     		tts_play(1,'Status geht auf ein.','',2);
+		     		//tts_play(1,'Status geht auf ein.','',2);
 		     		}
 		     	else
 		     	   {
-		     		tts_play(1,'Status geht auf aus.','',2);
+		     		//tts_play(1,'Status geht auf aus.','',2);
 		     		}
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
@@ -138,6 +138,12 @@ if ($_IPS['SENDER']=="Execute")
 		     	   {
 			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
 			     	}
+				break;
+		   case "StatusRGB":
+		   	$status=GetValue($key);
+		   	tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+		     	$moduleParams2 = explode(',', $entry[2]);
+			   //IPSLight_SetSwitchByName($moduleParams2[0],true);
 				break;
 		   default:
 				break;
@@ -231,6 +237,12 @@ if ($_IPS['SENDER']=="Variable")
 		     	   {
 			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
 			     	}
+				break;
+		   case "StatusRGB":
+		   	$status=GetValue($_IPS['VARIABLE']);
+		   	tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+		     	$moduleParams2 = explode(',', $entry[2]);
+			   //IPSLight_SetSwitchByName($moduleParams2[0],true);
 				break;
 		   default:
 				eval($params[1]);

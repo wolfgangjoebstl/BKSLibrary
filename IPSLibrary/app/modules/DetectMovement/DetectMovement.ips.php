@@ -84,8 +84,60 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
 			}
 		}
-		
-$fs20List=FS20List();
-print_r($fs20List);
+
+if ($_IPS['SENDER']=="Execute")
+	{
+			$Homematic = HomematicList();
+			$FS20= FS20List();
+		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
+
+		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+		   		{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log=new Motion_Logging($oid);
+					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				}
+			echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+			$TypeFS20=RemoteAccess_TypeFS20();
+			foreach ($FS20 as $Key)
+				{
+				/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+		   		{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log=new Motion_Logging($oid);
+					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				if ((isset($Key["COID"]["StatusVariable"])==true))
+			   	{
+		   		foreach ($TypeFS20 as $Type)
+		   		   {
+		   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+			   	      {
+	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			  	      	$variabletyp=IPS_GetVariable($oid);
+			  	      	IPS_SetName($oid,"MOTION");
+							$log=new Motion_Logging($oid);
+							$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+		   		      }
+		   	   	}
+					}
+				}
+
+			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
+			echo $alleMotionWerte;
+	}
 
 ?>
