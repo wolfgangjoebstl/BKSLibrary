@@ -2108,7 +2108,7 @@ function RPC_CreateVariableField($rpc, $roid, $Homematic, $keyword, $profile="",
 
 function HomematicFehlermeldungen()
 	{
-		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n\n";
+		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
 		$texte = Array(
 		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
 		    "LOWBAT" => "Batterieladezustand gering",
@@ -2127,7 +2127,7 @@ function HomematicFehlermeldungen()
 
 		for ($i=0;$i < $HomInstanz; $i++)
 		   {
-	      $alleHM_Errors.="Homatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
+	      $alleHM_Errors.="\nHomatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
 			$msgs = HM_ReadServiceMessages($ids[$i]);
 			if($msgs === false)
 			   {

@@ -177,6 +177,8 @@
 				}
 			else
 				{
+				$EreignisVerlauf.=time().";".STAT_Bewegung.";";
+				$EreignisVerlauf.=time().";".STAT_WenigBewegung.";";
 				if (GetValue($this->variable))
 					{
 					$result="Offen";
@@ -185,21 +187,6 @@
 					{
 					$result="Geschlossen";
 					}
-
-				/* timer setzen kann man loeschen, muss anders programmiert werden */
-				$eid1 = @IPS_GetEventIDByName("Timer_".$this->variable, $_IPS['SELF']);
-				if ($eid1==false)
-						{
-						echo "Timer Ereignis generieren \n";
-						$eid1 = IPS_CreateEvent(1);
-						IPS_SetParent($eid1, $_IPS['SELF']);
-						IPS_SetName($eid1, "Timer_".$this->variable);
-						IPS_SetEventCyclic($eid1, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 5 /* Alle 5 Minuten */);
-						}
-				IPS_SetEventCyclicTimeFrom($eid1,(integer)date('G'),(integer)date('i'),0);
-				IPS_SetEventActive($eid1,false);
-				echo ">>>>>>>Kontakt ".$result.". Wir sind im Script: ".$_IPS['SELF']." und haben den Timer mit ID:".$eid1." gesetzt\n";
-				/********************************/
 				}
 			echo "\n".IPS_GetName($this->EreignisID)." ";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
