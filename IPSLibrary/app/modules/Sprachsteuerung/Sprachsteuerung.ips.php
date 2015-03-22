@@ -53,8 +53,8 @@ echo "DeviceNum :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
 echo "UpdateInterval :".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
 echo "DeviceDriver :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n";
 
-echo "TTSAudioOutput :".IPS_GetProperty(50984,"TTSAudioOutput")."\n";
-echo "TTSEngine :".IPS_GetProperty(50984,"TTSEngine")."\n";
+//echo "TTSAudioOutput :".IPS_GetProperty(50984,"TTSAudioOutput")."\n";
+//echo "TTSEngine :".IPS_GetProperty(50984,"TTSEngine")."\n";
 
  //Fügen Sie hier Ihren Skriptquellcode ein
 

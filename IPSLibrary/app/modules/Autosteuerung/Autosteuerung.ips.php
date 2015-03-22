@@ -105,7 +105,7 @@ if ($_IPS['SENDER']=="Execute")
 		      break;
 		   case "Parameter":
 		   	$temperatur=GetValue($key);
-		     	//tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     	tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
 		     	echo "Grad: ".GetValue($key)."\n";
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
