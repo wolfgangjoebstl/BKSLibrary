@@ -244,7 +244,7 @@ if ($_IPS['SENDER']=="Variable")
 		     	$moduleParams2 = explode(',', $params[2]);
 		     	$ein=$status-6;
 		     	if ($ein<0) {$ein=0;};
-			   IPSLight_SetSwitchByName($moduleParams2[0],);
+			   IPSLight_SetSwitchByName($moduleParams2[0],$ein);
 				break;
 		   default:
 				eval($params[1]);
