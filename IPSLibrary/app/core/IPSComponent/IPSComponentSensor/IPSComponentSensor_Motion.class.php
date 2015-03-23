@@ -191,7 +191,7 @@
 			echo "\n".IPS_GetName($this->EreignisID)." ";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
 			echo "\n".IPS_GetName($this->GesamtID)." ";
-			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf));
+			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
 			SetValue($this->GesamtCountID,$GesamtZaehler);
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Status ".$result);
@@ -215,7 +215,7 @@
 			}
 
 
-		private function evaluateEvents($value)
+		private function evaluateEvents($value, $diftimemax=15)
 			{
 			/* keine Indizierung auf Herkunft der Variable, nur String Werte evaluieren */
 			echo "Evaluate Eventliste : ".$value."\n";
@@ -303,7 +303,7 @@
 									case STAT_KeineBewegung:
 									case STAT_vonzuHauseweg:
 									   //echo "Wenig Bewegung: ".$dif_time."\n";
-										if (($dif_time<15) and ($dif_time>=0))
+										if (($dif_time<$diftimemax) and ($dif_time>=0))
 										   {
 										   // Warum mus dif_time >0 sein ????
 	  			   						$previous_state=10;    /* default, einen ueberspringen, damit voriger Wert vorerst nicht mehr geloescht werden kann */
@@ -413,16 +413,18 @@
 			if ($gesamt)
 			   {
   				$value=GetValue($this->GesamtID);
+  				$diftimemax=60;
   				}
   			else
   			   {
 				$value=GetValue($this->EreignisID);
+  				$diftimemax=15;
 				}
 			/* es erfolgt zwar eine Kompromierung aber keine Speicherung in den Events, das ist nur bei Auftreten eines Events */
 			if ($comp)
 				{
-				$value=$this->evaluateEvents($value);
-				$value=$this->evaluateEvents($value);
+				$value=$this->evaluateEvents($value, $diftimemax);
+				$value=$this->evaluateEvents($value, $diftimemax);
 				}
 			$EventArray = explode(";", $value);
 			echo "Write Eventliste von ".IPS_GetName($this->EreignisID)." : ".$value."\n";

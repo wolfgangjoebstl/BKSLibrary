@@ -84,6 +84,48 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
 			}
 		}
+	$TypeFS20=RemoteAccess_TypeFS20();
+	$FS20= FS20List();
+	foreach ($FS20 as $Key)
+		{
+		/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
+		$found=false;
+		if ( (isset($Key["COID"]["MOTION"])==true) )
+   		{
+   		/* alle Bewegungsmelder */
+	      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+	      $found=true;
+			}
+		/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+		if ((isset($Key["COID"]["StatusVariable"])==true))
+	   	{
+   		foreach ($TypeFS20 as $Type)
+   		   {
+   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+	   	      {
+     				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			      $found=true;
+   		      }
+   	   	}
+			}
+		if ($found)
+		   {
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+			   {
+				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
+			}
+		}
+				
 
 if ($_IPS['SENDER']=="Execute")
 	{
@@ -101,6 +143,13 @@ if ($_IPS['SENDER']=="Execute")
 		   		/* alle Bewegungsmelder */
 
 			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log=new Motion_Logging($oid);
+					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+	   			{
+			   	/* alle Kontakte */
+			      $oid=(integer)$Key["COID"]["STATE"]["OID"];
 					$log=new Motion_Logging($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
@@ -138,6 +187,48 @@ if ($_IPS['SENDER']=="Execute")
 
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
 			echo $alleMotionWerte;
+			
+			/* Detect Movement Auswertungen analysieren */
+			
+			/* Routine in Log_Motion uebernehmen */
+			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+			IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+		   $DetectMovementHandler = new DetectMovementHandler();
+			print_r($DetectMovementHandler->ListEvents("Motion"));
+			print_r($DetectMovementHandler->ListEvents("Contact"));
+
+			$groups=$DetectMovementHandler->ListGroups();
+			foreach($groups as $group=>$name)
+			   {
+			   echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectMovementHandler->ListEvents($group);
+				$status=false;
+				foreach ($config as $oid=>$params)
+					{
+					$status=$status || GetValue($oid);
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					}
+			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+				$log=new Motion_Logging($oid);
+				$class=$log->GetComponent($oid);
+				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
+				SetValue($statusID,(integer)$status);
+			   }
+
+			
+			$config=IPSDetectMovementHandler_GetEventConfiguration();
+
+			foreach ($config as $oid=>$params)
+				{
+				echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)." Type :".str_pad($params[0],15)."Status: ".(integer)GetValue($oid)." Gruppe ".$params[1]."\n";
+				$log=new Motion_Logging($oid);
+				$class=$log->GetComponent($oid);
+				//print_r($class);
+				echo "ParentID:".IPS_GetParent(intval($log->EreignisID))." Name :","Gesamtauswertung_".$params[1]."\n";
+				$erID=CreateVariable("Gesamtauswertung_".$params[1],1,IPS_GetParent(intval($log->EreignisID)));
+				}
+			
+			
 	}
 
 ?>

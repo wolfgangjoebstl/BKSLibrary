@@ -72,6 +72,75 @@
 				}
 			}
 
+		/**
+		 * @public
+		 *
+		 * Listet anhand der Konfiguration alle Events
+		 *
+		 */
+		public static function ListEvents($type="")
+			{
+			$configuration = self::Get_EventConfigurationAuto();
+			$result=array();
+			foreach ($configuration as $variableId=>$params)
+				{
+				switch ($type)
+					{
+				   case 'Motion':
+					case 'Contact':
+						if ($type==$params[0])
+						   {
+							$result[$variableId]=$params[1];
+							}
+					   break;
+					default:
+					   if ($type!="")
+					      {
+							if ($type==$params[1])
+							   {
+								$result[$variableId]=$params[1];
+							   }
+					      }
+					   else
+					      {
+							$result[$variableId]=$params[0];
+							}
+					   break;
+					}
+				}
+			return ($result);
+			}
+
+		/**
+		 * @public
+		 *
+		 * Listet anhand der Konfiguration alle Events
+		 *
+		 */
+		public static function ListGroups($type="")
+			{
+			$configuration = self::Get_EventConfigurationAuto();
+			$result=array();
+			foreach ($configuration as $variableId=>$params)
+				{
+				switch ($type)
+					{
+				   case 'Motion':
+					case 'Contact':
+						if ($type==$params[0])
+						   {
+							$result[$params[1]]="available";
+							}
+					   break;
+					default:
+						$result[$params[1]]="available";
+					   break;
+					}
+				}
+			return ($result);
+			}
+
+
 
 		/**
 		 * @public
