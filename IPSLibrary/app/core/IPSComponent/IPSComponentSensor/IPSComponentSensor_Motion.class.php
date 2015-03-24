@@ -33,6 +33,7 @@
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
+		   //echo "Build Motion Sensor with ".$var1.".\n";
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
@@ -54,15 +55,17 @@
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();
 			
-			foreach ($this->remServer as $Server)
-				{
-				echo "Server : ".$Server."\n";
-				$rpc = new JSONRPC($Server);
-				echo "Remote OID: ".$this->RemoteOID."\n";
-				$roid=(integer)$this->RemoteOID;
-				$rpc->SetValue($roid, $value);
-				}
-			
+			if ($this->RemoteOID != Null)
+			   {
+				foreach ($this->remServer as $Server)
+					{
+					echo "Server : ".$Server."\n";
+					$rpc = new JSONRPC($Server);
+					echo "Remote OID: ".$this->RemoteOID."\n";
+					$roid=(integer)$this->RemoteOID;
+					$rpc->SetValue($roid, $value);
+					}
+			   }
 		}
 
 		/**

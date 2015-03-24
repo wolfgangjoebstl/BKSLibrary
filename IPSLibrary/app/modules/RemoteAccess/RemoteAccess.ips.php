@@ -11,6 +11,9 @@ baut die Struktur für die Schalter auf
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
+IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+   
 /******************************************************
 
 				INIT
@@ -345,6 +348,9 @@ foreach ($remServer as $Server)
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
+			//echo "Detect Movement anlegen.\n";
+		   $DetectMovementHandler = new DetectMovementHandler();
+			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
 			}
 		}
 
@@ -383,6 +389,9 @@ foreach ($remServer as $Server)
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
+			//echo "Detect Movement anlegen.\n";
+		   $DetectMovementHandler = new DetectMovementHandler();
+			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 			}
 		}
 
@@ -421,7 +430,9 @@ foreach ($remServer as $Server)
 			   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$result,'IPSModuleSensor_Motion');
-
+						//echo "Detect Movement anlegen.\n";
+					   $DetectMovementHandler = new DetectMovementHandler();
+						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 		   	      }
 		   	   }
 

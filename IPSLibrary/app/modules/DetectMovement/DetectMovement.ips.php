@@ -5,7 +5,9 @@
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 //IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-IPSUtils_Include ("DetectMovement_Configuration.inc.php","IPSLibrary::config::modules::DetectMovement");
+
+IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
 /******************************************************
 
@@ -42,8 +44,19 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-   
 	IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+
+
+/****************************************************************************************************************/
+/*                                                                                                              */
+/*                                      Install                                                                 */
+/*                                                                                                              */
+/****************************************************************************************************************/
+
+if (false)
+	{
+	/* zuerst check ob das Module mit und ohne RPC Funktion geht */
+
 	$Homematic = HomematicList();
 	$keyword="MOTION";
 	foreach ($Homematic as $Key)
@@ -81,7 +94,10 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		   /* Programmierung des Events ohne RPC Funktion, führt zu Fehlern in der IPS_ComponentSensor_Motion Klasse */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
+		   $DetectMovementHandler = new DetectMovementHandler();
+			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
 			}
 		}
 	$TypeFS20=RemoteAccess_TypeFS20();
@@ -123,9 +139,14 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
+		   $DetectMovementHandler = new DetectMovementHandler();
+			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 			}
 		}
-				
+	}
+
+
+
 
 if ($_IPS['SENDER']=="Execute")
 	{

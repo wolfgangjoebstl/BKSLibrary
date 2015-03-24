@@ -229,26 +229,31 @@
 			$found = false;
 				if (array_key_exists($variableId, $configurationAuto))
 					{
-				   echo "Search Config :".$variableId."with Event Type:".$eventType."\n";
+				   echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
 					$moduleParamsNew = explode(',', $moduleParams);
 					//print_r($moduleParamsNew);
 					$moduleClassNew  = $moduleParamsNew[0];
 
 					$params = $configurationAuto[$variableId];
-
 					for ($i=0; $i<count($params); $i=$i+3)
 						{
 						$moduleParamsCfg = $params[$i+2];
 						$moduleParamsCfg = explode(',', $moduleParamsCfg);
 						$moduleClassCfg  = $moduleParamsCfg[0];
 						// Found Variable and Module --> Update Configuration
-						if ($moduleClassCfg=$moduleClassNew)
+						echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
+						/*if ($moduleClassCfg=$moduleClassNew)
 							{
 							$found = true;
 							$configurationAuto[$variableId][$i]   = $eventType;
 							$configurationAuto[$variableId][$i+1] = $componentParams;
 							$configurationAuto[$variableId][$i+2] = $moduleParams;
-							}
+							} */
+						$found = true;
+						$configurationAuto[$variableId][$i]   = $eventType;
+						if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
+						if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
 						}
 					}
 
