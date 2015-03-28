@@ -112,7 +112,7 @@ if ($_IPS['SENDER']=="Execute")
 		   case "Parameter":
 				echo "Sprachausgabe : ".$speak_config["Parameter"][0]."\n";
 		   	$temperatur=GetValue($key);
-		     	tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     	tts_play(1,'Temperatur '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
 		     	echo "Grad: ".GetValue($key)."\n";
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
@@ -215,7 +215,7 @@ if ($_IPS['SENDER']=="Variable")
 		   	$temperatur=GetValue($_IPS['VARIABLE']);
 		   	if ($speak_config["Parameter"][0]=="On")
 		   	   {
-		     		tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     		tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
 		     		}
 		     	$moduleParams2 = explode(',', $params[2]);
 		     	print_r($moduleParams2);
