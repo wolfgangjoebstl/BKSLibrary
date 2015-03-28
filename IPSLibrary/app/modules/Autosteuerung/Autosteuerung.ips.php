@@ -16,7 +16,8 @@ include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLigh
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung.class.php");
-	
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+
 /******************************************************
 
 				INIT
@@ -117,12 +118,12 @@ if ($_IPS['SENDER']=="Execute")
 		     	print_r($moduleParams2);
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[2]);
 			     	echo "\nVentilator einschalten.\n";
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[4]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[4]);
 			     	}
 				break;
 		   case "Status":
@@ -220,7 +221,7 @@ if ($_IPS['SENDER']=="Variable")
 		     	print_r($moduleParams2);
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[2]);
 			     	if ($speak_config["Parameter"][0]=="On")
 		   	   	{
 		     			tts_play(1,"Ventilator ein.",'',2);
@@ -228,7 +229,7 @@ if ($_IPS['SENDER']=="Variable")
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[4]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[4]);
 			     	if ($speak_config["Parameter"][0]=="On")
 		   	   	{
 		     			tts_play(1,"Ventilator aus.",'',2);
