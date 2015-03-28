@@ -13,8 +13,9 @@ funktioniert nur mit elektrischen Heizkoerpern
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung.class.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung.class.php");
 	
 /******************************************************
 
@@ -30,11 +31,13 @@ if (!isset($moduleManager)) {
 	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 }
 
+$sprachsteuerung=false;
 $installedModules = $moduleManager->GetInstalledModules();
 $inst_modules="\nInstallierte Module:\n";
 foreach ($installedModules as $name=>$modules)
 	{
 	$inst_modules.=str_pad($name,30)." ".$modules."\n";
+	if ($name=="Sprachsteuerung") { $sprachsteuerung=true; }
 	}
 echo $inst_modules."\n\n";
 
@@ -74,6 +77,8 @@ $sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude,
 
 echo "Sonnenauf/untergang ".date("H:i",$sunrise)." ".date("H:i",$sunset)." \n";
 
+$speak_config=Autosteuerung_Speak();
+
 /*********************************************************************************************/
 
 
@@ -104,6 +109,7 @@ if ($_IPS['SENDER']=="Execute")
 				echo "Eventname :".$eventName." ".$eventId."\n";
 		      break;
 		   case "Parameter":
+				echo "Sprachausgabe : ".$speak_config["Parameter"][0]."\n";
 		   	$temperatur=GetValue($key);
 		     	tts_play(1,'Temperatur'.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
 		     	echo "Grad: ".GetValue($key)."\n";
@@ -112,6 +118,7 @@ if ($_IPS['SENDER']=="Execute")
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
 			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	echo "\nVentilator einschalten.\n";
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
@@ -205,16 +212,27 @@ if ($_IPS['SENDER']=="Variable")
 		      break;
 		   case "Parameter":
 		   	$temperatur=GetValue($_IPS['VARIABLE']);
-		     	//tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		   	if ($speak_config["Parameter"][0]=="On")
+		   	   {
+		     		tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)."Komma".floor(($temperatur-floor($temperatur))*10)."Grad.",'',2);
+		     		}
 		     	$moduleParams2 = explode(',', $params[2]);
 		     	print_r($moduleParams2);
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
 			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[2]);
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,"Ventilator ein.",'',2);
+		     			}
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
 			     	IPSLight_SetSwitchByName($moduleParams2[0],$moduleParams2[4]);
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,"Ventilator aus.",'',2);
+		     			}
 			     	}
 				break;
 		   case "Status":
