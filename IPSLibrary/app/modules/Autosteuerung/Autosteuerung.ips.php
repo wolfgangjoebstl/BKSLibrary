@@ -16,7 +16,6 @@ include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLigh
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung.class.php");
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
 
 /******************************************************
 
@@ -38,7 +37,11 @@ $inst_modules="\nInstallierte Module:\n";
 foreach ($installedModules as $name=>$modules)
 	{
 	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	if ($name=="Sprachsteuerung") { $sprachsteuerung=true; }
+	if ($name=="Sprachsteuerung")
+		{
+		$sprachsteuerung=true;
+		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+		}
 	}
 echo $inst_modules."\n\n";
 
@@ -116,25 +119,44 @@ if ($_IPS['SENDER']=="Execute")
 		     	echo "Grad: ".GetValue($key)."\n";
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
+		     	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
+		     	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[2]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
 			     	echo "\nVentilator einschalten.\n";
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,"Ventilator ein.",'',2);
+		     			}
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[4]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
+			     	echo "\nVentilator ausschalten.\n";
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,"Ventilator aus.",'',2);
+		     			}
 			     	}
 				break;
 		   case "Status":
 		   	$status=GetValue($key);
 		   	if ($status)
 		   	   {
-		     		//tts_play(1,'Status geht auf ein.','',2);
+		   	   echo "Status geht auf ein.\n";
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,'Status geht auf ein.','',2);
+		     			}
 		     		}
 		     	else
 		     	   {
-		     		//tts_play(1,'Status geht auf aus.','',2);
+		   	   echo "Status geht auf aus.\n";
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,'Status geht auf aus.','',2);
+		     			}
 		     		}
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
@@ -218,10 +240,12 @@ if ($_IPS['SENDER']=="Variable")
 		     		tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
 		     		}
 		     	$moduleParams2 = explode(',', $params[2]);
-		     	print_r($moduleParams2);
+		     	//print_r($moduleParams2);
+		     	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
+		     	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[2]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
 			     	if ($speak_config["Parameter"][0]=="On")
 		   	   	{
 		     			tts_play(1,"Ventilator ein.",'',2);
@@ -229,7 +253,7 @@ if ($_IPS['SENDER']=="Variable")
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],(boolean)$moduleParams2[4]);
+			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
 			     	if ($speak_config["Parameter"][0]=="On")
 		   	   	{
 		     			tts_play(1,"Ventilator aus.",'',2);
@@ -240,11 +264,17 @@ if ($_IPS['SENDER']=="Variable")
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	if ($status)
 		   	   {
-		     		tts_play(1,'Status geht auf ein.','',2);
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,'Status geht auf ein.','',2);
+		     			}
 		     		}
 		     	else
 		     	   {
-		     		tts_play(1,'Status geht auf aus.','',2);
+			     	if ($speak_config["Parameter"][0]=="On")
+		   	   	{
+		     			tts_play(1,'Status geht auf aus.','',2);
+		     			}
 		     		}
 		     	$moduleParams2 = explode(',', $params[2]);
 		     	print_r($moduleParams2);
@@ -272,7 +302,7 @@ if ($_IPS['SENDER']=="Variable")
 		}
 	else
 	   {
-  		tts_play(1,'Button pressed'.$_IPS['VARIABLE'],'',2);
+  		tts_play(1,'Taste gedrueckt mit Zahl '.$_IPS['VARIABLE'],'',2);
   		}
   		
 	if (false)
