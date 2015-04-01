@@ -37,10 +37,10 @@ $scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Pr
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-
-
-
-
+	echo "Alle SMTP Clients:\n";
+	print_r(IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"));
+	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
+	echo "Send Email ID: ".$SendEmailID."\n";
 
 /*********************************************************************************************/
 
@@ -58,7 +58,9 @@ if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
 
-
+	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
+		"\n\n************************************************************************************************************************\n".send_status(false);
+	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status LBG70", $event);
 	}
 
 /*********************************************************************************************/

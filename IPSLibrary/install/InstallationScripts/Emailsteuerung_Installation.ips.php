@@ -67,82 +67,76 @@
 
 	$scriptIdEmailsteuerung   = IPS_GetScriptIDByName('Emailsteuerung', $CategoryIdApp);
 
-	echo "Alle Mediaplayermodule:\n";
-	print_r(IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"));
-	echo "Alle Text-to-Speech Module:\n";
-	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
+	echo "Alle SMTP Clients:\n";
+	print_r(IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"));
+	//echo "Alle POP3 Server:\n";
+	//print_r(IPS_GetInstanceListByModuleID("{69CA7DBF-5FCE-4FDF-9F36-C05E0136ECFD}"));
+	echo "Alle IMAP Server:\n";
+	print_r(IPS_GetInstanceListByModuleID("{CABFCCA1-FBFF-4AB7-B11B-9879E67E152F}"));
+
+	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
+	$SmtpConfig = Smtp_Configuration();
+
+   if(!IPS_InstanceExists($SendEmailID))
+      {
+      $SendEmailID = IPS_CreateInstance("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"); // SMTP anlegen
+	   IPS_SetName($SendEmailID, "SendEmail");
+		IPS_SetParent($SendEmailID,$CategoryIdData);
+		foreach ($SmtpConfig as $key => $value)
+		   {
+		   echo "Property ".$key." ".$value."\n";
+			IPS_SetProperty($SendEmailID,$key,$value);
+			}
+		IPS_ApplyChanges($SendEmailID);
+		}
+
+	$SmtpID=$SendEmailID;
+	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
+	echo "Recipient :".IPS_GetProperty($SmtpID,"Recipient")."\n";
+	echo "SenderAddress :".IPS_GetProperty($SmtpID,"SenderAddress")."\n";
+	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
+	echo "SenderName :".IPS_GetProperty($SmtpID,"SenderName")."\n";
+	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
+	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
+	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
+	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+
+	$ReceiveEmailID = @IPS_GetInstanceIDByName("ReceiveEmail", $CategoryIdData);
+	$ImapConfig = Imap_Configuration();
 	
-	$MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+	$SmtpID=35015;
+	echo "CacheInterval :".IPS_GetProperty($SmtpID,"CacheInterval")."\n";
+	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
+	echo "CacheSize :".IPS_GetProperty($SmtpID,"CacheSize")."\n";
+	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
+	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
+	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
+	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
+	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
 
-   if(!IPS_InstanceExists($MediaPlayerMusikID))
+   if(!IPS_InstanceExists($ReceiveEmailID))
       {
-      $MediaPlayerMusikID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
-	   IPS_SetName($MediaPlayerMusikID, "MP Musik");
-		IPS_SetParent($MediaPlayerMusikID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceNum",1);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
-		IPS_SetProperty($MediaPlayerMusikID,"UpdateInterval",0);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
-		IPS_ApplyChanges($MediaPlayerMusikID);
-		/*
-		DeviceNum integer 0
-		DeviceName string
-		UpdateInterval integer 0
-		DeviceDriver string
-		*/
+      $ReceiveEmailID = IPS_CreateInstance("{CABFCCA1-FBFF-4AB7-B11B-9879E67E152F}"); // IMAP anlegen
+	   IPS_SetName($ReceiveEmailID, "ReceiveEmail");
+		IPS_SetParent($ReceiveEmailID,$CategoryIdData);
+		foreach ($ImapConfig as $key => $value)
+		   {
+		   echo "Property ".$key." ".$value."\n";
+			IPS_SetProperty($ReceiveEmailID,$key,$value);
+			}
+		IPS_ApplyChanges($ReceiveEmailID);
 		}
-	$MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 
-   if(!IPS_InstanceExists($MediaPlayerTonID))
-      {
-      $MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
-	   IPS_SetName($MediaPlayerTonID, "MP Ton");
-		IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
-		IPS_SetProperty($MediaPlayerTonID,"UpdateInterval",0);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
-		IPS_ApplyChanges($MediaPlayerTonID);
-		/*
-		DeviceNum integer 0
-		DeviceName string
-		UpdateInterval integer 0
-		DeviceDriver string
-		*/
-		}
-	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-
-   if(!IPS_InstanceExists($TextToSpeachID))
-      {
-      $TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
-	   IPS_SetName($TextToSpeachID, "Text to Speach");
-		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Anna - English (United States)");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","ScanSoft Steffi_Dri40_16kHz");
-		$SprachConfig=Sprachsteuerung_Configuration();
-		IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
-		IPS_ApplyChanges($TextToSpeachID);
-		/*
-		TTSAudioOutput string
-		TTSEngine string
-		*/
-		}
-   $SprachCounterID = CreateVariable("Counter", 1, $scriptIdEmailsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	//print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
-
-	echo "TTSAudioOutput :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
-	echo "TTSEngine :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
-	echo "DeviceName :".IPS_GetProperty($MediaPlayerTonID,"DeviceName")."\n";
-	echo "DeviceNum :".IPS_GetProperty($MediaPlayerTonID,"DeviceNum")."\n";
-	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerTonID,"UpdateInterval")."\n";
-	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerTonID,"DeviceDriver")."\n";
-	echo "DeviceName :".IPS_GetProperty($MediaPlayerMusikID,"DeviceName")."\n";
-	echo "DeviceNum :".IPS_GetProperty($MediaPlayerMusikID,"DeviceNum")."\n";
-	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
-	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
+	$SmtpID=$ReceiveEmailID;
+	echo "CacheInterval :".IPS_GetProperty($SmtpID,"CacheInterval")."\n";
+	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
+	echo "CacheSize :".IPS_GetProperty($SmtpID,"CacheSize")."\n";
+	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
+	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
+	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
+	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
+	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
