@@ -41,6 +41,17 @@ echo "Category Script ID:".$scriptId."\n";
 	print_r(IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"));
 	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
 	echo "Send Email ID: ".$SendEmailID."\n";
+	
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
+	}
+IPS_SetEventActive($tim1ID,true);
 
 /*********************************************************************************************/
 
@@ -76,7 +87,9 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-
+	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
+		"\n\n************************************************************************************************************************\n".send_status(false);
+	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Regelmaesig nachgefragter Status LBG70", $event);
 	}
 
 
