@@ -7,8 +7,8 @@
 	$GuthabenConfig = get_GuthabenConfiguration();
 	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
 	
-	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
-	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+	echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
+	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	/* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
 
 	//print_r($GuthabenConfig);
@@ -27,6 +27,19 @@
 if ($_IPS['SENDER']=="Execute")
 	   {
 	   echo $ergebnis;
+	   $ergebnis1="";
+		foreach ($GuthabenConfig as $TelNummer)
+			{
+			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+
+			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+			$dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
+			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
+			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+			$ergebnis1.=$TelNummer["NUMMER"]."  ".GetValue($userID)."  ".GetValue($dateID)." ".GetValue($udateID)."\n";
+			}
+	   echo "\n\n".$ergebnis1;
+
 	   }
 
 

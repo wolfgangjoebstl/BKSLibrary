@@ -136,6 +136,18 @@
 	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
 	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
 	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+
+
+$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdEmailsteuerung);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $scriptIdEmailsteuerung);
+	IPS_SetName($tim1ID, "Aufruftimer");
+	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
+	}
+IPS_SetEventActive($tim1ID,true);
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
