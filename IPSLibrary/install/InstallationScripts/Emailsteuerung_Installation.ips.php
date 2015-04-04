@@ -104,16 +104,6 @@
 	$ReceiveEmailID = @IPS_GetInstanceIDByName("ReceiveEmail", $CategoryIdData);
 	$ImapConfig = Imap_Configuration();
 	
-	$SmtpID=35015;
-	echo "CacheInterval :".IPS_GetProperty($SmtpID,"CacheInterval")."\n";
-	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
-	echo "CacheSize :".IPS_GetProperty($SmtpID,"CacheSize")."\n";
-	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
-	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
-	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
-	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
-	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
-
    if(!IPS_InstanceExists($ReceiveEmailID))
       {
       $ReceiveEmailID = IPS_CreateInstance("{CABFCCA1-FBFF-4AB7-B11B-9879E67E152F}"); // IMAP anlegen
