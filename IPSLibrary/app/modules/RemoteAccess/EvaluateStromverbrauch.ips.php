@@ -36,25 +36,29 @@ if (isset ($result["Amis"]))
 	foreach ($remServer as $Server)
 		{
 		$rpc = new JSONRPC($Server);
-		}
-	/* nimmt vorerst immer die zweite Adresse */
 
-	$visID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-	$wfID=RPC_CreateCategoryByName($rpc, $visID, "WebFront");
-	$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
-	$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
-	$amiswebID=RPC_CreateCategoryByName($rpc, $raID, "Stromverbrauch");
+		/* nimmt vorerst immer die zweite Adresse */
 
-	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
+		$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+		$visname=IPS_GetName(0);
+		echo "Server : ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
+		$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
+		$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
+		$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
+		$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
+		$amiswebID=RPC_CreateCategoryByName($rpc, $servID, "Stromverbrauch");
 
-	//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+		/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
 
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
-	$AmisStromverbrauch=AmisStromverbrauchList()();
-	
-	foreach ($AmisStromverbrauch as $Key)
-		{
+		//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+   	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		$AmisStromverbrauch=AmisStromverbrauchList()();
+	   print_r($AmisStromverbrauch);
+	   
+		foreach ($AmisStromverbrauch as $Key)
+			{
 	      $oid=(integer)$Key["OID"];
       	$variabletyp=IPS_GetVariable($oid);
 			//print_r($variabletyp);
@@ -76,8 +80,10 @@ if (isset ($result["Amis"]))
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result,'IPSModuleSensor_Remote');
 	
+			}
 		}
 	}
+
 
 /******************************************************************/
 

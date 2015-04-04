@@ -39,29 +39,26 @@ if (isset ($result["Guthabensteuerung"]))
 	foreach ($remServer as $Server)
 		{
 		$rpc = new JSONRPC($Server);
-		}
-	/* nimmt vorerst immer die zweite Adresse */
 
+		$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+		$visname=IPS_GetName(0);
+		echo "Server : ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
+		$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
+		$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
+		$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
+		$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
+		$guthID=RPC_CreateCategoryByName($rpc, $servID, "Guthaben");
 
-	$result=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-	echo "OID = ".$result." \n";
+		/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
 
-	$visID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-	$wfID=RPC_CreateCategoryByName($rpc, $visID, "WebFront");
-	$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
-	$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
-	$guthID=RPC_CreateCategoryByName($rpc, $raID, "Guthaben");
-
-	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */
-
-	//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+		//IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+   	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
    
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
-	$Guthabensteuerung=GuthabensteuerungList();
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		$Guthabensteuerung=GuthabensteuerungList();
 	
-	foreach ($Guthabensteuerung as $Key)
-		{
+		foreach ($Guthabensteuerung as $Key)
+			{
 	      $oid=(integer)$Key["OID"];
       	$variabletyp=IPS_GetVariable($oid);
 			//print_r($variabletyp);
@@ -82,9 +79,8 @@ if (isset ($result["Guthabensteuerung"]))
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$result,'IPSModuleSensor_Remote');
-	
+			}
 		}
 	}
-
 
 ?>
