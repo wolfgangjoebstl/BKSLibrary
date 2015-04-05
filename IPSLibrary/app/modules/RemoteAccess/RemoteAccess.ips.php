@@ -94,7 +94,7 @@ $startexec=microtime(true);
 			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 			$MeterConfig = get_MeterConfiguration();
 
-			$includefile.='function AmisStromverbrauchList() { return array('."\n";
+			$includefile.="\n".'function AmisStromverbrauchList() { return array('."\n";
          $amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			echo "Amis Stromverbrauch Data auf :".$amisdataID."\n";
 
@@ -140,12 +140,13 @@ $remServer=RemoteAccess_GetConfiguration();
 foreach ($remServer as $Name => $Server)
 	{
 	$rpc = new JSONRPC($Server);
-
+	$includefile.='"'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
+	
 	$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 	$visname=IPS_GetName(0);
 	echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
-	$includefile.='"'.$Name.'" => array('."\n         ".'"VisRootID" => '.(string)$visrootID.', ';
-
+	$includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
+	
 	$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
 	$includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
 
