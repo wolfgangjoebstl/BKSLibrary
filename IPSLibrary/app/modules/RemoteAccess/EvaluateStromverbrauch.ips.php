@@ -1,5 +1,8 @@
 <?
 
+/******** macht Evaluate Variables */
+
+
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
@@ -26,7 +29,8 @@ IPS_SetEventActive($tim1ID,true);
 IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 $result=$moduleManager->GetInstalledModules();
-if (isset ($result["Amis"]))
+//if (isset ($result["Amis"]))
+if (false)
   	{
   	/* nur ausführen wenn AMIS installiert wurde */
 
@@ -36,8 +40,6 @@ if (isset ($result["Amis"]))
 	foreach ($remServer as $Server)
 		{
 		$rpc = new JSONRPC($Server);
-
-		/* nimmt vorerst immer die zweite Adresse */
 
 		$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 		$visname=IPS_GetName(0);

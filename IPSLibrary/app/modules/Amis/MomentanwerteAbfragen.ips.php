@@ -250,7 +250,8 @@ function writeEnergyHomematic($MConfig)
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
 	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
-	      echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+			echo "\nWert von : ".$meter["NAME"]."\n";
+			echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
 	      echo "Energievorschub aktuell:".$energievorschub."kWh\n";
 	      echo "Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
 			//print_r($meter);

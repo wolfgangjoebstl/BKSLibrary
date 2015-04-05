@@ -51,7 +51,9 @@
 			//print_r($this);
 			//print_r($module);
 			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			foreach ($this->remServer as $Server)
+			$params= explode(';', $this->RemoteOID);
+			print_r($params);
+			foreach ($this->remServer as $Name => $Server)
 				{
 				echo "Server : ".$Server."\n";
 				$rpc = new JSONRPC($Server);

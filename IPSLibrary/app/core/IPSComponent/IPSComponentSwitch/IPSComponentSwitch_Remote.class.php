@@ -35,7 +35,7 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
-		public function __construct($var1, $instanceId, $supportsOnTime=true) {
+		public function __construct($var1, $instanceId=0, $supportsOnTime=true) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->supportsOnTime = $supportsOnTime;
 			$this->RemoteOID    = $var1;
@@ -53,21 +53,30 @@
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSwitch $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleSwitch $module){
+		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
+			{
 			//$module->SyncState($value, $this);
 			echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			//print_r($this);
 			//print_r($module);
 			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			foreach ($this->remServer as $Server)
+			$params= explode(';', $this->RemoteOID);
+			print_r($params);
+			foreach ($params as $val)
 				{
-				echo "Server : ".$Server."\n";
-				$rpc = new JSONRPC($Server);
-				echo "Remote OID: ".$this->RemoteOID."\n";
-				$roid=(integer)$this->RemoteOID;
-				$rpc->SetValue($roid, $value);
+				$para= explode(':', $val);
+				echo "Wert :".$val." Anzahl ",count($para)." \n";
+            if (count($para)==2)
+               {
+					$Server=$this->remServer[$para[0]];
+					echo "Server : ".$Server."\n";
+					$rpc = new JSONRPC($Server);
+					$roid=(integer)$para[1];
+					echo "Remote OID: ".$roid."\n";
+					$rpc->SetValue($roid, $value);
+					}
 				}
-		}
+			}
 
 		/**
 		 * @public

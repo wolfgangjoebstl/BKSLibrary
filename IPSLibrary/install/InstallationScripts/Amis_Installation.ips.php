@@ -109,6 +109,7 @@
 
 		$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
 	   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+		SetValue($KostenID,get_Cost());
 
 		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
    	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
