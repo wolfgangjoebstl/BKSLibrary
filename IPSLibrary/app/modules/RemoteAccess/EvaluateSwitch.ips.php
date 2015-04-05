@@ -15,7 +15,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 120);
+ini_set('max_execution_time', 400);
 $startexec=microtime(true);
 
 	/***************** INSTALLATION **************/
@@ -55,14 +55,13 @@ $startexec=microtime(true);
 				$parameter="";
 				foreach ($remServer as $Name => $Server)
 					{
-					print_r($Server);
+					//print_r($Server);
 					$rpc = new JSONRPC($Server["Adresse"]);
 					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0);
-					echo "nnnn";
 	   			$rpc->IPS_SetVariableCustomProfile($result,"Switch");
-					$rpc->AC_SetLoggingStatus($Server["ArchiveHandler"],$result,true);
-					$rpc->AC_SetAggregationType($Server["ArchiveHandler"],$result,0);
-					$rpc->IPS_ApplyChanges($Server["ArchiveHandler"]);				//print_r($result);
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
 			   $messageHandler = new IPSMessageHandler();
@@ -70,6 +69,7 @@ $startexec=microtime(true);
 			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				echo "Homematic Switch mit Parameter :".$parameter." erzeugt.\n";
 				}
 		}
 
@@ -93,11 +93,11 @@ $startexec=microtime(true);
 				foreach ($remServer as $Name => $Server)
 					{
 					$rpc = new JSONRPC($Server["Adresse"]);
-					$result=RPC_CreateVariableByName($rpc, $switchID[$Name], $Key["Name"], 0);
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0);
 		   		$rpc->IPS_SetVariableCustomProfile($result,"Switch");
-					$rpc->AC_SetLoggingStatus($Server["ArchiveHandler"],$result,true);
-					$rpc->AC_SetAggregationType($Server["ArchiveHandler"],$result,0);
-					$rpc->IPS_ApplyChanges($Server["ArchiveHandler"]);				//print_r($result);
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
 			   $messageHandler = new IPSMessageHandler();
@@ -105,6 +105,7 @@ $startexec=microtime(true);
 			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				echo "FS20 Switch mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}
 

@@ -234,14 +234,14 @@ function writeEnergyHomematic($MConfig)
 	   	$homematic=true;
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      IPS_SetVariableCustomProfile($EnergieID,'kWh');
-	      AC_SetLoggingStatus($archiveHandlerID,$EnergieID,true);
-			AC_SetAggregationType($archiveHandlerID,$EnergieID,1);
-			IPS_ApplyChanges($archiveHandlerID);
+	      //IPS_SetVariableCustomProfile($EnergieID,'~Electricity');
+	      //AC_SetLoggingStatus($archiveHandlerID,$EnergieID,true);
+			//AC_SetAggregationType($archiveHandlerID,$EnergieID,1);
+			//IPS_ApplyChanges($archiveHandlerID);
 	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-  	      IPS_SetVariableCustomProfile($LeistungID,'kW');
+  	      //IPS_SetVariableCustomProfile($LeistungID,'~Power');
 	      $energie=GetValue($meter["HM_EnergieID"])/1000;
   	      //IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
 	      $energievorschub=$energie-GetValue($HM_EnergieID);
@@ -250,8 +250,7 @@ function writeEnergyHomematic($MConfig)
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
 	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
-			echo "\nWert von : ".$meter["NAME"]."\n";
-			echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+	      echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
 	      echo "Energievorschub aktuell:".$energievorschub."kWh\n";
 	      echo "Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
 			//print_r($meter);

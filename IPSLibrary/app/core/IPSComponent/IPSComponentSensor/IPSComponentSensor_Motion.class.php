@@ -173,7 +173,7 @@
 					$EreignisVerlauf.=time().";".STAT_Bewegung.";";
 					$GesamtZaehler+=1;
 					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-					$GesamtVerlauf.=time().";".$GesamtZaehler.";";
+					$GesamtVerlauf.=time().";".STAT_Bewegung.";";
 					}
 				else
 					{
@@ -183,7 +183,7 @@
 					$GesamtZaehler-=1;
 					if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
 					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-					$GesamtVerlauf.=time().";".$GesamtZaehler.";";
+					$GesamtVerlauf.=time().";".STAT_Bewegung.";";
 					}
 				}
 			else
@@ -199,9 +199,9 @@
 					$result="Geschlossen";
 					}
 				}
-			echo "\n".IPS_GetName($this->EreignisID)." ";
+			echo "\n".IPS_GetName($this->EreignisID)." \n";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
-			echo "\n".IPS_GetName($this->GesamtID)." ";
+			echo "\n".IPS_GetName($this->GesamtID)." \n";
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
 			SetValue($this->GesamtCountID,$GesamtZaehler);
 			parent::LogMessage($result);

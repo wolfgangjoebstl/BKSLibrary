@@ -82,6 +82,9 @@
 
 	$parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+	$archiveHandlerID = $archiveHandlerID[0];
+
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 	$MeterConfig = get_MeterConfiguration();
 	//print_r($MeterConfig);
@@ -95,6 +98,16 @@
 		   {
 			/* Variable ID selbst bestimmen */
 		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	      IPS_SetVariableCustomProfile($variableID,'~Electricity');
+	      AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			
+	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+  	      IPS_SetVariableCustomProfile($LeistungID,'~Power');
+	      AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+			IPS_ApplyChanges($archiveHandlerID);
 		   }
 		if ($meter["TYPE"]=="Amis")
 		   {
@@ -104,12 +117,22 @@
 			$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+			$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2);
+  	      IPS_SetVariableCustomProfile($wirkenergie1_ID,'~Electricity');
+	      AC_SetLoggingStatus($archiveHandlerID,$wirkenergie1_ID,true);
+			AC_SetAggregationType($archiveHandlerID,$wirkenergie1_ID,1);
+			IPS_ApplyChanges($archiveHandlerID);
+
+			$aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2);
+  	      IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
+	      AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
+			AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
+			IPS_ApplyChanges($archiveHandlerID);
 			}
 		print_r($meter);
 
 		$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
 	   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
-		SetValue($KostenID,get_Cost());
 
 		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
    	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
