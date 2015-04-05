@@ -135,7 +135,7 @@ echo "Ende Evaluierung : ".(microtime(true)-$startexec)." Sekunden \n";
 
 *************************************************************/
 
-$includefile.='\nfunction ROID_List() { return array('."\n";
+$includefile.="\n".'function ROID_List() { return array('."\n";
 $remServer=RemoteAccess_GetConfiguration();
 foreach ($remServer as $Name => $Server)
 	{
@@ -299,7 +299,7 @@ foreach ($remServer as $Name => $Server)
 	}
 echo "\n\n";
 
-		$includefile.="\n      ".');}'."\n";
+		$includefile.="      ".');}'."\n";
 		$includefile.="\n".'?>';
 		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables.inc.php';
 		if (!file_put_contents($filename, $includefile))
