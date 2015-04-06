@@ -97,10 +97,15 @@
 
 	   function __construct($variable)
 		   {
-
+		   //echo "Construct Motion.\n";
+		   $this->variable=$variable;
+		   $result=IPS_GetObject($variable);
+		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+		   
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$result=$moduleManager->GetInstalledModules();
+
 			if (isset ($result["DetectMovement"]))
 				{
 				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -115,11 +120,27 @@
       			IPS_SetName($vid, $name);
 	      		IPS_SetInfo($vid, "this category was created by script. ");
 	      		}
+				$name="Temperatur-Auswertung";
+				$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+				if ($TempAuswertungID==false)
+				   {
+					$TempAuswertungID = IPS_CreateCategory();
+   	   		IPS_SetParent($TempAuswertungID, $CategoryIdData);
+      			IPS_SetName($TempAuswertungID, $name);
+	      		IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
+	      		}
+				if ($variable<>null)
+				   {
+				   /* lokale Spiegelregister aufsetzen */
+	   	   	$erID=CreateVariable($this->variablename,2,$TempAuswertungID, 10 );
+	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	   	   	IPS_SetVariableCustomProfile($erID,'~Temperatur');
+	      		AC_SetLoggingStatus($archiveHandlerID,$erID,true);
+					AC_SetAggregationType($archiveHandlerID,$erID,0);      /* normaler Wwert */
+					IPS_ApplyChanges($archiveHandlerID);
+					}
 				}
-		   //echo "Construct Motion.\n";
-		   $this->variable=$variable;
-		   $result=IPS_GetObject($variable);
-		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		   $directories=get_IPSComponentLoggerConfig();
 		   $directory=$directories["TemperatureLog"];

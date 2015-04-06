@@ -15,20 +15,21 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-$startexec=microtime(true);
+//ini_set('max_execution_time', 500);
+//$startexec=microtime(true);
 
-	echo "Update Konfiguration und register Events\n";
+	echo "Overview of registered Events\n";
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
 	$Homematic = HomematicList();
 
-   RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
+	$messageHandler = new IPSMessageHandler();
 
-   RPC_CreateVariableField($Homematic, "HUMIDITY", "Humidity", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
-
+	$eventConfigurationAuto = IPSMessageHandler_GetEventConfiguration();
+	print_r($eventConfigurationAuto);
 ?>
