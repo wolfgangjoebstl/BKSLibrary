@@ -183,7 +183,7 @@
 					$GesamtZaehler-=1;
 					if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
 					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-					$GesamtVerlauf.=time().";".STAT_Bewegung.";";
+					$GesamtVerlauf.=time().";".STAT_WenigBewegung.";";
 					}
 				}
 			else

@@ -72,6 +72,7 @@ if ($_IPS['SENDER']=="Execute")
 	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
 		"\n\n************************************************************************************************************************\n".send_status(false);
 	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status LBG70", $event);
+	echo $event;
 	}
 
 /*********************************************************************************************/

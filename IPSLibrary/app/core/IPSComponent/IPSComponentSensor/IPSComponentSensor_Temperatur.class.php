@@ -132,11 +132,11 @@
 				if ($variable<>null)
 				   {
 				   /* lokale Spiegelregister aufsetzen */
-	   	   	$erID=CreateVariable($this->variablename,2,$TempAuswertungID, 10 );
+	   	   	$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10 );
 	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	   	   	IPS_SetVariableCustomProfile($erID,'~Temperatur');
-	      		AC_SetLoggingStatus($archiveHandlerID,$erID,true);
-					AC_SetAggregationType($archiveHandlerID,$erID,0);      /* normaler Wwert */
+	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
+	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+					AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 					IPS_ApplyChanges($archiveHandlerID);
 					}
 				}
@@ -151,7 +151,8 @@
 
 		function Temperature_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." °C";
+			$result=number_format(GetValue($this->variable),2,',','.')." °C";+
+			SetValue($this->variableLogID,GetValue($this->variable));
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}

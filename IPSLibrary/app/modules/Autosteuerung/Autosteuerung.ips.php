@@ -101,7 +101,7 @@ if ($_IPS['SENDER']=="Execute")
 	/* von der Konsole aus gestartet */
 	foreach ($configuration as $key=>$entry)
 	   {
-	   echo "Eintraege fuer :".$key."\n";
+	   echo "Eintraege fuer :".$key." ".IPS_GetName($key)." Parent ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
 		switch ($entry[1])
 		   {
@@ -115,7 +115,7 @@ if ($_IPS['SENDER']=="Execute")
 		   case "Parameter":
 				echo "Sprachausgabe : ".$speak_config["Parameter"][0]."\n";
 		   	$temperatur=GetValue($key);
-		     	tts_play(1,'Temperatur '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
+		     	//tts_play(1,'Temperatur '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
 		     	echo "Grad: ".GetValue($key)."\n";
 		     	$moduleParams2 = explode(',', $entry[2]);
 		     	print_r($moduleParams2);
@@ -171,7 +171,7 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 		   case "StatusRGB":
 		   	$status=GetValue($key);
-		   	tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+		   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
 		     	$moduleParams2 = explode(',', $entry[2]);
 			   //IPSLight_SetSwitchByName($moduleParams2[0],true);
 				break;
@@ -338,7 +338,9 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-
+	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
+	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
+	
 	}
 
 
@@ -372,9 +374,9 @@ if ($_IPS['SENDER']=="TimerEvent")
           	$actionTriggerMinutes = 5;
             $rndVal = rand(1,100);
 				echo "Zufallszahl:".$rndVal."\n";
-            if($rndVal < $scene["EVENT_CHANCE"])
+            if (($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100))
 					{
-					echo "Jetzt wird der Timer gesetzt .\n";
+					echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
                IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
                $EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
                if ($EreignisID === false)
@@ -384,9 +386,14 @@ if ($_IPS['SENDER']=="TimerEvent")
                   IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
                	}
                IPS_SetEventActive($EreignisID,true);
-               IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
+               IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
                IPS_SetEventCyclicTimeBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
                IPS_SetEventCyclicDateBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
+					if ($scene["EVENT_CHANCE"]==100)
+						{
+						echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
+	               IPS_SetEventCyclicTimeBounds($EreignisID,$timestop,0);
+						}
                IPS_SetEventScript($EreignisID,
                                                 "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
                                                 "IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");

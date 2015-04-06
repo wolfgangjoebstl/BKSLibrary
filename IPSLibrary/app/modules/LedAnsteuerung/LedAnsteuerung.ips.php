@@ -16,6 +16,8 @@
 $LW12_LibraryId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.LedAnsteuerung.LedAnsteuerung_Library');
 $parentId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.LedAnsteuerung');
 
+if (false)
+{
  // Dummy Instanz anlegen
 
 $name="LW12_Arbeitszimmer";
@@ -190,6 +192,9 @@ $ipadrId = @IPS_GetObjectIDByName("!IP", $modulId);
 echo "ModulID:".$modulId."\n";
 echo "IP ID:".$ipadrId."\n";
 SetValue($ipadrId,"10.0.0.50");
+}
+
+echo "LED auch in IPS_light anlegen.\n";
 
 
 ?>
