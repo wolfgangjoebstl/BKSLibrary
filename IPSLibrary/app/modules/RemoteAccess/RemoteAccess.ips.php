@@ -173,6 +173,9 @@ foreach ($remServer as $Name => $Server)
 	
 	$humiID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
 	$includefile.="\n         ".'"Humidity" => "'.$humiID[$Name].'", ';
+
+	$andereID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
+	$includefile.="\n         ".'"Andere" => "'.$andereID[$Name].'", ';
 	
 	echo "Remote VIS-ID                    ".$visrootID,"\n";
 	echo "Remote WebFront-ID               ".$wfID,"\n";
