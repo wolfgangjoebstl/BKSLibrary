@@ -15,7 +15,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 120);
+ini_set('max_execution_time', 500);
 $startexec=microtime(true);
 
 	echo "Update Konfiguration und register Events\n";
@@ -27,8 +27,8 @@ $startexec=microtime(true);
 
 	$Homematic = HomematicList();
 
-   RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur");  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
+   RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
 
-   RPC_CreateVariableField($Homematic, "HUMIDITY", "Humidity");  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
+   RPC_CreateVariableField($Homematic, "HUMIDITY", "Humidity", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
 
 ?>

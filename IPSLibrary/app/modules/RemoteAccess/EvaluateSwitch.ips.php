@@ -15,7 +15,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 400);
+ini_set('max_execution_time', 800);
 $startexec=microtime(true);
 
 	/***************** INSTALLATION **************/

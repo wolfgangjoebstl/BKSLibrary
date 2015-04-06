@@ -1899,12 +1899,12 @@ function RPC_CreateCategoryByName($rpc, $id, $name)
 
 /******************************************************************/
 
-function RPC_CreateVariableField($Homematic, $keyword, $profile)
+function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 	{
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
-
+	if ($startexec==0) {$startexec=microtime(true);}
 	foreach ($Homematic as $Key)
 		{
 		/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
@@ -1914,11 +1914,11 @@ function RPC_CreateVariableField($Homematic, $keyword, $profile)
       	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 				}
 			else
 			   {
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 				}
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
