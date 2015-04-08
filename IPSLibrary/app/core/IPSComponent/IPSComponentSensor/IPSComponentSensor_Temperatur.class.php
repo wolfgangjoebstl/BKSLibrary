@@ -94,7 +94,10 @@
 
 	class Temperature_Logging extends Logging
 	   {
-
+	   private $variable;
+	   private $variablename;
+		private $variableLogID;
+		
 	   function __construct($variable)
 		   {
 		   //echo "Construct Motion.\n";
@@ -151,8 +154,9 @@
 
 		function Temperature_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." °C";+
+			$result=number_format(GetValue($this->variable),2,',','.')." °C";
 			SetValue($this->variableLogID,GetValue($this->variable));
+			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C\n";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}

@@ -204,6 +204,32 @@
 			echo "\n".IPS_GetName($this->GesamtID)." \n";
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
 			SetValue($this->GesamtCountID,$GesamtZaehler);
+			
+			/* Routine in Log_Motion uebernehmen */
+			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+			IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+		   $DetectMovementHandler = new DetectMovementHandler();
+			//print_r($DetectMovementHandler->ListEvents("Motion"));
+			//print_r($DetectMovementHandler->ListEvents("Contact"));
+
+			$groups=$DetectMovementHandler->ListGroups();
+			foreach($groups as $group=>$name)
+			   {
+			   echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectMovementHandler->ListEvents($group);
+				$status=false;
+				foreach ($config as $oid=>$params)
+					{
+					$status=$status || GetValue($oid);
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					}
+			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+				$log=new Motion_Logging($oid);
+				$class=$log->GetComponent($oid);
+				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
+				SetValue($statusID,(integer)$status);
+			   }
+			
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Status ".$result);
 			}

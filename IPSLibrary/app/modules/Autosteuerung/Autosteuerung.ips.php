@@ -392,7 +392,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					if ($scene["EVENT_CHANCE"]==100)
 						{
 						echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
-	               IPS_SetEventCyclicTimeBounds($EreignisID,$timestop,0);
+	               IPS_SetEventCyclicTimeBounds($EreignisID,$timeStop,0);
 						}
                IPS_SetEventScript($EreignisID,
                                                 "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".

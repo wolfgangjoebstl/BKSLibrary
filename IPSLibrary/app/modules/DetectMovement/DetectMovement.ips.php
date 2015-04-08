@@ -47,15 +47,19 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 	IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
 
+
 /****************************************************************************************************************/
 /*                                                                                                              */
 /*                                      Install                                                                 */
 /*                                                                                                              */
 /****************************************************************************************************************/
 
-if (false)
+$DetectMovementHandler = new DetectMovementHandler();
+if (true)
 	{
-	/* zuerst check ob das Module mit und ohne RPC Funktion geht */
+	/* nur die Detect Movement Funktion registrieren */
+	
+	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
 	$Homematic = HomematicList();
 	$keyword="MOTION";
@@ -88,16 +92,7 @@ if (false)
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
-			//$result=RPC_CreateVariableByName($rpc, $switchID, $Key["Name"], 0);
-			//print_r($result);
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-		   /* Programmierung des Events ohne RPC Funktion, führt zu Fehlern in der IPS_ComponentSensor_Motion Klasse */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
-		   $DetectMovementHandler = new DetectMovementHandler();
-			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
+			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');
 			}
 		}
 	$TypeFS20=RemoteAccess_TypeFS20();
@@ -135,14 +130,60 @@ if (false)
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion');
-		   $DetectMovementHandler = new DetectMovementHandler();
-			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','par3');
 			}
 		}
+		
+		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+		$modules=$moduleManager->GetInstalledModules();
+		//print_r($result);
+
+		if (isset ($modules["RemoteAccess"]))
+  			{
+			echo "Remote Access installiert, Variablen auch am VIS Server aufmachen.\n";
+			IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+			$remServer=ROID_List();
+			foreach ($remServer as $Name => $Server)
+				{
+				$rpc = new JSONRPC($Server["Adresse"]);
+				$ZusammenfassungID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Zusammenfassung");
+				}
+
+			
+			$groups=$DetectMovementHandler->ListGroups();
+			foreach($groups as $group=>$name)
+			   {
+			   echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectMovementHandler->ListEvents($group);
+				$status=false;
+				foreach ($config as $oid=>$params)
+					{
+					$status=$status || GetValue($oid);
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					}
+			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+				$log=new Motion_Logging($oid);
+				$class=$log->GetComponent($oid);
+				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
+				SetValue($statusID,(integer)$status);
+
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 0);
+	   			$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
+			   $messageHandler = new IPSMessageHandler();
+	   		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+			   }
+	  		}
 	}
 
 
