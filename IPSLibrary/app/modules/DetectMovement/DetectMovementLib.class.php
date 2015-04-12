@@ -17,6 +17,8 @@
 	 */    
 
 
+   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+
 	class DetectMovementHandler {
 
 		private static $eventConfigurationAuto = array();
@@ -71,6 +73,49 @@
 				self::CreateEvent($variableId, $params[0]);
 				}
 			}
+
+		/**
+		 * @public
+		 *
+		 * Listet anhand der Konfiguration alle Events
+		 *
+		 */
+		public static function PrintEvents($type="")
+			{
+			$configuration = self::Get_EventConfigurationAuto();
+			$result=array();
+			foreach ($configuration as $variableId=>$params)
+				{
+				switch ($type)
+					{
+				   case 'Motion':
+					case 'Contact':
+						if ($type==$params[0])
+						   {
+							$result[$variableId]=$params[1];
+							}
+					   break;
+					default:
+					   if ($type!="")
+					      {
+							if ($type==$params[1])
+							   {
+								$result[$variableId]=$params[1];
+							   }
+					      }
+					   else
+					      {
+							$result[$variableId]=$params[0];
+							}
+					   break;
+					}
+				}
+			foreach ($result as $variableID => $type)
+			   {
+			   echo "Variable ID : ".$variableID." Typ : ".$type."  ".IPS_GetName($variableID)."  ".IPS_GetName(IPS_GetParent($variableID))."\n";
+			   }
+			}
+
 
 		/**
 		 * @public
@@ -188,6 +233,7 @@
 					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
 				}
 				$configString .= '),';
+				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
 			}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
