@@ -18,7 +18,7 @@
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
 
-	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
+	class IPSComponentSensor_Feuchtigkeit extends IPSComponentSensor {
 
 
 		private $tempObject;
@@ -54,8 +54,8 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
 			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			
-			$log=new Temperature_Logging($variable);
-			$result=$log->Temperature_LogValue();
+			$log=new Feuchtigkeit_Logging($variable);
+			$result=$log->Feuchtigkeit_LogValue();
 			//print_r($this);
 			//print_r($module);
 			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
@@ -92,7 +92,7 @@
 
 	}
 
-	class Temperature_Logging extends Logging
+	class Feuchtigkeit_Logging extends Logging
 	   {
 	   private $variable;
 	   private $variablename;
@@ -114,7 +114,7 @@
 				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
 				//echo "Datenverzeichnis:".$CategoryIdData."\n";
-				$name="Temperatur-Nachrichten";
+				$name="Feuchtigkeit-Nachrichten";
 				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 				if ($vid==false)
 				   {
@@ -123,7 +123,7 @@
       			IPS_SetName($vid, $name);
 	      		IPS_SetInfo($vid, "this category was created by script. ");
 	      		}
-				$name="Temperatur-Auswertung";
+				$name="Feuchtigkeit-Auswertung";
 				$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
 				if ($TempAuswertungID==false)
 				   {
@@ -137,7 +137,7 @@
 				   /* lokale Spiegelregister aufsetzen */
 	   	   	$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10 );
 	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
+	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity.F');
 	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 					AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 					IPS_ApplyChanges($archiveHandlerID);
@@ -146,17 +146,17 @@
 
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["TemperatureLog"];
+		   $directory=$directories["HumidityLog"];
 	   	mkdirtree($directory);
-		   $filename=$directory.$this->variablename."_Temperature.csv";
+		   $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
 		   parent::__construct($filename,$vid);
 	   	}
 
-		function Temperature_LogValue()
+		function Feuchtigkeit_LogValue()
 			{
 			$result=number_format(GetValue($this->variable),2,',','.')." °C";
 			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C\n";
+			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %\n";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}

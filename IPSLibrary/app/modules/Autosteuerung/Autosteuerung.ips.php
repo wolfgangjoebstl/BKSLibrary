@@ -103,84 +103,7 @@ if ($_IPS['SENDER']=="Execute")
 	   {
 	   echo "Eintraege fuer :".$key." ".IPS_GetName($key)." Parent ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
-		switch ($entry[1])
-		   {
-		   case "Anwesenheit":
-		      break;
-		   case "Ventilator":
-		   	$eventName = 'OnChange_'.$key;
-				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
-				echo "Eventname :".$eventName." ".$eventId."\n";
-		      break;
-		   case "Parameter":
-				echo "Sprachausgabe : ".$speak_config["Parameter"][0]."\n";
-		   	$temperatur=GetValue($key);
-		     	//tts_play(1,'Temperatur '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
-		     	echo "Grad: ".GetValue($key)."\n";
-		     	$moduleParams2 = explode(',', $entry[2]);
-		     	print_r($moduleParams2);
-		     	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
-		     	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
-		     	if ($temperatur>$moduleParams2[1])
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
-			     	echo "\nVentilator einschalten.\n";
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,"Ventilator ein.",'',2);
-		     			}
-			     	}
-		     	if ($temperatur<$moduleParams2[3])
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
-			     	echo "\nVentilator ausschalten.\n";
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,"Ventilator aus.",'',2);
-		     			}
-			     	}
-				break;
-		   case "Status":
-		   	$status=GetValue($key);
-		   	if ($status)
-		   	   {
-		   	   echo "Status geht auf ein.\n";
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,'Status geht auf ein.','',2);
-		     			}
-		     		}
-		     	else
-		     	   {
-		   	   echo "Status geht auf aus.\n";
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,'Status geht auf aus.','',2);
-		     			}
-		     		}
-		     	$moduleParams2 = explode(',', $entry[2]);
-		     	print_r($moduleParams2);
-		     	if ($status)
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],true);
-			     	}
-		     	else
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
-			     	}
-				break;
-		   case "StatusRGB":
-		   	$status=GetValue($key);
-		   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
-		     	$moduleParams2 = explode(',', $entry[2]);
-			   //IPSLight_SetSwitchByName($moduleParams2[0],true);
-				break;
-		   default:
-				break;
-			}
 
-	   }
-	   
 	   foreach($scenes as $scene)
 			{
 			echo "Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
@@ -323,9 +246,18 @@ if ($_IPS['SENDER']=="Variable")
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
 		     	$moduleParams2 = explode(',', $params[2]);
-		     	$ein=$status-6;
-		     	if ($ein<0) {$ein=0;};
-			   IPSLight_SetSwitchByName($moduleParams2[0],$ein);
+			   //IPSLight_SetSwitchByName($moduleParams2[0],$status);
+			   $lightManager = new IPSLight_Manager();
+			   //Farbe per RGB(Hex)-Wert setzen
+			   if ($staus==true)
+			      {
+				   $lightManager->SetRGB(22722 , $moduleParams2[1]);
+				   }
+				else
+			      {
+				   $lightManager->SetRGB(22722 , $moduleParams2[2]);
+				   }
+
 				break;
 		   default:
 				eval($params[1]);

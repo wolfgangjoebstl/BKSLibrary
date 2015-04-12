@@ -1967,7 +1967,14 @@ function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+		   if ($keyword=="TEMPERATURE")
+		      {
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+				}
+			else
+		      {
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+				}
 			}
 		}
 

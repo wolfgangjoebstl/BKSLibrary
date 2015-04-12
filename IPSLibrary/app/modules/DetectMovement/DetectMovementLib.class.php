@@ -225,7 +225,7 @@
 		private static function StoreEventConfiguration($configuration) {
 
 			// Build Configuration String
-			$configString = '$eventConfiguration = array(';
+			$configString = '$eventMoveConfiguration = array(';
 			foreach ($configuration as $variableId=>$params) {
 				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
 				for ($i=0; $i<count($params); $i=$i+3) {
@@ -243,8 +243,8 @@
 				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
 			}
 			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventConfiguration = array(');
-			$pos2 = strpos($fileContent, 'return $eventConfiguration;');
+			$pos1 = strpos($fileContent, '$eventMoveConfiguration = array(');
+			$pos2 = strpos($fileContent, 'return $eventMoveConfiguration;');
 
 			if ($pos1 === false or $pos2 === false) {
 				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
@@ -348,7 +348,7 @@
 		 */
 		private static function Get_EventConfigurationAuto() {
 			if (self::$eventConfigurationAuto == null) {
-				self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();
+				self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();
 			}
 			return self::$eventConfigurationAuto;
 		}
@@ -470,6 +470,8 @@
 					$triggerType = 0;
 					break;
 				case 'par0':
+				case 'par1':
+				case 'par2':
 				   break;
 				default:
 					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
@@ -488,7 +490,7 @@
 		private static function StoreEventConfiguration($configuration) {
 
 			// Build Configuration String
-			$configString = '$eventConfiguration = array(';
+			$configString = '$eventTempConfiguration = array(';
 			foreach ($configuration as $variableId=>$params) {
 				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
 				for ($i=0; $i<count($params); $i=$i+3) {
@@ -496,6 +498,7 @@
 					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
 				}
 				$configString .= '),';
+				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
 			}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
@@ -505,8 +508,8 @@
 				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
 			}
 			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventConfiguration = array(');
-			$pos2 = strpos($fileContent, 'return $eventConfiguration;');
+			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');
+			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');
 
 			if ($pos1 === false or $pos2 === false) {
 				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);

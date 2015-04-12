@@ -95,6 +95,17 @@ if (Getvalue($MeterReadID))
 			break;
 		case "11":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
+		   Setvalue($SendTimeID,time());
+		   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+			IPS_Sleep(1550);
+			COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+			IPS_Sleep(1550);
+			COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
+
+			$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+			$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
+ 			fwrite($handlelog, $ausgabewert."\r\n");
+ 			fclose($handlelog);
 			break;
 		case "10":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);

@@ -1,6 +1,7 @@
 <?
 
  //Fügen Sie hier Ihren Skriptquellcode ein
+$startexec=microtime(true);
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 //include(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
@@ -55,6 +56,7 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 /****************************************************************************************************************/
 
 $DetectMovementHandler = new DetectMovementHandler();
+$DetectTemperatureHandler = new DetectTemperatureHandler();
 if (true)
 	{
 	/* nur die Detect Movement Funktion registrieren */
@@ -184,6 +186,29 @@ if (true)
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 			   }
 	  		}
+	  		
+		$keyword="TEMPERATURE";
+		foreach ($Homematic as $Key)
+			{
+				/* alle Temperaturwerte ausgeben */
+				if (isset($Key["COID"][$keyword])==true)
+	   			{
+			      $oid=(integer)$Key["COID"][$keyword]["OID"];
+		      	$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+					   {
+						echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+						}
+					else
+			   		{
+						echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+						}
+					$DetectTemperatureHandler->RegisterEvent($oid,"par1",'par2','par3');
+					}
+					
+			/* remote Server aufsetzen fehlt noch ..... */
+					
+			}
 	}
 
 
