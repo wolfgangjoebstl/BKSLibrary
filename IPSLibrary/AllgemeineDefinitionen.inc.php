@@ -4,7 +4,6 @@
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
    
 /******************************************************************************************/   
 /*                                                                                        */   
@@ -1021,7 +1020,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 	$guthabensteuerung=false;
 	$amis=false;
-	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false;
+	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false; $remotereadwrite=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -1042,7 +1041,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			if ($module=="Amis") $amis=true;
 			if ($module=="CustomComponent") $customcomponent=true;
 			if ($module=="DetectMovement") $detectmovement=true;
-			if ($module=="Sprachsteuerung") $sprchsteuerung=true;
+			if ($module=="Sprachsteuerung") $sprachsteuerung=true;
+			if ($module=="RemoteReadWrite") $remotereadwrite=true;
 			}
 		else
 			{
@@ -1059,144 +1059,149 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		Allgemeiner Teil, Auswertung für aktuelle Werte
 		
 		******************************************************************************************/
+		if ($remotereadwrite)
+		   {
+		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
-		$Homematic = HomematicList();
-		$FS20= FS20List();
+			$Homematic = HomematicList();
+			$FS20= FS20List();
 
-		$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
-		$alleTempWerte.=ReadTemperaturWerte();
+			$alleTempWerte="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
+			$alleTempWerte.=ReadTemperaturWerte();
 
-		$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+			$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
 		
-		foreach ($Homematic as $Key)
-			{
-			/* Alle Homematic Feuchtigkeitswerte ausgeben */
-			if (isset($Key["COID"]["HUMIDITY"])==true)
-	   		{
-	      	$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
-				$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Feuchtigkeitswerte ausgeben */
+				if (isset($Key["COID"]["HUMIDITY"])==true)
+	   			{
+	      		$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+					$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
 				}
-			}
 
-		$alleMotionWerte="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
-		foreach ($Homematic as $Key)
-			{
-			/* Alle Homematic Bewegungsmelder ausgeben */
-			if ( (isset($Key["COID"]["MOTION"])==true) )
-		   	{
-	   		/* alle Bewegungsmelder */
-
-		      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-      		$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
+			$alleMotionWerte="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
 			   	{
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				else
-				   {
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				}
-			}
+		   		/* alle Bewegungsmelder */
 
-		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-		$TypeFS20=RemoteAccess_TypeFS20();
-		foreach ($FS20 as $Key)
-			{
-			/* FS20 alle Bewegungsmelder ausgeben */
-			if ( (isset($Key["COID"]["MOTION"])==true) )
-		   	{
-	   		/* alle Bewegungsmelder */
-
-		      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-      		$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-			   	{
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				else
-				   {
-					$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				}
-			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
-			if ((isset($Key["COID"]["StatusVariable"])==true))
-		   	{
-		   	foreach ($TypeFS20 as $Type)
-		   	   {
-		   	   if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-		   	      {
-      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-		  	      	$variabletyp=IPS_GetVariable($oid);
-		  	      	IPS_SetName($oid,"MOTION");
-						if ($variabletyp["VariableProfile"]!="")
-						   {
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-							}
-						else
-						   {
-							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-							}
-		   	      }
-		   	   }
-				}
-			}
-
-
-		$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
-
-		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-		$MeterConfig = get_MeterConfiguration();
-
-		foreach ($MeterConfig as $meter)
-			{
-			if ($meter["TYPE"]=="Amis")
-			   {
-			   $alleStromWerte.="AMIS Zähler im ".$meter["NAME"].":\n\n";
-				$amismeterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$AmisID = CreateVariableByName($amismeterID, "AMIS", 3);
-				$AmisVarID = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-				$AMIS_Werte=IPS_GetChildrenIDs($AmisVarID);
-				for($i = 0; $i < sizeof($AMIS_Werte);$i++)
-					{
-					//$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
-					if (IPS_GetVariable($AMIS_Werte[$i])["VariableCustomProfile"]!="")
-					   {
-						$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValueFormatted($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+   	   		$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+				   	{
+						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					else
 					   {
-						$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValue($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
 				}
-			if ($meter["TYPE"]=="Homematic")
-			   {
-			   $alleStromWerte.="Homematic Zähler im ".$meter["NAME"].":\n\n";
-				$HM_meterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$HM_Wirkenergie_meterID = CreateVariableByName($HM_meterID, "Wirkenergie", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				if (IPS_GetVariable($HM_Wirkenergie_meterID)["VariableCustomProfile"]!="")
-				   {
-					$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
-					}
-				else
-				   {
-					$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValue($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
-					}
-				$HM_Wirkleistung_meterID = CreateVariableByName($HM_meterID, "Wirkleistung", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				if (IPS_GetVariable($HM_Wirkleistung_meterID)["VariableCustomProfile"]!="")
-				   {
-					$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
-					}
-				else
-				   {
-					$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValue($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
-					}
 
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+			$TypeFS20=RemoteAccess_TypeFS20();
+			foreach ($FS20 as $Key)
+				{
+				/* FS20 alle Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+			   	{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+   	   		$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+				   	{
+						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					}
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				if ((isset($Key["COID"]["StatusVariable"])==true))
+			   	{
+		   		foreach ($TypeFS20 as $Type)
+		   		   {
+		   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+			   	      {
+   	   				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			  	      	$variabletyp=IPS_GetVariable($oid);
+		  		      	IPS_SetName($oid,"MOTION");
+							if ($variabletyp["VariableProfile"]!="")
+							   {
+								$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+								}
+							else
+							   {
+								$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+								}
+		   	   	   }
+			   	   }
+					}
 				}
 
+			}
 
+		if ($amis)
+		   {
+			$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
+
+			$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+			$MeterConfig = get_MeterConfiguration();
+
+			foreach ($MeterConfig as $meter)
+				{
+				if ($meter["TYPE"]=="Amis")
+				   {
+			   	$alleStromWerte.="\nAMIS Zähler im ".$meter["NAME"].":\n\n";
+					$amismeterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$AmisID = CreateVariableByName($amismeterID, "AMIS", 3);
+					$AmisVarID = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+					$AMIS_Werte=IPS_GetChildrenIDs($AmisVarID);
+					for($i = 0; $i < sizeof($AMIS_Werte);$i++)
+						{
+						//$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".GetValue($AMIS_Werte[$i])." \n";
+						if (IPS_GetVariable($AMIS_Werte[$i])["VariableCustomProfile"]!="")
+						   {
+							$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValueFormatted($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+							}
+						else
+					   	{
+							$alleStromWerte.=str_pad(IPS_GetName($AMIS_Werte[$i]),30)." = ".str_pad(GetValue($AMIS_Werte[$i]),30)."   (".date("d.m H:i",IPS_GetVariable($AMIS_Werte[$i])["VariableChanged"]).")\n";
+							}
+						}
+					}
+				if ($meter["TYPE"]=="Homematic")
+				   {
+				   $alleStromWerte.="\nHomematic Zähler im ".$meter["NAME"].":\n\n";
+					$HM_meterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$HM_Wirkenergie_meterID = CreateVariableByName($HM_meterID, "Wirkenergie", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					if (IPS_GetVariable($HM_Wirkenergie_meterID)["VariableCustomProfile"]!="")
+					   {
+						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValue($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
+						}
+					$HM_Wirkleistung_meterID = CreateVariableByName($HM_meterID, "Wirkleistung", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					if (IPS_GetVariable($HM_Wirkleistung_meterID)["VariableCustomProfile"]!="")
+				   	{
+						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValue($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
+						}
+
+					}
+				}
 			}
 
 
