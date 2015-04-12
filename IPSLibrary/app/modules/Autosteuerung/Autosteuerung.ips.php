@@ -180,6 +180,38 @@ if ($_IPS['SENDER']=="Execute")
 			}
 
 	   }
+	   
+	   foreach($scenes as $scene)
+			{
+			echo "Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
+       	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
+       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
+       	print_r($actualTime);
+       	$actualTimeStart = explode(":",$actualTime[0]);
+        	$actualTimeStartHour = $actualTimeStart[0];
+        	$actualTimeStartMinute = $actualTimeStart[1];
+        	$actualTimeStop = explode(":",$actualTime[1]);
+        	$actualTimeStopHour = $actualTimeStop[0];
+        	$actualTimeStopMinute = $actualTimeStop[1];
+			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+        	$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+        	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+      	$now = time();
+      	//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
+      	if (isset($scene["EVENT_IPSLIGHT"]))
+      	   {
+      		echo "Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+         	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+         	}
+         else
+            {
+      		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	   	{
+	      		echo "Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+   	      	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+      	   	}
+				}
+     		}
 	}
 
 /*********************************************************************************************/
@@ -341,12 +373,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
 	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
 	
-	}
-
-
-/*********************************************************************************************/
-
-
 	if (GetValue($AnwesenheitssimulationID)>0)
  		{//Anwesenheitssimulation aktiv
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
@@ -394,10 +420,18 @@ if ($_IPS['SENDER']=="TimerEvent")
 						echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
 	               IPS_SetEventCyclicTimeBounds($EreignisID,$timeStop,0);
 						}
-               IPS_SetEventScript($EreignisID,
+		      	if (isset($scene["EVENT_IPSLIGHT"]))
+      			   {
+  	               IPS_SetEventScript($EreignisID,
+                                                "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
+                                                "IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
+						}
+					else
+					   {
+	               IPS_SetEventScript($EreignisID,
                                                 "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
                                                 "IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
-
+						}
             	}
         		}
 		   }
@@ -416,7 +450,10 @@ if ($_IPS['SENDER']=="TimerEvent")
         		}
     		}
  		}
+	}
 
+
+/*********************************************************************************************/
 
 
 
