@@ -51,10 +51,15 @@ $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Pro
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
+/* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
+/* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
+
 $name="Bedienung";
 $categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 $AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
 $VentilatorsteuerungID = IPS_GetObjectIDByName("Ventilatorsteuerung",$categoryId_Autosteuerung);
+
+/* wichtigste Parameter vorbereiten */
 
 $configuration = Autosteuerung_GetEventConfiguration();
 $scenes=Autosteuerung_GetScenes();
@@ -146,12 +151,16 @@ if ($_IPS['SENDER']=="Variable")
 
 	if (array_key_exists($_IPS['VARIABLE'], $configuration))
 		{
+		/* es gibt einen Eintrag fuer das Event */
+		
 		$params=$configuration[$_IPS['VARIABLE']];
 		$wert=$params[1];
+		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
   		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
 		switch ($wert)
 		   {
 		   case "Anwesenheit":
+		      /* Funktion um Anwesenheitssimulation ein und aus zuschalten */
 		      If (GetValue($AnwesenheitssimulationID)>0)
 		         {
 		         //Script alle 5 Minuten ausführen
@@ -159,11 +168,12 @@ if ($_IPS['SENDER']=="Variable")
 		         }
 				else
 				   {
-				   //Script nicht merh automatisch ausführen
+				   //Script nicht mehr automatisch ausführen
 		 			IPS_SetScriptTimer($_IPS['SELF'], 0);
 				   }
 		      break;
 		   case "Ventilator":
+		      /* Funktion um Ventilatorsteuerung ein und aus zuschalten */
 		   	$eventName = 'OnChange_'.$_IPS['VARIABLE'];
 				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
 		      If (GetValue($VentilatorsteuerungID)>0)
@@ -189,6 +199,7 @@ if ($_IPS['SENDER']=="Variable")
 				   }
 		      break;
 		   case "Parameter":
+		      /* wenn Parameter ueberschritten etwas tun */
 		   	$temperatur=GetValue($_IPS['VARIABLE']);
 		   	if ($speak_config["Parameter"][0]=="On")
 		   	   {
@@ -216,6 +227,12 @@ if ($_IPS['SENDER']=="Variable")
 			     	}
 				break;
 		   case "Status":
+		      /* bei einer Statusaenderung einer Variable 																						*/
+		      /* array($params[0], $params[1],             $params[2],),                     										*/
+		      /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
+		      /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
+		      /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
+		      
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	if ($status)
 		   	   {
@@ -243,6 +260,8 @@ if ($_IPS['SENDER']=="Variable")
 			     	}
 				break;
 		   case "StatusRGB":
+		      /* allerlei Spielereien mit einer RGB Anzeige */
+		      
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
 		     	$moduleParams2 = explode(',', $params[2]);
@@ -309,8 +328,8 @@ if ($_IPS['SENDER']=="TimerEvent")
  		{//Anwesenheitssimulation aktiv
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
 		//print_r($scenes);
-	   foreach($scenes as $scene){
-
+	   foreach($scenes as $scene)
+			{
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
        	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
        	print_r($actualTime);
@@ -366,9 +385,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 						}
             	}
         		}
-		   }
+		   } /* end of foreach */
 
-		 }
+		 }  /* endif */
 	else
 		{
     	//Anwesenheitssimulation nicht aktiv
@@ -382,7 +401,8 @@ if ($_IPS['SENDER']=="TimerEvent")
         		}
     		}
  		}
-	}
+	} /* endif Anwesenheitssimulation */
+} /* Endif Timer */
 
 
 /*********************************************************************************************/
