@@ -104,12 +104,64 @@ if ($_IPS['SENDER']=="Execute")
 	{
 
 	/* von der Konsole aus gestartet */
+	echo "eingestellte Programme:\n\n";
 	foreach ($configuration as $key=>$entry)
 	   {
 	   echo "Eintraege fuer :".$key." ".IPS_GetName($key)." Parent ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
+	   switch ($entry[1])
+	      {
+	      case "StatusRGB":
+				$params = explode(",",$entry[2]);
+				echo "Param 2: ".count($params)."\n";
+				print_r($params);
+				$params_on=explode(":",$params[1]);
+				echo "Param 2 1 ON: ".count($params_on)."\n";
+				print_r($params_on);
+				$params_off=explode(":",$params[2]);
+				echo "Param 2 1 OFF: ".count($params_off)."\n";
+				print_r($params_off);
+			   $wert=count($params_on);
+			   switch ($wert)
+			      {
+			      case "1":
+						echo "**1** ".$wert." ***ein\n";
+						break;
+			      case "2":
+					   if (strtoupper($params_on[0])=="ON")
+					      {
+							echo "**2* ".$wert." ****ein\n";
+				      	}
+					   if (strtoupper($params_on[0])=="OFF")
+					      {
+							echo "**2* ".$wert." ****aus\n";
+				      	}
+						break;
+			      case "4":
+					   if (strtoupper($params_on[2])=="MASK")
+					      {
+					      $mask=hexdec($params_on[3]);
+					      $notmask=~($mask)&0xFFFFFF;
+					      echo "!!".$params_on[3]."   ".$mask."\n";
+							printf("Wert Mask %x Unmask %x \n",$mask,$notmask);
+					      }
+					   if (strtoupper($params_on[0])=="ON")
+					      {
+							echo "**4* ".$wert." ****ein\n";
+				      	}
+					   if (strtoupper($params_on[0])=="OFF")
+					      {
+							echo "**4* ".$wert." ****aus\n";
+				      	}
+						break;
+					}
 
-	   foreach($scenes as $scene)
+				break;
+			}
+		}
+		
+	echo "\nAnwesenheitssimulation:\n\n";
+   foreach($scenes as $scene)
 			{
 			echo "Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
@@ -140,6 +192,7 @@ if ($_IPS['SENDER']=="Execute")
       	   	}
 				}
      		}
+
 	}
 
 /*********************************************************************************************/
@@ -267,15 +320,118 @@ if ($_IPS['SENDER']=="Variable")
 		     	$moduleParams2 = explode(',', $params[2]);
 			   //IPSLight_SetSwitchByName($moduleParams2[0],$status);
 			   $lightManager = new IPSLight_Manager();
+				$switchOID = $lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
+				$params_on=explode(":",$moduleParams2[1]);
+				$params_off=explode(":",$moduleParams2[2]);
+
 			   //Farbe per RGB(Hex)-Wert setzen
-			   if ($staus==true)
+			   $wert=count($params_on);
+			   switch ($wert)
 			      {
-				   $lightManager->SetRGB(22722 , $moduleParams2[1]);
-				   }
-				else
+			      case "1":
+					   if ($status==true)
+					      {
+						   $lightManager->SetRGB($switchOID, $moduleParams2[1]);
+						   }
+						break;
+			      case "2":
+					   if (strtoupper($params_on[0])=="ON")
+					      {
+						   if ($status==true)
+						      {
+							   $lightManager->SetRGB($switchOID, $params_on[1]);
+							   }
+				      	}
+					   if (strtoupper($params_on[0])=="OFF")
+					      {
+						   if ($status==false)
+						      {
+							   $lightManager->SetRGB($switchOID, $params_on[1]);
+							   }
+				      	}
+						break;
+			      case "4":
+					   if (strtoupper($params_on[2])=="MASK")
+					      {
+					      $mask=hexdec($params_on[3]);
+					      $notmask=~($mask)&0xFFFFFF;
+					      }
+						else
+						   {
+					      $mask=0xFFFFFF;
+					      $notmask=0;
+					      }
+					   if (strtoupper($params_on[0])=="ON")
+					      {
+						   if ($status==true)
+						      {
+						      $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
+							   $lightManager->SetRGB($switchOID, $new);
+							   }
+				      	}
+					   if (strtoupper($params_on[0])=="OFF")
+					      {
+						   if ($status==false)
+						      {
+						      $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
+							   $lightManager->SetRGB($switchOID, $new);
+							   }
+				      	}
+						break;
+					}
+			   switch (count($params_off))
 			      {
-				   $lightManager->SetRGB(22722 , $moduleParams2[2]);
-				   }
+			      case "1":
+					   if ($status==false)
+					      {
+						   $lightManager->SetRGB($switchOID, $moduleParams2[2]);
+						   }
+						break;
+			      case "2":
+					   if (strtoupper($params_off[0])=="ON")
+					      {
+						   if ($status==true)
+						      {
+							   $lightManager->SetRGB($switchOID, $params_off[1]);
+							   }
+				      	}
+					   if (strtoupper($params_off[0])=="OFF")
+					      {
+						   if ($status==false)
+						      {
+							   $lightManager->SetRGB($switchOID, $params_off[1]);
+							   }
+				      	}
+						break;
+			      case "4":
+					   if (strtoupper($params_off[2])=="MASK")
+					      {
+					      $mask=hexdec($params_off[3]);
+					      $notmask=~($mask)&0xFFFFFF;
+					      }
+						else
+						   {
+					      $mask=0xFFFFFF;
+					      $notmask=0;
+					      }
+					   if (strtoupper($params_off[0])=="ON")
+					      {
+						   if ($status==true)
+						      {
+						      $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
+							   $lightManager->SetRGB($switchOID, $new);
+							   }
+				      	}
+					   if (strtoupper($params_on[0])=="OFF")
+					      {
+						   if ($status==false)
+						      {
+						      $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
+							   $lightManager->SetRGB($switchOID, $new);
+							   }
+				      	}
+						break;
+					}
 
 				break;
 		   default:
@@ -400,9 +556,9 @@ if ($_IPS['SENDER']=="TimerEvent")
          	IPS_SetEventActive($EreignisID,false);
         		}
     		}
- 		}
-	} /* endif Anwesenheitssimulation */
-} /* Endif Timer */
+ 		} /* endif Anwesenheitssimulation */
+	} /* Endif Timer */
+
 
 
 /*********************************************************************************************/
