@@ -1957,7 +1957,14 @@ function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 			foreach ($remServer as $Name => $Server)
 				{
 				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
+				if ($keyword=="TEMPERATURE")
+		      	{
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
+					}
+				else
+		      	{
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 1);
+					}
    			$rpc->IPS_SetVariableCustomProfile($result,$profile);
 				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);

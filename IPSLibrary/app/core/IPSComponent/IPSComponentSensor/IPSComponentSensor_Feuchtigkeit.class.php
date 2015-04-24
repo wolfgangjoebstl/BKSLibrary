@@ -137,7 +137,7 @@
 				   /* lokale Spiegelregister aufsetzen */
 	   	   	$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10 );
 	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity.F');
+	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity');
 	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 					AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 					IPS_ApplyChanges($archiveHandlerID);
@@ -154,7 +154,7 @@
 
 		function Feuchtigkeit_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." °C";
+			$result=number_format(GetValue($this->variable),2,',','.')." %";
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %\n";
 			parent::LogMessage($result);
