@@ -262,20 +262,29 @@ if ($_IPS['SENDER']=="Variable")
 		     	//print_r($moduleParams2);
 		     	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
 		     	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
+		     	$lightManager = new IPSLight_Manager();
+				$switchID=$lightManager->GetSwitchIdByName($moduleParams2[0]);
+				$status=$lightManager->GetValue($switchID);
 		     	if ($temperatur>$moduleParams2[1])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,"Ventilator ein.",'',2);
-		     			}
+					if ($status==false)
+					   {
+				     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
+				     	if ($speak_config["Parameter"][0]=="On")
+			   	   	{
+			     			tts_play(1,"Ventilator ein.",'',2);
+		   	  			}
+		   	  		}
 			     	}
 		     	if ($temperatur<$moduleParams2[3])
 		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
-			     	if ($speak_config["Parameter"][0]=="On")
-		   	   	{
-		     			tts_play(1,"Ventilator aus.",'',2);
+					if ($status==true)
+					   {
+				     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
+				     	if ($speak_config["Parameter"][0]=="On")
+			   	   	{
+		   	  			tts_play(1,"Ventilator aus.",'',2);
+		     				}
 		     			}
 			     	}
 				break;
@@ -302,15 +311,40 @@ if ($_IPS['SENDER']=="Variable")
 		     			}
 		     		}
 		     	$moduleParams2 = explode(',', $params[2]);
-		     	print_r($moduleParams2);
-		     	if ($status)
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],true);
-			     	}
-		     	else
-		     	   {
-			     	IPSLight_SetSwitchByName($moduleParams2[0],false);
-			     	}
+		     	//print_r($moduleParams2);
+		     	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+				$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+				$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+				$result=@IPS_GetVariableIDByName($moduleParams2[0],$switchCategoryId);
+				if ($result==false)
+				   {
+					$result=@IPS_GetVariableIDByName($moduleParams2[0],$groupCategoryId);
+					if ($result==false)
+				   	{
+				   	}
+				   else
+				      {
+				     	if ($status)
+				     	   {
+					     	IPSLight_SetGroupByName($moduleParams2[0],true);
+					     	}
+			     		else
+			     	   	{
+					     	IPSLight_SetGroupByName($moduleParams2[0],false);
+					     	}
+				      }
+				   }
+				else
+				   {
+			     	if ($status)
+			     	   {
+				     	IPSLight_SetSwitchByName($moduleParams2[0],true);
+				     	}
+		     		else
+		     	   	{
+				     	IPSLight_SetSwitchByName($moduleParams2[0],false);
+				     	}
+				   }
 				break;
 		   case "StatusRGB":
 		      /* allerlei Spielereien mit einer RGB Anzeige */

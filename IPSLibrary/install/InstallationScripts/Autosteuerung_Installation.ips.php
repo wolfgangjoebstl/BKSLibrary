@@ -5,7 +5,7 @@
 	 * Script um automatisch irgendetwas ein und auszuschalten
 	 *
 	 *
-	 * @file          Autosteuerungung_Installation.ips.php
+	 * @file          Autosteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 07.12.2014<br/>
@@ -100,6 +100,18 @@
 		{
 		CreateEvent2($variableId, $params[0], $scriptIdAutosteuerung);
 		}
+		
+	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
+	if ($tim1ID==false)
+		{
+		$tim1ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim1ID, $scriptIdAutosteuerung);
+		IPS_SetName($tim1ID, "Aufruftimer");
+		IPS_SetEventCyclic($tim1ID,0,0,0,0,2,5);
+		//IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
+		}
+	IPS_SetEventActive($tim1ID,true);
+		
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
