@@ -23,14 +23,22 @@
 	 *
 	 * Konfigurations File für DetectMovement
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          LedAnsteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
 	 *
 	 */
 
-
+	function LedAnsteuerung_Config() {
+		$config = array(
+	/*				'LW12_KellerStatus' => array(
+				"NAME"            => 'LW12_KellerStatus',
+				"IPADR"          => '10.0.0.160',
+													),    */
+                );
+		return $config;
+	}
 
 
 	 
