@@ -112,50 +112,114 @@ if ($_IPS['SENDER']=="Execute")
 	   switch ($entry[1])
 	      {
 	      case "StatusRGB":
-				$params = explode(",",$entry[2]);
-				echo "Param 2: ".count($params)."\n";
-				print_r($params);
-				$params_on=explode(":",$params[1]);
-				echo "Param 2 1 ON: ".count($params_on)."\n";
-				print_r($params_on);
-				$params_off=explode(":",$params[2]);
-				echo "Param 2 1 OFF: ".count($params_off)."\n";
-				print_r($params_off);
-			   $wert=count($params_on);
-			   switch ($wert)
-			      {
-			      case "1":
-						echo "**1** ".$wert." ***ein\n";
-						break;
-			      case "2":
-					   if (strtoupper($params_on[0])=="ON")
+	      	$status=true;
+			   $lightManager = new IPSLight_Manager();
+				$moduleParams2 = explode(",",$entry[2]);
+				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
+				print_r($moduleParams2);
+				/* wenn nur ein oder zwei Parameter, dann ignorieren */
+				$parges=array();
+				if (count($moduleParams2)>2)
+				   {
+				   /* Default Werte setzen */
+				   $notmask_on=0;
+					$mask_on=0xFFFFFF;
+				   $notmask_off=0;
+					$mask_off=0xFFFFFF;
+					$params_oid=explode(":",$moduleParams2[0]);
+					if (count($params_oid)>1)
+					   {
+						$parges[$params_oid[0]]=$params_oid;
+					   }
+					else
+					   {
+					   $lightManager = new IPSLight_Manager();
+						$switchOID = @$lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
+						if ($switchOID==false)
+						   {
+						   $switchOID=$moduleParams2[0];
+						   }
+					   }
+					$params_on=explode(":",$moduleParams2[1]);
+					echo "Param 2 1 ON: ".count($params_on)."\n";
+					print_r($params_on);
+					if (count($params_on)>1)
+					   {
+						$parges[$params_on[0]]=$params_on;
+					   }
+					else
+					   {
+					   $value_on=$moduleParams2[1];
+					   }
+					$params_off=explode(":",$moduleParams2[2]);
+					echo "Param 2 2 OFF: ".count($params_off)."\n";
+					print_r($params_off);
+					if (count($params_off)>1)
+					   {
+						$parges[$params_off[0]]=$params_off;
+					   }
+					else
+					   {
+					   $value_off=$moduleParams2[2];
+					   }
+					$i=3;
+					while ($i<count($moduleParams2))
+					   {
+						$params=explode(":",$moduleParams2[$i]);
+						if (count($params_off)>1)
+						   {
+							$parges[$params[0]]=$params;
+						   }
+						$i++;
+					   }
+					echo "Ein grosses Array mit allen Befehlen:\n";
+					print_r($parges);
+					foreach ($parges as $befehl)
+					   {
+					   print_r($befehl);
+						switch (strtoupper($befehl[0]))
+						   {
+						   case "OID":
+							   $switchOID=$befehl[1];
+								break;
+						   case "ON":
+						      $value_on=$befehl[1];
+						      $i=2;
+						      while ($i<count($befehl))
+						         {
+						         if (strtoupper($befehl[$i])=="MASK")
+						            {
+						            $mask_on=$befehl[$i++];
+						            }
+						         $i++;
+						         }
+								break;
+						   case "OFF":
+						      $value_off=$befehl[1];
+						      $i=2;
+						      while ($i<count($befehl))
+						         {
+						         if (strtoupper($befehl[$i])=="MASK")
+						            {
+						            $mask_off=$befehl[$i++];
+						            }
+						         $i++;
+						         }
+								break;
+							}
+						} /* ende foreach */
+						if ($status==true)
+							{
+						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_on) | ($value_on & $mask_on);
+							//$lightManager->SetRGB($switchOID, $new);
+							}
+						else
 					      {
-							echo "**2* ".$wert." ****ein\n";
-				      	}
-					   if (strtoupper($params_on[0])=="OFF")
-					      {
-							echo "**2* ".$wert." ****aus\n";
-				      	}
-						break;
-			      case "4":
-					   if (strtoupper($params_on[2])=="MASK")
-					      {
-					      $mask=hexdec($params_on[3]);
-					      $notmask=~($mask)&0xFFFFFF;
-					      echo "!!".$params_on[3]."   ".$mask."\n";
-							printf("Wert Mask %x Unmask %x \n",$mask,$notmask);
-					      }
-					   if (strtoupper($params_on[0])=="ON")
-					      {
-							echo "**4* ".$wert." ****ein\n";
-				      	}
-					   if (strtoupper($params_on[0])=="OFF")
-					      {
-							echo "**4* ".$wert." ****aus\n";
-				      	}
-						break;
+						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_off) | ($value_off & $mask_off);
+							//$lightManager->SetRGB($switchOID, $new);
+							}
+						printf("Ergebnis OID: %x ON: %x MASK: %x OFF: %x MASK: %x \n",$switchOID,$value_on,$mask_on,$value_off,$mask_off);
 					}
-
 				break;
 			}
 		}
