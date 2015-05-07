@@ -171,6 +171,8 @@ function createPortal($Path)
 		$categoryId_WebFrontSwitch   = CreateCategoryPath($Path.".Schalter");
 
 		IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
+		IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$Homematic = HomematicList();
 		$FHT = FHTList();
 		$FS20= FS20List();
