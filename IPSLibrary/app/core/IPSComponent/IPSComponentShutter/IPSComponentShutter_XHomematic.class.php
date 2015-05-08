@@ -21,10 +21,11 @@
 
 	IPSUtils_Include ('IPSComponentShutter.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentShutter');
 
-	class IPSComponentShutter_Homematic extends IPSComponentShutter {
+	class IPSComponentShutter_XHomematic extends IPSComponentShutter {
 
 		private $instanceId;
 		private $reverseControl;
+		private $rpcADR;
 
 		/**
 		 * @public
@@ -34,9 +35,10 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
 		 */
-		public function __construct($instanceId, $reverseControl=false) {
+		public function __construct($instanceId, $rpcADR, $reverseControl=false) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->reverseControl = $reverseControl;
+			$this->rpcADR = $rpcADR;
 		}
 
 		/**
@@ -68,6 +70,26 @@
 		 */
 		public function GetComponentParams() {
 			return get_class($this).','.$this->instanceId;
+		}
+
+		/**
+		 * @public
+		 *
+		 * Zustand Setzen
+		 *
+		 * @param integer $power Geräte Power
+		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
+		 */
+		public function SetState($power, $level) {
+			echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			$rpc = new JSONRPC($this->rpcADR);
+			if (!$power) {
+				$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
+			} else {
+				$levelHM = $level / 100;
+				$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
+			}
+
 		}
 
 		/**
