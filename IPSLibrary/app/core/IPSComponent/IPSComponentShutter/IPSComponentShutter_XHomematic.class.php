@@ -81,7 +81,7 @@
 		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
 		 */
 		public function SetState($power, $level) {
-			echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
 			$rpc = new JSONRPC($this->rpcADR);
 			if (!$power) {
 				$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", 0);

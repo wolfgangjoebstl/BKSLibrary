@@ -52,7 +52,8 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
-echo "NachrichtenInput OID: ".$NachrichtenInputID." Script OID: ".$NachrichtenScriptID."\n";
+echo "Nachrichten Script OID    : ".$NachrichtenScriptID."\n";
+echo "Nachrichten Log Input OID : ".$NachrichtenInputID."\n";
 
 /* Timerprogrammierung */
 
@@ -129,7 +130,7 @@ if (IPS_VariableProfileExists($pname) == false)
 	}
 	
 $GiessAnlageID=$vid;
-echo "Giessanlage OID: ".$GiessAnlageID."\n";
+echo "Giessanlage OID           : ".$GiessAnlageID."\n";
 $GiessCountID=CreateVariableByName($parentid, "GiessCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $GiessAnlagePrevID = CreateVariableByName($parentid, "GiessAnlagePrev", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $GiessTimeID=CreateVariableByName($parentid, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -143,8 +144,58 @@ $giessTime=GetValue($GiessTimeID);
 
  if ($_IPS['SENDER']=="Execute")
 	{
+	echo "umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
+	echo "Verlauf Aussentemperatur.\n";
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+	$archiveHandlerID = $archiveHandlerID[0];
+	$variableID=get_aussentempID();
+	$endtime=time();
+	$starttime=$endtime-60*60*24*2;  /* die letzten zwei tage */
+	/* function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false ) */
+	$ergebnis24h=summestartende($starttime, $endtime, 1, false,$archiveHandlerID,$variableID);
+
+	$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+		Nicht mer als 10.000 Werte ...
+	*/
+	//print_r($werte);
+  	$anzahl=count($werte);
+ 	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+  	/* array AC_GetAggregatedValues ( integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit )
+  	0 Stündliche Aggregation, 1 Tägliche Aggregation, 2 Wöchentliche Aggregation, 3 Monatliche Aggregation
+	4 Jährliche Aggregation, 5 5-Minütige Aggregation (Aus Rohdaten berechnet), 6 1-Minütige Aggregation (Aus Rohdaten berechnet)
+	*/
+   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+	//print_r($werte);
+  	$anzahl=count($werte);
+ 	echo "   Agg. Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+ 	echo "Durchschnittstemperatur heute   : ".number_format($werte[0]["Avg"], 1, ",", "")." Grad\n";
+ 	echo "Durchschnittstemperatur gestern : ".number_format($werte[1]["Avg"], 1, ",", "")." Grad\n";
+ 	echo "Maxtemperatur heute   : ".number_format($werte[0]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[0]["MaxTime"]))."\n";
+ 	echo "Maxtemperatur gestern : ".number_format($werte[1]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[1]["MaxTime"]))."\n";
+ 	echo "Mintemperatur heute   : ".number_format($werte[0]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[0]["MinTime"]))."\n";
+ 	echo "Mintemperatur gestern : ".number_format($werte[1]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[1]["MinTime"]))."\n";
+ 	echo "Dauer heute : ".number_format(($werte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
+ 	echo "LastTime    : ".date("d.m H:i",($werte[0]["LastTime"]))." \n";
+ 	echo "TimeStamp   : ".date("d.m H:i",($werte[1]["TimeStamp"]))." \n";
+ 	
+	$variableID=get_raincounterID();
+	$starttime=$endtime-60*60*24*7;  /* die letzten 7 Tage */
+	$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	foreach ($werte as $wert)
+	   {
+	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+	   }
+   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+	foreach ($werte as $wert)
+	   {
+	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
+	   echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."\n";
+	   }
+	//print_r($werte);
+
 	//echo $parentid."\n";
-	/* Berechnung für Giessdauer */
+	/* Berechnung für Giessdauer , Routinen in Config Datei mit Funktion befuellen */
 	$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
 	$AussenTemperaturGestern=AussenTemperaturGestern();
 	$RegenGestern=RegenGestern();
@@ -408,9 +459,10 @@ function giessdauer($debug=false)
 	$variableID=get_raincounterID();
 	$endtime=time();
 	$starttime=$endtime-60*60*2*1;
-	$ergebnis2h=summestartende($starttime, $endtime, true, false);
+	/* function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false ) */
+	$ergebnis2h=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID);
 	$starttime=$endtime-60*60*48*1;
-	$ergebnis48h=summestartende($starttime, $endtime, true, false);
+	$ergebnis48h=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID);
 
 	if ($debug)
 		{
