@@ -21,7 +21,7 @@
 
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
 
-	class IPSComponentSwitch_XHomematic extends IPSComponentSwitch {
+	class IPSComponentSwitch_XValue extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;
