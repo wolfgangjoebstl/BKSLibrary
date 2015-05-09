@@ -130,12 +130,17 @@ if (IPS_VariableProfileExists($pname) == false)
 	}
 	
 $GiessAnlageID=$vid;
-echo "Giessanlage OID           : ".$GiessAnlageID."\n";
 $GiessCountID=CreateVariableByName($parentid, "GiessCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $GiessAnlagePrevID = CreateVariableByName($parentid, "GiessAnlagePrev", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $GiessTimeID=CreateVariableByName($parentid, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $giessTime=GetValue($GiessTimeID);
 
+echo "Giessanlage OID           : ".$GiessAnlageID."\n";
+echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
+echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
+
+$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	
 /******************************************************
 
 				EXECUTE
@@ -144,49 +149,74 @@ $giessTime=GetValue($GiessTimeID);
 
  if ($_IPS['SENDER']=="Execute")
 	{
-	echo "umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
-	echo "Verlauf Aussentemperatur.\n";
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-	$archiveHandlerID = $archiveHandlerID[0];
-	$variableID=get_aussentempID();
+	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
+
+	$variableTempID=get_aussentempID();
+	$variableID=get_raincounterID();
 	$endtime=time();
 	$starttime=$endtime-60*60*24*2;  /* die letzten zwei tage */
-	/* function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false ) */
-	$ergebnis24h=summestartende($starttime, $endtime, 1, false,$archiveHandlerID,$variableID);
+	
+	$Server=RemoteAccess_Address();
+	echo "Server : ".$Server."\n\n";
+	If ($Server=="")
+	   {
+   	$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+		$variableTempName = IPS_GetName($variableTempID);
+		$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+		$variableName = IPS_GetName($variableID);
+		}
+	else
+		{
+		$rpc = new JSONRPC($Server);
+   	$tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+		$variableTempName = $rpc->IPS_GetName($variableTempID);
+		$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	   $werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+		$variableName = $rpc->IPS_GetName($variableID);
+		}
 
-	$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	/* function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false ) */
+	//$ergebnis24h=summestartende($starttime, $endtime, 1, false,$archiveHandlerID,$variableTempID);
+
+	//$werte = AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);
 	/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
 		Nicht mer als 10.000 Werte ...
 	*/
 	//print_r($werte);
-  	$anzahl=count($werte);
- 	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+  	//$anzahl=count($werte);
+ 	//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
   	/* array AC_GetAggregatedValues ( integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit )
   	0 Stündliche Aggregation, 1 Tägliche Aggregation, 2 Wöchentliche Aggregation, 3 Monatliche Aggregation
 	4 Jährliche Aggregation, 5 5-Minütige Aggregation (Aus Rohdaten berechnet), 6 1-Minütige Aggregation (Aus Rohdaten berechnet)
 	*/
-   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
-	//print_r($werte);
-  	$anzahl=count($werte);
- 	echo "   Agg. Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
- 	echo "Durchschnittstemperatur heute   : ".number_format($werte[0]["Avg"], 1, ",", "")." Grad\n";
- 	echo "Durchschnittstemperatur gestern : ".number_format($werte[1]["Avg"], 1, ",", "")." Grad\n";
- 	echo "Maxtemperatur heute   : ".number_format($werte[0]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[0]["MaxTime"]))."\n";
- 	echo "Maxtemperatur gestern : ".number_format($werte[1]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[1]["MaxTime"]))."\n";
- 	echo "Mintemperatur heute   : ".number_format($werte[0]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[0]["MinTime"]))."\n";
- 	echo "Mintemperatur gestern : ".number_format($werte[1]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($werte[1]["MinTime"]))."\n";
- 	echo "Dauer heute : ".number_format(($werte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
- 	echo "LastTime    : ".date("d.m H:i",($werte[0]["LastTime"]))." \n";
- 	echo "TimeStamp   : ".date("d.m H:i",($werte[1]["TimeStamp"]))." \n";
+
+  	$anzahl=count($tempwerte);
+ 	echo "   Agg. Variable: ".$variableTempName." mit ".$anzahl." Werte \n";
+ 	echo "Durchschnittstemperatur heute   : ".number_format($tempwerte[0]["Avg"], 1, ",", "")." Grad\n";
+ 	echo "Durchschnittstemperatur gestern : ".number_format($tempwerte[1]["Avg"], 1, ",", "")." Grad\n";
+ 	echo "Maxtemperatur heute   : ".number_format($tempwerte[0]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[0]["MaxTime"]))."\n";
+ 	echo "Maxtemperatur gestern : ".number_format($tempwerte[1]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[1]["MaxTime"]))."\n";
+ 	echo "Mintemperatur heute   : ".number_format($tempwerte[0]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[0]["MinTime"]))."\n";
+ 	echo "Mintemperatur gestern : ".number_format($tempwerte[1]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[1]["MinTime"]))."\n";
+ 	echo "Dauer heute : ".number_format(($tempwerte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
+ 	echo "LastTime    : ".date("d.m H:i",($tempwerte[0]["LastTime"]))." \n";
+ 	echo "TimeStamp   : ".date("d.m H:i",($tempwerte[1]["TimeStamp"]))." \n";
  	
-	$variableID=get_raincounterID();
-	$starttime=$endtime-60*60*24*7;  /* die letzten 7 Tage */
-	$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
-	foreach ($werte as $wert)
+
+	$anzahl=count($werte);
+ 	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+
+	/* Letzen Regen ermitteln */
+	$letzterRegen=0;
+	foreach ($werteLog as $wert)
 	   {
 	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+	   If (($letzterRegen==0) && ($wert["Value"]>0))
+	      {
+	      $letzterRegen=$wert["TimeStamp"];
+			}
 	   }
-   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
 	foreach ($werte as $wert)
 	   {
 	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
@@ -196,10 +226,14 @@ $giessTime=GetValue($GiessTimeID);
 
 	//echo $parentid."\n";
 	/* Berechnung für Giessdauer , Routinen in Config Datei mit Funktion befuellen */
-	$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
-	$AussenTemperaturGestern=AussenTemperaturGestern();
-	$RegenGestern=RegenGestern();
-	$LetzterRegen=time()-LetzterRegen();
+	$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
+	echo "Aussentemperatur max : ".get_AussenTemperaturGesternMax()."   ".$tempwerte[1]["Max"]." \n";
+	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
+	echo "Aussentemperatur med : ".AussenTemperaturGestern()."   ".$tempwerte[1]["Avg"]." \n";
+	$RegenGestern=$werte[1]["Avg"];
+	echo "Regen gestern : ".RegenGestern()."   ".$werte[1]["Avg"]." \n";
+	echo "Letzter Regen Zeit : ".date("d.m H:i",LetzterRegen())."   ".date("d.m H:i",$letzterRegen)." \n\n";
+	$LetzterRegen=time()-$letzterRegen;
 	//echo "Aussentemperatur Gestern : ".$AussenTemperaturGestern." Maximum : ".$AussenTemperaturGesternMax."\n";
 	//echo "Regen Gestern : ".$RegenGestern." mm und letzter Regen war vaktuell vor ".($LetzterRegen/60/60)." Stunden.\n";
 	SetValue($GiessTimeID,giessdauer(true));
@@ -210,8 +244,6 @@ $giessTime=GetValue($GiessTimeID);
 						.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
 	$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n"; */
-	echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
-	echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n";
 
 	$resultEvent=IPS_GetEvent($calcgiesstimeID);
 	If($resultEvent["EventActive"]){echo "Timer Kalkgiesstime aktiv.\n";};
@@ -273,6 +305,7 @@ $giessTime=GetValue($GiessTimeID);
 	switch ($_IPS['VALUE'])
 		{
 		case "2":  /* Auto */
+		case "-1":  /* Auto */
       	IPS_SetEventActive($giesstimerID,false);
       	IPS_SetEventActive($timerDawnID,true);
  			$log_Giessanlage->message("Gartengiessanlage auf Auto gesetzt");
@@ -448,14 +481,51 @@ function giessdauer($debug=false)
 
 	$giessdauer=0;
 	$display=$debug;
+	
+	$variableTempID=get_aussentempID();
+	$variableID=get_raincounterID();
+	$endtime=time();
+	$starttime=$endtime-60*60*24*2;  /* die letzten zwei tage */
 
-	$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
-	$AussenTemperaturGestern=AussenTemperaturGestern();
-	$RegenGestern=RegenGestern();
-	$LetzterRegen=time()-LetzterRegen();
+	$Server=RemoteAccess_Address();
+	echo "Server : ".$Server."\n\n";
+	If ($Server=="")
+	   {
+   	$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+		$variableTempName = IPS_GetName($variableTempID);
+		$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	   $werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+		$variableName = IPS_GetName($variableID);
+		}
+	else
+		{
+		$rpc = new JSONRPC($Server);
+   	$tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+		$variableTempName = $rpc->IPS_GetName($variableTempID);
+		$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
+	   $werte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime, $endtime,0);
+		$variableName = $rpc->IPS_GetName($variableID);
+		}
 
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-	$archiveHandlerID = $archiveHandlerID[0];
+	//$AussenTemperaturGesternMax=get_AussenTemperaturGesternMax();
+	$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
+	//$AussenTemperaturGestern=AussenTemperaturGestern();
+	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
+	
+	$letzterRegen=0;
+	foreach ($werteLog as $wert)
+	   {
+	   If (($letzterRegen==0) && ($wert["Value"]>0))
+	      {
+	      $letzterRegen=$wert["TimeStamp"];
+			}
+	   }
+
+	//$RegenGestern=RegenGestern();
+	$RegenGestern=$werte[1]["Avg"];
+	//$LetzterRegen=time()-LetzterRegen();
+	$LetzterRegen=time()-$letzterRegen;
+
 	$variableID=get_raincounterID();
 	$endtime=time();
 	$starttime=$endtime-60*60*2*1;
@@ -466,7 +536,8 @@ function giessdauer($debug=false)
 
 	if ($debug)
 		{
- 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad ".
+		echo "letzter regen : ".$LetzterRegen."   ".$letzterRegen."\n";
+ 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > 20° sein) ".
 			  "Maximum : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad \n";
 		echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
 			" mm und letzter Regen war aktuell vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden.\n";
