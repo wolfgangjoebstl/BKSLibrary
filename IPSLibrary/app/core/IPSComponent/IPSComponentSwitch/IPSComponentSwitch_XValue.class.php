@@ -79,11 +79,7 @@
 		public function SetState($value, $onTime=false) {
 			//echo "Adresse:".$this->rpcADR."\n";
 			$rpc = new JSONRPC($this->rpcADR);
-
-			if ($onTime!==false and $value and $this->supportsOnTime===true) 
-				$rpc->HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
-			
-			$rpc->HM_WriteValueBoolean($this->instanceId, "STATE", $value);
+			$rpc->SetValue($this->instanceId, $value);
 		}
 
 		/**
