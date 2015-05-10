@@ -207,16 +207,25 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	$anzahl=count($werte);
  	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
-	/* Letzen Regen ermitteln */
+	/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
 	$letzterRegen=0;
+	$regenStand2h=0;
 	foreach ($werteLog as $wert)
 	   {
 	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+	   $regenStandAnfang=$wert["Value"];
+	   if (((time()-$wert["TimeStamp"])/60/60)<2)
+	      {
+	      $regenStand2h=$regenStandEnde-$regenStandAnfang+0.3;
+	      }
 	   If (($letzterRegen==0) && ($wert["Value"]>0))
 	      {
 	      $letzterRegen=$wert["TimeStamp"];
+	      $regenStandEnde=$wert["Value"];
 			}
 	   }
+	$regenStand48h=$regenStandEnde-$regenStandAnfang+0.3;
+	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
 	foreach ($werte as $wert)
 	   {
 	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
@@ -513,6 +522,24 @@ function giessdauer($debug=false)
 	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	
 	$letzterRegen=0;
+	/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
+	$regenStand2h=0;
+	foreach ($werteLog as $wert)
+	   {
+	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+	   $regenStandAnfang=$wert["Value"];
+	   if (((time()-$wert["TimeStamp"])/60/60)<2)
+	      {
+	      $regenStand2h=$regenStandEnde-$regenStandAnfang+0.3;
+	      }
+	   If (($letzterRegen==0) && ($wert["Value"]>0))
+	      {
+	      $letzterRegen=$wert["TimeStamp"];
+	      $regenStandEnde=$wert["Value"];
+			}
+	   }
+	$regenStand48h=$regenStandEnde-$regenStandAnfang+0.3;
+	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
 	foreach ($werteLog as $wert)
 	   {
 	   If (($letzterRegen==0) && ($wert["Value"]>0))
@@ -526,14 +553,6 @@ function giessdauer($debug=false)
 	//$LetzterRegen=time()-LetzterRegen();
 	$LetzterRegen=time()-$letzterRegen;
 
-	$variableID=get_raincounterID();
-	$endtime=time();
-	$starttime=$endtime-60*60*2*1;
-	/* function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false ) */
-	$ergebnis2h=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID);
-	$starttime=$endtime-60*60*48*1;
-	$ergebnis48h=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID);
-
 	if ($debug)
 		{
 		echo "letzter regen : ".$LetzterRegen."   ".$letzterRegen."\n";
@@ -541,12 +560,12 @@ function giessdauer($debug=false)
 			  "Maximum : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad \n";
 		echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
 			" mm und letzter Regen war aktuell vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden.\n";
-		echo "Regen letzte 2/48 Stunden : ".$ergebnis2h." mm / ".$ergebnis48h." mm \n";
+		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n";
 		}
 
-	if (($ergebnis48h<10) && ($AussenTemperaturGestern>20))
+	if (($regenStand48h<10) && ($AussenTemperaturGestern>20))
 	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser 20 Grad*/
-	   if (($ergebnis2h)==0)
+	   if (($regenStand2h)==0)
 	      { /* und es regnet aktuell nicht */
 			if ($AussenTemperaturGesternMax>27)
 			   { /* es war richtig warm */
@@ -559,7 +578,7 @@ function giessdauer($debug=false)
 	      }
 	   }
 	$textausgabe="Giesszeit berechnet mit ".GetValue($GiessTimeID)
-			." Minuten da Regen letzte 2/48 Stunden : ".$ergebnis2h." mm / ".$ergebnis48h." mm "
+			." Minuten da Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm "
 			."und vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden zuletzt. Temperatur gestern "
 			.number_format($AussenTemperaturGestern, 1, ",", "")." max "
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
