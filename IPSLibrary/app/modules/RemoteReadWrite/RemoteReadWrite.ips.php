@@ -141,7 +141,9 @@ else
 	//echo "Connect to http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/";
 	$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
 	
-	if ($gartensteuerung==true)
+//	if ($gartensteuerung==true)
+	if (false)
+	   /* nicht mit lokal installierter Gartensteuerung vermischen. Soll eigene Liste bekommen. in diesem verzeichnis */
 		{
 		IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
 		$ParamList = ParamList();

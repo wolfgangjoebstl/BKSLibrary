@@ -40,6 +40,7 @@ $object2= new ipsobject($object->oparent());
 //$object2->oprint("Nachricht");
 $tempOID=$object2->osearch("Nachricht");
 $NachrichtenScriptID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
+$GartensteuerungScriptID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Gartensteuerung.Gartensteuerung');
 
 if (isset($NachrichtenScriptID))
 	{
@@ -51,9 +52,6 @@ if (isset($NachrichtenScriptID))
 	$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID,$NachrichtenInputID);
 	}
 else break;
-
-echo "Nachrichten Script OID    : ".$NachrichtenScriptID."\n";
-echo "Nachrichten Log Input OID : ".$NachrichtenInputID."\n";
 
 /* Timerprogrammierung */
 
@@ -112,6 +110,7 @@ if($vid === false)
         $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
         IPS_SetParent($vid, $parentid);
         IPS_SetName($vid, $name);
+		  IPS_SetVariableCustomAction($vid,$GartensteuerungScriptID);
         IPS_SetInfo($vid, "this variable was created by script #".$parentid.".");
         echo "Variable erstellt;\n";
     }
@@ -135,10 +134,6 @@ $GiessAnlagePrevID = CreateVariableByName($parentid, "GiessAnlagePrev", 1); /* 0
 $GiessTimeID=CreateVariableByName($parentid, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $giessTime=GetValue($GiessTimeID);
 
-echo "Giessanlage OID           : ".$GiessAnlageID."\n";
-echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
-echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
-
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 	
 /******************************************************
@@ -149,6 +144,12 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 
  if ($_IPS['SENDER']=="Execute")
 	{
+	echo "Nachrichten Script OID    : ".$NachrichtenScriptID."\n";
+	echo "Nachrichten Log Input OID : ".$NachrichtenInputID."\n";
+	echo "Giessanlage OID           : ".$GiessAnlageID."\n";
+	echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
+	echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
+
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 
 	$variableTempID=get_aussentempID();
@@ -160,6 +161,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	echo "Server : ".$Server."\n\n";
 	If ($Server=="")
 	   {
+		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
 		$variableTempName = IPS_GetName($variableTempID);
 		$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
@@ -169,6 +171,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	else
 		{
 		$rpc = new JSONRPC($Server);
+		$archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
 		$variableTempName = $rpc->IPS_GetName($variableTempID);
 		$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
@@ -325,6 +328,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 			break;
 
 		case "1":  /* Einmal Ein */
+			/* damit auch wenn noch kein Wetter zum Giessen, gegossenw erden kann, Giesszeit manuell setzen */
+			SetValue($GiessTimeID,10);
 			if ($samebutton==true)
 			   { /* gleiche Taste heisst weiter */
 				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
@@ -500,6 +505,7 @@ function giessdauer($debug=false)
 	echo "Server : ".$Server."\n\n";
 	If ($Server=="")
 	   {
+  		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
 		$variableTempName = IPS_GetName($variableTempID);
 		$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);
@@ -509,6 +515,7 @@ function giessdauer($debug=false)
 	else
 		{
 		$rpc = new JSONRPC($Server);
+		$archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
 		$variableTempName = $rpc->IPS_GetName($variableTempID);
 		$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime,0);

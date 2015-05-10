@@ -98,7 +98,7 @@
 
 
    // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$CategoryIdApp,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessCountID=CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessAnlagePrevID = CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessTimeID=CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -156,6 +156,25 @@
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryId_WebFront,  20);
+		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryId_WebFront,  30);
+		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryId_WebFront,  40);
+		CreateLinkByDestination('Nachricht_Zeile01', $zeile1,    $categoryId_WebFront,  110);
+		CreateLinkByDestination('Nachricht_Zeile02', $zeile2,    $categoryId_WebFront,  120);
+		CreateLinkByDestination('Nachricht_Zeile03', $zeile3,    $categoryId_WebFront,  130);
+		CreateLinkByDestination('Nachricht_Zeile04', $zeile4,    $categoryId_WebFront,  140);
+		CreateLinkByDestination('Nachricht_Zeile05', $zeile5,    $categoryId_WebFront,  150);
+		CreateLinkByDestination('Nachricht_Zeile06', $zeile6,    $categoryId_WebFront,  160);
+		CreateLinkByDestination('Nachricht_Zeile07', $zeile7,    $categoryId_WebFront,  170);
+		CreateLinkByDestination('Nachricht_Zeile08', $zeile8,    $categoryId_WebFront,  180);
+		CreateLinkByDestination('Nachricht_Zeile09', $zeile9,    $categoryId_WebFront,  190);
+		CreateLinkByDestination('Nachricht_Zeile10', $zeile10,    $categoryId_WebFront,  200);
+		CreateLinkByDestination('Nachricht_Zeile11', $zeile11,    $categoryId_WebFront,  210);
+		CreateLinkByDestination('Nachricht_Zeile12', $zeile12,    $categoryId_WebFront,  220);
+		CreateLinkByDestination('Nachricht_Zeile13', $zeile13,    $categoryId_WebFront,  230);
+		CreateLinkByDestination('Nachricht_Zeile14', $zeile14,    $categoryId_WebFront,  240);
+		CreateLinkByDestination('Nachricht_Zeile15', $zeile15,    $categoryId_WebFront,  250);
+		CreateLinkByDestination('Nachricht_Zeile16', $zeile16,    $categoryId_WebFront,  260);
 		}
 		
 	if ($WFC10User_Enabled)
