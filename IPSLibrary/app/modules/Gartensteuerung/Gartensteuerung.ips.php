@@ -146,6 +146,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	{
 	echo "Nachrichten Script OID    : ".$NachrichtenScriptID."\n";
 	echo "Nachrichten Log Input OID : ".$NachrichtenInputID."\n";
+	echo "Gartensteuerung Script OID : ".$GartensteuerungScriptID."\n";
 	echo "Giessanlage OID           : ".$GiessAnlageID."\n";
 	echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
 	echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";

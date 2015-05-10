@@ -98,7 +98,7 @@
 
 
    // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$CategoryIdApp,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessCountID=CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessAnlagePrevID = CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessTimeID=CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
