@@ -470,14 +470,70 @@ function send_status($aktuell)
 	$sommerzeit=true;
 	}
 	$einleitung.="\n";
+	
+	// Repository
+	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 
+	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
-	$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
-	//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
-   IPS_RunScript($updatePeriodenwerteID);
+	/*
+	$moduleManager = new IPSModuleManager('');
+	$installedModules = $moduleManager->GetInstalledModules();
+	print_r($installedModules);
+	$inst_modules="Installierte Module:\n";
+	foreach ($installedModules as $name=>$modules)
+			{
+			$inst_modules.=str_pad($name,20)." ".$modules."\n";
+			}
+	*/
 
+	/* gibt alle bekannten und davon installierten Module aus */
 
+	$guthabensteuerung=false;
+	$amis=false;
+	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false; $remotereadwrite=false; $remoteaccess=false;
+
+	$versionHandler = $moduleManager->VersionHandler();
+	$versionHandler->BuildKnownModules();
+	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
+	$inst_modules.= "Modulname                  Version    Version      Beschreibung\n";
+	$inst_modules.= "                          verfügbar installiert                   \n";
+	foreach ($knownModules as $module=>$data)
+		{
+		$infos   = $moduleManager->GetModuleInfos($module);
+		$inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
+		if (array_key_exists($module, $installedModules))
+			{
+			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
+			$inst_modules .= " ".str_pad($infos['CurrentVersion'],10)."   ";
+			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
+			if ($module=="Amis") $amis=true;
+			if ($module=="CustomComponent") $customcomponent=true;
+			if ($module=="DetectMovement") $detectmovement=true;
+			if ($module=="Sprachsteuerung") $sprachsteuerung=true;
+			if ($module=="RemoteReadWrite") $remotereadwrite=true;
+			if ($module=="RemoteAccess") $remoteaccess=true;
+			}
+		else
+			{
+			$inst_modules .= "  none        ";
+		   }
+		$inst_modules .=  $infos['Description']."\n";
+		}
+
+	if ($amis==true)
+	   {
+		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
+		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
+		//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
+   	IPS_RunScript($updatePeriodenwerteID);
+		}
+
+	$cost=""; $internet=""; $statusverlauf=""; $ergebnis_tabelle=""; $alleStromWerte=""; $ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
+	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
+	
 if (IPS_GetName(0)=="LBG70")
 	{
 
@@ -700,12 +756,9 @@ if (IPS_GetName(0)=="LBG70")
 //	$ergebnis=$einleitung.$ergebnis_tagesenergie.$ergebnisTemperatur.$ergebnisRegen.$ergebnisStrom.$ergebnisStatus.$ergebnisBewegung.$IPStatus;
 
 		/**********************************************/
-		
-
-	$ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
-	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung="";
 	}
-else        /*  spezielle Routine für BKS01    */
+	
+if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 	{
 
 	if ($aktuell)   /* aktuelle Werte */
@@ -1000,56 +1053,6 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 ******************************************************************************************/
 
 
-	// Repository
-	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-
-	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-
-	/*
-	$moduleManager = new IPSModuleManager('');
-	$installedModules = $moduleManager->GetInstalledModules();
-	print_r($installedModules);
-	$inst_modules="Installierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-			{
-			$inst_modules.=str_pad($name,20)." ".$modules."\n";
-			}
-	*/
-
-	/* gibt alle bekannten und davon installierten Module aus */
-
-	$guthabensteuerung=false;
-	$amis=false;
-	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false; $remotereadwrite=false;
-
-	$versionHandler = $moduleManager->VersionHandler();
-	$versionHandler->BuildKnownModules();
-	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
-	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
-	$inst_modules.= "Modulname                  Version    Version      Beschreibung\n";
-	$inst_modules.= "                          verfügbar installiert                   \n";
-	foreach ($knownModules as $module=>$data)
-		{
-		$infos   = $moduleManager->GetModuleInfos($module);
-		$inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
-		if (array_key_exists($module, $installedModules))
-			{
-			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
-			$inst_modules .= " ".str_pad($infos['CurrentVersion'],10)."   ";
-			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
-			if ($module=="Amis") $amis=true;
-			if ($module=="CustomComponent") $customcomponent=true;
-			if ($module=="DetectMovement") $detectmovement=true;
-			if ($module=="Sprachsteuerung") $sprachsteuerung=true;
-			if ($module=="RemoteReadWrite") $remotereadwrite=true;
-			}
-		else
-			{
-			$inst_modules .= "  none        ";
-		   }
-		$inst_modules .=  $infos['Description']."\n";
-		}
 
 	if ($aktuell) /* aktuelle Werte */
 	   {
@@ -1102,6 +1105,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
+			if ($remoteaccess)
+			{
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			$TypeFS20=RemoteAccess_TypeFS20();
 			foreach ($FS20 as $Key)
@@ -1144,7 +1149,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			   	   }
 					}
 				}
-
+			}
 			}
 
 		if ($amis)
@@ -1356,13 +1361,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/************** Detect Movement Motion Detect ****************************************************************************/
 
-		IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
-		$Homematic = HomematicList();
-		$FS20= FS20List();
-		
       $alleMotionWerte="";
 		if ($detectmovement)
 		   {
+		   IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+			$Homematic = HomematicList();
+			$FS20= FS20List();
+		   
 		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 		   
 		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
@@ -1731,7 +1736,6 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 		*/
 		//print_r($werte);
    	$anzahl=count($werte);
-   	
    	//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
 		if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
