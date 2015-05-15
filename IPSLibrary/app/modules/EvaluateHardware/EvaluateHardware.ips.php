@@ -19,7 +19,7 @@ if ($tim1ID==false)
 	IPS_SetParent($tim1ID, $_IPS['SELF']);
 	IPS_SetName($tim1ID, "Aufruftimer");
 	IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
+	IPS_SetEventCyclicTimeFrom($tim1ID,1,10,0);  /* immer um 01:10 */
 	}
 IPS_SetEventActive($tim1ID,true);
 
@@ -175,7 +175,7 @@ foreach ($alleInstanzen as $instanz)
 /*$includefile.=');'."\n".'?>';*/
 $includefile.=');}'."\n";
 $includefile.="\n".'?>';
-$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteReadWrite\EvaluateHardware.inc.php';
+$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
 if (!file_put_contents($filename, $includefile)) {
         throw new Exception('Create File '.$filename.' failed!');
     		}

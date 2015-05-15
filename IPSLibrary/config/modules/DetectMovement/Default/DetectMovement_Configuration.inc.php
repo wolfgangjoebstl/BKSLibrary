@@ -30,6 +30,21 @@
 	 *
 	 */
 
+	function IPSDetectMovementHandler_GetEventConfiguration() {
+		$eventMoveConfiguration = array(
+
+			);
+
+		return $eventMoveConfiguration;
+	}
+
+	function IPSDetectTemperatureHandler_GetEventConfiguration() {
+		$eventTempConfiguration = array(
+
+			);
+
+		return $eventTempConfiguration;
+	}
 
 
 

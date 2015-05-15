@@ -1,985 +1,1081 @@
 <?
 function FHTList() { return array(
-"Badezimmer FHT80b" => array(
-         "OID" => 34409, 
-         "Adresse" => "5095", 
-         "Name" => "Badezimmer FHT80b", 
-         "COID" => array(
-                "TargetTempVar" => array(
-                              "OID" => "11472", 
-                              "Name" => "Soll Temperatur", 
-                              "Typ" => "2",), 
-                "PositionVar" => array(
-                              "OID" => "14642", 
-                              "Name" => "Position", 
-                              "Typ" => "2",), 
-                "LowBatteryVar" => array(
-                              "OID" => "17679", 
-                              "Name" => "Batterie", 
-                              "Typ" => "2",), 
-                "TargetIPSModeVar" => array(
-                              "OID" => "21736", 
-                              "Name" => "Soll Modus (Ausstehend)", 
-                              "Typ" => "2",), 
-                "WindowOpen" => array(
-                              "OID" => "25921", 
-                              "Name" => "Fenster geöffnet", 
-                              "Typ" => "2",), 
-                "TargetModeVar" => array(
-                              "OID" => "31428", 
-                              "Name" => "Soll Modus", 
-                              "Typ" => "2",), 
-                "TargetIPSTempVar" => array(
-                              "OID" => "39569", 
-                              "Name" => "Soll Temperatur (Ausstehend)", 
-                              "Typ" => "2",), 
-                "TemeratureVar" => array(
-                              "OID" => "56634", 
-                              "Name" => "Temperatur", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Schlafzimmer FHT80b" => array(
-         "OID" => 30074, 
-         "Adresse" => "5080", 
-         "Name" => "Schlafzimmer FHT80b", 
-         "COID" => array(
-                "TargetIPSModeVar" => array(
-                              "OID" => "14045", 
-                              "Name" => "Soll Modus (Ausstehend)", 
-                              "Typ" => "2",), 
-                "TargetIPSTempVar" => array(
-                              "OID" => "27662", 
-                              "Name" => "Soll Temperatur (Ausstehend)", 
-                              "Typ" => "2",), 
-                "TemeratureVar" => array(
-                              "OID" => "33694", 
-                              "Name" => "Temperatur", 
-                              "Typ" => "2",), 
-                "PositionVar" => array(
-                              "OID" => "34186", 
-                              "Name" => "Position", 
-                              "Typ" => "2",), 
-                "TargetModeVar" => array(
-                              "OID" => "35701", 
-                              "Name" => "Soll Modus", 
-                              "Typ" => "2",), 
-                "TargetTempVar" => array(
-                              "OID" => "41340", 
-                              "Name" => "Soll Temperatur", 
-                              "Typ" => "2",), 
-                "LowBatteryVar" => array(
-                              "OID" => "54625", 
-                              "Name" => "Batterie", 
-                              "Typ" => "2",), 
-                "WindowOpen" => array(
-                              "OID" => "58793", 
-                              "Name" => "Fenster geöffnet", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Wohnzimmer FHT80b" => array(
-         "OID" => 29698, 
-         "Adresse" => "5053", 
-         "Name" => "Wohnzimmer FHT80b", 
-         "COID" => array(
-                "TemeratureVar" => array(
-                              "OID" => "17554", 
-                              "Name" => "Temperatur", 
-                              "Typ" => "2",), 
-                "TargetIPSModeVar" => array(
-                              "OID" => "23521", 
-                              "Name" => "Soll Modus (Ausstehend)", 
-                              "Typ" => "2",), 
-                "PositionVar" => array(
-                              "OID" => "27073", 
-                              "Name" => "Position", 
-                              "Typ" => "2",), 
-                "WindowOpen" => array(
-                              "OID" => "30110", 
-                              "Name" => "Fenster geöffnet", 
-                              "Typ" => "2",), 
-                "TargetTempVar" => array(
-                              "OID" => "40577", 
-                              "Name" => "Soll Temperatur", 
-                              "Typ" => "2",), 
-                "TargetModeVar" => array(
-                              "OID" => "46337", 
-                              "Name" => "Soll Modus", 
-                              "Typ" => "2",), 
-                "TargetIPSTempVar" => array(
-                              "OID" => "52266", 
-                              "Name" => "Soll Temperatur (Ausstehend)", 
-                              "Typ" => "2",), 
-                "LowBatteryVar" => array(
-                              "OID" => "57647", 
-                              "Name" => "Batterie", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer FHT80b" => array(
-         "OID" => 17571, 
-         "Adresse" => "5032", 
-         "Name" => "Arbeitszimmer FHT80b", 
-         "COID" => array(
-                "TargetTempVar" => array(
-                              "OID" => "12767", 
-                              "Name" => "Soll Temperatur", 
-                              "Typ" => "2",), 
-                "TargetModeVar" => array(
-                              "OID" => "19491", 
-                              "Name" => "Soll Modus", 
-                              "Typ" => "2",), 
-                "WindowOpen" => array(
-                              "OID" => "30938", 
-                              "Name" => "Fenster geöffnet", 
-                              "Typ" => "2",), 
-                "LowBatteryVar" => array(
-                              "OID" => "38662", 
-                              "Name" => "Batterie", 
-                              "Typ" => "2",), 
-                "TargetIPSTempVar" => array(
-                              "OID" => "38674", 
-                              "Name" => "Soll Temperatur (Ausstehend)", 
-                              "Typ" => "2",), 
-                "TemeratureVar" => array(
-                              "OID" => "39227", 
-                              "Name" => "Temperatur", 
-                              "Typ" => "2",), 
-                "TargetIPSModeVar" => array(
-                              "OID" => "40009", 
-                              "Name" => "Soll Modus (Ausstehend)", 
-                              "Typ" => "2",), 
-                "PositionVar" => array(
-                              "OID" => "54440", 
-                              "Name" => "Position", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
 );}
 function FS20List() { return array(
-"Zentralzimmer" => array(
-         "OID" => 50080, 
-         "Adresse" => "13", 
-         "Name" => "Zentralzimmer", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "21581", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "24867", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "40008", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "49495", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Fernseher Receiver FS20 Gerät" => array(
-         "OID" => 47562, 
-         "Adresse" => "13", 
-         "Name" => "Fernseher Receiver FS20 Gerät", 
-         "COID" => array(
-                "TimerVariable" => array(
-                              "OID" => "10035", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "16837", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "37489", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "52047", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Wohnzimmer Lampe AWS FS20 Gerät" => array(
-         "OID" => 44267, 
-         "Adresse" => "12", 
-         "Name" => "Wohnzimmer Lampe AWS FS20 Gerät", 
-         "COID" => array(
-                "IntensityVariable" => array(
-                              "OID" => "17455", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "23716", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "34488", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "37521", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Beleuchtung" => array(
-         "OID" => 40351, 
-         "Adresse" => "12", 
-         "Name" => "Arbeitszimmer Beleuchtung", 
-         "COID" => array(
-                "TimerVariable" => array(
-                              "OID" => "14885", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "22271", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "52000", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "59750", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Media Verstärker FS20 Gerät" => array(
-         "OID" => 39136, 
-         "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Media Verstärker FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "15320", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "22078", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "33400", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "40650", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Kastenventilator FS20 Gerät" => array(
-         "OID" => 38359, 
-         "Adresse" => "13", 
-         "Name" => "Kastenventilator FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "11391", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "24842", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "34473", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "57601", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Netzwerk" => array(
-         "OID" => 37160, 
-         "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Netzwerk", 
-         "COID" => array(
-                "TimerVariable" => array(
-                              "OID" => "12007", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "49375", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "51292", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "55161", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Schlafzimmer Deckenbeleuchtung FS20 Gerät" => array(
-         "OID" => 31970, 
+"Router-Stromversorgung" => array(
+         "OID" => 41865, 
          "Adresse" => "14", 
-         "Name" => "Schlafzimmer Deckenbeleuchtung FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "13362", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "29832", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "49899", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "57030", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Server" => array(
-         "OID" => 25840, 
-         "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Server", 
-         "COID" => array(
-                "IntensityVariable" => array(
-                              "OID" => "21226", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "32079", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "52704", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "58664", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Wohnzimmer Netzwerk FS20 Gerät" => array(
-         "OID" => 24744, 
-         "Adresse" => "12", 
-         "Name" => "Wohnzimmer Netzwerk FS20 Gerät", 
-         "COID" => array(
-                "DataVariable" => array(
-                              "OID" => "18795", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "38476", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "38807", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "40130", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Gästezimmer FS20 Gerät" => array(
-         "OID" => 24122, 
-         "Adresse" => "12", 
-         "Name" => "Gästezimmer FS20 Gerät", 
+         "Name" => "Router-Stromversorgung", 
          "COID" => array(
                 "TimerVariable" => array(
-                              "OID" => "26326", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "37276", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "37609", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "51047", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Wohnzimmer XBOX PS3 FS20 Gerät" => array(
-         "OID" => 16013, 
-         "Adresse" => "13", 
-         "Name" => "Wohnzimmer XBOX PS3 FS20 Gerät", 
-         "COID" => array(
-                "IntensityVariable" => array(
-                              "OID" => "25234", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "25829", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "58879", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "59913", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"unbekannt G Fernbedienung FS20 Gerät" => array(
-         "OID" => 15703, 
-         "Adresse" => "13", 
-         "Name" => "unbekannt G Fernbedienung FS20 Gerät", 
-         "COID" => array(
-                "IntensityVariable" => array(
-                              "OID" => "10229", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "22511", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "23858", 
+                              "OID" => "22880", 
                               "Name" => "Timer", 
                               "Typ" => "2",), 
                 "StatusVariable" => array(
-                              "OID" => "37073", 
+                              "OID" => "29469", 
                               "Name" => "Status", 
                               "Typ" => "2",), 
-             	),
-
-      	),
-"Eckstehlampe FS20 Gerät" => array(
-         "OID" => 12828, 
-         "Adresse" => "13", 
-         "Name" => "Eckstehlampe FS20 Gerät", 
-         "COID" => array(
                 "DataVariable" => array(
-                              "OID" => "13262", 
+                              "OID" => "47074", 
                               "Name" => "Daten", 
                               "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "28915", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "47099", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
                 "IntensityVariable" => array(
-                              "OID" => "51581", 
+                              "OID" => "55494", 
                               "Name" => "Intensität", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Schlafzimmer Kastenbeleuchtung FS20 Gerät" => array(
-         "OID" => 10987, 
+"Wohnzimmer-Zusatzheizung" => array(
+         "OID" => 40443, 
+         "Adresse" => "24", 
+         "Name" => "Wohnzimmer-Zusatzheizung", 
+         "COID" => array(
+                "DataVariable" => array(
+                              "OID" => "22410", 
+                              "Name" => "Daten", 
+                              "Typ" => "2",), 
+                "StatusVariable" => array(
+                              "OID" => "33800", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "37621", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+                "IntensityVariable" => array(
+                              "OID" => "49961", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Arbeitszimmer-Heizung" => array(
+         "OID" => 38731, 
          "Adresse" => "14", 
-         "Name" => "Schlafzimmer Kastenbeleuchtung FS20 Gerät", 
+         "Name" => "Arbeitszimmer-Heizung", 
          "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "16712", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
                 "TimerVariable" => array(
-                              "OID" => "25583", 
+                              "OID" => "16167", 
                               "Name" => "Timer", 
                               "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "29676", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
                 "IntensityVariable" => array(
-                              "OID" => "58200", 
+                              "OID" => "24733", 
                               "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "StatusVariable" => array(
+                              "OID" => "32688", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "42436", 
+                              "Name" => "Daten", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Arbeitszimmer Festplatten FS20 Gerät" => array(
-         "OID" => 10020, 
-         "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Festplatten FS20 Gerät", 
+"Keller-Zusatzheizung" => array(
+         "OID" => 36154, 
+         "Adresse" => "34", 
+         "Name" => "Keller-Zusatzheizung", 
          "COID" => array(
                 "IntensityVariable" => array(
-                              "OID" => "19290", 
+                              "OID" => "22356", 
                               "Name" => "Intensität", 
                               "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "25069", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
                 "DataVariable" => array(
-                              "OID" => "26577", 
+                              "OID" => "26341", 
                               "Name" => "Daten", 
                               "Typ" => "2",), 
                 "StatusVariable" => array(
-                              "OID" => "47385", 
+                              "OID" => "39253", 
                               "Name" => "Status", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "52691", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimmer-Heizung" => array(
+         "OID" => 34901, 
+         "Adresse" => "24", 
+         "Name" => "Wohnzimmer-Heizung", 
+         "COID" => array(
+                "IntensityVariable" => array(
+                              "OID" => "10140", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "StatusVariable" => array(
+                              "OID" => "17661", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "51956", 
+                              "Name" => "Daten", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "58383", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Keller-Heizung" => array(
+         "OID" => 30616, 
+         "Adresse" => "34", 
+         "Name" => "Keller-Heizung", 
+         "COID" => array(
+                "StatusVariable" => array(
+                              "OID" => "10884", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "16843", 
+                              "Name" => "Daten", 
+                              "Typ" => "2",), 
+                "IntensityVariable" => array(
+                              "OID" => "41228", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "47990", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"GBE Switch Stromversorgung" => array(
+         "OID" => 23695, 
+         "Adresse" => "34", 
+         "Name" => "GBE Switch Stromversorgung", 
+         "COID" => array(
+                "StatusVariable" => array(
+                              "OID" => "33676", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "50020", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+                "IntensityVariable" => array(
+                              "OID" => "51500", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "52003", 
+                              "Name" => "Daten", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimmer-Dekolampe" => array(
+         "OID" => 17679, 
+         "Adresse" => "24", 
+         "Name" => "Wohnzimmer-Dekolampe", 
+         "COID" => array(
+                "TimerVariable" => array(
+                              "OID" => "21821", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+                "IntensityVariable" => array(
+                              "OID" => "22417", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "StatusVariable" => array(
+                              "OID" => "30532", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "48519", 
+                              "Name" => "Daten", 
                               "Typ" => "2",), 
              	),
 
       	),
 );}
 function HomematicList() { return array(
-"4fach_Steuerung Kanal2" => array(
-         "OID" => 55176, 
-         "Adresse" => "JEQ0737635:2", 
-         "Name" => "4fach_Steuerung Kanal2", 
+"Sensor-Wintergarten" => array(
+         "OID" => 59601, 
+         "Adresse" => "JEQ0218184:1", 
+         "Name" => "Sensor-Wintergarten", 
          "COID" => array(
-                "INHIBIT" => array(
-                              "OID" => "30276", 
-                              "Name" => "INHIBIT", 
+                "TEMPERATURE" => array(
+                              "OID" => "29970", 
+                              "Name" => "TEMPERATURE", 
                               "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "47419", 
-                              "Name" => "WORKING", 
-                              "Typ" => "2",), 
-                "STATE" => array(
-                              "OID" => "53884", 
-                              "Name" => "STATE", 
+                "HUMIDITY" => array(
+                              "OID" => "49712", 
+                              "Name" => "HUMIDITY", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Arbeitszimmer-Taster-Aus" => array(
-         "OID" => 54788, 
-         "Adresse" => "JEQ0004086:1", 
-         "Name" => "Arbeitszimmer-Taster-Aus", 
+"Sensor-Kellerlager" => array(
+         "OID" => 58916, 
+         "Adresse" => "JEQ0218252:1", 
+         "Name" => "Sensor-Kellerlager", 
          "COID" => array(
-                "INSTALL_TEST" => array(
-                              "OID" => "37416", 
-                              "Name" => "INSTALL_TEST", 
+                "HUMIDITY" => array(
+                              "OID" => "42547", 
+                              "Name" => "HUMIDITY", 
                               "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "52467", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
-                "PRESS_SHORT" => array(
-                              "OID" => "56742", 
-                              "Name" => "PRESS_SHORT", 
+                "TEMPERATURE" => array(
+                              "OID" => "58776", 
+                              "Name" => "TEMPERATURE", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Abwesenheits-Schalter-Aus" => array(
-         "OID" => 49015, 
-         "Adresse" => "IEQ0100238:1", 
-         "Name" => "Abwesenheits-Schalter-Aus", 
+"Bewegung-Stiegenabgang " => array(
+         "OID" => 57883, 
+         "Adresse" => "KEQ0365190:1", 
+         "Name" => "Bewegung-Stiegenabgang ", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "11271", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "23432", 
-                              "Name" => "PRESS_LONG", 
+                "MOTION" => array(
+                              "OID" => "16323", 
+                              "Name" => "MOTION", 
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
-                              "OID" => "34700", 
+                              "OID" => "36284", 
                               "Name" => "INSTALL_TEST", 
                               "Typ" => "2",), 
-             	),
-
-      	),
-"Homematic Dummy Schalter" => array(
-         "OID" => 47301, 
-         "Adresse" => "JEQ0066960:1", 
-         "Name" => "Homematic Dummy Schalter", 
-         "COID" => array(
-                "STATE" => array(
-                              "OID" => "26398", 
-                              "Name" => "STATE", 
+                "BRIGHTNESS" => array(
+                              "OID" => "40827", 
+                              "Name" => "BRIGHTNESS", 
                               "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "40286", 
-                              "Name" => "WORKING", 
-                              "Typ" => "2",), 
-                "INHIBIT" => array(
-                              "OID" => "51119", 
-                              "Name" => "INHIBIT", 
+                "ERROR" => array(
+                              "OID" => "57369", 
+                              "Name" => "ERROR", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Urlaubs-Schalter-Auf" => array(
-         "OID" => 42691, 
-         "Adresse" => "IEQ0100238:4", 
-         "Name" => "Urlaubs-Schalter-Auf", 
+"Kontakt Tuere-Wintergarten" => array(
+         "OID" => 57755, 
+         "Adresse" => "LEQ1059995:1", 
+         "Name" => "Kontakt Tuere-Wintergarten", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "18094", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "26427", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
-                "INSTALL_TEST" => array(
-                              "OID" => "39615", 
-                              "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Bewegung" => array(
-         "OID" => 41242, 
-         "Adresse" => "GEQ0127585:1", 
-         "Name" => "Arbeitszimmer Bewegung", 
-         "COID" => array(
-                "CONFIG_PENDING" => array(
-                              "OID" => "12214", 
-                              "Name" => "CONFIG_PENDING", 
+                "ERROR" => array(
+                              "OID" => "19828", 
+                              "Name" => "ERROR", 
                               "Typ" => "2",), 
                 "LOWBAT" => array(
-                              "OID" => "16641", 
+                              "OID" => "23053", 
                               "Name" => "LOWBAT", 
                               "Typ" => "2",), 
-                "BRIGHTNESS" => array(
-                              "OID" => "21180", 
-                              "Name" => "BRIGHTNESS", 
-                              "Typ" => "2",), 
-                "ERROR" => array(
-                              "OID" => "32746", 
-                              "Name" => "ERROR", 
-                              "Typ" => "2",), 
-                "UNREACH" => array(
-                              "OID" => "34587", 
-                              "Name" => "UNREACH", 
+                "STATE" => array(
+                              "OID" => "28444", 
+                              "Name" => "STATE", 
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
-                              "OID" => "39565", 
+                              "OID" => "54428", 
                               "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
-                "STICKY_UNREACH" => array(
-                              "OID" => "48636", 
-                              "Name" => "STICKY_UNREACH", 
-                              "Typ" => "2",), 
-                "MOTION" => array(
-                              "OID" => "54389", 
-                              "Name" => "MOTION", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Wohnzimmer Bewegung" => array(
-         "OID" => 38387, 
-         "Adresse" => "IEQ0538004:1", 
-         "Name" => "Wohnzimmer Bewegung", 
+"ReservePort4" => array(
+         "OID" => 57751, 
+         "Adresse" => "JEQ0568041:4", 
+         "Name" => "ReservePort4", 
          "COID" => array(
-                "MOTION" => array(
-                              "OID" => "11681", 
-                              "Name" => "MOTION", 
+                "STATE" => array(
+                              "OID" => "34300", 
+                              "Name" => "STATE", 
                               "Typ" => "2",), 
-                "INSTALL_TEST" => array(
-                              "OID" => "31048", 
-                              "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
-                "ERROR" => array(
-                              "OID" => "38516", 
-                              "Name" => "ERROR", 
-                              "Typ" => "2",), 
-                "BRIGHTNESS" => array(
-                              "OID" => "56737", 
-                              "Name" => "BRIGHTNESS", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"4fach_Steuerung Kanal1" => array(
-         "OID" => 36225, 
-         "Adresse" => "JEQ0737635:1", 
-         "Name" => "4fach_Steuerung Kanal1", 
-         "COID" => array(
                 "INHIBIT" => array(
-                              "OID" => "14159", 
+                              "OID" => "40532", 
                               "Name" => "INHIBIT", 
                               "Typ" => "2",), 
                 "WORKING" => array(
-                              "OID" => "14644", 
+                              "OID" => "47473", 
                               "Name" => "WORKING", 
                               "Typ" => "2",), 
+             	),
+
+      	),
+"Kueche-Zusatzlicht" => array(
+         "OID" => 55059, 
+         "Adresse" => "KEQ1076465:1", 
+         "Name" => "Kueche-Zusatzlicht", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "22372", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
                 "STATE" => array(
-                              "OID" => "22272", 
+                              "OID" => "42764", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "49194", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Badezimmer-Zusatzheizung" => array(
+         "OID" => 49525, 
+         "Adresse" => "MEQ0071624:1", 
+         "Name" => "Badezimmer-Zusatzheizung", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "24524", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "33693", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "57338", 
                               "Name" => "STATE", 
                               "Typ" => "2",), 
              	),
 
       	),
-"4fach_Steuerung Kanal4" => array(
-         "OID" => 34651, 
-         "Adresse" => "JEQ0737635:4", 
-         "Name" => "4fach_Steuerung Kanal4", 
+"Keller-Boiler-Messgeraet" => array(
+         "OID" => 48530, 
+         "Adresse" => "LEQ0529790:2", 
+         "Name" => "Keller-Boiler-Messgeraet", 
          "COID" => array(
-                "INHIBIT" => array(
-                              "OID" => "24129", 
-                              "Name" => "INHIBIT", 
-                              "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "29387", 
-                              "Name" => "WORKING", 
-                              "Typ" => "2",), 
-                "STATE" => array(
-                              "OID" => "36236", 
-                              "Name" => "STATE", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Schalter-Leistungswerte" => array(
-         "OID" => 31985, 
-         "Adresse" => "LEQ0538372:2", 
-         "Name" => "Schalter-Leistungswerte", 
-         "COID" => array(
-                "ENERGY_COUNTER" => array(
-                              "OID" => "24399", 
-                              "Name" => "ENERGY_COUNTER", 
-                              "Typ" => "2",), 
                 "FREQUENCY" => array(
-                              "OID" => "31693", 
+                              "OID" => "25316", 
                               "Name" => "FREQUENCY", 
                               "Typ" => "2",), 
                 "POWER" => array(
-                              "OID" => "32622", 
+                              "OID" => "32190", 
                               "Name" => "POWER", 
                               "Typ" => "2",), 
                 "BOOT" => array(
-                              "OID" => "44257", 
+                              "OID" => "47133", 
                               "Name" => "BOOT", 
                               "Typ" => "2",), 
-                "CURRENT" => array(
-                              "OID" => "45713", 
-                              "Name" => "CURRENT", 
-                              "Typ" => "2",), 
                 "VOLTAGE" => array(
-                              "OID" => "54469", 
+                              "OID" => "51210", 
                               "Name" => "VOLTAGE", 
                               "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "54012", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "59591", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
              	),
 
       	),
-"Schalter" => array(
-         "OID" => 30531, 
-         "Adresse" => "LEQ0538372:1", 
-         "Name" => "Schalter", 
+"Kueche-Rolladensteuerung" => array(
+         "OID" => 46664, 
+         "Adresse" => "KEQ0047634:1", 
+         "Name" => "Kueche-Rolladensteuerung", 
          "COID" => array(
                 "WORKING" => array(
-                              "OID" => "17522", 
+                              "OID" => "22566", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "LEVEL" => array(
+                              "OID" => "23786", 
+                              "Name" => "LEVEL", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "51859", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "DIRECTION" => array(
+                              "OID" => "59903", 
+                              "Name" => "DIRECTION", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"TorAufZuImpuls" => array(
+         "OID" => 44921, 
+         "Adresse" => "JEQ0568041:3", 
+         "Name" => "TorAufZuImpuls", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "12923", 
                               "Name" => "WORKING", 
                               "Typ" => "2",), 
                 "STATE" => array(
-                              "OID" => "22784", 
+                              "OID" => "23308", 
                               "Name" => "STATE", 
                               "Typ" => "2",), 
                 "INHIBIT" => array(
-                              "OID" => "49332", 
+                              "OID" => "52748", 
                               "Name" => "INHIBIT", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Vorzimmer Bewegung" => array(
-         "OID" => 28777, 
-         "Adresse" => "IEQ0064942:1", 
-         "Name" => "Vorzimmer Bewegung", 
+"Bewegung-Aussen" => array(
+         "OID" => 44586, 
+         "Adresse" => "LEQ0658657:1", 
+         "Name" => "Bewegung-Aussen", 
          "COID" => array(
-                "MOTION" => array(
-                              "OID" => "30700", 
-                              "Name" => "MOTION", 
-                              "Typ" => "2",), 
-                "INSTALL_TEST" => array(
-                              "OID" => "34072", 
-                              "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
-                "ERROR" => array(
-                              "OID" => "39979", 
-                              "Name" => "ERROR", 
-                              "Typ" => "2",), 
                 "BRIGHTNESS" => array(
-                              "OID" => "59265", 
+                              "OID" => "21869", 
                               "Name" => "BRIGHTNESS", 
                               "Typ" => "2",), 
-             	),
-
-      	),
-"4fach_Steuerung Kanal3" => array(
-         "OID" => 21427, 
-         "Adresse" => "JEQ0737635:3", 
-         "Name" => "4fach_Steuerung Kanal3", 
-         "COID" => array(
-                "INHIBIT" => array(
-                              "OID" => "35165", 
-                              "Name" => "INHIBIT", 
-                              "Typ" => "2",), 
-                "STATE" => array(
-                              "OID" => "49570", 
-                              "Name" => "STATE", 
-                              "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "53087", 
-                              "Name" => "WORKING", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Computer" => array(
-         "OID" => 21196, 
-         "Adresse" => "IEQ0089391:1", 
-         "Name" => "Arbeitszimmer Computer", 
-         "COID" => array(
-                "INHIBIT" => array(
-                              "OID" => "19399", 
-                              "Name" => "INHIBIT", 
-                              "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "26276", 
-                              "Name" => "WORKING", 
-                              "Typ" => "2",), 
-                "STATE" => array(
-                              "OID" => "47551", 
-                              "Name" => "STATE", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Abwesenheits-Schalter-An" => array(
-         "OID" => 19720, 
-         "Adresse" => "IEQ0100238:2", 
-         "Name" => "Abwesenheits-Schalter-An", 
-         "COID" => array(
                 "INSTALL_TEST" => array(
-                              "OID" => "34112", 
+                              "OID" => "25358", 
                               "Name" => "INSTALL_TEST", 
                               "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "40022", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
-                "PRESS_SHORT" => array(
-                              "OID" => "56637", 
-                              "Name" => "PRESS_SHORT", 
+                "MOTION" => array(
+                              "OID" => "54431", 
+                              "Name" => "MOTION", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Eingangstürenmelder" => array(
-         "OID" => 18635, 
-         "Adresse" => "JEQ0068698:1", 
-         "Name" => "Eingangstürenmelder", 
+"Sensor-Arbeitszimmer" => array(
+         "OID" => 44362, 
+         "Adresse" => "JEQ0217973:1", 
+         "Name" => "Sensor-Arbeitszimmer", 
          "COID" => array(
+                "TEMPERATURE" => array(
+                              "OID" => "38610", 
+                              "Name" => "TEMPERATURE", 
+                              "Typ" => "2",), 
+                "HUMIDITY" => array(
+                              "OID" => "44266", 
+                              "Name" => "HUMIDITY", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Keller-Server-Messgeraet" => array(
+         "OID" => 44325, 
+         "Adresse" => "LEQ0536013:2", 
+         "Name" => "Keller-Server-Messgeraet", 
+         "COID" => array(
+                "BOOT" => array(
+                              "OID" => "18925", 
+                              "Name" => "BOOT", 
+                              "Typ" => "2",), 
+                "POWER" => array(
+                              "OID" => "33654", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "45909", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "48728", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "50578", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "57928", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimer Stehlampe Dimmer" => array(
+         "OID" => 42900, 
+         "Adresse" => "HEQ0353497:1", 
+         "Name" => "Wohnzimer Stehlampe Dimmer", 
+         "COID" => array(
+                "DIRECTION" => array(
+                              "OID" => "12040", 
+                              "Name" => "DIRECTION", 
+                              "Typ" => "2",), 
+                "ERROR_REDUCED" => array(
+                              "OID" => "31581", 
+                              "Name" => "ERROR_REDUCED", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "31693", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "ERROR_OVERHEAT" => array(
+                              "OID" => "32795", 
+                              "Name" => "ERROR_OVERHEAT", 
+                              "Typ" => "2",), 
+                "LEVEL" => array(
+                              "OID" => "33908", 
+                              "Name" => "LEVEL", 
+                              "Typ" => "2",), 
+                "ERROR_OVERLOAD" => array(
+                              "OID" => "37470", 
+                              "Name" => "ERROR_OVERLOAD", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "45106", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Keller-Boiler-Schalter" => array(
+         "OID" => 41376, 
+         "Adresse" => "LEQ0529790:1", 
+         "Name" => "Keller-Boiler-Schalter", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "17902", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
                 "STATE" => array(
-                              "OID" => "41275", 
+                              "OID" => "34993", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "36164", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Bewegung Wohnzimmer-Eingang" => array(
+         "OID" => 41346, 
+         "Adresse" => "HEQ0406282:1", 
+         "Name" => "Bewegung Wohnzimmer-Eingang", 
+         "COID" => array(
+                "BRIGHTNESS" => array(
+                              "OID" => "14820", 
+                              "Name" => "BRIGHTNESS", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "32631", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "MOTION" => array(
+                              "OID" => "35993", 
+                              "Name" => "MOTION", 
+                              "Typ" => "2",), 
+                "ERROR" => array(
+                              "OID" => "42129", 
+                              "Name" => "ERROR", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Kontakt Tuere-Keller" => array(
+         "OID" => 40224, 
+         "Adresse" => "JEQ0715058:1", 
+         "Name" => "Kontakt Tuere-Keller", 
+         "COID" => array(
+                "INSTALL_TEST" => array(
+                              "OID" => "22190", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "24013", 
                               "Name" => "STATE", 
                               "Typ" => "2",), 
                 "ERROR" => array(
-                              "OID" => "45453", 
+                              "OID" => "27730", 
                               "Name" => "ERROR", 
                               "Typ" => "2",), 
-                "INSTALL_TEST" => array(
-                              "OID" => "56865", 
-                              "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
                 "LOWBAT" => array(
-                              "OID" => "59282", 
+                              "OID" => "44018", 
                               "Name" => "LOWBAT", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Aussen-Westseite" => array(
-         "OID" => 16874, 
-         "Adresse" => "JEQ0267840:1", 
-         "Name" => "Aussen-Westseite", 
+"Garten-Beleuchtung-Schalter" => array(
+         "OID" => 38021, 
+         "Adresse" => "LEQ0529786:1", 
+         "Name" => "Garten-Beleuchtung-Schalter", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "27475", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "38590", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "46163", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Kellerabgang-Bewegung" => array(
+         "OID" => 37663, 
+         "Adresse" => "JEQ0702179:1", 
+         "Name" => "Kellerabgang-Bewegung", 
+         "COID" => array(
+                "INSTALL_TEST" => array(
+                              "OID" => "18961", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "BRIGHTNESS" => array(
+                              "OID" => "20184", 
+                              "Name" => "BRIGHTNESS", 
+                              "Typ" => "2",), 
+                "MOTION" => array(
+                              "OID" => "59021", 
+                              "Name" => "MOTION", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wintergarten-Ventilator" => array(
+         "OID" => 37302, 
+         "Adresse" => "KEQ0037180:1", 
+         "Name" => "Wintergarten-Ventilator", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "10554", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "25068", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "37451", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Gartenpumpe" => array(
+         "OID" => 35462, 
+         "Adresse" => "JEQ0568197:2", 
+         "Name" => "Gartenpumpe", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "11954", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "25182", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "50593", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Sensor-Kellerzimmer" => array(
+         "OID" => 34831, 
+         "Adresse" => "JEQ0654602:1", 
+         "Name" => "Sensor-Kellerzimmer", 
          "COID" => array(
                 "TEMPERATURE" => array(
-                              "OID" => "22695", 
+                              "OID" => "13063", 
                               "Name" => "TEMPERATURE", 
                               "Typ" => "2",), 
                 "HUMIDITY" => array(
-                              "OID" => "51998", 
+                              "OID" => "52869", 
                               "Name" => "HUMIDITY", 
                               "Typ" => "2",), 
              	),
 
       	),
-"Urlaubs-Schalter-Zu" => array(
-         "OID" => 15535, 
-         "Adresse" => "IEQ0100238:3", 
-         "Name" => "Urlaubs-Schalter-Zu", 
+"Sensor-Wohnzimmer" => array(
+         "OID" => 34801, 
+         "Adresse" => "JEQ0654379:1", 
+         "Name" => "Sensor-Wohnzimmer", 
          "COID" => array(
-                "INSTALL_TEST" => array(
-                              "OID" => "13567", 
-                              "Name" => "INSTALL_TEST", 
+                "HUMIDITY" => array(
+                              "OID" => "15723", 
+                              "Name" => "HUMIDITY", 
                               "Typ" => "2",), 
-                "PRESS_SHORT" => array(
-                              "OID" => "36840", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "48646", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer-Taster-An" => array(
-         "OID" => 14662, 
-         "Adresse" => "JEQ0004086:2", 
-         "Name" => "Arbeitszimmer-Taster-An", 
-         "COID" => array(
-                "INSTALL_TEST" => array(
-                              "OID" => "21675", 
-                              "Name" => "INSTALL_TEST", 
-                              "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "24705", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
-                "PRESS_SHORT" => array(
-                              "OID" => "57060", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Aussen-Ostseite" => array(
-         "OID" => 13989, 
-         "Adresse" => "IEQ0206685:1", 
-         "Name" => "Aussen-Ostseite", 
-         "COID" => array(
                 "TEMPERATURE" => array(
-                              "OID" => "16433", 
+                              "OID" => "41873", 
                               "Name" => "TEMPERATURE", 
                               "Typ" => "2",), 
+             	),
+
+      	),
+"Sensor-Aussennische" => array(
+         "OID" => 32482, 
+         "Adresse" => "JEQ0267627:1", 
+         "Name" => "Sensor-Aussennische", 
+         "COID" => array(
                 "HUMIDITY" => array(
-                              "OID" => "22550", 
+                              "OID" => "25882", 
                               "Name" => "HUMIDITY", 
+                              "Typ" => "2",), 
+                "TEMPERATURE" => array(
+                              "OID" => "32563", 
+                              "Name" => "TEMPERATURE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"GartenReserve" => array(
+         "OID" => 29213, 
+         "Adresse" => "JEQ0568041:2", 
+         "Name" => "GartenReserve", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "32573", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "55654", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "57897", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimmer-Lichtblende" => array(
+         "OID" => 29187, 
+         "Adresse" => "JEQ0295555:1", 
+         "Name" => "Wohnzimmer-Lichtblende", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "19110", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "22026", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "26084", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Keller-Server-Schalter" => array(
+         "OID" => 28885, 
+         "Adresse" => "LEQ0536013:1", 
+         "Name" => "Keller-Server-Schalter", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "35648", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "35974", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "44285", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wetterstation" => array(
+         "OID" => 28756, 
+         "Adresse" => "JEQ0735876:1", 
+         "Name" => "Wetterstation", 
+         "COID" => array(
+                "RAIN_COUNTER" => array(
+                              "OID" => "15620", 
+                              "Name" => "RAIN_COUNTER", 
+                              "Typ" => "2",), 
+                "WIND_DIRECTION_RANGE" => array(
+                              "OID" => "18118", 
+                              "Name" => "WIND_DIRECTION_RANGE", 
+                              "Typ" => "2",), 
+                "BRIGHTNESS" => array(
+                              "OID" => "29525", 
+                              "Name" => "BRIGHTNESS", 
+                              "Typ" => "2",), 
+                "TEMPERATURE" => array(
+                              "OID" => "31094", 
+                              "Name" => "TEMPERATURE", 
+                              "Typ" => "2",), 
+                "WIND_SPEED" => array(
+                              "OID" => "39557", 
+                              "Name" => "WIND_SPEED", 
+                              "Typ" => "2",), 
+                "RAINING" => array(
+                              "OID" => "45202", 
+                              "Name" => "RAINING", 
+                              "Typ" => "2",), 
+                "SUNSHINEDURATION" => array(
+                              "OID" => "46470", 
+                              "Name" => "SUNSHINEDURATION", 
+                              "Typ" => "2",), 
+                "HUMIDITY" => array(
+                              "OID" => "46480", 
+                              "Name" => "HUMIDITY", 
+                              "Typ" => "2",), 
+                "WIND_DIRECTION" => array(
+                              "OID" => "50850", 
+                              "Name" => "WIND_DIRECTION", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Reserve2Port4" => array(
+         "OID" => 26772, 
+         "Adresse" => "JEQ0568197:4", 
+         "Name" => "Reserve2Port4", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "12897", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "13035", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "17595", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Garten-Beleuchtung-Messgeraet" => array(
+         "OID" => 26282, 
+         "Adresse" => "LEQ0529786:2", 
+         "Name" => "Garten-Beleuchtung-Messgeraet", 
+         "COID" => array(
+                "CURRENT" => array(
+                              "OID" => "25246", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "33129", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "37123", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "BOOT" => array(
+                              "OID" => "48553", 
+                              "Name" => "BOOT", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "49575", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "POWER" => array(
+                              "OID" => "59820", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Sensor-Keller" => array(
+         "OID" => 25485, 
+         "Adresse" => "JEQ0218144:1", 
+         "Name" => "Sensor-Keller", 
+         "COID" => array(
+                "HUMIDITY" => array(
+                              "OID" => "15486", 
+                              "Name" => "HUMIDITY", 
+                              "Typ" => "2",), 
+                "TEMPERATURE" => array(
+                              "OID" => "48182", 
+                              "Name" => "TEMPERATURE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Licht-Kueche-Stiegenabgang" => array(
+         "OID" => 22693, 
+         "Adresse" => "KEQ1074646:1", 
+         "Name" => "Licht-Kueche-Stiegenabgang", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "15393", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "25701", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "48179", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimer Esstisch Dimmer" => array(
+         "OID" => 21157, 
+         "Adresse" => "KEQ0002712:1", 
+         "Name" => "Wohnzimer Esstisch Dimmer", 
+         "COID" => array(
+                "DIRECTION" => array(
+                              "OID" => "39715", 
+                              "Name" => "DIRECTION", 
+                              "Typ" => "2",), 
+                "ERROR_REDUCED" => array(
+                              "OID" => "43562", 
+                              "Name" => "ERROR_REDUCED", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "43745", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "ERROR_OVERLOAD" => array(
+                              "OID" => "46056", 
+                              "Name" => "ERROR_OVERLOAD", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "46082", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "LEVEL" => array(
+                              "OID" => "48166", 
+                              "Name" => "LEVEL", 
+                              "Typ" => "2",), 
+                "ERROR_OVERHEAT" => array(
+                              "OID" => "49141", 
+                              "Name" => "ERROR_OVERHEAT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Gartensteckdosen" => array(
+         "OID" => 19538, 
+         "Adresse" => "JEQ0568197:3", 
+         "Name" => "Gartensteckdosen", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "32086", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "33365", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "50913", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"SchalterGang-links" => array(
+         "OID" => 16331, 
+         "Adresse" => "IEQ0026272:1", 
+         "Name" => "SchalterGang-links", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "19597", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "27116", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "58153", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Steuerung Wintergarten Strom" => array(
+         "OID" => 13735, 
+         "Adresse" => "JEQ0295375:1", 
+         "Name" => "Steuerung Wintergarten Strom", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "12309", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "28792", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "31543", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Licht-Kellerabgang" => array(
+         "OID" => 13497, 
+         "Adresse" => "JEQ0568197:1", 
+         "Name" => "Licht-Kellerabgang", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "19472", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "24111", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "35127", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"SchalterGang-rechts" => array(
+         "OID" => 12348, 
+         "Adresse" => "IEQ0026272:2", 
+         "Name" => "SchalterGang-rechts", 
+         "COID" => array(
+                "WORKING" => array(
+                              "OID" => "10327", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "31953", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "42346", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Wohnzimmer-Ventilator" => array(
+         "OID" => 11518, 
+         "Adresse" => "JEQ0295439:1", 
+         "Name" => "Wohnzimmer-Ventilator", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "34962", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "45016", 
+                              "Name" => "WORKING", 
+                              "Typ" => "2",), 
+                "INHIBIT" => array(
+                              "OID" => "51472", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Gartenlicht" => array(
+         "OID" => 11470, 
+         "Adresse" => "JEQ0568041:1", 
+         "Name" => "Gartenlicht", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "11822", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "13745", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "57713", 
+                              "Name" => "WORKING", 
                               "Typ" => "2",), 
              	),
 

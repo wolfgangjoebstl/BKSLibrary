@@ -36,7 +36,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('EvaluateHardware');
-	echo "\nRemoteAccess Version : ".$ergebnis;
+	echo "\nEvaluateHardware Modul Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -52,5 +52,8 @@
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
+	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
+	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
+	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
+	IPS_RunScript($scriptIdEvaluateHardware);
 ?>
