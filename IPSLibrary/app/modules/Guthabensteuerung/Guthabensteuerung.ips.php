@@ -56,6 +56,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:
+	   	IPS_SetEventActive($tim2ID,true);
 	      break;
 	   case $tim2ID:
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
@@ -110,7 +111,8 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
 	echo $inst_modules."\n\n";
-   
+	echo "\n\nGuthabensteuerung laeuft nun, da sie haendisch mit Aufruf dieses Scripts ausgelöst wurde.\n";
+   //IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
 	}
 
 
