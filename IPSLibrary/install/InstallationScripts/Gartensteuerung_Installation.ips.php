@@ -75,6 +75,8 @@
 	
 	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
+	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
+	$scriptIdNachrichtenverlauf   = IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 
    $includefile="<?";
    //$includefile="";
@@ -137,9 +139,7 @@
 		}
 		
 	// Add Scripts, they have auto install
-	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	IPS_RunScript($scriptIdGartensteuerung);
-	$scriptIdNachrichtenverlauf   = IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 	IPS_RunScript($scriptIdNachrichtenverlauf);
 	
 	echo "\nData Kategorie : ".$CategoryIdData;

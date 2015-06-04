@@ -34,11 +34,21 @@
 function RemoteAccess_GetConfiguration()
 	{
 		return array(
-				"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
-				"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.0.46:86/api/',
 						);
 	}
 
+function LocalAccess_GetConfiguration()
+	{
+		return array(
+						);
+	}
+
+
+function RemoteAccess_TypeFS20()
+	{
+		return array(
+						);
+	}
 
 	 
 	 
