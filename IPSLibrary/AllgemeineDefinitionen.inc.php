@@ -1209,6 +1209,104 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				}
 			}
 
+/* Remote Access Crawler für Ausgabe aktuelle Werte */
+
+$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+$jetzt=time();
+$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+$starttime=$endtime-60*60*24*1; /* ein Tag */
+
+$ServerRemoteAccess="RemoteAccess Variablen aller hier gespeicherten Server:\n\n";
+
+$visID=@IPS_GetObjectIDByName ( "Visualization", 0 );
+$ServerRemoteAccess .=  "Visualization ID : ";
+if ($visID==false)
+	{
+	$ServerRemoteAccess .=  "keine\n";
+	}
+else
+	{
+	$ServerRemoteAccess .=  $visID."\n";
+	$visWebRID=@IPS_GetObjectIDByName ( "Webfront-Retro", $visID );
+	$ServerRemoteAccess .=  "  Webfront Retro     ID : ";
+	if ($visWebRID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visWebRID."\n";}
+
+	$visMobileID=@IPS_GetObjectIDByName ( "Mobile", $visID );
+	$ServerRemoteAccess .=  "  Mobile             ID : ";
+	if ($visMobileID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visMobileID."\n";}
+
+	$visWebID=@IPS_GetObjectIDByName ( "WebFront", $visID );
+	$ServerRemoteAccess .=  "  WebFront           ID : ";
+	if ($visWebID==false)
+		{
+		$ServerRemoteAccess .=  "keine\n";
+		}
+	else
+		{
+		$ServerRemoteAccess .=  $visWebID."\n";
+		$visUserID=@IPS_GetObjectIDByName ( "User", $visWebID );
+		$ServerRemoteAccess .=  "    Webfront User          ID : ";
+		if ($visUserID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visUserID."\n";}
+
+		$visAdminID=@IPS_GetObjectIDByName ( "Administrator", $visWebID );
+		$ServerRemoteAccess .=  "    Webfront Administrator ID : ";
+		if ($visAdminID==false)
+			{
+			$ServerRemoteAccess .=  "keine\n";
+			}
+		else
+			{
+			$ServerRemoteAccess .=  $visAdminID."\n";
+
+			$visRemAccID=@IPS_GetObjectIDByName ( "RemoteAccess", $visAdminID );
+			$ServerRemoteAccess .=  "      RemoteAccess ID : ";
+			if ($visRemAccID==false)
+				{
+				$ServerRemoteAccess .=  "keine\n";
+				}
+			else
+				{
+				$ServerRemoteAccess .=  $visRemAccID."\n";
+				$server=IPS_GetChildrenIDs($visRemAccID);
+				foreach ($server as $serverID)
+				   {
+				   $ServerRemoteAccess .=  "        Server    ID : ".$serverID." Name : ".IPS_GetName($serverID)."\n";
+					$categories=IPS_GetChildrenIDs($serverID);
+					foreach ($categories as $categoriesID)
+					   {
+					   $ServerRemoteAccess .=  "          Category  ID : ".$categoriesID." Name : ".IPS_GetName($categoriesID)."\n";
+						$objects=IPS_GetChildrenIDs($categoriesID);
+						foreach ($objects as $objectID)
+						   {
+							$werte = @AC_GetLoggedValues($archiveHandlerID, $objectID, $starttime, $endtime, 0);
+							if ($werte===false)
+								{
+								$log="kein Log !!";
+								}
+							else
+							   {
+								$log=sizeof($werte)." logged in 24h";
+								}
+							if ( (IPS_GetVariable($objectID)["VariableProfile"]!="") or (IPS_GetVariable($objectID)["VariableCustomProfile"]!="") )
+						   	{
+								$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValueFormatted($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
+								       .$log."\n";
+								}
+							else
+							   {
+								$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValue($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
+								       .$log."\n";
+								}
+							//print_r(IPS_GetVariable($objectID));
+							} /* object */
+						} /* Category */
+					} /* Server */
+				} /* RemoteAccess */
+			}  /* Administrator */
+		}   /* Webfront */
+	} /* Visualization */
+
+		//echo $ServerRemoteAccess;
 
 
 		/******************************************************************************************/
@@ -1218,12 +1316,12 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
-			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors;
+			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
-			$alleMotionWerte.$alleStromWerte.$alleHM_Errors;
+			$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 		   }
 		}
 	else   /* historische Werte */
