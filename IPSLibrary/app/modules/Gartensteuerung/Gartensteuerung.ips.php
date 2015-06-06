@@ -144,12 +144,12 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 
  if ($_IPS['SENDER']=="Execute")
 	{
-	echo "Nachrichten Script OID    : ".$NachrichtenScriptID."\n";
-	echo "Nachrichten Log Input OID : ".$NachrichtenInputID."\n";
-	echo "Gartensteuerung Script OID : ".$GartensteuerungScriptID."\n";
-	echo "Giessanlage OID           : ".$GiessAnlageID."\n";
-	echo "\nStaus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
-	echo "Staus Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
+	echo "Nachrichten Script      ID : ".$NachrichtenScriptID."\n";
+	echo "Nachrichten Log Input   ID : ".$NachrichtenInputID."\n";
+	echo "Gartensteuerung Script  ID : ".$GartensteuerungScriptID."\n";
+	echo "Giessanlage             ID : ".$GiessAnlageID."\n";
+	echo "\nStatus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
+	echo   "Status Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
 
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 
@@ -209,11 +209,14 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
  	
 
 	$anzahl=count($werte);
- 	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
-
+ 	echo "   Variable: ".$variableName." mit ".$anzahl." agreggierten Werten.\n";
+	echo "   Variable: WerteLog mit ".count($werteLog)." geloggten Werten.\n";
+	
 	/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
 	$letzterRegen=0;
 	$regenStand2h=0;
+	$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
+	$regenStandEnde=0;
 	foreach ($werteLog as $wert)
 	   {
 	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
@@ -228,27 +231,33 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	      $regenStandEnde=$wert["Value"];
 			}
 	   }
-	$regenStand48h=$regenStandEnde-$regenStandAnfang+0.3;
+	//$regenStand48h=$regenStandEnde-$regenStandAnfang+0.3; /* Warum plus 0.3 ??? */
+	$regenStand48h=$regenStandEnde-$regenStandAnfang; 
 	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
 	foreach ($werte as $wert)
 	   {
-	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
+ 	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
 	   echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."\n";
 	   }
 	//print_r($werte);
 
 	//echo $parentid."\n";
 	/* Berechnung für Giessdauer , Routinen in Config Datei mit Funktion befuellen */
+	/*
 	$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
 	echo "Aussentemperatur max : ".get_AussenTemperaturGesternMax()."   ".$tempwerte[1]["Max"]." \n";
 	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	echo "Aussentemperatur med : ".AussenTemperaturGestern()."   ".$tempwerte[1]["Avg"]." \n";
+	*/
 	$RegenGestern=$werte[1]["Avg"];
+	/*
 	echo "Regen gestern : ".RegenGestern()."   ".$werte[1]["Avg"]." \n";
 	echo "Letzter Regen Zeit : ".date("d.m H:i",LetzterRegen())."   ".date("d.m H:i",$letzterRegen)." \n\n";
 	$LetzterRegen=time()-$letzterRegen;
 	//echo "Aussentemperatur Gestern : ".$AussenTemperaturGestern." Maximum : ".$AussenTemperaturGesternMax."\n";
 	//echo "Regen Gestern : ".$RegenGestern." mm und letzter Regen war vaktuell vor ".($LetzterRegen/60/60)." Stunden.\n";
+	*/
+	
 	SetValue($GiessTimeID,giessdauer(true));
 	/* SetValue($GiessTimeID,giessdauer());
 	$textausgabe="Giesszeit berechnet mit ".GetValue($GiessTimeID)." Minuten da ".number_format($RegenGestern, 1, ",", "")." mm Regen vor "
@@ -530,8 +539,12 @@ function giessdauer($debug=false)
 	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	
 	$letzterRegen=0;
-	/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
 	$regenStand2h=0;
+	$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
+	$regenStandEnde=0;
+
+	/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
+
 	foreach ($werteLog as $wert)
 	   {
 	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
@@ -546,7 +559,7 @@ function giessdauer($debug=false)
 	      $regenStandEnde=$wert["Value"];
 			}
 	   }
-	$regenStand48h=$regenStandEnde-$regenStandAnfang+0.3;
+	$regenStand48h=$regenStandEnde-$regenStandAnfang;
 	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
 	foreach ($werteLog as $wert)
 	   {
@@ -563,7 +576,7 @@ function giessdauer($debug=false)
 
 	if ($debug)
 		{
-		echo "letzter regen : ".$LetzterRegen."   ".$letzterRegen."\n";
+		echo "Letzter Regen : ".date("d.m H:i",$LetzterRegen)."   ".$letzterRegen."\n";
  		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > 20° sein) ".
 			  "Maximum : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad \n";
 		echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
