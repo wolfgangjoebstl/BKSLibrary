@@ -134,6 +134,7 @@ function parsetxtfile($verzeichnis, $nummer)
      	 $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
      	 $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
      	 $phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Volume", 2);
+     	 $phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_VolumeCumm", 2);
      	 $phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
      	 $phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
     	 $phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
@@ -173,12 +174,23 @@ function parsetxtfile($verzeichnis, $nummer)
 
   		 if ($result4g!="")
 			{
+			/*`hier wird das aktuelle Datenvolumen geschrieben */
 			//$result6=" von ".$result4g." wurden ".$result4v." und daher sind  ".$result4f.".";
 			$result6=" von ".$result4g." sind ".$result4f;
 			$Ende=strpos($result4,"MB");
 			$restvolumen=(float)trim(substr($result4f,0,($Ende-1)));
 		   //echo "Restvolumen ist : ".$restvolumen." MB \n";
+			$bisherVolumen=GetValue($phone_Volume_ID);
 		   SetValue($phone_Volume_ID,$restvolumen);
+			if (($bisherVolumen-$restvolumen)>0)
+			   {
+		   	SetValue($phone_VolumeCumm_ID,$bisherVolumen-$restvolumen);
+				}
+			else
+			   {
+			   /* guthaben wurde aufgeladen */
+		   	SetValue($phone_VolumeCumm_ID,$bisherVolumen);
+			   }
 			}
 
 

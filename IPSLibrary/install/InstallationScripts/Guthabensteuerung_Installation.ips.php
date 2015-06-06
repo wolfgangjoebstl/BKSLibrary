@@ -136,7 +136,13 @@
 		AC_SetLoggingStatus($archiveHandlerID,$phone_Volume_ID,true);
 		AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,0);
 		IPS_ApplyChanges($archiveHandlerID);
-		
+
+   	$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
+		IPS_SetVariableCustomProfile($phone_VolumeCumm_ID,'MByte');
+		AC_SetLoggingStatus($archiveHandlerID,$phone_VolumeCumm_ID,true);
+		AC_SetAggregationType($archiveHandlerID,$phone_VolumeCumm_ID,0);
+		IPS_ApplyChanges($archiveHandlerID);
+
 		$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
 		IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
 	  	IPS_SetPosition($phone_nCost_ID, 130);

@@ -1276,7 +1276,14 @@ else
 					   {
 					   $ServerRemoteAccess .=  "          Category  ID : ".$categoriesID." Name : ".IPS_GetName($categoriesID)."\n";
 						$objects=IPS_GetChildrenIDs($categoriesID);
-						foreach ($objects as $objectID)
+						$objectsbyName=array();
+						foreach ($objects as $key => $objectID)
+						   {
+						   $objectsbyName[IPS_GetName($objectID)]=$objectID;
+							}
+						ksort($objectsbyName);
+						//print_r($objectsbyName);
+						foreach ($objectsbyName as $objectID)
 						   {
 							$werte = @AC_GetLoggedValues($archiveHandlerID, $objectID, $starttime, $endtime, 0);
 							if ($werte===false)
