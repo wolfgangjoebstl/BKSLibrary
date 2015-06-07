@@ -337,7 +337,7 @@ if ($_IPS['SENDER']=="Execute")
 		}
 
 	/*********************************************************************************************/
-		
+
 	echo "\nEingestellte Anwesenheitssimulation:\n\n";
    foreach($scenes as $scene)
 			{
@@ -386,7 +386,7 @@ if ($_IPS['SENDER']=="Variable")
 	if (array_key_exists($_IPS['VARIABLE'], $configuration))
 		{
 		/* es gibt einen Eintrag fuer das Event */
-		
+
 		$params=$configuration[$_IPS['VARIABLE']];
 		$wert=$params[1];
 		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
@@ -409,7 +409,7 @@ if ($_IPS['SENDER']=="Variable")
 		      break;
 
 			/*********************************************************************************************/
-		   case "Ventilator":
+		   case "Ventilator1":
 		      /* Funktion um Ventilatorsteuerung ein und aus zuschalten */
 		   	$eventName = 'OnChange_'.$_IPS['VARIABLE'];
 				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
@@ -476,13 +476,63 @@ if ($_IPS['SENDER']=="Variable")
 				break;
 
 			/*********************************************************************************************/
+		   case "Ventilator":
+		     	$moduleParams2 = explode(',', $params[2]);
+				if (GetValue($VentilatorsteuerungID)==0)
+				   {
+		     		IPSLight_SetSwitchByName($moduleParams2[0],false);
+				   }
+				if (GetValue($VentilatorsteuerungID)==1)
+				   {
+		     		IPSLight_SetSwitchByName($moduleParams2[0],true);
+				   }
+				if (GetValue($VentilatorsteuerungID)==2)
+				   {
+			      /* wenn Parameter ueberschritten etwas tun */
+			   	$temperatur=GetValue($_IPS['VARIABLE']);
+			   	if ($speak_config["Parameter"][0]=="On")
+		   		   {
+		     			tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
+		     			}
+			     	//print_r($moduleParams2);
+			     	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
+		   	  	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
+		     		$lightManager = new IPSLight_Manager();
+					$switchID=$lightManager->GetSwitchIdByName($moduleParams2[0]);
+					$status=$lightManager->GetValue($switchID);
+			     	if ($temperatur>$moduleParams2[1])
+		   	  	   {
+						if ($status==false)
+						   {
+				     		IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
+					     	if ($speak_config["Parameter"][0]=="On")
+				   	   	{
+				     			tts_play(1,"Ventilator ein.",'',2);
+		   		  			}
+		   		  		}
+			     		}
+			     	if ($temperatur<$moduleParams2[3])
+			     	   {
+						if ($status==true)
+						   {
+					     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
+				   	  	if ($speak_config["Parameter"][0]=="On")
+			   	   		{
+		   	  				tts_play(1,"Ventilator aus.",'',2);
+			     				}
+			     			}
+				     	}
+					} /* ende if Auto */
+				break;
+
+			/*********************************************************************************************/
 		   case "Status":
 		      /* bei einer Statusaenderung einer Variable 																						*/
 		      /* array($params[0], $params[1],             $params[2],),                     										*/
 		      /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
 		      /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
 		      /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
-		      
+
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	if ($status)
 		   	   {
@@ -538,7 +588,7 @@ if ($_IPS['SENDER']=="Variable")
 			/*********************************************************************************************/
 		   case "StatusRGB":
 		      /* allerlei Spielereien mit einer RGB Anzeige */
-		      
+
 		   	$status=GetValue($_IPS['VARIABLE']);
 		   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
 		     	$moduleParams2 = explode(',', $params[2]);
@@ -667,6 +717,20 @@ if ($_IPS['SENDER']=="Variable")
 			/*********************************************************************************************/
 		   case "Switch":
 		      /* Anlegen eines Schalters in der GUI der Autosteuerung, Bedienelemente können angegeben werden */
+			   $switchStatus=GetValue($_IPS['VARIABLE']);
+		     	$moduleParams2 = explode(',', $params[2]);
+				if ($switchStatus==0)
+				   {
+		     		IPSLight_SetSwitchByName($params[2],false);
+				   }
+				if ($switchStatus==1)
+				   {
+		     		IPSLight_SetSwitchByName($params[2],true);
+				   }
+	   	  	if ($speak_config["Parameter"][0]=="On")
+	  	   		{
+	  				tts_play(1,"Schalter ".$params[2]." manuell auf ".$switchStatus.".",'',2);
+	  				}
 		      break;
 
 			/*********************************************************************************************/
@@ -685,7 +749,7 @@ if ($_IPS['SENDER']=="Variable")
 	   {
   		tts_play(1,'Taste gedrueckt mit Zahl '.$_IPS['VARIABLE'],'',2);
   		}
-  		
+
 	if (false)
 		   {
 			$remServer=array(
@@ -697,7 +761,7 @@ if ($_IPS['SENDER']=="Variable")
 				}
 			$rpc->IPS_RunScript(10004);
 		   }
-	
+
 	switch ($_IPS['VARIABLE'])
 			{
 
@@ -725,7 +789,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
 	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
-	
+
 	if (GetValue($AnwesenheitssimulationID)>0)
  		{
 		//Anwesenheitssimulation aktiv

@@ -125,20 +125,24 @@
              'Anwesenheitssimulation'  =>  array(
                 	'NAME'               => 'Anwesenheitssimulation',
                   'PROFIL'             => 'AusEinAuto',
-                  'EVENT_CHANCE'        => 20, 	//20% Eintrittswahrscheinlichkeit
-                  'EVENT_DURATION'      => 1,   // Minuten
-                  'EVENT_IPSLIGHT_GRP'  => 'DekolampeG'  //zu schaltende IPS-LIGHT Gruppe
-                  //'EVENT_IPSLIGHT'  => 'Dekolampe'  //zu schaltende IPS-LIGHT Switch
+                  'ADMINISTRATOR'      => true,
+                  'USER'      			=> false,
+                  'MOBILE'  				=> false,
                     ),
              'Anwesenheitserkennung'   =>  array(
                 	'NAME'               => 'Anwesenheitserkennung',
                   'PROFIL'             => 'AusEinAuto',
+                  'ADMINISTRATOR'      => true,
+                  'USER'      			=> false,
+                  'MOBILE'  				=> false,
                     ),
              'Ventilatorsteuerung'   =>  array(
                 	'NAME'               => 'Ventilatorsteuerung',
                   'PROFIL'             => 'AusEinAuto',
+                  'ADMINISTRATOR'      => true,
+                  'USER'      			=> false,
+                  'MOBILE'  				=> false,
                     ),
-
                 );
 		return $switches;
 	}
