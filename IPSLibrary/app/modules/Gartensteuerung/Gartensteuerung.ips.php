@@ -134,6 +134,8 @@ $GiessAnlagePrevID = CreateVariableByName($parentid, "GiessAnlagePrev", 1); /* 0
 $GiessTimeID=CreateVariableByName($parentid, "GiessTime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 $giessTime=GetValue($GiessTimeID);
 
+$GartensteuerungConfiguration=getGartensteuerungConfiguration();
+
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 	
 /******************************************************
@@ -150,6 +152,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	echo "Giessanlage             ID : ".$GiessAnlageID."\n";
 	echo "\nStatus Giessanlage         ".GetValue($GiessAnlageID)." (0-Aus,1-Einmalein,2-Auto) \n";
 	echo   "Status Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
+	echo "Gartensteuerungs Konfiguration:\n";
+	print_r($GartensteuerungConfiguration);
 
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 
@@ -301,7 +305,10 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 			IPS_SetEventCyclicTimeFrom($timerDawnID,(floor($startminuten/60)),($startminuten%60),0);
 			IPS_SetEventCyclicTimeFrom($calcgiesstimeID,(floor($calcminuten/60)),($calcminuten%60),0);
 
-			$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60)).".";
+			$zeitdauergiessen=(GetValue($GiessTimeID)+1)*$GartensteuerungConfiguration["KREISE"];
+			$endeminuten=$startminuten+$zeitdauergiessen;
+			$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60))." für die Dauer von ".
+			    $zeitdauergiessen." Minuten bis ".(floor($endeminuten/60)).":".sprintf("%2d",($endeminuten%60))." .";
 			$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n";
 
@@ -387,53 +394,63 @@ if($_IPS['SENDER'] == "TimerEvent")
    Switch ($TEventName)
 		{
 		case $giesstimerID: /* Alle 10 Minuten für Monitor Ein/Aus */
+			/* Alle giesdauer Minuten für Monitor Ein/Aus
+            Beregner auf der Birkenseite
+            (4) Beregner beim Brunnen 1 und 2
+      		Schlauchbewaesserung
+				(3) Beregner ehemaliges Pool (Spritzer bei Fichte, Poolberegner 1 und 2)
+			*/
 		   $GiessCount=GetValue($GiessCountID);
-		   Switch ($GiessCount)
+		   if ($GiessCount==0)
 		      {
-		      case 9:
+           	$failure=set_gartenpumpe(false);
+				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+		      }
+		   else
+		   	{
+				if ($GiessCount==(($GartensteuerungConfiguration["KREISE"]*2)+1))
+			      {
 		       	$failure=set_gartenpumpe(false);
 					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-               $GiessCount=0;
-            	SetValue($GiessAnlageID, GetValue($GiessAnlagePrevID));
-      			IPS_SetEventActive($giesstimerID,false);
+         	   $GiessCount=0;
+          		SetValue($GiessAnlageID, GetValue($GiessAnlagePrevID));
+	     			IPS_SetEventActive($giesstimerID,false);
 					$log_Giessanlage->message("Gartengiessanlage Vorgang abgeschlossen");
 					$log_Giessanlage->message("Gartengiessanlage zurück auf ".GetValue($GiessAnlagePrevID)." (0-Aus, 1-EinmalEin, 2-Auto) gesetzt");
-      			break;
-      		case 8:
-      		case 6:
-      		case 4:
-      		case 2:
-      		 	$failure=set_gartenpumpe(false);
-					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
-					IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
-               $GiessCount+=1;
-               break;
-            case 7:     /* Beregner auf der Birkenseite */
-            case 5:     /* Beregner beim Brunnen */
-      		case 3:     /* Schlauchbewaesserung */
-				case 1:     /* Beregner ehemaliges Pool */
-					if (($giessTime>0) and (GetValue($GiessAnlageID)>0))
-					   {
-					   $failure=set_gartenpumpe(true);
-						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
-						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $giessTime);
-      	         $GiessCount+=1;
-						$log_Giessanlage->message("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
+		   	   }
+		   	else
+		      	{
+				   if (($GiessCount % 2)==1)
+				      {
+				      /*  ungerade Zahl des Giesscounters bedeutet weiterschalten Pause */
+						if (($giessTime>0) and (GetValue($GiessAnlageID)>0))
+						   {
+						   $failure=set_gartenpumpe(true);
+							//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
+							IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $giessTime);
+   	   	         $GiessCount+=1;
+							$log_Giessanlage->message("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
+							}
+						else
+							{
+							$failure=set_gartenpumpe(false);
+							//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+   		            $GiessCount=0;
+      					IPS_SetEventActive($giesstimerID,false);
+							$log_Giessanlage->message("Gartengiessanlage beginnt nicht, wegen Regen oder geringer Temperatur ");
+							}
 						}
 					else
-						{
-						$failure=set_gartenpumpe(false);
-						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-   	            $GiessCount=0;
-      				IPS_SetEventActive($giesstimerID,false);
-						$log_Giessanlage->message("Gartengiessanlage beginnt nicht, wegen Regen oder geringer Temperatur ");
-						}
-					break;
-            case 0:
-             	$failure=set_gartenpumpe(false);
-					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
-            }
-      	SetValue($GiessCountID,$GiessCount);
+				   	{
+				      /*  gerade Zahl des Giesscounters bedeutet weiterschalten Giessen */
+   	   		 	$failure=set_gartenpumpe(false);
+						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
+						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
+            	   $GiessCount+=1;
+				   	}
+		      	}  /* if nicht ende */
+		      } /* if nicht 0 */
+		     	SetValue($GiessCountID,$GiessCount);
 			break;
 
 		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den nächsten Wert übernehmen  */
