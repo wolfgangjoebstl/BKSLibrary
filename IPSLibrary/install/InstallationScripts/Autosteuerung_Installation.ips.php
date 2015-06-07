@@ -67,10 +67,11 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
+	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+
 	$name="Bedienung";
-	$categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
-	
-	$pname="AutosteuerungProfil";
+	$pname="AusEinAuto";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 	   //Var-Profil erstellen
@@ -83,23 +84,40 @@
   	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil erstellt;\n";
 		}
-
-	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
-	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-	
 	$eventType='OnChange';
-   // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $AutosteuerungID = CreateVariable("Ventilatorsteuerung", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
+	$AutoSetSwitches = Autosteuerung_SetSwitches();
+	$register=new AutosteuerungHandler($scriptIdAutosteuerung);
+	$webfront_links=array();
+	foreach ($AutoSetSwitches as $AutoSetSwitch)
+		{
+	   // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	   $AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
+		$webfront_links[$AutosteuerungID]["NAME"]=$AutoSetSwitch["NAME"];
+		echo "Register Webfront Events : ".$AutoSetSwitch["NAME"]." with ID : ".$AutosteuerungID."\n";
+		}
+	//print_r($AutoSetSwitches);
+
+	/*
+   $AutosteuerungID = CreateVariable("Ventilatorsteuerung", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  
 	registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
 
-   $AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+   $AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  
 	registerAutoEvent($AnwesenheitssimulationID, $eventType, "par1", "par2");
-
-	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
+	*/
+	
+	/* Programme für Schalter registrieren nach OID des Events */
+	/*
+	$AutoConfiguration = Autosteuerung_GetEventConfiguration(); 
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
-		CreateEvent2($variableId, $params[0], $scriptIdAutosteuerung);
+		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
+	*/
+	
+	/*******************************************************/
 		
 	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
 	if ($tim1ID==false)
@@ -116,33 +134,34 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
+
+	print_r($webfront_links);
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
-		CreateLinkByDestination('Anwesenheitssimulation', $AnwesenheitssimulationID,    $categoryId_WebFront,  10);
+		//CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
+		//CreateLinkByDestination('Anwesenheitssimulation', $AnwesenheitssimulationID,    $categoryId_WebFront,  10);
+
+
 		}
 
 	if ($WFC10User_Enabled)
 		{
 		echo "\nWebportal User installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-		CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
 		}
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-		CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
 		}
 
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
-		CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
 		}
 
 /***************************************************************************************/

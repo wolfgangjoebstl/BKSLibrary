@@ -104,13 +104,124 @@ if ($_IPS['SENDER']=="Execute")
 	{
 
 	/* von der Konsole aus gestartet */
-	echo "eingestellte Programme:\n\n";
+	echo "\nEingestellte Programme:\n\n";
 	foreach ($configuration as $key=>$entry)
 	   {
 	   echo "Eintraege fuer :".$key." ".IPS_GetName($key)." Parent ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
 	   switch ($entry[1])
 	      {
+	      case "Switch":
+	      	$status=true;
+			   $lightManager = new IPSLight_Manager();
+				$moduleParams2 = explode(",",$entry[2]);
+				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
+				print_r($moduleParams2);
+				/* wenn nur ein oder zwei Parameter, dann ignorieren */
+				$parges=array();
+				if (count($moduleParams2)>2)
+				   {
+				   /* Default Werte setzen */
+				   $notmask_on=0;
+					$mask_on=0xFFFFFF;
+				   $notmask_off=0;
+					$mask_off=0xFFFFFF;
+					$params_oid=explode(":",$moduleParams2[0]);
+					if (count($params_oid)>1)
+					   {
+						$parges[$params_oid[0]]=$params_oid;
+					   }
+					else
+					   {
+					   $lightManager = new IPSLight_Manager();
+						$switchOID = @$lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
+						if ($switchOID==false)
+						   {
+						   $switchOID=$moduleParams2[0];
+						   }
+					   }
+					$params_on=explode(":",$moduleParams2[1]);
+					echo "Param 2 1 ON: ".count($params_on)."\n";
+					print_r($params_on);
+					if (count($params_on)>1)
+					   {
+						$parges[$params_on[0]]=$params_on;
+					   }
+					else
+					   {
+					   $value_on=$moduleParams2[1];
+					   }
+					$params_off=explode(":",$moduleParams2[2]);
+					echo "Param 2 2 OFF: ".count($params_off)."\n";
+					print_r($params_off);
+					if (count($params_off)>1)
+					   {
+						$parges[$params_off[0]]=$params_off;
+					   }
+					else
+					   {
+					   $value_off=$moduleParams2[2];
+					   }
+					$i=3;
+					while ($i<count($moduleParams2))
+					   {
+						$params=explode(":",$moduleParams2[$i]);
+						if (count($params_off)>1)
+						   {
+							$parges[$params[0]]=$params;
+						   }
+						$i++;
+					   }
+					echo "Ein grosses Array mit allen Befehlen:\n";
+					print_r($parges);
+					foreach ($parges as $befehl)
+					   {
+					   print_r($befehl);
+						switch (strtoupper($befehl[0]))
+						   {
+						   case "OID":
+							   $switchOID=$befehl[1];
+								break;
+						   case "ON":
+						      $value_on=$befehl[1];
+						      $i=2;
+						      while ($i<count($befehl))
+						         {
+						         if (strtoupper($befehl[$i])=="MASK")
+						            {
+						            $mask_on=$befehl[$i++];
+						            }
+						         $i++;
+						         }
+								break;
+						   case "OFF":
+						      $value_off=$befehl[1];
+						      $i=2;
+						      while ($i<count($befehl))
+						         {
+						         if (strtoupper($befehl[$i])=="MASK")
+						            {
+						            $mask_off=$befehl[$i++];
+						            }
+						         $i++;
+						         }
+								break;
+							}
+						} /* ende foreach */
+						if ($status==true)
+							{
+						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_on) | ($value_on & $mask_on);
+							//$lightManager->SetRGB($switchOID, $new);
+							}
+						else
+					      {
+						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_off) | ($value_off & $mask_off);
+							//$lightManager->SetRGB($switchOID, $new);
+							}
+						printf("Ergebnis OID: %x ON: %x MASK: %x OFF: %x MASK: %x \n",$switchOID,$value_on,$mask_on,$value_off,$mask_off);
+					}
+				break;
+
 	      case "StatusRGB":
 	      	$status=true;
 			   $lightManager = new IPSLight_Manager();
@@ -223,35 +334,37 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 			}
 		}
+
+	/*********************************************************************************************/
 		
-	echo "\nAnwesenheitssimulation:\n\n";
+	echo "\nEingestellte Anwesenheitssimulation:\n\n";
    foreach($scenes as $scene)
 			{
-			echo "Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
+			echo "  Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
        	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
-       	print_r($actualTime);
+       	//print_r($actualTime);
        	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];
         	$actualTimeStartMinute = $actualTimeStart[1];
         	$actualTimeStop = explode(":",$actualTime[1]);
         	$actualTimeStopHour = $actualTimeStop[0];
         	$actualTimeStopMinute = $actualTimeStop[1];
-			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			echo "    Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
         	$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
         	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
       	$now = time();
       	//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
       	if (isset($scene["EVENT_IPSLIGHT"]))
       	   {
-      		echo "Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+      		echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
          	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
          	}
          else
             {
       		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
       	   	{
-	      		echo "Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+	      		echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
    	      	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
       	   	}
 				}
@@ -260,7 +373,10 @@ if ($_IPS['SENDER']=="Execute")
 	}
 
 /*********************************************************************************************/
-
+/*                                                                                           */
+/* Programmfunktionen             																				*/
+/*                                                                                           */
+/*********************************************************************************************/
 
 if ($_IPS['SENDER']=="Variable")
 	{
@@ -276,6 +392,7 @@ if ($_IPS['SENDER']=="Variable")
   		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
 		switch ($wert)
 		   {
+			/*********************************************************************************************/
 		   case "Anwesenheit":
 		      /* Funktion um Anwesenheitssimulation ein und aus zuschalten */
 		      If (GetValue($AnwesenheitssimulationID)>0)
@@ -289,6 +406,8 @@ if ($_IPS['SENDER']=="Variable")
 		 			IPS_SetScriptTimer($_IPS['SELF'], 0);
 				   }
 		      break;
+
+			/*********************************************************************************************/
 		   case "Ventilator":
 		      /* Funktion um Ventilatorsteuerung ein und aus zuschalten */
 		   	$eventName = 'OnChange_'.$_IPS['VARIABLE'];
@@ -315,6 +434,8 @@ if ($_IPS['SENDER']=="Variable")
 					IPS_SetEventActive($eventId, false);
 				   }
 		      break;
+
+			/*********************************************************************************************/
 		   case "Parameter":
 		      /* wenn Parameter ueberschritten etwas tun */
 		   	$temperatur=GetValue($_IPS['VARIABLE']);
@@ -352,6 +473,8 @@ if ($_IPS['SENDER']=="Variable")
 		     			}
 			     	}
 				break;
+
+			/*********************************************************************************************/
 		   case "Status":
 		      /* bei einer Statusaenderung einer Variable 																						*/
 		      /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -410,6 +533,8 @@ if ($_IPS['SENDER']=="Variable")
 				     	}
 				   }
 				break;
+
+			/*********************************************************************************************/
 		   case "StatusRGB":
 		      /* allerlei Spielereien mit einer RGB Anzeige */
 		      
@@ -532,6 +657,16 @@ if ($_IPS['SENDER']=="Variable")
 					}
 
 				break;
+
+			/*********************************************************************************************/
+		   case "Custom":
+		      /* Aufrufen von kundenspezifischen Funktionen */
+		      break;
+
+			/*********************************************************************************************/
+		   case "Switch":
+		      /* Anlegen eines Schalters in der GUI der Autosteuerung, Bedienelemente können angegeben werden */
+		      break;
 		   default:
 				eval($params[1]);
 				break;
@@ -571,6 +706,10 @@ if ($_IPS['SENDER']=="Variable")
 	}
 
 /*********************************************************************************************/
+/*                                                                                           */
+/* Anwesenheitssimulation, Timerfunktionen																	*/
+/*                                                                                           */
+/*********************************************************************************************/
 
 
 if ($_IPS['SENDER']=="TimerEvent")
@@ -579,8 +718,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
 	
 	if (GetValue($AnwesenheitssimulationID)>0)
- 		{//Anwesenheitssimulation aktiv
+ 		{
+		//Anwesenheitssimulation aktiv
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
+
 		//print_r($scenes);
 	   foreach($scenes as $scene)
 			{
@@ -607,8 +748,20 @@ if ($_IPS['SENDER']=="TimerEvent")
 				echo "Zufallszahl:".$rndVal."\n";
             if (($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100))
 					{
+		      	if (isset($scene["EVENT_IPSLIGHT"]))
+      			   {
+      				echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+						IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+      		   	}
+		         else
+      		      {
+      				if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	   			{
+			      		echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+   			      	IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+      	   			}
+						}
 					echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
-               IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
                $EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
                if ($EreignisID === false)
 						{ //Event nicht gefunden > neu anlegen

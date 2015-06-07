@@ -1,5 +1,47 @@
 <?
 
+
+class AutosteuerungHandler 
+	{
+
+		private static $eventConfigurationAuto = array();
+		private static $scriptID;
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des IPSMessageHandlers
+		 *
+		 */
+		public function __construct($scriptID) {
+			self::$scriptID=$scriptID;
+		}
+
+		/**
+		 * @private
+		 *
+		 * Liefert die aktuelle Auto Event Konfiguration
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		private static function Get_EventConfigurationAuto() {
+			if (self::$eventConfigurationAuto == null) {
+				self::$eventConfigurationAuto = Autosteuerung_GetEventConfiguration();
+			}
+			return self::$eventConfigurationAuto;
+		}
+		
+		/**
+		 * @private
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 * @param string[] $configuration Neue Event Konfiguration
+		 */
+		private static function Set_EventConfigurationAuto($configuration) {
+		   self::$eventConfigurationAuto = $configuration;
+		}
+		
 		/**
 		 * @public
 		 *
@@ -9,7 +51,7 @@
 		 * @param integer $variableId ID der auslösenden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
 		 */
-		function CreateEvent2($variableId, $eventType, $scriptId)
+		function CreateEvent($variableId, $eventType, $scriptId)
 			{
 			switch ($eventType) {
 				case 'OnChange':
@@ -34,20 +76,32 @@
 			}
 		}
 
-		function storeconfig($configuration)
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		private static function StoreEventConfiguration($configuration)
 		   {
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
-			foreach ($configuration as $variableId=>$params) {
+			//echo "----> wird jetzt gespeichert:\n";
+			//print_r($configuration);
+
+			foreach ($configuration as $variableId=>$params) 
+				{
 				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
+				for ($i=0; $i<count($params); $i=$i+3) 
+					{
 					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
 					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+					}
+				$configString .= '),'.'        /* '.IPS_GetName($variableId).'    */';
 				}
-				$configString .= '),';
-			}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
+			//echo $configString;
 			// Write to File
 			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
 			if (!file_exists($fileNameFull)) {
@@ -62,15 +116,18 @@
 			}
 			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
 			file_put_contents($fileNameFull, $fileContentNew);
-			}
+			self::Set_EventConfigurationAuto($configuration);
+						}
 
 		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
-			$configuration = Autosteuerung_GetEventConfiguration();
+			$configuration = self::Get_EventConfigurationAuto();
+			//echo "---> war gespeichert.\n";
+			//print_r($configuration);
 
 			if (array_key_exists($variableId, $configuration))
 				{
-				echo "Bearbeite :".$moduleParams."\n";
+				//echo "Bearbeite Variable with ID ".$variableId." : ".$moduleParams."\n";
 				$moduleParamsNew = explode(',', $moduleParams);
 				$moduleClassNew  = $moduleParamsNew[0];
 
@@ -93,15 +150,17 @@
 				}
 			else
 			   {
+				//echo "Variable with ID ".$variableId. " not found\n";  
 				// Variable NOT found --> Create Configuration
 				$configuration[$variableId][] = $eventType;
 				$configuration[$variableId][] = $componentParams;
 				$configuration[$variableId][] = $moduleParams;
 				}
 
-			storeconfig($configuration);
+				self::StoreEventConfiguration($configuration);
+				self::CreateEvent($variableId, $eventType, self::$scriptID);
    		}
 
-
+	} /* ende class */
 
 ?>
