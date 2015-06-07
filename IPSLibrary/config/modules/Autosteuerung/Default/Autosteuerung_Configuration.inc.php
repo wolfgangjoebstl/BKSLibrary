@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup DetectMovement
-	 * @ingroup DetectMovement
+	/**@defgroup AutoSteuerung
+	 * @ingroup AutoSteuerung
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File für AutoSteuerung
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          AutoSteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -31,20 +31,27 @@
 	 */
 
 
-	/* Beispiele zum EInstellen:
-			21675 => array('OnUpdate','tts_play(1,"Hello","",2);','par2',),
-			21675 => array('OnUpdate','IPSLight_SetSwitchByName("ArbeitszimmerStatusLED", true);','par2',),
-			37416 => array('OnUpdate','IPSLight_SetSwitchByName("ArbeitszimmerStatusLED", false);','par2',),
-			21675 => array('OnUpdate','IPSLight_SetProgramNextByName("WohnzimmerProgram");','par2',),
-			37416 => array('OnUpdate','IPSLight_SetGroupByName("WohnzimmerHue", false);','par2',),
-			24558 => array('OnChange','Anwesenheit','par2',),        für Anwesenheitssimulation, siehe config weiter unten
+	/* Beispiele zum Einstellen:
+	
+	[OnChange|OnUpdate] [fx call|Anwesenheit|Ventilator|Parameter|Status|StatusRGB|Custom|Switch]
+
+	[Switch]  Name,Aus,Ein,Auo
+	
+			10161 => array('OnChange','par1','par2',),
+			14147 => array('OnChange','par1','par2',),
+
+
+
+
 	*/
 
 
-
+	/********ACHTUNG Function wird automatisch beschrieben */
 	function Autosteuerung_GetEventConfiguration() {
 		$eventConfiguration = array(
-
+			38272 => array('OnChange','par1','par2',),        /* Anwesenheitssimulation    */
+			54561 => array('OnChange','par1','par2',),        /* Anwesenheitserkennung    */
+			14147 => array('OnChange','par1','par2',),        /* Ventilatorsteuerung    */
 			);
 
 		return $eventConfiguration;
@@ -100,18 +107,51 @@
 
 	function Autosteuerung_GetScenes() {
 		 $scenes = array(
-
+             'AWSWZDeko'  =>  array(
+                	'NAME'                      => 'Dekolampe',
+                  'ACTIVE_FROM_TO'        => 'sunset-23:00',
+                  'EVENT_CHANCE'        => 20, 	//20% Eintrittswahrscheinlichkeit
+                  'EVENT_DURATION'      => 1,   // Minuten
+                  'EVENT_IPSLIGHT_GRP'  => 'DekolampeG'  //zu schaltende IPS-LIGHT Gruppe
+                  //'EVENT_IPSLIGHT'  => 'Dekolampe'  //zu schaltende IPS-LIGHT Switch
+                    ),
 
                 );
 		return $scenes;
 	}
 
+	function Autosteuerung_SetSwitches() {
+		 $switches = array(
+             'Anwesenheitssimulation'  =>  array(
+                	'NAME'               => 'Anwesenheitssimulation',
+                  'PROFIL'             => 'AusEinAuto',
+                  'EVENT_CHANCE'        => 20, 	//20% Eintrittswahrscheinlichkeit
+                  'EVENT_DURATION'      => 1,   // Minuten
+                  'EVENT_IPSLIGHT_GRP'  => 'DekolampeG'  //zu schaltende IPS-LIGHT Gruppe
+                  //'EVENT_IPSLIGHT'  => 'Dekolampe'  //zu schaltende IPS-LIGHT Switch
+                    ),
+             'Anwesenheitserkennung'   =>  array(
+                	'NAME'               => 'Anwesenheitserkennung',
+                  'PROFIL'             => 'AusEinAuto',
+                    ),
+             'Ventilatorsteuerung'   =>  array(
+                	'NAME'               => 'Ventilatorsteuerung',
+                  'PROFIL'             => 'AusEinAuto',
+                    ),
+
+                );
+		return $switches;
+	}
 
 
-
-
+	function Autosteuerung_Speak() {
+		$speak = array(
+			'Parameter' => array('On',' ',' ',),
 	 
-	 
+                );
+		return $speak;
+	}
+
 
 	/** @}*/
 ?>
