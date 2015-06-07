@@ -96,6 +96,9 @@
 	   $AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
 		$webfront_links[$AutosteuerungID]["NAME"]=$AutoSetSwitch["NAME"];
+		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
+		$webfront_links[$AutosteuerungID]["USER"]=$AutoSetSwitch["USER"];
+		$webfront_links[$AutosteuerungID]["MOBILE"]=$AutoSetSwitch["MOBILE"];
 		echo "Register Webfront Events : ".$AutoSetSwitch["NAME"]." with ID : ".$AutosteuerungID."\n";
 		}
 	//print_r($AutoSetSwitches);
@@ -140,10 +143,13 @@
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		//CreateLinkByDestination('Automatik', $AutosteuerungID,    $categoryId_WebFront,  10);
-		//CreateLinkByDestination('Anwesenheitssimulation', $AnwesenheitssimulationID,    $categoryId_WebFront,  10);
-
-
+		foreach ($webfront_links as $OID => $webfront_link)
+		   {
+		   if ($webfront_link["ADMINISTRATOR"]==true)
+				{
+				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId_WebFront,  10);
+				}
+			}
 		}
 
 	if ($WFC10User_Enabled)
