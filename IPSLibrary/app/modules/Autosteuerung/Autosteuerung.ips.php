@@ -54,7 +54,8 @@ echo "Category Script ID:".$scriptId."\n";
 /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
 /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
-$name="Bedienung";
+
+$name="Ansteuerung";
 $categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 $AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
 $VentilatorsteuerungID = IPS_GetObjectIDByName("Ventilatorsteuerung",$categoryId_Autosteuerung);
@@ -667,6 +668,14 @@ if ($_IPS['SENDER']=="Variable")
 		   case "Switch":
 		      /* Anlegen eines Schalters in der GUI der Autosteuerung, Bedienelemente können angegeben werden */
 		      break;
+
+			/*********************************************************************************************/
+		   case "par1":
+		   case "dummy":
+		   case "Dummy":
+		   case "DUMMY":
+		      break;
+
 		   default:
 				eval($params[1]);
 				break;
