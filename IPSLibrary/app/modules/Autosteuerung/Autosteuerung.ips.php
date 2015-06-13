@@ -470,8 +470,13 @@ if ($_IPS['SENDER']=="Variable")
 		      Ventilator();
 				break;
 			/*********************************************************************************************/
-			/*********************************************************************************************/
 		   case "Status":
+			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
+			   /* array($params[0], $params[1], $params[2],),                     													*/
+			   /* array('OnChange','Status',   'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
+				/* array('OnUpdate','Status','ArbeitszimmerLampe,true',),    bei Update Taster LightSwitch einschalten   */
+			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
+			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       					*/
 				Status();
 				break;
 			/*********************************************************************************************/
