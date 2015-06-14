@@ -227,7 +227,7 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 
 	      case "Status":
-	      	$status=true;
+	      	$status=true; $delayValue=0;
 			   $lightManager = new IPSLight_Manager();
 				$moduleParams2 = explode(",",$entry[2]);
 				If ($entry[0]=="OnUpdate")
@@ -236,26 +236,21 @@ if ($_IPS['SENDER']=="Execute")
 				   }
 				switch (count($moduleParams2))
 				   {
-				   case "1":
-				      echo "Anzahl Parameter in Param2: Ein Parameter.\n";
-				      $SwitchName=$moduleParams2[0];
-				   	//print_r($moduleParams2);
-				      break;
-				   case "2":
-				      echo "Anzahl Parameter in Param2: Zwei Parameter.\n";
-				      $SwitchName=$moduleParams2[0];
-				   	$params_on=explode(":",$moduleParams2[1]);
-						print_r($params_on);
-						echo "Status ist jetzt : ".$params_on[0]." \n";
-						if ($params_on[0]="true") { $status=true;};
-						if ($params_on[0]="false") { $status=false;};
-				      break;
 				   case "3":
-				      echo "Anzahl Parameter in Param2: Drei Parameter.\n";
 				   	$params_on=explode(":",$moduleParams2[1]);
 						$params_off=explode(":",$moduleParams2[2]);
-						print_r($params_on);
-						print_r($params_off);
+						//print_r($params_off);
+						echo "Delay ist jetzt : ".$params_off[0]." in Sekunden.\n";
+						$delayValue=(integer)$params_off[0];
+				   case "2":
+				   	$params_on=explode(":",$moduleParams2[1]);
+						//print_r($params_on);
+						//echo "Status ist jetzt : ".$params_on[0]." \n";
+						if (strtoupper($params_on[0])=="TRUE") { $status=true;};
+						if (strtoupper($params_on[0])=="FALSE") { $status=false;};
+				   case "1":
+				      $SwitchName=$moduleParams2[0];
+				   	//print_r($moduleParams2);
 				      break;
 				   default:
 						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
@@ -263,11 +258,11 @@ if ($_IPS['SENDER']=="Execute")
 					}
 				if ($status===true)
 					{
-					echo "Switchname ist : ".$SwitchName." mit Status : true \n";
+					echo "Switchname ist : ".$SwitchName." mit Status : true und Delay ".$delayValue."\n";
 					}
 				else
 				   {
-					echo "Switchname ist : ".$SwitchName." mit Status : false \n";
+					echo "Switchname ist : ".$SwitchName." mit Status : false und Delay ".$delayValue." \n";
 					}
 				break;
 
@@ -616,6 +611,29 @@ if ($_IPS['SENDER']=="TimerEvent")
 	} /* Endif Timer */
 
 
+/*********************************************************************************************/
+
+/*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                */
+
+function setEventTimer($name,$delay,$command)
+	{
+	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
+  	$now = time();
+   $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
+   if ($EreignisID === false)
+		{ //Event nicht gefunden > neu anlegen
+      $EreignisID = IPS_CreateEvent(1);
+      IPS_SetName($EreignisID,$name."_EVENT");
+      IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+     	}
+   IPS_SetEventActive($EreignisID,true);
+   IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
+	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+	/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+   IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
+   IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
+   IPS_SetEventScript($EreignisID,$command);
+	}
 
 /*********************************************************************************************/
 
@@ -649,31 +667,23 @@ function Status()
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
   	$status=GetValue($_IPS['VARIABLE']);
+   $delayValue=0;
   	$moduleParams2 = explode(',', $params[2]);
 	//print_r($moduleParams2);
 
 	switch (count($moduleParams2))
 	   {
-	   case "1":
-	      echo "Anzahl Parameter in Param2: Ein Parameter.\n";
-	      $SwitchName=$moduleParams2[0];
-	   	//print_r($moduleParams2);
-	      break;
+	   case "3":
+			$params_off=explode(":",$moduleParams2[2]);
+			$delayValue=(integer)$params_off[0];
 	   case "2":
-	      echo "Anzahl Parameter in Param2: Zwei Parameter.\n";
-	      $SwitchName=$moduleParams2[0];
 	   	$params_on=explode(":",$moduleParams2[1]);
 			//print_r($params_on);
 			if (strtoupper($params_on[0])=="TRUE") { $status=true;};
 			if (strtoupper($params_on[0])=="FALSE") { $status=false;};
-			IPSLogger_Dbg(__file__, 'Wert wurde ausgewaehlt mit '.$SwitchName.' und '.$params_on[0].' ...');
-	      break;
-	   case "3":
-	      echo "Anzahl Parameter in Param2: Drei Parameter.\n";
-	   	$params_on=explode(":",$moduleParams2[1]);
-			$params_off=explode(":",$moduleParams2[2]);
-			print_r($params_on);
-			print_r($params_off);
+	   case "1":
+	      $SwitchName=$moduleParams2[0];
+	   	//print_r($moduleParams2);
 	      break;
 		default:
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
@@ -682,48 +692,58 @@ function Status()
 
 	if ($status===true)
 		{
-		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true ...');
+		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue);
 		}
 	else
 	 	{
-	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false ...');
+	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue);
 		}
+
+	$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n";
+
 
 	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 	$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 	$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-	$result=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 
+	$result=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 	if ($result==false)
 	   {
 		$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
 		if ($result==false)
 	   	{
 	   	}
-	   else
+	   else   /* Wert ist eine Gruppe */
 	      {
+  	   	$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
 	     	if ($status===true)
 	     	   {
-		     	IPSLight_SetGroupByName($SwitchName,true);
+	     	   IPSLight_SetGroupByName($SwitchName,true);
 		     	}
 	  		else
 	  	   	{
-		     	IPSLight_SetGroupByName($SwitchName,false);
+	     	   IPSLight_SetGroupByName($SwitchName,false);
 		    	}
 		   }
 		}
-	else
+	else     /* Wert ist ein Schalter */
 	   {
+     	$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
 	  	if ($status===true)
 	  	   {
-	     	IPSLight_SetSwitchByName($SwitchName,true);
+    	   IPSLight_SetSwitchByName($SwitchName,true);
 	     	}
 		else
 	   	{
-	     	IPSLight_SetSwitchByName($SwitchName,false);
+     	   IPSLight_SetSwitchByName($SwitchName,false);
 	     	}
 	  }
 
+   if ($delayValue>0)
+      {
+      setEventTimer($SwitchName,$delayValue,$command);
+      }
+      
 	/* Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
 	If ($params[0]=="OnUpdate")
 		{
