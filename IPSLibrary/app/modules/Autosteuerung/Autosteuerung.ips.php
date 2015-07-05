@@ -234,28 +234,88 @@ if ($_IPS['SENDER']=="Execute")
 				   {
 				   //echo "Andere Behandlung wenn OnUpdate eingestellt ist ...\n";
 				   }
+				$parges=array();
 				switch (count($moduleParams2))
 				   {
 				   case "3":
-				   	$params_on=explode(":",$moduleParams2[1]);
 						$params_off=explode(":",$moduleParams2[2]);
-						//print_r($params_off);
-						echo "Delay ist jetzt : ".$params_off[0]." in Sekunden.\n";
-						$delayValue=(integer)$params_off[0];
+						if (count($params_off)>1)
+						   {
+							$parges=parseParameter($params_off,$parges);
+						   }
+						else
+						   {
+							echo "Delay ist jetzt : ".$params_off[0]." in Sekunden.\n";
+							$delayValue=(integer)$params_off[0];
+							}
 				   case "2":
 				   	$params_on=explode(":",$moduleParams2[1]);
-						//print_r($params_on);
-						//echo "Status ist jetzt : ".$params_on[0]." \n";
-						if (strtoupper($params_on[0])=="TRUE") { $status=true;};
-						if (strtoupper($params_on[0])=="FALSE") { $status=false;};
+						if (count($params_on)>1)
+						   {
+							$parges=parseParameter($params_on,$parges);
+						   }
+						else
+							{
+							if (strtoupper($params_on[0])=="TRUE") { $status=true;};
+							if (strtoupper($params_on[0])=="FALSE") { $status=false;};
+							}
 				   case "1":
-				      $SwitchName=$moduleParams2[0];
-				   	//print_r($moduleParams2);
-				      break;
+				   	$params_one=explode(":",$moduleParams2[0]);
+						if (count($params_one)>1)
+						   {
+							$parges=parseParameter($params_one,$parges);
+						   }
+						else
+							{
+ 					      $SwitchName=$moduleParams2[0];
+							}
+						break;
 				   default:
 						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 				      break;
 					}
+				print_r($parges);
+				foreach ($parges as $befehl)
+				   {
+					switch (strtoupper($befehl[0]))
+					   {
+					   case "OID":
+						   $switchOID=$befehl[1];
+							break;
+					   case "NAME":
+						   $switchName=$befehl[1];
+							break;
+					   case "ON":
+		   			   $value_on=$befehl[1];
+					      $i=2;
+		   			   while ($i<count($befehl))
+					         {
+		   			      if (strtoupper($befehl[$i])=="MASK")
+		            			{
+					            $mask_on=$befehl[$i++];
+		   			         }
+					         $i++;
+		   			      }
+							break;
+		   			case "OFF":
+					      $value_off=$befehl[1];
+		   			   $i=2;
+					      while ($i<count($befehl))
+		   			      {
+					         if (strtoupper($befehl[$i])=="MASK")
+		   			         {
+		            			$mask_off=$befehl[$i++];
+					            }
+		   			      $i++;
+					         }
+							break;
+					   case "DELAY":
+							$delayValue=(integer)$befehl[1];
+							break;
+
+						}
+					} /* ende foreach */
+
 				if ($status===true)
 					{
 					echo "Switchname ist : ".$SwitchName." mit Status : true und Delay ".$delayValue."\n";
@@ -284,8 +344,8 @@ if ($_IPS['SENDER']=="Execute")
 					$params_oid=explode(":",$moduleParams2[0]);
 					if (count($params_oid)>1)
 					   {
-						$parges[$params_oid[0]]=$params_oid;
-					   }
+						$parges=parseParameter($params_oid,$parges);
+						}
 					else
 					   {
 					   $lightManager = new IPSLight_Manager();
@@ -300,7 +360,7 @@ if ($_IPS['SENDER']=="Execute")
 					print_r($params_on);
 					if (count($params_on)>1)
 					   {
-						$parges[$params_on[0]]=$params_on;
+						$parges=parseParameter($params_on,$parges);
 					   }
 					else
 					   {
@@ -311,7 +371,7 @@ if ($_IPS['SENDER']=="Execute")
 					print_r($params_off);
 					if (count($params_off)>1)
 					   {
-						$parges[$params_off[0]]=$params_off;
+						$parges=parseParameter($params_off,$parges);
 					   }
 					else
 					   {
@@ -321,9 +381,9 @@ if ($_IPS['SENDER']=="Execute")
 					while ($i<count($moduleParams2))
 					   {
 						$params=explode(":",$moduleParams2[$i]);
-						if (count($params_off)>1)
-						   {
-							$parges[$params[0]]=$params;
+						if (count($params)>1)
+         				{
+							$parges=parseParameter($params,$parges);
 						   }
 						$i++;
 					   }
@@ -663,6 +723,8 @@ function Status()
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,false',),       														*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,true,20',),       														*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
@@ -670,26 +732,97 @@ function Status()
    $delayValue=0;
   	$moduleParams2 = explode(',', $params[2]);
 	//print_r($moduleParams2);
-
+	$parges=array();
 	switch (count($moduleParams2))
 	   {
+	   case "5":
+	   case "4":
+			$i=3;
+			while ($i<count($moduleParams2))
+			   {
+				$params=explode(":",$moduleParams2[$i]);
+				if (count($params)>1)
+         		{
+					$parges=parseParameter($params,$parges);
+				   }
+				$i++;
+			   }
 	   case "3":
-			$params_off=explode(":",$moduleParams2[2]);
-			$delayValue=(integer)$params_off[0];
+			$params_three=explode(":",$moduleParams2[2]);
+			if (count($params_three)>1)
+				{
+				$parges=parseParameter($params_three,$parges);
+				}
+			else
+			   {
+				$delayValue=(integer)$params_three[0];
+				}
 	   case "2":
-	   	$params_on=explode(":",$moduleParams2[1]);
-			//print_r($params_on);
-			if (strtoupper($params_on[0])=="TRUE") { $status=true;};
-			if (strtoupper($params_on[0])=="FALSE") { $status=false;};
+	   	$params_two=explode(":",$moduleParams2[1]);
+			if (count($params_two)>1)
+				{
+				$parges=parseParameter($params_two,$parges);
+				}
+			else
+			   {
+				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
+				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
+			   }
 	   case "1":
-	      $SwitchName=$moduleParams2[0];
-	   	//print_r($moduleParams2);
+	   	$params_one=explode(":",$moduleParams2[0]);
+			if (count($params_one)>1)
+				{
+				$parges=parseParameter($params_one,$parges);
+				}
+			else
+			   {
+	      	$SwitchName=$params_one[0];
+				}
 	      break;
 		default:
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 		   break;
 		}
+	foreach ($parges as $befehl)
+	   {
+		switch (strtoupper($befehl[0]))
+		   {
+		   case "OID":
+		   $switchOID=$befehl[1];
+				break;
+		   case "NAME":
+			   $SwitchName=$befehl[1];
+				break;
+		   case "ON":
+		      $value_on=$befehl[1];
+		      $i=2;
+		      while ($i<count($befehl))
+		         {
+		         if (strtoupper($befehl[$i])=="MASK")
+		            {
+		            $mask_on=$befehl[$i++];
+		            }
+		         $i++;
+		         }
+				break;
+		   case "OFF":
+		      $value_off=$befehl[1];
+		      $i=2;
+		      while ($i<count($befehl))
+		         {
+		         if (strtoupper($befehl[$i])=="MASK")
+		            {
+		            $mask_off=$befehl[$i++];
+		            }
+		         $i++;
+		         }
+				break;
+		   case "DELAY":
+				$delayValue=(integer)$befehl[1];
+				break;
 
+			}
+		} /* ende foreach */
 	if ($status===true)
 		{
 		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue);
@@ -1060,6 +1193,18 @@ function Parameter()
 			}
 	  	}
 	}
+
+/*********************************************************************************************/
+
+function parseParameter($params,$result=array())
+	{
+	if (count($params)>1)
+		{
+		$result[$params[0]]=$params;
+		}
+	return($result);
+	}
+
 
 /*********************************************************************************************/
 
