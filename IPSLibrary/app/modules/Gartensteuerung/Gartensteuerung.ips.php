@@ -529,6 +529,7 @@ function giessdauer($debug=false)
 
 	global $archiveHandlerID, $variableID, $display;  /* für agregate Regen */
 	global $GiessTimeID,$log_Giessanlage;
+	global $GartensteuerungConfiguration; /* für minimale mittlere Temperatur */
 
 	$giessdauer=0;
 	$display=$debug;
@@ -619,11 +620,11 @@ function giessdauer($debug=false)
 		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n\n";
 		}
 
-	if (($regenStand48h<10) && ($AussenTemperaturGestern>20))
+	if (($regenStand48h<($GartensteuerungConfiguration["REGEN48H"])) && ($AussenTemperaturGestern>($GartensteuerungConfiguration["TEMPERATUR"])))
 	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser 20 Grad*/
 	   if (($regenStand2h)==0)
 	      { /* und es regnet aktuell nicht */
-			if ($AussenTemperaturGesternMax>27)
+			if ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPLANGE"]))
 			   { /* es war richtig warm */
 				$giessdauer=20;
 				}
