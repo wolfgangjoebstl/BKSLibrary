@@ -154,7 +154,10 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	echo   "Status Giessanlage zuletzt ".GetValue($GiessAnlagePrevID)." (0-Aus,1-Einmalein,2-Auto) \n\n";
 	echo "Gartensteuerungs Konfiguration:\n";
 	print_r($GartensteuerungConfiguration);
-
+	if ($GartensteuerungConfiguration["DEBUG"]==true)
+	   {
+	   echo "Debugmeldungen eingeschaltet.\n";
+	   }
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 
 	$variableTempID=get_aussentempID();
@@ -271,10 +274,11 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n"; */
 
+	echo "\n\n";
 	$resultEvent=IPS_GetEvent($calcgiesstimeID);
-	If($resultEvent["EventActive"]){echo "Timer Kalkgiesstime aktiv.\n";};
+	If($resultEvent["EventActive"]){echo "Timer zur Berechnung Giessdauer aktiv (immer 5 Min vorher).\n";};
 	$resultEvent=IPS_GetEvent($timerDawnID);
-	If($resultEvent["EventActive"]){echo "Timer zum Giessen aktiv.\n";};
+	If($resultEvent["EventActive"]){echo "Timer zum tatsächlichen Giessen aktiv.\n";};
 	
 	/* Beginnzeit Timer für morgen ausrechnen */
 			$dawnID = @IPS_GetObjectIDByName("Program",0);
@@ -415,8 +419,11 @@ if($_IPS['SENDER'] == "TimerEvent")
          	   $GiessCount=0;
           		SetValue($GiessAnlageID, GetValue($GiessAnlagePrevID));
 	     			IPS_SetEventActive($giesstimerID,false);
-					$log_Giessanlage->message("Gartengiessanlage Vorgang abgeschlossen");
-					$log_Giessanlage->message("Gartengiessanlage zurück auf ".GetValue($GiessAnlagePrevID)." (0-Aus, 1-EinmalEin, 2-Auto) gesetzt");
+     				if ($GartensteuerungConfiguration["DEBUG"]==true)
+					   {
+						$log_Giessanlage->message("Gartengiessanlage Vorgang abgeschlossen");
+						$log_Giessanlage->message("Gartengiessanlage zurück auf ".GetValue($GiessAnlagePrevID)." (0-Aus, 1-EinmalEin, 2-Auto) gesetzt");
+						}
 		   	   }
 		   	else
 		      	{
@@ -429,7 +436,10 @@ if($_IPS['SENDER'] == "TimerEvent")
 							//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
 							IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $giessTime);
    	   	         $GiessCount+=1;
-							$log_Giessanlage->message("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
+		     				if ($GartensteuerungConfiguration["DEBUG"]==true)
+							   {
+								$log_Giessanlage->message("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
+								}
 							}
 						else
 							{
@@ -596,9 +606,17 @@ function giessdauer($debug=false)
 		echo "Letzter Regen : ".date("d.m H:i",$LetzterRegen)."   ".$letzterRegen."\n";
  		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > 20° sein) ".
 			  "Maximum : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad \n";
-		echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
-			" mm und letzter Regen war aktuell vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden.\n";
-		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n";
+		if (($LetzterRegen/60/60)<50)
+		   {
+			echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
+				" mm und letzter Regen war aktuell vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden.\n";
+			}
+		else
+		   {
+			echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
+				" mm und letzter Regen war aktuell vor länger als 48 Stunden.\n";
+		   }
+		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n\n";
 		}
 
 	if (($regenStand48h<10) && ($AussenTemperaturGestern>20))
@@ -615,10 +633,9 @@ function giessdauer($debug=false)
 			   }
 	      }
 	   }
-	$textausgabe="Giesszeit berechnet mit ".GetValue($GiessTimeID)
-			." Minuten da Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm "
-			."und vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden zuletzt. Temperatur gestern "
-			.number_format($AussenTemperaturGestern, 1, ",", "")." max "
+	$textausgabe="Giessdauer:".GetValue($GiessTimeID)
+			." Min. Regen 2/48Std:".$regenStand2h."mm/".$regenStand48h."mm. Temp mit/max: "
+			.number_format($AussenTemperaturGestern, 1, ",", "")."/"
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
 	if ($debug==false)
 	   {
