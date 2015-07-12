@@ -250,12 +250,20 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	   }
 	echo "Regenstandanfang : ".$regenStandAnfang." mm\n";
 	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
-	echo "Letzter Regen vor ".number_format((time()-$letzterRegen)/60/60, 1, ",", ""). "Stunden.\n";
+	//echo "Letzter Regen vor ".number_format((time()-$letzterRegen)/60/60, 1, ",", ""). "Stunden.\n";
+
+	$letzterRegen=0;
 	foreach ($werte as $wert)
 	   {
  	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
 	   echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."\n";
+		if ( ($letzterRegen==0) && ($wert["Avg"]>0) )
+		   {
+		   $letzterRegen=$wert["MaxTime"]; 		/* MaxTime ist der Wert mit dem groessten Niederschlagswert, also am Ende des Regens, */
+															/* und MinTime daher immer am Anfang des Tages */
+		   }
 	   }
+	echo "Letzter Regen vor ".number_format((time()-$letzterRegen)/60/60, 1, ",", ""). "Stunden.\n";
 	//print_r($werte);
 
 	//echo $parentid."\n";
@@ -547,11 +555,15 @@ function giessdauer($debug=false)
 	$variableTempID=get_aussentempID();
 	$variableID=get_raincounterID();
 	$endtime=time();
-	$starttime=$endtime-60*60*24*2;  /* die letzten zwei tage */
-	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
+	$starttime=$endtime-60*60*24*2;  /* die letzten zwei tage Temperatur*/
+	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage Niederschlag*/
 
 	$Server=RemoteAccess_Address();
-	echo "Server : ".$Server."\n\n";
+	if ($debug)
+		{
+		echo"--------Giessdauerberechnung:\n";
+		echo "Server : ".$Server."\n\n";
+		}
 	If ($Server=="")
 	   {
   		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -586,7 +598,7 @@ function giessdauer($debug=false)
 
 	foreach ($werteLog as $wert)
 	   {
-	   echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+      //echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
 	   $regenStandAnfang=$wert["Value"];
 	   If (($letzterRegen==0) && ($wert["Value"]>0))
 	      {
@@ -601,30 +613,42 @@ function giessdauer($debug=false)
 	      {
 	      $regenStand48h=$regenStandEnde-$regenStandAnfang;
 	      }
+	   $regenStand=$regenStandEnde-$regenStandAnfang;
 	   }
-	echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h."\n";
-	foreach ($werteLog as $wert)
+	if ($debug)
+		{
+		echo "Regenstand 2h : ".$regenStand2h." 48h : ".$regenStand48h." 10 Tage : ".$regenStand." mm.\n";
+		}
+	$letzterRegen=0;
+	foreach ($werte as $wert)
 	   {
-	   If (($letzterRegen==0) && ($wert["Value"]>0))
-	      {
-	      $letzterRegen=$wert["TimeStamp"];
-			}
+ 	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."   ".date("d.m H:i",$wert["TimeStamp"])."   ".date("d.m H:i",$wert["LastTime"])."\n";
+	   //echo "Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["MaxTime"])."   ".date("d.m H:i",$wert["MinTime"])."\n";
+		if ( ($letzterRegen==0) && ($wert["Avg"]>0) )
+		   {
+		   $letzterRegen=$wert["MaxTime"]; 		/* MaxTime ist der Wert mit dem groessten Niederschlagswert, also am Ende des Regens, */
+															/* und MinTime daher immer am Anfang des Tages */
+		   }
 	   }
+	//echo "Letzter Regen vor ".number_format((time()-$letzterRegen)/60/60, 1, ",", ""). "Stunden.\n";
 
 	//$RegenGestern=RegenGestern();
 	$RegenGestern=$werte[1]["Avg"];
 	//$LetzterRegen=time()-LetzterRegen();
-	$LetzterRegen=time()-$letzterRegen;
+	$letzterRegenStd=(time()-$letzterRegen)/60/60;
 
 	if ($debug)
 		{
-		echo "Letzter Regen : ".date("d.m H:i",$LetzterRegen)."   ".$letzterRegen."\n";
- 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > 20° sein) ".
-			  "Maximum : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad \n";
-		if (($LetzterRegen/60/60)<50)
+		echo "Letzter Regen : ".date("d.m H:i",$letzterRegen)." also vor ".$letzterRegenStd." Stunden.\n";
+ 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > ".$GartensteuerungConfiguration["TEMPERATUR-MITTEL"]."° sein).\n";
+ 		if ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"]))
+ 		   {
+ 		   echo "Doppelte Giesszeit da Maximumtemperatur  : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad groesser als ".$GartensteuerungConfiguration["TEMPERATUR-MAX"]." Grad ist.\n";
+			}
+		if (($letzterRegenStd/60/60)<50)
 		   {
 			echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
-				" mm und letzter Regen war aktuell vor ".number_format(($LetzterRegen/60/60), 1, ",", "")." Stunden.\n";
+				" mm und letzter Regen war aktuell vor ".number_format(($letzterRegenStd), 1, ",", "")." Stunden.\n";
 			}
 		else
 		   {
@@ -632,13 +656,21 @@ function giessdauer($debug=false)
 				" mm und letzter Regen war aktuell vor länger als 48 Stunden.\n";
 		   }
 		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n\n";
+		if ($regenStand48h<($GartensteuerungConfiguration["REGEN48H"]))
+		   {
+			echo "Regen in den letzten 48 Stunden weniger als ".$GartensteuerungConfiguration["REGEN48H"]."mm.\n";
+			}
+		if ($regenStand<($GartensteuerungConfiguration["REGEN10T"]))
+		   {
+			echo "Regen in den letzten 10 Tagen weniger als ".$GartensteuerungConfiguration["REGEN10T"]."mm.\n";
+			}
 		}
 
-	if (($regenStand48h<($GartensteuerungConfiguration["REGEN48H"])) && ($AussenTemperaturGestern>($GartensteuerungConfiguration["TEMPERATUR"])))
-	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser 20 Grad*/
+	if (($regenStand48h<($GartensteuerungConfiguration["REGEN48H"])) && ($AussenTemperaturGestern>($GartensteuerungConfiguration["TEMPERATUR-MITTEL"])))
+	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser xx Grad*/
 	   if (($regenStand2h)==0)
 	      { /* und es regnet aktuell nicht */
-			if ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPLANGE"]))
+			if ( ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"])) || ($regenStand<($GartensteuerungConfiguration["REGEN10T"])) )
 			   { /* es war richtig warm */
 				$giessdauer=20;
 				}
