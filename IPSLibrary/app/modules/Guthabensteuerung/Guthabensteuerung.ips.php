@@ -49,6 +49,9 @@ $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
 		$phone[$i++]=$TelNummer["NUMMER"];
 		}
 	$maxcount=$i;
+
+$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
 		
 if ($_IPS['SENDER']=="TimerEvent")
 	{
@@ -115,6 +118,35 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
    //IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
 	}
 
+if ($_IPS['SENDER']=="Execute")
+	{
+	echo "Historie der Guthaben und verbrauchten Datenvolumen.\n";
+	//$variableID=get_raincounterID();
+	$endtime=time();
+	$starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
+	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
+
+	foreach ($GuthabenConfig as $TelNummer)
+		{
+		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+		$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
+    	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+		echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB \n";
+		$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
+	   $werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
+		foreach ($werteLog as $wert)
+		   {
+	   	echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+		   }
+
+		//$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+		//$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
+		//SetValue($phone1ID,$ergebnis1);
+		//$ergebnis.=$ergebnis1."\n";
+		}
+
+	}
 
 
 ?>
