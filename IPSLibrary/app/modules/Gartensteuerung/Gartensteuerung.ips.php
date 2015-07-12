@@ -367,7 +367,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 			break;
 
 		case "1":  /* Einmal Ein */
-			/* damit auch wenn noch kein Wetter zum Giessen, gegossenw erden kann, Giesszeit manuell setzen */
+			/* damit auch wenn noch kein Wetter zum Giessen, gegossen werden kann, Giesszeit manuell setzen */
 			SetValue($GiessTimeID,10);
 			if ($samebutton==true)
 			   { /* gleiche Taste heisst weiter */
@@ -387,7 +387,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
       		IPS_SetEventActive($giesstimerID,true);
       		IPS_SetEventActive($timerDawnID,false);
 	      	SetValue($GiessCountID,1);
- 				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt");
+ 				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt.");
  				$failure=set_gartenpumpe(false);
 				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 				}
@@ -681,7 +681,7 @@ function giessdauer($debug=false)
 	      }
 	   }
 	$textausgabe="Giessdauer:".GetValue($GiessTimeID)
-			." Min. Regen 2/48Std:".$regenStand2h."mm/".$regenStand48h."mm. Temp mit/max: "
+			." Min. Regen 2/48/max Std:".number_format($regenStand2h, 1, ",", "")."mm/".number_format($regenStand48h, 1, ",", "")."mm/".number_format($regenStand, 1, ",", "")."mm. Temp mit/max: "
 			.number_format($AussenTemperaturGestern, 1, ",", "")."/"
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
 	if ($debug==false)
