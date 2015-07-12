@@ -1,11 +1,19 @@
 <?
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
 	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+/******************************************************
+
+				INIT
+
+*************************************************************/
 
 	$GuthabenConfig = get_GuthabenConfiguration();
 	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
+
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
 	
 	echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
 	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
@@ -40,7 +48,36 @@ if ($_IPS['SENDER']=="Execute")
 			}
 	   echo "\n\n".$ergebnis1;
 
-	   }
+		echo "\n\nHistorie der Guthaben und verbrauchten Datenvolumen.\n";
+		//$variableID=get_raincounterID();
+		$endtime=time();
+		$starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
+		$starttime2=$endtime-60*60*24*100;  /* die letzten 100 Tage */
+
+		foreach ($GuthabenConfig as $TelNummer)
+			{
+			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+			$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
+    		$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+			$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
+			echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
+	   	$werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
+			foreach ($werteLog as $wert)
+			   {
+	   		echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+		   	}
+
+			//$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+			//$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
+			//SetValue($phone1ID,$ergebnis1);
+			//$ergebnis.=$ergebnis1."\n";
+			}
+
+		}
+
 
 
 

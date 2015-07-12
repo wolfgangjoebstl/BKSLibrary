@@ -88,7 +88,7 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
 	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	
-	print_r($phone);
+	//print_r($phone);
 
 	echo "Stand ScriptCounter :".GetValue($ScriptCounterID)." von max ".$maxcount."\n";
    SetValue($ScriptCounterID,0);
@@ -124,7 +124,7 @@ if ($_IPS['SENDER']=="Execute")
 	//$variableID=get_raincounterID();
 	$endtime=time();
 	$starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
-	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
+	$starttime2=$endtime-60*60*24*100;  /* die letzten 100 Tage */
 
 	foreach ($GuthabenConfig as $TelNummer)
 		{
@@ -132,7 +132,9 @@ if ($_IPS['SENDER']=="Execute")
 		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
 		$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
     	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-		echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB \n";
+		$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
+		echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
+		$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
 		$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
 	   $werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
 		foreach ($werteLog as $wert)
