@@ -98,7 +98,7 @@ class AutosteuerungHandler
 					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
 					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
 					}
-				$configString .= '),'.'        /* '.IPS_GetName($variableId).'    */';
+				$configString .= '),'.'        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
 				}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 			//echo $configString;

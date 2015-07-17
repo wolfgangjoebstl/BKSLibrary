@@ -489,7 +489,7 @@ function send_status($aktuell)
 
 	/* gibt alle bekannten und davon installierten Module aus */
 
-	$guthabensteuerung=false;
+	$guthabensteuerung=false; $gartensteuerung=false;
 	$amis=false;
 	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false; $remotereadwrite=false; $remoteaccess=false;
 
@@ -509,6 +509,7 @@ function send_status($aktuell)
 			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
 			$inst_modules .= " ".str_pad($infos['CurrentVersion'],10)."   ";
 			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
+			if ($module=="Gartensteuerung") $gartensteuerung=true;
 			if ($module=="Amis") $amis=true;
 			if ($module=="CustomComponent") $customcomponent=true;
 			if ($module=="DetectMovement") $detectmovement=true;
@@ -962,41 +963,6 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 	$ergebnisBewegung=$ergebnisBewegung.GetValue(59126)."\n";
 	$ergebnisBewegung=$ergebnisBewegung.GetValue(45878)."\n";
 
-	$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
-	$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
-	$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
-	$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
-	$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);
-	$zeile4 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile04", 3);
-	$zeile5 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile05", 3);
-	$zeile6 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile06", 3);
-	$zeile7 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile07", 3);
-	$zeile8 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile08", 3);
-	$zeile9 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile09", 3);
-	$zeile10 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile10", 3);
-	$zeile11 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile11", 3);
-	$zeile12 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile12", 3);
-	$zeile13 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile13", 3);
-	$zeile14 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile14", 3);
-	$zeile15 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile15", 3);
-	$zeile16 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile16", 3);
-
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile1)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile2)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile3)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile4)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile5)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile6)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile7)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile8)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile9)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile10)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile11)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile12)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile13)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile14)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile15)."\n";
-	$ergebnisGarten=$ergebnisGarten.GetValue($zeile16)."\n";
 
 	$ergebnisSteuerung="\n\nVerlauf der Steuerung:\n\n";
 	$baseId  = IPSUtil_ObjectIDByPath('Program.Steuerung.Nachrichtenverlauf-Steuerung');
@@ -1105,7 +1071,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
-			if ($remoteaccess)
+			/******************************************************************************************/
+
+			if ($remoteaccess)  /* nur wenn remoteread */
 			{
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			$TypeFS20=RemoteAccess_TypeFS20();
@@ -1151,6 +1119,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				}
 			}
 			}
+
+		/******************************************************************************************/
 
 		if ($amis)
 		   {
@@ -1209,6 +1179,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				}
 			}
 
+		/******************************************************************************************/
+			
+			
 /* Remote Access Crawler für Ausgabe aktuelle Werte */
 
 $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -1523,6 +1496,46 @@ else
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
 
 		   }
+		/******************************************************************************************/
+
+		if ($gartensteuerung)
+		   {
+			$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
+			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
+			$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
+			$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
+			$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);
+			$zeile4 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile04", 3);
+			$zeile5 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile05", 3);
+			$zeile6 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile06", 3);
+			$zeile7 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile07", 3);
+			$zeile8 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile08", 3);
+			$zeile9 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile09", 3);
+			$zeile10 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile10", 3);
+			$zeile11 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile11", 3);
+			$zeile12 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile12", 3);
+			$zeile13 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile13", 3);
+			$zeile14 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile14", 3);
+			$zeile15 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile15", 3);
+			$zeile16 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile16", 3);
+
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile1)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile2)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile3)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile4)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile5)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile6)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile7)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile8)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile9)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile10)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile11)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile12)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile13)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile14)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile15)."\n";
+			$ergebnisGarten=$ergebnisGarten.GetValue($zeile16)."\n";
+			}
 
 		/******************************************************************************************/
 
