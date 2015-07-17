@@ -729,7 +729,7 @@ function Status()
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
   	$status=GetValue($_IPS['VARIABLE']);
-   $delayValue=0;
+   $delayValue=0; $speak="Status";
   	$moduleParams2 = explode(',', $params[2]);
 	//print_r($moduleParams2);
 	$parges=array();
@@ -820,6 +820,12 @@ function Status()
 		   case "DELAY":
 				$delayValue=(integer)$befehl[1];
 				break;
+		   case "LEVEL":
+				$levelValue=(integer)$befehl[1];
+				break;
+		   case "SPEAK":
+				$speak=$befehl[1];
+				break;
 
 			}
 		} /* ende foreach */
@@ -830,6 +836,10 @@ function Status()
 	else
 	 	{
 	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue);
+		}
+	if (isset($levelValue)==true)
+	 	{
+	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
 		}
 
 	$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n";
@@ -865,6 +875,12 @@ function Status()
 	  	if ($status===true)
 	  	   {
     	   IPSLight_SetSwitchByName($SwitchName,true);
+			if (isset($levelValue)==true)
+	 			{
+				$lightManager = new IPSLight_Manager();
+				$switchId = $lightManager->GetSwitchIdByName($SwitchName."#Level");
+				$lightManager->SetValue($switchId, $levelValue);
+				}
 	     	}
 		else
 	   	{
@@ -890,13 +906,13 @@ function Status()
 			{
 			if ($speak_config["Parameter"][0]=="On")
 				{
-				tts_play(1,'Status geht auf ein.','',2);
+				tts_play(1,'Wert '.$speak.' geht auf ein.','',2);
 				}
 			}
 		else
 			{
 		  	if ($speak_config["Parameter"][0]=="On")  {
-				tts_play(1,'Status geht auf aus.','',2);
+				tts_play(1,'Wert '.$speak.' geht auf aus.','',2);
 				}
 			}
 		}
