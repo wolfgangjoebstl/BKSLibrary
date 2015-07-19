@@ -170,26 +170,26 @@
 					{
 					$result="Bewegung";
 					//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
-					$EreignisVerlauf.=time().";".STAT_Bewegung.";";
+					$Ereignis=time().";".STAT_Bewegung.";";
 					$GesamtZaehler+=1;
-					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-					$GesamtVerlauf.=time().";".STAT_Bewegung.";";
+					$EreignisVerlauf.=$Ereignis;
+					$GesamtVerlauf.=$Ereignis;
 					}
 				else
 					{
 					$result="Ruhe";
 					//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
-					$EreignisVerlauf.=time().";".STAT_WenigBewegung.";";
+					$Ereignis=time().";".STAT_WenigBewegung.";";
 					$GesamtZaehler-=1;
 					if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
 					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-					$GesamtVerlauf.=time().";".STAT_WenigBewegung.";";
+					$EreignisVerlauf.=$Ereignis;
+					$GesamtVerlauf.=$Ereignis;
 					}
 				}
 			else
 				{
-				$EreignisVerlauf.=time().";".STAT_Bewegung.";";
-				$EreignisVerlauf.=time().";".STAT_WenigBewegung.";";
+				$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
 				if (GetValue($this->variable))
 					{
 					$result="Offen";
@@ -198,6 +198,7 @@
 					{
 					$result="Geschlossen";
 					}
+				$EreignisVerlauf.=$Ereignis;
 				}
 			echo "\n".IPS_GetName($this->EreignisID)." \n";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
@@ -228,6 +229,9 @@
 				$class=$log->GetComponent($oid);
 				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
 				SetValue($statusID,(integer)$status);
+				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)));
+				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
+            SetValue($ereignisID,$EreignisVerlauf);
 			   }
 			
 			parent::LogMessage($result);
