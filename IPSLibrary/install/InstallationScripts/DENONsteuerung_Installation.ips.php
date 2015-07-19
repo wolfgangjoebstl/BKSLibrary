@@ -370,8 +370,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorUP", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorUP", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.CursorUP", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.CursorUP", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorUP", 0, " UP ", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.CursorUP", 1, " ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorUP erstellt;\n";
 		}
 
@@ -420,8 +421,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorDOWN", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorDOWN", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.CursorDOWN", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.CursorDOWN", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorDOWN", 0, "DOWN", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.CursorDOWN", 1, "    ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorDOWN erstellt;\n";
 		}
 
@@ -467,8 +469,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorLEFT", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorLEFT", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.CursorLEFT", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.CursorLEFT", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorLEFT", 0, "LEFT", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.CursorLEFT", 1, "    ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorLEFT erstellt; ";
 		}
 
@@ -515,8 +518,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorRIGHT", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorRIGHT", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.CursorRIGHT", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.CursorRIGHT", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorRIGHT", 0, "RIGHT", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.CursorRIGHT", 1, "     ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorRIGHT erstellt;\n";
 		}
 
@@ -563,8 +567,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.ENTER", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.ENTER", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.ENTER", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.ENTER", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.ENTER", 0, "ENTER", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.ENTER", 1, "     ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.ENTER erstellt;\n";
 		}
 
@@ -611,8 +616,9 @@ foreach ($configuration as $config)
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.RETURN", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.RETURN", 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues("DENON.RETURN", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileValues("DENON.RETURN", 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.RETURN", 0, "RETURN", "", -1); //P-Name, Value, Assotiation, Icon, Color
+	   IPS_SetVariableProfileAssociation("DENON.RETURN", 1, "      ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.RETURN erstellt;\n";
 		}
 

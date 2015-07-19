@@ -1,7 +1,6 @@
 <?
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
-############################ Info ##############################################
 /*
 Inital-Autor: philipp, Quelle: http://www.ip-symcon.de/forum/f53/denon-avr-3808-integration-7007/
 
@@ -11,21 +10,6 @@ Funktionen:
 		formatiert diese und sendt sie an den "DENON Client Socket"
 */
 
-############################ Info Ende #########################################
-
-############################ Konfig ############################################
-
-$Denon_KatID = IPS_GetCategoryIDByName("DENON", 0);
-if (IPS_GetObjectIDByName("DENON Client Socket", 0) >0)
-{
-	$id = IPS_GetObjectIDByName("DENON Client Socket", 0);
-}
-else
-{
-	echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->
-		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
-}
-########################## Konfig Ende #########################################
 
 ######################### Main Functions #######################################
 

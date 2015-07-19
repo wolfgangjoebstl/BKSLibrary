@@ -1,9 +1,6 @@
 <?
 //--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
 
-
-
-############################ Info ##############################################
 /*
 Inital-Autor: philipp, Quelle: http://www.ip-symcon.de/forum/f53/denon-avr-3808-integration-7007/
 
@@ -13,23 +10,56 @@ Funktionen:
 
 */
 
-############################ Info Ende #########################################
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
-############################# Konfig ###########################################
-$Denon_KatID = IPS_GetCategoryIDByName("DENON", 0);
-$DENON_Scripts_ID = @IPS_GetCategoryIDByName("DENON Scripts", $Denon_KatID);
-if (IPS_GetObjectIDByName("DENON.VariablenManager", $DENON_Scripts_ID) >0)
-{
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager))
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
+	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+	$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
+	}
+
+IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
+
+$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+
+$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+
+$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+
+$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+$scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
+
+/* include DENON.Functions
+  $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
+*/
+if (IPS_GetObjectIDByName("DENON.VariablenManager", $CategoryIdApp) >0)
+	{
 	include "DENON.VariablenManager.ips.php";
-}
+	}
 else
-{
+	{
 	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
-}
-
-############################# Konfig Ende ######################################
+	}
 
 $data=$IPS_VALUE;
+$id=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
+/* Debug Funktion einfügen zur datenausgabe */
 
 $maincat= substr($data,0,2); //Eventidentifikation
 $zonecat= substr($data,2); //Zoneneventidentifikation
@@ -46,7 +76,7 @@ switch($maincat)
 		{
 			$value = false;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "MV": //Mastervolume
