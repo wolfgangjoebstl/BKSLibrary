@@ -112,7 +112,7 @@
 				}
 			foreach ($result as $variableID => $type)
 			   {
-			   echo "Variable ID : ".$variableID." Typ : ".$type."  ".IPS_GetName($variableID)."  ".IPS_GetName(IPS_GetParent($variableID))."\n";
+			   //echo "Variable ID : ".$variableID." Typ : ".$type."  ".IPS_GetName($variableID)."  ".IPS_GetName(IPS_GetParent($variableID))."\n";
 			   }
 			}
 
@@ -270,26 +270,26 @@
 			{
 			$configurationAuto = self::Get_EventConfigurationAuto();
 			//print_r($configurationAuto);
-			echo "Register Event with VariableID:".$variableId."\n";
+			//echo "Register Event with VariableID:".$variableId."\n";
 			// Search Configuration
 			$found = false;
 				if (array_key_exists($variableId, $configurationAuto))
 					{
-					echo "Eintrag in Datenbank besteht.\n";
-				   echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+					//echo "Eintrag in Datenbank besteht.\n";
+				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
 					$moduleParamsNew = explode(',', $moduleParams);
 					//print_r($moduleParamsNew);
 					$moduleClassNew  = $moduleParamsNew[0];
 
 					$params = $configurationAuto[$variableId];
-					print_r($params);
+					//print_r($params);
 					for ($i=0; $i<count($params); $i=$i+3)
 						{
 						$moduleParamsCfg = $params[$i+2];
 						$moduleParamsCfg = explode(',', $moduleParamsCfg);
 						$moduleClassCfg  = $moduleParamsCfg[0];
 						// Found Variable and Module --> Update Configuration
-						echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
 						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
 						/*if ($moduleClassCfg=$moduleClassNew)
 							{
@@ -308,7 +308,7 @@
 			// Variable NOT found --> Create Configuration
 			if (!$found)
 					{
-				   echo "Create Event."."\n";
+				   //echo "Create Event."."\n";
 					$configurationAuto[$variableId][] = $eventType;
 					$configurationAuto[$variableId][] = $componentParams;
 					$configurationAuto[$variableId][] = $moduleParams;
@@ -535,26 +535,26 @@
 			{
 			$configurationAuto = self::Get_EventConfigurationAuto();
 			//print_r($configurationAuto);
-			echo "Register Event with VariableID:".$variableId."\n";
+			//echo "Register Event with VariableID:".$variableId."\n";
 			// Search Configuration
 			$found = false;
 				if (array_key_exists($variableId, $configurationAuto))
 					{
-					echo "Eintrag in Datenbank besteht.\n";
-				   echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+					//echo "Eintrag in Datenbank besteht.\n";
+				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
 					$moduleParamsNew = explode(',', $moduleParams);
 					//print_r($moduleParamsNew);
 					$moduleClassNew  = $moduleParamsNew[0];
 
 					$params = $configurationAuto[$variableId];
-					print_r($params);
+					//print_r($params);
 					for ($i=0; $i<count($params); $i=$i+3)
 						{
 						$moduleParamsCfg = $params[$i+2];
 						$moduleParamsCfg = explode(',', $moduleParamsCfg);
 						$moduleClassCfg  = $moduleParamsCfg[0];
 						// Found Variable and Module --> Update Configuration
-						echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
 						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
 						/*if ($moduleClassCfg=$moduleClassNew)
 							{
@@ -573,7 +573,7 @@
 			// Variable NOT found --> Create Configuration
 			if (!$found)
 					{
-				   echo "Create Event."."\n";
+				   //echo "Create Event."."\n";
 					$configurationAuto[$variableId][] = $eventType;
 					$configurationAuto[$variableId][] = $componentParams;
 					$configurationAuto[$variableId][] = $moduleParams;

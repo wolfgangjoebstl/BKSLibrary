@@ -29,7 +29,7 @@ $installedModules = $moduleManager->GetInstalledModules();
 $inst_modules="\nInstallierte Module:\n";
 foreach ($installedModules as $name=>$modules)
 	{
-	$inst_modules.=str_pad($name,20)." ".$modules."\n";
+	$inst_modules.=str_pad($name,30)." ".$modules."\n";
 	}
 echo $inst_modules."\n\n";
 
@@ -57,12 +57,14 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 
 $DetectMovementHandler = new DetectMovementHandler();
 $DetectTemperatureHandler = new DetectTemperatureHandler();
+echo "Detect Movement wird ausgeführt.\n";
 if (true)
 	{
 	/* nur die Detect Movement Funktion registrieren */
 	
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
+	echo "Homematic Geräte werden registriert.\n";
 	$Homematic = HomematicList();
 	$keyword="MOTION";
 	foreach ($Homematic as $Key)
@@ -97,6 +99,8 @@ if (true)
 			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');
 			}
 		}
+
+	echo "FS20 Geräte werden registriert.\n";
 	$TypeFS20=RemoteAccess_TypeFS20();
 	$FS20= FS20List();
 	foreach ($FS20 as $Key)
@@ -186,7 +190,10 @@ if (true)
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 			   }
 	  		}
-	  		
+
+	echo "Temperatur wird ausgeführt.\n";
+	echo "Homematic Geräte werden registriert.\n";
+
 		$keyword="TEMPERATURE";
 		foreach ($Homematic as $Key)
 			{
