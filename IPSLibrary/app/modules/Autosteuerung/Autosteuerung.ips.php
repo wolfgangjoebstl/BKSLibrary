@@ -51,6 +51,21 @@ $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Pro
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
+$NachrichtenScriptID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung.Nachrichtenverlauf-Autosteuerung');
+
+if (isset($NachrichtenScriptID))
+	{
+	$object3= new ipsobject($tempOID);
+	$NachrichtenInputID=$object3->osearch("Input");
+	//$object3->oprint();
+	//echo $NachrichtenScriptID."   ".$NachrichtenInputID."\n";
+	/* logging in einem File und in einem String am Webfront */
+	$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	}
+else break;
+
+
+
 /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
 /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
