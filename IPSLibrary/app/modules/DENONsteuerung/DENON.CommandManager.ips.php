@@ -11,6 +11,8 @@ Funktionen:
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
+
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -42,8 +44,27 @@ $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
+
+echo "Category App    ID:".$CategoryIdApp."\n";
+echo "Category Data   ID:".$CategoryIdData."\n";
+
+$object_data= new ipsobject($CategoryIdData);
+$object_app= new ipsobject($CategoryIdApp);
+
+$NachrichtenID = $object_data->osearch("Nachricht");
+$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+
+if (isset($NachrichtenScriptID))
+	{
+	$object3= new ipsobject($NachrichtenID);
+	$NachrichtenInputID=$object3->osearch("Input");
+	//$object3->oprint();
+	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
+	/* logging in einem File und in einem String am Webfront */
+	$log_Denon=new logging("C:\Scripts\Log_Denon.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	}
+else break;
 
 /* include DENON.Functions
   $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
@@ -57,9 +78,9 @@ else
 	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
 	}
 
-$data=$IPS_VALUE;
+$data=$_IPS['VALUE'];
 $id=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
-/* Debug Funktion einfügen zur datenausgabe */
+$log_Denon->message("Denon Telegramm:".$id."  ".$data);
 
 $maincat= substr($data,0,2); //Eventidentifikation
 $zonecat= substr($data,2); //Zoneneventidentifikation

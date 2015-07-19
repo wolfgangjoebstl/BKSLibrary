@@ -100,6 +100,7 @@
 	$eventType='OnChange';
 
 	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
+
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );

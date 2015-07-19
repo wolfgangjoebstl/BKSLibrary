@@ -11,7 +11,7 @@ funktioniert nur mit elektrischen Heizkoerpern
 ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -48,23 +48,26 @@ echo $inst_modules."\n\n";
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
-echo "Category App ID:".$CategoryIdApp."\n";
+echo "Category App    ID:".$CategoryIdApp."\n";
+echo "Category Data   ID:".$CategoryIdData."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-$NachrichtenScriptID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung.Nachrichtenverlauf-Autosteuerung');
+$object_data= new ipsobject($CategoryIdData);
+$object_app= new ipsobject($CategoryIdApp);
+
+$NachrichtenID = $object_data->osearch("Nachricht");
+$NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
 if (isset($NachrichtenScriptID))
 	{
-	$object3= new ipsobject($tempOID);
+	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
-	//echo $NachrichtenScriptID."   ".$NachrichtenInputID."\n";
+	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	$log_Autosteuerung=new logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenScriptID,$NachrichtenInputID);
 	}
 else break;
-
-
 
 /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
 /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
@@ -514,6 +517,7 @@ if ($_IPS['SENDER']=="Variable")
 	{
 	/* eine Variablenaenderung ist aufgetreten */
 	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$_IPS['VARIABLE'].'...');
+	$log_Autosteuerung->message('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
 	if (array_key_exists($_IPS['VARIABLE'], $configuration)) {
 		/* es gibt einen Eintrag fuer das Event */
 

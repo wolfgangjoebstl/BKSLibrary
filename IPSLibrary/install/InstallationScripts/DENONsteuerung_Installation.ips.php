@@ -92,6 +92,26 @@ $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-DENONsteuerung',   $CategoryIdData, 20);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
+	$zeile2 = CreateVariable("Nachricht_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
+	$zeile3 = CreateVariable("Nachricht_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
+	$zeile4 = CreateVariable("Nachricht_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
+	$zeile5 = CreateVariable("Nachricht_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
+	$zeile6 = CreateVariable("Nachricht_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
+	$zeile7 = CreateVariable("Nachricht_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
+	$zeile8 = CreateVariable("Nachricht_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
+	$zeile9 = CreateVariable("Nachricht_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
+	$zeile10 = CreateVariable("Nachricht_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
+	$zeile11 = CreateVariable("Nachricht_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
+	$zeile12 = CreateVariable("Nachricht_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
+	$zeile13 = CreateVariable("Nachricht_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
+	$zeile14 = CreateVariable("Nachricht_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
+	$zeile15 = CreateVariable("Nachricht_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
+	$zeile16 = CreateVariable("Nachricht_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
+
+
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 
 $configuration=Denon_Configuration();
