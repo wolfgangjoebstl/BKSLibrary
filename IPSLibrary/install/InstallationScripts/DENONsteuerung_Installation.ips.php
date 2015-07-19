@@ -1,12 +1,11 @@
 <?
-//Script was created at 18.06.11 15:08.53 by Script Installer Creator V0.2, Raketenschnecke
-// ++++ Modul1 DENON.InstallerObjectModul ++++++++++
 
-//--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
-
-
-############################ Info ##############################################
 /*
+
+Script von www.raketenschnecke
+
+Modifiziert auf IPS Library und kleine Anpassungen
+
 
 Funktionen:
 	*legt "DENON Client Socket" Instanz an und konfiguriert diese
@@ -37,656 +36,614 @@ Installation (erneut/Update)
 	*bestehende Scripte (vorherige Verisionen) werden gelöscht und neu angelegt
 */
 
-############################ Info Ende #########################################
 
-###################### Konfigurationsangaben ###################################
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
-$DENON_VAVR_IP = "10.0.0.115"; // hier die IP des DENON AVR angeben
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager))
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-###################### Konfigurationsangaben Ende ##############################
+	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+	$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
+	}
 
-// ab hier nichts mehr ändern
-###################### DENON Kategorieen anlegen ###############################
+$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
+$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
+$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-echo "DENON.Installer started\nwww.raketenschnecke.net\n\n";
+echo "\nKernelversion : ".IPS_GetKernelVersion();
+$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
+echo "\nIPS Version : ".$ergebnis;
+$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
+echo " ".$ergebnis;
+$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+echo "\nIPSModulManager Version : ".$ergebnis;
+$ergebnis=$moduleManager->VersionHandler()->GetVersion('DENONsteuerung');
+echo "\nDENONsteuerung Version : ".$ergebnis;
 
-// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden
-$DENON_CS_ID = @IPS_GetObjectIDByName("DENON Client Socket", 0);
-if ($DENON_CS_ID === false)
-{
-   $DENON_CS_ID = IPS_CreateInstance("{3CFF0FD9-E306-41DB-9B5A-9D06D38576C3}");
-   IPS_SetName($DENON_CS_ID, "DENON Client Socket");
-   IPS_SetInfo($DENON_CS_ID, "this Object was created by Script DENON.Installer.ips.php");
-   CSCK_SetHost($DENON_CS_ID, $DENON_VAVR_IP);
-   CSCK_SetPort($DENON_CS_ID, 23);
-   CSCK_SetOpen($DENON_CS_ID,true);
-	IPS_ApplyChanges($DENON_CS_ID);
-	echo "DENON Client Socket angelegt\n";
-}
-else
-{
-   echo "DENON Client Socket bereits vorhanden (ID: $DENON_CS_ID)\n";
-}
+$installedModules = $moduleManager->GetInstalledModules();
+$inst_modules="\nInstallierte Module:\n";
+foreach ($installedModules as $name=>$modules)
+	{
+	$inst_modules.=str_pad($name,30)." ".$modules."\n";
+	}
+echo $inst_modules;
 
-// Cutter "DENON Cutter" anlegen wenn nicht vorhanden und mit Client Socket verbinden
-$DENON_Cu_ID = @IPS_GetObjectIDByName("DENON Cutter", 0);
-if ($DENON_Cu_ID == false)
-{
-   $DENON_Cu_ID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}");
-   IPS_SetName($DENON_Cu_ID, "DENON Cutter");
-   IPS_SetInfo($DENON_Cu_ID, "this Object was created by Script DENON.Installer.ips.php");
-   IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
-	Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
-	IPS_ApplyChanges($DENON_Cu_ID);
-	echo "DENON Cutter angelegt und mit DENON Client Socket #DENON_CS_ID verknüpft\n";
-}
-else
-{
-   $DENON_Cu_ID = @IPS_GetInstanceIDByName("DENON Cutter", 0);
-   IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
-   Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
-	IPS_ApplyChanges($DENON_Cu_ID);
-   echo "DENON Cutter (#$DENON_Cu_ID) bereits vorhanden, neu konfiguriert \n";
-}
+IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-// Cutter "DENON Register Variable" anlegen wenn nicht vorhanden und mit "DENON Cutter" verbinden
-$DENON_RegVar_ID = @IPS_GetObjectIDByName("DENON Register Variable", $DENON_Cu_ID);
-if ($DENON_RegVar_ID == false)
-{
-   $DENON_RegVar_ID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}");
-   IPS_SetName($DENON_RegVar_ID, "DENON Register Variable");
-   IPS_SetInfo($DENON_RegVar_ID, "this Object was created by Script DENON.Installer.ips.php");
-   IPS_SetParent($DENON_RegVar_ID, $DENON_Cu_ID);
-   IPS_ConnectInstance($DENON_RegVar_ID, $DENON_Cu_ID);
+$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
+$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+
+$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+
+$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+
+$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
+$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+$scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
+
+$configuration=Denon_Configuration();
+foreach ($configuration as $config)
+	{
+	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
+   echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\nwww.raketenschnecke.net\n\n";
+
+	// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden
+	$DENON_CS_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Client Socket", 0);
+	if ($DENON_CS_ID === false)
+		{
+	   $DENON_CS_ID = IPS_CreateInstance("{3CFF0FD9-E306-41DB-9B5A-9D06D38576C3}");
+   	IPS_SetName($DENON_CS_ID, $config['INSTANZ']." Client Socket");
+	   IPS_SetInfo($DENON_CS_ID, "this Object was created by Script DENON.Installer.ips.php");
+	   CSCK_SetHost($DENON_CS_ID, $DENON_VAVR_IP);
+	   CSCK_SetPort($DENON_CS_ID, 23);
+	   CSCK_SetOpen($DENON_CS_ID,true);
+		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. Überprüfe IP Adresse !\n"; }
+		echo "DENON Client Socket angelegt\n";
+		}
+	else
+		{
+   	echo "DENON Client Socket bereits vorhanden (ID: $DENON_CS_ID) -> Konfiguration upgedated\n";
+   	//IPS_DeleteInstance($DENON_CS_ID);
+	   //$DENON_CS_ID = IPS_CreateInstance("{3CFF0FD9-E306-41DB-9B5A-9D06D38576C3}");
+   	//IPS_SetName($DENON_CS_ID, "DENON Client Socket");
+	   //IPS_SetInfo($DENON_CS_ID, "this Object was created by Script DENON.Installer.ips.php");
+	   CSCK_SetHost($DENON_CS_ID, $DENON_VAVR_IP);
+	   //CSCK_SetPort($DENON_CS_ID, 23);
+	   //CSCK_SetOpen($DENON_CS_ID,true);
+		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. Überprüfe IP Adresse !\n"; }
+		}
+
+	// Cutter "DENON Cutter" anlegen wenn nicht vorhanden und mit Client Socket verbinden
+	$DENON_Cu_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Cutter", 0);
+	if ($DENON_Cu_ID == false)
+		{
+	   $DENON_Cu_ID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}");
+   	IPS_SetName($DENON_Cu_ID, $config['INSTANZ']." Cutter");
+	   IPS_SetInfo($DENON_Cu_ID, "this Object was created by Script DENON.Installer.ips.php");
+   	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
+		Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
+		IPS_ApplyChanges($DENON_Cu_ID);
+		echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #DENON_CS_ID verknüpft\n";
+		}
+	else
+		{
+		echo $config['INSTANZ']." Cutter #".$DENON_Cu_ID." ist bereits angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verknüpft\n";
+	   $DENON_Cu_ID = @IPS_GetInstanceIDByName($config['INSTANZ']." Cutter", 0);
+	   IPS_DisconnectInstance($DENON_Cu_ID);
+   	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
+	   Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
+		IPS_ApplyChanges($DENON_Cu_ID);
+	   echo "DENON Cutter (#$DENON_Cu_ID) bereits vorhanden, neu konfiguriert \n";
+		}
+
+	// Cutter "DENON Register Variable" anlegen wenn nicht vorhanden und mit "DENON Cutter" verbinden
+	$DENON_RegVar_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Register Variable", $DENON_Cu_ID);
+	if ($DENON_RegVar_ID == false)
+		{
+	   $DENON_RegVar_ID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}");
+   	IPS_SetName($DENON_RegVar_ID, $config['INSTANZ']." Register Variable");
+	   IPS_SetInfo($DENON_RegVar_ID, "this Object was created by Script DENON.Installer.ips.php");
+   	IPS_SetParent($DENON_RegVar_ID, $DENON_Cu_ID);
+	   IPS_ConnectInstance($DENON_RegVar_ID, $DENON_Cu_ID);
+
+		IPS_ApplyChanges($DENON_RegVar_ID);
+		echo $config['INSTANZ']." Register Variable angelegt und mit ".$config['INSTANZ']." Cutter #$DENON_Cu_ID verknüpft\n";
+		}
+	else
+		{
+	   echo $config['INSTANZ']." Register Variable bereits vorhanden (ID: $DENON_RegVar_ID)\n";
+		}
+	$scriptId_DENONCommandManager = IPS_GetScriptIDByName('DENON.CommandManager', $CategoryIdApp);
+	echo "\nScript ID DENON Command Manager für Register Variable :".$scriptId_DENONCommandManager."\n";
+	RegVar_SetRXObjectID($DENON_RegVar_ID , $scriptId_DENONCommandManager);
 	IPS_ApplyChanges($DENON_RegVar_ID);
-	echo "DENON Register Variable angelegt und mit DENON Register Variable #$DENON_Cu_ID verknüpft\n";
-}
-else
-{
-   echo "DENON Register Variable bereits vorhanden (ID: $DENON_RegVar_ID)\n";
-}
+	echo "DENON Register Variable  mit Script DENON.CommandManager #".$scriptId_DENONCommandManager." verknüpft\n";
 
-// Kategorie "DENON" anlegen wenn nicht vorhanden
-$DENON_ID = @IPS_GetCategoryIDByName("DENON", 0);
-if ($DENON_ID == false)
-{
-	$DENON_ID = IPS_CreateCategory();
-	IPS_SetName($DENON_ID, "DENON");
-	IPS_SetInfo($DENON_ID, "this Object was created by Script DENON.Installer.ips.php");
-	echo "Kategorie DENON #$DENON_ID angelegt\n";
-}
+	// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden
+	$DENON_DisplayRefresh_ID = IPS_GetScriptIDByName("DENON.DisplayRefresh", $CategoryIdApp);
+	$DENON_DisplayRefreshTimer_ID = @IPS_GetObjectIDByName("DENON.DisplayRefreshTimer", $DENON_DisplayRefresh_ID);
 
-// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
-$DENON_WFE_ID = @IPS_GetCategoryIDByName("DENON Webfront", $DENON_ID);
-if ($DENON_WFE_ID == false)
-{
-	$DENON_WFE_ID = IPS_CreateCategory();
-	IPS_SetName($DENON_WFE_ID, "DENON Webfront");
-	IPS_SetInfo($DENON_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_SetParent($DENON_WFE_ID, $DENON_ID);
-	echo "Kategorie DENON Webfront #$DENON_WFE_ID angelegt\n";
-}
+	if ($DENON_DisplayRefreshTimer_ID == 0)
+		{
+		$DENON_DisplayRefreshTimer_ID = IPS_CreateEvent(1);        //DisplayRefreshTimer erstellen
+		IPS_SetParent($DENON_DisplayRefreshTimer_ID, $DENON_DisplayRefresh_ID); //Ereignis zuordnen
+		IPS_SetName($DENON_DisplayRefreshTimer_ID, "DENON.DisplayRefreshTimer");
+		IPS_SetEventCyclic($DENON_DisplayRefreshTimer_ID, 0, 0, 0, 0, 1, 5); // alle 5 Sekunden
+		IPS_SetEventActive($DENON_DisplayRefreshTimer_ID, false);    //Ereignis deaktivieren
+		}
+	else
+		{
+		IPS_SetParent($DENON_DisplayRefreshTimer_ID, $DENON_DisplayRefresh_ID); //Ereignis zuordnen
+		IPS_SetEventCyclic($DENON_DisplayRefreshTimer_ID, 0, 0, 0, 0, 1, 5); // alle 5 Sekunden
+		IPS_SetEventActive($DENON_DisplayRefreshTimer_ID, false);    //Ereignis deaktivieren
+		}
 
-// Kategorie "DENON Scripts" anlegen wenn nicht vorhanden
-$DENON_Scripts_ID = @IPS_GetCategoryIDByName("DENON Scripts", $DENON_ID);
-if ($DENON_Scripts_ID == false)
-{
-	$DENON_Scripts_ID = IPS_CreateCategory();
-	IPS_SetName($DENON_Scripts_ID, "DENON Scripts");
-	IPS_SetInfo($DENON_Scripts_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_SetParent($DENON_Scripts_ID, $DENON_ID);
-}
+	$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 
+	// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON"
+	// anlegen wenn nicht vorhanden
+	$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_ID);
+	if ($DENON_MainZone_ID == false)
+		{
+		$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+		IPS_SetParent($DENON_Main_Instance_ID, $DENON_ID);
+		IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
+		IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
+		IPS_ApplyChanges($DENON_Main_Instance_ID);
+		echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON angelegt\n";
+		}
 
-// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON"
-// anlegen wenn nicht vorhanden
-$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_ID);
-if ($DENON_MainZone_ID == false)
-{
-	$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Main_Instance_ID, $DENON_ID);
-	IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
-	IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Main_Instance_ID);
-	echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON angelegt\n";
-}
+	$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_ID);
+	if ($DENON_Zone2_ID == false)
+		{
+		$DENON_Zone2_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+		IPS_SetParent($DENON_Zone2_ID, $DENON_ID);
+		IPS_SetName($DENON_Zone2_ID, "Zone 2");
+		IPS_SetInfo($DENON_Zone2_ID, "this Object was created by Script DENON.Installer.ips.php");
+		IPS_ApplyChanges($DENON_Zone2_ID);
+		echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON angelegt\n";
+		}
 
-$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_ID);
-if ($DENON_Zone2_ID == false)
-{
-	$DENON_Zone2_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Zone2_ID, $DENON_ID);
-	IPS_SetName($DENON_Zone2_ID, "Zone 2");
-	IPS_SetInfo($DENON_Zone2_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Zone2_ID);
-	echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON angelegt\n";
-}
+	$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_ID);
+	if ($DENON_Zone3_ID == false)
+		{
+		$DENON_Zone3_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+		IPS_SetParent($DENON_Zone3_ID, $DENON_ID);
+		IPS_SetName($DENON_Zone3_ID, "Zone 3");
+		IPS_SetInfo($DENON_Zone3_ID, "this Object was created by Script DENON.Installer.ips.php");
+		IPS_ApplyChanges($DENON_Zone3_ID);
+		echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON angelegt\n";
+		}
 
-$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_ID);
-if ($DENON_Zone3_ID == false)
-{
-	$DENON_Zone3_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Zone3_ID, $DENON_ID);
-	IPS_SetName($DENON_Zone3_ID, "Zone 3");
-	IPS_SetInfo($DENON_Zone3_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Zone3_ID);
-	echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON angelegt\n";
-}
+	$DENON_Steuerung_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_ID);
+	if ($DENON_Steuerung_ID == false)
+		{
+		$DENON_Steuerung_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+		IPS_SetParent($DENON_Steuerung_ID, $DENON_ID);
+		IPS_SetName($DENON_Steuerung_ID, "Steuerung");
+		IPS_SetInfo($DENON_Steuerung_ID, "this Object was created by Script DENON.Installer.ips.php");
+		IPS_ApplyChanges($DENON_Steuerung_ID);
+		echo "Dummy-Instanz Steuerung #$DENON_Steuerung_ID in Kategorie DENON angelegt\n";
+		}
 
-$DENON_Steuerung_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_ID);
-if ($DENON_Steuerung_ID == false)
-{
-	$DENON_Steuerung_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Steuerung_ID, $DENON_ID);
-	IPS_SetName($DENON_Steuerung_ID, "Steuerung");
-	IPS_SetInfo($DENON_Steuerung_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Steuerung_ID);
-	echo "Dummy-Instanz Steuerung #$DENON_Steuerung_ID in Kategorie DENON angelegt\n";
-}
+	$DENON_Display_ID = @IPS_GetInstanceIDByName("Display", $DENON_ID);
+	if ($DENON_Display_ID == false)
+		{
+		$DENON_Display_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+		IPS_SetParent($DENON_Display_ID, $DENON_ID);
+		IPS_SetName($DENON_Display_ID, "Display");
+		IPS_SetInfo($DENON_Display_ID, "this Object was created by Script DENON.Installer.ips.php");
+		IPS_ApplyChanges($DENON_Display_ID);
+		echo "Dummy-Instanz Display #$DENON_Display_ID in Kategorie DENON angelegt\n";
+		}
 
-$DENON_Display_ID = @IPS_GetInstanceIDByName("Display", $DENON_ID);
-if ($DENON_Display_ID == false)
-{
-	$DENON_Display_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Display_ID, $DENON_ID);
-	IPS_SetName($DENON_Display_ID, "Display");
-	IPS_SetInfo($DENON_Display_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Display_ID);
-	echo "Dummy-Instanz Display #$DENON_Display_ID in Kategorie DENON angelegt\n";
-}
+	echo "Pfad für Webfront :".$WFC10_Path." \n";
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// WebFront Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
 
-// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront"
-// anlegen wenn nicht vorhanden
-$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
-if ($DENON_MainZone_ID == false)
-{
-	$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
-	IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
-	IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Main_Instance_ID);
-	echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
-}
+	if ($WFC10_Enabled)
+		{
+		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
-$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_WFE_ID);
-if ($DENON_Zone2_ID == false)
-{
-	$DENON_Zone2_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Zone2_ID, $DENON_WFE_ID);
-	IPS_SetName($DENON_Zone2_ID, "Zone 2");
-	IPS_SetInfo($DENON_Zone2_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Zone2_ID);
-	echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON Webfront angelegt\n";
-}
+		// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
+		$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
+		if ($DENON_WFE_ID == false)
+			{
+			$DENON_WFE_ID = IPS_CreateCategory();
+			IPS_SetName($DENON_WFE_ID, $config['NAME']);
+			IPS_SetInfo($DENON_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_SetParent($DENON_WFE_ID, $categoryId_WebFront);
+			echo "Kategorie DENON Webfront #$DENON_WFE_ID angelegt\n";
+			}
 
-$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_WFE_ID);
-if ($DENON_Zone3_ID == false)
-{
-	$DENON_Zone3_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_Zone3_ID, $DENON_WFE_ID);
-	IPS_SetName($DENON_Zone3_ID, "Zone 3");
-	IPS_SetInfo($DENON_Zone3_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_Zone3_ID);
-	echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON Webfront angelegt\n";
-}
+		// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront"
+		// anlegen wenn nicht vorhanden
+		$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
+		if ($DENON_MainZone_ID == false)
+			{
+			$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
+			IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Main_Instance_ID);
+			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
+			}
 
-$DENON_SteuerungWFE_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_WFE_ID);
-if ($DENON_SteuerungWFE_ID == false)
-{
-	$DENON_SteuerungWFE_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_SteuerungWFE_ID, $DENON_WFE_ID);
-	IPS_SetName($DENON_SteuerungWFE_ID, "Steuerung");
-	IPS_SetInfo($DENON_SteuerungWFE_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_SteuerungWFE_ID);
-	echo "Dummy-Instanz Steuerung #$DENON_SteuerungWFE_ID in Kategorie DENON Webfront angelegt\n";
-}
+		$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_WFE_ID);
+		if ($DENON_Zone2_ID == false)
+			{
+			$DENON_Zone2_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Zone2_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Zone2_ID, "Zone 2");
+			IPS_SetInfo($DENON_Zone2_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Zone2_ID);
+			echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON Webfront angelegt\n";
+			}
 
-$DENON_DisplayWFE_ID = @IPS_GetInstanceIDByName("Display", $DENON_WFE_ID);
-if ($DENON_DisplayWFE_ID == false)
-{
-	$DENON_DisplayWFE_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-	IPS_SetParent($DENON_DisplayWFE_ID, $DENON_WFE_ID);
-	IPS_SetName($DENON_DisplayWFE_ID, "Display");
-	IPS_SetInfo($DENON_DisplayWFE_ID, "this Object was created by Script DENON.Installer.ips.php");
-	IPS_ApplyChanges($DENON_DisplayWFE_ID);
-	echo "Dummy-Instanz Display #$DENON_DisplayWFE_ID in Kategorie DENON Webfront angelegt\n";
-}
+		$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_WFE_ID);
+		if ($DENON_Zone3_ID == false)
+			{
+			$DENON_Zone3_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Zone3_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Zone3_ID, "Zone 3");
+			IPS_SetInfo($DENON_Zone3_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Zone3_ID);
+			echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON Webfront angelegt\n";
+			}
 
-#################### DENON Scripte anlegen #####################################
+		$DENON_SteuerungWFE_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_WFE_ID);
+		if ($DENON_SteuerungWFE_ID == false)
+			{
+			$DENON_SteuerungWFE_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_SteuerungWFE_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_SteuerungWFE_ID, "Steuerung");
+			IPS_SetInfo($DENON_SteuerungWFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_SteuerungWFE_ID);
+			echo "Dummy-Instanz Steuerung #$DENON_SteuerungWFE_ID in Kategorie DENON Webfront angelegt\n";
+			}
 
+		$DENON_DisplayWFE_ID = @IPS_GetInstanceIDByName("Display", $DENON_WFE_ID);
+		if ($DENON_DisplayWFE_ID == false)
+			{
+			$DENON_DisplayWFE_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_DisplayWFE_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_DisplayWFE_ID, "Display");
+			IPS_SetInfo($DENON_DisplayWFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_DisplayWFE_ID);
+			echo "Dummy-Instanz Display #$DENON_DisplayWFE_ID in Kategorie DENON Webfront angelegt\n";
+			}
+		}
 
-		$ScriptNAME = 'DENON.VariablenManager';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
+	if ($WFC10User_Enabled)
+		{
+		echo "\nWebportal User installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+		}
 
-		$ScriptNAME = 'DENON.ActionScript';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
+	if ($Mobile_Enabled)
+		{
+		echo "\nWebportal Mobile installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+		}
 
-		$ScriptNAME = 'DENON.VariablenManager';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
+	if ($Retro_Enabled)
+		{
+		echo "\nWebportal Retro installieren: \n";
+		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		}
 
-		$ScriptNAME = 'DENON.CommandManager';
-		$D_Cutter_ID = @IPS_GetObjectIDByName("DENON Cutter", 0);
-		$ParentID = @IPS_GetObjectIDByName("DENON Register Variable", $D_Cutter_ID);
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
+	/***************************************************************************************/
 
-		$ScriptNAME = 'DENON.Functions';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
-
-		$ScriptNAME = 'DENON.ProfileCleaner';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
-
-		$ScriptNAME = 'DENON.DisplayRefresh';
-		$ParentID = $DENON_Scripts_ID;
-		$ScriptTEXT = '';
-		//CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT);
-
-
-// ++++ Modul8 DENON.InstallerConfigModul ++++++++++
-
-//--------- DENON AVR 3311 Anbindung V0.95 18.06.11 15:08.53 by Raketenschnecke ---------
-#
-
-// Cutter "DENON Register Variable" mit Script "DENON.CommandManager" verbinden
-$DENON_Cu_ID = IPS_GetObjectIDByName("DENON Cutter", 0);
-$DENON_RegVar_ID = IPS_GetObjectIDByName("DENON Register Variable", $DENON_Cu_ID);
-$DENON_CommandManager_ID = IPS_GetObjectIDByName("DENON.CommandManager", $DENON_RegVar_ID);
-if ($DENON_RegVar_ID != false)
-{
-	RegVar_SetRXObjectID($DENON_RegVar_ID , $DENON_CommandManager_ID);
-	IPS_ApplyChanges($DENON_RegVar_ID);
-	echo "DENON Register Variable  mit Script DENON.DENON_CommandManager #$DENON_CommandManager_ID verknüpft\n";
-}
-else
-{
-   echo "DENON Register Variable konnte nicht mit Script
-				DENON.CommandReceiver #$DENON_CommandManager_ID verknüpft werden\n";
-}
-
-// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden
-$DENON_Kat_ID = IPS_GetObjectIDByName("DENON", 0);
-$DENON_Scripts_ID = IPS_GetObjectIDByName("DENON Scripts", $DENON_Kat_ID);
-$DENON_DisplayRefresh_ID = IPS_GetScriptIDByName("DENON.DisplayRefresh", $DENON_Scripts_ID);
-
-$DENON_DisplayRefreshTimer_ID = @IPS_GetObjectIDByName("DENON.DisplayRefreshTimer", $DENON_DisplayRefresh_ID);
-
-if ($DENON_DisplayRefreshTimer_ID == 0)
-{
-	$DENON_DisplayRefreshTimer_ID = IPS_CreateEvent(1);        //DisplayRefreshTimer erstellen
-	IPS_SetParent($DENON_DisplayRefreshTimer_ID, $DENON_DisplayRefresh_ID); //Ereignis zuordnen
-	IPS_SetName($DENON_DisplayRefreshTimer_ID, "DENON.DisplayRefreshTimer");
-	IPS_SetEventCyclic($DENON_DisplayRefreshTimer_ID, 0, 0, 0, 0, 1, 5); // alle 5 Sekunden
-	IPS_SetEventActive($DENON_DisplayRefreshTimer_ID, false);    //Ereignis deaktivieren
-}
-else
-{
-	IPS_SetParent($DENON_DisplayRefreshTimer_ID, $DENON_DisplayRefresh_ID); //Ereignis zuordnen
-	IPS_SetEventCyclic($DENON_DisplayRefreshTimer_ID, 0, 0, 0, 0, 1, 5); // alle 5 Sekunden
-	IPS_SetEventActive($DENON_DisplayRefreshTimer_ID, false);    //Ereignis deaktivieren
-}
-
-################# Variablen/Links Cursorsteuerung anlegen ######################
-
-$DENON_Kat_ID = IPS_GetObjectIDByName("DENON", 0);
-$DENON_WebfrontID = IPS_GetObjectIDByName("DENON Webfront", $DENON_Kat_ID);
-$DENON_SteuerungWFE_ID = IPS_GetObjectIDByName("Steuerung", $DENON_WebfrontID);
-$DENON_Scripts_ID = IPS_GetObjectIDByName("DENON Scripts", $DENON_Kat_ID);
-$DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $DENON_Scripts_ID);
-
-// Cursor Up & VarProfil anlegen wenn nicht vorhanden
+	// Cursor Up & VarProfil anlegen wenn nicht vorhanden
+	echo "Data Steuerung ID #".$DENON_Steuerung_ID."\n";
 	$DENON_Cursor_ID = @IPS_GetVariableIDByName("CursorUp", $DENON_Steuerung_ID);
 	if ($DENON_Cursor_ID == false)
-	{
+		{
 		$DENON_Cursor_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Cursor_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Cursor_ID, "CursorUp");
 		IPS_SetInfo($DENON_Cursor_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Cursor_ID);
-	}
+		echo "Data Cursor Up ".$DENON_Cursor_ID." angelegt.\n";
+		}
+	else
+	   {
+		echo "Data Cursor Up ".$DENON_Cursor_ID." vorhanden.\n";
+	   }
 
 	if (IPS_VariableProfileExists("DENON.CursorUP") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorUP", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorUP", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.CursorUP", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorUP", 0, " UP ", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorUP erstellt;\n";
-	}
+		}
 
+	$DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
+	echo "\nScript ID DENON.ActionScript für Cursor Steuerung ".$DENON_ActionScript_ID."\n";
 	IPS_SetVariableCustomProfile($DENON_Cursor_ID, "DENON.CursorUP"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("UP", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 	    	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "UP");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 10);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "UP");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 10);
-		}
-   @IPS_ApplyChanges($DENON_Cursor_ID);
+			}
 	echo "Variable CursorUp #$DENON_Cursor_ID in Kategorie DENON angelegt\n";
 
-// Cursor Down anlegen wenn nicht vorhanden
+	// Cursor Down anlegen wenn nicht vorhanden
 	$DENON_Cursor_ID = @IPS_GetVariableIDByName("CursorDown", $DENON_Steuerung_ID);
 	if ($DENON_Cursor_ID == false)
-	{
+		{
 		$DENON_Cursor_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Cursor_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Cursor_ID, "CursorDown");
 		IPS_SetInfo($DENON_Cursor_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Cursor_ID);
 		IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
-	}
+		}
 
 	if (IPS_VariableProfileExists("DENON.CursorDOWN") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorDOWN", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorDOWN", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.CursorDOWN", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorDOWN", 0, "DOWN", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorDOWN erstellt;\n";
-	}
+		}
 
 	IPS_SetVariableCustomProfile($DENON_Cursor_ID, "DENON.CursorDOWN"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("DOWN", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 	    	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "DOWN");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 40);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "DOWN");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 40);
-		}
-	@IPS_ApplyChanges($DENON_Cursor_ID);
+			}
 	echo "Variable CursorDown #$DENON_Cursor_ID in Kategorie DENON angelegt\n";
 
-// Cursor Left anlegen wenn nicht vorhanden
+	// Cursor Left anlegen wenn nicht vorhanden
 	$DENON_Cursor_ID = @IPS_GetVariableIDByName("CursorLeft", $DENON_Steuerung_ID);
 	if ($DENON_Cursor_ID == false)
-	{
+		{
 		$DENON_Cursor_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Cursor_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Cursor_ID, "CursorLeft");
 		IPS_SetInfo($DENON_Cursor_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Cursor_ID);
-	}
+		}
 
 	if (IPS_VariableProfileExists("DENON.CursorLEFT") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorLEFT", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorLEFT", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.CursorLEFT", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorLEFT", 0, "LEFT", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorLEFT erstellt; ";
-	}
+		}
 
 	IPS_SetVariableCustomProfile($DENON_Cursor_ID, "DENON.CursorLEFT"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("LEFT", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 	    	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "LEFT");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 20);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "LEFT");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 20);
-		}
-	@IPS_ApplyChanges($DENON_Cursor_ID);
+			}
 	echo "Variable CursorLEFT #$DENON_Cursor_ID in Kategorie DENON angelegt\n";
 
-// Cursor Right anlegen wenn nicht vorhanden
+	// Cursor Right anlegen wenn nicht vorhanden
 	$DENON_Cursor_ID = @IPS_GetVariableIDByName("CursorRight", $DENON_Steuerung_ID);
 	if ($DENON_Cursor_ID == false)
-	{
+		{
 		$DENON_Cursor_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Cursor_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Cursor_ID, "CursorRight");
 		IPS_SetInfo($DENON_Cursor_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Cursor_ID);
 		IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
-	}
+		}
 
 	if (IPS_VariableProfileExists("DENON.CursorRIGHT") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.CursorRIGHT", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.CursorRIGHT", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.CursorRIGHT", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.CursorRIGHT", 0, "RIGHT", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.CursorRIGHT erstellt;\n";
-	}
+		}
 
 	IPS_SetVariableCustomProfile($DENON_Cursor_ID, "DENON.CursorRIGHT"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("RIGHT", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 	    	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "RIGHT");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 30);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "RIGHT");
 			IPS_SetLinkChildID($LinkID, $DENON_Cursor_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 30);
-		}
-	@IPS_ApplyChanges($DENON_Cursor_ID);
+			}
 	echo "Variable CursorRight #$DENON_Cursor_ID in Kategorie DENON angelegt\n";
 
-// Enter anlegen wenn nicht vorhanden
+	// Enter anlegen wenn nicht vorhanden
 	$DENON_Enter_ID = @IPS_GetVariableIDByName("Enter", $DENON_Steuerung_ID);
 	if ($DENON_Enter_ID == false)
-	{
+		{
 		$DENON_Enter_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Enter_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Enter_ID, "Enter");
 		IPS_SetInfo($DENON_Enter_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Enter_ID);
 		IPS_SetVariableCustomAction($DENON_Enter_ID, $DENON_ActionScript_ID);
-	}
+		}
 
 	if (IPS_VariableProfileExists("DENON.ENTER") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.ENTER", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.ENTER", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.ENTER", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.ENTER", 0, "ENTER", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.ENTER erstellt;\n";
-	}
+		}
 
 	IPS_SetVariableCustomProfile($DENON_Enter_ID, "DENON.ENTER"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Enter_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("ENTER", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 	    	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "ENTER");
 			IPS_SetLinkChildID($LinkID, $DENON_Enter_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 50);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "ENTER");
 			IPS_SetLinkChildID($LinkID, $DENON_Enter_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 50);
-		}
- 	@IPS_ApplyChanges($DENON_Enter_ID);
+			}
 	echo "Variable Enter #$DENON_Enter_ID in Kategorie DENON angelegt\n";
 
-// Return anlegen wenn nicht vorhanden
+	// Return anlegen wenn nicht vorhanden
 	$DENON_Return_ID = @IPS_GetVariableIDByName("Return", $DENON_Steuerung_ID);
 	if ($DENON_Return_ID == false)
-	{
+		{
 		$DENON_Return_ID = IPS_CreateVariable(0);
 		IPS_SetParent($DENON_Return_ID, $DENON_Steuerung_ID);
 		IPS_SetName($DENON_Return_ID, "Return");
 		IPS_SetInfo($DENON_Return_ID, "this Object was created by Script DENON.Installer.ips.php");
-		IPS_ApplyChanges($DENON_Return_ID);
-		IPS_SetVariableCustomProfile($DENON_Return_ID, "DENON.Cursor"); // Ziel-ID, P-Name
 		IPS_SetVariableCustomAction($DENON_Return_ID, $DENON_ActionScript_ID);
-	}
+		}
 
 	if (IPS_VariableProfileExists("DENON.RETURN") == false)
-	{
+		{
 	   //Var-Profil erstellen
 		IPS_CreateVariableProfile("DENON.RETURN", 0); // PName, Typ
 		IPS_SetVariableProfileDigits("DENON.RETURN", 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues("DENON.RETURN", 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation("DENON.RETURN", 0, "RETURN", "", -1); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil DENON.RETURN erstellt;\n";
-	}
+		}
 
 	IPS_SetVariableCustomProfile($DENON_Return_ID, "DENON.RETURN"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Return_ID, $DENON_ActionScript_ID);
 
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("RETURN", $DENON_SteuerungWFE_ID);
-		$LinkChildID = IPS_GetLink($LinkID);
+		$LinkChildID = @IPS_GetLink($LinkID);
 		$LinkChildID = $LinkChildID["LinkChildID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-		{
+			{
 		 	$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "RETURN");
 			IPS_SetLinkChildID($LinkID, $DENON_Return_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 60);
-		}
+			}
 		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-		{
+			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
 			IPS_SetName($LinkID, "RETURN");
 			IPS_SetLinkChildID($LinkID, $DENON_Return_ID);
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 60);
-		}
-	@IPS_ApplyChanges($DENON_Enter_ID);
+			}
 	echo "Variable Return #$DENON_Return_ID in Kategorie DENON angelegt\n";
-
-
-################## Installation abgeschlossen ##################################
-echo "\nInstallation abgeschlossen\n\nwww.raketenschnecke.net";
-
-################## Function Script install #####################################
-// Quelle: hirschbrat, http://www.ip-symcon.de/forum/f52/ips_createscript-9659/
-function CreateScriptByName($ScriptNAME, $ParentID, $ScriptTEXT)
-{
-	global $IPS_SELF;
-	$ScriptID = @IPS_GetScriptIDByName($ScriptNAME, $ParentID); // altes Script löschen wenn vorhanden, neues anlegen
-	if ($ScriptID > 0)
-	{
-		IPS_DeleteScript($ScriptID, true);
-		$ScriptID = IPS_CreateScript(0);
-  		IPS_SetName($ScriptID, $ScriptNAME);
-		IPS_SetParent($ScriptID, $ParentID);
-		IPS_SetInfo($ScriptID, "This script was created by: DENON.Installer ID #$IPS_SELF#");
-		IPS_SetHidden($ScriptID, true);
-		$fh = fopen(IPS_GetKernelDir()."scripts\\".$ScriptID.".ips.php", 'w') or die("can't open file");
-		fwrite($fh, $ScriptTEXT);
-		fclose($fh);
-		rename($ScriptID.".ips.php", $ScriptNAME.".ips.php");
-		$ScriptPath = $ScriptNAME.".ips.php";
-		IPS_SetScriptFile($ScriptID, $ScriptPath);
-		echo "Script $ScriptNAME angelegt\n";
-	}
-	else
-	{
-		$ScriptID = IPS_CreateScript(0);
-  		IPS_SetName($ScriptID, $ScriptNAME);
-		IPS_SetParent($ScriptID, $ParentID);
-		IPS_SetInfo($ScriptID, "This script was created by: DENON Installscript ID #$IPS_SELF#");
-		IPS_SetHidden($ScriptID, true);
-		$fh = fopen(IPS_GetKernelDir()."scripts\\".$ScriptID.".ips.php", 'w') or die("can't open file");
-		fwrite($fh, $ScriptTEXT);
-		fclose($fh);
-		rename($ScriptID.".ips.php", $ScriptNAME.".ips.php");
-		$ScriptPath = $ScriptNAME.".ips.php";
-		IPS_SetScriptFile($ScriptID, $ScriptPath);
-		echo "Script $ScriptNAME angelegt\n";
    }
-}
 
-
-
+echo "\nInstallation abgeschlossen\n\nwww.raketenschnecke.net";
 
 ?>
