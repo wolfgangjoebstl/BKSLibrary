@@ -11,7 +11,6 @@ funktioniert nur mit elektrischen Heizkoerpern
 ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
