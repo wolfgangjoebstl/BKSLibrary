@@ -7,8 +7,8 @@ Sprachsteuerung
 ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
-IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
+IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
 /******************************************************
 
@@ -21,7 +21,7 @@ if (!isset($moduleManager)) {
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-	$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
+	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
 }
 
 $installedModules = $moduleManager->GetInstalledModules();
@@ -34,53 +34,11 @@ echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-$scriptId  = IPS_GetObjectIDByIdent('Sprachsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Sprachsteuerung'));
+$scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
-$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-$id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-echo "TTSAudioOutput :".IPS_GetProperty($id_sk1_tts,"TTSAudioOutput")."\n";
-echo "TTSEngine :".IPS_GetProperty($id_sk1_tts,"TTSEngine")."\n";
-echo "DeviceName :".IPS_GetProperty($id_sk1_ton,"DeviceName")."\n";
-echo "DeviceNum :".IPS_GetProperty($id_sk1_ton,"DeviceNum")."\n";
-echo "UpdateInterval :".IPS_GetProperty($id_sk1_ton,"UpdateInterval")."\n";
-echo "DeviceDriver :".IPS_GetProperty($id_sk1_ton,"DeviceDriver")."\n";
-echo "DeviceName :".IPS_GetProperty($id_sk1_musik,"DeviceName")."\n";
-echo "DeviceNum :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
-echo "UpdateInterval :".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
-echo "DeviceDriver :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n";
-
-//echo "TTSAudioOutput :".IPS_GetProperty(50984,"TTSAudioOutput")."\n";
-//echo "TTSEngine :".IPS_GetProperty(50984,"TTSEngine")."\n";
-
- //Fügen Sie hier Ihren Skriptquellcode ein
-
-//wird in das Standard Include script kopiert
-
-if (isset($_IPS['Text']))
-	{
-   tts_play(1,$_IPS['Text'],'',2);
-   }
-else
-	{
-	tts_play(1,'Hallo Claudia Wie gehts','',2);
-	//tts_play(1,'Hello Wolfgang How are you ?','',2);
-	}
-
-/*
-
-Routine tts_play ist schon in Allgemeine Definitionen enthalten, braucht daher nicht nocheinmal definiert werden
-
-Allerdings die Installation der Mediaplayer funktioniert noch nicht muessen haendisch angelegt werden
-
-
-*/
-
-
+$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
 
 
@@ -100,13 +58,35 @@ if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
 
-	$SprachConfig=Sprachsteuerung_Configuration();
-	//print_r($SprachConfig);
-	echo $SprachConfig["Engine".$SprachConfig["Language"]]."\n";
-	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+	$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
+	//$url="http://www.whatismyip.com/";  //gesperrt
+	//$url="http://whatismyip.org/"; // java script
+	//$url="http://www.myipaddress.com/show-my-ip-address/"; // check auf computerzugriffe
+	//$url="http://www.ip-adress.com/"; //gesperrt
 
-	IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
-	IPS_ApplyChanges($TextToSpeachID);
+	/* ab und zu gibt es auch bei der whatismyipaddress url timeouts, 30sek maximum timeout */
+	/* d.h. Timeout: Server wird nicht erreicht
+			Zustand false: kein Internet
+	*/
+
+
+	//curl  ifconfig.co
+	
+	/* gets the data from a URL */
+
+	//$result=file_get_contents($url);
+	$result=get_data($url);
+
+	//echo $result;
+
+	/* letzte Alternative ist die Webcam selbst */
+
+	if ($result==false)
+		{
+		echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
+
+
+		}
 	}
 
 /*********************************************************************************************/
@@ -128,6 +108,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 /*********************************************************************************************/
 
+function get_data($url) {
+	$ch = curl_init();
+	$timeout = 5;
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+	$data = curl_exec($ch);
+	curl_close($ch);
+	return $data;
+}
 
 /*********************************************************************************************/
 
