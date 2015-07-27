@@ -65,7 +65,7 @@ if (isset($NachrichtenScriptID))
 	//$object3->oprint();
 	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Autosteuerung=new logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenScriptID,$NachrichtenInputID);
 	}
 else break;
 
@@ -517,7 +517,8 @@ if ($_IPS['SENDER']=="Variable")
 	{
 	/* eine Variablenaenderung ist aufgetreten */
 	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$_IPS['VARIABLE'].'...');
-	$log_Autosteuerung->message('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
+	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
+	$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
 	if (array_key_exists($_IPS['VARIABLE'], $configuration)) {
 		/* es gibt einen Eintrag fuer das Event */
 
