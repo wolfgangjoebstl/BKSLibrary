@@ -65,7 +65,7 @@ if (isset($NachrichtenScriptID))
 	//$object3->oprint();
 	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
 	}
 else break;
 

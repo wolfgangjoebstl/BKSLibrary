@@ -11,7 +11,7 @@ Funktionen:
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
@@ -46,8 +46,11 @@ $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 
-echo "Category App    ID:".$CategoryIdApp."\n";
-echo "Category Data   ID:".$CategoryIdData."\n";
+$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+echo "\n";
+echo "Category App           ID: ".$CategoryIdApp."\n";
+echo "Category Data          ID: ".$CategoryIdData."\n";
+echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -62,9 +65,11 @@ if (isset($NachrichtenScriptID))
 	//$object3->oprint();
 	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Denon=new logging("C:\Scripts\Log_Denon.csv",$NachrichtenScriptID,$NachrichtenInputID);
+	$log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
 	}
 else break;
+
+$configuration=Denon_Configuration();
 
 /* include DENON.Functions
   $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
@@ -78,9 +83,35 @@ else
 	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
 	}
 
+if ($_IPS['SENDER'] == "Execute")
+	{
+	echo "Script wurde direkt aufgerufen.\n";
+	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
+	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
+	break;
+	}
+
 $data=$_IPS['VALUE'];
-$id=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
-$log_Denon->message("Denon Telegramm:".$id."  ".$data);
+$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
+/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
+$instanz=strstr($instanz," Register Variable",true);
+foreach ($configuration as $config)
+	{
+	if ($config['INSTANZ']==$instanz)
+	   {
+	   $id=$config['NAME'];
+	   }
+	//print_r($config);
+	}
+if (isset($id)==false)
+	{
+	$log_Denon->LogMessage("Instanz wurde nicht gefunden");
+	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
+	break;
+	}
+	
+$log_Denon->LogMessage("Denon Telegramm:".$id."  ".$data);
+$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
 
 $maincat= substr($data,0,2); //Eventidentifikation
 $zonecat= substr($data,2); //Zoneneventidentifikation
@@ -118,7 +149,7 @@ switch($maincat)
 			$itemdata= str_pad ( $itemdata, 3, "0" );
 			$value = (intval($itemdata)/10) -80;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 		}
 	 break;
 
@@ -133,7 +164,7 @@ switch($maincat)
 		{
 			$value = false;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "ZM": //MainZone
@@ -147,7 +178,7 @@ switch($maincat)
 		{
 			$value = false;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "SI": //Source Input
@@ -234,7 +265,7 @@ switch($maincat)
 			$value = 19;
 		}
 		$value = intval($value);
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "SV": //Video Select
@@ -276,7 +307,7 @@ switch($maincat)
 		{
 			$value = 8;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "MS": // Surround Mode und Quickselect
@@ -289,7 +320,7 @@ switch($maincat)
 			{
 				$value = intval(substr($data,7,1));
 			}
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		}
 		else
 		{
@@ -356,7 +387,7 @@ switch($maincat)
 			{
 				$value = 14;
 			}
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		}
 	break;
 
@@ -375,7 +406,7 @@ switch($maincat)
 		{
 			$value = 2;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "SD": //Input Mode AUTO/HDMI/DIGITALANALOG/ARC/NO
@@ -397,7 +428,7 @@ switch($maincat)
 		{
 			$value = 3;
 		}
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "SR": //Record Selection
@@ -405,7 +436,7 @@ switch($maincat)
 		$vtype = 1;
 		$itemdata=substr($data,2);
 		$value = $itemdata;
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "SL": //Main Zone Sleep
@@ -420,7 +451,7 @@ switch($maincat)
 			$itemdata = substr($data,3,3);
 		}
 		$value = intval($itemdata);
-		DenonSetValue($item, $value, $vtype);
+		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "VS": //Videosignal
@@ -432,7 +463,7 @@ switch($maincat)
 			$vtype = 3;
 			$itemdata=substr($data,5);
 			$value = $itemdata;
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		break;
 
 		case "AS": //Video Aspect
@@ -446,7 +477,7 @@ switch($maincat)
 			{
 				$value = false;
 			}
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		break;
 
 		case "SC": //Scaler
@@ -454,7 +485,7 @@ switch($maincat)
 			$vtype = 3;
 			$itemdata=substr($data,4);
 			$value = $itemdata;
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		break;
 		}
 	break;
@@ -478,7 +509,7 @@ switch($maincat)
 					{
 						$value = false;
 					}
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				break;
 
 				case "DE": //Tone Defeat (AVR 3808)
@@ -492,7 +523,7 @@ switch($maincat)
 					{
 						$value = false;
 					}
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				break;
 				}
 			break;
@@ -508,7 +539,7 @@ switch($maincat)
 				{
 					$value = false;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CI": //Cinema EQ
@@ -522,7 +553,7 @@ switch($maincat)
 				{
 					$value = false;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "RO": //Room EQ Mode
@@ -530,7 +561,7 @@ switch($maincat)
 				$vtype = 3;
 				$itemdata=substr($data,10);
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DC": //Dynamic Compressor
@@ -552,7 +583,7 @@ switch($maincat)
 				{
 					$value = 3;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "PA": //Verteilung Front-Signal auf Surround-Kanäle
@@ -566,7 +597,7 @@ switch($maincat)
 				{
 					$value = false;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DI": //Balance zwischen Front und Surround-LS
@@ -574,7 +605,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata=substr($data, 6, 2);
 				$value = (int)$itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CE": //Center-Signal Verteilung auf FrontR/L
@@ -582,7 +613,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata=substr($data, 6, 2);
 				$value = (int)$itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SB": //Surround-Back ON/OFF
@@ -620,7 +651,7 @@ switch($maincat)
 				{
 					$value = 7;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "MO": //Surround-Spielmodi für Surround-Mode
@@ -638,7 +669,7 @@ switch($maincat)
 				{
 					$value = 2;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "MU": //MultEQ XT mode
@@ -664,7 +695,7 @@ switch($maincat)
 				{
 					$value = 4;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DY": //Sound
@@ -682,7 +713,7 @@ switch($maincat)
 						{
 							$value = false;
 						}
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "NV": //Surround-Spielmodi für Surround-Mode
@@ -704,7 +735,7 @@ switch($maincat)
 						{
 							$value = 3;
 						}
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 				}
 			break;
@@ -732,7 +763,7 @@ switch($maincat)
 				{
 					$value = 4;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "LF": //LFE Pegel
@@ -740,7 +771,7 @@ switch($maincat)
 				$vtype = 2;
 				$itemdata=substr($data, 6, 2);
 				$value = (0 - intval($itemdata));
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			 break;
 
 			case "BA": //Bass Pegel
@@ -748,7 +779,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata=substr($data, 6, 2);
 				$value = (intval($itemdata)) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			 break;
 
 			case "TR": //Treble Pegel
@@ -756,7 +787,7 @@ switch($maincat)
 				$vtype = 2;
 				$itemdata=substr($data,6, 2);
 				$value = (intval($itemdata)) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DE": //Audio Delay 0-200ms
@@ -764,7 +795,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata=substr($data,8, 3);
 				$value = intval($itemdata);
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "RS": //Tone Defeat/Tone Control
@@ -790,7 +821,7 @@ switch($maincat)
 						{
 							$value = 3;
 						}
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "Z": //RoomSize
@@ -820,7 +851,7 @@ switch($maincat)
 						{
 							$value = 5;
 						}
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 				}
 			break;
@@ -841,7 +872,7 @@ switch($maincat)
 						$vtype = 3;
 						$itemdata = rtrim(substr($data, 4, 95));
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E1": //Zeile 2
@@ -856,7 +887,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E2": //Zeile 3
@@ -871,7 +902,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E3": // Zeile 4
@@ -886,7 +917,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E4": // Zeile 5
@@ -901,7 +932,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E5": // Zeile 6
@@ -916,7 +947,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E6": // Zeile 7
@@ -931,7 +962,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E7": // Zeile 8
@@ -946,7 +977,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "E8": // Zeile 9
@@ -954,7 +985,7 @@ switch($maincat)
 						$vtype = 3;
 						$itemdata = rtrim(substr($data, 4, 95));
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 						$currentPosition = $itemdata = substr($data, 7, 1);
 					break;
 				}
@@ -969,7 +1000,7 @@ switch($maincat)
 						$vtype = 3;
 						$itemdata = rtrim(substr($data, 4, 95));
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A1": //Zeile 2
@@ -984,7 +1015,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A2": //Zeile 3
@@ -999,7 +1030,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A3": // Zeile 4
@@ -1014,7 +1045,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A4": // Zeile 5
@@ -1029,7 +1060,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A5": // Zeile 6
@@ -1044,7 +1075,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A6": // Zeile 7
@@ -1059,7 +1090,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A7": // Zeile 8
@@ -1074,7 +1105,7 @@ switch($maincat)
 							$itemdata = "==> ".rtrim(substr($data, 4, 95));
 						}
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "A8": // Zeile 9
@@ -1082,7 +1113,7 @@ switch($maincat)
 						$vtype = 3;
 						$itemdata = $ProfilValue = rtrim(substr($data, 5, 95));
 						$value = $itemdata;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 						$currentPosition = $itemdata = substr($data, 7, 1);
 					break;
 				}
@@ -1098,7 +1129,7 @@ switch($maincat)
 				$ProfilValue = rtrim(substr($data, 5, 100));
             if (strlen($ProfilValue) > 0)
             {
-					DenonSetValue($item, $value, $vtype); // Variablenwert setzen
+					DenonSetValue($item, $value, $vtype, $id); // Variablenwert setzen
 					DENON_SetProfileValue($item, $ProfilPosition, $ProfilValue); // Werte ins Variablenprofil schreiben (nur wenn Preset mit Werten belegt)
 				}
 			break;
@@ -1115,7 +1146,7 @@ switch($maincat)
 				$itemdata = substr($data,5,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "FR":
@@ -1124,7 +1155,7 @@ switch($maincat)
 				$itemdata = substr($data,5,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "C ":
@@ -1133,7 +1164,7 @@ switch($maincat)
 				$itemdata=substr($data,4,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SW":
@@ -1142,7 +1173,7 @@ switch($maincat)
 				$itemdata=substr($data,5,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SL":
@@ -1151,7 +1182,7 @@ switch($maincat)
 				$itemdata=substr($data,5,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SR":
@@ -1160,7 +1191,7 @@ switch($maincat)
 				$itemdata=substr($data,5,3);
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SB":
@@ -1173,7 +1204,7 @@ switch($maincat)
 					echo "itemdata $itemdata /n";
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 					echo "SBL Wert = $value /n";
 				}
 				elseif ($case == "SBR")
@@ -1183,7 +1214,7 @@ switch($maincat)
 					$itemdata = substr($data,6,3);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 				elseif ($case == "SB ")
 				{
@@ -1192,7 +1223,7 @@ switch($maincat)
 					$itemdata = substr($data,5,2);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 			break;
 
@@ -1205,7 +1236,7 @@ switch($maincat)
 					$itemdata=substr($data,6,3);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 				elseif ($case == "FHR")
 				{
@@ -1214,7 +1245,7 @@ switch($maincat)
 					$itemdata=substr($data,6,3);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 			break;
 
@@ -1227,7 +1258,7 @@ switch($maincat)
 					$itemdata=substr($data,6,3);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 				elseif ($case == "FWR")
 				{
@@ -1236,7 +1267,7 @@ switch($maincat)
 					$itemdata=substr($data,6,3);
 					$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 					$value = (intval($itemdata)/10) -50;
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 				}
 			break;
 		}
@@ -1260,7 +1291,7 @@ switch($maincat)
 				$value = (intval($itemdata)) -80;
 
 			}
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		}
 
 		switch ($zonecat)
@@ -1270,7 +1301,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 0;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CD": //Source Input Z3
@@ -1278,7 +1309,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 1;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "TUNER": //Source Input Z3
@@ -1286,7 +1317,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 2;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DVD": //Source Input Z3
@@ -1294,7 +1325,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 3;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "BD": //Source Input Z3
@@ -1302,7 +1333,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 4;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "TV": //Source Input Z3
@@ -1310,7 +1341,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 5;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SAT/CBL": //Source Input Z3
@@ -1318,7 +1349,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 6;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DVR": //Source Input Z3
@@ -1326,7 +1357,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 7;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "GAME": //Source Input Z3
@@ -1334,7 +1365,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 8;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "V.AUX": //Source Input Z3
@@ -1342,7 +1373,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 9;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DOCK": //Source Input Z3
@@ -1350,7 +1381,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 10;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "IPOD": //Source Input Z3 (AVR 3809)
@@ -1358,7 +1389,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 11;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "NET/USB":
@@ -1366,7 +1397,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 12;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "NAPSTER":
@@ -1374,7 +1405,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 13;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "LASTFM":
@@ -1382,7 +1413,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 14;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "FLICKR":
@@ -1390,7 +1421,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 15;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "FAVORITES":
@@ -1398,7 +1429,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 16;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "IRADIO":
@@ -1406,7 +1437,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 17;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SERVER":
@@ -1414,7 +1445,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 18;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "USP/IPOD":
@@ -1422,7 +1453,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 19;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "OFF": //Zone 2 Power
@@ -1430,7 +1461,7 @@ switch($maincat)
 				$vtype = 0;
 				$itemdata= false;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "ON": //Zone 3 Power
@@ -1438,7 +1469,7 @@ switch($maincat)
 				$vtype = 0;
 				$itemdata= true;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 		}
 
@@ -1457,7 +1488,7 @@ switch($maincat)
 				{
 					$value = true;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CS": //Zone 2 Channel Setting MONO/STEREO
@@ -1471,7 +1502,7 @@ switch($maincat)
 				{
 					$value = 1;
 				}
-			     DenonSetValue($item, $value, $vtype);
+			     DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CV": //Zone 2 Channel Volume
@@ -1483,7 +1514,7 @@ switch($maincat)
 						$vtype = 1;
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "FR":
@@ -1491,7 +1522,7 @@ switch($maincat)
 						$vtype = 1;
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 				}
 			break;
@@ -1524,7 +1555,7 @@ switch($maincat)
 						$value = 5;
 					}
 					$value = intval($value);
-			     DenonSetValue($item, $value, $vtype);
+			     DenonSetValue($item, $value, $vtype, $id);
 			break;
 		}
 	break;
@@ -1545,7 +1576,7 @@ switch($maincat)
 			{
 				$value = (intval($itemdata)) -80;
 			}
-			DenonSetValue($item, $value, $vtype);
+			DenonSetValue($item, $value, $vtype, $id);
 		}
 
 		switch ($zonecat)
@@ -1555,7 +1586,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 0;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CD": //Source Input Z3
@@ -1563,7 +1594,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 1;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "TUNER": //Source Input Z3
@@ -1571,7 +1602,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 2;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DVD": //Source Input Z3
@@ -1579,7 +1610,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 3;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "HDP": //Source Input Z3
@@ -1587,7 +1618,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 4;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "TV/CBL": //Source Input Z3
@@ -1595,7 +1626,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 5;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "SAT": //Source Input Z3
@@ -1603,7 +1634,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 6;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "VCR": //Source Input Z3
@@ -1611,7 +1642,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 7;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "DVR": //Source Input Z3
@@ -1619,7 +1650,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 8;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "V.AUX": //Source Input Z3
@@ -1627,7 +1658,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 9;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "NET/USB": //Source Input Z3
@@ -1635,7 +1666,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 10;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "USB": //Source Input Z3 (AVR 3809)
@@ -1643,7 +1674,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 11;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "USB/IPOD": //Source Input Z3 (AVR 3311)
@@ -1651,7 +1682,7 @@ switch($maincat)
 				$vtype = 1;
 				$itemdata= 13;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "OFF": //Zone 3 Power
@@ -1659,7 +1690,7 @@ switch($maincat)
 				$vtype = 0;
 				$itemdata= false;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "ON": //Zone 3 Power
@@ -1667,7 +1698,7 @@ switch($maincat)
 				$vtype = 0;
 				$itemdata= true;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 		}
 
@@ -1685,7 +1716,7 @@ switch($maincat)
 				{
 					$value = true;
 				}
-				DenonSetValue($item, $value, $vtype);
+				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CS": //Zone 3 Channel Setting MONO/STEREO
@@ -1699,7 +1730,7 @@ switch($maincat)
 					{
 						$value = 1;
 					}
-				 DenonSetValue($item, $value, $vtype);
+				 DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "CV": //Zone 3 Channel Volume
@@ -1711,7 +1742,7 @@ switch($maincat)
 						$vtype = 1;
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 
 					case "FR":
@@ -1719,7 +1750,7 @@ switch($maincat)
 						$vtype = 1;
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
-						DenonSetValue($item, $value, $vtype);
+						DenonSetValue($item, $value, $vtype, $id);
 					break;
 				}
 			break;
@@ -1752,7 +1783,7 @@ switch($maincat)
 						$value = 5;
 					}
 					$value = intval($value);
-					DenonSetValue($item, $value, $vtype);
+					DenonSetValue($item, $value, $vtype, $id);
 			break;
 		}
 	break;
