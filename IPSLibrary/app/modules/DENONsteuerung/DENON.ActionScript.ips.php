@@ -12,6 +12,13 @@ Funktionen:
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 
+IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
+/****************************************************************/
+
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
 	{
@@ -21,10 +28,9 @@ if (!isset($moduleManager))
 	$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
 	}
 
-IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+$scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -44,17 +50,91 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 
+$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+
+echo "\n";
+echo "Category App           ID: ".$CategoryIdApp."\n";
+echo "Category Data          ID: ".$CategoryIdData."\n";
+echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
+
+$object_data= new ipsobject($CategoryIdData);
+$object_app= new ipsobject($CategoryIdApp);
+
+$NachrichtenID = $object_data->osearch("Nachricht");
+$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+
+if (isset($NachrichtenScriptID))
+	{
+	$object3= new ipsobject($NachrichtenID);
+	$NachrichtenInputID=$object3->osearch("Input");
+	//$object3->oprint();
+	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\nNachrichten      Input ID: ".$NachrichtenInputID."\n";
+	/* logging in einem File und in einem String am Webfront */
+	$log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
+	}
+else break;
+
+/****************************************************************/
+
+if ($_IPS['SENDER'] == "Execute")
+	{
+	echo "Script wurde direkt aufgerufen.\n";
+	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
+	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
+	break;
+	}
+
+if ($_IPS['SENDER'] == "WebFront")
+	{
+	echo "Script wurde über Webfront aufgerufen.\n";
+	$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$_IPS['Variable']." aufgerufen");
+	$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$_IPS['Variable']." aufgerufen");
+	}
+	
+$oid=$_IPS['Variable'];
+$name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
+
+$configuration=Denon_Configuration();
+
+foreach ($configuration as $config)
+	{
+	if ($config['NAME']==$name)
+	   {
+	   $instanz=$config['INSTANZ'];
+	   }
+	//print_r($config);
+	}
+if (isset($id)==false)
+	{
+	$log_Denon->LogMessage("Instanz wurde nicht gefunden");
+	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
+	break;
+	}
+
+
+if (IPS_GetObjectIDByName($instanz." Client Socket", 0) >0)
+	{
+	$id = IPS_GetObjectIDByName($instanz." Client Socket 2", 0);
+	}
+else
+	{
+	echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->
+		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
+	$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
+	$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
+	}
+
 /* include DENON.Functions
   $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
 */
 if (IPS_GetObjectIDByName("DENON.Functions", $CategoryIdApp) >0)
-{
+	{
 	include "DENON.Functions.ips.php";
-}
+	}
 else
-{
+	{
 	echo "Script DENON.Functions kann nicht gefunden werden!";
-}
+	}
 
 //if ($IPS_SENDER == "WebFront")
 //{
