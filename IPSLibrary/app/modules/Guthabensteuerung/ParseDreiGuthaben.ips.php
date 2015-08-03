@@ -34,7 +34,8 @@
 
 if ($_IPS['SENDER']=="Execute")
 	   {
-	   echo $ergebnis;
+		echo "Execute, Script wird ausgeführt:\n\n";
+		echo $ergebnis;
 	   $ergebnis1="";
 		foreach ($GuthabenConfig as $TelNummer)
 			{
@@ -45,8 +46,11 @@ if ($_IPS['SENDER']=="Execute")
 			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
 			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
 			$ergebnis1.=$TelNummer["NUMMER"]."  ".GetValue($userID)."  ".GetValue($dateID)." ".GetValue($udateID)."\n";
+			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
 			}
-	   echo "\n\n".$ergebnis1;
+		echo "\nAusgabe der letzten Aenderungen der ausgelesenen Files : \n";
+		echo "\n".$ergebnis1;
+		//print_r($GuthabenConfig);
 
 		echo "\n\nHistorie der Guthaben und verbrauchten Datenvolumen.\n";
 		//$variableID=get_raincounterID();
@@ -97,6 +101,8 @@ function parsetxtfile($verzeichnis, $nummer)
 		{
    	while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
 			{
+			/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+			
       	//echo $buffer;
       	if(preg_match('/Willkommen/i',$buffer))
 	   		{
@@ -140,6 +146,14 @@ function parsetxtfile($verzeichnis, $nummer)
 			if (preg_match('/MB frei/i',$buffer))
 	   		{
 				$result4f=trim(substr($buffer,$startdatenguthaben,200));
+	   		//echo "*********frei : ".$result4f."\n<br>";
+				}
+				
+			if (preg_match('/unlimitiert/i',$buffer))
+	   		{
+	   		$result4g="99999 MB";
+				$result4f="99999 MB frei";
+				$result4v=" 0 MB verbraucht";
 	   		//echo "*********frei : ".$result4f."\n<br>";
 				}
 
@@ -189,13 +203,13 @@ function parsetxtfile($verzeichnis, $nummer)
  		   {
  		   SetValue($phone_Cost_ID, GetValue($phone_Cost_ID)+$old_cost-$new_cost);
  		   SetValue($phone_nCost_ID, GetValue($phone_nCost_ID)+$old_cost-$new_cost);
- 		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
+ 		   SetValue($phone_unchangedDate_ID,date("d.m.Y"));
  		   }
  		 if ($new_cost > $old_cost)
  		   {
  		   SetValue($phone_Load_ID, GetValue($phone_Cost_ID)-$old_cost+$new_cost);
  		   SetValue($phone_nLoad_ID, GetValue($phone_nLoad_ID)-$old_cost+$new_cost);
- 		   SetValue($phone_unchangedDate_ID,date("m.d.Y"));
+ 		   SetValue($phone_unchangedDate_ID,date("d.m.Y"));
  		   }
   		 SetValue($phone_Bonus_ID,$result5);
 
