@@ -24,7 +24,7 @@ if (!isset($moduleManager))
 	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+	//echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
 	}
 
@@ -52,11 +52,6 @@ $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdA
 
 $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
-echo "\n";
-echo "Category App           ID: ".$CategoryIdApp."\n";
-echo "Category Data          ID: ".$CategoryIdData."\n";
-echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
-
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
 
@@ -68,7 +63,6 @@ if (isset($NachrichtenScriptID))
 	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
-	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\nNachrichten      Input ID: ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
 	$log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
 	}
@@ -79,19 +73,19 @@ else break;
 if ($_IPS['SENDER'] == "Execute")
 	{
 	echo "Script wurde direkt aufgerufen.\n";
+	echo "\n";
+	echo "Category App           ID: ".$CategoryIdApp."\n";
+	echo "Category Data          ID: ".$CategoryIdData."\n";
+	echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
+	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\n";
+	echo "Nachrichten      Input ID: ".$NachrichtenInputID."\n\n";
+
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
 	break;
 	}
 
-if ($_IPS['SENDER'] == "WebFront")
-	{
-	echo "Script wurde über Webfront aufgerufen.\n";
-	$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$_IPS['Variable']." aufgerufen");
-	$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$_IPS['Variable']." aufgerufen");
-	}
-	
-$oid=$_IPS['Variable'];
+$oid=$_IPS['VARIABLE'];
 $name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
 
 $configuration=Denon_Configuration();
@@ -104,22 +98,30 @@ foreach ($configuration as $config)
 	   }
 	//print_r($config);
 	}
-if (isset($id)==false)
+
+if ($_IPS['SENDER'] == "WebFront")
+	{
+	//echo "Script wurde über Webfront aufgerufen.\n";
+	$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
+	$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$oid." aufgerufen.");
+	}
+
+if (isset($instanz)==false)
 	{
 	$log_Denon->LogMessage("Instanz wurde nicht gefunden");
 	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
 	break;
 	}
 
-
 if (IPS_GetObjectIDByName($instanz." Client Socket", 0) >0)
 	{
-	$id = IPS_GetObjectIDByName($instanz." Client Socket 2", 0);
+	$id = IPS_GetObjectIDByName($instanz." Client Socket", 0);
+	$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
+	$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
 	}
 else
 	{
-	echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->
-		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
+	//echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
 	$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
 	$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
 	}

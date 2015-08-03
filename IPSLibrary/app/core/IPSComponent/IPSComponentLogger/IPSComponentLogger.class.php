@@ -120,15 +120,15 @@ class Logging
 	
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 	   {
-	   echo "Logfile Construct\n";
+	   //echo "Logfile Construct\n";
 	   $this->log_File=$logfile;
 	   $this->nachrichteninput_Id=$nachrichteninput_Id;
-   	echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
+   	//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
 		//echo "Init ".get_class($this)." : ";
 		//var_dump($this);
 		if (!file_exists($this->log_File))
 			{
-			echo "Create new file\n";
+			//echo "Create new file\n";
       	$handle3=fopen($this->log_File, "a");
 		   fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
 	   	fclose($handle3);
@@ -169,7 +169,7 @@ class Logging
 		{
 		if ($this->nachrichteninput_Id != "Ohne")
 		   {
-			echo "Nachrichtenverlauf auf  ".$this->nachrichteninput_Id."   \n";
+			//echo "Nachrichtenverlauf auf  ".$this->nachrichteninput_Id."   \n";
 			SetValue($this->zeile16,GetValue($this->zeile15));
 			SetValue($this->zeile15,GetValue($this->zeile14));
 			SetValue($this->zeile14,GetValue($this->zeile13));
