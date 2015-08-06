@@ -22,48 +22,51 @@ Funktionen:
 
 // ---------------------- Variablen-Management ----------------------------------
 
-function DenonSetValue($item, $value, $vtype, $id)
+function DenonSetValue($item, $value, $vtype, $id, $webfrontID=0)
 {
 	global $CategoryIdData,$CategoryIdApp;
 	global $WFC10_Path,$WFC10User_Path,$Mobile_Path,$Retro_Path;
 	
-	$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-	// abhängig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID für Variable und Link ermitteln
-	//$DENON_ID = IPS_GetCategoryIDByName("DENON", 0);
-   $DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
-	$praefix =substr($item, 0, 5);
-	if ($praefix == "Zone2") // wenn Präfix "Zone2"
-	{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $VAR_Parent_ID);
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1a: $VAR_Parent_ID";
-	}
-	elseif ($praefix == "Zone3")// wenn Präfix "Zone3"
-	{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $VAR_Parent_ID);
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
-	}
-	elseif ($praefix == "Displ")// wenn Präfix "Zone3"
-	{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Display", $VAR_Parent_ID);
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Display", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
-	}
-	else // wenn Präfix nicht "Zone2", "Zone3" oder "Display"
-	{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1c: $VAR_Parent_ID";
-	}
+	if ($webfrontID==0)
+	   {
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		// abhängig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID für Variable und Link ermitteln
+		//$DENON_ID = IPS_GetCategoryIDByName("DENON", 0);
+   	$DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
+		$praefix =substr($item, 0, 5);
+		if ($praefix == "Zone2") // wenn Präfix "Zone2"
+			{
+	   	$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $LINK_Parent_ID);
+		   //echo "Script DENON VariablenManager 1a: $VAR_Parent_ID";
+			}
+		elseif ($praefix == "Zone3")// wenn Präfix "Zone3"
+			{
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $VAR_Parent_ID);
+	   	$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $LINK_Parent_ID);
+		   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
+			}
+		elseif ($praefix == "Displ")// wenn Präfix "Zone3"
+			{
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		   $VAR_Parent_ID = IPS_GetInstanceIDByName("Display", $VAR_Parent_ID);
+	   	$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Display", $LINK_Parent_ID);
+		   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
+			}
+		else // wenn Präfix nicht "Zone2", "Zone3" oder "Display"
+			{
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+	   	//echo "Script DENON VariablenManager 1c: $VAR_Parent_ID";
+			}
+		}
 
 	// Definition div. Parent IDs
 

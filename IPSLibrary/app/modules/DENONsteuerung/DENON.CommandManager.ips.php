@@ -34,9 +34,9 @@ $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 $WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
 $WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+$WFC10User_Path       = $moduleManager->GetConfigValue('Path', 'WFC10User');
 
-$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
+$Mobile_Enabled       = $moduleManager->GetConfigValue('Enabled', 'Mobile');
 $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 
 $Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
