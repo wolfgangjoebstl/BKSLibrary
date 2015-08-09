@@ -75,8 +75,15 @@ foreach ($configuration as $config)
 	$DisplayRefresh_EventID = IPS_GetObjectIDByName("DENON.DisplayRefreshTimer", $DENON_DisplayRefresh_ID);
 
 	// ermitteln der DENON Quickselct Variablen-ID
-	$Denon_Quickselect_ID = IPS_GetObjectIDByName("QuickSelect", $DENON_MainZone_ID);
-	$Denon_Quickselect_val = getValueInteger($Denon_Quickselect_ID);
+	$Denon_Quickselect_ID = @IPS_GetObjectIDByName("QuickSelect", $DENON_MainZone_ID);
+	if ($Denon_Quickselect_ID>0)
+	   {
+      $Denon_Quickselect_val = getValueInteger($Denon_Quickselect_ID);
+		}
+	else
+	   {
+	   $Denon_Quickselect_val = 1;
+	   }
 
 	if (($Denon_Power_val == true) && ($Denon_Quickselect_val == 1))
 		{
