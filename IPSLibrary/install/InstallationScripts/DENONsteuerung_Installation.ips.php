@@ -94,6 +94,7 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-DENONsteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	/* werden automatisch angelegt
 	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
 	$zeile2 = CreateVariable("Nachricht_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
 	$zeile3 = CreateVariable("Nachricht_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
@@ -110,7 +111,7 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$zeile14 = CreateVariable("Nachricht_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
 	$zeile15 = CreateVariable("Nachricht_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
 	$zeile16 = CreateVariable("Nachricht_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
-
+	*/
 
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 
@@ -271,6 +272,8 @@ foreach ($configuration as $config)
 		}
 
 	echo "Pfad für Webfront :".$WFC10_Path." \n";
+
+
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -353,18 +356,111 @@ foreach ($configuration as $config)
 		{
 		echo "\nWebportal User installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+
+		// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
+		$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
+		if ($DENON_WFE_ID == false)
+			{
+			$DENON_WFE_ID = IPS_CreateCategory();
+			IPS_SetName($DENON_WFE_ID, $config['NAME']);
+			IPS_SetInfo($DENON_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_SetParent($DENON_WFE_ID, $categoryId_WebFront);
+			echo "Kategorie DENON Webfront #$DENON_WFE_ID angelegt\n";
+			}
+
+		// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront"
+		// anlegen wenn nicht vorhanden
+		$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
+		if ($DENON_MainZone_ID == false)
+			{
+			$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
+			IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Main_Instance_ID);
+			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
+			}
+
+		$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_WFE_ID);
+		if ($DENON_Zone2_ID == false)
+			{
+			$DENON_Zone2_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Zone2_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Zone2_ID, "Zone 2");
+			IPS_SetInfo($DENON_Zone2_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Zone2_ID);
+			echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON Webfront angelegt\n";
+			}
+
+		$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_WFE_ID);
+		if ($DENON_Zone3_ID == false)
+			{
+			$DENON_Zone3_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Zone3_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Zone3_ID, "Zone 3");
+			IPS_SetInfo($DENON_Zone3_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Zone3_ID);
+			echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON Webfront angelegt\n";
+			}
 		}
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+
+		// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
+		$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
+		if ($DENON_WFE_ID == false)
+			{
+			$DENON_WFE_ID = IPS_CreateCategory();
+			IPS_SetName($DENON_WFE_ID, $config['NAME']);
+			IPS_SetInfo($DENON_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_SetParent($DENON_WFE_ID, $categoryId_WebFront);
+			echo "Kategorie DENON Webfront #$DENON_WFE_ID angelegt\n";
+			}
+
+		// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront"
+		// anlegen wenn nicht vorhanden
+		$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
+		if ($DENON_MainZone_ID == false)
+			{
+			$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
+			IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Main_Instance_ID);
+			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
+			}
 		}
 
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
+		$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
+		if ($DENON_WFE_ID == false)
+			{
+			$DENON_WFE_ID = IPS_CreateCategory();
+			IPS_SetName($DENON_WFE_ID, $config['NAME']);
+			IPS_SetInfo($DENON_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_SetParent($DENON_WFE_ID, $categoryId_WebFront);
+			echo "Kategorie DENON Webfront #$DENON_WFE_ID angelegt\n";
+			}
+
+		// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront"
+		// anlegen wenn nicht vorhanden
+		$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
+		if ($DENON_MainZone_ID == false)
+			{
+			$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
+			IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_Main_Instance_ID);
+			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
+			}
 		}
 
 	/***************************************************************************************/

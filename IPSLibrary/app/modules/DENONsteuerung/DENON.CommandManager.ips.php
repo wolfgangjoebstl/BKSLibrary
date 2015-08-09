@@ -144,6 +144,9 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
+				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
+				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
+				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -521,7 +524,6 @@ else
 					   }
 					$item = "TunerFrequency";
 					$vtype = 3;  /* String */
-					$itemdata=substr($data,2);
 					$value = $itemdata;
 					}
 				else

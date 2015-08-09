@@ -72,6 +72,10 @@ else break;
 
 if ($_IPS['SENDER'] == "Execute")
 	{
+
+	$configuration=Denon_Configuration();
+	$display_variables=Denon_WebfrontConfig();
+
 	echo "Script wurde direkt aufgerufen.\n";
 	echo "\n";
 	echo "Category App           ID: ".$CategoryIdApp."\n";
@@ -79,24 +83,79 @@ if ($_IPS['SENDER'] == "Execute")
 	if ($WFC10_Enabled==true)
 	   {
 		echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
+		foreach ($configuration as $config)
+			{
+	   	$id=$config['NAME'];
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+			echo "  Mainzone Data        ID: ".$VAR_Parent_ID." Denongeraet: ".$id."\n";
+			echo "  Mainzone Link        ID: ".$LINK_Parent_ID." Denongeraet: ".$id."\n";
+			}
+		print_r($display_variables["Administrator"]);
 		}
 	if ($WFC10User_Enabled==true)
 	   {
 		echo "Webfront User          ID: ".$categoryId_WebFrontUser."     ".$WFC10User_Path."\n";
+		foreach ($configuration as $config)
+			{
+	   	$id=$config['NAME'];
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFrontUser);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+			echo "  Mainzone Data        ID: ".$VAR_Parent_ID." Denongeraet: ".$id."\n";
+			echo "  Mainzone Link        ID: ".$LINK_Parent_ID." Denongeraet: ".$id."\n";
+			}
+		$display=$display_variables["User"];
+		foreach ($display as $variable)
+		   {
+		   echo "    Link für Variable ".$variable."\n";
+		   }
 		}
 	if ($Mobile_Enabled==true)
 		{
 		echo "Webfront Mobile        ID: ".$categoryId_WebFrontMobile."     ".$Mobile_Path."\n";
+		foreach ($configuration as $config)
+			{
+	   	$id=$config['NAME'];
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFrontMobile);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+			echo "  Mainzone Data        ID: ".$VAR_Parent_ID." Denongeraet: ".$id."\n";
+			echo "  Mainzone Link        ID: ".$LINK_Parent_ID." Denongeraet: ".$id."\n";
+			}
 		}
 	if ($Retro_Enabled==true)
 		{
 		echo "Webfront Retro         ID: ".$categoryId_WebFrontRetro."     ".$Retro_Path."\n";
+		foreach ($configuration as $config)
+			{
+	   	$id=$config['NAME'];
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFrontRetro);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+			echo "  Mainzone Data        ID: ".$VAR_Parent_ID." Denongeraet: ".$id."\n";
+			echo "  Mainzone Link        ID: ".$LINK_Parent_ID." Denongeraet: ".$id."\n";
+			}
 		}
 	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\n";
 	echo "Nachrichten      Input ID: ".$NachrichtenInputID."\n\n";
 
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
+
+
+
+
+
+
+
+
+
 	}
 
 
