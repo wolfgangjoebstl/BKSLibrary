@@ -126,7 +126,8 @@ else
 
 
 		  */
-	
+
+			/*---------------------------------------------------------------------------*/
 			case "PW": //MainPower
 				$item = "Power";
 				$vtype = 0;
@@ -145,6 +146,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "MV": //Mastervolume
 				if (substr($data,2,3) =="MAX")
 					{
@@ -167,6 +169,7 @@ else
 					}
 			 	break;
 
+			/*---------------------------------------------------------------------------*/
 			case "MU": //MainMute
 				$item = "MainMute";
 				$vtype = 0;
@@ -186,6 +189,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "ZM": //MainZone
 				$item = "MainZonePower";
 				$vtype = 0;
@@ -204,6 +208,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "SI": //Source Input
 				$item = "InputSource";
 				$vtype = 1;
@@ -303,6 +308,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "SV": //Video Select
 				$item = "VideoSelect";
 				$vtype = 1;
@@ -353,6 +359,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "MS": // Surround Mode und Quickselect
 				if (substr($data,0,7) == "MSQUICK")
 					{
@@ -438,6 +445,7 @@ else
 					}
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "DC": //Digital Input Mode
 				$item = "DigitalInputMode";
 				$vtype = 1;
@@ -460,6 +468,7 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
+			/*---------------------------------------------------------------------------*/
 			case "SD": //Input Mode AUTO/HDMI/DIGITALANALOG/ARC/NO
 				$item = "InputMode";
 				$vtype = 1;
@@ -486,65 +495,96 @@ else
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
-	case "SR": //Record Selection
-		$item = "RecordSelection";
-		$vtype = 1;
-		$itemdata=substr($data,2);
-		$value = $itemdata;
-		DenonSetValue($item, $value, $vtype, $id);
-	break;
-
-	case "SL": //Main Zone Sleep
-		$item = "Sleep";
-		$vtype = 1;
-		if ($data == "SLPOFF")
-			{
-			$itemdata = 0;
-			}
-		else
-			{
-			$itemdata = substr($data,3,3);
-			}
-		$value = intval($itemdata);
-		DenonSetValue($item, $value, $vtype, $id);
-	break;
-
-	case "VS": //Videosignal
-		$vssub=substr($data,2,2);
-		switch($vssub)
-			{
-			case "MO": //HDMI Monitor
-				$item = "HDMIMonitor";
-				$vtype = 3;
-				$itemdata=substr($data,5);
+			/*---------------------------------------------------------------------------*/
+			case "SR": //Record Selection
+				$item = "RecordSelection";
+				$vtype = 1;
+				$itemdata=substr($data,2);
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-		break;
+				break;
 
-		case "AS": //Video Aspect
-			$item = "VideoAspect";
-			$vtype = 0;
-			if ($data == "VSASPFUL")
-			{
-				$value = true;
-			}
-			elseif ($data == "VSASPNRM")
-			{
-				$value = false;
-			}
-			DenonSetValue($item, $value, $vtype, $id);
-		break;
+			/*---------------------------------------------------------------------------*/
+			case "TF": //Tuner Frequency
+				$command=substr($data,2,2);
+				if ($command=="AN")
+				   {
+					if (substr($data,4,4)=="NAME")
+						{
+						/* Stationsname */
+						$itemdata=substr($data,8);
+						}
+					else
+					   {
+					   /* Frequenz */
+						$itemdata=substr($data,8);
+					   }
+					$item = "TunerFrequency";
+					$vtype = 3;  /* String */
+					$itemdata=substr($data,2);
+					$value = $itemdata;
+					}
+				else
+				   {
+					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+				   }
+				DenonSetValue($item, $value, $vtype, $id);
+				break;
 
-		case "SC": //Scaler
-			$item = "Scaler";
-			$vtype = 3;
-			$itemdata=substr($data,4);
-			$value = $itemdata;
-			DenonSetValue($item, $value, $vtype, $id);
-		break;
-		}
-	break;
+			/*---------------------------------------------------------------------------*/
+			case "SL": //Main Zone Sleep
+				$item = "Sleep";
+				$vtype = 1;
+				if ($data == "SLPOFF")
+					{
+					$itemdata = 0;
+					}
+				else
+					{
+					$itemdata = substr($data,3,3);
+					}
+				$value = intval($itemdata);
+				DenonSetValue($item, $value, $vtype, $id);
+			break;
 
+			/*---------------------------------------------------------------------------*/
+			case "VS": //Videosignal
+				$vssub=substr($data,2,2);
+				switch($vssub)
+					{
+					case "MO": //HDMI Monitor
+						$item = "HDMIMonitor";
+						$vtype = 3;
+						$itemdata=substr($data,5);
+						$value = $itemdata;
+						DenonSetValue($item, $value, $vtype, $id);
+						break;
+
+					case "AS": //Video Aspect
+						$item = "VideoAspect";
+						$vtype = 0;
+						if ($data == "VSASPFUL")
+							{
+							$value = true;
+							}
+						elseif ($data == "VSASPNRM")
+							{
+							$value = false;
+							}
+						DenonSetValue($item, $value, $vtype, $id);
+						break;
+
+					case "SC": //Scaler
+						$item = "Scaler";
+						$vtype = 3;
+						$itemdata=substr($data,4);
+						$value = $itemdata;
+						DenonSetValue($item, $value, $vtype, $id);
+						break;
+					}
+				break;
+
+			/*---------------------------------------------------------------------------*/
 	case "PS": //Sound
 		$pssub=substr($data,2,2);
 		switch($pssub)
