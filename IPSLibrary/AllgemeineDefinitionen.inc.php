@@ -500,6 +500,10 @@ function send_status($aktuell)
 	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
 	$inst_modules.= "Modulname                  Version    Version      Beschreibung\n";
 	$inst_modules.= "                          verfügbar installiert                   \n";
+	
+	$upd_modules = "Module die upgedated werden müssen und die installierte Version :\n\n";
+	$upd_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+
 	foreach ($knownModules as $module=>$data)
 		{
 		$infos   = $moduleManager->GetModuleInfos($module);
@@ -516,6 +520,11 @@ function send_status($aktuell)
 			if ($module=="Sprachsteuerung") $sprachsteuerung=true;
 			if ($module=="RemoteReadWrite") $remotereadwrite=true;
 			if ($module=="RemoteAccess") $remoteaccess=true;
+			if ($infos['CurrentVersion']!=$infos['Version'])
+				{
+				$inst_modules .= "**";
+				$upd_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10)." ".str_pad($infos['CurrentVersion'],10)."   ".$infos['Description']."\n";
+				}
 			}
 		else
 			{
@@ -523,6 +532,7 @@ function send_status($aktuell)
 		   }
 		$inst_modules .=  $infos['Description']."\n";
 		}
+	$inst_modules .= "\n".$upd_modules;
 
 	if ($amis==true)
 	   {

@@ -63,10 +63,11 @@ $configuration=Denon_Configuration();
 foreach ($configuration as $config)
 	{
 	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
-   echo "\nDENON.DisplayRefresh for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\nwww.raketenschnecke.net\n\n";
+   echo "\nDENON.DisplayRefresh for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n(c) Wolfgang Joebstl und www.raketenschnecke.net\n\n";
 	$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 	$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_ID);
 	// Timer Ein bei POWER ein
+	echo "CategoryIDData : ".$DENON_ID." und MainZone ID : ".$DENON_MainZone_ID." .\n";
 	$DENON_Power_ID = IPS_GetObjectIDByName("Power", $DENON_MainZone_ID);
 	$Denon_Power_val = getvalueBoolean($DENON_Power_ID);
 	// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden

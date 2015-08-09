@@ -110,7 +110,7 @@ if (isset($id)==false)
 	break;
 	}
 	
-$log_Denon->LogMessage("Denon Telegramm:".$id."  ".$data);
+$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
 $log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
 
 $maincat= substr($data,0,2); //Eventidentifikation
@@ -121,13 +121,17 @@ switch($maincat)
 		$item = "Power";
 		$vtype = 0;
 		if ($data == "PWON")
-		{
+			{
 			$value = true;
-		}
-		if ($data == "PWSTANDBY")
-		{
+			}
+		elseif ($data == "PWSTANDBY")
+			{
 			$value = false;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
@@ -157,13 +161,18 @@ switch($maincat)
 		$item = "MainMute";
 		$vtype = 0;
 		if ($data == "MUON")
-		{
+			{
 			$value = true;
-		}
-		if ($data == "MUOFF")
-		{
+			}
+		elseif ($data == "MUOFF")
+			{
 			$value = false;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
+
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
@@ -171,13 +180,17 @@ switch($maincat)
 		$item = "MainZonePower";
 		$vtype = 0;
 		if ($data == "ZMON")
-		{
+			{
 			$value = true;
-		}
-		if ($data == "ZMOFF")
-		{
+			}
+		elseif ($data == "ZMOFF")
+			{
 			$value = false;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
@@ -185,85 +198,89 @@ switch($maincat)
 		$item = "InputSource";
 		$vtype = 1;
 		if ($data == "SIPHONO")
-		{
+			{
 			$value = 0;
-		}
+			}
 		elseif ($data == "SICD")
-		{
+			{
 			$value = 1;
-		}
+			}
 		elseif ($data == "SITUNER")
-		{
+			{
 			$value = 2;
-		}
+			}
 		elseif ($data == "SIDVD")
-		{
+			{
 			$value = 3;
-		}
+			}
 		elseif ($data == "SIBD")
-		{
+			{
 			$value = 4;
-		}
+			}
 		elseif ($data == "SITV")
-		{
+			{
 			$value = 5;
-		}
+			}
 		elseif ($data == "SISAT/CBL")
-		{
+			{
 			$value = 6;
-		}
+			}
 		elseif ($data == "SIDVR")
-		{
+			{
 			$value = 7;
-		}
+			}
 		elseif ($data == "SIGAME")
-		{
+			{
 			$value = 8;
-		}
+			}
 		elseif ($data == "SIV.AUX")
-		{
+			{
 			$value = 9;
-		}
+			}
 		elseif ($data == "SIDOCK")
-		{
+			{
 			$value = 10;
-		}
+			}
 		elseif ($data == "SIIPOD")
-		{
+			{
 			$value = 11;
-		}
+			}
 		elseif ($data == "SINET/USB")
-		{
+			{
 			$value = 12;
-		}
+			}
 		elseif ($data == "SINAPSTER")
-		{
+			{
 			$value = 13;
-		}
+			}
 		elseif ($data == "SILASTFM")
-		{
+			{
 			$value = 14;
-		}
+			}
 		elseif ($data == "SIFLICKR")
-		{
+			{
 			$value = 15;
-		}
+			}
 		elseif ($data == "SIFAVORITES")
-		{
+			{
 			$value = 16;
-		}
+			}
 		elseif ($data == "SIIRADIO")
-		{
+			{
 			$value = 17;
-		}
+			}
 		elseif ($data == "SISERVER")
-		{
+			{
 			$value = 18;
-		}
+			}
 		elseif ($data == "SIUSB/IPOD")
-		{
+			{
 			$value = 19;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		$value = intval($value);
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
@@ -272,47 +289,51 @@ switch($maincat)
 		$item = "VideoSelect";
 		$vtype = 1;
 		if ($data == "SVDVD")
-		{
+			{
 			$value = 0;
-		}
+			}
 		elseif ($data == "SVBD")
-		{
+			{
 			$value = 1;
-		}
+			}
 		elseif ($data == "SVTV")
-		{
+			{
 			$value = 2;
-		}
+			}
 		elseif ($data == "SVSAT/CBL")
-		{
+			{
 			$value = 3;
-		}
+			}
 		elseif ($data == "SVDVR")
-		{
+			{
 			$value = 4;
-		}
+			}
 		elseif ($data == "SVGAME")
-		{
+			{
 			$value = 5;
-		}
+			}
 		elseif ($data == "SVV.AUX")
-		{
+			{
 			$value = 6;
-		}
+			}
 		elseif ($data == "SVDOCK")
-		{
+			{
 			$value = 7;
-		}
+			}
 		elseif ($data == "SVSOURCE")
-		{
+			{
 			$value = 8;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
 	case "MS": // Surround Mode und Quickselect
 		if (substr($data,0,7) == "MSQUICK")
-		{
+			{
 			//Quickselect
 			$item = "QuickSelect";
 			$vtype = 1;
@@ -321,72 +342,76 @@ switch($maincat)
 				$value = intval(substr($data,7,1));
 			}
 			DenonSetValue($item, $value, $vtype, $id);
-		}
+			}
 		else
-		{
+			{
 			//Surround Mode
 			$item = "SurroundMode";
 			$vtype = 1;
 			if ($data == "MSDIRECT")
-			{
+				{
 				$value = 0;
-			}
+				}
 			elseif ($data == "MSPURE DIRECT")
-			{
+				{
 				$value = 1;
-			}
+				}
 			elseif ($data == "MSSTEREO")
-			{
+				{
 				$value = 2;
-			}
+				}
 			elseif ($data == "MSSTANDARD")
-			{
+				{
 				$value = 3;
-			}
+				}
 			elseif ($data == "MSDOLBY DIGITAL")
-			{
+				{
 				$value = 4;
-			}
+				}
 			elseif ($data == "MSDTS SURROUND")
-			{
+				{
 				$value = 5;
-			}
+				}
 			elseif ($data == "MSDOLBY PL2X C")
-			{
+				{
 				$value = 6;
-			}
+				}
 			elseif ($data == "MSMCH STEREO")
-			{
+				{
 				$value = 7;
-			}
+				}
 			elseif ($data == "MSROCK ARENA")
-			{
+				{
 				$value = 8;
-			}
+				}
 			elseif ($data == "MSJAZZ CLUB")
-			{
+				{
 				$value = 9;
-			}
+				}
 			elseif ($data == "MSMONO MOVIE")
-			{
+				{
 				$value = 10;
-			}
+				}
 			elseif ($data == "MSMATRIX")
-			{
+				{
 				$value = 11;
-			}
+				}
 			elseif ($data == "MSVIDEO GAME")
-			{
+				{
 				$value = 12;
-			}
+				}
 			elseif ($data == "MSVIRTUAL")
-			{
+				{
 				$value = 13;
-			}
+				}
 			elseif ($data == "MSMULTI CH IN 7.1")
-			{
+				{
 				$value = 14;
-			}
+				}
+			else
+			   {
+				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   	}
 			DenonSetValue($item, $value, $vtype, $id);
 		}
 	break;
@@ -395,17 +420,21 @@ switch($maincat)
 		$item = "DigitalInputMode";
 		$vtype = 1;
 		if ($data == "DCAUTO")
-		{
+			{
 			$value = 0;
-		}
+			}
 		elseif ($data == "DCPCM")
-		{
+			{
 			$value = 1;
-		}
+			}
 		elseif ($data == "DCDTS")
-		{
+			{
 			$value = 2;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
@@ -413,21 +442,25 @@ switch($maincat)
 		$item = "InputMode";
 		$vtype = 1;
 		if ($data == "SDAUTO")
-		{
+			{
 			$value = 0;
-		}
+			}
 		elseif ($data == "SDHDMI")
-		{
+			{
 			$value = 1;
-		}
+			}
 		elseif ($data == "SDDIGITAL")
-		{
+			{
 			$value = 2;
-		}
+			}
 		elseif ($data == "DCANALOG")
-		{
+			{
 			$value = 3;
-		}
+			}
+		else
+		   {
+			$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+		   }
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
 
@@ -443,13 +476,13 @@ switch($maincat)
 		$item = "Sleep";
 		$vtype = 1;
 		if ($data == "SLPOFF")
-		{
+			{
 			$itemdata = 0;
-		}
+			}
 		else
-		{
+			{
 			$itemdata = substr($data,3,3);
-		}
+			}
 		$value = intval($itemdata);
 		DenonSetValue($item, $value, $vtype, $id);
 	break;
@@ -457,13 +490,13 @@ switch($maincat)
 	case "VS": //Videosignal
 		$vssub=substr($data,2,2);
 		switch($vssub)
-		{
-		case "MO": //HDMI Monitor
-			$item = "HDMIMonitor";
-			$vtype = 3;
-			$itemdata=substr($data,5);
-			$value = $itemdata;
-			DenonSetValue($item, $value, $vtype, $id);
+			{
+			case "MO": //HDMI Monitor
+				$item = "HDMIMonitor";
+				$vtype = 3;
+				$itemdata=substr($data,5);
+				$value = $itemdata;
+				DenonSetValue($item, $value, $vtype, $id);
 		break;
 
 		case "AS": //Video Aspect
@@ -493,52 +526,52 @@ switch($maincat)
 	case "PS": //Sound
 		$pssub=substr($data,2,2);
 		switch($pssub)
-		{
+			{
 			case "TO": //Tone Defeat/Tone Control
 				$pssubsub=substr($data,7,2);
 				switch($pssubsub)
-				{
-				case "CT": //Tone Control (AVR 3311)
-					$item = "ToneCTRL";
-					$vtype = 0;
-					if ($data == "PSTONE CTRL ON")
 					{
-						$value = true;
-					}
-					elseif ($data == "PSTONE CTRL OFF")
-					{
-						$value = false;
-					}
-					DenonSetValue($item, $value, $vtype, $id);
-				break;
+					case "CT": //Tone Control (AVR 3311)
+						$item = "ToneCTRL";
+						$vtype = 0;
+						if ($data == "PSTONE CTRL ON")
+							{
+							$value = true;
+							}
+						elseif ($data == "PSTONE CTRL OFF")
+							{
+							$value = false;
+							}
+						DenonSetValue($item, $value, $vtype, $id);
+						break;
 
-				case "DE": //Tone Defeat (AVR 3808)
-					$item = "ToneDefeat";
-					$vtype = 0;
-					if ($data == "PSTONE DEFEAT ON")
-					{
-						$value = true;
+					case "DE": //Tone Defeat (AVR 3808)
+						$item = "ToneDefeat";
+						$vtype = 0;
+						if ($data == "PSTONE DEFEAT ON")
+							{
+							$value = true;
+							}
+						elseif ($data == "PSTONE DEFEAT ON")
+							{
+							$value = false;
+							}
+						DenonSetValue($item, $value, $vtype, $id);
+					break;
 					}
-					elseif ($data == "PSTONE DEFEAT ON")
-					{
-						$value = false;
-					}
-					DenonSetValue($item, $value, $vtype, $id);
 				break;
-				}
-			break;
 
 			case "FH": // Front Height ON/OFF
 				$item = "FrontHeight";
 				$vtype = 0;
 				if ($data == "PSFH:ON")
-				{
+					{
 					$value = true;
-				}
+					}
 				if ($data == "PSFH:OFF")
-				{
+					{
 					$value = false;
-				}
+					}
 				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
@@ -546,13 +579,13 @@ switch($maincat)
 				$item = "CinemaEQ";
 				$vtype = 0;
 				if ($data == "PSCINEMA EQ.ON")
-				{
+					{
 					$value = true;
-				}
+					}
 				if ($data == "PSCINEMA EQ.OFF")
-				{
+					{
 					$value = false;
-				}
+					}
 				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
@@ -568,21 +601,25 @@ switch($maincat)
 				$item = "DynamicCompressor";
 				$vtype = 1;
 				if ($data == "PSDCO OFF")
-				{
+					{
 					$value = 0;
-				}
+					}
 				elseif ($data == "PSDCO LOW")
-				{
+					{
 					$value = 1;
-				}
+					}
 				elseif ($data == "PSDCO MID")
-				{
+					{
 					$value = 2;
-				}
+					}
 				elseif ($data == "PSDCO HIGH")
-				{
+					{
 					$value = 3;
-				}
+					}
+				else
+				   {
+					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+				   }
 				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
@@ -590,13 +627,13 @@ switch($maincat)
 				$item = "Panorama";
 				$vtype = 0;
 				if ($data == "PSPAN ON")
-				{
+					{
 					$value = true;
-				}
+					}
 				elseif ($data == "PSPAN OFF")
-				{
+					{
 					$value = false;
-				}
+					}
 				DenonSetValue($item, $value, $vtype, $id);
 			break;
 
@@ -620,38 +657,42 @@ switch($maincat)
 				$item = "SurroundBackMode";
 				$vtype = 1;
 				if ($data == "PSSB:OFF")
-				{
+					{
 					$value = 0;
-				}
+					}
 				elseif ($data == "PSSB:ON")
-				{
+					{
 					$value = 1;
-				}
+					}
 				elseif ($data == "PSSB:MRTX ON")
-				{
+					{
 					$value = 2;
-				}
+					}
 				elseif ($data == "PSSB:PL2X CINEMA")
-				{
+					{
 					$value = 3;
-				}
+					}
 				elseif ($data == "PSSB:PL2X MUSIC")
-				{
+					{
 					$value = 4;
-				}
+					}
 				elseif ($data == "PSSB:ESDSCRT")
-				{
+					{
 					$value = 5;
-				}
+					}
 				elseif ($data == "PSSB:ESMRTX")
-				{
+					{
 					$value = 6;
-				}
+					}
 				elseif ($data == "PSSB:DSCRT ON")
-				{
+					{
 					$value = 7;
-				}
-				DenonSetValue($item, $value, $vtype, $id);
+					}
+				else
+				   {
+					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+				   }
+					DenonSetValue($item, $value, $vtype, $id);
 			break;
 
 			case "MO": //Surround-Spielmodi für Surround-Mode
