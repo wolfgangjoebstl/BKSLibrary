@@ -232,96 +232,97 @@ else
 			/*---------------------------------------------------------------------------*/
 			case "SI": //Source Input
 				$item = "InputSource";
+				$itemdata=substr($data,2);
 				$vtype = 1;
-				if ($data == "SIPHONO")
+				if ($itemdata == "PHONO")
 					{
 					$value = 0;
 					}
-				elseif ($data == "SICD")
+				elseif ($itemdata == "CD")
 					{
 					$value = 1;
 					}
-				elseif ($data == "SITUNER")
+				elseif ($itemdata == "TUNER")
 					{
 					$value = 2;
 					}
-				elseif ($data == "SIDVD")
+				elseif ($itemdata == "DVD")
 					{
 					$value = 3;
 					}
-				elseif ($data == "SIBD")
+				elseif ($itemdata == "BD")
 					{
 					$value = 4;
 					}
-				elseif ($data == "SITV")
+				elseif ($itemdata == "TV")
 					{
 					$value = 5;
 					}
-				elseif ($data == "SISAT/CBL")
+				elseif ($itemdata == "SAT/CBL")
 					{
 					$value = 6;
 					}
-				elseif ($data == "SIDVR")
+				elseif ($itemdata == "DVR")
 					{
 					$value = 7;
 					}
-				elseif ($data == "SIGAME")
+				elseif ($itemdata == "GAME")
 					{
 					$value = 8;
 					}
-				elseif ($data == "SIV.AUX")
+				elseif ($itemdata == "V.AUX")
 					{
 					$value = 9;
 					}
-				elseif ($data == "SIDOCK")
+				elseif ($itemdata == "DOCK")
 					{
 					$value = 10;
 					}
-				elseif ($data == "SIIPOD")
+				elseif ($itemdata == "IPOD")
 					{
 					$value = 11;
 					}
-				elseif ($data == "SINET/USB")
+				elseif ($itemdata == "NET/USB")
 					{
 					$value = 12;
 					}
-				elseif ($data == "SINAPSTER")
+				elseif ($itemdata == "NAPSTER")
 					{
 					$value = 13;
 					}
-				elseif ($data == "SILASTFM")
+				elseif ($itemdata == "LASTFM")
 					{
 					$value = 14;
 					}
-				elseif ($data == "SIFLICKR")
+				elseif ($itemdata == "FLICKR")
 					{
 					$value = 15;
 					}
-				elseif ($data == "SIFAVORITES")
+				elseif ($itemdata == "FAVORITES")
 					{
 					$value = 16;
 					}
-				elseif ($data == "SIIRADIO")
+				elseif ($itemdata == "IRADIO")
 					{
 					$value = 17;
 					}
-				elseif ($data == "SISERVER")
+				elseif ($itemdata == "SERVER")
 					{
 					$value = 18;
 					}
-				elseif ($data == "SIUSB/IPOD")
+				elseif ($itemdata == "USB/IPOD")
 					{
 					$value = 19;
 					}
-				elseif ($data == "SIMPLAY")    /* new one */
+				elseif ($itemdata == "MPLAY")    /* new one */
 					{
 					$value = 20;
 					}
-				elseif ($data == "SINET")    /* new one */
+				elseif ($itemdata == "NET")    /* new one */
 					{
 					$value = 21;
 					}
-				elseif ($data == "SIIPOD DIRECT")
+				elseif ($itemdata == "IPOD DIRECT")
 					{
 					$value = 22;
 					}
@@ -334,51 +335,52 @@ else
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
 			case "SV": //Video Select
 				$item = "VideoSelect";
+				$itemdata=substr($data,2);
 				$vtype = 1;
-				if ($data == "SVDVD")
+				if ($itemdata == "DVD")
 					{
 					$value = 0;
 					}
-				elseif ($data == "SVBD")
+				elseif ($itemdata == "BD")
 					{
 					$value = 1;
 					}
-				elseif ($data == "SVTV")
+				elseif ($itemdata == "TV")
 					{
 					$value = 2;
 					}
-				elseif ($data == "SVSAT/CBL")
+				elseif ($itemdata == "SAT/CBL")
 					{
 					$value = 3;
 					}
-				elseif ($data == "SVDVR")
+				elseif ($itemdata == "DVR")
 					{
 					$value = 4;
 					}
-				elseif ($data == "SVGAME")
+				elseif ($itemdata == "GAME")
 					{
 					$value = 5;
 					}
-				elseif ($data == "SVV.AUX")
+				elseif ($itemdata == "V.AUX")
 					{
 					$value = 6;
 					}
-				elseif ($data == "SVDOCK")
+				elseif ($itemdata == "DOCK")
 					{
 					$value = 7;
 					}
-				elseif ($data == "SVSOURCE")
+				elseif ($itemdata == "SOURCE")
 					{
 					$value = 8;
 					}
-				elseif ($data == "SVOFF") /* new one */
+				elseif ($itemdata == "OFF") /* new one */
 					{
 					$value = 9;
 					}
@@ -387,8 +389,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -397,83 +399,90 @@ else
 					{
 					//Quickselect
 					$item = "QuickSelect";
+					$itemdata=substr($data,7);
 					$vtype = 1;
 					if (substr($data,0,7) == "MSQUICK")
 						{
 						$value = intval(substr($data,7,1));
 						}
 					DenonSetValue($item, $value, $vtype, $id);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 					}
 				else
 					{
-					//Surround Mode
+					//Surround Mode     DIRECT PURE   STEREO STANDARD DOLBY    DTS      MCH    ROCK  JAZZ MONO  MATRIX VIDEO VIRTUAL MULTI
+					//                         DIRECT                 DIGITAL  SURROUND STEREO ARENA CLUB MOVIE        GAME          CH IN 7.1
+					//                                                PL2X C   NEO:6 C
+					//                                                PL2 C
 					$item = "SurroundMode";
+					$itemdata=substr($data,2);
 					$vtype = 1;
-					if ($data == "MSDIRECT")
+					if ($itemdata == "DIRECT")
 						{
 						$value = 0;
 						}
-					elseif ($data == "MSPURE DIRECT")
+					elseif ($itemdata == "PURE DIRECT")
 						{
 						$value = 1;
 						}
-					elseif ($data == "MSSTEREO")
+					elseif ($itemdata == "STEREO")
 						{
 						$value = 2;
 						}
-					elseif ($data == "MSSTANDARD")
+					elseif ($itemdata == "STANDARD")
 						{
 						$value = 3;
 						}
-					elseif ($data == "MSDOLBY DIGITAL")
+					elseif ($itemdata == "DOLBY DIGITAL")
 						{
 						$value = 4;
 						}
-					elseif ($data == "MSDTS SURROUND")
+					elseif ($itemdata == "DTS SURROUND")
 						{
 						$value = 5;
 						}
-					elseif ($data == "MSDOLBY PL2X C")
+					elseif ($itemdata == "DOLBY PL2X C")
 						{
 						$value = 6;
 						}
-					elseif ($data == "MSMCH STEREO")
+					elseif ($itemdata == "MCH STEREO")
 						{
 						$value = 7;
 						}
-					elseif ($data == "MSROCK ARENA")
+					elseif ($itemdata == "ROCK ARENA")
 						{
 						$value = 8;
 						}
-					elseif ($data == "MSJAZZ CLUB")
+					elseif ($itemdata == "JAZZ CLUB")
 						{
 						$value = 9;
 						}
-					elseif ($data == "MSMONO MOVIE")
+					elseif ($itemdata == "MONO MOVIE")
 						{
 						$value = 10;
 						}
-					elseif ($data == "MSMATRIX")
+					elseif ($itemdata == "MATRIX")
 						{
 						$value = 11;
 						}
-					elseif ($data == "MSVIDEO GAME")
+					elseif ($itemdata == "VIDEO GAME")
 						{
 						$value = 12;
 						}
-					elseif ($data == "MSVIRTUAL")
+					elseif ($itemdata == "MSVIRTUAL")
 						{
 						$value = 13;
 						}
-					elseif ($data == "MSMULTI CH IN 7.1")
+					elseif ($itemdata == "MSMULTI CH IN 7.1")
 						{
 						$value = 14;
 						}
-					elseif ($data == "MSDTS NEO:6 C")
+					elseif ($itemdata == "DTS NEO:6 C")
 						{
 						$value = 15;
 						}
-					elseif ($data == "MSDOLBY PL2 C")
+					elseif ($itemdata == "DOLBY PL2 C")
 						{
 						$value = 16;
 						}
@@ -482,24 +491,25 @@ else
 						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   	}
 					DenonSetValue($item, $value, $vtype, $id);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 					}
 				break;
 
 			/*---------------------------------------------------------------------------*/
 			case "DC": //Digital Input Mode
 				$item = "DigitalInputMode";
+				$itemdata=substr($data,2);
 				$vtype = 1;
-				if ($data == "DCAUTO")
+				if ($data == "AUTO")
 					{
 					$value = 0;
 					}
-				elseif ($data == "DCPCM")
+				elseif ($data == "PCM")
 					{
 					$value = 1;
 					}
-				elseif ($data == "DCDTS")
+				elseif ($data == "DTS")
 					{
 					$value = 2;
 					}
@@ -508,31 +518,32 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
 			case "SD": //Input Mode AUTO/HDMI/DIGITALANALOG/ARC/NO
 				$item = "InputMode";
+				$itemdata=substr($data,2);
 				$vtype = 1;
-				if ($data == "SDAUTO")
+				if ($itemdata == "AUTO")
 					{
 					$value = 0;
 					}
-				elseif ($data == "SDHDMI")
+				elseif ($itemdata == "HDMI")
 					{
 					$value = 1;
 					}
-				elseif ($data == "SDDIGITAL")
+				elseif ($itemdata == "DIGITAL")
 					{
 					$value = 2;
 					}
-				elseif ($data == "SDANALOG")
+				elseif ($itemdata == "ANALOG")
 					{
 					$value = 3;
 					}
-				elseif ($data == "NO")
+				elseif ($itemdata == "NO")
 					{
 					$value = 4;
 					}
@@ -541,8 +552,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -576,7 +587,7 @@ else
 					   }
 					else
 					   {
-						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";SSINFAIS;".$data.";".$command);
 					   }
 					}
 				elseif ($command=="SMG")
@@ -586,7 +597,7 @@ else
 					}
 				else
 				   {
-					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";SS;".$data.";".$command);
 				   }
 				$vtype = 3;  /* String */
 				$value = $itemdata;
