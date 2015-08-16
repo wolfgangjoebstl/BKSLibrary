@@ -117,6 +117,13 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	*/
 
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
+$DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
+
+echo "\n";
+echo "Category          App ID:".$CategoryIdApp."\n";
+echo "DENONsteuerung Script ID:".$scriptIdDENONsteuerung."\n";
+echo "DENON Action   Script ID:".$DENON_ActionScript_ID."\n";
+
 
 $configuration=Denon_Configuration();
 foreach ($configuration as $config)

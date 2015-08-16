@@ -501,15 +501,15 @@ else
 				$item = "DigitalInputMode";
 				$itemdata=substr($data,2);
 				$vtype = 1;
-				if ($data == "AUTO")
+				if ($itemdata == "AUTO")
 					{
 					$value = 0;
 					}
-				elseif ($data == "PCM")
+				elseif ($itemdata == "PCM")
 					{
 					$value = 1;
 					}
-				elseif ($data == "DTS")
+				elseif ($itemdata == "DTS")
 					{
 					$value = 2;
 					}
@@ -570,16 +570,16 @@ else
 			/*---------------------------------------------------------------------------*/
 			case "SS": //new Selection, unclear function
 			   /*  Beispiele SSINFAISFSV NON   SSINFAISSIG 02                */
-				$command=substr($data,2,6);
-				if ($command=="INFAIS")
+				$command=substr($data,2,3);
+				if ($command=="INF")
 				   {
-					if (substr($data,6,3)=="FSV")
+					if (substr($data5,6)=="AISFSV")
 						{
 						/* unclear */
 						$item = "SSINFAISFSV";
 						$itemdata=substr($data,10);
 						}
-					elseif (substr($data,6,3)=="SIG")
+					elseif (substr($data,5,6)=="AISSIG")
 					   {
 					   /* unclear */
 						$item = "SSINFAISSIG";
@@ -1268,8 +1268,8 @@ else
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
 						$currentPosition = $itemdata = substr($data, 7, 1);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 					break;
 				}
 			break;
