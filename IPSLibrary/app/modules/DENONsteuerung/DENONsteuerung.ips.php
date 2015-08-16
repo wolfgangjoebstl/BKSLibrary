@@ -30,6 +30,9 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
+$Audio_Enabled        = $moduleManager->GetConfigValue('Enabled', 'AUDIO');
+$Audio_Path        	 = $moduleManager->GetConfigValue('Path', 'AUDIO');
+
 $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 $WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
@@ -48,6 +51,7 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 
 $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+$categoryId_WebFrontAudio         = CreateCategoryPath($Audio_Path);
 $categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
 $categoryId_WebFrontMobile         = CreateCategoryPath($Mobile_Path);
 $categoryId_WebFrontRetro         = CreateCategoryPath($Retro_Path);
@@ -95,6 +99,22 @@ if ($_IPS['SENDER'] == "Execute")
 			}
 		print_r($display_variables["Administrator"]);
 		}
+	if ($Audio_Enabled==true)
+	   {
+		echo "Webfront Administrator Audio ID: ".$categoryId_WebFrontAudio."     ".$Audio_Path."\n";
+		foreach ($configuration as $config)
+			{
+	   	$id=$config['NAME'];
+		   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFrontAudio);
+		   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+			echo "  Mainzone Data        ID: ".$VAR_Parent_ID." Denongeraet: ".$id."\n";
+			echo "  Mainzone Link        ID: ".$LINK_Parent_ID." Denongeraet: ".$id."\n";
+			}
+		print_r($display_variables["Audio"]);
+		}
+
 	if ($WFC10User_Enabled==true)
 	   {
 		echo "Webfront User          ID: ".$categoryId_WebFrontUser."     ".$WFC10User_Path."\n";

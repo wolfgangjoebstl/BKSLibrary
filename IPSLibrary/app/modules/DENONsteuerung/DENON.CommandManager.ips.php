@@ -112,6 +112,8 @@ else
 			$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
 			break;
 			}
+		$WFC10_PathDevice=$WFC10_Path.".Audiosteuerung";
+		$categoryId_WebFrontDevice         = CreateCategoryPath($WFC10_PathDevice);
 
 		$maincat= substr($data,0,2); //Eventidentifikation
 		$zonecat= substr($data,2); //Zoneneventidentifikation
@@ -142,6 +144,7 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
+				DenonSetValue($item, $value, $vtype, $id,$WFC10_PathDevice);
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
