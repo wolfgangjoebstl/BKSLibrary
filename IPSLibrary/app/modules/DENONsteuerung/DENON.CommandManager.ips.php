@@ -145,8 +145,8 @@ else
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -172,8 +172,8 @@ else
 					DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 					DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 					DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-					$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					}
 			 	break;
 
@@ -198,8 +198,8 @@ else
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -222,8 +222,8 @@ else
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -318,6 +318,10 @@ else
 					{
 					$value = 21;
 					}
+				elseif ($data == "SIIPOD DIRECT")
+					{
+					$value = 22;
+					}
 				else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
@@ -327,8 +331,8 @@ else
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -380,8 +384,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -462,13 +466,21 @@ else
 						{
 						$value = 14;
 						}
+					elseif ($data == "MSDTS NEO:6 C")
+						{
+						$value = 15;
+						}
+					elseif ($data == "MSDOLBY PL2 C")
+						{
+						$value = 16;
+						}
 					else
 			   		{
 						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   	}
 					DenonSetValue($item, $value, $vtype, $id);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-					$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					}
 				break;
 
@@ -493,8 +505,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -517,13 +529,17 @@ else
 					{
 					$value = 3;
 					}
+				elseif ($data == "NO")
+					{
+					$value = 4;
+					}
 				else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -533,8 +549,47 @@ else
 				$itemdata=substr($data,2);
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				break;
+
+			/*---------------------------------------------------------------------------*/
+			case "SS": //new Selection, unclear function
+			   /*  Beispiele SSINFAISFSV NON   SSINFAISSIG 02                */
+				$command=substr($data,2,6);
+				if ($command=="INFAIS")
+				   {
+					if (substr($data,6,3)=="FSV")
+						{
+						/* unclear */
+						$item = "SSINFAISFSV";
+						$itemdata=substr($data,10);
+						}
+					elseif (substr($data,6,3)=="SIG")
+					   {
+					   /* unclear */
+						$item = "SSINFAISSIG";
+						$itemdata=substr($data,10);
+					   }
+					else
+					   {
+						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+					   }
+					}
+				elseif ($command=="SMG")
+				   {
+					$item = "SSSMG";
+					$itemdata=substr($data,7);
+					}
+				else
+				   {
+					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+				   }
+				$vtype = 3;  /* String */
+				$value = $itemdata;
+				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				break;
 
 			/*---------------------------------------------------------------------------*/
@@ -560,6 +615,7 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
+				/* kein Logging da dauernd die RDS Daten übertragen werden */
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
@@ -577,8 +633,8 @@ else
 					}
 				$value = intval($itemdata);
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			/*---------------------------------------------------------------------------*/
@@ -606,8 +662,8 @@ else
 							$value = false;
 							}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						break;
 
 					case "SC": //Scaler
@@ -616,8 +672,8 @@ else
 						$itemdata=substr($data,4);
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						break;
 					}
 				break;
@@ -643,8 +699,8 @@ else
 							$value = false;
 							}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						break;
 
 					case "DE": //Tone Defeat (AVR 3808)
@@ -659,8 +715,8 @@ else
 							$value = false;
 							}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 					}
 				break;
@@ -677,8 +733,8 @@ else
 					$value = false;
 					}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CI": //Cinema EQ
@@ -693,8 +749,8 @@ else
 					$value = false;
 					}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "RO": //Room EQ Mode
@@ -703,8 +759,8 @@ else
 				$itemdata=substr($data,10);
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DC": //Dynamic Compressor
@@ -731,8 +787,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "PA": //Verteilung Front-Signal auf Surround-Kanäle
@@ -751,8 +807,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DI": //Balance zwischen Front und Surround-LS
@@ -761,8 +817,8 @@ else
 				$itemdata=substr($data, 6, 2);
 				$value = (int)$itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CE": //Center-Signal Verteilung auf FrontR/L
@@ -771,8 +827,8 @@ else
 				$itemdata=substr($data, 6, 2);
 				$value = (int)$itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SB": //Surround-Back ON/OFF
@@ -815,8 +871,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 					DenonSetValue($item, $value, $vtype, $id);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-					$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "MO": //Surround-Spielmodi für Surround-Mode
@@ -839,8 +895,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				break;
 
 			case "MU": //MultEQ XT mode
@@ -871,8 +927,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				break;
 
 			case "DY": //Sound
@@ -891,8 +947,8 @@ else
 							$value = false;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "NV": //Surround-Spielmodi für Surround-Mode
@@ -915,8 +971,8 @@ else
 							$value = 3;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 				}
 			break;
@@ -945,8 +1001,8 @@ else
 					$value = 4;
 				}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "LF": //LFE Pegel
@@ -955,8 +1011,8 @@ else
 				$itemdata=substr($data, 6, 2);
 				$value = (0 - intval($itemdata));
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			 break;
 
 			case "BA": //Bass Pegel
@@ -965,8 +1021,8 @@ else
 				$itemdata=substr($data, 6, 2);
 				$value = (intval($itemdata)) -50;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			 break;
 
 			case "TR": //Treble Pegel
@@ -975,8 +1031,8 @@ else
 				$itemdata=substr($data,6, 2);
 				$value = (intval($itemdata)) -50;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DE": //Audio Delay 0-200ms
@@ -985,8 +1041,8 @@ else
 				$itemdata=substr($data,8, 3);
 				$value = intval($itemdata);
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "RS": //Tone Defeat/Tone Control
@@ -1013,8 +1069,8 @@ else
 							$value = 3;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "Z": //RoomSize
@@ -1045,8 +1101,8 @@ else
 							$value = 5;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm:".$id."  ".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 				}
 			break;
@@ -1068,6 +1124,8 @@ else
 						$itemdata = rtrim(substr($data, 4, 95));
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E1": //Zeile 2
@@ -1083,6 +1141,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E2": //Zeile 3
@@ -1098,6 +1158,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E3": // Zeile 4
@@ -1113,6 +1175,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E4": // Zeile 5
@@ -1128,6 +1192,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E5": // Zeile 6
@@ -1143,6 +1209,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E6": // Zeile 7
@@ -1158,6 +1226,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E7": // Zeile 8
@@ -1173,6 +1243,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "E8": // Zeile 9
@@ -1182,6 +1254,8 @@ else
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
 						$currentPosition = $itemdata = substr($data, 7, 1);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 				}
 			break;
@@ -1196,6 +1270,8 @@ else
 						$itemdata = rtrim(substr($data, 4, 95));
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A1": //Zeile 2
@@ -1211,6 +1287,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A2": //Zeile 3
@@ -1226,6 +1304,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A3": // Zeile 4
@@ -1241,6 +1321,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A4": // Zeile 5
@@ -1256,6 +1338,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A5": // Zeile 6
@@ -1271,6 +1355,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A6": // Zeile 7
@@ -1286,6 +1372,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A7": // Zeile 8
@@ -1301,6 +1389,8 @@ else
 						}
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "A8": // Zeile 9
@@ -1310,6 +1400,8 @@ else
 						$value = $itemdata;
 						DenonSetValue($item, $value, $vtype, $id);
 						$currentPosition = $itemdata = substr($data, 7, 1);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 				}
 			break;
@@ -1327,6 +1419,8 @@ else
 					DenonSetValue($item, $value, $vtype, $id); // Variablenwert setzen
 					DENON_SetProfileValue($item, $ProfilPosition, $ProfilValue); // Werte ins Variablenprofil schreiben (nur wenn Preset mit Werten belegt)
 				}
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 		}
 	break;
@@ -1342,6 +1436,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "FR":
@@ -1351,6 +1447,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "C ":
@@ -1360,6 +1458,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SW":
@@ -1369,6 +1469,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SL":
@@ -1378,6 +1480,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SR":
@@ -1387,6 +1491,8 @@ else
 				$itemdata = str_pad( $itemdata, 3, 0, STR_PAD_RIGHT);
 				$value = (intval($itemdata)/10) -50;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SB":
@@ -1420,6 +1526,8 @@ else
 					$value = (intval($itemdata)/10) -50;
 					DenonSetValue($item, $value, $vtype, $id);
 				}
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "FH":
@@ -1442,6 +1550,8 @@ else
 					$value = (intval($itemdata)/10) -50;
 					DenonSetValue($item, $value, $vtype, $id);
 				}
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "FW":
@@ -1464,6 +1574,8 @@ else
 					$value = (intval($itemdata)/10) -50;
 					DenonSetValue($item, $value, $vtype, $id);
 				}
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 		}
 	break;
@@ -1487,6 +1599,8 @@ else
 
 			}
 			DenonSetValue($item, $value, $vtype, $id);
+			$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+			$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 		}
 
 		switch ($zonecat)
@@ -1497,6 +1611,8 @@ else
 				$itemdata= 0;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CD": //Source Input Z3
@@ -1505,6 +1621,8 @@ else
 				$itemdata= 1;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "TUNER": //Source Input Z3
@@ -1513,6 +1631,8 @@ else
 				$itemdata= 2;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DVD": //Source Input Z3
@@ -1521,6 +1641,8 @@ else
 				$itemdata= 3;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "BD": //Source Input Z3
@@ -1529,6 +1651,8 @@ else
 				$itemdata= 4;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "TV": //Source Input Z3
@@ -1537,6 +1661,8 @@ else
 				$itemdata= 5;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SAT/CBL": //Source Input Z3
@@ -1545,6 +1671,8 @@ else
 				$itemdata= 6;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DVR": //Source Input Z3
@@ -1553,6 +1681,8 @@ else
 				$itemdata= 7;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "GAME": //Source Input Z3
@@ -1561,6 +1691,8 @@ else
 				$itemdata= 8;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "V.AUX": //Source Input Z3
@@ -1569,6 +1701,8 @@ else
 				$itemdata= 9;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DOCK": //Source Input Z3
@@ -1577,6 +1711,8 @@ else
 				$itemdata= 10;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "IPOD": //Source Input Z3 (AVR 3809)
@@ -1585,6 +1721,8 @@ else
 				$itemdata= 11;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "NET/USB":
@@ -1593,6 +1731,8 @@ else
 				$itemdata= 12;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "NAPSTER":
@@ -1601,6 +1741,8 @@ else
 				$itemdata= 13;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "LASTFM":
@@ -1609,6 +1751,8 @@ else
 				$itemdata= 14;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "FLICKR":
@@ -1617,6 +1761,8 @@ else
 				$itemdata= 15;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "FAVORITES":
@@ -1625,6 +1771,8 @@ else
 				$itemdata= 16;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "IRADIO":
@@ -1633,6 +1781,8 @@ else
 				$itemdata= 17;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SERVER":
@@ -1641,6 +1791,8 @@ else
 				$itemdata= 18;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "USP/IPOD":
@@ -1649,6 +1801,8 @@ else
 				$itemdata= 19;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "OFF": //Zone 2 Power
@@ -1657,6 +1811,8 @@ else
 				$itemdata= false;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "ON": //Zone 3 Power
@@ -1665,6 +1821,8 @@ else
 				$itemdata= true;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 		}
 
@@ -1684,6 +1842,8 @@ else
 					$value = true;
 				}
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CS": //Zone 2 Channel Setting MONO/STEREO
@@ -1698,6 +1858,8 @@ else
 					$value = 1;
 				}
 			     DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CV": //Zone 2 Channel Volume
@@ -1720,6 +1882,8 @@ else
 						DenonSetValue($item, $value, $vtype, $id);
 					break;
 				}
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "QU": //Zone 2 Quick Select
@@ -1751,6 +1915,8 @@ else
 					}
 					$value = intval($value);
 			     DenonSetValue($item, $value, $vtype, $id);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 		}
 	break;
@@ -1772,6 +1938,8 @@ else
 				$value = (intval($itemdata)) -80;
 			}
 			DenonSetValue($item, $value, $vtype, $id);
+			$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+			$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 		}
 
 		switch ($zonecat)
@@ -1782,6 +1950,8 @@ else
 				$itemdata= 0;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CD": //Source Input Z3
@@ -1790,6 +1960,8 @@ else
 				$itemdata= 1;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "TUNER": //Source Input Z3
@@ -1798,6 +1970,8 @@ else
 				$itemdata= 2;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DVD": //Source Input Z3
@@ -1806,6 +1980,8 @@ else
 				$itemdata= 3;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "HDP": //Source Input Z3
@@ -1814,6 +1990,8 @@ else
 				$itemdata= 4;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "TV/CBL": //Source Input Z3
@@ -1822,6 +2000,8 @@ else
 				$itemdata= 5;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "SAT": //Source Input Z3
@@ -1830,6 +2010,8 @@ else
 				$itemdata= 6;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "VCR": //Source Input Z3
@@ -1838,6 +2020,8 @@ else
 				$itemdata= 7;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DVR": //Source Input Z3
@@ -1846,6 +2030,8 @@ else
 				$itemdata= 8;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "V.AUX": //Source Input Z3
@@ -1854,6 +2040,8 @@ else
 				$itemdata= 9;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "NET/USB": //Source Input Z3
@@ -1862,6 +2050,8 @@ else
 				$itemdata= 10;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "USB": //Source Input Z3 (AVR 3809)
@@ -1870,6 +2060,8 @@ else
 				$itemdata= 11;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "USB/IPOD": //Source Input Z3 (AVR 3311)
@@ -1878,6 +2070,8 @@ else
 				$itemdata= 13;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "OFF": //Zone 3 Power
@@ -1886,6 +2080,8 @@ else
 				$itemdata= false;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "ON": //Zone 3 Power
@@ -1894,6 +2090,8 @@ else
 				$itemdata= true;
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 		}
 
@@ -1912,6 +2110,8 @@ else
 					$value = true;
 				}
 				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CS": //Zone 3 Channel Setting MONO/STEREO
@@ -1926,6 +2126,8 @@ else
 						$value = 1;
 					}
 				 DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "CV": //Zone 3 Channel Volume
@@ -1938,6 +2140,8 @@ else
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 
 					case "FR":
@@ -1946,6 +2150,8 @@ else
 						$itemdata=substr($data,7,2);
 						$value = intval($itemdata) -50;
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					break;
 				}
 			break;
@@ -1979,6 +2185,8 @@ else
 							}
 						$value = intval($value);
 						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						break;
 					default:
 						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);

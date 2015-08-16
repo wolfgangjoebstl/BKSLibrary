@@ -48,9 +48,9 @@ echo $inst_modules."\n\n";
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
-echo "Category App    ID:".$CategoryIdApp."\n";
-echo "Category Data   ID:".$CategoryIdData."\n";
-echo "Category Script ID:".$scriptId."\n";
+	echo "Category App         ID:".$CategoryIdApp."\n";
+	echo "Category Data        ID:".$CategoryIdData."\n";
+	echo "Category Script      ID:".$scriptId."\n";
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -63,7 +63,8 @@ if (isset($NachrichtenScriptID))
 	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
-	echo "Nachrichten Script ID :".$NachrichtenScriptID."\nNachrichten Input ID : ".$NachrichtenInputID."\n";
+	echo "Nachrichten Script   ID:".$NachrichtenScriptID."\n";
+	echo "Nachrichten Input    ID: ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
 	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
 	}
@@ -493,7 +494,7 @@ if ($_IPS['SENDER']=="Execute")
      		}
 	/* Events registrieren. Umsetzung des Config Files */
 
-	echo "Programme für Schalter registrieren nach OID des Events.\n";
+	echo "\nProgramme für Schalter registrieren nach OID des Events.\n";
 
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)

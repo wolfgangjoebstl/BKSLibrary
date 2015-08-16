@@ -146,13 +146,18 @@
 	
 	/* Programme für Schalter registrieren nach OID des Events */
 	/*
-	$AutoConfiguration = Autosteuerung_GetEventConfiguration(); 
+	 * war schon einmal ausgeklammert, wird aber intuitiv von der Install Routine erwartet dass auch die Events registriert werden
+	 *
+	 */
+	echo "\nProgramme für Schalter registrieren nach OID des Events.\n";
+
+	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
+		echo "Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
-	*/
-	
+
 	/*******************************************************/
 		
 	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
