@@ -281,8 +281,22 @@ foreach ($configuration as $config)
 		echo "Dummy-Instanz Display #$DENON_Display_ID in Kategorie DENON angelegt\n";
 		}
 
-	echo "Pfad für Webfront :".$WFC10_Path." \n";
+	echo "Category App           ID: ".$CategoryIdApp."\n";
+	echo "Category Data          ID: ".$CategoryIdData."\n";
+	//echo "Pfad für Webfront        :".$WFC10_Path." \n";
 
+	/* include DENON.Functions
+	  $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
+	*/
+	if (IPS_GetObjectIDByName("DENON.VariablenManager", $CategoryIdApp) >0)
+		{
+		IPSUtils_Include ("DENON.VariablenManager.ips.php", "IPSLibrary::app::modules::DENONsteuerung");
+		//include "DENON.VariablenManager.ips.php";
+		}
+	else
+		{
+		echo "Script DENON.VariablenManager kann nicht gefunden werden!";
+		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -366,6 +380,13 @@ foreach ($configuration as $config)
 			IPS_ApplyChanges($DENON_Main_Instance_ID);
 			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
 			}
+
+   	$id=$config['NAME'];
+		$item="AuswahlFunktion";
+		$vtype = 1;
+		$value=1;
+		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+		DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 		}
 
 	/***************************************************************************************/

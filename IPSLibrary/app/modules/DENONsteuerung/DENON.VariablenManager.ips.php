@@ -158,6 +158,250 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
 	}
 
+	/* es gibt soviele Links, ein bisschen ordnung schaffen und unwichtige nach hinten geben */
+	switch ($item)
+		{
+		case "Power":
+			IPS_SetPosition($LinkID,0);
+			break;
+
+		case "MainZonePower":
+			IPS_SetPosition($LinkID,0);
+			break;
+
+		case "AudioDelay":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "MasterVolume":
+			IPS_SetPosition($LinkID,0);
+			break;
+
+		case "LFELevel":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "MainZone":
+			break;
+
+		case "MainMute":
+			break;
+
+		case "QuickSelect":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Sleep":
+			break;
+
+		case "DigitalInputMode":
+			break;
+
+		case "AuswahlFunktion":
+			break;
+
+		case "InputSource":
+			break;
+
+		case "SurroundMode":
+			break;
+
+		case "SurroundPlayMode":
+			break;
+
+		case "MultiEQMode":
+			break;
+
+		case "MasterVolume":
+			break;
+
+		case "AudioRestorer":
+			IPS_SetPosition($LinkID,900);
+			break;
+
+		case "BassLevel":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "TrebleLevel":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "InputMode":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "CinemaEQ":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Dimension":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Panorama":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "FrontHeight":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "DynamicVolume":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "RoomSize":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "DynamicCompressor":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ToneCTRL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "DynamicEQ":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "C.Width":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "DynamicRange":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "VideoSelect":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "SurroundBackMode":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Preset":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeC":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSW":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSBL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSBR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeSB":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFHL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFHR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFWL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "ChannelVolumeFWR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		################# Zone 2 #################################################
+		case "Zone2Power":
+			break;
+
+		case "Zone2Volume":
+			break;
+
+		case "Zone2Mute":
+			break;
+
+		case "Zone2InputSource":
+			break;
+
+		case "Zone2ChannelSetting":
+			break;
+
+		case "Zone2ChannelVolumeFL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Zone2ChannelVolumeFR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Zone2QuickSelect":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+
+		################# Zone 3 #################################################
+		case "Zone3Power":
+			break;
+
+		case "Zone3Volume":
+			break;
+
+		case "Zone3Mute":
+			break;
+
+		case "Zone3InputSource":
+			break;
+
+		case "Zone3ChannelSetting":
+			break;
+
+		case "Zone3ChannelVolumeFL":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Zone3ChannelVolumeFR":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		case "Zone3QuickSelect":
+			IPS_SetPosition($LinkID,100);
+			break;
+
+		//default: wenn keine Bedingung erfüllt ist
+		default:
+		// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
+
+		}
+
 	// Variablen-Wert updaten
 	switch($vtype)
 	{

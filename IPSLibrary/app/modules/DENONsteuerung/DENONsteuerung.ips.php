@@ -77,7 +77,8 @@ else break;
 */
 if (IPS_GetObjectIDByName("DENON.VariablenManager", $CategoryIdApp) >0)
 	{
-	include "DENON.VariablenManager.ips.php";
+	IPSUtils_Include ("DENON.VariablenManager.ips.php", "IPSLibrary::app::modules::DENONsteuerung");
+	//include "DENON.VariablenManager.ips.php";
 	}
 else
 	{
@@ -181,9 +182,6 @@ if ($_IPS['SENDER'] == "Execute")
 
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
-
-	$WFC10_PathDevice=$WFC10_Path.".Audiosteuerung";
-	$categoryId_WebFrontDevice         = CreateCategoryPath($WFC10_PathDevice);
 
 	foreach ($configuration as $config)
 		{
