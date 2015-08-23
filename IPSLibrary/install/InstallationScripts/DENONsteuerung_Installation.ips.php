@@ -306,21 +306,21 @@ foreach ($configuration as $config)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		WebfrontInstall($categoryId_WebFront,$config);
+		WebfrontInstall($categoryId_WebFront,$config,$moduleManager);
 		}
 
 	if ($Audio_Enabled)
 		{
 		echo "\nWebportal Administrator Audio installieren in: ".$Audio_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($Audio_Path);
-		WebfrontInstall($categoryId_WebFront,$config);
+		WebfrontInstall($categoryId_WebFront,$config,$moduleManager);
 		}
 
 	if ($WFC10User_Enabled)
 		{
 		echo "\nWebportal User installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-		WebfrontInstall($categoryId_WebFront,$config);
+		WebfrontInstall($categoryId_WebFront,$config,$moduleManager);
 		}
 
 	if ($Mobile_Enabled)
@@ -380,16 +380,16 @@ foreach ($configuration as $config)
 			IPS_ApplyChanges($DENON_Main_Instance_ID);
 			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
 			}
-
-   	$id=$config['NAME'];
-		$item="AuswahlFunktion";
-		$vtype = 1;
-		$value=1;
-		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
-		DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 		}
 
 	/***************************************************************************************/
+
+  	$id=$config['NAME'];
+	$item="AuswahlFunktion";
+	$vtype = 1;
+	$value=1;
+	echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+	DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 
    }  /* ende foreach Denon Device */
 
@@ -401,10 +401,12 @@ echo "\nInstallation abgeschlossen\n\nwww.raketenschnecke.net";
 /****************************************************************************************************************/
 /****************************************************************************************************************/
 
-function WebfrontInstall($categoryId_WebFront,$config)
+function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	{
-	global $CategoryIdData,$CategoryIdApp;
-	
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
 	echo "Category App           ID: ".$CategoryIdApp."\n";
 	echo "Category Data          ID: ".$CategoryIdData."\n";
 
