@@ -927,13 +927,13 @@ function Status()
 			{
 			if ($speak_config["Parameter"][0]=="On")
 				{
-				tts_play(1,'Wert '.$speak.' geht auf ein.','',2);
+				tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
 				}
 			}
 		else
 			{
 		  	if ($speak_config["Parameter"][0]=="On")  {
-				tts_play(1,'Wert '.$speak.' geht auf aus.','',2);
+				tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
 				}
 			}
 		}

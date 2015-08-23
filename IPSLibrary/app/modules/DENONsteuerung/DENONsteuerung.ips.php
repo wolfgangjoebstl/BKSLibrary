@@ -72,6 +72,20 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
+/* include DENON.Functions
+  $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
+*/
+if (IPS_GetObjectIDByName("DENON.VariablenManager", $CategoryIdApp) >0)
+	{
+	include "DENON.VariablenManager.ips.php";
+	}
+else
+	{
+	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
+	}
+
+
+
 /****************************************************************/
 
 if ($_IPS['SENDER'] == "Execute")
@@ -168,10 +182,18 @@ if ($_IPS['SENDER'] == "Execute")
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
 
+	$WFC10_PathDevice=$WFC10_Path.".Audiosteuerung";
+	$categoryId_WebFrontDevice         = CreateCategoryPath($WFC10_PathDevice);
 
-
-
-
+	foreach ($configuration as $config)
+		{
+   	$id=$config['NAME'];
+		$item="AuswahlFunktion";
+		$vtype = 1;
+		$value=1;
+		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+		DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
+		}
 
 
 

@@ -66,11 +66,14 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		}
 	else // wenn Präfix nicht "Zone2", "Zone3" oder "Display"
 		{
+		//echo "Datenkategorie ist ".$CategoryIdData." mit ".$id."\n";
 	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
 	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		//echo "  Daten Mainzone ist auf ".$VAR_Parent_ID."  Das Webfromnt auf ".$categoryId_WebFront."   \n";
 	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
 	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
-	  	//echo "Script DENON VariablenManager 1c: $VAR_Parent_ID";
+		//echo "Werte sind ".$LINK_Parent_ID." \n";
+	  	//echo "Script DENON VariablenManager 1c: ".$VAR_Parent_ID."\n";
 		}
 
 	// Definition div. Parent IDs
@@ -95,6 +98,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		$itemID= IPS_CreateVariable($vtype);
 		IPS_SetName($itemID, $item);
 		IPS_SetParent($itemID, $VAR_Parent_ID);
+		echo "Script DENON Variable ".$item." angelegt\n";
 	}
 
 	// DENON-Variablenprofil anlegen wenn nicht vorhanden
@@ -102,6 +106,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 
 	if (IPS_VariableProfileExists($ProfileName)== false)
 	{
+		echo "Script DENON VariablenManager Profil ".$ProfileName." existiert nicht.\n";
 		DENON_SetVarProfile($item, $itemID, $vtype);
 	}
 
@@ -181,6 +186,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 function DENON_SetVarProfile($item, $itemID, $vtype)
 {
 
+	echo "Profil für ".$item." anlegen.\n";
 	switch ($item)
 	{
 		case "Power":
@@ -333,6 +339,26 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			}
 		break;
 
+		case "AuswahlFunktion":
+		   $ProfileName = "DENON.".$item;
+			if (IPS_VariableProfileExists($ProfileName) == false)
+			{
+			   //Var-Profil erstellen
+				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
+				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
+			   IPS_SetVariableProfileValues($ProfileName, 0, 22, 1); //PName, Minimal, Maximal, Schrittweite
+			   IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 3, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 6, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
+			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
+			}
+			else
+			{
+			echo "Profil ".$ProfileName." existiert bereits.\n";
+			}
+		break;
+
 		case "InputSource":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
@@ -340,7 +366,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
-			   IPS_SetVariableProfileValues($ProfileName, 0, 19, 1); //PName, Minimal, Maximal, Schrittweite
+			   IPS_SetVariableProfileValues($ProfileName, 0, 22, 1); //PName, Minimal, Maximal, Schrittweite
 			   IPS_SetVariableProfileAssociation($ProfileName, 0, "PHONO", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "CD", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
@@ -376,7 +402,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   //Var-Profil erstellen
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
-			   IPS_SetVariableProfileValues($ProfileName, 0, 14, 1); //PName, Minimal, Maximal, Schrittweite
+			   IPS_SetVariableProfileValues($ProfileName, 0, 16, 1); //PName, Minimal, Maximal, Schrittweite
 			   IPS_SetVariableProfileAssociation($ProfileName, 0, "DIRECT", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "PURE DIRECT", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 2, "STEREO", "", -1); //P-Name, Value, Assotiation, Icon, Color

@@ -35,6 +35,9 @@ $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 $WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 
+$Audio_Enabled        = $moduleManager->GetConfigValue('Enabled', 'AUDIO');
+$Audio_Path        	 = $moduleManager->GetConfigValue('Path', 'AUDIO');
+
 $WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 $WFC10User_Path       = $moduleManager->GetConfigValue('Path', 'WFC10User');
 
@@ -112,8 +115,6 @@ else
 			$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
 			break;
 			}
-		$WFC10_PathDevice=$WFC10_Path.".Audiosteuerung";
-		$categoryId_WebFrontDevice         = CreateCategoryPath($WFC10_PathDevice);
 
 		$maincat= substr($data,0,2); //Eventidentifikation
 		$zonecat= substr($data,2); //Zoneneventidentifikation
@@ -144,7 +145,7 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				DenonSetValue($item, $value, $vtype, $id,$WFC10_PathDevice);
+				DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
@@ -172,6 +173,7 @@ else
 						$value = (intval($itemdata)/10) -80;
 						}
 					DenonSetValue($item, $value, $vtype, $id);
+					DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 					DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
 					DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
 					DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
@@ -592,7 +594,32 @@ else
 					}
 				elseif ($command=="SMG")
 				   {
-					$item = "SSSMG";
+					$item = "SS SMG";
+					$itemdata=substr($data,7);
+					}
+				elseif ($command=="CMP")
+				   {
+					$item = "SS CMP";
+					$itemdata=substr($data,7);
+					}
+				elseif ($command=="HDM")
+				   {
+					$item = "SS HDM";
+					$itemdata=substr($data,7);
+					}
+				elseif ($command=="ANA")
+				   {
+					$item = "SS ANA";
+					$itemdata=substr($data,7);
+					}
+				elseif ($command=="VDO")
+				   {
+					$item = "SS VDO";
+					$itemdata=substr($data,7);
+					}
+				elseif ($command=="DIN")
+				   {
+					$item = "SS DIN";
 					$itemdata=substr($data,7);
 					}
 				else
@@ -1122,6 +1149,19 @@ else
 			break;
 		}
 	break;
+
+			/*---------------------------------------------------------------------------*/
+			case "PV": //new command, unclear function
+			   /*  Beispiele                 */
+				$command=substr($data,2,3);
+				$item = "PV";
+				$itemdata=substr($data,7);
+				$vtype = 3;  /* String */
+				$value = $itemdata;
+				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				break;
 
 	// Display
 	case "NS": //NSE, NSA, NSH

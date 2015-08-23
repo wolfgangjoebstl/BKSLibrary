@@ -163,6 +163,7 @@ else
 		break;
 
 		case "InputSource":
+		case "AuswahlFunktion":
          $InputSource_val = GetValueFormatted($IPS_VARIABLE);
 			DENON_InputSource($id, $InputSource_val);
 		break;
