@@ -247,10 +247,14 @@ else
 				elseif ($itemdata == "TUNER")
 					{
 					$value = 2;
+					DenonSetValue("AuswahlFunktion",3, 1, $id,$Audio_Path);
+				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "DVD")
 					{
 					$value = 3;
+					DenonSetValue("AuswahlFunktion",1, 1, $id,$Audio_Path);
+				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "BD")
 					{
@@ -263,6 +267,8 @@ else
 				elseif ($itemdata == "SAT/CBL")
 					{
 					$value = 6;
+					DenonSetValue("AuswahlFunktion",2, 1, $id,$Audio_Path);
+				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "DVR")
 					{

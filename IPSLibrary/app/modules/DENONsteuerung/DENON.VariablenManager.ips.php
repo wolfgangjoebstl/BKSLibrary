@@ -342,21 +342,25 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 		case "AuswahlFunktion":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
-			   IPS_SetVariableProfileValues($ProfileName, 0, 22, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableProfileAssociation($ProfileName, 3, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableProfileAssociation($ProfileName, 6, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileValues($ProfileName, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
+			   IPS_SetVariableProfileAssociation($ProfileName, 0, "VOID", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 1, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 2, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 3, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   //IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   //IPS_SetVariableProfileAssociation($ProfileName, 3, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   //IPS_SetVariableProfileAssociation($ProfileName, 6, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
+				}
 			else
-			{
-			echo "Profil ".$ProfileName." existiert bereits.\n";
-			}
+				{
+				echo "Profil ".$ProfileName." existiert bereits.\n";
+				}
 		break;
 
 		case "InputSource":

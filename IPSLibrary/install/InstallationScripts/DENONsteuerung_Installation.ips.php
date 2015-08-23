@@ -384,6 +384,9 @@ function WebfrontInstall($categoryId_WebFront,$config)
 	{
 	global $CategoryIdData,$CategoryIdApp;
 	
+	echo "Category App           ID: ".$CategoryIdApp."\n";
+	echo "Category Data          ID: ".$CategoryIdData."\n";
+
 	$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 	$DENON_Steuerung_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_ID);
 

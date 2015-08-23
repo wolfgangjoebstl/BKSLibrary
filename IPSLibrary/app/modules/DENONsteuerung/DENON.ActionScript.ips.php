@@ -163,9 +163,29 @@ else
 		break;
 
 		case "InputSource":
-		case "AuswahlFunktion":
          $InputSource_val = GetValueFormatted($IPS_VARIABLE);
 			DENON_InputSource($id, $InputSource_val);
+		break;
+
+		case "AuswahlFunktion":
+         $InputSource_val = GetValueFormatted($IPS_VARIABLE);
+		   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
+			if ($InputSource_val>0)
+			   {
+				if ($InputSource_val==1)
+				   {
+				   $InputSource_val=3;
+				   }
+				elseif($InputSource_val==2)
+				   {
+				   $InputSource_val=6;
+				   }
+				elseif($InputSource_val==3)
+				   {
+				   $InputSource_val=2;
+				   }
+				DENON_InputSource($id, $InputSource_val);
+				}
 		break;
 
 		case "InputMode":
