@@ -263,6 +263,7 @@ else
 				elseif ($itemdata == "TV")
 					{
 					$value = 5;
+					DenonSetValue("AuswahlFunktion",1, 1, $id,$Audio_Path);
 					}
 				elseif ($itemdata == "SAT/CBL")
 					{
@@ -746,8 +747,8 @@ else
 							$value = false;
 							}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 						break;
 
 					case "DE": //Tone Defeat (AVR 3808)
@@ -762,8 +763,8 @@ else
 							$value = false;
 							}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 					}
 				break;
@@ -780,8 +781,8 @@ else
 					$value = false;
 					}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "CI": //Cinema EQ
@@ -796,8 +797,8 @@ else
 					$value = false;
 					}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "RO": //Room EQ Mode
@@ -806,8 +807,8 @@ else
 				$itemdata=substr($data,10);
 				$value = $itemdata;
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "DC": //Dynamic Compressor
@@ -834,8 +835,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "PA": //Verteilung Front-Signal auf Surround-Kanäle
@@ -854,8 +855,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "DI": //Balance zwischen Front und Surround-LS
@@ -918,8 +919,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 					DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "MO": //Surround-Spielmodi für Surround-Mode
@@ -942,8 +943,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			case "MU": //MultEQ XT mode
@@ -974,8 +975,8 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
 
 			case "DY": //Sound
@@ -994,8 +995,8 @@ else
 							$value = false;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 
 					case "NV": //Surround-Spielmodi für Surround-Mode
@@ -1018,8 +1019,8 @@ else
 							$value = 3;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 				}
 			break;
@@ -1048,8 +1049,8 @@ else
 					$value = 4;
 				}
 				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
 			case "LF": //LFE Pegel
@@ -1116,8 +1117,8 @@ else
 							$value = 3;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 
 					case "Z": //RoomSize
@@ -1148,8 +1149,8 @@ else
 							$value = 5;
 						}
 						DenonSetValue($item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 				}
 			break;

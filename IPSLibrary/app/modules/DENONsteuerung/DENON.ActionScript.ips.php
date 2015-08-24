@@ -169,21 +169,25 @@ else
 
 		case "AuswahlFunktion":
          $InputSource_val = GetValueFormatted($IPS_VARIABLE);
+
+			$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
+
 		   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
-			if ($InputSource_val>0)
+   		if ($InputSource_val=="PC")
 			   {
-				if ($InputSource_val==1)
-				   {
-				   $InputSource_val=3;
-				   }
-				elseif($InputSource_val==2)
-				   {
-				   $InputSource_val=6;
-				   }
-				elseif($InputSource_val==3)
-				   {
-				   $InputSource_val=2;
-				   }
+			   //$InputSource_val="DVD";
+  			   $InputSource_val="TV";
+			   }
+			elseif($InputSource_val=="XBOX")
+			   {
+			   $InputSource_val="SAT/CBL";
+			   }
+			elseif($InputSource_val=="TUNER")
+			   {
+			   $InputSource_val="TUNER";
+			   }
+			if ($InputSource_val!="VOID")
+			   {
 				DENON_InputSource($id, $InputSource_val);
 				}
 		break;
