@@ -24,9 +24,20 @@ Funktionen:
 
 function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 {
-	global $CategoryIdData,$CategoryIdApp;
+	//global $CategoryIdData,$CategoryIdApp;
 	global $WFC10_Path,$WFC10User_Path,$Mobile_Path,$Retro_Path;
-	
+
+	echo "Variable ".$item." mit Wert ".$value." beschreiben.\n";
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager))
+		{
+		//IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+		$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
+		}
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
 	if ($webfrontID=="")
 	   {
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
@@ -195,6 +206,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 			break;
 
 		case "DigitalInputMode":
+			IPS_SetPosition($LinkID,20);
 			break;
 
 		case "AuswahlFunktion":
@@ -215,6 +227,14 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		case "MasterVolume":
 			break;
 
+		case "SSINFAISFSV":
+		case "SSINFAISSIG";
+		case "SS SMG":
+		case "SS CMP":
+		case "SS HDM":
+		case "SS ANA":
+		case "SS VDO":
+		case "SS DIN":
 		case "AudioRestorer":
 			IPS_SetPosition($LinkID,900);
 			break;
@@ -423,20 +443,19 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	}
 }
 
-// ------------------- Variablen Profil-Managenet ------------------------------
+// ------------------- Variablen Profil-Management ------------------------------
 // Funktion erstellt für DENON-Variablen gleichnamige Variablenprofile mit Namenspräfix "DENON."
 // übergeben werden muss Variablenname ($item), Variablen-ID ($itemID) und Variablentyp ($vtype)
 
 function DENON_SetVarProfile($item, $itemID, $vtype)
-{
-
-	echo "Profil für ".$item." anlegen.\n";
-	switch ($item)
 	{
+
+	switch ($item)
+		{
 		case "Power":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -444,14 +463,14 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 0, "OFF", "", 65280); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "ON", "", 16711680); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
-			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen \n";
+				}
+			break;
 
 		case "MainZonePower":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -460,13 +479,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "ON", "", 16711680); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "AudioDelay":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -474,13 +493,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileText($ProfileName, "", "ms"); // Pname, Präfix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "MasterVolume":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -488,13 +507,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Präfix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "LFELevel":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
@@ -502,13 +521,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Präfix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "MainZone":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -517,13 +536,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "ON", "", 16711680); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "MainMute":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -532,13 +551,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 1, "ON", "", 16711680); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "QuickSelect":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -551,26 +570,26 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 5, "QS 5", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "Sleep":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, 0, 120, 10); //PName, Minimal, Maximal, Schrittweite
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "DigitalInputMode":
 		   $ProfileName = "DENON.".$item;
 			if (IPS_VariableProfileExists($ProfileName) == false)
-			{
+				{
 			   //Var-Profil erstellen
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
@@ -580,30 +599,41 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 2, "DTS", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-			}
-		break;
+				}
+			break;
 
 		case "AuswahlFunktion":
 		   $ProfileName = "DENON.".$item;
-			if (IPS_VariableProfileExists($ProfileName) == false)
-				{
-			   //Var-Profil erstellen
-				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
-				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
-			   IPS_SetVariableProfileValues($ProfileName, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileAssociation($ProfileName, 0, "VOID", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableProfileAssociation($ProfileName, 1, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableProfileAssociation($ProfileName, 2, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableProfileAssociation($ProfileName, 3, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   //IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   //IPS_SetVariableProfileAssociation($ProfileName, 3, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   //IPS_SetVariableProfileAssociation($ProfileName, 6, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
-			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
-			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
-				}
-			else
-				{
-				echo "Profil ".$ProfileName." existiert bereits.\n";
+			$webconfig=Denon_WebfrontConfig();
+			if (isset($webconfig['DATA'][$item])==true)
+	   		{
+				$profil=$webconfig['DATA'][$item];
+				$profil_size=sizeof($profil);
+				echo "Neues Profil mit ".$profil_size." Einträgen.\n";
+				if (IPS_VariableProfileExists($ProfileName) == false)
+					{
+				   //Var-Profil erstellen
+					IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
+					IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
+				   IPS_SetVariableProfileValues($ProfileName, 0, $profil_size, 1); //PName, Minimal, Maximal, Schrittweite
+				   $i=0;
+				   IPS_SetVariableProfileAssociation($ProfileName, 0, "VOID", "", -1); //P-Name, Value, Assotiation, Icon, Color
+				   foreach ($profil as $name => $assoc)
+				      {
+				      $i++;
+				      echo "          Eintrag ".$i." erstellen fuer Name ".$name." Association ".$assoc." \n";
+					   IPS_SetVariableProfileAssociation($ProfileName, $i, $name, "", -1); //P-Name, Value, Assotiation, Icon, Color
+						}
+				   //IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
+				   //IPS_SetVariableProfileAssociation($ProfileName, 3, "PC", "", -1); //P-Name, Value, Assotiation, Icon, Color
+				   //IPS_SetVariableProfileAssociation($ProfileName, 6, "XBOX", "", -1); //P-Name, Value, Assotiation, Icon, Color
+				   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
+			   	echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen.\n";
+					}
+				else
+					{
+					echo "Profil ".$ProfileName." existiert bereits.\n";
+					}
 				}
 		break;
 
