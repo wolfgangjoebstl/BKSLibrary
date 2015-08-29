@@ -357,6 +357,10 @@ foreach ($configuration as $config)
 		{
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+
+		$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
+		$DENON_Steuerung_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_ID);
+
 		// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
 		$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
 		if ($DENON_WFE_ID == false)
@@ -436,6 +440,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_ApplyChanges($DENON_Main_Instance_ID);
 			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
 			}
+		IPS_SetPosition($DENON_MainZone_ID,0);
 
 		$DENON_Zone2_ID = @IPS_GetInstanceIDByName("Zone 2", $DENON_WFE_ID);
 		if ($DENON_Zone2_ID == false)
@@ -447,6 +452,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_ApplyChanges($DENON_Zone2_ID);
 			echo "Dummy-Instanz Zone 2 #$DENON_Zone2_ID in Kategorie DENON Webfront angelegt\n";
 			}
+		IPS_SetPosition($DENON_Zone2_ID,10);
 
 		$DENON_Zone3_ID = @IPS_GetInstanceIDByName("Zone 3", $DENON_WFE_ID);
 		if ($DENON_Zone3_ID == false)
@@ -458,6 +464,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_ApplyChanges($DENON_Zone3_ID);
 			echo "Dummy-Instanz Zone 3 #$DENON_Zone3_ID in Kategorie DENON Webfront angelegt\n";
 			}
+		IPS_SetPosition($DENON_Zone3_ID,10);
 
 		$DENON_SteuerungWFE_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_WFE_ID);
 		if ($DENON_SteuerungWFE_ID == false)
@@ -469,6 +476,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_ApplyChanges($DENON_SteuerungWFE_ID);
 			echo "Dummy-Instanz Steuerung #$DENON_SteuerungWFE_ID in Kategorie DENON Webfront angelegt\n";
 			}
+		IPS_SetPosition($DENON_SteuerungWFE_ID,100);
 
 		$DENON_DisplayWFE_ID = @IPS_GetInstanceIDByName("Display", $DENON_WFE_ID);
 		if ($DENON_DisplayWFE_ID == false)
@@ -480,6 +488,8 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_ApplyChanges($DENON_DisplayWFE_ID);
 			echo "Dummy-Instanz Display #$DENON_DisplayWFE_ID in Kategorie DENON Webfront angelegt\n";
 			}
+		IPS_SetPosition($DENON_DisplayWFE_ID,200);
+
 	// Cursor Up & VarProfil anlegen wenn nicht vorhanden
 	echo "Data Steuerung ID #".$DENON_Steuerung_ID."\n";
 	$DENON_Cursor_ID = @IPS_GetVariableIDByName("CursorUp", $DENON_Steuerung_ID);
