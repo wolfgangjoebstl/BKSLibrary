@@ -668,6 +668,8 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_SetVariableProfileAssociation($ProfileName, 20, "MPLAY", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 21, "NET", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableProfileAssociation($ProfileName, 22, "IPOD DIRECT", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 23, "BT", "", -1); //P-Name, Value, Assotiation, Icon, Color
+			   IPS_SetVariableProfileAssociation($ProfileName, 24, "AUX2", "", -1); //P-Name, Value, Assotiation, Icon, Color
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -698,6 +700,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 				IPS_SetVariableProfileAssociation($ProfileName, 14, "MULTI CH IN 7.1", "", -1); //P-Name, Value, Assotiation, Icon
 				IPS_SetVariableProfileAssociation($ProfileName, 15, "DTS NEO:6 C", "", -1); //P-Name, Value, Assotiation, Icon
 				IPS_SetVariableProfileAssociation($ProfileName, 16, "DOLBY PL2 C", "", -1); //P-Name, Value, Assotiation, Icon
+				IPS_SetVariableProfileAssociation($ProfileName, 17, "DTS NEO:6 M", "", -1); //P-Name, Value, Assotiation, Icon
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}

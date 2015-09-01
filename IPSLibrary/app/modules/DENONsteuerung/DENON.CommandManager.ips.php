@@ -234,6 +234,16 @@ else
 				break;
 
 			/*---------------------------------------------------------------------------*/
+			case "EC": //Eco mode
+				$item = "Ecomode";
+				$value=substr($data,3); /* das O von ECO wird verschluckt */
+				$vtype = 3;  /* String */
+				DenonSetValue($item, $value, $vtype, $id);
+				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$value);
+				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$value);
+				break;
+
+			/*---------------------------------------------------------------------------*/
 			case "SI": //Source Input
 				$item = "InputSource";
 				$itemdata=substr($data,2);
@@ -356,6 +366,14 @@ else
 				elseif ($itemdata == "IPOD DIRECT")
 					{
 					$value = 22;
+					}
+				elseif ($itemdata == "BT")
+					{
+					$value = 23;
+					}
+				elseif ($itemdata == "AUX2")
+					{
+					$value = 24;
 					}
 				else
 				   {
@@ -501,11 +519,11 @@ else
 						{
 						$value = 12;
 						}
-					elseif ($itemdata == "MSVIRTUAL")
+					elseif ($itemdata == "VIRTUAL")
 						{
 						$value = 13;
 						}
-					elseif ($itemdata == "MSMULTI CH IN 7.1")
+					elseif ($itemdata == "MULTI CH IN 7.1")
 						{
 						$value = 14;
 						}
@@ -516,6 +534,10 @@ else
 					elseif ($itemdata == "DOLBY PL2 C")
 						{
 						$value = 16;
+						}
+					elseif ($itemdata == "DTS NEO:6 M")
+						{
+						$value = 17;
 						}
 					else
 			   		{
@@ -604,7 +626,7 @@ else
 				$command=substr($data,2,3);
 				if ($command=="INF")
 				   {
-					if (substr($data5,6)=="AISFSV")
+					if (substr($data,5,6)=="AISFSV")
 						{
 						/* unclear */
 						$item = "SSINFAISFSV";
