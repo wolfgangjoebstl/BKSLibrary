@@ -82,9 +82,10 @@ if ($_IPS['SENDER'] == "Execute")
 
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
-	break;
 	}
-
+else
+	{
+	
 $oid=$_IPS['VARIABLE'];
 $name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
 
@@ -169,25 +170,12 @@ else
 
 		case "AuswahlFunktion":
          $InputSource_val = GetValueFormatted($IPS_VARIABLE);
-
 			$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
 
-		   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
-   		if ($InputSource_val=="PC")
-			   {
-			   //$InputSource_val="DVD";
-  			   $InputSource_val="TV";
-			   }
-			elseif($InputSource_val=="XBOX")
-			   {
-			   $InputSource_val="SAT/CBL";
-			   }
-			elseif($InputSource_val=="TUNER")
-			   {
-			   $InputSource_val="TUNER";
-			   }
-			if ($InputSource_val!="VOID")
-			   {
+			$webconfig=Denon_WebfrontConfig();
+			if (isset($webconfig['DATA']['AuswahlFunktion'][$InputSource_val])==true)
+	   		{
+				$InputSource_val=$webconfig['DATA']['AuswahlFunktion'][$InputSource_val];
 				DENON_InputSource($id, $InputSource_val);
 				}
 		break;
@@ -485,5 +473,5 @@ else
 		break;
 
 	}
-//}
+}
 ?>

@@ -9,6 +9,8 @@ Weiterentwickelt: Wolfgang Jöbstl
 Funktionen:
 	* liest und interpretiert die vom DENON empfangenen Statusmeldungen und
 		übergibt diese zur Veiterverarbeitung an das Script "DENON.VariablenManager"
+		
+	holt sich die Telegramme direkt von den am Netzwerk gesendeten Telegrammen und wertet sie aus
 
 */
 
@@ -236,6 +238,33 @@ else
 				$item = "InputSource";
 				$itemdata=substr($data,2);
 				$vtype = 1;
+
+				$webconfig=Denon_WebfrontConfig();
+				if (isset($webconfig['DATA']['AuswahlFunktion'])==true)
+		   		{
+					$profil=$webconfig['DATA']['AuswahlFunktion'];
+					$profil_size=sizeof($profil);
+				   $i=0;
+				   $done=false;
+				   foreach ($profil as $name => $assoc)
+				      {
+				      /* Wenn ein Eintrag für Data und Auswahlfunktion besteht, dann alle Einträge durchgehen ob itemdata dabei ist */
+				      $i++;
+						if ($itemdata==$assoc)
+						   {
+							/* zB Tuner Befehl wurde empfangen auf Webfront Shortlist Audio Anzeige umsetzen */
+							DenonSetValue("AuswahlFunktion",$i, 1, $id,$Audio_Path);
+				   		/* zB 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
+				   		$done=true;
+						   }
+						}
+					if ($done==false)
+						{
+						/* wenn Befehl nicht bekannt ist dann auf VOID 0 setzen */
+						DenonSetValue("AuswahlFunktion",0, 1, $id,$Audio_Path);
+					   }
+					}
+
 				if ($itemdata == "PHONO")
 					{
 					$value = 0;
@@ -247,14 +276,10 @@ else
 				elseif ($itemdata == "TUNER")
 					{
 					$value = 2;
-					DenonSetValue("AuswahlFunktion",3, 1, $id,$Audio_Path);
-				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "DVD")
 					{
 					$value = 3;
-					DenonSetValue("AuswahlFunktion",1, 1, $id,$Audio_Path);
-				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "BD")
 					{
@@ -263,13 +288,10 @@ else
 				elseif ($itemdata == "TV")
 					{
 					$value = 5;
-					DenonSetValue("AuswahlFunktion",1, 1, $id,$Audio_Path);
 					}
 				elseif ($itemdata == "SAT/CBL")
 					{
 					$value = 6;
-					DenonSetValue("AuswahlFunktion",2, 1, $id,$Audio_Path);
-				   /* 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
 					}
 				elseif ($itemdata == "DVR")
 					{
