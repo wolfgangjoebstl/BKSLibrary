@@ -35,8 +35,8 @@
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('RemoteAccess');
-	echo "\nRemoteAccess Version : ".$ergebnis;
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Report');
+	echo "\nReport Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
