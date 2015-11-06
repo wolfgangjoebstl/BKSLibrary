@@ -37,10 +37,15 @@ $scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Pr
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-	echo "Alle SMTP Clients:\n";
-	print_r(IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"));
-	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
-	echo "Send Email ID: ".$SendEmailID."\n";
+echo "\nAlle SMTP Clients:\n";
+$smtp_clients=IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
+foreach ($smtp_clients as $smtp_client)
+	{
+	echo "  Smtp Client ID: ".$smtp_client."  -> ".IPS_GetName($smtp_client)."\n";
+	}
+	
+$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
+echo "\nSend Email ID: ".$SendEmailID."\n";
 	
 $tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
 if ($tim1ID==false)
@@ -68,10 +73,16 @@ if ($_IPS['SENDER']=="WebFront")
 if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
+	//$archive_handler=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	//$jetzt=time();
+	//$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+	//$starttime=$endtime-60*60*24*9;
+	//$starttime=$endtime-60*2;
+	//$werte = AC_GetLoggedValues($archive_handler, 24129, $starttime, $endtime, 0);
 
 	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
 		"\n\n************************************************************************************************************************\n".send_status(false);
-	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status LBG70", $event);
+	//SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status LBG70", $event);
 	echo $event;
 	}
 
