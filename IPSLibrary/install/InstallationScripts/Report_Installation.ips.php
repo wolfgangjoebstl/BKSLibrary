@@ -82,7 +82,44 @@
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Custom Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+
+	$ReportPageTypeID = CreateVariableByName($CategoryIdData, "ReportPageType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$ReportTimeTypeID = CreateVariableByName($CategoryIdData, "ReportTimeType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
+
+	$pname="ReportPageControl";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   IPS_SetVariableProfileValues($pname, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileAssociation($pname, 0, "Temperatur", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   IPS_SetVariableProfileAssociation($pname, 1, "Luftfeuchtigkeit", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 2, "Status", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 3, "Bewegung", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   echo "Profil erstellt;\n";
+		}
+	IPS_SetVariableCustomProfile($ReportPageTypeID,$pname); // Ziel-ID, P-Name
+
+	$pname="ReportTimeControl";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   IPS_SetVariableProfileValues($pname, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileAssociation($pname, 0, "Tag", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   IPS_SetVariableProfileAssociation($pname, 1, "Woche", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 2, "Monat", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color
+  	   IPS_SetVariableProfileAssociation($pname, 3, "Jahr", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   echo "Profil erstellt;\n";
+		}
+	IPS_SetVariableCustomProfile($ReportTimeTypeID,$pname); // Ziel-ID, P-Name
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
