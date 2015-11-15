@@ -21,7 +21,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+		$moduleManager = new IPSModuleManager('Report',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
@@ -121,6 +121,12 @@
 		}
 	IPS_SetVariableCustomProfile($ReportTimeTypeID,$pname); // Ziel-ID, P-Name
 
+	// Add Scripts, they have auto install
+	$scriptIdReport   = IPS_GetScriptIDByName('Report', $CategoryIdApp);
+	IPS_SetVariableCustomAction($ReportPageTypeID, $scriptIdReport);
+	IPS_SetVariableCustomAction($ReportTimeTypeID, $scriptIdReport);
+
+
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -128,6 +134,9 @@
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFront,  20);
+		CreateLinkByDestination('ReportPageType', $ReportPageTypeID,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('ReportTimeType', $ReportTimeTypeID,    $categoryId_WebFront,  11);
 		}
 		
 	if ($WFC10User_Enabled)
