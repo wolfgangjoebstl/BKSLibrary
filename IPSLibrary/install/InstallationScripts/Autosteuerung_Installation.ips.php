@@ -103,7 +103,8 @@
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
+	/* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
+/*	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
 	$zeile2 = CreateVariable("Nachricht_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
 	$zeile3 = CreateVariable("Nachricht_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
 	$zeile4 = CreateVariable("Nachricht_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
@@ -118,7 +119,7 @@
 	$zeile13 = CreateVariable("Nachricht_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
 	$zeile14 = CreateVariable("Nachricht_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
 	$zeile15 = CreateVariable("Nachricht_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
-	$zeile16 = CreateVariable("Nachricht_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
+	$zeile16 = CreateVariable("Nachricht_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  ); */
 
 	$AutoSetSwitches = Autosteuerung_SetSwitches();
 	$register=new AutosteuerungHandler($scriptIdAutosteuerung);

@@ -127,10 +127,12 @@ if ($_IPS['SENDER']=="Execute")
 	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
 	test();
 	/* von der Konsole aus gestartet */
+	echo "--------------------------------------------------\n";
 	echo "\nEingestellte Programme:\n\n";
 	foreach ($configuration as $key=>$entry)
 	   {
-	   echo "Eintraege fuer :".$key." ".IPS_GetName($key)." Parent ".IPS_GetName(IPS_GetParent($key))."\n";
+	   echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+	   echo "Eintrag fuer : ".$key." Name : ".IPS_GetName($key)." Parent : ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
 	   switch ($entry[1])
 	      {
@@ -246,103 +248,8 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 
 	      case "Status":
-	      	$status=true; $delayValue=0;
-			   $lightManager = new IPSLight_Manager();
-				$moduleParams2 = explode(",",$entry[2]);
-				If ($entry[0]=="OnUpdate")
-				   {
-				   //echo "Andere Behandlung wenn OnUpdate eingestellt ist ...\n";
-				   }
-				$parges=array();
-				switch (count($moduleParams2))
-				   {
-				   case "3":
-						$params_off=explode(":",$moduleParams2[2]);
-						if (count($params_off)>1)
-						   {
-							$parges=parseParameter($params_off,$parges);
-						   }
-						else
-						   {
-							echo "Delay ist jetzt : ".$params_off[0]." in Sekunden.\n";
-							$delayValue=(integer)$params_off[0];
-							}
-				   case "2":
-				   	$params_on=explode(":",$moduleParams2[1]);
-						if (count($params_on)>1)
-						   {
-							$parges=parseParameter($params_on,$parges);
-						   }
-						else
-							{
-							if (strtoupper($params_on[0])=="TRUE") { $status=true;};
-							if (strtoupper($params_on[0])=="FALSE") { $status=false;};
-							}
-				   case "1":
-				   	$params_one=explode(":",$moduleParams2[0]);
-						if (count($params_one)>1)
-						   {
-							$parges=parseParameter($params_one,$parges);
-						   }
-						else
-							{
- 					      $SwitchName=$moduleParams2[0];
-							}
-						break;
-				   default:
-						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-				      break;
-					}
-				print_r($parges);
-				foreach ($parges as $befehl)
-				   {
-					switch (strtoupper($befehl[0]))
-					   {
-					   case "OID":
-						   $switchOID=$befehl[1];
-							break;
-					   case "NAME":
-						   $switchName=$befehl[1];
-							break;
-					   case "ON":
-		   			   $value_on=$befehl[1];
-					      $i=2;
-		   			   while ($i<count($befehl))
-					         {
-		   			      if (strtoupper($befehl[$i])=="MASK")
-		            			{
-					            $mask_on=$befehl[$i++];
-		   			         }
-					         $i++;
-		   			      }
-							break;
-		   			case "OFF":
-					      $value_off=$befehl[1];
-		   			   $i=2;
-					      while ($i<count($befehl))
-		   			      {
-					         if (strtoupper($befehl[$i])=="MASK")
-		   			         {
-		            			$mask_off=$befehl[$i++];
-					            }
-		   			      $i++;
-					         }
-							break;
-					   case "DELAY":
-							$delayValue=(integer)$befehl[1];
-							break;
-
-						}
-					} /* ende foreach */
-
-				if ($status===true)
-					{
-					echo "Switchname ist : ".$SwitchName." mit Status : true und Delay ".$delayValue."\n";
-					}
-				else
-				   {
-					echo "Switchname ist : ".$SwitchName." mit Status : false und Delay ".$delayValue." \n";
-					}
+	         $status=Status($entry,0,true);  // Simulation aktiv
+	         print_r($status);
 				break;
 
 	      case "StatusRGB":
@@ -552,7 +459,7 @@ if ($_IPS['SENDER']=="Variable")
 				/* array('OnUpdate','Status','ArbeitszimmerLampe,true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       					*/
-				Status();
+				Status($params,$_IPS['VARIABLE']);
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
@@ -737,9 +644,9 @@ function Anwesenheit()
 
 /*********************************************************************************************/
 
-function Status()
+function Status($params,$status,$simulate=false)
 	{
-	global $params,$speak_config;
+	global $speak_config;
 
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -749,22 +656,28 @@ function Status()
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
-  	$status=GetValue($_IPS['VARIABLE']);
-   $delayValue=0; $speak="Status";
-  	$moduleParams2 = explode(',', $params[2]);
+	$result=Array();
+	$moduleParams2=Array();
+	
+   $delayValue=0; $speak="Status"; $switchOID=0;
+   $params2=$params[2];
+  	$moduleParams2 = explode(',', $params2);
 	//print_r($moduleParams2);
+	//print_r($params);
+
 	$parges=array();
 	switch (count($moduleParams2))
 	   {
+	   case "6":
 	   case "5":
 	   case "4":
 			$i=3;
 			while ($i<count($moduleParams2))
 			   {
-				$params=explode(":",$moduleParams2[$i]);
+				$params_more=explode(":",$moduleParams2[$i]);
 				if (count($params)>1)
          		{
-					$parges=parseParameter($params,$parges);
+					$parges=parseParameter($params_more,$parges);
 				   }
 				$i++;
 			   }
@@ -777,6 +690,7 @@ function Status()
 			else
 			   {
 				$delayValue=(integer)$params_three[0];
+				$result["DELAY"]=$delayValue;
 				}
 	   case "2":
 	   	$params_two=explode(":",$moduleParams2[1]);
@@ -798,6 +712,7 @@ function Status()
 			else
 			   {
 	      	$SwitchName=$params_one[0];
+				$result["NAME"]=$SwitchName;
 				}
 	      break;
 		default:
@@ -809,134 +724,233 @@ function Status()
 		switch (strtoupper($befehl[0]))
 		   {
 		   case "OID":
-		   $switchOID=$befehl[1];
+			   $switchOID=$befehl[1];
+				$result["OID"]=$SwitchOID;
 				break;
 		   case "NAME":
 			   $SwitchName=$befehl[1];
+				$result["NAME"]=$SwitchName;
 				break;
 		   case "ON":
-		      $value_on=$befehl[1];
+		      $value_on=strtoupper($befehl[1]);
 		      $i=2;
 		      while ($i<count($befehl))
 		         {
 		         if (strtoupper($befehl[$i])=="MASK")
 		            {
 		            $mask_on=$befehl[$i++];
-		            }
+						$result["ON_MASK"]=$mask_on;
+				      }
 		         $i++;
 		         }
+				$result["ON"]=$value_on;
 				break;
 		   case "OFF":
-		      $value_off=$befehl[1];
+		      $value_off=strtoupper($befehl[1]);
 		      $i=2;
 		      while ($i<count($befehl))
 		         {
 		         if (strtoupper($befehl[$i])=="MASK")
 		            {
 		            $mask_off=$befehl[$i++];
-		            }
+						$result["OFF_MASK"]=$mask_off;
+					   }
 		         $i++;
 		         }
+				$result["OFF"]=$value_off;
 				break;
 		   case "DELAY":
 				$delayValue=(integer)$befehl[1];
+				$result["DELAY"]=$delayValue;
 				break;
 		   case "LEVEL":
 				$levelValue=(integer)$befehl[1];
+				$result["LEVEL"]=$levelValue;
 				break;
 		   case "SPEAK":
 				$speak=$befehl[1];
+				$result["SPEAK"]=$speak;
 				break;
 
 			}
 		} /* ende foreach */
-	if ($status===true)
+
+	if (isset($SwitchName)==true)
 		{
-		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue);
-		}
-	else
-	 	{
-	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue);
-		}
-	if (isset($levelValue)==true)
-	 	{
-	  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
-		}
-
-	$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n";
-
-
-	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-	$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-	$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-
-	$result=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
-	if ($result==false)
-	   {
-		$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
-		if ($result==false)
-	   	{
-	   	}
-	   else   /* Wert ist eine Gruppe */
-	      {
-  	   	$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
-	     	if ($status===true)
-	     	   {
-	     	   IPSLight_SetGroupByName($SwitchName,true);
-		     	}
-	  		else
-	  	   	{
-	     	   IPSLight_SetGroupByName($SwitchName,false);
-		    	}
-		   }
-		}
-	else     /* Wert ist ein Schalter */
-	   {
-     	$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
-	  	if ($status===true)
-	  	   {
-    	   IPSLight_SetSwitchByName($SwitchName,true);
-			if (isset($levelValue)==true)
-	 			{
-				$lightManager = new IPSLight_Manager();
-				$switchId = $lightManager->GetSwitchIdByName($SwitchName."#Level");
-				$lightManager->SetValue($switchId, $levelValue);
-				}
-	     	}
+		if ($status===true)
+			{
+			IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue);
+			}
 		else
+	 		{
+		 	/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
+		  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
+			}
+		if (isset($levelValue)==true)
+		 	{
+	  		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
+			}
+
+		$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+
+
+		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+
+
+		$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
+		if ($resultID==false)
 	   	{
-     	   IPSLight_SetSwitchByName($SwitchName,false);
-	     	}
-	  }
+			$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
+			if ($resultID==false)
+	   		{
+				/* Name nicht bekannt */
+		   	}
+		   else   /* Wert ist eine Gruppe */
+	   	   {
+  	   		$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
+				$result["COMMAND"]=$command;
+  		   	if ($simulate==false)
+  	   		   {
+		   	  	if ($status===true)
+		     		   {
+   					if (isset($value_on)==true)
+   				   	{
+	   				   if ($value_on=="FALSE")
+   					      {
+				   	  	   IPSLight_SetGroupByName($SwitchName,false);
+				   	  	   }
+			   		  	else
+			   		  	   {
+			   	  		   IPSLight_SetGroupByName($SwitchName,true);
+			   	  	   	}
+				   	  	}
+				   	else
+				   	   {
+		   		  	   IPSLight_SetGroupByName($SwitchName,true);
+			   		   }
+		   	  		}
+			  		else
+			  	   	{
+   					if (isset($value_off)==true)
+   					   {
+	   				   if ($value_off=="FALSE")
+   					      {
+				   	  	   IPSLight_SetGroupByName($SwitchName,false);
+				   	  	   }
+			   		  	else
+			   		  	   {
+			   	  		   IPSLight_SetGroupByName($SwitchName,true);
+			   	  	   	}
+				   	  	}
+				   	else
+				   	   {
+		   		  	   IPSLight_SetGroupByName($SwitchName,false);
+			   		   }
+		   	 		}
+			   	 }
+			   }
+			}
+		else     /* Wert ist ein Schalter */
+		   {
+     		$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
+			$result["COMMAND"]=$command;
+   		if ($simulate==false)
+   		   {
+		  		if ($status===true)
+		  	   	{
+	  				if (isset($value_on)==true)
+  					   {
+  					   if ($value_on=="FALSE")
+  					      {
+		   		  	   IPSLight_SetSwitchByName($SwitchName,false);
+			   	  	   }
+			   	  	else
+			   	  	   {
+			    		   IPSLight_SetSwitchByName($SwitchName,true);
+							if (isset($levelValue)==true)
+	 							{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($SwitchName."#Level");
+								$lightManager->SetValue($switchId, $levelValue);
+								}
+			   	  	   }
+			   	  	}
+			   	else
+		   		   {
+		   	  	   IPSLight_SetSwitchByName($SwitchName,true);
+						if (isset($levelValue)==true)
+ 							{
+							$lightManager = new IPSLight_Manager();
+							$switchId = $lightManager->GetSwitchIdByName($SwitchName."#Level");
+							$lightManager->SetValue($switchId, $levelValue);
+							}
+			   	   }
+			     	}
+				else   // status ist false
+	   			{
+  					if (isset($value_off)==true)
+	  				   {
+  					   if ($value_off=="FALSE")
+  					      {
+		   		  	   IPSLight_SetSwitchByName($SwitchName,false);
+		   		  	   }
+		   	  		else
+			   	  	   {
+			   	  	   IPSLight_SetSwitchByName($SwitchName,true);
+							if (isset($levelValue)==true)
+ 								{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($SwitchName."#Level");
+								$lightManager->SetValue($switchId, $levelValue);
+								}
+				   	  	}
+						}
+		   		else
+			   	   {
+		   	  	   IPSLight_SetSwitchByName($SwitchName,false);
+			   	   }
+		   	  	}
+				}
+		  }
+		} // Ende isset Switchname
 
    if ($delayValue>0)
       {
-      setEventTimer($SwitchName,$delayValue,$command);
-      }
-      
-	/* Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
-	If ($params[0]=="OnUpdate")
-		{
-	  	if ($speak_config["Parameter"][0]=="On") {
-			tts_play(1,'Taster wurde gedrueckt.','',2);
+   	if ($simulate==false)
+   	   {
+	      setEventTimer($SwitchName,$delayValue,$command);
 			}
-		}
-	else
-		{
-		if ($status)
+	   }
+
+  	if ($simulate==false)
+  	   {
+		/* Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
+		If ($params[0]=="OnUpdate")
 			{
-			if ($speak_config["Parameter"][0]=="On")
-				{
-				tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
+		  	if ($speak_config["Parameter"][0]=="On") {
+				tts_play(1,"Taster ".$speak."wurde gedrueckt.",'',2);
 				}
 			}
 		else
 			{
-		  	if ($speak_config["Parameter"][0]=="On")  {
-				tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
+			if ($status)
+				{
+				if ($speak_config["Parameter"][0]=="On")
+					{
+					tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
+					}
+				}
+			else
+				{
+			  	if ($speak_config["Parameter"][0]=="On")  {
+					tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
+					}
 				}
 			}
 		}
+	return $result;
 	}
 
 /*********************************************************************************************/
