@@ -4,6 +4,7 @@
 
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Autosteuerung.Nachrichtenverlauf-Autosteuerung');
 //echo "BaseID :".$baseId."\n";
@@ -11,6 +12,9 @@ $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Autosteuerung
 // Init
 
 	$input = CreateVariableByName($baseId, "Nachricht_Input", 3);
+	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$input);
+	
+	/*
 	$zeile1 = CreateVariableByName($baseId, "Nachricht_Zeile01", 3);
 	$zeile2 = CreateVariableByName($baseId, "Nachricht_Zeile02", 3);
 	$zeile3 = CreateVariableByName($baseId, "Nachricht_Zeile03", 3);
@@ -27,9 +31,13 @@ $baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Autosteuerung
 	$zeile14 = CreateVariableByName($baseId, "Nachricht_Zeile14", 3);
 	$zeile15 = CreateVariableByName($baseId, "Nachricht_Zeile15", 3);
 	$zeile16 = CreateVariableByName($baseId, "Nachricht_Zeile16", 3);
+*/
 
 if ($_IPS['SENDER']=="Execute")
 	{
+	echo 	$log_Autosteuerung->PrintNachrichten();
+	
+/*	echo"--------------------\n";
 	echo GetValue($zeile1)."\n";
 	echo GetValue($zeile2)."\n";
 	echo GetValue($zeile3)."\n";
@@ -67,6 +75,7 @@ else
 	SetValue($zeile3,GetValue($zeile2));
 	SetValue($zeile2,GetValue($zeile1));
 	SetValue($zeile1,GetValue($input));
+*/
 	}
 
 

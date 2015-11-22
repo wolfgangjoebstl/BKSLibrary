@@ -189,6 +189,19 @@ class Logging
 			}
 		}
 
+	function PrintNachrichten()
+		{
+		$result=false;
+		if ($this->nachrichteninput_Id != "Ohne")
+		   {
+		   $result=GetValue($this->zeile1)."\n".GetValue($this->zeile2)."\n".GetValue($this->zeile3)."\n".GetValue($this->zeile4)."\n".
+					  GetValue($this->zeile5)."\n".GetValue($this->zeile6)."\n".GetValue($this->zeile7)."\n".GetValue($this->zeile8)."\n".
+					  GetValue($this->zeile9)."\n".GetValue($this->zeile10)."\n".GetValue($this->zeile11)."\n".GetValue($this->zeile12)."\n".
+					  GetValue($this->zeile13)."\n".GetValue($this->zeile14)."\n".GetValue($this->zeile15)."\n".GetValue($this->zeile16)."\n";
+			}
+		return $result;
+		}
+
 	function status()
 	   {
 	   return true;
