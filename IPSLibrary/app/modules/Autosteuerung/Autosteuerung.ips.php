@@ -426,14 +426,16 @@ if ($_IPS['SENDER']=="Execute")
 
 if ($_IPS['SENDER']=="Variable")
 	{
+	$variableID=$_IPS['VARIABLE'];
+	$value=GetValue($variableID);
 	/* eine Variablenaenderung ist aufgetreten */
-	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$_IPS['VARIABLE'].'...');
-	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
-	$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$_IPS['VARIABLE'].'...');
-	if (array_key_exists($_IPS['VARIABLE'], $configuration)) {
+	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	if (array_key_exists($variableID, $configuration)) {
 		/* es gibt einen Eintrag fuer das Event */
 
-		$params=$configuration[$_IPS['VARIABLE']];
+		$params=$configuration[$variableID];
 		$wert=$params[1];
 		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
   		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
@@ -462,11 +464,11 @@ if ($_IPS['SENDER']=="Variable")
 				/* array('OnUpdate','Status','ArbeitszimmerLampe,true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       					*/
-				Status($params,$_IPS['VARIABLE']);
+				Status($params,$value);
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
-		      statusRGB($params,$_IPS['VARIABLE']);
+		      statusRGB($params,$value);
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
@@ -489,7 +491,7 @@ if ($_IPS['SENDER']=="Variable")
 			}
 		}
 	else  {
-  		tts_play(1,'Taste gedrueckt mit Zahl '.$_IPS['VARIABLE'],'',2);
+  		tts_play(1,'Taste gedrueckt mit Zahl '.$variable,'',2);
   		}
 
 
@@ -723,7 +725,9 @@ function Status($params,$status,$simulate=false)
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 		   break;
 		}
-	if ($simulate==true) {	print_r($parges); }
+	if ($simulate==true) {
+		//print_r($parges);
+		}
 	
 	/* und danach abgearbeitet */
 
@@ -986,9 +990,13 @@ function statusRGB($params,$status,$simulate=false)
 	$parges=array();
 	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl geführt 		*/
 	/* in params[2] ist die Ausführung versteckt                                             	*/
+	$value=$status;
   	$moduleParams2 = explode(',', $params[2]);
 	switch (count($moduleParams2))
 	   {
+	   case "9":
+	   case "8":
+	   case "7":
 	   case "6":
 	   case "5":
 	   case "4":
@@ -1002,7 +1010,7 @@ function statusRGB($params,$status,$simulate=false)
 				   }
 				$i++;
 			   }
-	   case "3":
+	   case "3":      /* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
 			$params_three=explode(":",$moduleParams2[2]);
 			if (count($params_three)>1)
 				{
@@ -1013,7 +1021,7 @@ function statusRGB($params,$status,$simulate=false)
 				$delayValue=(integer)$params_three[0];
 				$result["DELAY"]=$delayValue;
 				}
-	   case "2":
+	   case "2":         /* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
 	   	$params_two=explode(":",$moduleParams2[1]);
 			if (count($params_two)>1)
 				{
@@ -1021,8 +1029,8 @@ function statusRGB($params,$status,$simulate=false)
 				}
 			else
 			   {
-				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
-				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
+				if (strtoupper($params_two[0])=="TRUE") { $value=true; };
+				if (strtoupper($params_two[0])=="FALSE") { $value=false; };
 			   }
 	   case "1":         /* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
 	   	$params_one=explode(":",$moduleParams2[0]);
@@ -1040,22 +1048,102 @@ function statusRGB($params,$status,$simulate=false)
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 		   break;
 		}
-	if ($simulate==true) {	print_r($parges); }
-  	
-   $result["COMMAND"]=switchNameGroup($SwitchName,$status,$simulate);
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	if (false)
+	if ($simulate==true) {
+		//print_r($parges);
+		}
+
+	/*-------------------------------------------------------------------------------*/
+	/* und danach abgearbeitet 																		*/
+
+	foreach ($parges as $befehl)
+	   {
+		switch (strtoupper($befehl[0]))
+		   {
+		   case "OID":
+			   $switchOID=$befehl[1];
+				$result["OID"]=$SwitchOID;
+				break;
+		   case "NAME":
+			   $SwitchName=$befehl[1];
+				$result["NAME"]=$SwitchName;
+				break;
+		   case "ON":
+		      $value_on=strtoupper($befehl[1]);
+		      $i=2;
+		      while ($i<count($befehl))
+		         {
+		         if (strtoupper($befehl[$i])=="MASK")
+		            {
+		            $i++;
+		            $mask_on=strtoupper($befehl[$i]);
+						$result["ON_MASK"]=$mask_on;
+				      }
+		         $i++;
+		         }
+				$result["ON"]=$value_on;
+				break;
+		   case "OFF":
+		      $value_off=strtoupper($befehl[1]);
+		      $i=2;
+		      while ($i<count($befehl))
+		         {
+		         if (strtoupper($befehl[$i])=="MASK")
+		            {
+		            $i++;
+		            $mask_off=strtoupper($befehl[$i]);
+						$result["OFF_MASK"]=$mask_off;
+					   }
+		         $i++;
+		         }
+				$result["OFF"]=$value_off;
+				break;
+		   case "DELAY":
+				$delayValue=(integer)$befehl[1];
+				$result["DELAY"]=$delayValue;
+				break;
+		   case "LEVEL":
+				$levelValue=(integer)$befehl[1];
+				$result["LEVEL"]=$levelValue;
+				break;
+		   case "SPEAK":
+				$speak=$befehl[1];
+				$result["SPEAK"]=$speak;
+				break;
+		   case "MUTE":
+				$mute=$befehl[1];
+				$result["MUTE"]=$mute;
+				break;
+			}
+		} /* ende foreach */
+
+	/*-------------------------------------------------------------------------------*/
+	/* und schlussendlich ausgeführt 																		*/
+
+	if ( (isset($SwitchName)==true) && (isset($value_on)==false) && (isset($value_off)==false) )
+		{
+		if ($value==true) { $valueChar="true"; } else { $valueChar="false"; }
+		/* ohne Switchname kann man nichts schalten */
+		if ($status===true)
+			{
+			IPSLogger_Dbg(__file__, 'StatusRGB Input ist true und '.$SwitchName.' wird '.$valueChar);
+			}
+		else
+	 		{
+		 	/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
+		  	IPSLogger_Dbg(__file__, 'StatusRGB Input ist false und '.$SwitchName.' wird '.$valueChar);
+			}
+		if (isset($levelValue)==true)
+		 	{
+	  		IPSLogger_Dbg(__file__, 'StatusRGB ist ausgewaehlt mit Level '.$levelValue);
+			}
+
+	   $result["COMMAND"]=switchNameGroup($SwitchName,$value,$simulate);
+  	   }
+	else
   	   {
+  	   
+  	   /* eigenwillige Technik. wenn als zweiter Parameter nicht on: oder off: definiert wird, sind keine RGB Werte im Spiel */
+  	   
   	
   	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
 
@@ -1210,6 +1298,8 @@ function statusRGB($params,$status,$simulate=false)
 
 /*********************************************************************************************/
 
+/*********************************************************************************************/
+
 function SwitchFunction()
 	{
 	
@@ -1231,6 +1321,8 @@ function SwitchFunction()
 		tts_play(1,"Schalter ".$params[2]." manuell auf ".$switchStatus.".",'',2);
 		}
 	}
+
+/*********************************************************************************************/
 
 /*********************************************************************************************/
 
@@ -1266,6 +1358,8 @@ function Ventilator1()
 		IPS_SetEventActive($eventId, false);
 	   }
    }
+
+/*********************************************************************************************/
 
 /*********************************************************************************************/
 
@@ -1325,6 +1419,7 @@ function Ventilator()
 
 /*********************************************************************************************/
 
+/*********************************************************************************************/
 
 function Parameter()
 	{

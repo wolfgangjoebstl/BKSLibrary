@@ -32,4 +32,17 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 	$eventConfigurationAuto = IPSMessageHandler_GetEventConfiguration();
 	print_r($eventConfigurationAuto);
+	
+	
+	echo "Overview of registered Data Servers\n";
+	$remServer=RemoteAccess_GetConfiguration();
+	print_r($remServer);
+	foreach ($remServer as $Name => $Server)
+		{
+		$rpc = new JSONRPC($Server);
+		$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+		}
+	
+	
+	
 ?>
