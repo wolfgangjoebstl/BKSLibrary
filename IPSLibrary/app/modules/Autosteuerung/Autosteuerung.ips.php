@@ -253,6 +253,9 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 
 	      case "StatusRGB":
+	         $status=StatusRGB($entry,0,true);  // Simulation aktiv
+	         print_r($status);
+	         echo "************************\n";
 	      	$status=true;
 			   $lightManager = new IPSLight_Manager();
 				$moduleParams2 = explode(",",$entry[2]);
@@ -463,7 +466,7 @@ if ($_IPS['SENDER']=="Variable")
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
-		      statusRGB();
+		      statusRGB($params,$_IPS['VARIABLE']);
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
@@ -665,6 +668,7 @@ function Status($params,$status,$simulate=false)
 	//print_r($moduleParams2);
 	//print_r($params);
 
+	/* in parges werden alle Parameter erfasst und abgespeichert */
 	$parges=array();
 	switch (count($moduleParams2))
 	   {
@@ -719,6 +723,10 @@ function Status($params,$status,$simulate=false)
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 		   break;
 		}
+	if ($simulate==true) {	print_r($parges); }
+	
+	/* und danach abgearbeitet */
+
 	foreach ($parges as $befehl)
 	   {
 		switch (strtoupper($befehl[0]))
@@ -771,7 +779,10 @@ function Status($params,$status,$simulate=false)
 				$speak=$befehl[1];
 				$result["SPEAK"]=$speak;
 				break;
-
+		   case "MUTE":
+				$mute=$befehl[1];
+				$result["MUTE"]=$mute;
+				break;
 			}
 		} /* ende foreach */
 
@@ -791,13 +802,13 @@ function Status($params,$status,$simulate=false)
 	  		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
 			}
 
+
+
+
 		$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
-
-
 		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-
 
 		$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 		if ($resultID==false)
@@ -924,7 +935,7 @@ function Status($params,$status,$simulate=false)
 			}
 	   }
 
-  	if ($simulate==false)
+  	if (($simulate==false) && (isset($mute)==false))
   	   {
 		/* Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
 		If ($params[0]=="OnUpdate")
@@ -954,10 +965,12 @@ function Status($params,$status,$simulate=false)
 	}
 
 /*********************************************************************************************/
-function statusRGB()
-	{
-	global $params;
 
+
+/*********************************************************************************************/
+
+function statusRGB($params,$status,$simulate=false)
+	{
    /* allerlei Spielereien mit einer RGB Anzeige */
 
    /* bei einer Statusaenderung einer Variable 																						*/
@@ -966,10 +979,86 @@ function statusRGB()
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
+	/* in result wird die Zusammenfassung für die Simulation gegeben */
+	$result=array();
 
-  	$status=GetValue($_IPS['VARIABLE']);
-  	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+	/* in parges werden alle Parameter erfasst und abgespeichert */
+	$parges=array();
+	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl geführt 		*/
+	/* in params[2] ist die Ausführung versteckt                                             	*/
   	$moduleParams2 = explode(',', $params[2]);
+	switch (count($moduleParams2))
+	   {
+	   case "6":
+	   case "5":
+	   case "4":
+			$i=3;
+			while ($i<count($moduleParams2))
+			   {
+				$params_more=explode(":",$moduleParams2[$i]);
+				if (count($params)>1)
+         		{
+					$parges=parseParameter($params_more,$parges);
+				   }
+				$i++;
+			   }
+	   case "3":
+			$params_three=explode(":",$moduleParams2[2]);
+			if (count($params_three)>1)
+				{
+				$parges=parseParameter($params_three,$parges);
+				}
+			else
+			   {
+				$delayValue=(integer)$params_three[0];
+				$result["DELAY"]=$delayValue;
+				}
+	   case "2":
+	   	$params_two=explode(":",$moduleParams2[1]);
+			if (count($params_two)>1)
+				{
+				$parges=parseParameter($params_two,$parges);
+				}
+			else
+			   {
+				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
+				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
+			   }
+	   case "1":         /* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
+	   	$params_one=explode(":",$moduleParams2[0]);
+			if (count($params_one)>1)
+				{
+				$parges=parseParameter($params_one,$parges);
+				}
+			else
+			   {
+	      	$SwitchName=$params_one[0];
+				$result["NAME"]=$SwitchName;
+				}
+	      break;
+		default:
+			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+		   break;
+		}
+	if ($simulate==true) {	print_r($parges); }
+  	
+   $result["COMMAND"]=switchNameGroup($SwitchName,$status,$simulate);
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	
+  	if (false)
+  	   {
+  	
+  	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+
    //IPSLight_SetSwitchByName($moduleParams2[0],$status);
    $lightManager = new IPSLight_Manager();
 	$switchOID = $lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
@@ -983,7 +1072,10 @@ function statusRGB()
 	   case "1":
 			if ($status==true)
 			   {
-			   $lightManager->SetRGB($switchOID, $moduleParams2[1]);
+		     	if ($simulate==false)
+		     	   {
+				   $lightManager->SetRGB($switchOID, $moduleParams2[1]);
+				   }
 			   }
 			break;
 		case "2":
@@ -991,14 +1083,20 @@ function statusRGB()
 		      {
 			   if ($status==true)
 			      {
-				   $lightManager->SetRGB($switchOID, $params_on[1]);
-				   }
+			     	if ($simulate==false)
+			     	   {
+					   $lightManager->SetRGB($switchOID, $params_on[1]);
+					   }
+					}
 		     	}
 		  	if (strtoupper($params_on[0])=="OFF")
 			   {
 			 	if ($status==false)
 				   {
-				   $lightManager->SetRGB($switchOID, $params_on[1]);
+			     	if ($simulate==false)
+			     	   {
+					   $lightManager->SetRGB($switchOID, $params_on[1]);
+						}
 				   }
 				}
 			break;
@@ -1018,7 +1116,10 @@ function statusRGB()
 			  	if ($status==true)
 				   {
 				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
-				  	$lightManager->SetRGB($switchOID, $new);
+			     	if ($simulate==false)
+			     	   {
+					  	$lightManager->SetRGB($switchOID, $new);
+						}
 					}
 				}
 			if (strtoupper($params_on[0])=="OFF")
@@ -1026,7 +1127,10 @@ function statusRGB()
 			  	if ($status==false)
 				   {
 				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
-				  	$lightManager->SetRGB($switchOID, $new);
+			     	if ($simulate==false)
+			     	   {
+					  	$lightManager->SetRGB($switchOID, $new);
+						}
 					}
 				}
 			break;
@@ -1036,7 +1140,10 @@ function statusRGB()
 	   case "1":
 		   if ($status==false)
 		      {
-			   $lightManager->SetRGB($switchOID, $moduleParams2[2]);
+		     	if ($simulate==false)
+		     	   {
+				   $lightManager->SetRGB($switchOID, $moduleParams2[2]);
+					}
 			   }
 			break;
 		case "2":
@@ -1044,14 +1151,20 @@ function statusRGB()
 		      {
 			   if ($status==true)
 			      {
-				   $lightManager->SetRGB($switchOID, $params_off[1]);
+			     	if ($simulate==false)
+			     	   {
+					   $lightManager->SetRGB($switchOID, $params_off[1]);
+						}
 				   }
 		     	}
 		   if (strtoupper($params_off[0])=="OFF")
 		      {
 			   if ($status==false)
 			      {
-				   $lightManager->SetRGB($switchOID, $params_off[1]);
+			     	if ($simulate==false)
+			     	   {
+					   $lightManager->SetRGB($switchOID, $params_off[1]);
+						}
 				   }
 		     	}
 			break;
@@ -1071,7 +1184,10 @@ function statusRGB()
 			  	if ($status==true)
 				   {
 				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
-					$lightManager->SetRGB($switchOID, $new);
+			     	if ($simulate==false)
+			     	   {
+						$lightManager->SetRGB($switchOID, $new);
+						}
 					}
 				}
 			if (strtoupper($params_on[0])=="OFF")
@@ -1079,11 +1195,17 @@ function statusRGB()
 			  	if ($status==false)
 					{
 					$new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
-					$lightManager->SetRGB($switchOID, $new);
+			     	if ($simulate==false)
+			     	   {
+						$lightManager->SetRGB($switchOID, $new);
+						}
 					}
 				}
 			break;
 		}
+		
+		}
+	return $result;
 	}
 
 /*********************************************************************************************/
@@ -1265,5 +1387,48 @@ function test()
 
 	echo "Anwesenheitsimulation ID : ".$AnwesenheitssimulationID." \n";
 	}
+
+
+/*********************************************************************************************/
+
+function switchNameGroup($SwitchName,$status,$simulate=false)
+	{
+	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+	$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+	$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+	
+	$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+
+	$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
+	if ($resultID==false)
+   	{
+		$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
+		if ($resultID==false)
+   		{
+			/* Name nicht bekannt */
+	   	}
+	   else   /* Wert ist eine Gruppe */
+   	   {
+   		$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
+	   	if ($simulate==false)
+	   	   {
+	   	   IPSLight_SetGroupByName($SwitchName,$status);
+   	  		}
+   	  	}
+		}
+	else     /* Wert ist ein Schalter */
+	   {
+  		$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
+  		if ($simulate==false)
+ 		   {
+	  	   IPSLight_SetSwitchByName($SwitchName,$status);
+			}
+		}
+	return $command;
+	}
+
+
+
+
 	
 ?>
