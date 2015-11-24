@@ -255,17 +255,19 @@ if ($_IPS['SENDER']=="Execute")
 	      case "StatusRGB":
 	         $status=StatusRGB($entry,0,true);  // Simulation aktiv
 	         print_r($status);
+
+/*
 	         echo "************************\n";
 	      	$status=true;
 			   $lightManager = new IPSLight_Manager();
 				$moduleParams2 = explode(",",$entry[2]);
 				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
 				print_r($moduleParams2);
-				/* wenn nur ein oder zwei Parameter, dann ignorieren */
+				// wenn nur ein oder zwei Parameter, dann ignorieren
 				$parges=array();
 				if (count($moduleParams2)>2)
 				   {
-				   /* Default Werte setzen */
+				   // Default Werte setzen
 				   $notmask_on=0;
 					$mask_on=0xFFFFFF;
 				   $notmask_off=0;
@@ -351,7 +353,7 @@ if ($_IPS['SENDER']=="Execute")
 						         }
 								break;
 							}
-						} /* ende foreach */
+						} // ende foreach
 						if ($status==true)
 							{
 						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_on) | ($value_on & $mask_on);
@@ -364,6 +366,7 @@ if ($_IPS['SENDER']=="Execute")
 							}
 						printf("Ergebnis OID: %x ON: %x MASK: %x OFF: %x MASK: %x \n",$switchOID,$value_on,$mask_on,$value_off,$mask_off);
 					}
+*/
 				break;
 			}
 		}
@@ -990,7 +993,7 @@ function statusRGB($params,$status,$simulate=false)
 	$parges=array();
 	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl geführt 		*/
 	/* in params[2] ist die Ausführung versteckt                                             	*/
-	$value=$status;
+	$value=$status; 
   	$moduleParams2 = explode(',', $params[2]);
 	switch (count($moduleParams2))
 	   {
@@ -1054,7 +1057,10 @@ function statusRGB($params,$status,$simulate=false)
 
 	/*-------------------------------------------------------------------------------*/
 	/* und danach abgearbeitet 																		*/
-
+	
+	$mask=0xFFFFFF;
+	$notmask=0;
+	
 	foreach ($parges as $befehl)
 	   {
 		switch (strtoupper($befehl[0]))
@@ -1068,14 +1074,15 @@ function statusRGB($params,$status,$simulate=false)
 				$result["NAME"]=$SwitchName;
 				break;
 		   case "ON":
-		      $value_on=strtoupper($befehl[1]);
+		      $value_on=hexdec($befehl[1]);
 		      $i=2;
 		      while ($i<count($befehl))
 		         {
 		         if (strtoupper($befehl[$i])=="MASK")
 		            {
 		            $i++;
-		            $mask_on=strtoupper($befehl[$i]);
+		            $mask_on=hexdec($befehl[$i]);
+					   $notmask_on=~($mask_on)&0xFFFFFF;
 						$result["ON_MASK"]=$mask_on;
 				      }
 		         $i++;
@@ -1083,14 +1090,15 @@ function statusRGB($params,$status,$simulate=false)
 				$result["ON"]=$value_on;
 				break;
 		   case "OFF":
-		      $value_off=strtoupper($befehl[1]);
+		      $value_off=hexdec($befehl[1]);
 		      $i=2;
 		      while ($i<count($befehl))
 		         {
 		         if (strtoupper($befehl[$i])=="MASK")
 		            {
 		            $i++;
-		            $mask_off=strtoupper($befehl[$i]);
+		            $mask_off=hexdec($befehl[$i]);
+					   $notmask_off=~($mask_off)&0xFFFFFF;
 						$result["OFF_MASK"]=$mask_off;
 					   }
 		         $i++;
@@ -1121,6 +1129,8 @@ function statusRGB($params,$status,$simulate=false)
 
 	if ( (isset($SwitchName)==true) && (isset($value_on)==false) && (isset($value_off)==false) )
 		{
+  	   /* eigenwillige Technik. wenn als zweiter Parameter nicht on: oder off: definiert wird, sind keine RGB Werte im Spiel */
+
 		if ($value==true) { $valueChar="true"; } else { $valueChar="false"; }
 		/* ohne Switchname kann man nichts schalten */
 		if ($status===true)
@@ -1139,19 +1149,33 @@ function statusRGB($params,$status,$simulate=false)
 
 	   $result["COMMAND"]=switchNameGroup($SwitchName,$value,$simulate);
   	   }
-	else
+  	else
   	   {
-  	   
-  	   /* eigenwillige Technik. wenn als zweiter Parameter nicht on: oder off: definiert wird, sind keine RGB Werte im Spiel */
-  	   
-  	
-  	//tts_play(1,'Anwesenheit Status geht auf '.$status,'',2);
+		if (isset($SwitchName)==true)
+  		   {
+			/* mit Parameter on und/oder off */
+		   $lightManager = new IPSLight_Manager();
+			$switchOID = $lightManager->GetSwitchIdByName($SwitchName.'#Color');
 
-   //IPSLight_SetSwitchByName($moduleParams2[0],$status);
-   $lightManager = new IPSLight_Manager();
-	$switchOID = $lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
-	$params_on=explode(":",$moduleParams2[1]);
-	$params_off=explode(":",$moduleParams2[2]);
+			if ($status==true)
+			   {
+			   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($value_on & $mask);
+		   	}
+			else
+			   {
+	   		$new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($value_off & $mask);
+				}
+			IPSLogger_Dbg(__file__, 'StatusRGB Input ist true und '.$SwitchName.' mit OID '.$switchOID.' geht auf Wert '.$new);
+   	  	if ($simulate==false)
+     		   {
+				$lightManager->SetRGB($switchOID, $new);
+				}
+			}
+		}
+/*
+
+		$params_on=explode(":",$moduleParams2[1]);
+		$params_off=explode(":",$moduleParams2[2]);
 
   	//Farbe per RGB(Hex)-Wert setzen
 	$wert=count($params_on);
@@ -1293,6 +1317,8 @@ function statusRGB($params,$status,$simulate=false)
 		}
 		
 		}
+*/
+		
 	return $result;
 	}
 
