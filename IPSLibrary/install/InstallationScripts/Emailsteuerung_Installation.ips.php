@@ -146,7 +146,7 @@ IPS_SetEventActive($tim1ID,true);
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-
+      IPS_SetPosition($categoryId_WebFront,999);
 		}
 
 	if ($WFC10User_Enabled)

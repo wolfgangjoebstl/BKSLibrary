@@ -306,6 +306,7 @@ foreach ($configuration as $config)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+      IPS_SetPosition($categoryId_WebFront,600);
 		WebfrontInstall($categoryId_WebFront,$config,$moduleManager);
 		}
 

@@ -19,7 +19,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
+		$moduleManager = new IPSModuleManager('OperationCenter',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');

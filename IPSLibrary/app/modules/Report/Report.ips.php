@@ -84,6 +84,42 @@ if ($_IPS['SENDER']=="WebFront")
 
 	   }
 
+	if (getValueFormatted($ReportPageTypeID)=="Feuchtigkeit")
+	   {
+    	$CfgDaten['title']['text'] = "Aussenwerte Feuchtigkeit";
+
+     	$CfgDaten['yAxis'][0]['title']['text'] = "Feuchtigkeit";
+    	$CfgDaten['yAxis'][0]['Unit'] = "%";
+    	$CfgDaten['yAxis'][0]['opposite'] = false;
+    	$CfgDaten['yAxis'][0]['tickInterval'] = 5;
+
+		/*----------------------------------------------------------------------*/
+
+	 	$serie = array();
+    	$serie['type'] = 'line';
+
+	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
+	 	$serie['name'] = 'Aussen-Ostseite-Feuchtigkeit';
+	 	$serie['Unit'] = "%";
+    	$serie['Id'] = 49601 ;
+
+    	$serie['marker']['enabled'] = false;
+    	$CfgDaten['series'][] = $serie;
+
+		/*----------------------------------------------------------------------*/
+
+	 	$serie = array();
+    	$serie['type'] = 'line';
+
+	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
+	 	$serie['name'] = 'Aussen-Westseite-Feuchtigkeit';
+	 	$serie['Unit'] = "%";
+    	$serie['Id'] = 54218 ;
+
+    	$serie['marker']['enabled'] = false;
+    	$CfgDaten['series'][] = $serie;
+	 	}
+
 	if (getValueFormatted($ReportTimeTypeID)=="Tag")
 	   {
 		$jetzt=time();
