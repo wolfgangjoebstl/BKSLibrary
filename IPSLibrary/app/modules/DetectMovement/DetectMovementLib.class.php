@@ -463,10 +463,10 @@
 			{
 			switch ($eventType)
 				{
-				case 'Motion':
+				case 'Temperatur':
 					$triggerType = 1;
 					break;
-				case 'Contact':
+				case 'Feuchtigkeit':
 					$triggerType = 0;
 					break;
 				case 'par0':

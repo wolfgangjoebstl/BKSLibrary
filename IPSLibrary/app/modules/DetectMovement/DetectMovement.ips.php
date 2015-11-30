@@ -18,13 +18,14 @@ IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::m
 
 //$repository = 'https://10.0.1.6/user/repository/';
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) {
+if (!isset($moduleManager))
+	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('DetectMovement',$repository);
-}
-$gartensteuerung=false;
+	}
+
 $installedModules = $moduleManager->GetInstalledModules();
 $inst_modules="\nInstallierte Module:\n";
 foreach ($installedModules as $name=>$modules)
@@ -33,6 +34,8 @@ foreach ($installedModules as $name=>$modules)
 	}
 echo $inst_modules."\n\n";
 
+if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
+if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
 
 /*
 
@@ -43,9 +46,9 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 
 */
 
-	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
 
 
@@ -56,7 +59,7 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 /****************************************************************************************************************/
 
 $DetectMovementHandler = new DetectMovementHandler();
-$DetectTemperatureHandler = new DetectTemperatureHandler();
+
 echo "Detect Movement wird ausgeführt.\n";
 if (true)
 	{
@@ -191,9 +194,12 @@ if (true)
 			   }
 	  		}
 
+$DetectTemperatureHandler = new DetectTemperatureHandler();
+
 	echo "Temperatur wird ausgeführt.\n";
 	echo "Homematic Geräte werden registriert.\n";
 
+	$Homematic = HomematicList();
 		$keyword="TEMPERATURE";
 		foreach ($Homematic as $Key)
 			{
