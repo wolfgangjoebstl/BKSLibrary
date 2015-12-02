@@ -34,7 +34,7 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1, $lightObject=null, $lightValue=null) {
+		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
@@ -56,23 +56,27 @@
 			
 			$log=new Temperature_Logging($variable);
 			$result=$log->Temperature_LogValue();
-			//print_r($this);
-			//print_r($module);
-			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			$params= explode(';', $this->RemoteOID);
-			print_r($params);
-			foreach ($params as $val)
-				{
-				$para= explode(':', $val);
-				echo "Wert :".$val." Anzahl ",count($para)." \n";
-            if (count($para)==2)
-               {
-					$Server=$this->remServer[$para[0]];
-					echo "Server : ".$Server."\n";
-					$rpc = new JSONRPC($Server);
-					$roid=(integer)$para[1];
-					echo "Remote OID: ".$roid."\n";
-					$rpc->SetValue($roid, $value);
+			
+			if ($this->RemoteOID != Null)
+			   {
+				//print_r($this);
+				//print_r($module);
+				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+				$params= explode(';', $this->RemoteOID);
+				//print_r($params);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+	            if (count($para)==2)
+   	            {
+						$Server=$this->remServer[$para[0]];
+						//echo "Server : ".$Server."\n";
+						$rpc = new JSONRPC($Server);
+						$roid=(integer)$para[1];
+						//echo "Remote OID: ".$roid."\n";
+						$rpc->SetValue($roid, $value);
+						}
 					}
 				}
 		}
@@ -100,16 +104,16 @@
 		
 	   function __construct($variable)
 		   {
-		   //echo "Construct Motion.\n";
+		   echo "Construct Temperature Logging for Variable ID : ".$variable."\n";
 		   $this->variable=$variable;
 		   $result=IPS_GetObject($variable);
 		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
 		   
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$result=$moduleManager->GetInstalledModules();
+			$installedmodules=$moduleManager->GetInstalledModules();
 
-			if (isset ($result["DetectMovement"]))
+			//if (isset ($installedmodules["DetectMovement"]))
 				{
 				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
@@ -157,10 +161,60 @@
 			$result=number_format(GetValue($this->variable),2,',','.')." °C";
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C\n";
+			
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($installedmodules["DetectMovement"]))
+				{
+				/* Detect Movement kann auch Temperaturen agreggieren */
+				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+		   	$DetectTemperatureHandler = new DetectTemperatureHandler();
+				//print_r($DetectMovementHandler->ListEvents("Motion"));
+				//print_r($DetectMovementHandler->ListEvents("Contact"));
+
+				$groups=$DetectTemperatureHandler->ListGroups();
+				foreach($groups as $group=>$name)
+				   {
+				   echo "Gruppe ".$group." behandeln.\n";
+					$config=$DetectTemperatureHandler->ListEvents($group);
+					$status=false;
+					foreach ($config as $oid=>$params)
+						{
+						$status=GetValue($oid);
+						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						}
+				   echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+					$log=new Temperature_Logging($oid);
+					$class=$log->GetComponent($oid);
+					/* Wo sind die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+					/*
+					$statusID=CreateVariable("Gesamtauswertung_".$group,2,IPS_GetParent($oid));
+					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
+					SetValue($statusID,$status);
+					*/
+			   	}
+				}
+			
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}
 
+		public function GetComponent() {
+			return ($this);
+			}
+			
+		/*************************************************************************************
+		Ausgabe des Eventspeichers in lesbarer Form
+		erster Parameter true: macht zweimal evaluate
+		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
+		*************************************************************************************/
+
+		public function writeEvents($comp=true,$gesamt=false)
+			{
+
+			}
+			
 	   }
 
 

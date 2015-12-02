@@ -62,14 +62,14 @@
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
-					echo "Wert :".$val." Anzahl ",count($para)." \n";
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
             	if (count($para)==2)
                	{
 						$Server=$this->remServer[$para[0]];
-						echo "Server : ".$Server."\n";
+						//echo "Server : ".$Server."\n";
 						$rpc = new JSONRPC($Server);
 						$roid=(integer)$para[1];
-						echo "Remote OID: ".$roid."\n";
+						//echo "Remote OID: ".$roid."\n";
 						$rpc->SetValue($roid, $value);
 						}
 					}
@@ -99,8 +99,8 @@
 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$result=$moduleManager->GetInstalledModules();
-			if (isset ($result["DetectMovement"]))
+			$installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($installedmodules["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
 				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
