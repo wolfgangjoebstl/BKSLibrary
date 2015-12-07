@@ -33,6 +33,11 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 	$eventConfigurationAuto = IPSMessageHandler_GetEventConfiguration();
 	print_r($eventConfigurationAuto);
 	
+	/* manchmal geht die Adressierung mit der externen Adresse leichter als mit der internen Adresse ? */
+	//$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/");
+	//$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+
+	/* Wenn die Servernamen geändert werden muss auch Remoteaccess ausgeführt werden, damit wieder die ROID_List() richtig gestellt wird */
 	
 	echo "Overview of registered Data Servers\n";
 	$remServer=RemoteAccess_GetConfiguration();
@@ -41,8 +46,8 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 		{
 		$rpc = new JSONRPC($Server);
 		$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+		echo "Contact to Server : ".$Server. " successful.\n";
 		}
-	
 	
 	
 ?>

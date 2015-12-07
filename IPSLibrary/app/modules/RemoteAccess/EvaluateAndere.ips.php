@@ -39,11 +39,11 @@ $remServer=ROID_List();
       	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			else
 			   {
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
@@ -65,5 +65,47 @@ $remServer=ROID_List();
 		   }
 		}
 
+	$FHT = FHTList();
+	$keyword="TemeratureVar";
+
+	foreach ($FHT as $Key)
+		{
+		/* alle Temperaturwerte der Heizungssteuerungen ausgeben */
+		if (isset($Key["COID"][$keyword])==true)
+  			{
+		   echo "Heizungssteuerung gefunden:\n";
+	      $oid=(integer)$Key["COID"][$keyword]["OID"];
+      	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			else
+	   		{
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			//$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');
+			
+			$parameter="";
+			foreach ($remServer as $Name => $Server)
+				{
+				$rpc = new JSONRPC($Server["Adresse"]);
+				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Temperatur"], $Key["Name"], 2);
+   			$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+				$parameter.=$Name.":".$result.";";
+				}
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+			echo "Heizungssteuerungs Register mit Parameter :".$parameter." erzeugt.\n";
+			}
+
+		/* remote Server aufsetzen für gruppenregister fehlt noch ..... */
+
+		}
 
 ?>
