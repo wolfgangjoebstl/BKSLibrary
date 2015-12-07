@@ -52,7 +52,7 @@ $remServer=ROID_List();
 				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Andere"], $Key["Name"], 2);
    			$rpc->IPS_SetVariableCustomProfile($result,"~Rainfall");
 				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);       /* 0 Standard 1 ist Zähler */
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
@@ -93,7 +93,7 @@ $remServer=ROID_List();
 				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Temperatur"], $Key["Name"], 2);
    			$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
 				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0); /* 0 Standard 1 ist Zähler */
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
@@ -103,9 +103,6 @@ $remServer=ROID_List();
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
 			echo "Heizungssteuerungs Register mit Parameter :".$parameter." erzeugt.\n";
 			}
-
-		/* remote Server aufsetzen für gruppenregister fehlt noch ..... */
-
 		}
 
 ?>

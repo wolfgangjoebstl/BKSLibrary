@@ -49,6 +49,7 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 */
 
 IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
@@ -66,6 +67,7 @@ if (true)
 	
 	$DetectMovementHandler = new DetectMovementHandler();
 	echo "\n";
+	echo "***********************************************************************************************\n";
 	echo "Detect Movement Handler wird ausgeführt.\n";
 	
 	/* nur die Detect Movement Funktion registrieren */
@@ -171,9 +173,15 @@ if (true)
 				echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
 				}
 		   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+		   /* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
 			$log=new Motion_Logging($oid);
+			//print_r($log);
 			$class=$log->GetComponent($oid);
 			$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
+  	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+			IPS_ApplyChanges($archiveHandlerID);
 			SetValue($statusID,(integer)$status);
 
 			$parameter="";
@@ -183,7 +191,7 @@ if (true)
 				$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 0);
    			$rpc->IPS_SetVariableCustomProfile($result,"Motion");
 				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0); 	/* 0 Standard 1 ist Zähler */
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
@@ -197,6 +205,7 @@ if (true)
 	$DetectTemperatureHandler = new DetectTemperatureHandler();
 
 	echo "\n";
+	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt.\n";
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
 
@@ -297,38 +306,49 @@ if (true)
 		$groups=$DetectTemperatureHandler->ListGroups();
 		foreach($groups as $group=>$name)
 		   {
-		   echo "Gruppe ".$group." behandeln.\n";
-			$config=$DetectTemperatureHandler->ListEvents($group);
-			$status=(float)0;
-			$count=0;
-			foreach ($config as $oid=>$params)
-				{
-				$status+=GetValue($oid);
-				$count++;
-				echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-				}
-			if ($count>0) { $status=$status/$count; }
-		   echo "Gruppe ".$group." hat neuen Temperaturmittelwert : ".(integer)$status."\n";
-			$log=new Temperature_Logging($oid);
-			$class=$log->GetComponent($oid);
-			$statusID=CreateVariable("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->EreignisID)));
-			SetValue($statusID,(integer)$status);
+		   if (($group != "") | ($group != " "))
+		      {
+			   echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectTemperatureHandler->ListEvents($group);
+				$status=(float)0;
+				$count=0;
+				foreach ($config as $oid=>$params)
+					{
+					$status+=GetValue($oid);
+					$count++;
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+					}
+				if ($count>0) { $status=$status/$count; }
+			   echo "Gruppe ".$group." hat neuen Temperaturmittelwert : ".$status."\n";
+  		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
+				$log=new Temperature_Logging($oid);
+				//print_r($log);
+				$class=$log->GetComponent($oid);
+				//echo "Letzte Variable hat OID :".$log->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
+				$statusID=CreateVariable2("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->variableLogID)),900,"~Temperature");
+				/* auch die Archivierung einsetzen */
+   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+      		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+				AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				SetValue($statusID,$status);
 
-			$parameter="";
-			foreach ($remServer as $Name => $Server)
-				{
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 2);
-   			$rpc->IPS_SetVariableCustomProfile($result,"Temperature");
-				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-				$parameter.=$Name.":".$result.";";
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 2);
+   				$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
+			   $messageHandler = new IPSMessageHandler();
+   			$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
 				}
-		   $messageHandler = new IPSMessageHandler();
-   		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
 		   }
 		}
 		
