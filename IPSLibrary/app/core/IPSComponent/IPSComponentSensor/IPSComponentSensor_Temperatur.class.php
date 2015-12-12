@@ -100,7 +100,8 @@
 	   {
 	   private $variable;
 	   private $variablename;
-		private $variableLogID;
+		//private $variableLogID;
+		private $TempAuswertungID;
 		
 	   function __construct($variable)
 		   {
@@ -136,6 +137,7 @@
       			IPS_SetName($TempAuswertungID, $name);
 	      		IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
 	      		}
+				$this->TempAuswertungID=$TempAuswertungID;
 				if ($variable<>null)
 				   {
 				   /* lokale Spiegelregister aufsetzen */
@@ -178,21 +180,22 @@
 				   {
 				   echo "Gruppe ".$group." behandeln.\n";
 					$config=$DetectTemperatureHandler->ListEvents($group);
-					$status=false;
+					$status=(float)0;
+					$count=0;
 					foreach ($config as $oid=>$params)
 						{
-						$status=GetValue($oid);
+						$status+=GetValue($oid);
+						$count++;
 						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 						}
+					if ($count>0) { $status=$status/$count; }
 				   echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
 					$log=new Temperature_Logging($oid);
 					$class=$log->GetComponent($oid);
-					/* Wo sind die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					/*
-					$statusID=CreateVariable("Gesamtauswertung_".$group,2,IPS_GetParent($oid));
+					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
 					SetValue($statusID,$status);
-					*/
 			   	}
 				}
 			
