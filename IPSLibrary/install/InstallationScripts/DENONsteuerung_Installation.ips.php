@@ -129,7 +129,7 @@ $configuration=Denon_Configuration();
 foreach ($configuration as $config)
 	{
 	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
-   echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\nwww.raketenschnecke.net\n\n";
+   echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n";
 
 	// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden
 	$DENON_CS_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Client Socket", 0);
@@ -167,7 +167,7 @@ foreach ($configuration as $config)
    	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
 		Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
 		IPS_ApplyChanges($DENON_Cu_ID);
-		echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #DENON_CS_ID verknüpft\n";
+		echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verknüpft\n";
 		}
 	else
 		{

@@ -91,6 +91,9 @@ else
 	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
 	}
 
+/*****************************************************************************************************************************************************/
+
+
 if ($_IPS['SENDER'] == "Execute")
 	{
 	echo "Script wurde direkt aufgerufen.\n";
@@ -99,6 +102,11 @@ if ($_IPS['SENDER'] == "Execute")
 	}
 else
 	{
+	
+/*****************************************************************************************************************************************************/
+
+/* hier ist der Bearbeitung der empfangenen Telegramme, sollte auch für mehrere Denon Receiver funktionieren */
+	
 	$data=$_IPS['VALUE'];
 	$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
 	/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
