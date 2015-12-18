@@ -111,6 +111,10 @@ else
 	$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
 	/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
 	$instanz=strstr($instanz," Register Variable",true);
+	
+	/* für alle Webfront Instanzen die Variable setzen */
+	$webconfig=Denon_WebfrontConfig();
+
 	foreach ($configuration as $config)
 		{
 		if ($config['INSTANZ']==$instanz)
@@ -154,11 +158,13 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				DenonSetValue($item, $value, $vtype, $id);
-				DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
-				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
+				foreach ($webconfig as $webfrontname => $itemname)
+				   {
+				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
+				      {
+						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+						}
+					}
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -182,11 +188,13 @@ else
 						$itemdata= str_pad ( $itemdata, 3, "0" );
 						$value = (intval($itemdata)/10) -80;
 						}
-					DenonSetValue($item, $value, $vtype, $id);
-					DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
-					DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
-					DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
-					DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
+				foreach ($webconfig as $webfrontname => $itemname)
+				   {
+				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
+				      {
+						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+						}
+					}
 					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					}
@@ -209,10 +217,13 @@ else
 				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 		   	}
 
-				DenonSetValue($item, $value, $vtype, $id);
-				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
+				foreach ($webconfig as $webfrontname => $itemname)
+				   {
+				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
+				      {
+						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+						}
+					}
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -233,10 +244,13 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				DenonSetValue($item, $value, $vtype, $id);
-				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
+				foreach ($webconfig as $webfrontname => $itemname)
+				   {
+				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
+				      {
+						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+						}
+					}
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -257,10 +271,9 @@ else
 				$itemdata=substr($data,2);
 				$vtype = 1;
 
-				$webconfig=Denon_WebfrontConfig();
-				if (isset($webconfig['DATA']['AuswahlFunktion'])==true)
+				if (isset($webconfig['Visualization.WebFront.Administrator.Audio']['AuswahlFunktion'])==true)
 		   		{
-					$profil=$webconfig['DATA']['AuswahlFunktion'];
+					$profil=$webconfig['Visualization.WebFront.Administrator.Audio']['AuswahlFunktion'];
 					$profil_size=sizeof($profil);
 				   $i=0;
 				   $done=false;
@@ -388,10 +401,13 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				$value = intval($value);
-				DenonSetValue($item, $value, $vtype, $id);
-				DenonSetValue($item, $value, $vtype, $id,$WFC10User_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Mobile_Path);
-				DenonSetValue($item, $value, $vtype, $id,$Retro_Path);
+				foreach ($webconfig as $webfrontname => $itemname)
+				   {
+				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
+				      {
+						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+						}
+					}
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;

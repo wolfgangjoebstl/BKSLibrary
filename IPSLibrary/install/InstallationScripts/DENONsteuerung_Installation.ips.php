@@ -129,6 +129,7 @@ $configuration=Denon_Configuration();
 foreach ($configuration as $config)
 	{
 	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
+	echo "\n\n****************************************************************************************************\n";
    echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n";
 
 	// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden

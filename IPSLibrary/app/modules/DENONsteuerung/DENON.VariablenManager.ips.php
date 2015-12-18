@@ -48,6 +48,8 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		}
 
 	// abhängig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID für Variable und Link ermitteln
+	
+	//IPSLogger_Dbg (__file__, 'Received command for '.$id. ' WebfrontID '.$categoryId_WebFront.' find on '.$webfrontID.' with item '.$item);
 	//$DENON_ID = IPS_GetCategoryIDByName("DENON", 0);
    $DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
 	$praefix =substr($item, 0, 5);
@@ -605,9 +607,9 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 		case "AuswahlFunktion":
 		   $ProfileName = "DENON.".$item;
 			$webconfig=Denon_WebfrontConfig();
-			if (isset($webconfig['DATA'][$item])==true)
+			if (isset($webconfig['Visualization.WebFront.Administrator.Audio'][$item])==true)
 	   		{
-				$profil=$webconfig['DATA'][$item];
+				$profil=$webconfig['Visualization.WebFront.Administrator.Audio'][$item];
 				$profil_size=sizeof($profil);
 				echo "Neues Profil mit ".$profil_size." Einträgen.\n";
 				if (IPS_VariableProfileExists($ProfileName) == false)
