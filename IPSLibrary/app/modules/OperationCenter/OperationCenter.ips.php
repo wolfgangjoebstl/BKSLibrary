@@ -82,6 +82,10 @@ if ($_IPS['SENDER']=="WebFront")
 if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
+	
+/********************************************************
+   Externe Ip Adresse immer ermitteln
+**********************************************************/
 
 	$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
 	//$url="http://www.whatismyip.com/";  //gesperrt
@@ -106,6 +110,7 @@ if ($_IPS['SENDER']=="Execute")
 
 	/* letzte Alternative ist die Webcam selbst */
 
+	echo "\n";
 	if ($result==false)
 		{
 		echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
@@ -118,8 +123,60 @@ if ($_IPS['SENDER']=="Execute")
 		$subresult=substr($subresult,0,$pos_length);
 	   echo "Whatismyipaddress liefert : ".$subresult."\n";
 	   }
-	}
+	   
+	   
+	   
+/********************************************************
+   Eigene Ip Adresse immer ermitteln
+**********************************************************/
 
+$ipall=""; $hostname="unknown";
+exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
+$ipports=array();
+
+foreach($catch as $line)
+   	{
+		if (strlen($line)>2)
+		   {
+			echo $line."\n<br>";
+			if (substr($line,0,1)!=" ") { echo "-------------------> Ueberschrift \n"; }
+   		if(preg_match('/IPv4-Adresse/i',$line))
+	   		{
+				//echo "Ausgabe catch :".$line."\n<br>";
+   	   	list($t,$ip) = explode(':',$line);
+      		$result = extractIPaddress($ip);
+      		$ipports[]=$result;
+	         $ipall=$ipall." ".$result;
+		      /* if(ip2long($ip > 0))
+				   {
+      		   $ipports[]=$ip;
+         		$ipall=$ipall." ".$ip;
+		         $status2=true;
+					$pos=strpos($ipall,"(");  // bevorzugt eliminieren
+					$ipall=trim(substr($ipall,0,$pos));
+   	   	   }  */
+	      	}
+   		if(preg_match('/Hostname/i',$line))
+	   		{
+	   		list($t,$hostname) = explode(':',$line);
+	      	$hostname = trim($hostname);
+				}
+			}  /* ende strlen */
+	  }
+	if ($ipall == "") {$ipall="unknown";}
+
+	echo "\n";
+	echo "Hostname ist          : ".$hostname."\n";
+	echo "Eigene IP Adresse ist : ".$ipall."\n";
+	echo "\n";
+
+	foreach ($ipports as $ip)
+		{
+		//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
+		printf("IP Adresse %s und im Longformat : %u\n", $ip,ip2long($ip));
+		}
+	} /* ende Execute */
+	
 /*********************************************************************************************/
 
 
@@ -160,6 +217,8 @@ function get_data($url) {
         
 	$data = curl_exec($ch);
 
+	/* Curl Debug Funktionen */
+	/*
 	echo "Channel :".$ch."\n";
   	$err     = curl_errno( $ch );
    $errmsg  = curl_error( $ch );
@@ -171,6 +230,8 @@ function get_data($url) {
 	echo "Header ";
 	print_r($header);
 	echo "\n";
+	*/
+
 	curl_close($ch);
 	
 	return $data;
@@ -178,7 +239,52 @@ function get_data($url) {
 
 /*********************************************************************************************/
 
+function extractIPaddress($ip)
+	{
+		$parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
+		$first_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$first_num = $num_loc;
+				break;
+				}
+			$num_loc++;
+			}
+		if ($first_num == -1) {return "unknown";}
 
+		/* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
+		$result=substr($ip,$first_num,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_1=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_2=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_3=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
+		$last_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$last_num = $num_loc;
+				}
+			$num_loc++;
+			}
+		$result=substr($result,0,$last_num+1);
+		echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
+		return($result_1.".".$result_2.".".$result_3.".".$result);
+	}
 
 
 ?>
