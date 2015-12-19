@@ -29,8 +29,6 @@ $inst_modules="\nInstallierte Module:\n";
 foreach ($installedModules as $name=>$modules)
 	{
 	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	if ($name=="IPSLight") { $ipslight=true;  }
-	if ($name=="IPSPowerControl") { $ipspower=true;  }
 	}
 echo $inst_modules."\n\n";
 
@@ -42,7 +40,11 @@ echo "Category Script ID:".$scriptId."\n";
 
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
-if (isset($ipslight)==true)
+if (isset ($installedModules["IPSLight"])) { echo "Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; break; }
+if (isset ($installedModules["IPSPowerControl"])) { echo "Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; break;}
+
+
+if (isset($installedModules["IPSLight"])==true)
 	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 	$pos=strpos($WFC10_Path,"OperationCenter");
@@ -53,7 +55,7 @@ if (isset($ipslight)==true)
 	echo "Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
 
-if (isset($ipspower)==true)
+if (isset($installedModules["IPSPowerControl"])==true)
 	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 	$pos=strpos($WFC10_Path,"OperationCenter");
