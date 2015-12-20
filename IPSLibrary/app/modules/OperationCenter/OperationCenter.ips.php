@@ -130,8 +130,10 @@ if ($_IPS['SENDER']=="Execute")
    Eigene Ip Adresse immer ermitteln
 **********************************************************/
 
-$ipall=""; $hostname="unknown";
-exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
+$ipall=""; $hostname="unknown"; $lookforgateway=false;
+//exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
+exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
+
 $ipports=array();
 
 foreach($catch as $line)
@@ -139,14 +141,19 @@ foreach($catch as $line)
 		if (strlen($line)>2)
 		   {
 			echo $line."\n<br>";
-			if (substr($line,0,1)!=" ") { echo "-------------------> Ueberschrift \n"; }
+			if (substr($line,0,1)!=" ")
+				{
+				echo "-------------------> Ueberschrift \n";
+				$portname=substr($line,0,strpos($line,":"));
+				}
    		if(preg_match('/IPv4-Adresse/i',$line))
 	   		{
 				//echo "Ausgabe catch :".$line."\n<br>";
    	   	list($t,$ip) = explode(':',$line);
       		$result = extractIPaddress($ip);
-      		$ipports[]=$result;
+      		$ipports[$result]["Name"]=$portname;
 	         $ipall=$ipall." ".$result;
+	         $lookforgateway=true;
 		      /* if(ip2long($ip > 0))
 				   {
       		   $ipports[]=$ip;
@@ -156,6 +163,17 @@ foreach($catch as $line)
 					$ipall=trim(substr($ipall,0,$pos));
    	   	   }  */
 	      	}
+	      if ($lookforgateway==true)
+				{
+				if(preg_match('/Standardgateway/i',$line))
+	   			{
+					//echo "Ausgabe catch :".$line."\n<br>";
+   		   	list($t,$gw) = explode(':',$line);
+      			$gw = extractIPaddress($gw);
+      			$ipports[$result]["Gateway"]=$gw;
+	         	$lookforgateway=false;
+					}
+				}
    		if(preg_match('/Hostname/i',$line))
 	   		{
 	   		list($t,$hostname) = explode(':',$line);
@@ -170,12 +188,65 @@ foreach($catch as $line)
 	echo "Eigene IP Adresse ist : ".$ipall."\n";
 	echo "\n";
 
-	foreach ($ipports as $ip)
+	foreach ($ipports as $ip => $data)
 		{
 		//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
-		printf("IP Adresse %s und im Longformat : %u\n", $ip,ip2long($ip));
+		printf("Port %s hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
 		}
 	} /* ende Execute */
+
+/********************************************************
+   Über eigene Ip Adresse auf Gateway Adresse schliessen
+**********************************************************/
+
+/* vorerst lassen wir es haendisch, spaeter kann man es auch aus ipconfig ableiten
+	Gateway kann mit tracert 8.8.8.8 rausgefunden werden, die ersten zeilen sind die bekannten Gateways
+
+*/
+
+	$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
+
+	/*  $result=file_get_contents($url) geht leider nicht, passwort Eingabe, Browserchecks etc  */
+	$ch = curl_init($url);
+	$timeout = 5;
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
+	curl_setopt($ch, CURLOPT_USERPWD, "admin:cloudg06");
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
+   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
+   curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
+
+	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
+        CURLOPT_ENCODING       => "",       // handle all encodings
+        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
+        CURLOPT_TIMEOUT        => 120,      // timeout on response
+        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+        CURLOPT_POST => 1,
+        CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
+
+	$data = curl_exec($ch);
+
+	/* Curl Debug Funktionen */
+
+	echo "Channel :".$ch."\n";
+  	$err     = curl_errno( $ch );
+   $errmsg  = curl_error( $ch );
+   $header  = curl_getinfo( $ch );
+
+	echo "Fehler ".$err." von ";
+	print_r($errmsg);
+	echo "\n";
+	echo "Header ";
+	print_r($header);
+	echo "\n";
+
+
+	curl_close($ch);
+
+	echo $data;
 	
 /*********************************************************************************************/
 
