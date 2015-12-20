@@ -217,13 +217,13 @@ foreach($catch as $line)
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
    curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
+   curl_setopt($ch, CCURLOPT_AUTOREFERER, true);     // set referer on redirect
+	//curl_setopt($ch, CURLOPT_REFERER, $url);  /* wichtig damit TP-Link weiss wo er die Daten hinschicken soll, Autoreferer funktioniert aber besser, siehe oben */
+   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
+   curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
+   curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
 
-	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
-        CURLOPT_ENCODING       => "",       // handle all encodings
-        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
-        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-        CURLOPT_TIMEOUT        => 120,      // timeout on response
-        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+	/*   
         CURLOPT_POST => 1,
         CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
 
@@ -241,7 +241,7 @@ foreach($catch as $line)
 	echo "\n";
 	echo "Header ";
 	print_r($header);
-	echo "\n";
+	echo "\n##################################################################################################\n";
 
 
 	curl_close($ch);
