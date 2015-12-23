@@ -22,7 +22,7 @@ Funktionen:
 
 // ---------------------- Variablen-Management ----------------------------------
 
-function DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontID="")
+function DenonSetValueAll($webconfig, $item, $value, $vtype, $id)
 	{
 	foreach ($webconfig as $webfrontname => $itemname)
 	   {
