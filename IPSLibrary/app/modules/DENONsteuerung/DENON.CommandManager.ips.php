@@ -158,13 +158,7 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				foreach ($webconfig as $webfrontname => $itemname)
-				   {
-				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
-				      {
-						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
-						}
-					}
+				DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontname);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -188,13 +182,7 @@ else
 						$itemdata= str_pad ( $itemdata, 3, "0" );
 						$value = (intval($itemdata)/10) -80;
 						}
-				foreach ($webconfig as $webfrontname => $itemname)
-				   {
-				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
-				      {
-						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
-						}
-					}
+					DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontname);
 					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					}
@@ -216,14 +204,7 @@ else
 				   {
 				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 		   	}
-
-				foreach ($webconfig as $webfrontname => $itemname)
-				   {
-				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
-				      {
-						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
-						}
-					}
+				DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontname);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -244,13 +225,7 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				foreach ($webconfig as $webfrontname => $itemname)
-				   {
-				   if ((isset($itemname['*'])) || (isset($itemname[$item])) )
-				      {
-						DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
-						}
-					}
+				DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontname);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;

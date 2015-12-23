@@ -22,6 +22,23 @@ Funktionen:
 
 // ---------------------- Variablen-Management ----------------------------------
 
+function DenonSetValueAll($webconfig, $item, $value, $vtype, $id, $webfrontID="")
+	{
+	foreach ($webconfig as $webfrontname => $itemname)
+	   {
+	   if (isset($itemname['*']))
+	      {
+			DenonSetValue($item, $value, $vtype, $id, $webfrontname);
+			}
+	   if (isset($itemname[$item]))
+	      {
+			DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+			}
+		}
+	}
+
+
+
 function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 {
 	//global $CategoryIdData,$CategoryIdApp;
