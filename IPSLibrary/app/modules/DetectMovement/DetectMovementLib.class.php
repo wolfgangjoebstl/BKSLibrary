@@ -149,44 +149,6 @@
 			}
 
 
-		/**
-		 * @private
-		 *
-		 * Speichert die aktuelle Event Konfiguration
-		 *
-		 * @param string[] $configuration Konfigurations Array
-		 */
-		private function StoreEventConfiguration($configuration) {
-
-			// Build Configuration String
-			$configString = '$eventTempConfiguration = array(';
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
-			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			if (!file_exists($fileNameFull)) {
-				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
-			}
-			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');
-			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');
-
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			file_put_contents($fileNameFull, $fileContentNew);
-			$this->Set_EventConfigurationAuto($configuration);
-		}
 
 		/**
 		 * @public
@@ -833,7 +795,7 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();
+				self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
 				}
 			return self::$eventConfigurationAuto;
 			}
@@ -847,7 +809,45 @@
 		   self::$eventConfigurationAuto = $configuration;
 		}
 
-		
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		function StoreEventConfiguration($configuration) {
+
+			// Build Configuration String
+			$configString = '$eventTempConfiguration = array(';
+			foreach ($configuration as $variableId=>$params) {
+				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+				for ($i=0; $i<count($params); $i=$i+3) {
+					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+				}
+				$configString .= '),';
+				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
+			}
+			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
+
+			// Write to File
+			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			if (!file_exists($fileNameFull)) {
+				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+			}
+			$fileContent = file_get_contents($fileNameFull, true);
+			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');
+			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');
+
+			if ($pos1 === false or $pos2 === false) {
+				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
+			}
+			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+			file_put_contents($fileNameFull, $fileContentNew);
+			self::Set_EventConfigurationAuto($configuration);
+		}
+
 		}
 	
 /******************************************************************************************************************/

@@ -56,7 +56,7 @@ if (isset($installedModules["IPSLight"])==true)
 	}
 
 if (isset($installedModules["IPSPowerControl"])==true)
-	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 	$pos=strpos($WFC10_Path,"OperationCenter");
 	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
@@ -193,7 +193,60 @@ foreach($catch as $line)
 		//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
 		printf("Port %s hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
 		}
-	} /* ende Execute */
+
+/********************************************************
+   nun die Webcam zusammenraeumen
+**********************************************************/
+
+/* Zusammenraeumen ftp Server ist schon implementiert */
+
+$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
+
+$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+$count=100;
+//echo "<ol>";
+
+// Text, ob ein Verzeichnis angegeben wurde
+if ( is_dir ( $verzeichnis ))
+{
+    // öffnen des Verzeichnisses
+    if ( $handle = opendir($verzeichnis) )
+    {
+        /* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        */
+        while ((($file = readdir($handle)) !== false) and ($count > 0))
+        {
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            {
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            	if (is_dir($verzeichnis.$unterverzeichnis))
+            	{
+            	}
+            	else
+					{
+            		mkdir($verzeichnis.$unterverzeichnis);
+            	}
+            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
+		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+            }
+        }
+        closedir($handle);
+    }
+}
+
+/********************************************************
+   Sys Uptime ermitteln
+**********************************************************/
+
+$IPS_UpTimeID = CreateVariableByName($CategoryIdData, "IPS_UpTime", 1);
+IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+SetValue($IPS_UpTimeID,IPS_GetUptime());
+
 
 /********************************************************
    Über eigene Ip Adresse auf Gateway Adresse schliessen
@@ -204,6 +257,8 @@ foreach($catch as $line)
 
 */
 
+if (false)
+	{
 	$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
 
 	/*  $result=file_get_contents($url) geht leider nicht, passwort Eingabe, Browserchecks etc  */
@@ -217,7 +272,7 @@ foreach($catch as $line)
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
    curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
-   curl_setopt($ch, CCURLOPT_AUTOREFERER, true);     // set referer on redirect
+   curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
 	//curl_setopt($ch, CURLOPT_REFERER, $url);  /* wichtig damit TP-Link weiss wo er die Daten hinschicken soll, Autoreferer funktioniert aber besser, siehe oben */
    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
    curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
@@ -247,6 +302,12 @@ foreach($catch as $line)
 	curl_close($ch);
 
 	echo $data;
+	}
+	
+	
+	
+	} /* ende Execute */
+
 	
 /*********************************************************************************************/
 
@@ -265,6 +326,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 	}
 
 
+
+
+
+/*********************************************************************************************/
+/*********************************************************************************************/
 /*********************************************************************************************/
 
 function get_data($url) {

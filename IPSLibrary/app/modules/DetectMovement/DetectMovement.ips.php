@@ -50,6 +50,7 @@ Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server
 
 IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
@@ -62,7 +63,7 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::
 /****************************************************************************************************************/
 
 
-if (true)
+if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann .... */
 	{
 	
 	$DetectMovementHandler = new DetectMovementHandler();
@@ -73,6 +74,7 @@ if (true)
 	/* nur die Detect Movement Funktion registrieren */
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
+	echo "\n";
 	echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
 	$Homematic = HomematicList();
 	$keyword="MOTION";
@@ -151,6 +153,7 @@ if (true)
 		
 	if (isset ($installedModules["RemoteAccess"]))
 		{
+		echo "\n";
 		echo "Remote Access installiert, Gruppen Variablen für Bewegung/Motion auch am VIS Server aufmachen.\n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
@@ -164,6 +167,7 @@ if (true)
 		$groups=$DetectMovementHandler->ListGroups();
 		foreach($groups as $group=>$name)
 		   {
+		   echo "\n";
 		   echo "Gruppe ".$group." behandeln.\n";
 			$config=$DetectMovementHandler->ListEvents($group);
 			$status=false;
@@ -203,10 +207,10 @@ if (true)
 		}
 
 	$DetectTemperatureHandler = new DetectTemperatureHandler();
-
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt.\n";
+	echo "\n";
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
 
 	$Homematic = HomematicList();
@@ -293,6 +297,7 @@ if (true)
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
+		echo "\n";
 		echo "Remote Access installiert, Gruppen Variable für Temperatur auch am VIS Server aufmachen.\n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
@@ -308,6 +313,7 @@ if (true)
 		   {
 		   if (($group != "") | ($group != " "))
 		      {
+		      echo "\n";
 			   echo "Gruppe ".$group." behandeln.\n";
 				$config=$DetectTemperatureHandler->ListEvents($group);
 				$status=(float)0;
@@ -322,7 +328,7 @@ if (true)
 			   echo "Gruppe ".$group." hat neuen Temperaturmittelwert : ".$status."\n";
   		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
 				$log=new Temperature_Logging($oid);
-				//print_r($log);
+				print_r($log);
 				$class=$log->GetComponent($oid);
 				//echo "Letzte Variable hat OID :".$log->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
 				$statusID=CreateVariable2("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->variableLogID)),900,"~Temperature");
@@ -352,8 +358,114 @@ if (true)
 		   }
 		}
 		
-		
-		
+	$DetectHumidityHandler = new DetectHumidityHandler();
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Humidity Handler wird ausgeführt.\n";
+	echo "\n";
+	echo "Homematic Humidity Sensoren werden registriert.\n";
+
+	$Homematic = HomematicList();
+	$keyword="HUMIDITY";
+	foreach ($Homematic as $Key)
+		{
+		/* alle Feuchtigkeitswerte ausgeben */
+		if (isset($Key["COID"][$keyword])==true)
+			{
+	      $oid=(integer)$Key["COID"][$keyword]["OID"];
+	     	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+			   {
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			else
+	   		{
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+			}
+
+		if (isset ($installedModules["RemoteAccess"]))
+			{
+			//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+			}
+		else
+		   {
+		   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+			echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+		   $messageHandler = new IPSMessageHandler();
+		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+		   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
+		   }
+
+		}
+
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		echo "\n";
+		echo "Remote Access installiert, Gruppen Variable für Feuchtigkeit auch am VIS Server aufmachen.\n";
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		$remServer=ROID_List();
+		foreach ($remServer as $Name => $Server)
+			{
+			$rpc = new JSONRPC($Server["Adresse"]);
+			$ZusammenfassungID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Zusammenfassung");
+			}
+
+
+		$groups=$DetectHumidityHandler->ListGroups();
+		foreach($groups as $group=>$name)
+		   {
+		   if (($group != "") | ($group != " "))
+		      {
+		      echo "\n";
+			   echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectHumidityHandler->ListEvents($group);
+				$status=(float)0;
+				$count=0;
+				foreach ($config as $oid=>$params)
+					{
+					$status+=GetValue($oid);
+					$count++;
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+					}
+				if ($count>0) { $status=$status/$count; }
+			   echo "Gruppe ".$group." hat neuen Feuchtigkeitsmittelwert : ".$status."\n";
+  		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
+				$log=new Feuchtigkeit_Logging($oid);
+				print_r($log);
+				$class=$log->GetComponent($oid);
+				//echo "Letzte Variable hat OID :".$log->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
+				$statusID=CreateVariable2("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->variableLogID)),900,"~Humidity");
+				/* auch die Archivierung einsetzen */
+   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+      		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+				AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				SetValue($statusID,$status);
+
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 2);
+   				$rpc->IPS_SetVariableCustomProfile($result,"Feuchtigkeit");
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
+			   $messageHandler = new IPSMessageHandler();
+   			$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+				}
+		   }
+		}
+
 		
 	}  /* Ende if true */
 
@@ -367,6 +479,8 @@ if ($_IPS['SENDER']=="Execute")
 		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 
 		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+		   echo "\n";
+		   echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
 			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
 			foreach ($Homematic as $Key)
 				{

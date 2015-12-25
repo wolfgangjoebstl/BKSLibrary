@@ -29,6 +29,15 @@
 	 *  Version 2.50.1, 13.02.2012<br/>
 	 *
 	 */
+	 
+	/*
+			54389 => array('Contact','Bewegung','',),
+			22915 => array('Contact','Alarm','',),
+			21581 => array('Motion','Bewegung','',),
+			22695 => array('Temperatur','Temperatur_Aussen','',),   
+			51998 => array('Feuchtigkeit','Feuchtigkeit_Aussen','',),
+	*/
+	 
 
 	function IPSDetectMovementHandler_GetEventConfiguration() {
 		$eventMoveConfiguration = array(
