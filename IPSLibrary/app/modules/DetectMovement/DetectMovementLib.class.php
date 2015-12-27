@@ -21,7 +21,8 @@
 
 
 	abstract class DetectHandler {
-	
+
+		abstract function Get_Configtype();
 		abstract function Get_EventConfigurationAuto();
 		abstract function Set_EventConfigurationAuto($configuration);
 
@@ -31,9 +32,50 @@
 		 * Initialisierung des IPSLight_Manager Objektes
 		 *
 		 */
-		public function __construct() {
+		public function __construct()
+			{
+			}
 
-		}
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		function StoreEventConfiguration($configuration)
+			{
+
+			// Build Configuration String
+			$configString = $this->Get_Configtype().' = array(';
+			foreach ($configuration as $variableId=>$params) {
+				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+				for ($i=0; $i<count($params); $i=$i+3) {
+					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+				}
+				$configString .= '),';
+				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
+			}
+			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
+
+			// Write to File
+			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			if (!file_exists($fileNameFull)) {
+				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+			}
+			$fileContent = file_get_contents($fileNameFull, true);
+			$pos1 = strpos($fileContent, $this->Get_Configtype().' = array(');
+			$pos2 = strpos($fileContent, 'return '.$this->Get_Configtype().';');
+
+			if ($pos1 === false or $pos2 === false) {
+				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
+			}
+			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+			file_put_contents($fileNameFull, $fileContentNew);
+			$this->Set_EventConfigurationAuto($configuration);
+			}
+
 
 		/**
 		 * @public
@@ -130,12 +172,21 @@
 		 */
 		public function CreateEvent($variableId, $eventType)
 			{
+			
+			/* Funktion nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parametzer richtig benannt worden sind */
+			
 			switch ($eventType)
 				{
 				case 'Temperatur':
-					$triggerType = 1;
+					$triggerType = 3;
 					break;
 				case 'Feuchtigkeit':
+					$triggerType = 2;
+					break;
+				case 'Motion':                      /* <-------- change here */
+					$triggerType = 1;
+					break;
+				case 'Contact':
 					$triggerType = 0;
 					break;
 				case 'par0':
@@ -145,7 +196,7 @@
 				default:
 					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
 				}
-			IPSLogger_Dbg (__file__, 'Created IPSDetectHandler Event for Variable='.$variableId);
+			IPSLogger_Dbg (__file__, 'Created '.$this->Get_Configtype().' Handler Event for Variable='.$variableId);
 			}
 
 
@@ -219,7 +270,161 @@
 
 /******************************************************************************************************************/
 
-	class DetectMovementHandler {
+	class DetectHumidityHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectHumidityHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+         self::$configtype = '$eventHumidityConfiguration';
+			}
+
+
+		function Get_Configtype()
+		   {
+			return self::$configtype;
+		   }
+
+		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+		   self::$eventConfigurationAuto = $configuration;
+			}
+
+
+		}
+
+/******************************************************************************************************************/
+
+	class DetectMovementHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectHumidityHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+         self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
+			}
+
+
+		function Get_Configtype()
+		   {
+			return self::$configtype;
+		   }
+
+		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();       /* <-------- change here */
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+		   self::$eventConfigurationAuto = $configuration;
+			}
+
+
+		}
+
+/******************************************************************************************************************/
+
+	class DetectTemperatureHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectHumidityHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+         self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
+			}
+
+
+		function Get_Configtype()
+		   {
+			return self::$configtype;
+		   }
+
+		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();       /* <-------- change here */
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+		   self::$eventConfigurationAuto = $configuration;
+			}
+
+
+		}
+		
+/******************************************************************************************************************/
+
+
+/*    DELETE FROM HERE   for backup and library reasons only    */
+
+
+
+/******************************************************************************************************************/
+
+	class DetectMovementHandler1 {
 
 		private static $eventConfigurationAuto = array();
 
@@ -522,7 +727,7 @@
 
 /******************************************************************************************************************/
 
-	class DetectTemperatureHandler {
+	class DetectTemperatureHandler1 {
 
 		private static $eventConfigurationAuto = array();
 
@@ -782,73 +987,6 @@
 	}
 
 
-/******************************************************************************************************************/
-
-	class DetectHumidityHandler extends DetectHandler
-		{
-
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
-
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
-		
-		function Get_EventConfigurationAuto()
-			{
-			if (self::$eventConfigurationAuto == null)
-				{
-				self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
-				}
-			return self::$eventConfigurationAuto;
-			}
-			
-		/**
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 */
-		function Set_EventConfigurationAuto($configuration) {
-		   self::$eventConfigurationAuto = $configuration;
-		}
-
-		/**
-		 * @private
-		 *
-		 * Speichert die aktuelle Event Konfiguration
-		 *
-		 * @param string[] $configuration Konfigurations Array
-		 */
-		function StoreEventConfiguration($configuration) {
-
-			// Build Configuration String
-			$configString = '$eventTempConfiguration = array(';
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
-			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			if (!file_exists($fileNameFull)) {
-				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
-			}
-			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');
-			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');
-
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			file_put_contents($fileNameFull, $fileContentNew);
-			self::Set_EventConfigurationAuto($configuration);
-		}
-
-		}
 	
 /******************************************************************************************************************/
 

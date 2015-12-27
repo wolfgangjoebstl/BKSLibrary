@@ -96,7 +96,7 @@
 	   {
 	   private $variable;
 	   private $variablename;
-		private $variableLogID;
+		//private $variableLogID;
 		private $HumidityAuswertungID;
 		
 	   function __construct($variable)

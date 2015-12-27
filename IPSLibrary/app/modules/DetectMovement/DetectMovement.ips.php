@@ -328,7 +328,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 			   echo "Gruppe ".$group." hat neuen Temperaturmittelwert : ".$status."\n";
   		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
 				$log=new Temperature_Logging($oid);
-				print_r($log);
+				//print_r($log);
 				$class=$log->GetComponent($oid);
 				//echo "Letzte Variable hat OID :".$log->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
 				$statusID=CreateVariable2("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->variableLogID)),900,"~Temperature");
@@ -424,7 +424,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 		      echo "\n";
 			   echo "Gruppe ".$group." behandeln.\n";
 				$config=$DetectHumidityHandler->ListEvents($group);
-				$status=(float)0;
+				$status=(integer)0;
 				$count=0;
 				foreach ($config as $oid=>$params)
 					{
@@ -436,10 +436,10 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 			   echo "Gruppe ".$group." hat neuen Feuchtigkeitsmittelwert : ".$status."\n";
   		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
 				$log=new Feuchtigkeit_Logging($oid);
-				print_r($log);
+				//print_r($log);
 				$class=$log->GetComponent($oid);
 				//echo "Letzte Variable hat OID :".$log->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
-				$statusID=CreateVariable2("Gesamtauswertung_".$group,2,IPS_GetParent(intval($log->variableLogID)),900,"~Humidity");
+				$statusID=CreateVariable2("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->variableLogID)),900,"~Humidity");  /* 0 .. Boolean 1..Integer 2..Float 3..String */
 				/* auch die Archivierung einsetzen */
    	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
       		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
@@ -452,7 +452,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 					{
 					$rpc = new JSONRPC($Server["Adresse"]);
 					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 2);
-   				$rpc->IPS_SetVariableCustomProfile($result,"Feuchtigkeit");
+   				$rpc->IPS_SetVariableCustomProfile($result,"Humidity");
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
