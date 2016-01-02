@@ -29,7 +29,7 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1, $lightObject=null, $lightValue=null) {
+		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
@@ -48,24 +48,27 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			//print_r($this);
-			//print_r($module);
-			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			$params= explode(';', $this->RemoteOID);
-			print_r($params);
-			foreach ($params as $val)
-				{
-				$para= explode(':', $val);
-				echo "Wert :".$val." Anzahl ",count($para)." \n";
-            if (count($para)==2)
-               {
-					$Server=$this->remServer[$para[0]];
-					echo "Server : ".$Server."\n";
-					$rpc = new JSONRPC($Server);
-					$roid=(integer)$para[1];
-					echo "Remote OID: ".$roid."\n";
-					$rpc->SetValue($roid, $value);
+			echo "Movement Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			if ($this->RemoteOID != Null)
+			   {
+				//print_r($this);
+				//print_r($module);
+				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+				$params= explode(';', $this->RemoteOID);
+				print_r($params);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					echo "Wert :".$val." Anzahl ",count($para)." \n";
+	            if (count($para)==2)
+   	            {
+						$Server=$this->remServer[$para[0]];
+						echo "Server : ".$Server."\n";
+						$rpc = new JSONRPC($Server);
+						$roid=(integer)$para[1];
+						echo "Remote OID: ".$roid."\n";
+						$rpc->SetValue($roid, $value);
+						}
 					}
 				}
 			}

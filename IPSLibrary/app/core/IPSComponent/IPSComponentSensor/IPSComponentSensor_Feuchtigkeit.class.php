@@ -34,7 +34,7 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1, $lightObject=null, $lightValue=null) {
+		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
@@ -56,23 +56,27 @@
 			
 			$log=new Feuchtigkeit_Logging($variable);
 			$result=$log->Feuchtigkeit_LogValue();
-			//print_r($this);
-			//print_r($module);
-			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			$params= explode(';', $this->RemoteOID);
-			print_r($params);
-			foreach ($params as $val)
-				{
-				$para= explode(':', $val);
-				echo "Wert :".$val." Anzahl ",count($para)." \n";
-            if (count($para)==2)
-               {
-					$Server=$this->remServer[$para[0]];
-					echo "Server : ".$Server."\n";
-					$rpc = new JSONRPC($Server);
-					$roid=(integer)$para[1];
-					echo "Remote OID: ".$roid."\n";
-					$rpc->SetValue($roid, $value);
+
+			if ($this->RemoteOID != Null)
+			   {
+				//print_r($this);
+				//print_r($module);
+				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+				$params= explode(';', $this->RemoteOID);
+				print_r($params);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					echo "Wert :".$val." Anzahl ",count($para)." \n";
+   	         if (count($para)==2)
+      	         {
+						$Server=$this->remServer[$para[0]];
+						echo "Server : ".$Server."\n";
+						$rpc = new JSONRPC($Server);
+						$roid=(integer)$para[1];
+						echo "Remote OID: ".$roid."\n";
+						$rpc->SetValue($roid, $value);
+						}
 					}
 				}
 		}
@@ -101,7 +105,7 @@
 		
 	   function __construct($variable)
 		   {
-		   //echo "Construct Motion.\n";
+		   //echo "Construct Feuchtigkeit.\n";
 		   $this->variable=$variable;
 		   $result=IPS_GetObject($variable);
 		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
@@ -164,18 +168,18 @@
 			$installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($installedmodules["DetectMovement"]))
 				{
-				/* Detect Movement kann auch TFeuchtigkeitswerte agreggieren */
+				/* Detect Movement kann auch Feuchtigkeitswerte agreggieren */
 				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   	$DetectTemperatureHandler = new DetectHumidityHandler();
+		   	$DetectHumidityHandler = new DetectHumidityHandler();
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectTemperatureHandler->ListGroups();
+				$groups=$DetectHumidityHandler->ListGroups();
 				foreach($groups as $group=>$name)
 				   {
 				   echo "Gruppe ".$group." behandeln.\n";
-					$config=$DetectTemperatureHandler->ListEvents($group);
+					$config=$DetectHumidityHandler->ListEvents($group);
 					$status=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)

@@ -108,6 +108,22 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');
+			
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+				}
+			else
+			   {
+			   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+			   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
+			   }
 			}
 		}
 
@@ -136,6 +152,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
    		      }
    	   	}
 			}
+			
 		if ($found)
 		   {
       	$variabletyp=IPS_GetVariable($oid);
@@ -148,6 +165,22 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','par3');
+
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+				}
+			else
+			   {
+			   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+			   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
+			   }
 			}
 		}
 		
@@ -155,6 +188,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 		{
 		echo "\n";
 		echo "Remote Access installiert, Gruppen Variablen für Bewegung/Motion auch am VIS Server aufmachen.\n";
+		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		foreach ($remServer as $Name => $Server)
@@ -199,10 +233,14 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
+			echo "Summenvariable Gesamtauswertung_".$group." auf den folgenden Remoteservern angelegt Name:OID ".$parameter."\n";
 		   $messageHandler = new IPSMessageHandler();
    		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+		   $messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
+			/* die alte IPSComponentSensor_Remote Variante wird eigentlich nicht mehr verwendet */
+			echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
+
 		   }
 		}
 
@@ -231,25 +269,26 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-			}
 
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-			}
-		else
-		   {
-		   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-			echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+				}
+			else
+			   {
+			   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-		   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
-		   }
+			   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+			   }
 
-		}
+			}  /* Ende isset Homatic Temperatur */
+		} /* Ende foreach */
+
 
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
 
@@ -258,7 +297,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 
 	foreach ($FHT as $Key)
 		{
-		/* alle Temperaturwerte der heizungssteuerungen ausgeben */
+		/* alle Temperaturwerte der Heizungssteuerungen ausgeben */
 		if (isset($Key["COID"][$keyword])==true)
   			{
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
@@ -272,33 +311,31 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-			}
 
-		/* remote Server aufsetzen für gruppenregister fehlt noch ..... */
-		/* und die Registrierung beim message Handler die das eigentliche Event auslöst fehlt auch noch, ausser Remote Access ist instzalliert, dann muss man es nicht machen */
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+				}
+			else
+			   {
+			   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-			}
-		else
-		   {
-		   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-			echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+			   }
 
-		   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
-		   }
-
-		}
+			}  /* Ende isset Heizungssteuerung */
+		} /* Ende foreach */
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "\n";
 		echo "Remote Access installiert, Gruppen Variable für Temperatur auch am VIS Server aufmachen.\n";
+		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		foreach ($remServer as $Name => $Server)
@@ -350,10 +387,12 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
+				echo "Summenvariable Gesamtauswertung_".$group." auf den folgenden Remoteservern angelegt Name:OID ".$parameter."\n";
 			   $messageHandler = new IPSMessageHandler();
    			$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+			   $messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+				echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 				}
 		   }
 		}
@@ -383,30 +422,32 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-			}
 
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-			}
-		else
-		   {
-		   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-			echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+				}
+			else
+			   {
+		   	/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   	$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-		   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
-		   }
+			   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
+			   }
 
-		}
+			}  /* Ende isset Feuchtigkeitswert */
+		} /* Ende foreach */
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "\n";
-		echo "Remote Access installiert, Gruppen Variable für Feuchtigkeit auch am VIS Server aufmachen.\n";
+		echo "Remote Access installiert, Gruppen Variable für Feuchtighkeit auch am VIS Server aufmachen.\n";
+		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		foreach ($remServer as $Name => $Server)
@@ -458,10 +499,12 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
+				echo "Summenvariable Gesamtauswertung_".$group." auf den folgenden Remoteservern angelegt Name:OID ".$parameter."\n";
 			   $messageHandler = new IPSMessageHandler();
    			$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+			   $messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+				echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
 				}
 		   }
 		}
