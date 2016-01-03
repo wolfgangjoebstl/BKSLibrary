@@ -1736,11 +1736,11 @@ function CreateVariableByName2($name, $type,$profile,$action,$visible)
 
 /* Original wird im Library Modul Manager verwendet */
 
-function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
 {
-		//echo "**********".$Name."****".$ParentId."***".Get_IdentByName($Name)."*****\n";
+
 		$VariableId = @IPS_GetObjectIDByIdent(Get_IdentByName2($Name), $ParentId);
-		echo "CreateVariable\n";
+		echo "CreateVariable ".$Name." unter der Parent ID ".$ParentId." mit aktuellem Wert ".$ValueDefault." \n";
 		if ($VariableId === false) $VariableId = @IPS_GetVariableIDByName($Name, $ParentId);
 		if ($VariableId === false)
 		{

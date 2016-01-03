@@ -474,7 +474,8 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 					}
 				if ($count>0) { $status=$status/$count; }
-			   echo "Gruppe ".$group." hat neuen Feuchtigkeitsmittelwert : ".$status."\n";
+				$statusint=(integer)$status;
+			   echo "Gruppe ".$group." hat neuen Feuchtigkeitsmittelwert : ".$statusint."\n";
   		   	/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
 				$log=new Feuchtigkeit_Logging($oid);
 				//print_r($log);
@@ -486,14 +487,14 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
       		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
 				AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-				SetValue($statusID,$status);
+				SetValue($statusID,$statusint);
 
 				$parameter="";
 				foreach ($remServer as $Name => $Server)
 					{
 					$rpc = new JSONRPC($Server["Adresse"]);
-					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 2);
-   				$rpc->IPS_SetVariableCustomProfile($result,"Humidity");
+					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 1);
+   				$rpc->IPS_SetVariableCustomProfile($result,"~Humidity");
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);

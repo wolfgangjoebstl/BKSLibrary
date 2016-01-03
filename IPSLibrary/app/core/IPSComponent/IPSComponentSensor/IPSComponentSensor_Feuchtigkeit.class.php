@@ -189,13 +189,15 @@
 						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
-				   echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+					$statusint=(integer)$status;
+				   echo "Gruppe ".$group." hat neuen Status : ".$statusint."\n";
+
 					$log=new Feuchtigkeit_Logging($oid);
 					$class=$log->GetComponent($oid);
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->HumidityAuswertungID);
+					$statusID=CreateVariable("Gesamtauswertung_".$group,1,$this->HumidityAuswertungID);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
-					SetValue($statusID,$status);
+					SetValue($statusID,$statusint);
 			   	}
 				}
 
