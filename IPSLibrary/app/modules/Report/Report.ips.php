@@ -11,6 +11,8 @@ benötigt HighCharts
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
+IPSUtils_Include ('Report_Configuration.inc.php', 'IPSLibrary::config::modules::Report');
+
 /**************************************** INIT *********************************************************/
 
 
@@ -42,49 +44,62 @@ if ($_IPS['SENDER']=="WebFront")
 
 //if ($_IPS['SENDER']=="Execute")
 	{
-	SetValue($contentvar_ID,"<iframe src='/User/IPSHighcharts/IPSChart.php?VarID=".$contentvar_ID."&ChartID=16133' height='400' width='100%' frameborder='0' scrolling='no'></iframe>");
+	//if (IPS_GetMediaID('Highcharts')==0)
+	$result=@IPS_GetMediaIDbyName('Highcharts',0);
+	if ($result===false)
+	   {
+		$MediaID = IPS_CreateMedia(4);   /* Chart medienobjekt anlegen */
+		IPS_SetName($MediaID, "Highcharts");
+		}
+	else
+	   {
+	   $MediaID = $result;
+    }
+	
+	
+	$report_config=Report_GetConfiguration();
+	SetValue($contentvar_ID,"<iframe src='/User/IPSHighcharts/IPSChart.php?VarID=".$contentvar_ID."&ChartID=".$MediaID." height='400' width='100%' frameborder='0' scrolling='no'></iframe>");
 	// Configuration
 	$CfgDaten = array();
 
-	//echo "Ausgabe der folgenden Werte : ".getValueFormatted($ReportPageTypeID)."\n";
-	if (getValueFormatted($ReportPageTypeID)=="Temperatur")
+	$displaypanel=getValueFormatted($ReportPageTypeID);
+	
+	if ($_IPS['SENDER']=="Execute")
 	   {
-    	$CfgDaten['title']['text'] = "Aussentemperaturwerte";
-    
+		echo "Ausgabe der folgenden Werte : ".getValueFormatted($ReportPageTypeID)."\n";
+		echo "MediaID ist ".$MediaID." \n";
+		}
+
+	//if (false)
+   if (isset($report_config[$displaypanel]))
+      {
+		if ($_IPS['SENDER']=="Execute")
+			{
+			echo "Es wird nun die Displaydarstellung von ".$displaypanel." bearbeitet.\n";
+			print_r($report_config[$displaypanel]);
+			}
+      $CfgDaten['title']['text'] = $report_config[$displaypanel]['title'];
+		foreach ($report_config[$displaypanel]['series'] as $name=>$serie)
+		   {
+			if ($_IPS['SENDER']=="Execute")
+				{
+			   echo "Kurve : ".$name." \n";
+			   }
+		 	$serie['name'] = $name;
+	    	$serie['marker']['enabled'] = false;
+	    	$CfgDaten['series'][] = $serie;
+			}
      	$CfgDaten['yAxis'][0]['title']['text'] = "Temperaturen";
     	$CfgDaten['yAxis'][0]['Unit'] = "°C";
     	$CfgDaten['yAxis'][0]['opposite'] = false;
     	$CfgDaten['yAxis'][0]['tickInterval'] = 5;
+      }
+   else
+      {
 
-		/*----------------------------------------------------------------------*/
+		}
 
-	 	$serie = array();
-    	$serie['type'] = 'line';
-
-	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
-	 	$serie['name'] = 'Aussen-Ostseite-Temperatur';
-	 	$serie['Unit'] = "°C";
-    	$serie['Id'] = 47591 ;
-
-    	$serie['marker']['enabled'] = false;
-    	$CfgDaten['series'][] = $serie;
-
-		/*----------------------------------------------------------------------*/
-
-	 	$serie = array();
-    	$serie['type'] = 'line';
-
-	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
-	 	$serie['name'] = 'Aussen-Westseite-Temperatur';
-	 	$serie['Unit'] = "°C";
-    	$serie['Id'] = 51599 ;
-
-    	$serie['marker']['enabled'] = false;
-    	$CfgDaten['series'][] = $serie;
-
-	   }
-
-	if (getValueFormatted($ReportPageTypeID)=="Feuchtigkeit")
+	if (getValueFormatted($ReportPageTypeID)=="Luftfeuchtigkeit")
 	   {
     	$CfgDaten['title']['text'] = "Aussenwerte Feuchtigkeit";
 
@@ -611,15 +626,23 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
   // Create Chart with Config File
   IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
 
-  //print_r($CfgDaten);
-
+if ($_IPS['SENDER']=="Execute")
+	{
+	echo "Debug Highchart Config-Daten:\n";
+  	print_r($CfgDaten);
+  	echo "\n";
+	}
+	
   $CfgDaten    = CheckCfgDaten($CfgDaten);
   $sConfig     = CreateConfigString($CfgDaten);
   $tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');
   WriteContentWithFilename ($CfgDaten, $tmpFilename);
 
-  //echo "Filename fuer Aufruf :".$tmpFilename."\n";
+	if ($_IPS['SENDER']=="Execute")
+	   {
+	  	echo "Filename fuer Aufruf :".$tmpFilename."\n";
+	  	}
 
-}
+}  /* ende von komentierte if Execute */
 
 ?>
