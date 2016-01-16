@@ -73,6 +73,7 @@ if ($_IPS['SENDER']=="WebFront")
 	//if (false)
    if (isset($report_config[$displaypanel]))
       {
+		$yaxis=array();
 		if ($_IPS['SENDER']=="Execute")
 			{
 			echo "Es wird nun die Displaydarstellung von ".$displaypanel." bearbeitet.\n";
@@ -84,56 +85,43 @@ if ($_IPS['SENDER']=="WebFront")
 			if ($_IPS['SENDER']=="Execute")
 				{
 			   echo "Kurve : ".$name." \n";
+			   print_r($serie); echo "\n";
 			   }
+			$yaxis[$serie['Unit']]='needed';
 		 	$serie['name'] = $name;
 	    	$serie['marker']['enabled'] = false;
 	    	$CfgDaten['series'][] = $serie;
 			}
-     	$CfgDaten['yAxis'][0]['title']['text'] = "Temperaturen";
-    	$CfgDaten['yAxis'][0]['Unit'] = "°C";
-    	$CfgDaten['yAxis'][0]['opposite'] = false;
-    	$CfgDaten['yAxis'][0]['tickInterval'] = 5;
+     	$CfgDaten['chart']['alignTicks'] = true;
+		$i=0;
+  		$CfgDaten['yAxis'][$i]['opposite'] = false;
+  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
+ 		if (isset($yaxis['%']))
+		   {
+	     	$CfgDaten['yAxis'][$i]['title']['text'] = "Feuchtigkeit";
+   	 	$CfgDaten['yAxis'][$i]['Unit'] = '%';
+    		//$CfgDaten['yAxis'][$i]['opposite'] = true;
+	    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+   	 	//$CfgDaten['yAxis'][$i]['min'] = 0;
+	  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+	    	$i++;
+    	   }
+		if (isset($yaxis['°C']))
+		   {
+	     	$CfgDaten['yAxis'][$i]['title']['text'] = "Temperaturen";
+   	 	$CfgDaten['yAxis'][$i]['Unit'] = '°C';
+	    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+   	 	//$CfgDaten['yAxis'][$i]['min'] = -20;
+	  	 	//$CfgDaten['yAxis'][$i]['max'] = 50;
+	  	 	//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
+	    	$i++;
+    	   }
+
       }
    else
       {
 
 		}
-
-	if (getValueFormatted($ReportPageTypeID)=="Luftfeuchtigkeit")
-	   {
-    	$CfgDaten['title']['text'] = "Aussenwerte Feuchtigkeit";
-
-     	$CfgDaten['yAxis'][0]['title']['text'] = "Feuchtigkeit";
-    	$CfgDaten['yAxis'][0]['Unit'] = "%";
-    	$CfgDaten['yAxis'][0]['opposite'] = false;
-    	$CfgDaten['yAxis'][0]['tickInterval'] = 5;
-
-		/*----------------------------------------------------------------------*/
-
-	 	$serie = array();
-    	$serie['type'] = 'line';
-
-	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
-	 	$serie['name'] = 'Aussen-Ostseite-Feuchtigkeit';
-	 	$serie['Unit'] = "%";
-    	$serie['Id'] = 49601 ;
-
-    	$serie['marker']['enabled'] = false;
-    	$CfgDaten['series'][] = $serie;
-
-		/*----------------------------------------------------------------------*/
-
-	 	$serie = array();
-    	$serie['type'] = 'line';
-
-	 	/* wenn Werte für die Serie aus der geloggten Variable kommen : */
-	 	$serie['name'] = 'Aussen-Westseite-Feuchtigkeit';
-	 	$serie['Unit'] = "%";
-    	$serie['Id'] = 54218 ;
-
-    	$serie['marker']['enabled'] = false;
-    	$CfgDaten['series'][] = $serie;
-	 	}
 
 	if (getValueFormatted($ReportTimeTypeID)=="Tag")
 	   {
@@ -192,10 +180,6 @@ $CfgDaten["HighChartScriptId"]= 11712;                  // ID des Highcharts Scr
 
 // Übergabe als File oder ScriptID
 $CfgDaten["File"]= true;
-
-// Überschriften
-$CfgDaten["Title"]= "Stromkosten";
-$CfgDaten["SubTitle"]= NULL; // ""
 
 // Alle     $CfgDaten["HighChart"] Parameter werden an das IP_Template übergeben
 $CfgDaten["HighChart"]["Theme"]="IPS.js";   // created by KHC
@@ -623,20 +607,32 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
     $CfgDaten['HighChart']['Height'] = 600;         // in px
 
-  // Create Chart with Config File
-  IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+  	// Create Chart with Config File
+  	IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
 
-if ($_IPS['SENDER']=="Execute")
-	{
-	echo "Debug Highchart Config-Daten:\n";
-  	print_r($CfgDaten);
-  	echo "\n";
-	}
-	
-  $CfgDaten    = CheckCfgDaten($CfgDaten);
-  $sConfig     = CreateConfigString($CfgDaten);
-  $tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');
-  WriteContentWithFilename ($CfgDaten, $tmpFilename);
+  	$CfgDaten    = CheckCfgDaten($CfgDaten);
+  	$sConfig     = CreateConfigString($CfgDaten);
+  	$tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');
+	if ($_IPS['SENDER']=="Execute")
+		{
+		echo "-----------------------------------------------------\n";
+		echo "Debug Highchart Config-Daten:\n";
+	  	print_r($CfgDaten);
+  		echo "\n";
+		echo "-----------------------------------------------------\n";
+		echo "Filename : ".$tmpFilename."\n";
+		$str2 = str_replace("\\n","\n",$sConfig);
+		$str2 = str_replace("\\r","\r",$str2);
+		$str2 = str_replace("\\t","\t",$str2);
+		$str2 = preg_replace('/(,)([a-z])/','$1'."\n".'$2',$str2);
+		$str2 = str_replace("[{","\n[\n{\n",$str2);
+		$str2 = str_replace("}]","\n}\n]\n",$str2);
+		$tmpFilename = IPS_GetKernelDir()."test.tmp" ;
+		$handle = fopen($tmpFilename,"w");
+		fwrite($handle, "*********************************************\n".$str2."\n\n\n");
+		fclose($handle);
+		}
+  	WriteContentWithFilename ($CfgDaten, $tmpFilename);
 
 	if ($_IPS['SENDER']=="Execute")
 	   {
