@@ -36,12 +36,69 @@ $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 echo "Category App ID:".$CategoryIdApp."\n";
-echo "Category Script ID:".$scriptId."\n";
+echo "Category Script ID:".$scriptId."\n\n";
 
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
 if (isset ($installedModules["IPSLight"])) { echo "Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; break; }
 if (isset ($installedModules["IPSPowerControl"])) { echo "Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; break;}
+if (isset ($installedModules["IPSCam"]))
+	{
+	echo "Modul IPSCam ist installiert.\n";
+	echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
+
+	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $_IPS['SELF']);
+	if ($tim2ID==false)
+		{
+		$tim2ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim2ID, $_IPS['SELF']);
+		IPS_SetName($tim2ID, "MoveCamFiles");
+		IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
+		//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+		}
+	else
+	   {
+	   //echo "   Event bereits angelegt. Timer 150 sec aktivieren.\n";
+  		IPS_SetEventActive($tim2ID,true);
+  		}
+	}
+else
+	{
+	echo "Modul IPSCam ist NICHT installiert.\n";
+	}
+
+/*********************************************************************************************/
+
+
+if ($_IPS['SENDER']=="WebFront")
+	{
+	/* vom Webfront aus gestartet */
+
+	}
+
+/*********************************************************************************************/
+
+
+if ($_IPS['SENDER']=="Execute")
+	{
+	/* von der Konsole aus gestartet */
+
+/********************************************************
+   Install
+**********************************************************/
+
+	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
+	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+  	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
+	AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,0);      /* normaler Wwert */
+	IPS_ApplyChanges($archiveHandlerID);
+	echo "Letztes Foto aus der Webcam vom ".GetValue($WebCamWZ_LetzteBewegungID).".\n";
+	echo "Bereits ".GetValue($WebCam_PhotoCountID)." Fotos von der Webcam erstellt.\n";
+
+/********************************************************
+   Zusammenräumen
+**********************************************************/
 
 
 if (isset($installedModules["IPSLight"])==true)
@@ -67,21 +124,7 @@ if (isset($installedModules["IPSPowerControl"])==true)
 	}
 
 
-/*********************************************************************************************/
 
-
-if ($_IPS['SENDER']=="WebFront")
-	{
-	/* vom Webfront aus gestartet */
-
-	}
-
-/*********************************************************************************************/
-
-
-if ($_IPS['SENDER']=="Execute")
-	{
-	/* von der Konsole aus gestartet */
 	
 /********************************************************
    Externe Ip Adresse immer ermitteln
@@ -323,6 +366,54 @@ if ($_IPS['SENDER']=="Variable")
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 
+	/********************************************************
+   nun die Webcam zusammenraeumen
+	**********************************************************/
+
+	/* Zusammenraeumen ftp Server ist schon implementiert */
+
+	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
+	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+
+	$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+	$count=100;
+	//echo "<ol>";
+
+	// Text, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
+		{
+   	// öffnen des Verzeichnisses
+	   if ( $handle = opendir($verzeichnis) )
+   		{
+      	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            	if (is_dir($verzeichnis.$unterverzeichnis))
+            		{
+	            	}
+   	        	else
+						{
+         	  		mkdir($verzeichnis.$unterverzeichnis);
+            		}
+            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
+		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+            	}
+        		} /* ende while */
+        	closedir($handle);
+    		}
+		}
+		
+	SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+100-$count);
+		
 	}
 
 
