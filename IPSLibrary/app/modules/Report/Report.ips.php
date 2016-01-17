@@ -80,6 +80,7 @@ if ($_IPS['SENDER']=="WebFront")
 			print_r($report_config[$displaypanel]);
 			}
       $CfgDaten['title']['text'] = $report_config[$displaypanel]['title'];
+		$i=0; $j=0;
 		foreach ($report_config[$displaypanel]['series'] as $name=>$serie)
 		   {
 			if ($_IPS['SENDER']=="Execute")
@@ -87,36 +88,75 @@ if ($_IPS['SENDER']=="WebFront")
 			   echo "Kurve : ".$name." \n";
 			   print_r($serie); echo "\n";
 			   }
-			$yaxis[$serie['Unit']]='needed';
 		 	$serie['name'] = $name;
+		 	if ($serie['Unit']=='$')            /* Statuswerte */
+		 	   {
+		    	$serie['step'] = 'right';
+		    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
+		    	$j+=2;
+			 	if (isset($yaxis[$serie['Unit']]))
+				 	{
+				 	
+				 	}
+				else
+			 	   {
+				 	$serie['yAxis'] = $i;
+					$yaxis[$serie['Unit']]= $i;
+				 	$i++;
+				 	}
+		 	   }
+		 	else
+		 	   {
+			 	if (isset($yaxis[$serie['Unit']])) {}
+				else
+			 	   {
+				 	$serie['yAxis'] = $i;
+					$yaxis[$serie['Unit']]= $i;
+				 	$i++;
+				 	}
+				}
 	    	$serie['marker']['enabled'] = false;
 	    	$CfgDaten['series'][] = $serie;
 			}
      	$CfgDaten['chart']['alignTicks'] = true;
-		$i=0;
+     	$i=0;
   		$CfgDaten['yAxis'][$i]['opposite'] = false;
   		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
- 		if (isset($yaxis['%']))
+		foreach ($yaxis as $unit=>$index)
 		   {
-	     	$CfgDaten['yAxis'][$i]['title']['text'] = "Feuchtigkeit";
-   	 	$CfgDaten['yAxis'][$i]['Unit'] = '%';
-    		//$CfgDaten['yAxis'][$i]['opposite'] = true;
-	    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-   	 	//$CfgDaten['yAxis'][$i]['min'] = 0;
-	  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-	    	$i++;
-    	   }
-		if (isset($yaxis['°C']))
-		   {
-	     	$CfgDaten['yAxis'][$i]['title']['text'] = "Temperaturen";
-   	 	$CfgDaten['yAxis'][$i]['Unit'] = '°C';
-	    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-   	 	//$CfgDaten['yAxis'][$i]['min'] = -20;
-	  	 	//$CfgDaten['yAxis'][$i]['max'] = 50;
-	  	 	//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
-	    	$i++;
-    	   }
-
+			if ($_IPS['SENDER']=="Execute")
+				{
+			   echo "**Bearbeitung von ".$unit." und ".$index." \n";
+			   }
+			if ($unit=='°C')
+			   {
+		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
+   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
+	  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
+	  	 		//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
+	    	   }
+ 			if ($unit=='$')         /* Statuswerte */
+			   {
+		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Status";
+   		 	$CfgDaten['yAxis'][$index]['Unit'] = '$';
+		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+   		 	$CfgDaten['yAxis'][$index]['min'] = 0;
+	   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+		  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+	   	   }
+ 			if ($unit=='%')
+			   {
+		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
+   		 	$CfgDaten['yAxis'][$index]['Unit'] = '%';
+	    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+   		 	//$CfgDaten['yAxis'][$index]['min'] = 0;
+	   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+		  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+	   	   }
+		 	} /* ende foreach */
       }
    else
       {
