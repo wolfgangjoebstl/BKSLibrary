@@ -2,7 +2,9 @@
 
 /***********************************************************************
 
-Sprachsteuerung
+OperationCenter
+
+Allerlei betriebliche Abfragen und Wartungsmassnahmen
 
 ***********************************************************/
 
@@ -15,6 +17,9 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 				INIT
 
 *************************************************************/
+
+
+$dir655=false;
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager)) {
@@ -42,6 +47,29 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
 
 if (isset ($installedModules["IPSLight"])) { echo "Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; break; }
 if (isset ($installedModules["IPSPowerControl"])) { echo "Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; break;}
+
+
+if (isset($installedModules["IPSLight"])==true)
+	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	$pos=strpos($WFC10_Path,"OperationCenter");
+	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
+	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
+   IPS_SetPosition($categoryId_WebFront,998);
+   IPS_SetHidden($categoryId_WebFront,true);
+	echo "Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	}
+
+if (isset($installedModules["IPSPowerControl"])==true)
+	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	$pos=strpos($WFC10_Path,"OperationCenter");
+	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
+	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
+   IPS_SetPosition($categoryId_WebFront,997);
+   IPS_SetHidden($categoryId_WebFront,true);
+	echo "Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	}
 if (isset ($installedModules["IPSCam"]))
 	{
 	echo "Modul IPSCam ist installiert.\n";
@@ -70,6 +98,11 @@ else
 /*********************************************************************************************/
 
 
+$OperationCenterConfig = OperationCenter_Configuration();
+
+/*********************************************************************************************/
+
+
 if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
@@ -82,10 +115,12 @@ if ($_IPS['SENDER']=="WebFront")
 if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
+	
+	/******************************************************
 
-/********************************************************
-   Install
-**********************************************************/
+				INIT
+
+	*************************************************************/
 
 	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
 	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
@@ -96,36 +131,31 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Letztes Foto aus der Webcam vom ".GetValue($WebCamWZ_LetzteBewegungID).".\n";
 	echo "Bereits ".GetValue($WebCam_PhotoCountID)." Fotos von der Webcam erstellt.\n";
 
-/********************************************************
-   Zusammenräumen
-**********************************************************/
+	//print_r($OperationCenterConfig);
+	foreach ($OperationCenterConfig['ROUTER'] as $router)
+	   {
+	   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+		//print_r($router);
+		if ($router['TYP']=='MR3420')
+		   {
+		   echo "    iMacro Command-File wird hergestellt.\n";
+			$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
+      	fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
+	      fwrite($handle2,'TAB T=1'."\n");
+   	   fwrite($handle2,'SET !ENCRYPT NO'."\n");
+     		fwrite($handle2,'ONLOGIN USER=admin PASSWORD=cloudg06'."\n");
+	      fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
+   	   fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+      	fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
+	      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>tatistics'."\n");
+   	   fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+      	fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
+	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
+   	   fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+			fclose($handle2);
+			}
+		}
 
-
-if (isset($installedModules["IPSLight"])==true)
-	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-	$pos=strpos($WFC10_Path,"OperationCenter");
-	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
-	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-   IPS_SetPosition($categoryId_WebFront,998);
-   IPS_SetHidden($categoryId_WebFront,true);
-	echo "Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
-	}
-
-if (isset($installedModules["IPSPowerControl"])==true)
-	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-	$pos=strpos($WFC10_Path,"OperationCenter");
-	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
-	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-   IPS_SetPosition($categoryId_WebFront,997);
-   IPS_SetHidden($categoryId_WebFront,true);
-	echo "Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
-	}
-
-
-
-	
 /********************************************************
    Externe Ip Adresse immer ermitteln
 **********************************************************/
@@ -300,7 +330,7 @@ SetValue($IPS_UpTimeID,IPS_GetUptime());
 
 */
 
-if (false)
+if ($dir655==true)
 	{
 	$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
 
@@ -382,7 +412,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	// Text, ob ein Verzeichnis angegeben wurde
 	if ( is_dir ( $verzeichnis ))
 		{
-   	// öffnen des Verzeichnisses
+   	// Oeffnen des Verzeichnisses
 	   if ( $handle = opendir($verzeichnis) )
    		{
       	/* einlesen der Verzeichnisses
@@ -411,9 +441,8 @@ if ($_IPS['SENDER']=="TimerEvent")
         	closedir($handle);
     		}
 		}
-		
+
 	SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+100-$count);
-		
 	}
 
 
