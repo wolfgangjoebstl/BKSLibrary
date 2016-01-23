@@ -22,12 +22,13 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 $dir655=false;
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) {
+if (!isset($moduleManager))
+	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-}
+	}
 
 $installedModules = $moduleManager->GetInstalledModules();
 $inst_modules="\nInstallierte Module:\n";
@@ -48,7 +49,7 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
 if (isset ($installedModules["IPSLight"])) { echo "Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; break; }
 if (isset ($installedModules["IPSPowerControl"])) { echo "Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n"; break;}
 
-
+/* Webfront zusammenräumen */
 if (isset($installedModules["IPSLight"])==true)
 	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
@@ -57,7 +58,7 @@ if (isset($installedModules["IPSLight"])==true)
 	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
    IPS_SetPosition($categoryId_WebFront,998);
    IPS_SetHidden($categoryId_WebFront,true);
-	echo "Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	echo "   Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
 
 if (isset($installedModules["IPSPowerControl"])==true)
@@ -68,8 +69,9 @@ if (isset($installedModules["IPSPowerControl"])==true)
 	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
    IPS_SetPosition($categoryId_WebFront,997);
    IPS_SetHidden($categoryId_WebFront,true);
-	echo "Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	echo "   Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
+
 if (isset ($installedModules["IPSCam"]))
 	{
 	echo "Modul IPSCam ist installiert.\n";
@@ -82,11 +84,13 @@ if (isset ($installedModules["IPSCam"]))
 		IPS_SetParent($tim2ID, $_IPS['SELF']);
 		IPS_SetName($tim2ID, "MoveCamFiles");
 		IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
+  		IPS_SetEventActive($tim2ID,true);
+	   echo "   Event neu angelegt. Timer 150 sec ist aktiviert.\n";
 		//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
 		}
 	else
 	   {
-	   //echo "   Event bereits angelegt. Timer 150 sec aktivieren.\n";
+	   echo "   Event bereits angelegt. Timer 150 sec ist aktiviert.\n";
   		IPS_SetEventActive($tim2ID,true);
   		}
 	}
@@ -138,27 +142,37 @@ if ($_IPS['SENDER']=="Execute")
 		//print_r($router);
 		if ($router['TYP']=='MR3420')
 		   {
-		   echo "    iMacro Command-File wird hergestellt.\n";
+		   echo "    iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
 			$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
       	fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
 	      fwrite($handle2,'TAB T=1'."\n");
-   	   fwrite($handle2,'SET !ENCRYPT NO'."\n");
+	      fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+			fwrite($handle2,'SET !ENCRYPTION NO'."\n");
      		fwrite($handle2,'ONLOGIN USER=admin PASSWORD=cloudg06'."\n");
 	      fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
    	   fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
       	fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
-	      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>tatistics'."\n");
+	      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>Statistics'."\n");
    	   fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
       	fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
 	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
+	      fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
    	   fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+   	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+      	fwrite($handle2,'TAB CLOSE'."\n");
 			fclose($handle2);
+
+			/* und gleich ausprobieren */
+		   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+
+
 			}
 		}
 
-/********************************************************
-   Externe Ip Adresse immer ermitteln
-**********************************************************/
+	/********************************************************
+   	Externe Ip Adresse immer ermitteln
+	**********************************************************/
 
 	$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
 	//$url="http://www.whatismyip.com/";  //gesperrt
@@ -199,17 +213,17 @@ if ($_IPS['SENDER']=="Execute")
 	   
 	   
 	   
-/********************************************************
-   Eigene Ip Adresse immer ermitteln
-**********************************************************/
+	/********************************************************
+   	Eigene Ip Adresse immer ermitteln
+	**********************************************************/
 
-$ipall=""; $hostname="unknown"; $lookforgateway=false;
-//exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
-exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
+	$ipall=""; $hostname="unknown"; $lookforgateway=false;
+	//exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
+	exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
 
-$ipports=array();
+	$ipports=array();
 
-foreach($catch as $line)
+	foreach($catch as $line)
    	{
 		if (strlen($line)>2)
 		   {
@@ -253,129 +267,134 @@ foreach($catch as $line)
 	      	$hostname = trim($hostname);
 				}
 			}  /* ende strlen */
-	  }
-	if ($ipall == "") {$ipall="unknown";}
+	  	}
+		if ($ipall == "") {$ipall="unknown";}
 
-	echo "\n";
-	echo "Hostname ist          : ".$hostname."\n";
-	echo "Eigene IP Adresse ist : ".$ipall."\n";
-	echo "\n";
+		echo "\n";
+		echo "Hostname ist          : ".$hostname."\n";
+		echo "Eigene IP Adresse ist : ".$ipall."\n";
+		echo "\n";
 
-	foreach ($ipports as $ip => $data)
+		foreach ($ipports as $ip => $data)
+			{
+			//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
+			printf("Port %s hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
+			}
+
+	/********************************************************
+   	nun die Webcam zusammenraeumen
+	**********************************************************/
+
+	/* Zusammenraeumen ftp Server ist schon implementiert */
+
+	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
+
+	//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
+	$count=100;
+	//echo "<ol>";
+
+	// Text, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
 		{
-		//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
-		printf("Port %s hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
-		}
-
-/********************************************************
-   nun die Webcam zusammenraeumen
-**********************************************************/
-
-/* Zusammenraeumen ftp Server ist schon implementiert */
-
-$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
-
-$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
-$count=100;
-//echo "<ol>";
-
-// Text, ob ein Verzeichnis angegeben wurde
-if ( is_dir ( $verzeichnis ))
-{
-    // öffnen des Verzeichnisses
-    if ( $handle = opendir($verzeichnis) )
-    {
-        /* einlesen der Verzeichnisses
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
 			nur count mal Eintraege
-        */
-        while ((($file = readdir($handle)) !== false) and ($count > 0))
-        {
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
 				$dateityp=filetype( $verzeichnis.$file );
             if ($dateityp == "file")
-            {
+            	{
 					$count-=1;
 					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
 					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
             	if (is_dir($verzeichnis.$unterverzeichnis))
-            	{
-            	}
+            		{
+            		}
             	else
-					{
+						{
             		mkdir($verzeichnis.$unterverzeichnis);
-            	}
+            		}
             	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
             	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
 		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
-            }
-        }
-        closedir($handle);
-    }
-}
+         		} 
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
+		
+	/********************************************************
+   	Sys Uptime ermitteln
+	**********************************************************/
 
-/********************************************************
-   Sys Uptime ermitteln
-**********************************************************/
-
-$IPS_UpTimeID = CreateVariableByName($CategoryIdData, "IPS_UpTime", 1);
-IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
-SetValue($IPS_UpTimeID,IPS_GetUptime());
+	$IPS_UpTimeID = CreateVariableByName($CategoryIdData, "IPS_UpTime", 1);
+	IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+	SetValue($IPS_UpTimeID,IPS_GetUptime());
 
 
-/********************************************************
-   Über eigene Ip Adresse auf Gateway Adresse schliessen
-**********************************************************/
+	/********************************************************
+   	Über eigene Ip Adresse auf Gateway Adresse schliessen
+	**********************************************************/
 
-/* vorerst lassen wir es haendisch, spaeter kann man es auch aus ipconfig ableiten
-	Gateway kann mit tracert 8.8.8.8 rausgefunden werden, die ersten zeilen sind die bekannten Gateways
+	/* vorerst lassen wir es haendisch, spaeter kann man es auch aus ipconfig ableiten
+		Gateway kann mit tracert 8.8.8.8 rausgefunden werden, die ersten zeilen sind die bekannten Gateways
 
-*/
+	*/
 
-if ($dir655==true)
-	{
-	$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
+	if ($dir655==true)
+		{
+		$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
 
-	/*  $result=file_get_contents($url) geht leider nicht, passwort Eingabe, Browserchecks etc  */
-	$ch = curl_init($url);
-	$timeout = 5;
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
-	curl_setopt($ch, CURLOPT_USERPWD, "admin:cloudg06");
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
-   curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
-   curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
-	//curl_setopt($ch, CURLOPT_REFERER, $url);  /* wichtig damit TP-Link weiss wo er die Daten hinschicken soll, Autoreferer funktioniert aber besser, siehe oben */
-   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
-   curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
-   curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
+		/*  $result=file_get_contents($url) geht leider nicht, passwort Eingabe, Browserchecks etc  */
+		$ch = curl_init($url);
+		$timeout = 5;
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
+		curl_setopt($ch, CURLOPT_USERPWD, "admin:cloudg06");
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+		curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
+	   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
+   	curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
+	   curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
+		//curl_setopt($ch, CURLOPT_REFERER, $url);  /* wichtig damit TP-Link weiss wo er die Daten hinschicken soll, Autoreferer funktioniert aber besser, siehe oben */
+	   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
+   	curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
+	   curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
 
-	/*   
+		/*
         CURLOPT_POST => 1,
         CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
 
-	$data = curl_exec($ch);
+		$data = curl_exec($ch);
 
-	/* Curl Debug Funktionen */
+		/* Curl Debug Funktionen */
 
-	echo "Channel :".$ch."\n";
-  	$err     = curl_errno( $ch );
-   $errmsg  = curl_error( $ch );
-   $header  = curl_getinfo( $ch );
+		echo "Channel :".$ch."\n";
+	  	$err     = curl_errno( $ch );
+   	$errmsg  = curl_error( $ch );
+	   $header  = curl_getinfo( $ch );
 
-	echo "Fehler ".$err." von ";
-	print_r($errmsg);
-	echo "\n";
-	echo "Header ";
-	print_r($header);
-	echo "\n##################################################################################################\n";
+		echo "Fehler ".$err." von ";
+		print_r($errmsg);
+		echo "\n";
+		echo "Header ";
+		print_r($header);
+		echo "\n##################################################################################################\n";
 
 
-	curl_close($ch);
+		curl_close($ch);
 
-	echo $data;
-	}
+		echo $data;
+		}
 	
 	
 	
@@ -405,7 +424,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
 	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
 
-	$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+	//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+	//$verzeichnis = "I:\\ftp-folder\\";
+	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
 	$count=100;
 	//echo "<ol>";
 
