@@ -99,10 +99,52 @@ else
 	echo "Modul IPSCam ist NICHT installiert.\n";
 	}
 
+/* Eventuell Router regelmaessig auslesen */
+
+$tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $_IPS['SELF']);
+if ($tim1ID==false)
+	{
+	$tim1ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim1ID, $_IPS['SELF']);
+	IPS_SetName($tim1ID, "RouterAufruftimer");
+	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+	IPS_SetEventCyclicTimeFrom($tim1ID,0,20,0);  /* immer um 0:20 */
+	}
+IPS_SetEventActive($tim1ID,true);
+
+$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $_IPS['SELF']);
+if ($tim3ID==false)
+	{
+	$tim3ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim3ID, $_IPS['SELF']);
+	IPS_SetName($tim3ID, "RouterExectimer");
+	IPS_SetEventCyclic($tim3ID,2,1,0,0,1,150);      /* alle 150 sec */
+	/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
+	}
+
 /*********************************************************************************************/
 
+$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 $OperationCenterConfig = OperationCenter_Configuration();
+
+	$pname="MByte";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'',' MByte');
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   echo "Profile \"MByte\" vorhanden.\n";
+	   }
+
 
 /*********************************************************************************************/
 
@@ -158,14 +200,13 @@ if ($_IPS['SENDER']=="Execute")
 	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
 	      fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
 	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
-   	   fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+   	   //fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
    	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
       	fwrite($handle2,'TAB CLOSE'."\n");
 			fclose($handle2);
 
-			/* und gleich ausprobieren */
-		   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
-
+			//SetValue($ScriptCounterID,1);
+			//IPS_SetEventActive($tim3ID,true);
 
 			}
 		}
@@ -395,7 +436,58 @@ if ($_IPS['SENDER']=="Execute")
 
 		echo $data;
 		}
-	
+
+	/********************************************************
+   	Auswertung Router MR3420
+	**********************************************************/
+
+   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+		   {
+			//print_r($router);
+			if ($router['TYP']=='MR3420')
+			   {
+			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+			   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
+				if ( is_dir ( $verzeichnis ))
+					{
+					echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
+					$parser=new parsefile($CategoryIdData);
+					$CatID=@IPS_GetCategoryIDByName($router['NAME'],$CategoryIdData);
+					$ergebnis=array();
+					$ergebnis=$parser->parsetxtfile($verzeichnis,$router['NAME']);
+					//print_r($ergebnis);
+					$summe=0;
+					foreach ($ergebnis as $ipadresse)
+					   {
+					   $MBytes=(integer)$ipadresse['Bytes']/1024/1024;
+					   echo "       ".str_pad($ipadresse['IPAdresse'],18)." mit MBytes ".$MBytes."\n";
+      				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$CatID))==false)
+         				{
+						  	$ByteID = CreateVariableByName($CatID, "MBytes_".$ipadresse['IPAdresse'], 2);
+							IPS_SetVariableCustomProfile($ByteID,'MByte');
+							AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
+							AC_SetAggregationType($archiveHandlerID,$ByteID,0);
+							IPS_ApplyChanges($archiveHandlerID);
+							}
+					  	SetValue($ByteID,$MBytes);
+						$summe += $MBytes;
+						}
+					echo "Summe   ".$summe."\n";
+     				if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$CatID))==false)
+         			{
+					  	$ByteID = CreateVariableByName($CatID, "MBytes_All", 2);
+						IPS_SetVariableCustomProfile($ByteID,'MByte');
+						AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
+						AC_SetAggregationType($archiveHandlerID,$ByteID,0);
+						IPS_ApplyChanges($archiveHandlerID);
+						}
+				  	SetValue($ByteID,$MBytes);
+					}
+				}
+	   	}
+
+		//$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
+
 	
 	
 	} /* ende Execute */
@@ -414,56 +506,102 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
+	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
+	switch ($_IPS['EVENT'])
+	   {
+	   case $tim1ID:
+			/********************************************************
+		   nun die Webcam zusammenraeumen
+			**********************************************************/
 
-	/********************************************************
-   nun die Webcam zusammenraeumen
-	**********************************************************/
+			/* Zusammenraeumen ftp Server ist schon implementiert */
 
-	/* Zusammenraeumen ftp Server ist schon implementiert */
+			$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
+			$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
 
-	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
-	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+			//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
+			//$verzeichnis = "I:\\ftp-folder\\";
+			$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
+			$count=100;
+			//echo "<ol>";
 
-	//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
-	//$verzeichnis = "I:\\ftp-folder\\";
-	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
-	$count=100;
-	//echo "<ol>";
+			// Text, ob ein Verzeichnis angegeben wurde
+			if ( is_dir ( $verzeichnis ))
+				{
+		   	// Oeffnen des Verzeichnisses
+	   		if ( $handle = opendir($verzeichnis) )
+		   		{
+      			/* einlesen der Verzeichnisses
+					nur count mal Eintraege
+      		  	*/
+		        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+      		  		{
+						$dateityp=filetype( $verzeichnis.$file );
+		            if ($dateityp == "file")
+      		      	{
+							$count-=1;
+							$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+							$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            			if (is_dir($verzeichnis.$unterverzeichnis))
+            				{
+			            	}
+   			        	else
+								{
+         	  				mkdir($verzeichnis.$unterverzeichnis);
+		            		}
+      		      	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            			echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
+				  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+      		      	}
+        				} /* ende while */
+		        	closedir($handle);
+    				} /* ende if handle */
+				}  /* ende if isdri */
 
-	// Text, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ))
-		{
-   	// Oeffnen des Verzeichnisses
-	   if ( $handle = opendir($verzeichnis) )
-   		{
-      	/* einlesen der Verzeichnisses
-			nur count mal Eintraege
-        	*/
-        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-					$count-=1;
-					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-            	if (is_dir($verzeichnis.$unterverzeichnis))
-            		{
-	            	}
-   	        	else
-						{
-         	  		mkdir($verzeichnis.$unterverzeichnis);
-            		}
-            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-            	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
-		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
-            	}
-        		} /* ende while */
-        	closedir($handle);
-    		}
+			SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+100-$count);
+	      break;
+	   case $tim2ID:
+			/* Router Auswertung */
+			SetValue($ScriptCounterID,1);
+			IPS_SetEventActive($tim3ID,true);
+			
+	      break;
+	   case $tim3ID:
+			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID));
+			$counter=GetValue($ScriptCounterID);
+			switch ($counter)
+			   {
+				case 3:
+		      	SetValue($ScriptCounterID,0);
+			      IPS_SetEventActive($tim3ID,false);
+		      	break;
+			   case 2:
+
+
+
+					SetValue($ScriptCounterID,$counter+1);
+		      	break;
+			   case 1:
+			   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+					   {
+					   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+						//print_r($router);
+						if ($router['TYP']=='MR3420')
+						   {
+							/* und gleich ausprobieren */
+				   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+				   		}
+				   	}
+				      SetValue($ScriptCounterID,$counter+1);
+					break;
+			   case 0:
+				default:
+				   break;
+			   }
+			break;
+		default:
+		   break;
 		}
-
-	SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+100-$count);
 	}
 
 
@@ -564,5 +702,94 @@ function extractIPaddress($ip)
 		return($result_1.".".$result_2.".".$result_3.".".$result);
 	}
 
+/*********************************************************************************************/
+
+
+class parsefile
+	{
+	
+	private $dataID;
+
+	public function __construct($moduldataID)
+		{
+		//echo "Parsefile construct mit Data ID des aktuellen Moduls: ".$moduldataID."\n";
+		$this->dataID=$moduldataID;
+		}
+
+	function parsetxtfile($verzeichnis, $name)
+		{
+		$ergebnis_array=array();
+	
+		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
+      if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
+         {
+			$CatID = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($CatID, $name); // Kategorie benennen
+			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
+			}
+		echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert.\n";
+		$handle = @fopen($verzeichnis."SystemStatisticRpm.htm", "r");
+		if ($handle)
+			{
+			echo "Ergebnisfile gefunden.\n";
+			$ok=true;
+   		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
+				{
+				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+				//echo $buffer;
+	      	if(preg_match('/statList/i',$buffer))
+		   		{
+		   		do {
+		   		   if (($buffer = fgets($handle, 4096))==false) {	$ok=false; }
+			      	if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
+						if ($ok)
+						   {
+							//echo "       ".$buffer;
+					  		$pos1=strpos($buffer,"\"");
+							if ($pos1!=false)
+								{
+						  		$pos2=strpos($buffer,"\"",$pos1+1);
+						  		$ipadresse=substr($buffer,$pos1+1,$pos2-$pos1-1);
+						  		$ergebnis_array[$ipadresse]['IPAdresse']=substr($buffer,$pos1+1,$pos2-$pos1-1);
+								$buffer=trim(substr($buffer,$pos2+1,200));
+								//echo "       **IP Adresse: ".$ergebnis_array[$ipadresse]['IPAdresse']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+								//echo "       **1:".$buffer."\n";
+						  		$pos1=strpos($buffer,"\"");
+								if ($pos1!=false)
+									{
+							  		$pos2=strpos($buffer,"\"",$pos1+1);
+							  		$ergebnis_array[$ipadresse]['MacAdresse']=substr($buffer,$pos1+1,$pos2-$pos1-1);
+									$buffer=trim(substr($buffer,$pos2,200));
+									//echo "       **MAC Adresse: ".$ergebnis_array[$ipadresse]['MacAdresse']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+									//echo "       **2:".$buffer."\n";
+							  		$pos1=strpos($buffer,',');
+									if ($pos1!=false)
+										{
+								  		$pos2=strpos($buffer,',',$pos1+1);
+								  		$ergebnis_array[$ipadresse]['Packets']=(integer)substr($buffer,$pos1+1,$pos2-$pos1-1);
+										$buffer=trim(substr($buffer,$pos2,200));
+										//echo "       **Packets: ".$ergebnis_array[[$ipadresse]['Packets']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+										//echo "       **3:".$buffer."\n";
+								  		$pos1=strpos($buffer,',');
+										if ($pos1!==false)
+											{
+									  		$pos2=strpos($buffer,',',$pos1+1);
+									  		$ergebnis_array[$ipadresse]['Bytes']=(integer)substr($buffer,$pos1+1,$pos2-$pos1-1);
+											$buffer=trim(substr($buffer,$pos2,200));
+											//echo "       **Bytes: ".$ergebnis_array[$ipadresse]['Bytes']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+											//echo "       **4:".$buffer."\n";
+											}
+										}
+									}
+								}
+						   }
+		   		   } while ($ok==true);
+					}
+				}
+			}
+	return $ergebnis_array;
+	}
+	
+	} /* Ende class */
 
 ?>
