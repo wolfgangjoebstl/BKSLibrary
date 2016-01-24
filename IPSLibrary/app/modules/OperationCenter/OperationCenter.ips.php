@@ -323,6 +323,40 @@ if ($_IPS['SENDER']=="Execute")
 			}
 
 	/********************************************************
+   	nun die Webcam anschauen
+	**********************************************************/
+
+	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
+
+	//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
+	//print_r(scandir($verzeichnis));
+	print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
+	
+	$count=100;
+	//echo "<ol>";
+
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+    		$count=0; $list="";
+        	/* einlesen des Verzeichnisses        	*/
+        	while (($file = readdir($handle)) !== false)
+        		{
+        		if (is_dir($verzeichnis.$file)==false)
+        		   {
+	        		$count++;
+   	     		$list .= $file."\n";
+   	     		}
+				}
+			echo "Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
+			echo $list."\n";
+			}
+		}
+		
+	/********************************************************
    	nun die Webcam zusammenraeumen
 	**********************************************************/
 
@@ -332,10 +366,11 @@ if ($_IPS['SENDER']=="Execute")
 
 	//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
 	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
+
 	$count=100;
 	//echo "<ol>";
 
-	// Text, ob ein Verzeichnis angegeben wurde
+	// Test, ob ein Verzeichnis angegeben wurde
 	if ( is_dir ( $verzeichnis ))
 		{
     	// öffnen des Verzeichnisses
@@ -389,8 +424,16 @@ if ($_IPS['SENDER']=="Execute")
 		Gateway kann mit tracert 8.8.8.8 rausgefunden werden, die ersten zeilen sind die bekannten Gateways
 
 	*/
+	
+	
+	
 
-	if ($dir655==true)
+	/********************************************************
+   	Auswertung Router MR3420   curl
+	**********************************************************/
+
+	$mr3420=false;    /* jetzt mit imacro geloest, die können die gesamte Webseite inklusive Unterverzeichnisse abspeichern und beliebig im Frame manövrieren */
+	if ($mr3420==true)
 		{
 		$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
 
@@ -438,7 +481,7 @@ if ($_IPS['SENDER']=="Execute")
 		}
 
 	/********************************************************
-   	Auswertung Router MR3420
+   	Auswertung Router MR3420 mit imacro
 	**********************************************************/
 
    	foreach ($OperationCenterConfig['ROUTER'] as $router)
@@ -792,4 +835,53 @@ class parsefile
 	
 	} /* Ende class */
 
+
+/*********************************************************************************************/
+
+
+function dirToArray($dir)
+	{
+   $result = array();
+
+   $cdir = scandir($dir);
+   foreach ($cdir as $key => $value)
+   {
+      if (!in_array($value,array(".","..")))
+      {
+         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         {
+            $result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+         }
+         else
+         {
+            $result[] = $value;
+         }
+      }
+   }
+
+   return $result;
+	}
+
+function dirToArray2($dir)
+	{
+   $result = array();
+
+   $cdir = scandir($dir);
+   foreach ($cdir as $key => $value)
+   {
+      if (!in_array($value,array(".","..")))
+      {
+         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         {
+            //$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+         }
+         else
+         {
+            $result[] = $value;
+         }
+      }
+   }
+
+   return $result;
+	}
 ?>
