@@ -116,7 +116,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 			else
 			   {
 			   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+				echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
 			   $messageHandler = new IPSMessageHandler();
 			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
@@ -233,7 +233,7 @@ if (true)         /* kann man in die Install Routine rueberkopieren, irgendwann 
 				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 				$parameter.=$Name.":".$result.";";
 				}
-			echo "Summenvariable Gesamtauswertung_".$group." auf den folgenden Remoteservern angelegt Name:OID ".$parameter."\n";
+			echo "Summenvariable Gesamtauswertung_".$group." mit ".$statusID." auf den folgenden Remoteservern angelegt [Name:OID] : ".$parameter."\n";
 		   $messageHandler = new IPSMessageHandler();
    		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
