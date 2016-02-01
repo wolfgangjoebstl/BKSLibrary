@@ -85,6 +85,7 @@ if (isset ($installedModules["IPSCam"]))
 		IPS_SetName($tim2ID, "MoveCamFiles");
 		IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
   		IPS_SetEventActive($tim2ID,true);
+		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
 	   echo "   Event neu angelegt. Timer 150 sec ist aktiviert.\n";
 		//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
 		}
@@ -119,6 +120,7 @@ if ($tim3ID==false)
 	IPS_SetParent($tim3ID, $_IPS['SELF']);
 	IPS_SetName($tim3ID, "RouterExectimer");
 	IPS_SetEventCyclic($tim3ID,2,1,0,0,1,150);      /* alle 150 sec */
+	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
 	}
 
@@ -167,6 +169,10 @@ if ($_IPS['SENDER']=="Execute")
 				INIT
 
 	*************************************************************/
+
+	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
+	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 
 	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
 	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
@@ -323,90 +329,61 @@ if ($_IPS['SENDER']=="Execute")
 			}
 
 	/********************************************************
-   	nun die Webcam anschauen
+   	die Webcam anschauen und den FTP Folder zusammenräumen
 	**********************************************************/
 
-	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
-
-	//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
-	//print_r(scandir($verzeichnis));
-	print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
+	IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
+	IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
 	
-	$count=100;
-	//echo "<ol>";
+	$ipscam_configuration=IPSCam_GetConfiguration();
+	print_r($ipscam_configuration);
 
-	// Test, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ))
+	foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-    		$count=0; $list="";
-        	/* einlesen des Verzeichnisses        	*/
-        	while (($file = readdir($handle)) !== false)
-        		{
-        		if (is_dir($verzeichnis.$file)==false)
-        		   {
-	        		$count++;
-   	     		$list .= $file."\n";
-   	     		}
+		echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+		$verzeichnis = $cam_config['FTPFOLDER'];
+		$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+		if ($cam_categoryId==false)
+		   {
+			$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+			IPS_SetParent($cam_categoryId,$CategoryIdData);
+			}
+		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+		//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
+		//print_r(scandir($verzeichnis));
+		//print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
+	
+		$count=100;
+		//echo "<ol>";
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $verzeichnis ))
+			{
+			$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+			SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
+			
+	    	// öffnen des Verzeichnisses
+   	 	if ( $handle = opendir($verzeichnis) )
+	    		{
+   	 		$count=0; $list="";
+	        	/* einlesen des Verzeichnisses        	*/
+	        	while (($file = readdir($handle)) !== false)
+	        		{
+   	     		if (is_dir($verzeichnis.$file)==false)
+	        		   {
+		        		$count++;
+	   	     		$list .= $file."\n";
+	   	     		}
+					}
+				echo "   Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
+				echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
+				//echo $list."\n";
 				}
-			echo "Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
-			echo $list."\n";
 			}
 		}
-		
-	/********************************************************
-   	nun die Webcam zusammenraeumen
-	**********************************************************/
 
-	/* Zusammenraeumen ftp Server ist schon implementiert */
-
-	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
-
-	//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
-	$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
-
-	$count=100;
-	//echo "<ol>";
-
-	// Test, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ))
-		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-        	/* einlesen der Verzeichnisses
-			nur count mal Eintraege
-        	*/
-        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-					$count-=1;
-					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-            	if (is_dir($verzeichnis.$unterverzeichnis))
-            		{
-            		}
-            	else
-						{
-            		mkdir($verzeichnis.$unterverzeichnis);
-            		}
-            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-            	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
-		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
-         		} 
-      	  	} /* Ende while */
-	     	closedir($handle);
-   		} /* end if dir */
-		}/* ende if isdir */
-	else
-	   {
-	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-		}
-		
 	/********************************************************
    	Sys Uptime ermitteln
 	**********************************************************/
@@ -549,64 +526,51 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
 	switch ($_IPS['EVENT'])
 	   {
-	   case $tim1ID:
+	   case $tim1ID:        /* einmal am Tag */
+	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+			   {
+			   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+				//print_r($router);
+				if ($router['TYP']=='MR3420')
+				   {
+					/* und gleich ausprobieren */
+		   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+		   		}
+		   	}
+			
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
+
+			SetValue($ScriptCounterID,1);
+			IPS_SetEventActive($tim3ID,true);
+	      break;
+	   case $tim2ID:
+	   
 			/********************************************************
 		   nun die Webcam zusammenraeumen
 			**********************************************************/
-
-			/* Zusammenraeumen ftp Server ist schon implementiert */
-
-			$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
-			$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
-
-			//$verzeichnis = "D:\\FTP-Folder\\lbg70\\";
-			//$verzeichnis = "I:\\ftp-folder\\";
-			$verzeichnis = $OperationCenterConfig['CAM']['FTPFOLDER'];
-			$count=100;
-			//echo "<ol>";
-
-			// Text, ob ein Verzeichnis angegeben wurde
-			if ( is_dir ( $verzeichnis ))
+			$count=0;
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
-		   	// Oeffnen des Verzeichnisses
-	   		if ( $handle = opendir($verzeichnis) )
-		   		{
-      			/* einlesen der Verzeichnisses
-					nur count mal Eintraege
-      		  	*/
-		        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-      		  		{
-						$dateityp=filetype( $verzeichnis.$file );
-		            if ($dateityp == "file")
-      		      	{
-							$count-=1;
-							$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-							$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-            			if (is_dir($verzeichnis.$unterverzeichnis))
-            				{
-			            	}
-   			        	else
-								{
-         	  				mkdir($verzeichnis.$unterverzeichnis);
-		            		}
-      		      	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-            			echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
-				  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
-      		      	}
-        				} /* ende while */
-		        	closedir($handle);
-    				} /* ende if handle */
-				}  /* ende if isdri */
+				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+				$verzeichnis = $cam_config['FTPFOLDER'];
+				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+				if ($cam_categoryId==false)
+				   {
+					$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+					IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+					IPS_SetParent($cam_categoryId,$CategoryIdData);
+					}
+				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
 
-			SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+100-$count);
-	      break;
-	   case $tim2ID:
-			/* Router Auswertung */
-			SetValue($ScriptCounterID,1);
-			IPS_SetEventActive($tim3ID,true);
+				$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+				$count+=$count1;
+				$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+				SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
+				}
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen, ".$count." Fotos verschoben");
 			
 	      break;
 	   case $tim3ID:
@@ -625,17 +589,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 					SetValue($ScriptCounterID,$counter+1);
 		      	break;
 			   case 1:
-			   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-					   {
-					   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
-						//print_r($router);
-						if ($router['TYP']=='MR3420')
-						   {
-							/* und gleich ausprobieren */
-				   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
-				   		}
-				   	}
-				      SetValue($ScriptCounterID,$counter+1);
+					/* Router Auswertung */
+					
+			      SetValue($ScriptCounterID,$counter+1);
 					break;
 			   case 0:
 				default:
@@ -653,6 +609,54 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 /*********************************************************************************************/
 /*********************************************************************************************/
+
+
+function move_camPicture($verzeichnis,$WebCamWZ_LetzteBewegungID)
+	{
+	$count=100;
+	//echo "<ol>";
+
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            	if (is_dir($verzeichnis.$unterverzeichnis))
+            		{
+            		}
+            	else
+						{
+            		mkdir($verzeichnis.$unterverzeichnis);
+            		}
+            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
+	return(100-$count);
+	}
+
+
+
 /*********************************************************************************************/
 
 function get_data($url) {
@@ -862,6 +866,8 @@ function dirToArray($dir)
    return $result;
 	}
 
+/*********************************************************************************************/
+
 function dirToArray2($dir)
 	{
    $result = array();
@@ -884,4 +890,7 @@ function dirToArray2($dir)
 
    return $result;
 	}
+
+
+
 ?>
