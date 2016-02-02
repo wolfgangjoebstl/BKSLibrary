@@ -46,10 +46,11 @@
 		}
 	echo $inst_modules;
 	
-	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-
+	IPSUtils_Include ("IPSInstaller.inc.php",                      "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",               "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",     "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("Report_Constants.inc.php",      				"IPSLibrary::app::modules::Report");
+	
 	/* Create Web Pages */
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -113,11 +114,11 @@
 	IPS_SetVariableCustomProfile($ReportPageTypeID,$pname); // Ziel-ID, P-Name
 
 
-	$pname="ReportTimeControl";
+/*	$pname="ReportTimeControl";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 	   //Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_CreateVariableProfile($pname, 1); // PName, Typ 0 Boolean 1 Integer 2 Float 3 String
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 	   IPS_SetVariableProfileValues($pname, 0, 3, 1); //PName, Minimal, Maximal, Schrittweite
 	   IPS_SetVariableProfileAssociation($pname, 0, "Tag", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
@@ -126,20 +127,20 @@
   	   IPS_SetVariableProfileAssociation($pname, 3, "Jahr", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   echo "Profil erstellt;\n";
 		}
-	IPS_SetVariableCustomProfile($ReportTimeTypeID,$pname); // Ziel-ID, P-Name
+	IPS_SetVariableCustomProfile($ReportTimeTypeID,$pname); // Ziel-ID, P-Name    */
 
-	/*$associationsPeriodAndCount  = array(
+	$associationsPeriodAndCount  = array(
 	                              //IPSPC_PERIOD_HOUR     => 'Stunde',
-	                              IPSPC_PERIOD_DAY      => 'Tag',
-	                              IPSPC_PERIOD_WEEK     => 'Woche',
-	                              IPSPC_PERIOD_MONTH    => 'Monat',
-	                              IPSPC_PERIOD_YEAR     => 'Jahr',
-	                              IPSPC_COUNT_SEPARATOR => ' ',
-	                              IPSPC_COUNT_MINUS     => '-',
-	                              IPSPC_COUNT_VALUE     => '1',
-	                              IPSPC_COUNT_PLUS      => '+',
+	                              IPSRP_PERIOD_DAY      => 'Tag',
+	                              IPSRP_PERIOD_WEEK     => 'Woche',
+	                              IPSRP_PERIOD_MONTH    => 'Monat',
+	                              IPSRP_PERIOD_YEAR     => 'Jahr',
+	                              IPSRP_COUNT_SEPARATOR => ' ',
+	                              IPSRP_COUNT_MINUS     => '-',
+	                              IPSRP_COUNT_VALUE     => '1',
+	                              IPSRP_COUNT_PLUS      => '+',
 	                              );
-	CreateProfile_Associations ('IPSPowerControl_PeriodAndCount',   $associationsPeriodAndCount); */
+	CreateProfile_Associations ('ReportTimeControl',   $associationsPeriodAndCount);
 
 	// Add Scripts, they have auto install
 	$scriptIdReport   = IPS_GetScriptIDByName('Report', $CategoryIdApp);
