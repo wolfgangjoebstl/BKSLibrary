@@ -128,6 +128,19 @@
 		}
 	IPS_SetVariableCustomProfile($ReportTimeTypeID,$pname); // Ziel-ID, P-Name
 
+	/*$associationsPeriodAndCount  = array(
+	                              //IPSPC_PERIOD_HOUR     => 'Stunde',
+	                              IPSPC_PERIOD_DAY      => 'Tag',
+	                              IPSPC_PERIOD_WEEK     => 'Woche',
+	                              IPSPC_PERIOD_MONTH    => 'Monat',
+	                              IPSPC_PERIOD_YEAR     => 'Jahr',
+	                              IPSPC_COUNT_SEPARATOR => ' ',
+	                              IPSPC_COUNT_MINUS     => '-',
+	                              IPSPC_COUNT_VALUE     => '1',
+	                              IPSPC_COUNT_PLUS      => '+',
+	                              );
+	CreateProfile_Associations ('IPSPowerControl_PeriodAndCount',   $associationsPeriodAndCount); */
+
 	// Add Scripts, they have auto install
 	$scriptIdReport   = IPS_GetScriptIDByName('Report', $CategoryIdApp);
 	IPS_SetVariableCustomAction($ReportPageTypeID, $scriptIdReport);
@@ -167,7 +180,18 @@
 		}
 
 
-
+/** Anlegen eines Profils mit Associations
+	 *
+	 * der Befehl legt ein Profile an und erzeugt für die übergebenen Werte Assoziationen
+	 *
+	 * @param string $Name Name des Profiles
+	 * @param string $Associations[] Array mit Wert und Namens Zuordnungen
+	 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+	 * @param integer $Color[] Array mit Farbwerten im HTML Farbcode (z.b. 0x0000FF für Blau). Sonderfall: -1 für Transparent
+	 * @param boolean $DeleteProfile Profile löschen und neu generieren
+	 *
+	 *   function CreateProfile_Associations ($Name, $Associations, $Icon="", $Color=-1, $DeleteProfile=true)
+	 */
 
 
 ?>

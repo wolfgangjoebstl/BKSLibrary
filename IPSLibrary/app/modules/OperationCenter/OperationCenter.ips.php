@@ -83,7 +83,7 @@ if (isset ($installedModules["IPSCam"]))
 		$tim2ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim2ID, $_IPS['SELF']);
 		IPS_SetName($tim2ID, "MoveCamFiles");
-		IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
+		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,150);      /* alle 150 sec */
   		IPS_SetEventActive($tim2ID,true);
 		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
 	   echo "   Event neu angelegt. Timer 150 sec ist aktiviert.\n";
@@ -119,7 +119,7 @@ if ($tim3ID==false)
 	$tim3ID = IPS_CreateEvent(1);
 	IPS_SetParent($tim3ID, $_IPS['SELF']);
 	IPS_SetName($tim3ID, "RouterExectimer");
-	IPS_SetEventCyclic($tim3ID,2,1,0,0,1,150);      /* alle 150 sec */
+	IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
 	}
@@ -166,22 +166,13 @@ if ($_IPS['SENDER']=="Execute")
 	
 	/******************************************************
 
-				INIT
+				INIT, kommt ins Install
 
 	*************************************************************/
 
 	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
 	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
-
-	$WebCamWZ_LetzteBewegungID = CreateVariableByName($CategoryIdData, "WebcamWZ_letzteBewegung", 3);
-	$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
-  	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-	AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,0);      /* normaler Wwert */
-	IPS_ApplyChanges($archiveHandlerID);
-	echo "Letztes Foto aus der Webcam vom ".GetValue($WebCamWZ_LetzteBewegungID).".\n";
-	echo "Bereits ".GetValue($WebCam_PhotoCountID)." Fotos von der Webcam erstellt.\n";
 
 	//print_r($OperationCenterConfig);
 	foreach ($OperationCenterConfig['ROUTER'] as $router)
@@ -349,14 +340,24 @@ if ($_IPS['SENDER']=="Execute")
 			IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
 			IPS_SetParent($cam_categoryId,$CategoryIdData);
 			}
-		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
 		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+  		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+		AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
+		AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
+		IPS_ApplyChanges($archiveHandlerID);
+
+		$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
+		AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
+		IPS_ApplyChanges($archiveHandlerID);
+
+		$count=100;
+		//echo "<ol>";
+
 		//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
 		//print_r(scandir($verzeichnis));
 		//print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
-	
-		$count=100;
-		//echo "<ol>";
 
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $verzeichnis ))
@@ -548,7 +549,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim2ID:
 	   
 			/********************************************************
-		   nun die Webcam zusammenraeumen
+		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
 			$count=0;
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
@@ -564,11 +565,20 @@ if ($_IPS['SENDER']=="TimerEvent")
 					}
 				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
 				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
 				$count+=$count1;
 				$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
 				SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
+				if ($count1>0)
+				   {
+				   SetValue($WebCam_MotionID,true);
+				   }
+				else
+				   {
+  				   SetValue($WebCam_MotionID,false);
+				   }
 				}
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen, ".$count." Fotos verschoben");
 			
@@ -604,9 +614,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 	}
 
 
-
-
-
+/*********************************************************************************************/
+/*********************************************************************************************/
+/*                                                                                           */
+/*                              Functions                                                    */
+/*                                                                                           */
 /*********************************************************************************************/
 /*********************************************************************************************/
 
