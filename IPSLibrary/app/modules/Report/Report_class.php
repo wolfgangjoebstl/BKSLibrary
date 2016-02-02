@@ -18,25 +18,24 @@
 
 
 	/**
-	 * @class IPSPowerControl_Manager
+	 * @class Report_Class
 	 *
-	 * Definiert ein IPSPowerControl_Manager Objekt
 	 *
-	 * @author Andreas Brauneis
+	 * @author Wolfgang Jöbstl
 	 * @version
-	 *   Version 2.50.1, 26.07.2012<br/>
+	 *   Version 2.50.1, 2.02.2016<br/>
 	 */
-	class IPSPowerControl_Manager {
+	class ReportControl_Manager {
 
 		/**
 		 * @private
-		 * ID Kategorie fÃ¼r die berechneten Werte
+		 * ID Kategorie für die berechneten Werte
 		 */
 		private $categoryIdValues;
 
 		/**
 		 * @private
-		 * ID Kategorie fÃ¼r allgemeine Steuerungs Daten
+		 * ID Kategorie für allgemeine Steuerungs Daten
 		 */
 		private $categoryIdCommon;
 
@@ -60,11 +59,11 @@
 		 *
 		 */
 		public function __construct() {
-			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSPowerControl');
-			$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
-			$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
-			$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
-			$this->valueConfig        = IPSPowerControl_GetValueConfiguration();
+			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Report');
+			//$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
+			//$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
+			//$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
+			//$this->valueConfig        = IPSPowerControl_GetValueConfiguration();
 		}
 
 		/**
@@ -72,35 +71,36 @@
 		 *
 		 * Modifiziert einen Variablen Wert der Kamera Steuerung
 		 *
-		 * @param integer $variableId ID der Variable die geÃ¤ndert werden soll
+		 * @param integer $variableId ID der Variable die geändert werden soll
 		 * @param variant $value Neuer Wert der Variable
 		 */
 		public function ChangeSetting($variableId, $value) {
 			$variableIdent = IPS_GetIdent($variableId);
-			if (substr($variableIdent,0,-1)==IPSPC_VAR_SELECTVALUE) {
+			echo "Variableident : ".$variableIdent."\n";
+			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE) {
 				$powerIdx      = substr($variableIdent,-1,-1);
 				$variableIdent = substr($variableIdent,0,-1);
 			}
-			if (substr($variableIdent,0,-2)==IPSPC_VAR_SELECTVALUE) {
+			if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE) {
 				$powerIdx      = substr($variableIdent,-1,-2);
 				$variableIdent = substr($variableIdent,0,-2);
 			}
 			switch ($variableIdent) {
-				case IPSPC_VAR_SELECTVALUE:
+				case IPSRP_VAR_SELECTVALUE:
 					SetValue($variableId, $value);
 					$this->CheckValueSelection();
 					$this->RebuildGraph();
 					break;
-				case IPSPC_VAR_TYPEOFFSET:
-				case IPSPC_VAR_PERIODCOUNT:
+				case IPSRP_VAR_TYPEOFFSET:
+				case IPSRP_VAR_PERIODCOUNT:
 					$this->Navigation($variableId, $value);
 					$this->RebuildGraph();
 					break;
-				case IPSPC_VAR_VALUEKWH:
-				case IPSPC_VAR_VALUEWATT:
-				case IPSPC_VAR_CHARTHTML:
-				case IPSPC_VAR_TIMEOFFSET:
-				case IPSPC_VAR_TIMECOUNT:
+				case IPSRP_VAR_VALUEKWH:
+				case IPSRP_VAR_VALUEWATT:
+				case IPSRP_VAR_CHARTHTML:
+				case IPSRP_VAR_TIMEOFFSET:
+				case IPSRP_VAR_TIMECOUNT:
 					trigger_error('Variable'.$variableIdent.' could NOT be modified!!!');
 					break;
 				default:
@@ -111,13 +111,13 @@
 		private function CheckValueSelection() {
 			$valueSelected = false;
 			foreach ($this->valueConfig as $valueIdx=>$valueData) {
-				if ($valueData[IPSPC_PROPERTY_DISPLAY]) {
-					$variableIdValueDisplay = IPS_GetVariableIDByName(IPSPC_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
+				if ($valueData[IPSRP_PROPERTY_DISPLAY]) {
+					$variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
 					$valueSelected = ($valueSelected or GetValue($variableIdValueDisplay));
 				}
 			}
 			if (!$valueSelected) {
-				SetValue(IPS_GetVariableIDByName(IPSPC_VAR_SELECTVALUE.'0', $this->categoryIdCommon), true);
+				SetValue(IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.'0', $this->categoryIdCommon), true);
 
 			}
 
@@ -125,39 +125,39 @@
 
 		private function Navigation($variableId, $value) {
 			$lastValue = GetValue($variableId);
-			$variableIdOffset = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMEOFFSET, $this->categoryIdCommon);
-			$variableIdCount  = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMECOUNT,  $this->categoryIdCommon);
+			$variableIdOffset = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMEOFFSET, $this->categoryIdCommon);
+			$variableIdCount  = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMECOUNT,  $this->categoryIdCommon);
 			SetValue($variableId, $value);
 			$restoreOldValue = false;
 			Switch($value) {
-				case IPSPC_COUNT_MINUS:
+				case IPSRP_COUNT_MINUS:
 					if (GetValue($variableIdCount) > 1) {
 						SetValue($variableIdCount, GetValue($variableIdCount) - 1);
 					}
-					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSPC_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
 					$restoreOldValue = true;
 					break;
-				case IPSPC_COUNT_PLUS:
+				case IPSRP_COUNT_PLUS:
 					SetValue($variableIdCount, GetValue($variableIdCount) + 1);
-					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSPC_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
 					$restoreOldValue = true;
 					break;
-				case IPSPC_OFFSET_PREV:
+				case IPSRP_OFFSET_PREV:
 					SetValue($variableIdOffset, GetValue($variableIdOffset) - 1);
-					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSPC_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
 					$restoreOldValue = true;
 					break;
-				case IPSPC_OFFSET_NEXT:
+				case IPSRP_OFFSET_NEXT:
 					if (GetValue($variableIdOffset) < 0) {
 						SetValue($variableIdOffset, GetValue($variableIdOffset) + 1);
 					}
-					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSPC_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
 					$restoreOldValue = true;
 					break;
-				case IPSPC_OFFSET_VALUE:
-				case IPSPC_OFFSET_SEPARATOR:
-				case IPSPC_COUNT_VALUE:
-				case IPSPC_COUNT_SEPARATOR:
+				case IPSRP_OFFSET_VALUE:
+				case IPSRP_OFFSET_SEPARATOR:
+				case IPSRP_COUNT_VALUE:
+				case IPSRP_COUNT_SEPARATOR:
 					SetValue($variableId, $lastValue);
 					break;
 				default:
@@ -172,7 +172,7 @@
 		/**
 		 * @public
 		 *
-		 * Diese Funktion wird beim AuslÃ¶sen eines Timers aufgerufen
+		 * Diese Funktion wird beim Auslösen eines Timers aufgerufen
 		 *
 		 * @param integer $timerId ID des Timers
 		 */
@@ -191,24 +191,24 @@
 		}
 
 		private function GetGraphStartTime() {
-			$variableIdOffset  = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMEOFFSET,  $this->categoryIdCommon);
-			$variableIdCount   = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMECOUNT,   $this->categoryIdCommon);
-			$variableIdPeriod  = IPS_GetObjectIDByIdent(IPSPC_VAR_PERIODCOUNT, $this->categoryIdCommon);
+			$variableIdOffset  = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMEOFFSET,  $this->categoryIdCommon);
+			$variableIdCount   = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMECOUNT,   $this->categoryIdCommon);
+			$variableIdPeriod  = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 
 			$offset = abs(GetValue($variableIdOffset));
 			$count  = GetValue($variableIdCount);
 			$return = mktime(0,0,0, date("m", time()), date("d",time()), date("Y",time())); 
 			switch(GetValue($variableIdPeriod)) {
-				case IPSPC_PERIOD_DAY:
+				case IPSRP_PERIOD_DAY:
 					$return = strtotime('-'.($offset+$count-1).' day', $return);
 					break;
-				case IPSPC_PERIOD_WEEK:
+				case IPSRP_PERIOD_WEEK:
 					$return = strtotime('-'.($offset+$count).' week', $return);
 					break;
-				case IPSPC_PERIOD_MONTH:
+				case IPSRP_PERIOD_MONTH:
 					$return = strtotime('-'.($offset+$count).' month', $return);
 					break;
-				case IPSPC_PERIOD_YEAR:
+				case IPSRP_PERIOD_YEAR:
 					$return = strtotime('-'.($offset+$count).' year', $return);
 					break;
 				default:
@@ -218,23 +218,23 @@
 		}
 
 		private function GetGraphEndTime() {
-			$variableIdOffset  = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMEOFFSET,  $this->categoryIdCommon);
-			$variableIdCount   = IPS_GetObjectIDByIdent(IPSPC_VAR_TIMECOUNT,   $this->categoryIdCommon);
-			$variableIdPeriod  = IPS_GetObjectIDByIdent(IPSPC_VAR_PERIODCOUNT, $this->categoryIdCommon);
+			$variableIdOffset  = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMEOFFSET,  $this->categoryIdCommon);
+			$variableIdCount   = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMECOUNT,   $this->categoryIdCommon);
+			$variableIdPeriod  = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 
 			$offset=abs(GetValue($variableIdOffset));
 			$return = mktime(23,59,59, date("m", time()), date("d",time()), date("Y",time())); 
 			switch(GetValue($variableIdPeriod)) {
-				case IPSPC_PERIOD_DAY:
+				case IPSRP_PERIOD_DAY:
 					$return = strtotime('-'.($offset).' day', $return);
 					break;
-				case IPSPC_PERIOD_WEEK:
+				case IPSRP_PERIOD_WEEK:
 					$return = strtotime('-'.($offset).' week', $return);
 					break;
-				case IPSPC_PERIOD_MONTH:
+				case IPSRP_PERIOD_MONTH:
 					$return = strtotime('-'.($offset).' month', $return);
 					break;
-				case IPSPC_PERIOD_YEAR:
+				case IPSRP_PERIOD_YEAR:
 					$return = strtotime('-'.($offset).' year', $return);
 					break;
 				default:
@@ -244,28 +244,28 @@
 		}
 
 		private function RebuildGraph () {
-			$variableIdChartType = IPS_GetObjectIDByIdent(IPSPC_VAR_TYPEOFFSET, $this->categoryIdCommon);
-			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSPC_VAR_PERIODCOUNT, $this->categoryIdCommon);
-			$variableIdChartHTML = IPS_GetObjectIDByIdent(IPSPC_VAR_CHARTHTML,  $this->categoryIdCommon);
+			$variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $this->categoryIdCommon);
+			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
+			$variableIdChartHTML = IPS_GetObjectIDByIdent(IPSRP_VAR_CHARTHTML,  $this->categoryIdCommon);
 
-			$periodList = array (IPSPC_PERIOD_DAY          => 'Tag',
-			                     IPSPC_PERIOD_WEEK         => 'Woche',
-			                     IPSPC_PERIOD_MONTH        => 'Monat',
-			                     IPSPC_PERIOD_YEAR         => 'Jahr');
+			$periodList = array (IPSRP_PERIOD_DAY          => 'Tag',
+			                     IPSRP_PERIOD_WEEK         => 'Woche',
+			                     IPSRP_PERIOD_MONTH        => 'Monat',
+			                     IPSRP_PERIOD_YEAR         => 'Jahr');
 
-			$valueTypeList = array (IPSPC_TYPE_KWH         => 'kWh',
-			                        IPSPC_TYPE_EURO        => 'Euro',
-			                        IPSPC_TYPE_WATT        => 'Watt',
-			                        IPSPC_TYPE_STACK       => 'Details',
-			                        IPSPC_TYPE_STACK2      => 'Total',
-			                        IPSPC_TYPE_OFF         => 'Off',
-			                        IPSPC_TYPE_PIE         => 'Pie');
+			$valueTypeList = array (IPSRP_TYPE_KWH         => 'kWh',
+			                        IPSRP_TYPE_EURO        => 'Euro',
+			                        IPSRP_TYPE_WATT        => 'Watt',
+			                        IPSRP_TYPE_STACK       => 'Details',
+			                        IPSRP_TYPE_STACK2      => 'Total',
+			                        IPSRP_TYPE_OFF         => 'Off',
+			                        IPSRP_TYPE_PIE         => 'Pie');
 
 			if (!array_key_exists(GetValue($variableIdChartType), $valueTypeList)) {
-				SetValue($variableIdChartType, IPSPC_TYPE_KWH);
+				SetValue($variableIdChartType, IPSRP_TYPE_KWH);
 			}
 			if (!array_key_exists(GetValue($variableIdPeriod), $periodList)) {
-				SetValue($variableIdPeriod, IPSPC_PERIOD_DAY);
+				SetValue($variableIdPeriod, IPSRP_PERIOD_DAY);
 			}
 
 			$archiveHandlerList = IPS_GetInstanceListByModuleID ('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
@@ -278,13 +278,13 @@
 			$CfgDaten['EndTime']          = $this->GetGraphEndTime();
 			$CfgDaten['RunMode']          = "file"; 	// file, script, popup
 
-			// SerienÃ¼bergreifende Einstellung fÃ¼r das Laden von Werten
-			$CfgDaten['AggregatedValues']['HourValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Stundenwerte geladen
-			$CfgDaten['AggregatedValues']['DayValues']      = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Tageswerte geladen
-			$CfgDaten['AggregatedValues']['WeekValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Wochenwerte geladen
-			$CfgDaten['AggregatedValues']['MonthValues']    = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Monatswerte geladen
-			$CfgDaten['AggregatedValues']['YearValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Jahreswerte geladen
-			$CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;    // ist der Zeitraum grÃ¶ÃŸer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen	$CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
+			// Serienübergreifende Einstellung für das Laden von Werten
+			$CfgDaten['AggregatedValues']['HourValues']     = -1;      // ist der Zeitraum größer als X Tage werden Stundenwerte geladen
+			$CfgDaten['AggregatedValues']['DayValues']      = -1;      // ist der Zeitraum größer als X Tage werden Tageswerte geladen
+			$CfgDaten['AggregatedValues']['WeekValues']     = -1;      // ist der Zeitraum größer als X Tage werden Wochenwerte geladen
+			$CfgDaten['AggregatedValues']['MonthValues']    = -1;      // ist der Zeitraum größer als X Tage werden Monatswerte geladen
+			$CfgDaten['AggregatedValues']['YearValues']     = -1;      // ist der Zeitraum größer als X Tage werden Jahreswerte geladen
+			$CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;    // ist der Zeitraum größer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen	$CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
 			$CfgDaten['AggregatedValues']['MixedMode']      = false;
 			$CfgDaten['title']['text']    = "Energieverbrauch";
 			$CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%";
@@ -294,21 +294,21 @@
 			$CfgDaten['HighChart']['Height'] = 400; 		// in px
 
 			switch (GetValue($variableIdPeriod)) {
-				case IPSPC_PERIOD_DAY:   $aggType = 0; break;
-				case IPSPC_PERIOD_WEEK:  $aggType = 1; break;
-				case IPSPC_PERIOD_MONTH: $aggType = 1; break;
-				case IPSPC_PERIOD_YEAR:  $aggType = 3; break;
+				case IPSRP_PERIOD_DAY:   $aggType = 0; break;
+				case IPSRP_PERIOD_WEEK:  $aggType = 1; break;
+				case IPSRP_PERIOD_MONTH: $aggType = 1; break;
+				case IPSRP_PERIOD_YEAR:  $aggType = 3; break;
 				default:
 				   trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
 
 			foreach ($this->valueConfig as $valueIdx=>$valueData) {
-				$valueType = $valueData[IPSPC_PROPERTY_VALUETYPE];
-				if ($valueData[IPSPC_PROPERTY_DISPLAY]) {
-					$variableIdValueDisplay   = IPS_GetVariableIDByName(IPSPC_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
-					$variableIdValueKWH       = @IPS_GetVariableIDByName(IPSPC_VAR_VALUEKWH.$valueIdx,  $this->categoryIdValues);
-					$variableIdValueWatt      = @IPS_GetVariableIDByName(IPSPC_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
-					$variableIdValueM3        = @IPS_GetVariableIDByName(IPSPC_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
+				$valueType = $valueData[IPSRP_PROPERTY_VALUETYPE];
+				if ($valueData[IPSRP_PROPERTY_DISPLAY]) {
+					$variableIdValueDisplay   = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
+					$variableIdValueKWH       = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEKWH.$valueIdx,  $this->categoryIdValues);
+					$variableIdValueWatt      = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
+					$variableIdValueM3        = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
 
 					$serie = array();
 					$serie['type']          = 'column';
@@ -332,20 +332,20 @@
 					$serie['marker']['states']['hover']['lineWidth'] = 1;
 
 					switch ($chartType) {
-						case IPSPC_TYPE_OFF:
+						case IPSRP_TYPE_OFF:
 							SetValue($variableIdChartHTML, '');
 							return;
-						case IPSPC_TYPE_STACK:
-						case IPSPC_TYPE_STACK2:
+						case IPSRP_TYPE_STACK:
+						case IPSRP_TYPE_STACK2:
 							$serie['Unit']        = "kWh";
 							$serie['ScaleFactor'] = 1;
-							$serie['name']        = $valueData[IPSPC_PROPERTY_NAME];
+							$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
 							$serie['Id']          = $variableIdValueKWH;
-							if ($variableIdValueKWH!==false and $valueData[IPSPC_PROPERTY_VALUETYPE]==IPSPC_VALUETYPE_TOTAL and $chartType==IPSPC_TYPE_STACK2) {
+							if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_TOTAL and $chartType==IPSRP_TYPE_STACK2) {
 								$serie['zIndex']  = 100;
 								$serie['stack']  = 'Total';
 								$CfgDaten['series'][] = $serie;
-							} elseif ($variableIdValueKWH!==false and $valueData[IPSPC_PROPERTY_VALUETYPE]==IPSPC_VALUETYPE_DETAIL) {
+							} elseif ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL) {
 								$serie['zIndex']  = 110;
 								$serie['stack']  = 'Detail';
 								$CfgDaten['series'][] = $serie;
@@ -360,9 +360,9 @@
 							$CfgDaten['plotOptions']['column']['borderWidth']  = 0;
 							$CfgDaten['plotOptions']['column']['shadow']       = true;
  							break;
-						case IPSPC_TYPE_PIE:
+						case IPSRP_TYPE_PIE:
 							$serie['type'] = 'pie';
-							if ($variableIdValueKWH!==false and $valueData[IPSPC_PROPERTY_VALUETYPE]==IPSPC_VALUETYPE_DETAIL) {
+							if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL) {
 								$data_array	= AC_GetAggregatedValues($archiveHandlerId, $variableIdValueKWH, $aggType, $CfgDaten["StartTime"],$CfgDaten["EndTime"], 100);
 								$value=0;
 								for($i=0;$i<count($data_array)-1;$i++) {
@@ -372,18 +372,18 @@
 								$CfgDaten['series'][0]['name']        = 'Aufteilung';
 								$CfgDaten['series'][0]['Unit'] = '';
 								$CfgDaten['series'][0]['type'] = 'pie';
-								$CfgDaten['series'][0]['data'][] = [$valueData[IPSPC_PROPERTY_NAME],   $value];
+								$CfgDaten['series'][0]['data'][] = [$valueData[IPSRP_PROPERTY_NAME],   $value];
 								$CfgDaten['series'][0]['allowPointSelect'] = true;
 								$CfgDaten['series'][0]['cursor'] = 'pointer';
 								$CfgDaten['series'][0]['size'] = 200;
 								$CfgDaten['series'][0]['dataLabels']['enabled'] = true;
 							}
 							break;
-						case IPSPC_TYPE_WATT:
+						case IPSRP_TYPE_WATT:
 							if ($variableIdValueWatt!==false and GetValue($variableIdValueDisplay)) {
 								$serie['Unit']        = "Watt";
 								$serie['ScaleFactor'] = 1;
-								$serie['name']        = $valueData[IPSPC_PROPERTY_NAME];
+								$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
 								$serie['Id']          = $variableIdValueWatt;
 								$CfgDaten['series'][] = $serie;
 								$CfgDaten['yAxis'][0]['title']['text'] = "Verbrauch";
@@ -392,28 +392,28 @@
 								SetValue($variableIdValueDisplay, false);
 							}
 							break;
-						case IPSPC_TYPE_EURO:
-						case IPSPC_TYPE_KWH:
+						case IPSRP_TYPE_EURO:
+						case IPSRP_TYPE_KWH:
 							if (GetValue($variableIdValueDisplay)) {
-								$serie['name']        = $valueData[IPSPC_PROPERTY_NAME];
-								if ($valueType==IPSPC_VALUETYPE_GAS) {
-									$yAxisText = ($chartType==IPSPC_TYPE_EURO)?"Euro":"Gas / Wasser";
+								$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
+								if ($valueType==IPSRP_VALUETYPE_GAS) {
+									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
-									$serie['Unit']        = ($chartType==IPSPC_TYPE_EURO)?"Euro":"mÂ³";
+									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
 									$serie['Id']          = $variableIdValueM3;
-									$serie['ScaleFactor'] = ($chartType==IPSPC_TYPE_EURO)?(IPSPC_GASRATE_KWH*IPSPC_GASRATE_EURO/100):1;
+									$serie['ScaleFactor'] = ($chartType==IPSRP_TYPE_EURO)?(IPSRP_GASRATE_KWH*IPSRP_GASRATE_EURO/100):1;
 									$serie['yAxis']       = $yAxisIdx;
 									$CfgDaten['series'][] = $serie;
 									$CfgDaten['yAxis'][$yAxisIdx]['title']['text'] = $yAxisText;
 									$CfgDaten['yAxis'][$yAxisIdx]['Unit']          = $serie['Unit'];
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['enabled']    = true;
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
-								} elseif ($valueType==IPSPC_VALUETYPE_WATER) {
-									$yAxisText = ($chartType==IPSPC_TYPE_EURO)?"Euro":"Gas / Wasser";
+								} elseif ($valueType==IPSRP_VALUETYPE_WATER) {
+									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
-									$serie['Unit']        = ($chartType==IPSPC_TYPE_EURO)?"Euro":"mÂ³";
+									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
 									$serie['Id']          = $variableIdValueM3;
-									$serie['ScaleFactor'] = ($chartType==IPSPC_TYPE_EURO)?(IPSPC_WATERRATE/100):1;
+									$serie['ScaleFactor'] = ($chartType==IPSRP_TYPE_EURO)?(IPSRP_WATERRATE/100):1;
 									$serie['yAxis']       = $yAxisIdx;
 									$CfgDaten['series'][] = $serie;
 									$CfgDaten['yAxis'][$yAxisIdx]['title']['text'] = $yAxisText;
@@ -421,11 +421,11 @@
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['enabled']    = true;
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
 								} else {
-									$yAxisText = ($chartType==IPSPC_TYPE_EURO)?"Euro":"Strom";
+									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Strom";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
-									$serie['Unit']        = ($chartType==IPSPC_TYPE_EURO)?"Euro":"kWh";
+									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"kWh";
 									$serie['Id']          = $variableIdValueKWH;
-									$serie['ScaleFactor'] = ($chartType==IPSPC_TYPE_EURO)?(IPSPC_ELECTRICITYRATE/100):1;
+									$serie['ScaleFactor'] = ($chartType==IPSRP_TYPE_EURO)?(IPSRP_ELECTRICITYRATE/100):1;
 									$serie['yAxis']       = $yAxisIdx;
 									$CfgDaten['series'][] = $serie;
 									$CfgDaten['yAxis'][$yAxisIdx]['title']['text'] = $yAxisText;
@@ -471,23 +471,23 @@
 			$calcValuesKWH   = array();
 			foreach ($this->sensorConfig as $sensorIdx=>$sensorData) {
 				$sensorValue = 0;
-				if (array_key_exists(IPSPC_PROPERTY_VARKWH, $sensorData) and $sensorData[IPSPC_PROPERTY_VARKWH] <> null) {
-					$variableIdKWH = IPSUtil_ObjectIDByPath($sensorData[IPSPC_PROPERTY_VARKWH]);
+				if (array_key_exists(IPSRP_PROPERTY_VARKWH, $sensorData) and $sensorData[IPSRP_PROPERTY_VARKWH] <> null) {
+					$variableIdKWH = IPSUtil_ObjectIDByPath($sensorData[IPSRP_PROPERTY_VARKWH]);
 					$sensorValue    = GetValue($variableIdKWH);
 					//echo 'SensorValue'.$sensorIdx.' '.$variableIdKWH.'='.$sensorValue.PHP_EOL;
-				} elseif (array_key_exists(IPSPC_PROPERTY_VARM3, $sensorData) and $sensorData[IPSPC_PROPERTY_VARM3] <> null) {
-					$variableIdm3 = IPSUtil_ObjectIDByPath($sensorData[IPSPC_PROPERTY_VARM3]);
+				} elseif (array_key_exists(IPSRP_PROPERTY_VARM3, $sensorData) and $sensorData[IPSRP_PROPERTY_VARM3] <> null) {
+					$variableIdm3 = IPSUtil_ObjectIDByPath($sensorData[IPSRP_PROPERTY_VARM3]);
 					$sensorValue    = GetValue($variableIdm3);
 				}
 				$sensorValuesKWH[$sensorIdx] = $sensorValue;
 			}
 			foreach ($this->valueConfig as $valueIdx=>$valueData) {
 				$calcValuesKWH2[$valueIdx] = 0;
-				$variableId = @IPS_GetObjectIDByIdent(IPSPC_VAR_VALUEKWH.$valueIdx, $this->categoryIdValues);
+				$variableId = @IPS_GetObjectIDByIdent(IPSRP_VAR_VALUEKWH.$valueIdx, $this->categoryIdValues);
 				if ($variableId!==false) {
 					$calcValuesKWH2[$valueIdx] = GetValue($variableId);
 				} else {
-					$variableId = @IPS_GetObjectIDByIdent(IPSPC_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
+					$variableId = @IPS_GetObjectIDByIdent(IPSRP_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
 					if ($variableId!==false) {
 						$calcValuesKWH2[$valueIdx] = GetValue($variableId);
 					}
@@ -499,12 +499,12 @@
 			
 			// Write Values
 			foreach ($this->valueConfig as $valueIdx=>$valueData) {
-				echo 'Write '.$valueData[IPSPC_PROPERTY_NAME].'='.$calcValuesKWH[$valueIdx].', Old='.$calcValuesKWH2[$valueIdx].', Diff='.($calcValuesKWH[$valueIdx]-$calcValuesKWH2[$valueIdx]).PHP_EOL;
-				$variableId = @IPS_GetObjectIDByIdent(IPSPC_VAR_VALUEKWH.$valueIdx, $this->categoryIdValues);
+				echo 'Write '.$valueData[IPSRP_PROPERTY_NAME].'='.$calcValuesKWH[$valueIdx].', Old='.$calcValuesKWH2[$valueIdx].', Diff='.($calcValuesKWH[$valueIdx]-$calcValuesKWH2[$valueIdx]).PHP_EOL;
+				$variableId = @IPS_GetObjectIDByIdent(IPSRP_VAR_VALUEKWH.$valueIdx, $this->categoryIdValues);
 				if ($variableId!==false) {
 					SetValue($variableId, $calcValuesKWH[$valueIdx]);
 				} else {
-					$variableId = @IPS_GetObjectIDByIdent(IPSPC_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
+					$variableId = @IPS_GetObjectIDByIdent(IPSRP_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
 					if ($variableId!==false) {
 						SetValue($variableId, $calcValuesKWH[$valueIdx]);
 					}
@@ -518,8 +518,8 @@
 			$calcValuesWatt   = array();
 			foreach ($this->sensorConfig as $sensorIdx=>$sensorData) {
 				$sensorValue = 0;
-				if (array_key_exists(IPSPC_PROPERTY_VARWATT, $sensorData) and $sensorData[IPSPC_PROPERTY_VARWATT] <> null) {
-					$variableIdWatt = IPSUtil_ObjectIDByPath($sensorData[IPSPC_PROPERTY_VARWATT]);
+				if (array_key_exists(IPSRP_PROPERTY_VARWATT, $sensorData) and $sensorData[IPSRP_PROPERTY_VARWATT] <> null) {
+					$variableIdWatt = IPSUtil_ObjectIDByPath($sensorData[IPSRP_PROPERTY_VARWATT]);
 					$sensorValue    = GetValue($variableIdWatt);
 				}
 				$sensorValuesWatt[$sensorIdx] = $sensorValue;
@@ -531,9 +531,9 @@
 			$calcValuesWatt = IPSPowerControl_CalculateValuesWatt($sensorValuesWatt, $calcValuesWatt);
 			// Write Values
 			foreach ($this->valueConfig as $valueIdx=>$valueData) {
-				$variableId = @IPS_GetObjectIDByIdent(IPSPC_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
+				$variableId = @IPS_GetObjectIDByIdent(IPSRP_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
 				if ($variableId!==false) {
-					echo 'Write '.$variableId.'='.$calcValuesWatt[$valueIdx].', Name='.$valueData[IPSPC_PROPERTY_NAME].PHP_EOL;
+					echo 'Write '.$variableId.'='.$calcValuesWatt[$valueIdx].', Name='.$valueData[IPSRP_PROPERTY_NAME].PHP_EOL;
 					SetValue($variableId, $calcValuesWatt[$valueIdx]);
 				}
 			}
