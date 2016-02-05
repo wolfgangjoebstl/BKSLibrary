@@ -225,6 +225,8 @@ if ($_IPS['SENDER']=="Execute")
 		}
 		
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	
+	echo "\n********************************************VALUES**************************************************************\n\n";
 	$homematic=writeEnergyHomematic($MeterConfig);
 	}
 
@@ -260,9 +262,10 @@ function writeEnergyHomematic($MConfig)
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
 	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
-	      echo "Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
-	      echo "Energievorschub aktuell:".$energievorschub."kWh\n";
-	      echo "Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
+	      echo "Werte von : ".$meter["NAME"]."\n";
+	      echo "  Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+	      echo "  Energievorschub aktuell:".$energievorschub."kWh\n";
+	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
 			//print_r($meter);
 			}
 		}

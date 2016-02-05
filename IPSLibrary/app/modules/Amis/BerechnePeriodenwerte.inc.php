@@ -23,6 +23,8 @@ IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Am
 
 *************************************************************/
 
+// max. Scriptlaufzeit definieren
+ini_set('max_execution_time', 400);
 $display=false;       /* alle Eintraege auf der Console ausgeben */
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');

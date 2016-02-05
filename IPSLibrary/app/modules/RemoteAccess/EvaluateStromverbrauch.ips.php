@@ -26,7 +26,8 @@ $modules=$moduleManager->GetInstalledModules();
 if (isset ($modules["Amis"]))
   	{
   	/* nur wenn AMIS installiert ist ausführen */
-	echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen\n";
+	echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
+	echo "---------------------------------------------------------\n\n";
 
 	foreach ($remServer as $Name => $Server)
 		{
@@ -35,8 +36,11 @@ if (isset ($modules["Amis"]))
 		}
 
   	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+  	
+  	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routin AmisStromverbrauchlist */
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$stromverbrauch=AmisStromverbrauchList();
+	print_r($stromverbrauch);
 
 	foreach ($stromverbrauch as $Key)
 		{
@@ -73,7 +77,7 @@ if (isset ($modules["Amis"]))
 	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-		echo "Stromverbrauch mit Parameter :".$parameter." erzeugt.\n";
+		echo "Stromverbrauch mit Parameter :".$parameter." erzeugt.\n\n";
 		}
 	}
 
