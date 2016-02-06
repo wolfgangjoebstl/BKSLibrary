@@ -141,7 +141,9 @@
 	                              IPSRP_COUNT_PLUS      => '+',
 	                              );
 	CreateProfile_Associations ('ReportTimeControl',   $associationsPeriodAndCount);
-
+	IPS_SetVariableCustomProfile($ReportTimeTypeID,'ReportTimeControl'); // Ziel-ID, P-Name    */
+	SetValue($ReportTimeTypeID,IPSRP_PERIOD_DAY);
+	
 	// Add Scripts, they have auto install
 	$scriptIdReport   = IPS_GetScriptIDByName('Report', $CategoryIdApp);
 	IPS_SetVariableCustomAction($ReportPageTypeID, $scriptIdReport);

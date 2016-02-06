@@ -60,10 +60,10 @@
 		 */
 		public function __construct() {
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Report');
-			//$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
-			//$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
+			$this->categoryIdValues   = IPS_GetObjectIDByIdent('Values', $baseId);
+			$this->categoryIdCommon   = IPS_GetObjectIDByIdent('Common', $baseId);
 			//$this->sensorConfig       = IPSPowerControl_GetSensorConfiguration();
-			//$this->valueConfig        = IPSPowerControl_GetValueConfiguration();
+			$this->valueConfig        = Report_GetValueConfiguration();
 		}
 
 		/**
@@ -76,11 +76,13 @@
 		 */
 		public function ChangeSetting($variableId, $value) {
 			$variableIdent = IPS_GetIdent($variableId);
-			echo "Variableident : ".$variableIdent."\n";
-			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE) {
+			//echo "Variableident : ".$variableIdent." mit Wert ".$value."   \n";
+			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)
+				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
 				$powerIdx      = substr($variableIdent,-1,-1);
 				$variableIdent = substr($variableIdent,0,-1);
-			}
+				echo "Select Value mit ID ".$powerIdx."\n";
+				}
 			if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE) {
 				$powerIdx      = substr($variableIdent,-1,-2);
 				$variableIdent = substr($variableIdent,0,-2);
@@ -88,7 +90,7 @@
 			switch ($variableIdent) {
 				case IPSRP_VAR_SELECTVALUE:
 					SetValue($variableId, $value);
-					$this->CheckValueSelection();
+					$this->CheckValueSelection($variableId);
 					$this->RebuildGraph();
 					break;
 				case IPSRP_VAR_TYPEOFFSET:
@@ -108,20 +110,28 @@
 			}
 		}
 
-		private function CheckValueSelection() {
+		private function CheckValueSelection($variableId)
+			{
 			$valueSelected = false;
-			foreach ($this->valueConfig as $valueIdx=>$valueData) {
-				if ($valueData[IPSRP_PROPERTY_DISPLAY]) {
+			foreach ($this->valueConfig as $valueIdx=>$valueData)
+				{
+				if ($valueData[IPSRP_PROPERTY_DISPLAY])
+					{
 					$variableIdValueDisplay = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
+					if (($variableId!=$variableIdValueDisplay))
+						{
+						SetValue($variableIdValueDisplay,false);
+						//echo "change ".$variableIdValueDisplay."\n";
+						}
 					$valueSelected = ($valueSelected or GetValue($variableIdValueDisplay));
+					//echo "Check ".$valueIdx."  ".$variableIdValueDisplay."   ".GetValue($variableIdValueDisplay)."\n";
+					}
+				}
+			if (!$valueSelected)
+				{
+				SetValue(IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.'0', $this->categoryIdCommon), true);
 				}
 			}
-			if (!$valueSelected) {
-				SetValue(IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.'0', $this->categoryIdCommon), true);
-
-			}
-
-		}
 
 		private function Navigation($variableId, $value) {
 			$lastValue = GetValue($variableId);
@@ -243,7 +253,18 @@
 			return $return;
 		}
 
-		private function RebuildGraph () {
+		private function RebuildGraph ()
+			{
+			$report_config=Report_GetConfiguration();
+			$count=0;
+			$associationsValues = array();
+			foreach ($report_config as $displaypanel=>$values)
+				{
+			   $associationsValues[$count]=$displaypanel;
+			   $count++;
+				}
+
+
 			$variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $this->categoryIdCommon);
 			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 			$variableIdChartHTML = IPS_GetObjectIDByIdent(IPSRP_VAR_CHARTHTML,  $this->categoryIdCommon);
@@ -331,6 +352,9 @@
 					$serie['marker']['states']['hover']['radius']    = 4;
 					$serie['marker']['states']['hover']['lineWidth'] = 1;
 
+					//echo "Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx."   ";
+					//print_r($valueData);
+					
 					switch ($chartType) {
 						case IPSRP_TYPE_OFF:
 							SetValue($variableIdChartHTML, '');
@@ -394,9 +418,97 @@
 							break;
 						case IPSRP_TYPE_EURO:
 						case IPSRP_TYPE_KWH:
-							if (GetValue($variableIdValueDisplay)) {
-								$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
-								if ($valueType==IPSRP_VALUETYPE_GAS) {
+							if (GetValue($variableIdValueDisplay))
+								{
+								$yaxis=array();
+								$i=0; $j=0;
+								//echo " ---wird angezeigt ...\n";
+								$displaypanel=$associationsValues[$valueIdx];
+								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
+								   {
+								   //echo "Kurve : ".$name." \n";
+								   //print_r($defserie); echo "\n";
+								 	$serie['name'] = $name;
+    								$serie['type'] = $defserie['type'];
+    								$serie['Id'] = $defserie['Id'];
+								 	//if ($defserie['Unit']=='$')            /* Statuswerte */
+									if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
+								 	   {
+								 	   $serie['Unit']='$';
+								    	$serie['step'] = 'right';
+								    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
+								    	$j+=2;
+									 	if (isset($yaxis[$serie['Unit']]))
+										 	{
+
+										 	}
+										else
+									 	   {
+										 	$serie['yAxis'] = $i;
+											$yaxis[$serie['Unit']]= $i;
+				 							$i++;
+				 							}
+		 	   						}
+		 							else
+		 	   						{
+		 	   						/* wenn nicht Status alle Einheiten im array yaxis sammeln */
+			 							if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
+										else
+			 	   						{
+										 	$serie['yAxis'] = $i;
+											$yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
+										 	$i++;
+										 	}
+										}
+							    	$serie['marker']['enabled'] = false;
+							    	$CfgDaten['series'][] = $serie;
+									}   /* ende foreach */
+									
+							   $i=0;
+						  		$CfgDaten['yAxis'][$i]['opposite'] = false;
+						  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
+								foreach ($yaxis as $unit=>$index)
+								   {
+								   //echo "**Bearbeitung von ".$unit." und ".$index." \n";
+									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
+							  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
+							  	 		//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
+							    	   }
+						 			if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Status";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '$';
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	$CfgDaten['yAxis'][$index]['min'] = 0;
+							   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_HUMIDITY)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '%';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	//$CfgDaten['yAxis'][$index]['min'] = 0;
+							   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_LENGTH)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'mm';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							   	   }
+								 	} /* ende foreach */
+
+								/*
+								if ($valueType==IPSRP_VALUETYPE_GAS)
+									{
 									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
 									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
@@ -408,7 +520,9 @@
 									$CfgDaten['yAxis'][$yAxisIdx]['Unit']          = $serie['Unit'];
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['enabled']    = true;
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
-								} elseif ($valueType==IPSRP_VALUETYPE_WATER) {
+									}
+								elseif ($valueType==IPSRP_VALUETYPE_WATER)
+									{
 									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
 									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
@@ -420,7 +534,9 @@
 									$CfgDaten['yAxis'][$yAxisIdx]['Unit']          = $serie['Unit'];
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['enabled']    = true;
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
-								} else {
+									}
+								else
+									{
 									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Strom";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
 									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"kWh";
@@ -432,13 +548,15 @@
 									$CfgDaten['yAxis'][$yAxisIdx]['Unit']          = $serie['Unit'];
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['enabled']    = true;
 									$CfgDaten['yAxis'][$yAxisIdx]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
-								}
+									}
+								*/
 							}
 							break;
 						default:
 					}
 				}
 			}
+			//print_r($CfgDaten);
 			if (!array_key_exists('series', $CfgDaten)) {
 				SetValue($variableIdChartHTML, '');
 				return;

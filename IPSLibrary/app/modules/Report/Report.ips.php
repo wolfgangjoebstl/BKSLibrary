@@ -12,7 +12,8 @@ benötigt HighCharts
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 IPSUtils_Include ('Report_Configuration.inc.php', 'IPSLibrary::config::modules::Report');
-
+IPSUtils_Include ("Report_Constants.inc.php",     	"IPSLibrary::app::modules::Report");
+	
 /**************************************** INIT *********************************************************/
 
 
@@ -81,82 +82,90 @@ if ($_IPS['SENDER']=="WebFront")
 			}
       $CfgDaten['title']['text'] = $report_config[$displaypanel]['title'];
 		$i=0; $j=0;
-		foreach ($report_config[$displaypanel]['series'] as $name=>$serie)
+		
+		foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 		   {
-			if ($_IPS['SENDER']=="Execute")
-				{
-			   echo "Kurve : ".$name." \n";
-			   print_r($serie); echo "\n";
-			   }
-		 	$serie['name'] = $name;
-		 	if ($serie['Unit']=='$')            /* Statuswerte */
-		 	   {
-		    	$serie['step'] = 'right';
-		    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
-		    	$j+=2;
-			 	if (isset($yaxis[$serie['Unit']]))
-				 	{
-				 	
-				 	}
-				else
-			 	   {
-				 	$serie['yAxis'] = $i;
-					$yaxis[$serie['Unit']]= $i;
-				 	$i++;
-				 	}
-		 	   }
-		 	else
-		 	   {
-			 	if (isset($yaxis[$serie['Unit']])) {}
-				else
-			 	   {
-				 	$serie['yAxis'] = $i;
-					$yaxis[$serie['Unit']]= $i;
-				 	$i++;
-				 	}
-				}
-	    	$serie['marker']['enabled'] = false;
-	    	$CfgDaten['series'][] = $serie;
-			}
+								   echo "Kurve : ".$name." \n";
+								   print_r($defserie); echo "\n";
+								 	$serie['name'] = $name;
+    								$serie['type'] = $defserie['type'];
+    								$serie['Id'] = $defserie['Id'];
+								 	//if ($defserie['Unit']=='$')            /* Statuswerte */
+									if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
+								 	   {
+								 	   $serie['Unit']='$';
+								    	$serie['step'] = 'right';
+								    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
+								    	$j+=2;
+									 	if (isset($yaxis[$serie['Unit']]))
+										 	{
+
+										 	}
+										else
+									 	   {
+										 	$serie['yAxis'] = $i;
+											$yaxis[$serie['Unit']]= $i;
+				 							$i++;
+				 							}
+		 	   						}
+		 							else
+		 	   						{
+		 	   						/* wenn nicht Status alle Einheiten im array yaxis sammeln */
+			 							if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
+										else
+			 	   						{
+										 	$serie['yAxis'] = $i;
+											$yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
+										 	$i++;
+										 	}
+										}
+							    	$serie['marker']['enabled'] = false;
+							    	$CfgDaten['series'][] = $serie;
+			}   /* ende foreach */
      	$CfgDaten['chart']['alignTicks'] = true;
-     	$i=0;
-  		$CfgDaten['yAxis'][$i]['opposite'] = false;
-  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
+
+		$i=0;
+		$CfgDaten['yAxis'][$i]['opposite'] = false;
+		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
 		foreach ($yaxis as $unit=>$index)
 		   {
-			if ($_IPS['SENDER']=="Execute")
-				{
-			   echo "**Bearbeitung von ".$unit." und ".$index." \n";
-			   }
-			if ($unit=='°C')
-			   {
-		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
-   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
-		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
-	  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
-	  	 		//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
-	    	   }
- 			if ($unit=='$')         /* Statuswerte */
-			   {
-		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Status";
-   		 	$CfgDaten['yAxis'][$index]['Unit'] = '$';
-		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-   		 	$CfgDaten['yAxis'][$index]['min'] = 0;
-	   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
-		  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-	   	   }
- 			if ($unit=='%')
-			   {
-		     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
-   		 	$CfgDaten['yAxis'][$index]['Unit'] = '%';
-	    		$CfgDaten['yAxis'][$index]['opposite'] = true;
-		    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
-   		 	//$CfgDaten['yAxis'][$index]['min'] = 0;
-	   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
-		  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
-	   	   }
+								   echo "**Bearbeitung von ".$unit." und ".$index." \n";
+									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
+							  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
+							  	 		//$CfgDaten['yAxis'][$i]['ceiling'] = 50;
+							    	   }
+						 			if ($unit==IPSRP_VALUETYPE_STATE)         /* Statuswerte */
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Status";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '$';
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	$CfgDaten['yAxis'][$index]['min'] = 0;
+							   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_HUMIDITY)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '%';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
+						   		 	//$CfgDaten['yAxis'][$index]['min'] = 0;
+							   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
+								  	 	//$CfgDaten['yAxis'][$i]['max'] = 100;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_LENGTH)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'mm';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							   	   }
 		 	} /* ende foreach */
+		
       }
    else
       {

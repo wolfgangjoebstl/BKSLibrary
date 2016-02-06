@@ -16,8 +16,12 @@ ini_set('max_execution_time', 400);
 $startexec=microtime(true);
 
 IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
+/* wird von Remote Access erzeugt : */
 IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+
+
 $remServer=ROID_List();
 
 $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -35,7 +39,6 @@ if (isset ($modules["Amis"]))
 		$stromID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Stromverbrauch");
 		}
 
-  	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
   	
   	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routin AmisStromverbrauchlist */
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");

@@ -55,14 +55,21 @@ $startexec=microtime(true);
 	if ($guthabensteuerung) {echo "Guthabensteuerung installiert und erkannt\n";}
 	if ($gartensteuerung) {echo "Gartensteuerung installiert und erkannt\n";}
 	if ($amis) {echo "AMIS Stromverbrauchsmessung installiert und erkannt\n";}
+	echo "\n";
+	
+	$includefile='<?'."\n";
 
-		$includefile='<?'."\n";
+/********************************************************************************
+ *
+ *    GUTHABENSTEUERUNG
+ *
+ ************************************************************************************/
 
 		if ($guthabensteuerung)
 			{
 			$includefile.='function GuthabensteuerungList() { return array('."\n";
          $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-			echo "Guthabensteuerung Data auf :".$parentid."\n";
+			echo "\nGuthabensteuerung Data auf :".$parentid."\n";
 			$result=IPS_GetChildrenIDs($parentid);
 			//print_r($result);
 			$count_phone=100;
@@ -89,6 +96,12 @@ $startexec=microtime(true);
 			$includefile.="\n      ".');}'."\n";
 			}
 
+/********************************************************************************
+ *
+ *    AMIS
+ *
+ ************************************************************************************/
+
 		if ($amis)
 			{
 			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
@@ -96,7 +109,7 @@ $startexec=microtime(true);
 
 			$includefile.="\n".'function AmisStromverbrauchList() { return array('."\n";
          $amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-			echo "Amis Stromverbrauch Data auf :".$amisdataID."\n";
+			echo "\nAmis Stromverbrauch Data auf :".$amisdataID."\n";
 
 			$count_phone=100;
 			$count_var=500;
@@ -113,14 +126,22 @@ $startexec=microtime(true);
 					$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 					$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 					$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $zaehlerid );
+					$StromL1ID = IPS_GetObjectIDByName ( 'Strom L1' , $zaehlerid );
+					$StromL2ID = IPS_GetObjectIDByName ( 'Strom L2' , $zaehlerid );
+					$StromL3ID = IPS_GetObjectIDByName ( 'Strom L3' , $zaehlerid );
+					add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$includefile,$count_phone);
+					add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$includefile,$count_phone);
+					add_variablewithname($StromL1ID,$meter["NAME"]."_StromL1",$includefile,$count_phone);
+					add_variablewithname($StromL2ID,$meter["NAME"]."_StromL2",$includefile,$count_phone);
+					add_variablewithname($StromL3ID,$meter["NAME"]."_StromL3",$includefile,$count_phone);
 			   	}
 				if ($meter["TYPE"]=="Homematic")
 			   	{
 					$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);
 					$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $meterdataID);
+					add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$includefile,$count_phone);
+					add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$includefile,$count_phone);
 			   	}
-				add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$includefile,$count_phone);
-				add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$includefile,$count_phone);
 			   }
 			$includefile.="\n      ".');}'."\n";
 			}
@@ -128,7 +149,7 @@ $startexec=microtime(true);
 
 echo "Ende Evaluierung : ".(microtime(true)-$startexec)." Sekunden \n";
 
-   
+
 /******************************************************
 
 				INIT
@@ -141,42 +162,42 @@ foreach ($remServer as $Name => $Server)
 	{
 	$rpc = new JSONRPC($Server);
 	$includefile.='"'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
-	
+
 	$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 	$visname=IPS_GetName(0);
 	echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
 	$includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
-	
+
 	$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
 	$includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
 
 	$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
 	$includefile.="\n         ".'"Administrator" => "'.$webID.'", ';
-	
+
 	$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
 	$includefile.="\n         ".'"RemoteAccess" => "'.$raID.'", ';
-		
+
 	$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
 	$includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
-	
+
 	$tempID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
 	$includefile.="\n         ".'"Temperatur" => "'.$tempID[$Name].'", ';
-	
+
 	$switchID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
 	$includefile.="\n         ".'"Schalter" => "'.$switchID[$Name].'", ';
-	
+
 	$contactID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Kontakte");
 	$includefile.="\n         ".'"Kontakte" => "'.$contactID[$Name].'", ';
-	
+
 	$motionID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
 	$includefile.="\n         ".'"Bewegung" => "'.$motionID[$Name].'", ';
-	
+
 	$humiID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
 	$includefile.="\n         ".'"Humidity" => "'.$humiID[$Name].'", ';
 
 	$andereID[$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
 	$includefile.="\n         ".'"Andere" => "'.$andereID[$Name].'", ';
-	
+
 	echo "Remote VIS-ID                    ".$visrootID,"\n";
 	echo "Remote WebFront-ID               ".$wfID,"\n";
 	echo "Remote Administrator-ID          ".$webID,"\n";
@@ -188,7 +209,7 @@ foreach ($remServer as $Name => $Server)
 	$RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
 	$includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
 	$includefile.="\n             ".'	),'."\n";
-	
+
 	/************* PROFILES *******************/
 
 	/* macht einmal die Installation, später rueberkopieren, Routine dann eigentlich unnötig */
@@ -259,8 +280,8 @@ foreach ($remServer as $Name => $Server)
 		{
 		echo "Profile existiert nicht \n";
  		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
- 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff); 
- 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff); 
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+ 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
 
 
 	   //print_r(IPS_GetVariableProfile($pname));
@@ -312,7 +333,7 @@ echo "\n\n";
     		}
 
 
-	
+
 
 /******************************************************************/
 
@@ -337,7 +358,7 @@ function add_variablewithname($variableID,$name,&$includefile,&$count)
 	$includefile.='"'.$name.'" => array('."\n         ".'"OID" => '.$variableID.', ';
 	$includefile.="\n         ".'"Name" => "'.$name.'", ';
 	$variabletyp=IPS_GetVariable($variableID);
-	print_r($variabletyp);
+	//print_r($variabletyp);
 	//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
 	$includefile.="\n         ".'"Typ"      => '.$variabletyp["VariableValue"]["ValueType"].', ';
 	$includefile.="\n         ".'"Profile"  => "'.$variabletyp["VariableCustomProfile"].'", ';
