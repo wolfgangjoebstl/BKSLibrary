@@ -31,24 +31,24 @@
 	// Confguration Property Definition
 	define ('IPSRP_PROPERTY_NAME',				'Name');
 	define ('IPSRP_PROPERTY_VARWATT',			'VariableWatt');
-	define ('IPSRP_PROPERTY_VARKWH',			'VariableKWH');
+	define ('IPSRP_PROPERTY_VARKWH',				'VariableKWH');
 	define ('IPSRP_PROPERTY_VARM3',				'VariableM3');
 	define ('IPSRP_PROPERTY_DISPLAY',			'Display');
 	define ('IPSRP_PROPERTY_VALUETYPE',			'ValueType');
 
-	define ('IPSRP_VALUETYPE_TOTAL',			'Total');
+	define ('IPSRP_VALUETYPE_TOTAL',				'Total');
 	define ('IPSRP_VALUETYPE_DETAIL',			'Detail');
-	define ('IPSRP_VALUETYPE_OTHER',			'Other');
-	define ('IPSRP_VALUETYPE_WATER',			'Water');
+	define ('IPSRP_VALUETYPE_OTHER',				'Other');
+	define ('IPSRP_VALUETYPE_WATER',				'Water');
 	define ('IPSRP_VALUETYPE_GAS',				'Gas');
 
 	// Storage of calculated Values
-	define ('IPSRP_VAR_VALUEKWH',				'ValueKWH_');
+	define ('IPSRP_VAR_VALUEKWH',					'ValueKWH_');
 	define ('IPSRP_VAR_VALUEWATT',				'ValueWatt_');
-	define ('IPSRP_VAR_VALUEM3',				'ValueM3_');
+	define ('IPSRP_VAR_VALUEM3',					'ValueM3_');
 	// Selection
-	define ('IPSRP_VAR_SELECTVALUE',			'SelectValue');
-	define ('IPSRP_VAR_PERIODCOUNT',			'PeriodAndCount');
+	define ('IPSRP_VAR_SELECTVALUE',				'SelectValue');
+	define ('IPSRP_VAR_PERIODCOUNT',				'PeriodAndCount');
 	define ('IPSRP_VAR_TYPEOFFSET',				'TypeAndOffset');
 	define ('IPSRP_VAR_TIMEOFFSET',				'TimeOffset');
 	define ('IPSRP_VAR_TIMECOUNT',				'TimeCount');
@@ -57,7 +57,7 @@
 
 
 	define ('IPSRP_PERIOD_HOUR',				10);
-	define ('IPSRP_PERIOD_DAY',					11);
+	define ('IPSRP_PERIOD_DAY',				11);
 	define ('IPSRP_PERIOD_WEEK',				12);
 	define ('IPSRP_PERIOD_MONTH',				13);
 	define ('IPSRP_PERIOD_YEAR',				14);
@@ -67,17 +67,17 @@
 	define ('IPSRP_COUNT_VALUE',				20002);
 	define ('IPSRP_COUNT_PLUS',				20003);
 
-	define ('IPSRP_TYPE_WATER',					8);
+	define ('IPSRP_TYPE_WATER',				8);
 	define ('IPSRP_TYPE_GAS',					9);
 	define ('IPSRP_TYPE_WATT',					10);
 	define ('IPSRP_TYPE_KWH',					11);
 	define ('IPSRP_TYPE_EURO',					12);
-	define ('IPSRP_TYPE_STACK',					13);
+	define ('IPSRP_TYPE_STACK',				13);
 	define ('IPSRP_TYPE_STACK2',				14);
 	define ('IPSRP_TYPE_PIE',					15);
 	define ('IPSRP_TYPE_OFF',					16);
 
-	define ('IPSRP_OFFSET_SEPARATOR',			10000);
+	define ('IPSRP_OFFSET_SEPARATOR',		10000);
 	define ('IPSRP_OFFSET_PREV',				30000);
 	define ('IPSRP_OFFSET_VALUE',				30001);
 	define ('IPSRP_OFFSET_NEXT',				30002);
