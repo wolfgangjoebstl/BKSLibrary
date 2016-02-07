@@ -81,7 +81,7 @@
 				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
 				$powerIdx      = substr($variableIdent,-1,-1);
 				$variableIdent = substr($variableIdent,0,-1);
-				echo "Select Value mit ID ".$powerIdx."\n";
+				//echo "Select Value mit ID ".$powerIdx."\n";
 				}
 			if (substr($variableIdent,0,-2)==IPSRP_VAR_SELECTVALUE) {
 				$powerIdx      = substr($variableIdent,-1,-2);
@@ -312,7 +312,8 @@
 			$CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";
 			$CfgDaten['HighChart']['Theme']  = "ips.js";
 			$CfgDaten['HighChart']['Width']  = 0; 			// in px,  0 = 100%
-			$CfgDaten['HighChart']['Height'] = 400; 		// in px
+			$CfgDaten['HighChart']['Height'] = 700; 		// in px
+			//$CfgDaten['HighChart']['Height'] = 'Auto'; 		// in px
 
 			switch (GetValue($variableIdPeriod)) {
 				case IPSRP_PERIOD_DAY:   $aggType = 0; break;

@@ -15,7 +15,6 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -27,7 +26,8 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
-
+	$moduleManager->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
+	
 	echo "\nKernelversion : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
 	echo "\nIPS Version : ".$ergebnis;
@@ -42,7 +42,7 @@
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		$inst_modules.=str_pad($name,24)." ".$modules."\n";
 		}
 	echo $inst_modules;
 	
@@ -50,43 +50,184 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",               "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",     "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("Report_Constants.inc.php",      				"IPSLibrary::app::modules::Report");
-	
-	/* Create Web Pages */
+	IPSUtils_Include ('Report_Configuration.inc.php', 					'IPSLibrary::config::modules::Report');
 
+	/* Webfront GUID herausfinden */
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		echo "Webfront Konfigurator Name : ".IPS_GetName($instanz)." ID : ".$result["InstanceID"]."\n";
+		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		/* alle Instanzen dargestellt */
+		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+		//print_r($result);
+	}
+	
+	echo "\nVorgesehene Webfronts für die Darstellung aus dem .ini File:\n";
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	if ($WFC10_Enabled==true)
 	   {
-		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-		echo "\nWF10 ";
+		/* kann ich selber herausfinden, ist die Admistrator ID von der Konfigurator Instanz des Webfront, es gibt auch noch User */
+		//$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+      $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
+		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
+		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
+		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
+		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
+		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
+		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
+		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
+		echo "WF10 \n";
+		echo "  Path          : ".$WFC10_Path."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."\n";
+		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
+		echo "  TabItem       : ".$WFC10_TabItem."\n";
+		echo "  TabName       : ".$WFC10_TabName."\n";
+		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
+		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
 		}
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	if ($WFC10User_Enabled==true)
 	   {
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
 		echo "WF10User \n";
+      $WFC10User_ConfigId       = $WebfrontConfigID["User"];
+		$WFC10User_Path       = $moduleManager->GetConfigValue('Path', 'WFC10User');
 		}
 
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
 	if ($Mobile_Enabled==true)
 	   {
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 		echo "Mobile \n";
+		$Mobile_Path          = $moduleManager->GetConfigValue('Path', 'Mobile');
+		$Mobile_PathOrder     = $moduleManager->GetConfigValueInt('PathOrder', 'Mobile');
+		$Mobile_PathIcon      = $moduleManager->GetConfigValue('PathIcon', 'Mobile');
+		$Mobile_Name          = $moduleManager->GetConfigValue('Name', 'Mobile');
+		$Mobile_Order         = $moduleManager->GetConfigValueInt('Order', 'Mobile');
+		$Mobile_Icon          = $moduleManager->GetConfigValue('Icon', 'Mobile');
 		}
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	if ($Retro_Enabled==true)
 	   {
-		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		echo "Retro \n";
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		}
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Program Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	$categoryIdCommon   = CreateCategory('Common',  $CategoryIdData, 10);
+	$categoryIdValues   = CreateCategory('Values',  $CategoryIdData, 20);
+	//$categoryIdCustom   = CreateCategory('Custom',  $CategoryIdData, 30);
+
+	// Add Scripts
+	$scriptIdActionScript   = IPS_GetScriptIDByName('Report_ActionManager', $CategoryIdApp);
+	//$scriptIdNavPrev        = IPS_GetScriptIDByName('IPSPowerControl_NavigatePrev', $CategoryIdApp);
+	//$scriptIdNavNext        = IPS_GetScriptIDByName('IPSPowerControl_NavigateNext', $CategoryIdApp);
+	//IPS_SetIcon($scriptIdNavPrev, 'HollowArrowLeft');
+	//IPS_SetIcon($scriptIdNavNext, 'HollowArrowRight');
+	//$scriptIdCountPlus      = IPS_GetScriptIDByName('IPSPowerControl_NavigatePlus', $CategoryIdApp);
+	//$scriptIdCountMinus     = IPS_GetScriptIDByName('IPSPowerControl_NavigateMinus', $CategoryIdApp);
+	//IPS_SetIcon($scriptIdCountPlus,  'HollowArrowUp');
+	//IPS_SetIcon($scriptIdCountMinus, 'HollowArrowDown');
+
+/*
+	$timerId_Refresh     = CreateTimer_CyclicBySeconds ('CalculateWattValues', $scriptIdActionScript, IPSPC_REFRESHINTERVAL_WATT) ;
+	$timerId_Refresh     = CreateTimer_CyclicByMinutes ('CalculateKWHValues',  $scriptIdActionScript, IPSPC_REFRESHINTERVAL_KWH) ;
+*/
+
+	$associationsTypeAndOffset   = array(
+	                               IPSRP_TYPE_WATT        => 'Watt',
+	                               IPSRP_TYPE_KWH         => 'kWh',
+	                               IPSRP_TYPE_EURO        => 'Euro',
+	                               IPSRP_TYPE_STACK       => 'Details',
+	                               IPSRP_TYPE_STACK2      => 'Total',
+	                               IPSRP_TYPE_PIE         => 'Pie',
+	                               IPSRP_TYPE_OFF         => 'Off',
+	                               IPSRP_OFFSET_SEPARATOR => ' ',
+	                               IPSRP_OFFSET_PREV      => '<<',
+	                               IPSRP_OFFSET_VALUE     => '0',
+	                               IPSRP_OFFSET_NEXT      => '>>'
+	                               );
+	CreateProfile_Associations ('IPSReport_TypeAndOffset',   $associationsTypeAndOffset);
+
+	$associationsPeriodAndCount  = array(
+	                              IPSRP_PERIOD_HOUR     => 'Stunde',
+	                              IPSRP_PERIOD_DAY      => 'Tag',
+	                              IPSRP_PERIOD_WEEK     => 'Woche',
+	                              IPSRP_PERIOD_MONTH    => 'Monat',
+	                              IPSRP_PERIOD_YEAR     => 'Jahr',
+	                              IPSRP_COUNT_SEPARATOR => ' ',
+	                              IPSRP_COUNT_MINUS     => '-',
+	                              IPSRP_COUNT_VALUE     => '1',
+	                              IPSRP_COUNT_PLUS      => '+',
+	                              );
+	CreateProfile_Associations ('IPSReport_PeriodAndCount',   $associationsPeriodAndCount);
+
+
+  	$report_config=Report_GetConfiguration();
+  	$count=0;
+	$associationsValues = array();
+	foreach ($report_config as $displaypanel=>$values)
+		{
+	   echo "Erstellen von Profileintrag ".$displaypanel."  \n";
+	   $associationsValues[$count]=$displaypanel;
+	   $count++;
+  		}
+	CreateProfile_Associations ('IPSReport_SelectValues',     $associationsValues);
+	print_r($associationsValues);
+
+	// ===================================================================================================
+	// Add Variables
+	// ===================================================================================================
+	$variableIdTypeOffset  = CreateVariable(IPSRP_VAR_TYPEOFFSET,  1 /*Integer*/, $categoryIdCommon,  10, 'IPSReport_TypeAndOffset',   $scriptIdActionScript,  IPSRP_TYPE_KWH, 'Clock');
+	$variableIdPeriodCount = CreateVariable(IPSRP_VAR_PERIODCOUNT, 1 /*Integer*/, $categoryIdCommon,  20, 'IPSReport_PeriodAndCount',  $scriptIdActionScript,  IPSRP_PERIOD_DAY, 'Clock');
+	$variableIdTimeOffset  = CreateVariable(IPSRP_VAR_TIMEOFFSET,  1 /*Integer*/, $categoryIdCommon,  40, '',                                null,                   0, '');
+	$variableIdTimeCount   = CreateVariable(IPSRP_VAR_TIMECOUNT,   1 /*Integer*/, $categoryIdCommon,  50, '',                                null,                   1, '');
+	/* Höhe kann nicht absolut angegeben werden, ausserdem wird die Variable noch von Highcharts ueberschrieben */
+	$variableIdChartHtml   = CreateVariable(IPSRP_VAR_CHARTHTML,   3 /*String*/,  $categoryIdCommon, 100, '~HTMLBox',                        $scriptIdActionScript, '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>', 'Graph');
+
+	foreach (Report_GetValueConfiguration() as $idx=>$data)
+		{
+		$valueType = $data[IPSRP_PROPERTY_VALUETYPE];
+		switch($valueType)
+			{
+			case IPSRP_VALUETYPE_GAS:
+				$variableIdValueM3     = CreateVariable(IPSRP_VAR_VALUEM3.$idx,    2 /*float*/,   $categoryIdValues,  100+$idx, '~Gas',    null,          0, 'Lightning');
+				break;
+			case IPSRP_VALUETYPE_WATER:
+				$variableIdValueM3     = CreateVariable(IPSRP_VAR_VALUEM3.$idx,    2 /*float*/,   $categoryIdValues,  100+$idx, '~Water',    null,          0, 'Lightning');
+				break;
+			default:
+				$variableIdValueKWH     = CreateVariable(IPSRP_VAR_VALUEKWH.$idx,    2 /*float*/,   $categoryIdValues,  100+$idx, '~Electricity',    null,          0, 'Lightning');
+				$variableIdValueWatt    = CreateVariable(IPSRP_VAR_VALUEWATT.$idx,   2 /*float*/,   $categoryIdValues,  200+$idx, '~Watt.14490',     null,          0, 'Lightning');
+			}
+		$variableIdSelectValue  = CreateVariable(IPSRP_VAR_SELECTVALUE.$idx, 0 /*Boolean*/, $categoryIdCommon,  100+$idx, '~Switch', $scriptIdActionScript, 0, 'Lightning');
+		}
+
+
+
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Custom Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
+
+
+/* alte variante, bald nicht mehr benötigt */
 
 	$ReportPageTypeID = CreateVariableByName($CategoryIdData, "ReportPageType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$ReportTimeTypeID = CreateVariableByName($CategoryIdData, "ReportTimeType", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -153,6 +294,56 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
+
+	if ($WFC10_Enabled) {
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path."2");
+		EmptyCategory($categoryId_WebFront);
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFront, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFront, 20);
+		echo "Kategorien erstellt, Main: ".$categoryId_WebFront." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+
+		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
+		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
+		DeleteWFCItems($WFC10_ConfigId, $tabItem);
+		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 360 /*Width*/, 0 /*Target=Pane1*/, 1/*UsePixel*/, 'true');
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+		// Left Panel
+
+		$instanceId = CreateDummyInstance("Berichte", $categoryIdLeft, 30);
+		foreach (Report_GetValueConfiguration() as $idx=>$data)
+			{
+			if ($data[IPSRP_PROPERTY_DISPLAY])
+				{
+				$variableIdSelectValue  = IPS_GetObjectIDByIdent(IPSRP_VAR_SELECTVALUE.$idx, $categoryIdCommon);
+				$valueType = $data[IPSRP_PROPERTY_VALUETYPE];
+				switch($valueType)
+					{
+					case IPSRP_VALUETYPE_GAS:
+						CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $categoryIdLeft, $idx);
+						break;
+					case IPSRP_VALUETYPE_WATER:
+						CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $categoryIdLeft, $idx);
+						break;
+					default:
+						CreateLink($data[IPSRP_PROPERTY_NAME], $variableIdSelectValue, $instanceId, $idx);
+					}
+				}
+			}
+
+		// Right Panel
+		CreateLink('Type/Offset', $variableIdTypeOffset,  $categoryIdRight, 10);
+		CreateLink('Zeitraum',    $variableIdPeriodCount, $categoryIdRight, 20);
+		CreateLink('Chart',       $variableIdChartHtml,   $categoryIdRight, 40);
+
+		ReloadAllWebFronts();
+	}
+
+
+/* alte variante, bald nicht mehr benötigt */
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
@@ -168,6 +359,53 @@
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
 
 		}
+
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Mobile Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+
+/*
+	if ($Mobile_Enabled )
+		{
+		$mobileId  = CreateCategoryPath($Mobile_Path, $Mobile_PathOrder, $Mobile_PathIcon);
+		$mobileId  = CreateCategory($Mobile_Name, $mobileId, $Mobile_Order, $Mobile_Icon);
+		EmptyCategory($mobileId);
+
+		CreateLink('Chart',         $variableIdChartHtml,   $mobileId, 10);
+
+		$instanceIdChart  = CreateDummyInstance("Chart Auswahl", $mobileId, 20);
+		CreateLink('Statistic', $variableIdTypeOffset,  $instanceIdChart, 10);
+
+		$instanceIdChart  = CreateDummyInstance("Zeitraum", $mobileId, 30);
+		CreateLink('Zeitraum',      $variableIdPeriodCount, $instanceIdChart, 50);
+		CreateLink('Anzahl',        $variableIdTimeCount,   $instanceIdChart, 60);
+		CreateLink('Anzahl -',      $scriptIdCountMinus,    $instanceIdChart, 70);
+		CreateLink('Anzahl +',      $scriptIdCountPlus,     $instanceIdChart, 80);
+		CreateLink('Zeit Offset',   $variableIdTimeOffset,  $instanceIdChart, 20);
+		CreateLink('Zeit Zurück',   $scriptIdNavPrev,       $instanceIdChart, 30);
+		CreateLink('Zeit Vorwärts', $scriptIdNavNext,       $instanceIdChart, 40);
+
+		$instanceIdChart = CreateDummyInstance("Auswahl Verbraucher", $mobileId, 40);
+		foreach (IPSPowerControl_GetValueConfiguration() as $idx=>$data) {
+			if ($data[IPSPC_PROPERTY_DISPLAY]) {
+				$variableIdSelectValue  = IPS_GetObjectIDByIdent(IPSPC_VAR_SELECTVALUE.$idx, $categoryIdCommon);
+				$valueType = $data[IPSPC_PROPERTY_VALUETYPE];
+				switch($valueType) {
+					case IPSPC_VALUETYPE_GAS:
+						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
+						break;
+					case IPSPC_VALUETYPE_WATER:
+						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
+						break;
+					default:
+						CreateLink($data[IPSPC_PROPERTY_NAME], $variableIdSelectValue, $instanceIdChart, $idx);
+				}
+			}
+		}
+	}
+
+*/
 
 	if ($Mobile_Enabled)
 		{
