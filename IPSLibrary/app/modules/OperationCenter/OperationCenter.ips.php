@@ -18,6 +18,9 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 
 *************************************************************/
 
+// max. Scriptlaufzeit definieren
+ini_set('max_execution_time', 500);
+$startexec=microtime(true);
 
 $dir655=false;
 
@@ -166,8 +169,8 @@ if ($_IPS['SENDER']=="WebFront")
 
 if ($_IPS['SENDER']=="Execute")
 	{
-	/* von der Konsole aus gestartet */
-	
+	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+
 	/******************************************************
 
 				INIT, kommt ins Install
@@ -215,6 +218,7 @@ if ($_IPS['SENDER']=="Execute")
 	/********************************************************
    	Externe Ip Adresse immer ermitteln
 	**********************************************************/
+	echo "\nExterne IP Adresse ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 	$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
 	//$url="http://www.whatismyip.com/";  //gesperrt
@@ -269,10 +273,10 @@ if ($_IPS['SENDER']=="Execute")
    	{
 		if (strlen($line)>2)
 		   {
-			echo $line."\n<br>";
+			//echo $line."\n<br>";
 			if (substr($line,0,1)!=" ")
 				{
-				echo "-------------------> Ueberschrift \n";
+				//echo "-------------------> Ueberschrift \n";
 				$portname=substr($line,0,strpos($line,":"));
 				}
    		if(preg_match('/IPv4-Adresse/i',$line))
@@ -326,6 +330,8 @@ if ($_IPS['SENDER']=="Execute")
 	/********************************************************
    	die Webcam anschauen und den FTP Folder zusammenräumen
 	**********************************************************/
+
+	echo "\nWebcam anschauen und ftp Folder zusammenräumen.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 	IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
 	IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
@@ -402,17 +408,65 @@ if ($_IPS['SENDER']=="Execute")
    	Über eigene Ip Adresse auf Gateway Adresse schliessen
 	**********************************************************/
 
+	echo "\nGateway Adresse und Trace ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+
 	/* vorerst lassen wir es haendisch, spaeter kann man es auch aus ipconfig ableiten
 		Gateway kann mit tracert 8.8.8.8 rausgefunden werden, die ersten zeilen sind die bekannten Gateways
 
 	*/
-	
-	
-	
+	$catch="";
+	exec('tracert 8.8.8.8',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
 
+	$googleroute=array();
+
+	foreach($catch as $line)
+   	{
+		$trace=(integer)substr($line,0,3);
+		if ($trace>0)
+		   {
+			/* Eine Zeile mit einer Zahl in den ersten drei Buchstaben */
+			$result = extractIPaddress(substr($line,32));
+			//echo $trace."***".$result."***".$line."\n";
+         $googleroute[$trace]["IP"]=$result;
+			}  /* ende trace */
+	  	}
+		print_r($googleroute);
+
+		/*
+		if ($ipall == "") {$ipall="unknown";}
+
+		echo "\n";
+		echo "Hostname ist          : ".$hostname."\n";
+		echo "Eigene IP Adresse ist : ".$ipall."\n";
+		echo "\n";
+
+		foreach ($ipports as $ip => $data)
+			{
+			//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
+			printf("Port %s hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
+			}
+		*/
+
+	$url="http://iplocationtools.com/".$result.".html";
+	$result=get_data($url);
+	echo $result;
+	
+	/********************************************************
+   	Die entfernten logserver auf Erreichbarkeit prüfen
+	**********************************************************/
+	
+if (isset ($installedModules["RemoteAccess"]))
+	{
+	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+	
+	
+	}
+	
 	/********************************************************
    	Auswertung Router MR3420   curl
 	**********************************************************/
+
+	echo "\nAuswertung Router Daten.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 	$mr3420=false;    /* jetzt mit imacro geloest, die können die gesamte Webseite inklusive Unterverzeichnisse abspeichern und beliebig im Frame manövrieren */
 	if ($mr3420==true)
@@ -513,7 +567,7 @@ if ($_IPS['SENDER']=="Execute")
 
 		//$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
 
-	
+		echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
 	} /* ende Execute */
 
@@ -761,7 +815,7 @@ function extractIPaddress($ip)
 			$num_loc++;
 			}
 		$result=substr($result,0,$last_num+1);
-		echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
+		//echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
 		return($result_1.".".$result_2.".".$result_3.".".$result);
 	}
 
