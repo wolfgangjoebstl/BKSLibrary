@@ -425,12 +425,24 @@ if ($_IPS['SENDER']=="Execute")
 		if ($trace>0)
 		   {
 			/* Eine Zeile mit einer Zahl in den ersten drei Buchstaben */
-			$result = extractIPaddress(substr($line,32));
-			//echo $trace."***".$result."***".$line."\n";
-         $googleroute[$trace]["IP"]=$result;
+			/* entweder gibt es hier eine IP Adresse oder auch einen Namen und eine IP Adresse in eckicgen Klammern */
+			if (strpos($line,'[')==false)
+			   {
+			   /* kein Domainname */
+				$result = extractIPaddress(substr($line,32));
+				//echo $trace."***".$result."***".$line."\n";
+      	   $googleroute[$trace]["IP"]=$result;
+      	   }
+      	else
+      	   {
+				$result = extractIPaddress(substr($line,strpos($line,'[')));
+      	   $googleroute[$trace]["IP"]=$result;
+      	   $domain=substr($line,32,strpos($line,'[')-32);
+      	   $googleroute[$trace]["NAME"]=$domain;
+      	   }
 			}  /* ende trace */
 	  	}
-		print_r($googleroute);
+		//print_r($googleroute);
 
 		/*
 		if ($ipall == "") {$ipall="unknown";}
@@ -447,9 +459,34 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		*/
 
-	$url="http://iplocationtools.com/".$result.".html";
-	$result=get_data($url);
-	echo $result;
+		foreach ($googleroute as $trace=>$ip)
+		   {
+		   if (isset($ip["NAME"]))
+		      {
+			   echo "Station : ".$trace." mit ".$ip["IP"]." und ".$ip["NAME"]."\n";
+			   }
+			else
+			   {
+				$url="http://iplocationtools.com/".$ip["IP"].".html";
+				$result=get_data($url);
+				$ergebnis=substr($result,strpos($result,$ip["IP"]),180);
+			   echo "Station : ".$trace." mit ".$ip["IP"]." und ".$ergebnis."\n";
+			   }
+		   }
+
+		if (false)
+		   {
+
+			$url="http://iplocationtools.com/".$result.".html";
+			$result=get_data($url);
+			echo $result;
+	
+			$pos_start=strpos($result,"whatismyipaddress.com/ip")+25;
+			$subresult=substr($result,$pos_start,20);
+			$pos_length=strpos($subresult,"\"");
+			$subresult=substr($subresult,0,$pos_length);
+		   echo "Whatismyipaddress liefert : ".$subresult."\n";
+			}
 	
 	/********************************************************
    	Die entfernten logserver auf Erreichbarkeit prüfen
