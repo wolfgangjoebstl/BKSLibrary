@@ -2,6 +2,296 @@
 
 
 /*********************************************************************************************/
+/*********************************************************************************************/
+/*                                                                                           */
+/*                              Functions                                                    */
+/*                                                                                           */
+/*********************************************************************************************/
+/*********************************************************************************************/
+
+
+function move_camPicture($verzeichnis,$WebCamWZ_LetzteBewegungID)
+	{
+	$count=100;
+	//echo "<ol>";
+
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            	if (is_dir($verzeichnis.$unterverzeichnis))
+            		{
+            		}
+            	else
+						{
+            		mkdir($verzeichnis.$unterverzeichnis);
+            		}
+            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
+	return(100-$count);
+	}
+
+
+
+/*********************************************************************************************/
+
+function get_data($url) {
+	$ch = curl_init($url);
+	$timeout = 5;
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
+   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)"); // who am i
+
+	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
+        CURLOPT_ENCODING       => "",       // handle all encodings
+        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
+        CURLOPT_TIMEOUT        => 120,      // timeout on response
+        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+        CURLOPT_POST => 1,
+        CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
+
+	$data = curl_exec($ch);
+
+	/* Curl Debug Funktionen */
+	/*
+	echo "Channel :".$ch."\n";
+  	$err     = curl_errno( $ch );
+   $errmsg  = curl_error( $ch );
+   $header  = curl_getinfo( $ch );
+
+	echo "Fehler ".$err." von ";
+	print_r($errmsg);
+	echo "\n";
+	echo "Header ";
+	print_r($header);
+	echo "\n";
+	*/
+
+	curl_close($ch);
+
+	return $data;
+}
+
+/*********************************************************************************************/
+
+function extractIPaddress($ip)
+	{
+		$parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
+		$first_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$first_num = $num_loc;
+				break;
+				}
+			$num_loc++;
+			}
+		if ($first_num == -1) {return "unknown";}
+
+		/* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
+		$result=substr($ip,$first_num,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_1=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_2=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_3=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
+		$last_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$last_num = $num_loc;
+				}
+			$num_loc++;
+			}
+		$result=substr($result,0,$last_num+1);
+		//echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
+		return($result_1.".".$result_2.".".$result_3.".".$result);
+	}
+
+/*********************************************************************************************/
+
+
+class parsefile
+	{
+
+	private $dataID;
+
+	public function __construct($moduldataID)
+		{
+		//echo "Parsefile construct mit Data ID des aktuellen Moduls: ".$moduldataID."\n";
+		$this->dataID=$moduldataID;
+		}
+
+	function parsetxtfile($verzeichnis, $name)
+		{
+		$ergebnis_array=array();
+
+		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
+      if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
+         {
+			$CatID = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($CatID, $name); // Kategorie benennen
+			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
+			}
+		echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert.\n";
+		$handle = @fopen($verzeichnis."SystemStatisticRpm.htm", "r");
+		if ($handle)
+			{
+			echo "Ergebnisfile gefunden.\n";
+			$ok=true;
+   		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
+				{
+				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+				//echo $buffer;
+	      	if(preg_match('/statList/i',$buffer))
+		   		{
+		   		do {
+		   		   if (($buffer = fgets($handle, 4096))==false) {	$ok=false; }
+			      	if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
+						if ($ok)
+						   {
+							//echo "       ".$buffer;
+					  		$pos1=strpos($buffer,"\"");
+							if ($pos1!=false)
+								{
+						  		$pos2=strpos($buffer,"\"",$pos1+1);
+						  		$ipadresse=substr($buffer,$pos1+1,$pos2-$pos1-1);
+						  		$ergebnis_array[$ipadresse]['IPAdresse']=substr($buffer,$pos1+1,$pos2-$pos1-1);
+								$buffer=trim(substr($buffer,$pos2+1,200));
+								//echo "       **IP Adresse: ".$ergebnis_array[$ipadresse]['IPAdresse']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+								//echo "       **1:".$buffer."\n";
+						  		$pos1=strpos($buffer,"\"");
+								if ($pos1!=false)
+									{
+							  		$pos2=strpos($buffer,"\"",$pos1+1);
+							  		$ergebnis_array[$ipadresse]['MacAdresse']=substr($buffer,$pos1+1,$pos2-$pos1-1);
+									$buffer=trim(substr($buffer,$pos2,200));
+									//echo "       **MAC Adresse: ".$ergebnis_array[$ipadresse]['MacAdresse']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+									//echo "       **2:".$buffer."\n";
+							  		$pos1=strpos($buffer,',');
+									if ($pos1!=false)
+										{
+								  		$pos2=strpos($buffer,',',$pos1+1);
+								  		$ergebnis_array[$ipadresse]['Packets']=(integer)substr($buffer,$pos1+1,$pos2-$pos1-1);
+										$buffer=trim(substr($buffer,$pos2,200));
+										//echo "       **Packets: ".$ergebnis_array[[$ipadresse]['Packets']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+										//echo "       **3:".$buffer."\n";
+								  		$pos1=strpos($buffer,',');
+										if ($pos1!==false)
+											{
+									  		$pos2=strpos($buffer,',',$pos1+1);
+									  		$ergebnis_array[$ipadresse]['Bytes']=(integer)substr($buffer,$pos1+1,$pos2-$pos1-1);
+											$buffer=trim(substr($buffer,$pos2,200));
+											//echo "       **Bytes: ".$ergebnis_array[$ipadresse]['Bytes']." liegt zwischen ".($pos1+1)." und ".$pos2." \n";
+											//echo "       **4:".$buffer."\n";
+											}
+										}
+									}
+								}
+						   }
+		   		   } while ($ok==true);
+					}
+				}
+			}
+	return $ergebnis_array;
+	}
+
+	} /* Ende class */
+
+
+/*********************************************************************************************/
+
+
+function dirToArray($dir)
+	{
+   $result = array();
+
+   $cdir = scandir($dir);
+   foreach ($cdir as $key => $value)
+   {
+      if (!in_array($value,array(".","..")))
+      {
+         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         {
+            $result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+         }
+         else
+         {
+            $result[] = $value;
+         }
+      }
+   }
+
+   return $result;
+	}
+
+/*********************************************************************************************/
+
+function dirToArray2($dir)
+	{
+   $result = array();
+
+   $cdir = scandir($dir);
+   foreach ($cdir as $key => $value)
+   {
+      if (!in_array($value,array(".","..")))
+      {
+         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         {
+            //$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+         }
+         else
+         {
+            $result[] = $value;
+         }
+      }
+   }
+
+   return $result;
+	}
+
+
+/*********************************************************************************************/
 
 function tts_play($sk,$ansagetext,$ton,$modus)
  	{

@@ -200,38 +200,119 @@ function LogAlles_Temperatur() {
 
  function LogAlles_Hostnames() {
 		return array(
+		
+/* Router */
+		
 			"UPC"      => array(	"IP_Adresse"         => "10.0.0.1",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "80-c6-ab-73-fe-1c",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "UPC-Gateway",		 			/* Hostname ist auch zu vergeben */
 			              ),
-			"IP009"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
-									"Mac_Adresse"    	 => "d8-30-62-32-0b-93",            /* MAC Adresse muss vergeben werden */
-									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
+			"SYNRT"      => array(	"IP_Adresse"         => "10.0.0.1",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-11-32-4d-5a-76",            /* MAC Adresse muss vergeben werden, damit Wiedererkennung funktioniert */
+									"Hostname"           => "SynologyRouter",		 			/* Hostname ist auch zu vergeben */
+			              ),
+
+/* Computer */
+
+			"GLA"      => array(	"IP_Adresse"         => "10.0.0.26",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "90-e6-ba-19-43-26",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "GanzLinks",					/* Hostname ist auch zu vergeben */
 			              ),
 			"LBG70"      => array(	"IP_Adresse"         => "10.0.0.20",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "80-ee-73-32-89-9f",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "LBG70Server",					/* Hostname ist auch zu vergeben */
 			              ),
+
+/* Network Access Service */
+
+			"SYNST"      => array(	"IP_Adresse"         => "10.0.0.35",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-11-32-4b-d0-86",            /* MAC Adresse muss vergeben werden, damit Wiedererkennung funktioniert */
+									"Hostname"           => "SynologyStation",		 			/* Hostname ist auch zu vergeben */
+			              ),
+
+			              
+
+/* Receiver */
+
 			"AVR17"    => array(	"IP_Adresse"         => "10.0.0.23",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "00-05-cd-2d-c8-0a",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "DENON AVR-1713",		 		/* Hostname ist auch zu vergeben */
+			              ),
+			"AVR33"    => array(	"IP_Adresse"         => "10.0.0.115",           		/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-05-cd-25-91-76",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Denon AVR-3312",		 		/* Hostname ist auch zu vergeben */
+			              ),
+
+/* Ipads, Ipods, MobilePhones   */
+
+			"IPAD1"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "74-81-14-5d-be-07",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "IPad Wolfgang",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IPAD2"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "c8-bc-c8-54-79-56",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "IPad LBG70",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IPAD4"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "f0-d1-a9-39-27-24",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "IPad4 LBG70",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"APPTV"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "70-56-81-e1-7b-66",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "AppleTV",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"AMOB1"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "50-f0-d3-2a-ed-38",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "MobTel1",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"AMOB2"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "a0-0b-ba-d9-2f-aa",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "MobTel1",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"IPOD"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "90-84-0d-cf-c8-89",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "IPod_Schlafzimmer",		 				/* Hostname ist auch zu vergeben */
+			              ),
+
+/* LED, HUE     */
+
+			"HUE1"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-17-88-19-9e-dc",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Philips Hue",		 				/* Hostname ist auch zu vergeben */
+			              ),
+			"LED-AZ"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "ac-cf-23-43-0b-fd",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "LED-Arbeitszimmer",		 				/* Hostname ist auch zu vergeben */
+			              ),
+
+/*      */
+
+			"IP009"    => array(	"IP_Adresse"         => "10.0.0.9",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "d8-30-62-32-0b-93",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
 			              ),
 			"IP024"    => array(	"IP_Adresse"         => "10.0.0.24",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "00-1c-c0-02-2f-05",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
 			              ),
-			"GLA"      => array(	"IP_Adresse"         => "10.0.0.26",           			/* IP Adresse, kann auch später vergeben werden */
-									"Mac_Adresse"    	 => "90-e6-ba-19-43-26",            /* MAC Adresse muss vergeben werden */
-									"Hostname"           => "GanzLinks",					/* Hostname ist auch zu vergeben */
-			              ),
 			"IP027"    => array(	"IP_Adresse"         => "10.0.0.27",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "78-ca-39-42-87-c3",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
 			              ),
-			"IP028"    => array(	"IP_Adresse"         => "10.0.0.28",           			/* IP Adresse, kann auch später vergeben werden */
-									"Mac_Adresse"    	 => "00-e0-4c-bc-89-bd",            /* MAC Adresse muss vergeben werden */
+
+/* WebCams */
+
+			"CAMWZ"    => array(	"IP_Adresse"         => "10.0.0.85",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "e8-ab-fa-58-69-4e",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "WZ-IPCam",		 				/* Hostname ist auch zu vergeben */
 			              ),
+			"CAMVZ"    => array(	"IP_Adresse"         => "10.0.0.28",           			/* IP Adresse, kann auch später vergeben werden */
+									"Mac_Adresse"    	 => "00-e0-4c-bc-89-bd",            /* MAC Adresse muss vergeben werden */
+									"Hostname"           => "VZ-IPCam",		 				/* Hostname ist auch zu vergeben */
+			              ),
+
+/*     */
+
 			"IP030"    => array(	"IP_Adresse"         => "10.0.0.30",           			/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "00-08-c9-01-65-63",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
@@ -255,10 +336,6 @@ function LogAlles_Temperatur() {
 			"IP112"    => array(	"IP_Adresse"         => "10.0.0.112",           		/* IP Adresse, kann auch später vergeben werden */
 									"Mac_Adresse"    	 => "e4-e0-c5-25-66-27",            /* MAC Adresse muss vergeben werden */
 									"Hostname"           => "Unknown",		 				/* Hostname ist auch zu vergeben */
-			              ),
-			"AVR33"    => array(	"IP_Adresse"         => "10.0.0.115",           		/* IP Adresse, kann auch später vergeben werden */
-									"Mac_Adresse"    	 => "00-05-cd-25-91-76",            /* MAC Adresse muss vergeben werden */
-									"Hostname"           => "Denon AVR-3312",		 		/* Hostname ist auch zu vergeben */
 			              ),
 					);
 	}
