@@ -143,6 +143,19 @@ $OperationCenterConfig = OperationCenter_Configuration();
 
 /*********************************************************************************************/
 
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+
+/*********************************************************************************************/
+
+	$subnet="10.255.255.255";
+	$OperationCenter=new OperationCenter($CategoryIdData,$subnet);
+
+/*********************************************************************************************/
+
+
+
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -553,9 +566,11 @@ if (isset ($installedModules["RemoteAccess"]))
 
 		//$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
 
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+	/********************************************************
+   	Logspeicher anlegen und auslesen
+	**********************************************************/
+
+	echo "Logspeicher ausgedruckt:\n";
 	echo 	$log_OperationCenter->PrintNachrichten();
 
 	/********************************************************
@@ -564,67 +579,39 @@ if (isset ($installedModules["RemoteAccess"]))
 
 	echo "ARP Auswertung für alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
 
-	$ergebnis="";
-	unset($catch);
-	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
-	exec('arp -a',$catch);
-	foreach($catch as $line)
-   	{
-	   $result=trim($line);
-   	$result1=substr($result,0,strpos($result," "));
-	   $result=trim(substr($result,strpos($result," "),100));
-   	$result2=substr($result,0,strpos($result," "));
-	   $result=trim(substr($result,strpos($result," "),100));
-		if ($result1=="10.0.255.255") { break; }
-		if (is_numeric(Substr($result1,-1)))
-			{
-			$ergebnis.=$result1.";".$result2;
-			$found=false;
-			foreach ($ipadressen as $ip)
-			   {
-		   	if ($result2==$ip["Mac_Adresse"])
-		      	{
-					$ergebnis.=";".$ip["Hostname"].",";
-					$found=true;
-					}
-				}
-			if ($found==false) { $ergebnis.=";none,"; }
-			}
-	  }
-	$ergebnis_array=explode(",",$ergebnis);
-	$result_array=array();
-	$mactable=array();
-	foreach ($ergebnis_array as $ergebnis_line)
-		{
-		echo $ergebnis_line."\n";
-		$result_array=explode(";",$ergebnis_line);
-		//print_r($result_array);
-		if (sizeof($result_array)>2)
-		   {
-			$mactable[$result_array[1]]=$result_array[0];
-			}
-		}
-	print_r($mactable);
-
 	/********************************************************
-   	Sys_Ping durchführen
+   	Sys_Ping durchführen basierend auf vorangestellter mactable
 	**********************************************************/
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		//$ipscam_configuration=IPSCam_GetConfiguration();
-		//print_r($ipscam_configuration);
+		$mactable=$OperationCenter->evaluate_traceroute($subnet);
+		
+		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
+			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 			echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
 			$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
 			if ($status)
 				{
 				echo "Kamera wird erreicht   !\n";
+				if (GetValue($CamStatusID)==false)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+					SetValue($CamStatusID,true);
+				   }
 				}
 			else
 				{
 				echo "Kamera wird NICHT erreicht   !\n";
+				if (GetValue($CamStatusID)==true)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+					SetValue($CamStatusID,false);
+				   }
 				}
 			}
 		}
@@ -632,41 +619,17 @@ if (isset ($installedModules["RemoteAccess"]))
 	if (isset ($installedModules["LedAnsteuerung"]))
 		{
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
-		$led_config=LedAnsteuerung_Config();
-		foreach ($led_config as $name => $config)
-		   {
-		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-		   echo "Sys_ping Led Ansteuerung : ".$name." mit IP Adresse ".$config['IPADR']."\n";
-			$status=Sys_Ping($config['IPADR'],1000);
-			if ($status)
-				{
-				echo "LED-Modul wird erreicht   !\n";
-				}
-			else
-				{
-				echo "LED-Modul wird NICHT erreicht   !\n";
-				}
-		   }
+		$device_config=LedAnsteuerung_Config();
+		$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+		$OperationCenter->device_ping($device_config, $device, $identifier);
 		}
 
 	if (isset ($installedModules["DENONsteuerung"]))
 		{
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-		$denon_config=Denon_Configuration();
-		foreach ($denon_config as $name => $config)
-		   {
-		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-		   echo "Sys_ping Denon Ansteuerung : ".$name." mit IP Adresse ".$config['IPADRESSE']."\n";
-			$status=Sys_Ping($config['IPADRESSE'],1000);
-			if ($status)
-				{
-				echo "Denon-Modul wird erreicht   !\n";
-				}
-			else
-				{
-				echo "Denon-Modul wird NICHT erreicht   !\n";
-				}
-		   }
+		$device_config=Denon_Configuration();
+		$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+		$OperationCenter->device_ping($device_config, $device, $identifier);
 		}
 
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -774,4 +737,128 @@ if ($_IPS['SENDER']=="TimerEvent")
 	}
 
 
+/**************************************************************************************************************
+
+
+****************************************************************************************************************/
+
+class OperationCenter
+	{
+
+	var $CategoryIdData="Default";
+	var $categoryId_SysPing="Default";
+	var $mactable=array();
+	
+	/**
+	 * @public
+	 *
+	 * Initialisierung des DetectHumidityHandler Objektes
+	 *
+	 */
+	public function __construct($CategoryIdData,$subnet)
+			{
+		   $this->CategoryIdData=$CategoryIdData;
+   		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
+         $this->mactable=$this->evaluate_traceroute($subnet);
+			}
+
+
+	function device_ping($device_config, $device, $identifier)
+		{
+	
+		foreach ($device_config as $name => $config)
+		   {
+			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
+			$status=Sys_Ping($config[$identifier],1000);
+			if ($status)
+				{
+				echo $device."-Modul wird erreicht   !\n";
+				if (GetValue($StatusID)==false)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					SetValue($StatusID,true);
+				   }
+				}
+			else
+				{
+				echo $device."-Modul wird NICHT erreicht   !\n";
+				if (GetValue($StatusID)==true)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					SetValue($StatusID,false);
+				   }
+				}
+		   }
+		}
+
+	function evaluate_traceroute($subnet)
+		{
+		$subnetok=substr($subnet,0,strpos($subnet,"255"));
+		$ergebnis=""; $print_table="";
+		unset($catch);
+		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		exec('arp -a',$catch);
+		foreach($catch as $line)
+   		{
+		   $result=trim($line);
+   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
+	   	$result=trim(substr($result,strpos($result," "),100));
+	   	$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
+		   $result=trim(substr($result,strpos($result," "),100));
+			if ($result1=="10.0.255.255") { break; }
+			if (strpos($result1,$subnetok)===false)
+			   {
+			   }
+			else
+			   {
+		   	//echo $line."\n";
+				if (is_numeric(substr($result1,-1)))   /* letzte Wert in der IP Adresse wirklich eine Zahl */
+					{
+					$ergebnis.=$result1.";".$result2;
+					$print_table.=$line;
+					$found=false;
+					foreach ($ipadressen as $ip)
+					   {
+				   	if ($result2==$ip["Mac_Adresse"])
+		   		   	{
+							$ergebnis.=";".$ip["Hostname"].",";
+							$print_table.=" ".$ip["Hostname"]."\n";
+							$found=true;
+							}
+						}
+					if ($found==false)
+						{
+						$ergebnis.=";none,";
+						$print_table.=" \n";
+						}
+					}
+				}
+		  }
+		$ergebnis_array=explode(",",$ergebnis);
+		$result_array=array();
+		$mactable=array();
+		foreach ($ergebnis_array as $ergebnis_line)
+			{
+			//echo $ergebnis_line."\n";
+			$result_array=explode(";",$ergebnis_line);
+			//print_r($result_array);
+			if (sizeof($result_array)>2)
+			   {
+				$mactable[$result_array[1]]=$result_array[0];
+				}
+			}
+		//echo $print_table;
+		return($mactable);
+		}
+
+
+	}  /* ende class */
+
+
+	
+	
 ?>

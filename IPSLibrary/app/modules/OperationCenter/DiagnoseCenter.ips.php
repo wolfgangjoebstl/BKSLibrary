@@ -100,13 +100,54 @@ if ($_IPS['SENDER']=="Execute")
 
 	*/
 	
+	evaluate_trace($CategoryIdData);
+
+	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	
+	} /* ende Execute */
+
+	
+/*********************************************************************************************/
+
+
+if ($_IPS['SENDER']=="Variable")
+	{
+
+	}
+
+/*********************************************************************************************/
+
+
+if ($_IPS['SENDER']=="TimerEvent")
+	{
+	switch ($_IPS['EVENT'])
+	   {
+	   case $tim1ID:        /* einmal am Tag */
+		   evaluate_trace($CategoryIdData);
+	      break;
+		default:
+		   break;
+		}
+	}
+
+/*********************************************************************************************/
+/*********************************************************************************************/
+/*********************************************************************************************/
+/*********************************************************************************************/
+
+
+function evaluate_trace($CategoryIdData)
+	{
 	$categoryId_Route    = CreateCategory('TraceRouteVerlauf',   $CategoryIdData, 20);
 	for ($i=1; $i<=20;$i++)
 	   {
 		$input = CreateVariable("RoutePoint".$i,3,$categoryId_Route, $i*5, "",null,null,""  );  /* Name Type ParentID Position */
 		SetValue($input,"");
 		}
-	
+	$EvalTimeID = CreateVariableByName($CategoryIdData, "EvalTime", 1);
+	IPS_SetVariableCustomProfile($EvalTimeID,"~UnixTimestamp");
+	SetValue($EvalTimeID,time());
+
 	$catch="";
 	exec('tracert 8.8.8.8',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
 
@@ -180,35 +221,11 @@ if ($_IPS['SENDER']=="Execute")
 			   }
 		   }
 
-		//print_r($googleroute);
-
-		echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	
-	} /* ende Execute */
+		return($googleroute);
 
 	
-/*********************************************************************************************/
-
-
-if ($_IPS['SENDER']=="Variable")
-	{
-
+	
 	}
-
-/*********************************************************************************************/
-
-
-if ($_IPS['SENDER']=="TimerEvent")
-	{
-	switch ($_IPS['EVENT'])
-	   {
-	   case $tim1ID:        /* einmal am Tag */
-	      break;
-		default:
-		   break;
-		}
-	}
-
 
 
 ?>
