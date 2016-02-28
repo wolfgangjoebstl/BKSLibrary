@@ -43,8 +43,11 @@
 	define ('IPSRP_VALUETYPE_GAS',				'Gas');
 	define ('IPSRP_VALUETYPE_TEMPERATURE',		'Temperatur');
 	define ('IPSRP_VALUETYPE_HUMIDITY',			'Feuchtigkeit');
+	define ('IPSRP_VALUETYPE_CURRENT',			'Strom');
+	define ('IPSRP_VALUETYPE_POWER',				'Leistung');
+	define ('IPSRP_VALUETYPE_ENERGY',			'Energie');
 	define ('IPSRP_VALUETYPE_LENGTH',			'Laenge');
-	define ('IPSRP_VALUETYPE_STATE',			'Status');
+	define ('IPSRP_VALUETYPE_STATE',				'Status');
 	
 	// Storage of calculated Values
 	define ('IPSRP_VAR_VALUEKWH',					'ValueKWH_');

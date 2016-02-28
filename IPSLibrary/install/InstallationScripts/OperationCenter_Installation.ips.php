@@ -33,7 +33,7 @@
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Sprachsteuerung');
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
 	echo "\nOperationCenter Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();

@@ -87,14 +87,17 @@
 				$powerIdx      = substr($variableIdent,-1,-2);
 				$variableIdent = substr($variableIdent,0,-2);
 			}
+			/* der Identifier von SelectValue 0 .. 99 wird herausgearbeitet und zusätzlich nach poweridx indexiert
+			   sonst wird entsprechend der gedrückten Variable auf die Funktion aufgeteilt
+			*/
 			switch ($variableIdent) {
-				case IPSRP_VAR_SELECTVALUE:
+				case IPSRP_VAR_SELECTVALUE:         /* Änderung der Variable SelectValue, Auswahlfeld links */
 					SetValue($variableId, $value);
 					$this->CheckValueSelection($variableId);
 					$this->RebuildGraph();
 					break;
-				case IPSRP_VAR_TYPEOFFSET:
-				case IPSRP_VAR_PERIODCOUNT:
+				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
+				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
 					$this->Navigation($variableId, $value);
 					$this->RebuildGraph();
 					break;
@@ -324,10 +327,19 @@
 				   trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
 
-			foreach ($this->valueConfig as $valueIdx=>$valueData) {
+			foreach ($this->valueConfig as $valueIdx=>$valueData)
+				{
+				/* Komplette GetValueConfiguration durchgehen, das sind die linken Auswahlfelder, hier sollte nur eines aktiv sein !!!!
+				 * valueIdx geht vpn 0 bis x und valuedata ist die aktuelle config des kanals mit
+				 *    IPSRP_PROPERTY_NAME			Name
+				 *    IPSRP_PROPERTY_DISPLAY  	true,false ob Anzeige
+				 *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten für die Anzeige
+				 *
+				 */
 				$valueType = $valueData[IPSRP_PROPERTY_VALUETYPE];
-				if ($valueData[IPSRP_PROPERTY_DISPLAY]) {
-					$variableIdValueDisplay   = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);
+				if ($valueData[IPSRP_PROPERTY_DISPLAY])            /* in der Config Tabelle aktiv eingestellt */
+					{   /* hier sollte nur einmal eine Anzeige aktiv sein */
+					$variableIdValueDisplay   = IPS_GetVariableIDByName(IPSRP_VAR_SELECTVALUE.$valueIdx, $this->categoryIdCommon);  /* auslesen vom linken Auswahlfeld */
 					$variableIdValueKWH       = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEKWH.$valueIdx,  $this->categoryIdValues);
 					$variableIdValueWatt      = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEWATT.$valueIdx, $this->categoryIdValues);
 					$variableIdValueM3        = @IPS_GetVariableIDByName(IPSRP_VAR_VALUEM3.$valueIdx, $this->categoryIdValues);
@@ -356,7 +368,8 @@
 					//echo "Anzeige vom Chart Typ : ".$chartType."   ".$valueIdx."   ";
 					//print_r($valueData);
 					
-					switch ($chartType) {
+					switch ($chartType) /* Auswahlfeld erste Zeile */
+						{
 						case IPSRP_TYPE_OFF:
 							SetValue($variableIdChartHTML, '');
 							return;
@@ -417,14 +430,14 @@
 								SetValue($variableIdValueDisplay, false);
 							}
 							break;
-						case IPSRP_TYPE_EURO:
-						case IPSRP_TYPE_KWH:
-							if (GetValue($variableIdValueDisplay))
+						case IPSRP_TYPE_EURO:								/* mit Tachoanzeigen, Test */
+						case IPSRP_TYPE_KWH:                         /* Graphendarstellung */
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
 								{
-								$yaxis=array();
+								$yaxis=array();                        /* Einstellungen der yaxis für alle einzelne Graphen sammeln */
 								$i=0; $j=0;
 								//echo " ---wird angezeigt ...\n";
-								$displaypanel=$associationsValues[$valueIdx];
+								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
 								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 								   {
 								   //echo "Kurve : ".$name." \n";
@@ -503,6 +516,24 @@
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'mm';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_CURRENT)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'A';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_POWER)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'W';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							   	   }
+						 			if ($unit==IPSRP_VALUETYPE_ENERGY)
+									   {
+								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
 							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
 							   	   }
 								 	} /* ende foreach */

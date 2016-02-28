@@ -43,6 +43,11 @@ if ($_IPS['SENDER']=="WebFront")
 
 	}
 
+/*
+ *  nur mehr Testbench da alles nun mit ähnlich wie IPSPower gelagerten Routimnen absolviert wird
+ *
+ */
+
 //if ($_IPS['SENDER']=="Execute")
 	{
 	//if (IPS_GetMediaID('Highcharts')==0)
