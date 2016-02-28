@@ -293,61 +293,65 @@ if ($_IPS['SENDER']=="Execute")
 
 		IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
 		IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
-	
-		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+
+		if (isset ($OperationCenterConfig['CAM']))
 			{
-			echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-			$verzeichnis = $cam_config['FTPFOLDER'];
-			$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-			if ($cam_categoryId==false)
-			   {
-				$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-				IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-				IPS_SetParent($cam_categoryId,$CategoryIdData);
-				}
-			$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
-			$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-			AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
-			IPS_ApplyChanges($archiveHandlerID);
-
-			$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
-			AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
-			IPS_ApplyChanges($archiveHandlerID);
-
-			$count=100;
-			//echo "<ol>";
-
-			//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
-			//print_r(scandir($verzeichnis));
-			//print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
-
-			// Test, ob ein Verzeichnis angegeben wurde
-			if ( is_dir ( $verzeichnis ))
+			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
-				$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
-				SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
-			
-	   	 	// öffnen des Verzeichnisses
-   		 	if ( $handle = opendir($verzeichnis) )
-	    			{
-	   	 		$count=0; $list="";
-	        		/* einlesen des Verzeichnisses        	*/
-		        	while (($file = readdir($handle)) !== false)
-	   	     		{
-   	   	  		if (is_dir($verzeichnis.$file)==false)
-	        			   {
-		        			$count++;
-	   	     			$list .= $file."\n";
-		   	     		}
-						}
-					echo "   Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
-					echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
-					//echo $list."\n";
+				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+				$verzeichnis = $cam_config['FTPFOLDER'];
+				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+				if ($cam_categoryId==false)
+				   {
+					$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+					IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+					IPS_SetParent($cam_categoryId,$CategoryIdData);
 					}
-				}
+				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
+				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+  				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
+				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
+				IPS_ApplyChanges($archiveHandlerID);
+
+				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
+				AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+
+				$count=100;
+				//echo "<ol>";
+
+				//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
+				//print_r(scandir($verzeichnis));
+				//print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
+
+				// Test, ob ein Verzeichnis angegeben wurde
+				if ( is_dir ( $verzeichnis ))
+					{
+					$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
+			
+	   		 	// öffnen des Verzeichnisses
+   		 		if ( $handle = opendir($verzeichnis) )
+		    			{
+	   	 			$count=0; $list="";
+		        		/* einlesen des Verzeichnisses        	*/
+			        	while (($file = readdir($handle)) !== false)
+	   		     		{
+   	   		  		if (is_dir($verzeichnis.$file)==false)
+	        				   {
+		        				$count++;
+	   	     				$list .= $file."\n";
+			   	     		}
+							}
+						echo "   Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
+						echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
+						//echo $list."\n";
+						}
+					} /* ende ifisdir */
+				}  /* ende foreach */
 			}
 		}
 
@@ -586,7 +590,7 @@ if (isset ($installedModules["RemoteAccess"]))
 	if (isset ($installedModules["IPSCam"]))
 		{
 		$mactable=$OperationCenter->evaluate_traceroute($subnet);
-		
+		print_r($mactable);
 		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
@@ -675,33 +679,36 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
 			$count=0;
-			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+			if (isset ($OperationCenterConfig['CAM']))
 				{
-				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-				$verzeichnis = $cam_config['FTPFOLDER'];
-				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-				if ($cam_categoryId==false)
-				   {
-					$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-					IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-					IPS_SetParent($cam_categoryId,$CategoryIdData);
-					}
-				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
-				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+					$verzeichnis = $cam_config['FTPFOLDER'];
+					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+					if ($cam_categoryId==false)
+					   {
+						$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+						IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+						IPS_SetParent($cam_categoryId,$CategoryIdData);
+						}
+					$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+					$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 
-				$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
-				$count+=$count1;
-				$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
-				SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
-				if ($count1>0)
-				   {
-				   SetValue($WebCam_MotionID,true);
-				   }
-				else
-				   {
-  				   SetValue($WebCam_MotionID,false);
-				   }
+					$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+					$count+=$count1;
+					$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
+					if ($count1>0)
+					   {
+					   SetValue($WebCam_MotionID,true);
+					   }
+					else
+					   {
+  				   	SetValue($WebCam_MotionID,false);
+					   }
+					}
 				}
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen, ".$count." Fotos verschoben");
 			
@@ -760,12 +767,15 @@ class OperationCenter
 		   $this->CategoryIdData=$CategoryIdData;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
          $this->mactable=$this->evaluate_traceroute($subnet);
+         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 			}
 
 
 	function device_ping($device_config, $device, $identifier)
 		{
-	
+		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		foreach ($device_config as $name => $config)
 		   {
 			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */

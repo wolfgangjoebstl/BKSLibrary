@@ -462,10 +462,10 @@
 								   /* wenn ich index erhöhe mache ich mehrere pies */
 									$serie['type'] = 'pie'; // $defserie['type']
 									$CfgDaten['series'][0]['ScaleFactor'] = 1;
-									$CfgDaten['series'][0]['name']        = $name;
+									$CfgDaten['series'][0]['name']        = $valueData[IPSRP_PROPERTY_NAME];
 									$CfgDaten['series'][0]['Unit'] = '';
 									$CfgDaten['series'][0]['type'] = 'pie';
-									$CfgDaten['series'][0]['data'][$i] = [$valueData[IPSRP_PROPERTY_NAME],   GetValue($defserie['Id'])];
+									$CfgDaten['series'][0]['data'][$i] = [$name, GetValue($defserie['Id'])];
 									$CfgDaten['series'][0]['allowPointSelect'] = true;
 									$CfgDaten['series'][0]['cursor'] = 'pointer';
 									$CfgDaten['series'][0]['size'] = 200;

@@ -90,42 +90,45 @@ if ($_IPS['SENDER']=="WebFront")
 		
 		foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 		   {
-								   echo "Kurve : ".$name." \n";
-								   print_r($defserie); echo "\n";
-								 	$serie['name'] = $name;
-    								$serie['type'] = $defserie['type'];
-    								$serie['Id'] = $defserie['Id'];
-								 	//if ($defserie['Unit']=='$')            /* Statuswerte */
-									if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
-								 	   {
-								 	   $serie['Unit']='$';
-								    	$serie['step'] = 'right';
-								    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
-								    	$j+=2;
-									 	if (isset($yaxis[$serie['Unit']]))
-										 	{
+			if ($_IPS['SENDER']=="Execute")
+				{
+			   echo "Kurve : ".$name." \n";
+			   print_r($defserie); echo "\n";
+			   }
+			$serie['name'] = $name;
+    		$serie['type'] = $defserie['type'];
+    		$serie['Id'] = $defserie['Id'];
+			//if ($defserie['Unit']=='$')            /* Statuswerte */
+			if ($defserie[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_STATE)
+		 	   {
+		 	   $serie['Unit']='$';
+		    	$serie['step'] = 'right';
+		    	$serie['ReplaceValues'] = array(0=>$j,1=>$j+1);
+		    	$j+=2;
+			 	if (isset($yaxis[$serie['Unit']]))
+				 	{
 
-										 	}
-										else
-									 	   {
-										 	$serie['yAxis'] = $i;
-											$yaxis[$serie['Unit']]= $i;
-				 							$i++;
-				 							}
-		 	   						}
-		 							else
-		 	   						{
-		 	   						/* wenn nicht Status alle Einheiten im array yaxis sammeln */
-			 							if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
-										else
-			 	   						{
-										 	$serie['yAxis'] = $i;
-											$yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
-										 	$i++;
-										 	}
-										}
-							    	$serie['marker']['enabled'] = false;
-							    	$CfgDaten['series'][] = $serie;
+				 	}
+				else
+			 	   {
+				 	$serie['yAxis'] = $i;
+					$yaxis[$serie['Unit']]= $i;
+					$i++;
+					}
+				}
+			else
+				{
+				/* wenn nicht Status alle Einheiten im array yaxis sammeln */
+				if (isset($yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]])) {}
+				else
+					{
+				 	$serie['yAxis'] = $i;
+					$yaxis[$defserie[IPSRP_PROPERTY_VALUETYPE]]= $i;
+				 	$i++;
+				 	}
+				}
+	    	$serie['marker']['enabled'] = false;
+	    	$CfgDaten['series'][] = $serie;
 			}   /* ende foreach */
      	$CfgDaten['chart']['alignTicks'] = true;
 
