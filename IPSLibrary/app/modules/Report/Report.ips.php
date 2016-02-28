@@ -83,7 +83,7 @@ if ($_IPS['SENDER']=="WebFront")
 		if ($_IPS['SENDER']=="Execute")
 			{
 			echo "Es wird nun die Displaydarstellung von ".$displaypanel." bearbeitet.\n";
-			print_r($report_config[$displaypanel]);
+			//print_r($report_config[$displaypanel]);
 			}
       $CfgDaten['title']['text'] = $report_config[$displaypanel]['title'];
 		$i=0; $j=0;
@@ -134,7 +134,7 @@ if ($_IPS['SENDER']=="WebFront")
 		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
 		foreach ($yaxis as $unit=>$index)
 		   {
-								   echo "**Bearbeitung von ".$unit." und ".$index." \n";
+								   echo "**Bearbeitung von ".$unit." und Index ".$index." \n";
 									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
@@ -212,8 +212,8 @@ if ($_IPS['SENDER']=="WebFront")
 		}
 
 //$chart_style='spline'; /*    */
-$chart_style='line';
-
+//$chart_style='line';
+$chart_style='gauge';
 
 
 // damit wird die Art des Aufrufes festgelegt

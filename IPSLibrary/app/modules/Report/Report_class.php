@@ -55,7 +55,7 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung des IPSPowerControl_Manager Objektes
+		 * Initialisierung des IPSReport_Manager Objektes
 		 *
 		 */
 		public function __construct() {
@@ -147,24 +147,24 @@
 					if (GetValue($variableIdCount) > 1) {
 						SetValue($variableIdCount, GetValue($variableIdCount) - 1);
 					}
-					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
 					$restoreOldValue = true;
 					break;
 				case IPSRP_COUNT_PLUS:
 					SetValue($variableIdCount, GetValue($variableIdCount) + 1);
-					IPS_SetVariableProfileAssociation('IPSPowerControl_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
+					IPS_SetVariableProfileAssociation('IPSReport_PeriodAndCount', IPSRP_COUNT_VALUE, GetValue($variableIdCount), "", -1);
 					$restoreOldValue = true;
 					break;
 				case IPSRP_OFFSET_PREV:
 					SetValue($variableIdOffset, GetValue($variableIdOffset) - 1);
-					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+					IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
 					$restoreOldValue = true;
 					break;
 				case IPSRP_OFFSET_NEXT:
 					if (GetValue($variableIdOffset) < 0) {
 						SetValue($variableIdOffset, GetValue($variableIdOffset) + 1);
 					}
-					IPS_SetVariableProfileAssociation('IPSPowerControl_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
+					IPS_SetVariableProfileAssociation('IPSReport_TypeAndOffset', IPSRP_OFFSET_VALUE, GetValue($variableIdOffset), "", -1);
 					$restoreOldValue = true;
 					break;
 				case IPSRP_OFFSET_VALUE:
@@ -371,66 +371,108 @@
 					switch ($chartType) /* Auswahlfeld erste Zeile */
 						{
 						case IPSRP_TYPE_OFF:
-							SetValue($variableIdChartHTML, '');
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
+								{
+								SetValue($variableIdChartHTML, '');
+								}
 							return;
 						case IPSRP_TYPE_STACK:
 						case IPSRP_TYPE_STACK2:
-							$serie['Unit']        = "kWh";
-							$serie['ScaleFactor'] = 1;
-							$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
-							$serie['Id']          = $variableIdValueKWH;
-							if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_TOTAL and $chartType==IPSRP_TYPE_STACK2) {
-								$serie['zIndex']  = 100;
-								$serie['stack']  = 'Total';
-								$CfgDaten['series'][] = $serie;
-							} elseif ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL) {
-								$serie['zIndex']  = 110;
-								$serie['stack']  = 'Detail';
-								$CfgDaten['series'][] = $serie;
-							} else {
-							}
-							$CfgDaten['yAxis'][0]['title']['text'] = "Verbrauch";
-							$CfgDaten['yAxis'][0]['stackLabels']['enabled']    = true;
-							$CfgDaten['yAxis'][0]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
-							$CfgDaten['yAxis'][0]['Unit'] = "kWh";
-							$CfgDaten['plotOptions']['column']['stacking']     = "normal";
-							$CfgDaten['plotOptions']['column']['borderColor']  = "#666666";
-							$CfgDaten['plotOptions']['column']['borderWidth']  = 0;
-							$CfgDaten['plotOptions']['column']['shadow']       = true;
- 							break;
-						case IPSRP_TYPE_PIE:
-							$serie['type'] = 'pie';
-							if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL) {
-								$data_array	= AC_GetAggregatedValues($archiveHandlerId, $variableIdValueKWH, $aggType, $CfgDaten["StartTime"],$CfgDaten["EndTime"], 100);
-								$value=0;
-								for($i=0;$i<count($data_array)-1;$i++) {
-									$value = $value + round($data_array[$i]['Avg'], 1);
-								}
-								$CfgDaten['series'][0]['ScaleFactor'] = 1;
-								$CfgDaten['series'][0]['name']        = 'Aufteilung';
-								$CfgDaten['series'][0]['Unit'] = '';
-								$CfgDaten['series'][0]['type'] = 'pie';
-								$CfgDaten['series'][0]['data'][] = [$valueData[IPSRP_PROPERTY_NAME],   $value];
-								$CfgDaten['series'][0]['allowPointSelect'] = true;
-								$CfgDaten['series'][0]['cursor'] = 'pointer';
-								$CfgDaten['series'][0]['size'] = 200;
-								$CfgDaten['series'][0]['dataLabels']['enabled'] = true;
-							}
-							break;
-						case IPSRP_TYPE_WATT:
-							if ($variableIdValueWatt!==false and GetValue($variableIdValueDisplay)) {
-								$serie['Unit']        = "Watt";
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
+								{
+								$serie['Unit']        = "kWh";
 								$serie['ScaleFactor'] = 1;
 								$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
-								$serie['Id']          = $variableIdValueWatt;
-								$CfgDaten['series'][] = $serie;
+								$serie['Id']          = $variableIdValueKWH;
+								if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_TOTAL and $chartType==IPSRP_TYPE_STACK2)
+									{
+									$serie['zIndex']  = 100;
+									$serie['stack']  = 'Total';
+									$CfgDaten['series'][] = $serie;
+									}
+								elseif ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL)
+									{
+									$serie['zIndex']  = 110;
+									$serie['stack']  = 'Detail';
+									$CfgDaten['series'][] = $serie;
+									}
+								else
+									{
+									}
 								$CfgDaten['yAxis'][0]['title']['text'] = "Verbrauch";
-								$CfgDaten['yAxis'][0]['Unit'] = "Watt";
-							} elseif ($variableIdValueWatt===false and GetValue($variableIdValueDisplay)) {
-								SetValue($variableIdValueDisplay, false);
-							}
+								$CfgDaten['yAxis'][0]['stackLabels']['enabled']    = true;
+								$CfgDaten['yAxis'][0]['stackLabels']['formatter']  = "@function() { return this.total.toFixed(1) }@";
+								$CfgDaten['yAxis'][0]['Unit'] = "kWh";
+								$CfgDaten['plotOptions']['column']['stacking']     = "normal";
+								$CfgDaten['plotOptions']['column']['borderColor']  = "#666666";
+								$CfgDaten['plotOptions']['column']['borderWidth']  = 0;
+								$CfgDaten['plotOptions']['column']['shadow']       = true;
+								}
+ 							break;
+						case IPSRP_TYPE_PIE:
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
+								{
+								$serie['type'] = 'pie';
+								if ($variableIdValueKWH!==false and $valueData[IPSRP_PROPERTY_VALUETYPE]==IPSRP_VALUETYPE_DETAIL)
+									{
+									$data_array	= AC_GetAggregatedValues($archiveHandlerId, $variableIdValueKWH, $aggType, $CfgDaten["StartTime"],$CfgDaten["EndTime"], 100);
+									$value=0;
+									for($i=0;$i<count($data_array)-1;$i++)
+										{
+										$value = $value + round($data_array[$i]['Avg'], 1);
+										}
+									$CfgDaten['series'][0]['ScaleFactor'] = 1;
+									$CfgDaten['series'][0]['name']        = 'Aufteilung';
+									$CfgDaten['series'][0]['Unit'] = '';
+									$CfgDaten['series'][0]['type'] = 'pie';
+									$CfgDaten['series'][0]['data'][] = [$valueData[IPSRP_PROPERTY_NAME],   $value];
+									$CfgDaten['series'][0]['allowPointSelect'] = true;
+									$CfgDaten['series'][0]['cursor'] = 'pointer';
+									$CfgDaten['series'][0]['size'] = 200;
+									$CfgDaten['series'][0]['dataLabels']['enabled'] = true;
+									}
+								}
+							break;
+						case IPSRP_TYPE_WATT:
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
+								{
+								if ($variableIdValueWatt!==false and GetValue($variableIdValueDisplay))
+									{
+									$serie['Unit']        = "Watt";
+									$serie['ScaleFactor'] = 1;
+									$serie['name']        = $valueData[IPSRP_PROPERTY_NAME];
+									$serie['Id']          = $variableIdValueWatt;
+									$CfgDaten['series'][] = $serie;
+									$CfgDaten['yAxis'][0]['title']['text'] = "Verbrauch";
+									$CfgDaten['yAxis'][0]['Unit'] = "Watt";
+									}
+								elseif ($variableIdValueWatt===false and GetValue($variableIdValueDisplay))
+									{
+									SetValue($variableIdValueDisplay, false);
+									}
+								}
 							break;
 						case IPSRP_TYPE_EURO:								/* mit Tachoanzeigen, Test */
+							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
+								{
+								$i=0; $j=0;
+								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
+								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
+								   {
+									$serie['type'] = 'pie'; // $defserie['type']
+									$CfgDaten['series'][$i]['ScaleFactor'] = 1;
+									$CfgDaten['series'][$i]['name']        = $name;
+									$CfgDaten['series'][$i]['Unit'] = '';
+									$CfgDaten['series'][$i]['type'] = 'pie';
+									$CfgDaten['series'][$i]['data'][] = [$valueData[IPSRP_PROPERTY_NAME],   GetValue($defserie['Id'])];
+									$CfgDaten['series'][$i]['allowPointSelect'] = true;
+									$CfgDaten['series'][$i]['cursor'] = 'pointer';
+									$CfgDaten['series'][$i]['size'] = 200;
+									$CfgDaten['series'][$i]['dataLabels']['enabled'] = true;
+								   $i++;
+								   }
+								}
+							break;
 						case IPSRP_TYPE_KWH:                         /* Graphendarstellung */
 							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
 								{
@@ -438,8 +480,12 @@
 								$i=0; $j=0;
 								//echo " ---wird angezeigt ...\n";
 								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
+								
+								/* zuerst yaxis erfassen und schreiben */
 								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 								   {
+								   /* Name sind die einzelnen Kurven und defserie die Konfiguration der einzelnen Kurven */
+								   
 								   //echo "Kurve : ".$name." \n";
 								   //print_r($defserie); echo "\n";
 								 	$serie['name'] = $name;
@@ -481,6 +527,8 @@
 							   $i=0;
 						  		$CfgDaten['yAxis'][$i]['opposite'] = false;
 						  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
+
+								/* dann yaxis auswerten */
 								foreach ($yaxis as $unit=>$index)
 								   {
 								   //echo "**Bearbeitung von ".$unit." und ".$index." \n";
@@ -527,7 +575,8 @@
 						 			if ($unit==IPSRP_VALUETYPE_POWER)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
-						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'W';
+								     	/* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'kW';
 							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
 							   	   }
 						 			if ($unit==IPSRP_VALUETYPE_ENERGY)
