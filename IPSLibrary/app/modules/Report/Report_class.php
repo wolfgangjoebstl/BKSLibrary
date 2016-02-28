@@ -459,16 +459,17 @@
 								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
 								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 								   {
+								   /* wenn ich index erhöhe mache ich mehrere pies */
 									$serie['type'] = 'pie'; // $defserie['type']
-									$CfgDaten['series'][$i]['ScaleFactor'] = 1;
-									$CfgDaten['series'][$i]['name']        = $name;
-									$CfgDaten['series'][$i]['Unit'] = '';
-									$CfgDaten['series'][$i]['type'] = 'pie';
-									$CfgDaten['series'][$i]['data'][] = [$valueData[IPSRP_PROPERTY_NAME],   GetValue($defserie['Id'])];
-									$CfgDaten['series'][$i]['allowPointSelect'] = true;
-									$CfgDaten['series'][$i]['cursor'] = 'pointer';
-									$CfgDaten['series'][$i]['size'] = 200;
-									$CfgDaten['series'][$i]['dataLabels']['enabled'] = true;
+									$CfgDaten['series'][0]['ScaleFactor'] = 1;
+									$CfgDaten['series'][0]['name']        = $name;
+									$CfgDaten['series'][0]['Unit'] = '';
+									$CfgDaten['series'][0]['type'] = 'pie';
+									$CfgDaten['series'][0]['data'][$i] = [$valueData[IPSRP_PROPERTY_NAME],   GetValue($defserie['Id'])];
+									$CfgDaten['series'][0]['allowPointSelect'] = true;
+									$CfgDaten['series'][0]['cursor'] = 'pointer';
+									$CfgDaten['series'][0]['size'] = 200;
+									$CfgDaten['series'][0]['dataLabels']['enabled'] = true;
 								   $i++;
 								   }
 								}
@@ -528,7 +529,10 @@
 						  		$CfgDaten['yAxis'][$i]['opposite'] = false;
 						  		$CfgDaten['yAxis'][$i]['gridLineWidth'] = 0;
 
-								/* dann yaxis auswerten */
+								/* dann yaxis auswerten, und eventuell zwei Achsen links und rechts aufbauen
+								 * die erste Achse kommt links, alle weiteren rechts , bei Status immer alle links
+								 */
+								$opposite=false;
 								foreach ($yaxis as $unit=>$index)
 								   {
 								   //echo "**Bearbeitung von ".$unit." und ".$index." \n";
@@ -536,6 +540,8 @@
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
 						   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
 							  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
@@ -554,7 +560,8 @@
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Feuchtigkeit";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '%';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
 						   		 	//$CfgDaten['yAxis'][$index]['min'] = 0;
 							   	 	//$CfgDaten['yAxis'][$i]['offset'] = 100;
@@ -564,26 +571,30 @@
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Regenmenge";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'mm';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 							   	   }
 						 			if ($unit==IPSRP_VALUETYPE_CURRENT)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Strom";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'A';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 							   	   }
 						 			if ($unit==IPSRP_VALUETYPE_POWER)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
 								     	/* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'kW';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 							   	   }
 						 			if ($unit==IPSRP_VALUETYPE_ENERGY)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Energie";
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'kWh';
-							    		$CfgDaten['yAxis'][$index]['opposite'] = true;
+							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
+							    		if ($opposite==false) { $opposite_=true; }
 							   	   }
 								 	} /* ende foreach */
 
