@@ -587,6 +587,8 @@ if (isset ($installedModules["RemoteAccess"]))
    	Sys_Ping durchführen basierend auf vorangestellter mactable
 	**********************************************************/
 
+	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+
 	if (isset ($installedModules["IPSCam"]))
 		{
 		$mactable=$OperationCenter->evaluate_traceroute($subnet);
@@ -775,7 +777,6 @@ class OperationCenter
 
 	function device_ping($device_config, $device, $identifier)
 		{
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		foreach ($device_config as $name => $config)
 		   {
 			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -787,8 +788,8 @@ class OperationCenter
 				echo $device."-Modul wird erreicht   !\n";
 				if (GetValue($StatusID)==false)
 				   {  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
 					SetValue($StatusID,true);
 				   }
 				}
@@ -797,8 +798,8 @@ class OperationCenter
 				echo $device."-Modul wird NICHT erreicht   !\n";
 				if (GetValue($StatusID)==true)
 				   {  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					SetValue($StatusID,false);
 				   }
 				}
