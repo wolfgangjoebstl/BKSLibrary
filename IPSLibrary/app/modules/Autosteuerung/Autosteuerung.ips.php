@@ -820,6 +820,7 @@ function Status($params,$status,$simulate=false)
 		$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 		if ($resultID==false)
 	   	{
+	  		IPSLogger_Dbg(__file__, 'Wert '.$SwitchName.' ist kein Schalter, muss Gruppe sein ');
 			$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
 			if ($resultID==false)
 	   		{

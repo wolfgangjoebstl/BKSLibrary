@@ -190,6 +190,7 @@
 				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId_WebFront,  10);
 				}
 			}
+		CreateLinkByDestination("Nachrichtenverlauf", $categoryId_Nachrichten,    $categoryId_WebFront,  20);
 		}
 
 	if ($WFC10User_Enabled)
