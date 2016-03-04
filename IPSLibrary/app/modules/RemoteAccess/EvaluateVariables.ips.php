@@ -1,6 +1,10 @@
 <?
 
-/* Guthabenvariablen am Remote Server anlegen */
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+ *
+ * Guthabenvariablen am Remote Server anlegen
+ *
+ */
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");

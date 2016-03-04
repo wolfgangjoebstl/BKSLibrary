@@ -2,9 +2,10 @@
 
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
-	hier für Temperatur und Feuchtigkeit
-
-*/
+ *
+ *	hier für Homematic und FS20 bewegungsmelder
+ *
+ */
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");

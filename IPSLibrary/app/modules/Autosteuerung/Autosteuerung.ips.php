@@ -655,6 +655,8 @@ function Anwesenheit()
 function Status($params,$status,$simulate=false)
 	{
 	global $speak_config;
+	
+	IPSLogger_Dbg(__file__, 'Aufruf Statusroutine mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -668,8 +670,16 @@ function Status($params,$status,$simulate=false)
 	$moduleParams2=Array();
 	
    $delayValue=0; $speak="Status"; $switchOID=0;
+   
+   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+	 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
+	 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
+	 *
+	 * Parameter mit : enthalten Befehl:Parameter
+	 */
+   
    $params2=$params[2];
-  	$moduleParams2 = explode(',', $params2);
+  	$moduleParams2 = explode(',', $params2);  
 	//print_r($moduleParams2);
 	//print_r($params);
 
@@ -732,7 +742,7 @@ function Status($params,$status,$simulate=false)
 		//print_r($parges);
 		}
 	
-	/* und danach abgearbeitet */
+	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden */
 
 	foreach ($parges as $befehl)
 	   {
@@ -820,14 +830,14 @@ function Status($params,$status,$simulate=false)
 		$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 		if ($resultID==false)
 	   	{
-	  		IPSLogger_Dbg(__file__, 'Wert '.$SwitchName.' ist kein Schalter, muss Gruppe sein ');
-			$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
+			$resultID=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
 			if ($resultID==false)
 	   		{
 				/* Name nicht bekannt */
 		   	}
 		   else   /* Wert ist eine Gruppe */
 	   	   {
+	  			IPSLogger_Dbg(__file__, 'Wert '.$SwitchName.' ist eine Gruppe. ');
   	   		$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
 				$result["COMMAND"]=$command;
   		   	if ($simulate==false)
@@ -873,6 +883,7 @@ function Status($params,$status,$simulate=false)
 			}
 		else     /* Wert ist ein Schalter */
 		   {
+  			IPSLogger_Dbg(__file__, 'Wert '.$SwitchName.' ist ein Schalter. ');
      		$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
 			$result["COMMAND"]=$command;
    		if ($simulate==false)
