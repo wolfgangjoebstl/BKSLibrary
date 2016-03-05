@@ -1,10 +1,14 @@
 <?
 
 /***********************************************************************
-
-Sprachsteuerung
-
-***********************************************************/
+ *
+ *    Sprachsteuerung
+ *
+ *
+ * gibt über den entsprechenden Lautsprecherausgang Musik, Hinweistöne oder Text aus
+ * Lautsprecherausgang wird von MP Ton definiert
+ *
+ ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
@@ -67,13 +71,14 @@ if (isset($_IPS['Text']))
    }
 else
 	{
+	tts_play(2,'','hinweis',2);
 	tts_play(1,'Hallo Claudia Wie gehts','',2);
 	//tts_play(1,'Hello Wolfgang How are you ?','',2);
 	}
 
 /*
 
-Routine tts_play ist schon in Allgemeine Definitionen enthalten, braucht daher nicht nocheinmal definiert werden
+Routine tts_play ist schon in ind er Library definiert
 
 Allerdings die Installation der Mediaplayer funktioniert noch nicht muessen haendisch angelegt werden
 
