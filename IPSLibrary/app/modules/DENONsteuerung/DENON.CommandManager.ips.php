@@ -117,6 +117,11 @@ else
 
 	foreach ($configuration as $config)
 		{
+		/* jeder denon receiver ist wie folgt definiert. IP Adresse muss derzeit fix sein.
+   	 *        'NAME'               => 'Denon-Wohnzimmer',
+	    *        'IPADRESSE'          => '10.0.1.149',
+	    *        'INSTANZ'          	=> 'DENON1'
+    	 */
 		if ($config['INSTANZ']==$instanz)
 		   {
 	   	$id=$config['NAME'];
@@ -1681,25 +1686,25 @@ else
 
 ############### Zone 2 #########################################################
 
-	case "Z2":
-	   if (intval($zonecat) <100 and intval($zonecat) >9)
-		{
-			$item = "Zone2Volume";
-			$vtype = 1;
-			$itemdata=substr($data,2,2);
-			if ( $itemdata == "99")
-			{
-				$value = "";
-			}
-			else
-			{
-				$value = (intval($itemdata)) -80;
-
-			}
-			DenonSetValue($item, $value, $vtype, $id);
-			$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-			$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
-		}
+			case "Z2":
+			   /* für alle Zone2 Befehle gilt dieser prefix */
+	   		if (intval($zonecat) <100 and intval($zonecat) >9)
+					{
+					$item = "Zone2Volume";
+					$vtype = 1;
+					$itemdata=substr($data,2,2);
+					if ( $itemdata == "99")
+						{
+						$value = "";
+						}
+					else
+						{
+						$value = (intval($itemdata)) -80;
+						}
+					DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+					}
 
 		switch ($zonecat)
 		{
@@ -1908,7 +1913,7 @@ else
 				$vtype = 0;
 				$itemdata= false;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
@@ -1918,7 +1923,7 @@ else
 				$vtype = 0;
 				$itemdata= true;
 				$value = $itemdata;
-				DenonSetValue($item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
