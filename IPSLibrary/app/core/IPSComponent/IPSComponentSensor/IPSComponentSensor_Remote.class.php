@@ -1,9 +1,9 @@
 <?
 
    /**
-    * @class IPSComponentSensor_Temperatur
+    * @class IPSComponentSensor_remote
     *
-    * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
+    * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
     *
     * @author Wolfgang Jöbstl
     * @version
@@ -48,7 +48,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "Movement Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "Genereller Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			if ($this->RemoteOID != Null)
 			   {
 				//print_r($this);

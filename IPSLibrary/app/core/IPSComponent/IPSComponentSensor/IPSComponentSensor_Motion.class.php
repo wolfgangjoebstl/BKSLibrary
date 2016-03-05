@@ -1,9 +1,9 @@
 <?
 
    /**
-    * @class IPSComponentSensor_Temperatur
+    * @class IPSComponentSensor_Motion
     *
-    * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
+    * Definiert ein IPSComponentSensor_Motion Object, das ein IPSComponentSensor Object für einen Bewegungsmelder implementiert.
     *
     * @author Wolfgang Jöbstl
     * @version
