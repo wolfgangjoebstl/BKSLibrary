@@ -17,6 +17,7 @@ class SNMP
     protected $snmpobj=array();    		//array registrierter snmp objekte welche beim server abgefragt werden
     private $lastwalk=array();         //hier Ergebnis vom letzten Walk Befehl hineinschreiben als array
     private $lastwalk_csv="";          //hier Ergebnis vom letzten Walk Befehl hineinschreiben als csv
+    private $CategoryIdData;
 
     //IPS Datentypen
     const tBOOL        = 0;
@@ -29,13 +30,13 @@ class SNMP
 	 *  Konstruktor
 	 */
 
-	public function __construct($host, $community, $binary, $debug)
+	public function __construct($CategoryIdData, $host, $community, $binary, $debug)
 	 	{
       $this->host         = $host;
       $this->community     = $community;
       $this->binary         = $binary;
       $this->debug         = $debug;
-
+		$this->CategoryIdData = $CategoryIdData;
 
 		//Prüfe ob Variablenprofile existieren und erstelle diese wenn nötig
       $this->createVariableProfile("SNMP_CapacityMB", self::tFLOAT, "", " MB");
@@ -70,6 +71,7 @@ class SNMP
 
     public function registerSNMPObj($oid, $desc, $convertType = "none")
 	 	{
+		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
       //prüfe auf doppelte Einträge beim Registrieren neuer SNMP Objekte
       foreach($this->snmpobj as $obj)
@@ -87,7 +89,7 @@ class SNMP
         }
 
 		//prüfe ob IPS Variablen für SNMP Objekt existiert (Variablenname entspricht description)
-      $parentID = $_IPS['SELF'];
+      $parentID = $this->CategoryIdData;
       $ips_var = @IPS_GetVariableIDByName($desc, $parentID);
       if($ips_var == false)
 			{
@@ -102,17 +104,25 @@ class SNMP
 									            $type = self::tINT;
             if($convertType == "SmartStatus")
 									            $type = self::tBOOL;
+            if($convertType == "Counter32")
+									            $type = self::tLONG;
             if($this->debug) echo "Type of OID '$oid' is $type \n";
 
 				if ($type==self::tLONG)
 				   {
-			      $convertType == "Counter32";  /* automatisch zuweisen */
+			      $convertType = "Counter32";  /* automatisch zuweisen */
 	            $ips_var = IPS_CreateVariable(1);
 	            IPS_SetName($ips_var, $desc);
   		         IPS_SetParent($ips_var, $parentID);
 	            $ips_vare = IPS_CreateVariable(1);
 	            IPS_SetName($ips_vare, $desc."ext");
   		         IPS_SetParent($ips_vare, $parentID);
+	            $ips_varc = IPS_CreateVariable(1);
+	            IPS_SetName($ips_varc, $desc."chg");
+  		         IPS_SetParent($ips_varc, $parentID);
+					AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
+					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);
+					IPS_ApplyChanges($archiveHandlerID);
 				   }
 				else
 				   {
@@ -185,8 +195,21 @@ class SNMP
 						echo "**".$z[$zii]."*".$i." ".$zi." \n";
 						$i++;$k++;
 						}
-	            SetValue($obj->ips_var, $z[0]);
-	            SetValue(IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var)),$z[1]);
+					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var));
+					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."chg"),IPS_GetParent($obj->ips_var));
+					if ($z[0]>=GetValue($obj->ips_var))
+					   { /* kein Übertrag */
+					   $a=($z[0]-GetValue($obj->ips_var));
+					   for ($i=0;$i<$intl;$i++) $a*=10;
+					   $a+=($z[1]-GetValue($ips_vare));
+		            SetValue($obj->ips_var, $z[0]);
+		            SetValue($ips_vare,$z[1]);
+		            SetValue($ips_varc,$a);
+		            }
+		         else
+		            {
+		            /* Übertrag, zu schwierig zum nachdenken, Wert einfach auslassen */
+		            }
 					}
 				else
 				   {

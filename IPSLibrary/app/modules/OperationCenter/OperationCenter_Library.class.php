@@ -10,6 +10,128 @@
 /*********************************************************************************************/
 
 
+/****************************************************************************************************************/
+
+class OperationCenter
+	{
+
+	var $CategoryIdData="Default";
+	var $categoryId_SysPing="Default";
+	var $mactable=array();
+
+	/**
+	 * @public
+	 *
+	 * Initialisierung des DetectHumidityHandler Objektes
+	 *
+	 */
+	public function __construct($CategoryIdData,$subnet)
+			{
+		   $this->CategoryIdData=$CategoryIdData;
+   		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
+         $this->mactable=$this->evaluate_traceroute($subnet);
+         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+			}
+
+
+	function device_ping($device_config, $device, $identifier)
+		{
+		foreach ($device_config as $name => $config)
+		   {
+			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
+			$status=Sys_Ping($config[$identifier],1000);
+			if ($status)
+				{
+				echo $device."-Modul wird erreicht   !\n";
+				if (GetValue($StatusID)==false)
+				   {  /* Statusänderung */
+					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+					SetValue($StatusID,true);
+				   }
+				}
+			else
+				{
+				echo $device."-Modul wird NICHT erreicht   !\n";
+				if (GetValue($StatusID)==true)
+				   {  /* Statusänderung */
+					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+					SetValue($StatusID,false);
+				   }
+				}
+		   }
+		}
+
+	function evaluate_traceroute($subnet)
+		{
+		$subnetok=substr($subnet,0,strpos($subnet,"255"));
+		$ergebnis=""; $print_table="";
+		unset($catch);
+		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		exec('arp -a',$catch);
+		foreach($catch as $line)
+   		{
+		   $result=trim($line);
+   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
+	   	$result=trim(substr($result,strpos($result," "),100));
+	   	$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
+		   $result=trim(substr($result,strpos($result," "),100));
+			if ($result1=="10.0.255.255") { break; }
+			if (strpos($result1,$subnetok)===false)
+			   {
+			   }
+			else
+			   {
+		   	//echo $line."\n";
+				if (is_numeric(substr($result1,-1)))   /* letzte Wert in der IP Adresse wirklich eine Zahl */
+					{
+					$ergebnis.=$result1.";".$result2;
+					$print_table.=$line;
+					$found=false;
+					foreach ($ipadressen as $ip)
+					   {
+				   	if ($result2==$ip["Mac_Adresse"])
+		   		   	{
+							$ergebnis.=";".$ip["Hostname"].",";
+							$print_table.=" ".$ip["Hostname"]."\n";
+							$found=true;
+							}
+						}
+					if ($found==false)
+						{
+						$ergebnis.=";none,";
+						$print_table.=" \n";
+						}
+					}
+				}
+		  }
+		$ergebnis_array=explode(",",$ergebnis);
+		$result_array=array();
+		$mactable=array();
+		foreach ($ergebnis_array as $ergebnis_line)
+			{
+			//echo $ergebnis_line."\n";
+			$result_array=explode(";",$ergebnis_line);
+			//print_r($result_array);
+			if (sizeof($result_array)>2)
+			   {
+				$mactable[$result_array[1]]=$result_array[0];
+				}
+			}
+		//echo $print_table;
+		return($mactable);
+		}
+
+
+	}  /* ende class */
+
+/****************************************************************************************************************/
+
 function move_camPicture($verzeichnis,$WebCamWZ_LetzteBewegungID)
 	{
 	$count=100;

@@ -11,6 +11,7 @@ Allerlei betriebliche Abfragen und Wartungsmassnahmen
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 /******************************************************
@@ -45,7 +46,9 @@ echo $inst_modules."\n\n";
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-echo "Category App ID:".$CategoryIdApp."\n";
+
+echo "Category Data ID  :".$CategoryIdData."\n";
+echo "Category App ID   :".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n\n";
 
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
@@ -520,12 +523,17 @@ if (isset ($installedModules["RemoteAccess"]))
 		}
 
 	/********************************************************
-   	Auswertung Router MR3420 mit imacro
+   	Auswertung der angeschlossenen Router
 	**********************************************************/
 
    	foreach ($OperationCenterConfig['ROUTER'] as $router)
 		   {
 			//print_r($router);
+			
+			/********************************************************
+   			Auswertung Router MR3420 mit imacro
+			**********************************************************/
+
 			if ($router['TYP']=='MR3420')
 			   {
 			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
@@ -534,7 +542,13 @@ if (isset ($installedModules["RemoteAccess"]))
 					{
 					echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
 					$parser=new parsefile($CategoryIdData);
-					$CatID=@IPS_GetCategoryIDByName($router['NAME'],$CategoryIdData);
+					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+					if ($router_categoryId==false)
+					   {
+						$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+						IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+						IPS_SetParent($router_categoryId,$CategoryIdData);
+						}
 					$ergebnis=array();
 					$ergebnis=$parser->parsetxtfile($verzeichnis,$router['NAME']);
 					//print_r($ergebnis);
@@ -543,9 +557,9 @@ if (isset ($installedModules["RemoteAccess"]))
 					   {
 					   $MBytes=(integer)$ipadresse['Bytes']/1024/1024;
 					   echo "       ".str_pad($ipadresse['IPAdresse'],18)." mit MBytes ".$MBytes."\n";
-      				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$CatID))==false)
+      				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
          				{
-						  	$ByteID = CreateVariableByName($CatID, "MBytes_".$ipadresse['IPAdresse'], 2);
+						  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_".$ipadresse['IPAdresse'], 2);
 							IPS_SetVariableCustomProfile($ByteID,'MByte');
 							AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
 							AC_SetAggregationType($archiveHandlerID,$ByteID,0);
@@ -555,9 +569,9 @@ if (isset ($installedModules["RemoteAccess"]))
 						$summe += $MBytes;
 						}
 					echo "Summe   ".$summe."\n";
-     				if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$CatID))==false)
+     				if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$router_categoryId))==false)
          			{
-					  	$ByteID = CreateVariableByName($CatID, "MBytes_All", 2);
+					  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_All", 2);
 						IPS_SetVariableCustomProfile($ByteID,'MByte');
 						AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
 						AC_SetAggregationType($archiveHandlerID,$ByteID,0);
@@ -565,6 +579,37 @@ if (isset ($installedModules["RemoteAccess"]))
 						}
 				  	SetValue($ByteID,$MBytes);
 					}
+				}
+				
+			if ($router['TYP']=='RT1900ac')
+			   {
+			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+				if ($router_categoryId==false)
+				   {
+					$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+					IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+					IPS_SetParent($router_categoryId,$CategoryIdData);
+					}
+				$host          = $router["IPADRESSE"];
+				$community     = "public";                                                                         // SNMP Community
+				$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+				$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+				$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+				$snmp->update();
+				
+      		/*		if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
+         				{
+						  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_".$ipadresse['IPAdresse'], 2);
+							IPS_SetVariableCustomProfile($ByteID,'MByte');
+							AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
+							AC_SetAggregationType($archiveHandlerID,$ByteID,0);
+							IPS_ApplyChanges($archiveHandlerID);
+							}  */
 				}
 	   	}
 
@@ -746,128 +791,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 	}
 
 
-/**************************************************************************************************************
+/**************************************************************************************************************/
 
 
-****************************************************************************************************************/
-
-class OperationCenter
-	{
-
-	var $CategoryIdData="Default";
-	var $categoryId_SysPing="Default";
-	var $mactable=array();
-	
-	/**
-	 * @public
-	 *
-	 * Initialisierung des DetectHumidityHandler Objektes
-	 *
-	 */
-	public function __construct($CategoryIdData,$subnet)
-			{
-		   $this->CategoryIdData=$CategoryIdData;
-   		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
-         $this->mactable=$this->evaluate_traceroute($subnet);
-         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
-			}
-
-
-	function device_ping($device_config, $device, $identifier)
-		{
-		foreach ($device_config as $name => $config)
-		   {
-			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
-			$status=Sys_Ping($config[$identifier],1000);
-			if ($status)
-				{
-				echo $device."-Modul wird erreicht   !\n";
-				if (GetValue($StatusID)==false)
-				   {  /* Statusänderung */
-					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
-					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
-					SetValue($StatusID,true);
-				   }
-				}
-			else
-				{
-				echo $device."-Modul wird NICHT erreicht   !\n";
-				if (GetValue($StatusID)==true)
-				   {  /* Statusänderung */
-					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
-					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
-					SetValue($StatusID,false);
-				   }
-				}
-		   }
-		}
-
-	function evaluate_traceroute($subnet)
-		{
-		$subnetok=substr($subnet,0,strpos($subnet,"255"));
-		$ergebnis=""; $print_table="";
-		unset($catch);
-		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
-		exec('arp -a',$catch);
-		foreach($catch as $line)
-   		{
-		   $result=trim($line);
-   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
-	   	$result=trim(substr($result,strpos($result," "),100));
-	   	$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
-		   $result=trim(substr($result,strpos($result," "),100));
-			if ($result1=="10.0.255.255") { break; }
-			if (strpos($result1,$subnetok)===false)
-			   {
-			   }
-			else
-			   {
-		   	//echo $line."\n";
-				if (is_numeric(substr($result1,-1)))   /* letzte Wert in der IP Adresse wirklich eine Zahl */
-					{
-					$ergebnis.=$result1.";".$result2;
-					$print_table.=$line;
-					$found=false;
-					foreach ($ipadressen as $ip)
-					   {
-				   	if ($result2==$ip["Mac_Adresse"])
-		   		   	{
-							$ergebnis.=";".$ip["Hostname"].",";
-							$print_table.=" ".$ip["Hostname"]."\n";
-							$found=true;
-							}
-						}
-					if ($found==false)
-						{
-						$ergebnis.=";none,";
-						$print_table.=" \n";
-						}
-					}
-				}
-		  }
-		$ergebnis_array=explode(",",$ergebnis);
-		$result_array=array();
-		$mactable=array();
-		foreach ($ergebnis_array as $ergebnis_line)
-			{
-			//echo $ergebnis_line."\n";
-			$result_array=explode(";",$ergebnis_line);
-			//print_r($result_array);
-			if (sizeof($result_array)>2)
-			   {
-				$mactable[$result_array[1]]=$result_array[0];
-				}
-			}
-		//echo $print_table;
-		return($mactable);
-		}
-
-
-	}  /* ende class */
 
 
 	
