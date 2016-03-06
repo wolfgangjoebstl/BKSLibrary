@@ -534,9 +534,9 @@ if (isset ($installedModules["RemoteAccess"]))
    			Auswertung Router MR3420 mit imacro
 			**********************************************************/
 
-			if ($router['TYP']=='MR3420')
-			   {
 			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+				if ($router['TYP']=='MR3420')
+			   {
 			   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
 				if ( is_dir ( $verzeichnis ))
 					{
@@ -583,7 +583,6 @@ if (isset ($installedModules["RemoteAccess"]))
 				
 			if ($router['TYP']=='RT1900ac')
 			   {
-			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
 				if ($router_categoryId==false)
 				   {
@@ -704,6 +703,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:        /* einmal am Tag */
+
+			/********************************************************
+		   nun den Datenverbrauch über den router auslesen
+			**********************************************************/
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
 			   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
@@ -712,14 +715,34 @@ if ($_IPS['SENDER']=="TimerEvent")
 				   {
 					/* und gleich ausprobieren */
 		   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+					SetValue($ScriptCounterID,1);
+					IPS_SetEventActive($tim3ID,true);
 		   		}
+				if ($router['TYP']=='RT1900ac')
+				   {
+					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+					if ($router_categoryId==false)
+					   {
+						$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+						IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+						IPS_SetParent($router_categoryId,$CategoryIdData);
+						}
+					$host          = $router["IPADRESSE"];
+					$community     = "public";                                                                         // SNMP Community
+					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+					$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+					$snmp->update();
+					}
 		   	}
 			
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
-
-			SetValue($ScriptCounterID,1);
-			IPS_SetEventActive($tim3ID,true);
 	      break;
+	      
 	   case $tim2ID:
 	   
 			/********************************************************

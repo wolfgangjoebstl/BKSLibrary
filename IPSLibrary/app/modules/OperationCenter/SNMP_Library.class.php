@@ -114,14 +114,17 @@ class SNMP
 	            $ips_var = IPS_CreateVariable(1);
 	            IPS_SetName($ips_var, $desc);
   		         IPS_SetParent($ips_var, $parentID);
+  		         IPS_SetPosition($ips_var,20);
 	            $ips_vare = IPS_CreateVariable(1);
 	            IPS_SetName($ips_vare, $desc."ext");
   		         IPS_SetParent($ips_vare, $parentID);
+  		         IPS_SetPosition($ips_vare,20);
 	            $ips_varc = IPS_CreateVariable(1);
 	            IPS_SetName($ips_varc, $desc."chg");
   		         IPS_SetParent($ips_varc, $parentID);
+  		         IPS_SetPosition($ips_varc,10);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
-					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);
+					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 Zähler */
 					IPS_ApplyChanges($archiveHandlerID);
 				   }
 				else
@@ -179,7 +182,7 @@ class SNMP
 					$z=array();
 					$i=$intl - ($j % $intl);
 					$k=0;
-					echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang\n";
+					//echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang\n";
 					while ($k<$j)
 						{
 						$zi=$i - ($i % $intl);
@@ -192,11 +195,12 @@ class SNMP
 						   {
 							$z[$zii]=	(integer)substr($obj->value,$k,1);
 							}
-						echo "**".$z[$zii]."*".$i." ".$zi." \n";
+						//echo "**".$z[$zii]."*".$i." ".$zi." \n";
 						$i++;$k++;
 						}
 					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var));
 					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."chg"),IPS_GetParent($obj->ips_var));
+					//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
 					if ($z[0]>=GetValue($obj->ips_var))
 					   { /* kein Übertrag */
 					   $a=($z[0]-GetValue($obj->ips_var));
@@ -210,6 +214,7 @@ class SNMP
 		            {
 		            /* Übertrag, zu schwierig zum nachdenken, Wert einfach auslassen */
 		            }
+					echo "           Neuer Wert : ".$z[0].substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
 					}
 				else
 				   {
