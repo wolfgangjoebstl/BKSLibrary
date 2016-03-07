@@ -393,40 +393,22 @@ function send_status($aktuell)
 	if ($aktuell)
 	   {
 	   $einleitung.="Ausgabe der aktuellen Werte.\n";
-	   //$einleitung.="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
 	   }
 	else
 	   {
 	   $einleitung.="Ausgabe der historischen Werte - Vortag.\n";
 	   }
 	if (date("I")=="1")
-	{
-	$einleitung.="Wir haben jetzt Sommerzeit, daher andere Reihenfolge der Ausgabe.\n";
-	$sommerzeit=true;
-	}
+		{
+		$einleitung.="Wir haben jetzt Sommerzeit, daher andere Reihenfolge der Ausgabe.\n";
+		$sommerzeit=true;
+		}
 	$einleitung.="\n";
 	
 	// Repository
 	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 
 	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-
-	/*
-	$moduleManager = new IPSModuleManager('');
-	$installedModules = $moduleManager->GetInstalledModules();
-	print_r($installedModules);
-	$inst_modules="Installierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-			{
-			$inst_modules.=str_pad($name,20)." ".$modules."\n";
-			}
-	*/
-
-	/* gibt alle bekannten und davon installierten Module aus */
-
-	$guthabensteuerung=false; $gartensteuerung=false;
-	$amis=false;
-	$customcomponent=false; $detectmovement=false; $sprachsteuerung=false; $remotereadwrite=false; $remoteaccess=false;
 
 	$versionHandler = $moduleManager->VersionHandler();
 	$versionHandler->BuildKnownModules();
@@ -445,16 +427,7 @@ function send_status($aktuell)
 		$inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
 		if (array_key_exists($module, $installedModules))
 			{
-			//$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
 			$inst_modules .= " ".str_pad($infos['CurrentVersion'],10)."   ";
-			if ($module=="Guthabensteuerung") $guthabensteuerung=true;
-			if ($module=="Gartensteuerung") $gartensteuerung=true;
-			if ($module=="Amis") $amis=true;
-			if ($module=="CustomComponent") $customcomponent=true;
-			if ($module=="DetectMovement") $detectmovement=true;
-			if ($module=="Sprachsteuerung") $sprachsteuerung=true;
-			if ($module=="RemoteReadWrite") $remotereadwrite=true;
-			if ($module=="RemoteAccess") $remoteaccess=true;
 			if ($infos['CurrentVersion']!=$infos['Version'])
 				{
 				$inst_modules .= "**";
@@ -469,7 +442,7 @@ function send_status($aktuell)
 		}
 	$inst_modules .= "\n".$upd_modules;
 
-	if ($amis==true)
+	if (isset($installedModules["Amis"])==true)
 	   {
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
 		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
@@ -477,8 +450,18 @@ function send_status($aktuell)
    	IPS_RunScript($updatePeriodenwerteID);
 		}
 
+	/* Alle werte aus denen eine Ausgabe folgt initialisieren */
+
 	$cost=""; $internet=""; $statusverlauf=""; $ergebnis_tabelle=""; $alleStromWerte=""; $ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
 	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung=""; $energieverbrauch="";
+
+	$ergebnisOperationCenter="";
+
+/* -----------------------------------------------------------------------------------------------------------------
+ *
+ * es gibt noch Server spezifische Befehle, systematisch eliminieren
+ *
+ */
 	
 if (IPS_GetName(0)=="LBG70")
 	{
@@ -524,37 +507,6 @@ if (IPS_GetName(0)=="LBG70")
 			GetValue(49200)."\n".
 	      GetValue(16415)."\n\n";
 
-
-//	$ergebnis_tagesenergie="Energiewerte Vortag: \n\n";
-//	$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
-
-//  foreach ($arr as $identifier=>$station)
-		{
-//		$EnergieTagFinalID=$station["OID_Tageswert"];
-//	   $ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($EnergieTagFinalID), 2, ",", "" )."kWh ";
-		}
-//	$ergebnis_tagesenergie.="\n\n";
-
-//	$ergebnis_tagesenergie.="Aktuelle Energiewerte : \n\n";
-//   $arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
-
-//	$energieGesTagID = CreateVariableByName(53458,"Summe_EnergieTag", 2);
-//   foreach ($arr as $identifier=>$station)
-		{
-//		if ($identifier=="TOTAL")
-			{
-//   		$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieGesTagID), 2, ",", "" )."kWh \n";
-//			break;
-			}
-//		$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
-//   	$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
-		}
-//	unset($identifier); // break the reference with the last element
-//	$ergebnis_tagesenergie.=   "1/7/30/360 : ".number_format(GetValue(35510), 0, ",", "" )."/"
-//							  				    .number_format(GetValue(25496), 0, ",", "" )."/"
-//											    .number_format(GetValue(54896), 0, ",", "" )."/"
-//											    .number_format(GetValue(30229), 0, ",", "" )." kWh\n";
-
 	if ($aktuell)
 	    {
 		$ergebnis_tabelle="";
@@ -596,111 +548,6 @@ if (IPS_GetName(0)=="LBG70")
 			}
 		$ergebnis_tabelle.="\n\n";
 		}
-
-//	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 13448, $starttime, $endtime, 0);
-	//print_r($werte);
-//	echo "Werte Stromverbrauch:\n";
-//	$vorigertag=date("d.m.Y",$jetzt);
-//	foreach($werte as $wert)
-			{
-//			$zeit=$wert['TimeStamp']-60;
-//			if (date("d.m.Y", $zeit)!=$vorigertag)
-			   {
-//				echo date("d.m.Y", $zeit) . " -> " . number_format($wert['Value'], 2, ",", "" ) ." kWh". PHP_EOL;
-				}
-//			$vorigertag=date("d.m.Y",$zeit);
-			}
-//	$ergebnisTemperatur="\nAktuelle Temperaturwerte :\n\n";
-//   $arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
-
-//	foreach ($arr as $identifier=>$station)
-		{
-//		if ($identifier=="TOTAL")
-			{
-//			break;
-			}
-		//echo $identifier;
-//		$TempWertID = $station["OID_Sensor"];
-//		$ergebnisTemperatur = $ergebnisTemperatur.$identifier." : ".number_format(GetValue($TempWertID), 2, ",", "" )."°C ";
-		}
-//	unset($identifier); // break the reference with the last element
-
-//	$ergebnisRegen="\n\nRegenmenge : ".number_format(GetValue(15200), 2, ",", "" )." mm\n";
-//	$ergebnisRegen.=   "1/7/30/360 : ".number_format(GetValue(37587), 2, ",", "" )."/"
-//							  				    .number_format(GetValue(10370), 2, ",", "" )."/"
-//											    .number_format(GetValue(13883), 2, ",", "" )."/"
-//											    .number_format(GetValue(10990), 2, ",", "" )." mm\n";
-
-//	$ergebnisStrom="\n\nTages-Stromverbrauch : ".GetValue(13448)." kWh\n";
-//	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(52252), 0, ",", "" )."/"
-//							  				    .number_format(GetValue(35513), 0, ",", "" )."/"
-//											    .number_format(GetValue(35289), 0, ",", "" )."/"
-//											    .number_format(GetValue(51307), 0, ",", "" )." kWh\n";
-//	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(29903), 0, ",", "" )."/"
-//							  				    .number_format(GetValue(44005), 0, ",", "" )."/"
-//											    .number_format(GetValue(20129), 0, ",", "" )."/"
-//											    .number_format(GetValue(47761), 0, ",", "" )." Euro\n";
-
-//	$ergebnisStatus="\nAenderungsverlauf Internet Connectivity :\n\n";
-//	$ergebnisStatus=$ergebnisStatus."Downtime Internet :".GetValue(49809)." min\n\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(51715)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(55372)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(52397)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(51343)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(29913)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(27604)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(30167)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(41813)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(11169)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(18739)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(39489)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(12808)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(13641)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(36734)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(46381)."\n";
-//	$ergebnisStatus=$ergebnisStatus.GetValue(24490)."\n";
-
-//	$ergebnisStatus.="\nDatenvolumen Down/Up : ".GetValue(32332)."/".GetValue(37701)." Mbyte\n";
-//	$ergebnisStatus.=  " Down 7/30/30/30/360 : ".GetValue(32642)."/"
-//															  .GetValue(49944)."/"
-//															  .GetValue(49121)."/"
-//															  .GetValue(17604)."/"
-//															  .GetValue(12069)." Mbyte\n";
-//	$ergebnisStatus.=  "   Up 7/30/30/30/360 : ".GetValue(39846)."/"
-//															  .GetValue(46063)."/"
-//															  .GetValue(45333)."/"
-//															  .GetValue(50549)."/"
-//															  .GetValue(21647)." MByte\n";
-
-//	$ergebnisBewegung="\n\nVerlauf der Bewegungen:\n\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(38964)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(23869)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(16966)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(14097)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(14944)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(42042)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(39559)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(36666)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(30427)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(55972)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(57278)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(45148)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(21096)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(46545)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(25902)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(13726)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(22969)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(56534)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(59126)."\n";
-//	$ergebnisBewegung=$ergebnisBewegung.GetValue(45878)."\n";
-
-//	$BrowserExtAdr="http://".trim(GetValue(45252)).":82/";
-//	$BrowserIntAdr="http://".trim(GetValue(33109)).":82/";
-//	$IPStatus="\n\nIP Symcon Aufruf extern unter:".$BrowserExtAdr.
-//	          "\nIP Symcon Aufruf intern unter:".$BrowserIntAdr."\n";
-
-//	$ergebnis=$einleitung.$ergebnis_tagesenergie.$ergebnisTemperatur.$ergebnisRegen.$ergebnisStrom.$ergebnisStatus.$ergebnisBewegung.$IPStatus;
-
 		/**********************************************/
 	}
 	
@@ -957,6 +804,8 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 
 	}  /************** das war spezielle Routine BKS01  */
 
+
+
 /******************************************************************************************
 		
 Allgemeiner Teil, unabhängig von Hardware oder Server
@@ -973,7 +822,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		Allgemeiner Teil, Auswertung für aktuelle Werte
 		
 		******************************************************************************************/
-		if ($remotereadwrite)
+		if (isset($installedModules["RemoteReadWrite"])==true)
 		   {
 		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
@@ -1018,7 +867,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 			/******************************************************************************************/
 
-			if ($remoteaccess)  /* nur wenn remoteread */
+		if (isset($installedModules["RemoteAccess"])==true)
 			{
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			$TypeFS20=RemoteAccess_TypeFS20();
@@ -1067,7 +916,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************/
 
-		if ($amis)
+		if (isset($installedModules["Amis"])==true)
 		   {
 			$alleStromWerte="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
 
@@ -1120,116 +969,154 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValue($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
 						}
 
+					} /* endeif */
+				} /* ende foreach */
+			} /* endeif */
+
+		/******************************************************************************************/
+
+
+		if (isset($installedModules["OperationCenter"])==true)
+		   {
+			$ergebnisOperationCenter="\NAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
+
+			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+			IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+			IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+			IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+			
+			$CatIdData  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.OperationCenter');
+			$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CatIdData, 20);
+			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+			$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+
+			$subnet="10.255.255.255";
+			$OperationCenter=new OperationCenter($CatIdData,$subnet);
+			
+			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
+
+			$OperationCenterConfig = OperationCenter_Configuration();
+	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+			   {
+			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+				if ($router['TYP']=='MR3420')
+				   {
+					}
+				if ($router['TYP']=='RT1900ac')
+				   {
+
 					}
 				}
 			}
 
 		/******************************************************************************************/
+
+
 			
-			
-/* Remote Access Crawler für Ausgabe aktuelle Werte */
+		/* Remote Access Crawler für Ausgabe aktuelle Werte */
 
-$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-$jetzt=time();
-$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-$starttime=$endtime-60*60*24*1; /* ein Tag */
+		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+		$jetzt=time();
+		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+		$starttime=$endtime-60*60*24*1; /* ein Tag */
 
-$ServerRemoteAccess="RemoteAccess Variablen aller hier gespeicherten Server:\n\n";
+		$ServerRemoteAccess="RemoteAccess Variablen aller hier gespeicherten Server:\n\n";
 
-$visID=@IPS_GetObjectIDByName ( "Visualization", 0 );
-$ServerRemoteAccess .=  "Visualization ID : ";
-if ($visID==false)
-	{
-	$ServerRemoteAccess .=  "keine\n";
-	}
-else
-	{
-	$ServerRemoteAccess .=  $visID."\n";
-	$visWebRID=@IPS_GetObjectIDByName ( "Webfront-Retro", $visID );
-	$ServerRemoteAccess .=  "  Webfront Retro     ID : ";
-	if ($visWebRID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visWebRID."\n";}
-
-	$visMobileID=@IPS_GetObjectIDByName ( "Mobile", $visID );
-	$ServerRemoteAccess .=  "  Mobile             ID : ";
-	if ($visMobileID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visMobileID."\n";}
-
-	$visWebID=@IPS_GetObjectIDByName ( "WebFront", $visID );
-	$ServerRemoteAccess .=  "  WebFront           ID : ";
-	if ($visWebID==false)
-		{
-		$ServerRemoteAccess .=  "keine\n";
-		}
-	else
-		{
-		$ServerRemoteAccess .=  $visWebID."\n";
-		$visUserID=@IPS_GetObjectIDByName ( "User", $visWebID );
-		$ServerRemoteAccess .=  "    Webfront User          ID : ";
-		if ($visUserID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visUserID."\n";}
-
-		$visAdminID=@IPS_GetObjectIDByName ( "Administrator", $visWebID );
-		$ServerRemoteAccess .=  "    Webfront Administrator ID : ";
-		if ($visAdminID==false)
+		$visID=@IPS_GetObjectIDByName ( "Visualization", 0 );
+		$ServerRemoteAccess .=  "Visualization ID : ";
+		if ($visID==false)
 			{
 			$ServerRemoteAccess .=  "keine\n";
 			}
 		else
 			{
-			$ServerRemoteAccess .=  $visAdminID."\n";
+			$ServerRemoteAccess .=  $visID."\n";
+			$visWebRID=@IPS_GetObjectIDByName ( "Webfront-Retro", $visID );
+			$ServerRemoteAccess .=  "  Webfront Retro     ID : ";
+			if ($visWebRID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visWebRID."\n";}
 
-			$visRemAccID=@IPS_GetObjectIDByName ( "RemoteAccess", $visAdminID );
-			$ServerRemoteAccess .=  "      RemoteAccess ID : ";
-			if ($visRemAccID==false)
+			$visMobileID=@IPS_GetObjectIDByName ( "Mobile", $visID );
+			$ServerRemoteAccess .=  "  Mobile             ID : ";
+			if ($visMobileID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visMobileID."\n";}
+
+			$visWebID=@IPS_GetObjectIDByName ( "WebFront", $visID );
+			$ServerRemoteAccess .=  "  WebFront           ID : ";
+			if ($visWebID==false)
 				{
 				$ServerRemoteAccess .=  "keine\n";
 				}
 			else
 				{
-				$ServerRemoteAccess .=  $visRemAccID."\n";
-				$server=IPS_GetChildrenIDs($visRemAccID);
-				foreach ($server as $serverID)
-				   {
-				   $ServerRemoteAccess .=  "        Server    ID : ".$serverID." Name : ".IPS_GetName($serverID)."\n";
-					$categories=IPS_GetChildrenIDs($serverID);
-					foreach ($categories as $categoriesID)
-					   {
-					   $ServerRemoteAccess .=  "          Category  ID : ".$categoriesID." Name : ".IPS_GetName($categoriesID)."\n";
-						$objects=IPS_GetChildrenIDs($categoriesID);
-						$objectsbyName=array();
-						foreach ($objects as $key => $objectID)
+				$ServerRemoteAccess .=  $visWebID."\n";
+				$visUserID=@IPS_GetObjectIDByName ( "User", $visWebID );
+				$ServerRemoteAccess .=  "    Webfront User          ID : ";
+				if ($visUserID==false) {$ServerRemoteAccess .=  "keine\n";} else {$ServerRemoteAccess .=  $visUserID."\n";}
+
+				$visAdminID=@IPS_GetObjectIDByName ( "Administrator", $visWebID );
+				$ServerRemoteAccess .=  "    Webfront Administrator ID : ";
+				if ($visAdminID==false)
+					{
+					$ServerRemoteAccess .=  "keine\n";
+					}
+				else
+					{
+					$ServerRemoteAccess .=  $visAdminID."\n";
+
+					$visRemAccID=@IPS_GetObjectIDByName ( "RemoteAccess", $visAdminID );
+					$ServerRemoteAccess .=  "      RemoteAccess ID : ";
+					if ($visRemAccID==false)
+						{
+						$ServerRemoteAccess .=  "keine\n";
+						}
+					else
+						{
+						$ServerRemoteAccess .=  $visRemAccID."\n";
+						$server=IPS_GetChildrenIDs($visRemAccID);
+						foreach ($server as $serverID)
 						   {
-						   $objectsbyName[IPS_GetName($objectID)]=$objectID;
-							}
-						ksort($objectsbyName);
-						//print_r($objectsbyName);
-						foreach ($objectsbyName as $objectID)
-						   {
-							$werte = @AC_GetLoggedValues($archiveHandlerID, $objectID, $starttime, $endtime, 0);
-							if ($werte===false)
-								{
-								$log="kein Log !!";
-								}
-							else
+						   $ServerRemoteAccess .=  "        Server    ID : ".$serverID." Name : ".IPS_GetName($serverID)."\n";
+							$categories=IPS_GetChildrenIDs($serverID);
+							foreach ($categories as $categoriesID)
 							   {
-								$log=sizeof($werte)." logged in 24h";
-								}
-							if ( (IPS_GetVariable($objectID)["VariableProfile"]!="") or (IPS_GetVariable($objectID)["VariableCustomProfile"]!="") )
-						   	{
-								$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValueFormatted($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
-								       .$log."\n";
-								}
-							else
-							   {
-								$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValue($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
-								       .$log."\n";
-								}
-							//print_r(IPS_GetVariable($objectID));
-							} /* object */
-						} /* Category */
-					} /* Server */
-				} /* RemoteAccess */
-			}  /* Administrator */
-		}   /* Webfront */
-	} /* Visualization */
+							   $ServerRemoteAccess .=  "          Category  ID : ".$categoriesID." Name : ".IPS_GetName($categoriesID)."\n";
+								$objects=IPS_GetChildrenIDs($categoriesID);
+								$objectsbyName=array();
+								foreach ($objects as $key => $objectID)
+								   {
+								   $objectsbyName[IPS_GetName($objectID)]=$objectID;
+									}
+								ksort($objectsbyName);
+								//print_r($objectsbyName);
+								foreach ($objectsbyName as $objectID)
+								   {
+									$werte = @AC_GetLoggedValues($archiveHandlerID, $objectID, $starttime, $endtime, 0);
+									if ($werte===false)
+										{
+										$log="kein Log !!";
+										}
+									else
+									   {
+										$log=sizeof($werte)." logged in 24h";
+										}
+									if ( (IPS_GetVariable($objectID)["VariableProfile"]!="") or (IPS_GetVariable($objectID)["VariableCustomProfile"]!="") )
+								   	{
+										$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValueFormatted($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
+										       .$log."\n";
+										}
+									else
+									   {
+										$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValue($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
+										       .$log."\n";
+										}
+									//print_r(IPS_GetVariable($objectID));
+									} /* object */
+								} /* Category */
+							} /* Server */
+						} /* RemoteAccess */
+					}  /* Administrator */
+				}   /* Webfront */
+			} /* Visualization */
 
 		//echo $ServerRemoteAccess;
 
@@ -1240,13 +1127,13 @@ else
 		
 		if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
 			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
-			$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
+			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 		   }
 		}
 	else   /* historische Werte */
@@ -1263,7 +1150,7 @@ else
 		/**************Stromverbrauch, Auslesen der Variablen von AMIS *******************************************************************/
 
 		$ergebnistab_energie="";
-		if ($amis)
+		if (isset($installedModules["Amis"])==true)
 		   {
 			/* nur machen wenn AMIS installiert */
 		
@@ -1357,7 +1244,7 @@ else
 			
 		/************** Guthaben auslesen ****************************************************************************/
 		
-		if ($guthabensteuerung)
+		if (isset($installedModules["Guthabensteuerung"])==true)
 		   {
 		   $guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 	   	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
@@ -1385,7 +1272,7 @@ else
 		/************** Detect Movement Motion Detect ****************************************************************************/
 
       $alleMotionWerte="";
-		if ($detectmovement)
+		if (isset($installedModules["DetectMovement"])==true)
 		   {
 		   IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 			$Homematic = HomematicList();
@@ -1443,7 +1330,7 @@ else
 		   }
 		/******************************************************************************************/
 
-		if ($gartensteuerung)
+		if (isset($installedModules["Gartensteuerung"])==true)
 		   {
 			$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
 			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
@@ -1486,14 +1373,14 @@ else
 
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$ergebnisOperationCenter.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
 					  $ergebnistab_energie.$ergebnis_tagesenergie.$alleMotionWerte.$inst_modules;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.
-			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+			$ergebnisRegen.$guthaben.$cost.$internet.$ergebnisOperationCenter.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$IPStatus.$alleMotionWerte.$inst_modules;
 			}
 		}
