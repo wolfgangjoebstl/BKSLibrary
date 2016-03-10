@@ -17,6 +17,7 @@ class OperationCenter
 
 	var $CategoryIdData="Default";
 	var $categoryId_SysPing="Default";
+	var $archiveHandlerID=0;
 	var $mactable=array();
 
 	/**
@@ -33,6 +34,7 @@ class OperationCenter
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			}
 
 
@@ -127,7 +129,113 @@ class OperationCenter
 		return($mactable);
 		}
 
+	function write_routerdata_MR3420($router)
+		{
+	   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
+		if ( is_dir ( $verzeichnis ))
+			{
+			echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
+			$parser=new parsefile($this->CategoryIdData);
+			$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+			if ($router_categoryId==false)
+			   {
+				$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+				IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+				IPS_SetParent($router_categoryId,$this->CategoryIdData);
+				}
+			$ergebnis=array();
+			$ergebnis=$parser->parsetxtfile($verzeichnis,$router['NAME']);
+			//print_r($ergebnis);
+			$summe=0;
+			foreach ($ergebnis as $ipadresse)
+			   {
+			   $MBytes=(integer)$ipadresse['Bytes']/1024/1024;
+			   echo "       ".str_pad($ipadresse['IPAdresse'],18)." mit MBytes ".$MBytes."\n";
+  				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
+     				{
+				  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_".$ipadresse['IPAdresse'], 2);
+					IPS_SetVariableCustomProfile($ByteID,'MByte');
+					AC_SetLoggingStatus($this->archiveHandlerID,$ByteID,true);
+					AC_SetAggregationType($this->archiveHandlerID,$ByteID,0);
+					IPS_ApplyChanges($this->archiveHandlerID);
+					}
+			  	SetValue($ByteID,$MBytes);
+				$summe += $MBytes;
+				}
+			echo "Summe   ".$summe."\n";
+   		if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$router_categoryId))==false)
+     			{
+			  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_All", 2);
+				IPS_SetVariableCustomProfile($ByteID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$ByteID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$ByteID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+		  	SetValue($ByteID,$MBytes);
+			}
+		}
 
+	function get_routerdata_MR3420($router)
+		{
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$result=IPS_GetChildrenIDs($router_categoryId);
+		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		$result1=array();
+		foreach($result as $oid)
+		   {
+		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		      {
+            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+		   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+				$result1[IPS_GetName($oid)]=$oid;
+		   	}
+		   else
+		      {
+		   	echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
+		      }
+		   }
+		ksort($result1);
+		print_r($result1);
+		}
+
+	function sort_routerdata_MR3420($router)
+		{
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$result=IPS_GetChildrenIDs($router_categoryId);
+		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		$result1=array();
+		foreach($result as $oid)
+		   {
+		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		      {
+				$result1[IPS_GetName($oid)]=$oid;
+		   	}
+		   else
+		      {
+				$result1["zzz".IPS_GetName($oid)]=$oid;
+		      }
+		   }
+		$i=100;
+		ksort($result1);
+		foreach($result1 as $oid)
+		   {
+			IPS_SetPosition($oid,$i);
+			$i+=10;
+			}
+		}
+		
 	}  /* ende class */
 
 /****************************************************************************************************************/

@@ -534,51 +534,10 @@ if (isset ($installedModules["RemoteAccess"]))
    			Auswertung Router MR3420 mit imacro
 			**********************************************************/
 
-			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
-				if ($router['TYP']=='MR3420')
+		   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+			if ($router['TYP']=='MR3420')
 			   {
-			   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
-				if ( is_dir ( $verzeichnis ))
-					{
-					echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
-					$parser=new parsefile($CategoryIdData);
-					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
-					if ($router_categoryId==false)
-					   {
-						$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-						IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
-						IPS_SetParent($router_categoryId,$CategoryIdData);
-						}
-					$ergebnis=array();
-					$ergebnis=$parser->parsetxtfile($verzeichnis,$router['NAME']);
-					//print_r($ergebnis);
-					$summe=0;
-					foreach ($ergebnis as $ipadresse)
-					   {
-					   $MBytes=(integer)$ipadresse['Bytes']/1024/1024;
-					   echo "       ".str_pad($ipadresse['IPAdresse'],18)." mit MBytes ".$MBytes."\n";
-      				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
-         				{
-						  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_".$ipadresse['IPAdresse'], 2);
-							IPS_SetVariableCustomProfile($ByteID,'MByte');
-							AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
-							AC_SetAggregationType($archiveHandlerID,$ByteID,0);
-							IPS_ApplyChanges($archiveHandlerID);
-							}
-					  	SetValue($ByteID,$MBytes);
-						$summe += $MBytes;
-						}
-					echo "Summe   ".$summe."\n";
-     				if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$router_categoryId))==false)
-         			{
-					  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_All", 2);
-						IPS_SetVariableCustomProfile($ByteID,'MByte');
-						AC_SetLoggingStatus($archiveHandlerID,$ByteID,true);
-						AC_SetAggregationType($archiveHandlerID,$ByteID,0);
-						IPS_ApplyChanges($archiveHandlerID);
-						}
-				  	SetValue($ByteID,$MBytes);
-					}
+				$OperationCenter->write_routerdata_MR3420($router);
 				}
 				
 			if ($router['TYP']=='RT1900ac')
@@ -628,10 +587,10 @@ if (isset ($installedModules["RemoteAccess"]))
 	echo "ARP Auswertung für alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
 
 	/********************************************************
-   	Sys_Ping durchführen basierend auf vorangestellter mactable
+   	Sys_Ping durchführen basierend auf ermittelter mactable
 	**********************************************************/
 
-	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -641,29 +600,36 @@ if (isset ($installedModules["RemoteAccess"]))
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
 			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-			$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
-			if ($status)
-				{
-				echo "Kamera wird erreicht   !\n";
-				if (GetValue($CamStatusID)==false)
-				   {  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-					SetValue($CamStatusID,true);
-				   }
+			if (isset($mactable[$cam_config['MAC']]))
+			   {
+				echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+				$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+				if ($status)
+					{
+					echo "Kamera wird erreicht   !\n";
+					if (GetValue($CamStatusID)==false)
+					   {  /* Statusänderung */
+						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+						SetValue($CamStatusID,true);
+				   	}
+					}
+				else
+					{
+					echo "Kamera wird NICHT erreicht   !\n";
+					if (GetValue($CamStatusID)==true)
+					   {  /* Statusänderung */
+						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+						SetValue($CamStatusID,false);
+					   }
+					}
 				}
-			else
-				{
-				echo "Kamera wird NICHT erreicht   !\n";
-				if (GetValue($CamStatusID)==true)
-				   {  /* Statusänderung */
-					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-					SetValue($CamStatusID,false);
-				   }
-				}
-			}
+			else  /* mac adresse nicht bekannt */
+			   {
+			   echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+			   }
+			} /* Ende foreach */
 		}
 
 	if (isset ($installedModules["LedAnsteuerung"]))
@@ -682,8 +648,26 @@ if (isset ($installedModules["RemoteAccess"]))
 		$OperationCenter->device_ping($device_config, $device, $identifier);
 		}
 
+	/********************************************************
+   	Roter daten ausgeben
+	**********************************************************/
+
+  	foreach ($OperationCenterConfig['ROUTER'] as $router)
+	   {
+	   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+		if ($router['TYP']=='MR3420')
+		   {
+			$OperationCenter->sort_routerdata_MR3420($router);
+			$OperationCenter->get_routerdata_MR3420($router);
+			}
+		if ($router['TYP']=='RT1900ac')
+		   {
+			}
+		}
+
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	
+
 	} /* ende Execute */
 
 	
@@ -738,8 +722,68 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
 					$snmp->update();
 					}
-		   	}
-			
+		   	} /* Ende foreach */
+
+			/********************************************************
+	   	Sys_Ping durchführen basierend auf ermittelter mactable
+			**********************************************************/
+
+			if (isset ($installedModules["IPSCam"]))
+				{
+				$mactable=$OperationCenter->evaluate_traceroute($subnet);
+				print_r($mactable);
+				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					if (isset($mactable[$cam_config['MAC']]))
+			   		{
+						echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+						$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+						if ($status)
+							{
+							echo "Kamera wird erreicht   !\n";
+							if (GetValue($CamStatusID)==false)
+					   		{  /* Statusänderung */
+								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+								SetValue($CamStatusID,true);
+				   			}
+							}
+						else
+							{
+							echo "Kamera wird NICHT erreicht   !\n";
+							if (GetValue($CamStatusID)==true)
+							   {  /* Statusänderung */
+								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+								SetValue($CamStatusID,false);
+							   }
+							}
+						}
+					else  /* mac adresse nicht bekannt */
+					   {
+			   		echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+					   }
+					} /* Ende foreach */
+				}
+
+			if (isset ($installedModules["LedAnsteuerung"]))
+				{
+				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+				$device_config=LedAnsteuerung_Config();
+				$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+				$OperationCenter->device_ping($device_config, $device, $identifier);
+				}
+
+			if (isset ($installedModules["DENONsteuerung"]))
+				{
+				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+				$device_config=Denon_Configuration();
+				$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+				$OperationCenter->device_ping($device_config, $device, $identifier);
+				}
+
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 	      break;
 	      
@@ -785,6 +829,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 	      break;
 	   case $tim3ID:
 			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID));
+
+			/******************************************************************************************
+		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
+			*********************************************************************************************/
+			
 			$counter=GetValue($ScriptCounterID);
 			switch ($counter)
 			   {

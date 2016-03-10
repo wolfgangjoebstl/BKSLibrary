@@ -978,7 +978,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		if (isset($installedModules["OperationCenter"])==true)
 		   {
-			$ergebnisOperationCenter="\NAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
+			$ergebnisOperationCenter="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
 
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 			IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
