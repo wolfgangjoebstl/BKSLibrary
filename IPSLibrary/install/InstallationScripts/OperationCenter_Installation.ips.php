@@ -167,6 +167,9 @@
 	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
    	   //fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
    	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+   	   fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+   	   fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Status'."\n");
+   	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."_Statistics\n");
       	fwrite($handle2,'TAB CLOSE'."\n");
 			fclose($handle2);
 

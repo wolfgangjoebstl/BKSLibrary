@@ -47,9 +47,9 @@ $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 
-echo "Category Data ID  :".$CategoryIdData."\n";
-echo "Category App ID   :".$CategoryIdApp."\n";
-echo "Category Script ID:".$scriptId."\n\n";
+echo "Category Data ID   : ".$CategoryIdData."\n";
+echo "Category App ID    : ".$CategoryIdApp."\n";
+echo "Category Script ID : ".$scriptId."\n\n";
 
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
@@ -89,7 +89,7 @@ if (isset ($installedModules["IPSCam"]))
 	{
 	echo "Modul IPSCam ist installiert.\n";
 	echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
-	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $_IPS['SELF']);
+	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
 	}
 else
 	{
@@ -98,7 +98,7 @@ else
 
 /* Eventuell Router regelmaessig auslesen */
 
-$tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $_IPS['SELF']);
+$tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
 if ($tim1ID==false)
 	{
 	$tim1ID = IPS_CreateEvent(1);
@@ -109,7 +109,7 @@ if ($tim1ID==false)
 	}
 IPS_SetEventActive($tim1ID,true);
 
-$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $_IPS['SELF']);
+$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
 if ($tim3ID==false)
 	{
 	$tim3ID = IPS_CreateEvent(1);
@@ -539,7 +539,10 @@ if (isset ($installedModules["RemoteAccess"]))
 			   {
 				$OperationCenter->write_routerdata_MR3420($router);
 				}
-				
+			if ($router['TYP']=='MBRN3000')
+			   {
+				$OperationCenter->write_routerdata_MBRN3000($router);
+				}
 			if ($router['TYP']=='RT1900ac')
 			   {
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
@@ -648,8 +651,11 @@ if (isset ($installedModules["RemoteAccess"]))
 		$OperationCenter->device_ping($device_config, $device, $identifier);
 		}
 
+	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+
 	/********************************************************
-   	Roter daten ausgeben
+   	Router daten ausgeben
 	**********************************************************/
 
   	foreach ($OperationCenterConfig['ROUTER'] as $router)
@@ -659,7 +665,7 @@ if (isset ($installedModules["RemoteAccess"]))
 		if ($router['TYP']=='MR3420')
 		   {
 			$OperationCenter->sort_routerdata_MR3420($router);
-			$OperationCenter->get_routerdata_MR3420($router);
+			$OperationCenter->get_routerdata($router);
 			}
 		if ($router['TYP']=='RT1900ac')
 		   {
@@ -687,13 +693,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:        /* einmal am Tag */
-
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 			/********************************************************
 		   nun den Datenverbrauch über den router auslesen
 			**********************************************************/
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
-			   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+			   echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 				//print_r($router);
 				if ($router['TYP']=='MR3420')
 				   {
@@ -722,6 +728,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
 					$snmp->update();
 					}
+				if ($router['TYP']=='MBRN3000')
+				   {
+				   }
 		   	} /* Ende foreach */
 
 			/********************************************************
@@ -738,7 +747,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 					if (isset($mactable[$cam_config['MAC']]))
 			   		{
-						echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+						echo "Timer, Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
 						$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
 						if ($status)
 							{
@@ -783,12 +792,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 				$OperationCenter->device_ping($device_config, $device, $identifier);
 				}
-
-			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 	      break;
 	      
 	   case $tim2ID:
-	   
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen:");
 			/********************************************************
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
@@ -824,11 +831,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 					   }
 					}
 				}
-			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen, ".$count." Fotos verschoben");
-			
+			if ($count>0) {
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
+				}
 	      break;
 	   case $tim3ID:
-			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID));
+			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
 		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
@@ -838,18 +846,48 @@ if ($_IPS['SENDER']=="TimerEvent")
 			switch ($counter)
 			   {
 				case 3:
+				   /* reserviert für Nachbearbeitung */
 		      	SetValue($ScriptCounterID,0);
 			      IPS_SetEventActive($tim3ID,false);
 		      	break;
 			   case 2:
-
-
+					/* Router Auswertung */
+			   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+		   			{
+						/********************************************************
+   						Auswertung Router MR3420 mit imacro
+						**********************************************************/
+					   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+						if ($router['TYP']=='MR3420')
+						   {
+							$OperationCenter->write_routerdata_MR3420($router);
+							}
+         			if ($router['TYP']=='RT1900ac')
+			   			{
+							$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+							if ($router_categoryId==false)
+							   {
+								$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+								IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+								IPS_SetParent($router_categoryId,$CategoryIdData);
+								}
+							$host          = $router["IPADRESSE"];
+							$community     = "public";                                                                         // SNMP Community
+							$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+							$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+							$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+							$snmp->update();
+							}
+				   	}
 
 					SetValue($ScriptCounterID,$counter+1);
 		      	break;
 			   case 1:
-					/* Router Auswertung */
-					
+					/* Zeit gewinnen */
 			      SetValue($ScriptCounterID,$counter+1);
 					break;
 			   case 0:

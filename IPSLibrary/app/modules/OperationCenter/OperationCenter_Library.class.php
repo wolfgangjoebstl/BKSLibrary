@@ -42,6 +42,7 @@ class OperationCenter
 		{
 		foreach ($device_config as $name => $config)
 		   {
+		   //print_r($config);
 			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
 		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
@@ -149,7 +150,7 @@ class OperationCenter
 			$summe=0;
 			foreach ($ergebnis as $ipadresse)
 			   {
-			   $MBytes=(integer)$ipadresse['Bytes']/1024/1024;
+			   $MBytes=(float)$ipadresse['Bytes']/1024/1024;
 			   echo "       ".str_pad($ipadresse['IPAdresse'],18)." mit MBytes ".$MBytes."\n";
   				if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
      				{
@@ -173,9 +174,279 @@ class OperationCenter
 				}
 		  	SetValue($ByteID,$MBytes);
 			}
+	   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_Statistics_files/";
+		if ( is_dir ( $verzeichnis ))
+			{
+			echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
+			$ergebnis=array();
+			$ergebnis=$parser->parsetxtfile_statistic($verzeichnis,$router['NAME']);
+			$summe=0;
+			$MBytes=(float)$ergebnis['RxBytes']/1024/1024;
+			echo "       RxBytes mit MBytes ".$MBytes."\n";
+			if (($ByteID=@IPS_GetVariableIDByName("Download",$router_categoryId))==false)
+  				{
+			  	$ByteID = CreateVariableByName($router_categoryId, "Download", 2);
+				IPS_SetVariableCustomProfile($ByteID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$ByteID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$ByteID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+		  	SetValue($ByteID,$MBytes);
+			$summe += $MBytes;
+			$MBytes=(float)$ergebnis['TxBytes']/1024/1024;
+			echo "       TxBytes mit MBytes ".$MBytes."\n";
+			if (($ByteID=@IPS_GetVariableIDByName("Upload",$router_categoryId))==false)
+  				{
+			  	$ByteID = CreateVariableByName($router_categoryId, "Upload", 2);
+				IPS_SetVariableCustomProfile($ByteID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$ByteID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$ByteID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+		  	SetValue($ByteID,$MBytes);
+			$summe += $MBytes;
+			if (($ByteID=@IPS_GetVariableIDByName("Total",$router_categoryId))==false)
+  				{
+			  	$ByteID = CreateVariableByName($router_categoryId, "Total", 2);
+				IPS_SetVariableCustomProfile($ByteID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$ByteID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$ByteID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+		  	SetValue($ByteID,$summe);
+			}
 		}
 
-	function get_routerdata_MR3420($router)
+	function write_routerdata_MBRN3000($router)
+		{
+		echo "Daten vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die Tageswerte von gestern erfasst.\n";
+		//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
+		$Router_Adresse = "http://".$router["USER"].":".$router["PASSWORD"]."@".$router["IPADRESSE"]."/";
+		echo "  Routeradresse die aufgerufen wird : ".$Router_Adresse." \n";
+		//print_r($router);
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$url=$Router_Adresse."traffic_meter.htm";
+		$result=@file_get_contents($url);
+		if ($result===false) {
+		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
+			$result=file_get_contents($url);
+			if ($result===false) {
+			   echo "Fehler beim holen der Webdatei. Abbruch. \n";
+			   break;
+			   }
+	  		}
+		$result=strip_tags($result);
+		$pos=strpos($result,"Period");
+		if ($pos!=false)
+			{
+			$result1=substr($result,$pos,6);       /*  Period  */
+	   	$result=substr($result,$pos+7,1500);
+			$result1=$result1.";".trim(substr($result,20,20));    /* Connection Time  */
+			$result=substr($result,140,1500);
+			$result1=$result1.";".trim(substr($result,20,40));    /* Upload */
+			$result=substr($result,40,1500);
+			$result1=$result1.";".trim(substr($result,20,30));    /* Download  */
+			$result=substr($result,30,1500);
+			$result1=$result1.";".trim(substr($result,20,40))."\n";  /*  Total  */
+			$result=substr($result,50,1500);
+			$result1=$result1.trim(substr($result,10,30));        /* Today   */
+			$result=substr($result,20,1500);
+			$result1=$result1.";".trim(substr($result,20,30));    /* Today Connection Time */
+			$result=substr($result,30,1500);
+			$result1=$result1.";".trim(substr($result,10,30));    /* Today Upload */
+			$result=substr($result,30,1500);
+			$result1=$result1.";".trim(substr($result,10,30));    /* Today Download */
+			$result=substr($result,30,1500);
+			$result1=$result1.";".trim(substr($result,10,30))."\n";    /* Today Total */
+			$result=substr($result,30,1500);
+			$result1=$result1.trim(substr($result,10,30));        /* Yesterday */
+			$result=substr($result,20,1500);
+
+			if (($ConnTimeID=@IPS_GetVariableIDByName("ConnTime",$router_categoryId))==false)
+  				{
+			  	$ConnTimeID = CreateVariableByName($router_categoryId, "ConnTime", 1);
+				//IPS_SetVariableCustomProfile($ConnTimeID,'MByte');
+				//AC_SetLoggingStatus($this->archiveHandlerID,$ConnTimeID,true);
+				//AC_SetAggregationType($this->archiveHandlerID,$ConnTimeID,0);
+				//IPS_ApplyChanges($this->archiveHandlerID);
+				}
+
+			$result2=trim(substr($result,20,30));
+		   $pos=strpos($result2,":");
+			$conntime=(int)substr($result2,0,$pos);
+			$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
+			SetValue($ConnTimeID,$conntime);
+			echo " Connection Time in Minuten bisher : ".$conntime." sind ".($conntime/60)." Stunden.\n";
+
+			$result1=$result1.";".$result2;    /* Yesterday Connection Time */
+			$result=substr($result,30,1500);
+
+			if (($UploadID=@IPS_GetVariableIDByName("Upload",$router_categoryId))==false)
+  				{
+			  	$UploadID = CreateVariableByName($router_categoryId, "Upload", 2);
+				IPS_SetVariableCustomProfile($UploadID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$UploadID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$UploadID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+
+			$result2=trim(substr($result,10,30));
+		   $pos=strpos($result2,".");
+			//if ($pos!=false)
+			//	{
+			//	$result2=substr($result2,0,$pos); /* .",".substr($result2,$pos+1,2);  keine Float Variable */
+			//	}
+			$Upload= (float) $result2;
+
+			SetValue($UploadID,$Upload);
+			echo " Upload Datenvolumen bisher ".$Upload." Mbyte \n";;
+
+			$result1=$result1.";".$result2;    /* Yesterday Upload */
+			$result=substr($result,30,1500);
+
+			if (($DownloadID=@IPS_GetVariableIDByName("Download",$router_categoryId))==false)
+  				{
+			  	$DownloadID = CreateVariableByName($router_categoryId, "Download", 2);
+				IPS_SetVariableCustomProfile($DownloadID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$DownloadID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$DownloadID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+
+			$result2=trim(substr($result,10,30));
+		   $pos=strpos($result2,".");
+			$Download= (float) $result2;
+			SetValue($DownloadID,$Download);
+			echo " Download Datenvolumen bisher ".$Download." \n";
+			}
+		}
+
+	/*
+	 *  Routerdaten direct aus dem Router auslesen,
+	 *
+	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
+	 *
+	 */
+
+	function get_routerdata_MBRN3000($router,$actual=false)
+		{
+		echo "Daten direkt vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die aktuellen Tageswerte erfasst.\n";
+		$Router_Adresse = "http://".$router["USER"].":".$router["PASSWORD"]."@".$router["IPADRESSE"]."/";
+		echo "    -> Routeradresse die aufgerufen wird : ".$Router_Adresse." \n";
+		//print_r($router);
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$url=$Router_Adresse."traffic_meter.htm";
+		$result=file_get_contents($url);
+		if ($result===false) {
+		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
+			$result=file_get_contents($url);
+			if ($result===false) {
+			   echo "Fehler beim holen der Webdatei. Abbruch. \n";
+			   break;
+			   }
+	  		}
+		$result=strip_tags($result);
+		$pos=strpos($result,"Period");
+		if ($pos!=false)
+			{
+			/* Überschriften aus der Tabelle einsammeln, mit Strichpunkt trennen */
+			$result_l1=substr($result,$pos,6);       /*  Period  */
+	   	$result=substr($result,$pos+7,1500);
+			$result_l1=$result_l1.";".trim(substr($result,20,20));    /* Connection Time  */
+			$result=substr($result,140,1500);
+			$result_l1=$result_l1.";".trim(substr($result,20,40));    /* Upload */
+			$result=substr($result,40,1500);
+			$result_l1=$result_l1.";".trim(substr($result,20,30));    /* Download  */
+			$result=substr($result,30,1500);
+			$result_l1=$result_l1.";".trim(substr($result,20,40));  /*  Total  */
+			
+			/* jetzt die Werte von heute einsammeln */
+			$result=substr($result,50,1500);
+			$result_l2=trim(substr($result,10,30));        /* Today   */
+			$result=substr($result,20,1500);
+				$result2=trim(substr($result,20,30));
+			   $pos=strpos($result2,":");
+				$conntime=(int)substr($result2,0,$pos);
+				$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
+				echo " Connection Time von Heute in Minuten : ".$conntime." sind ".round(($conntime/60),2)." Stunden.\n";
+			$result_l2=$result_l2.";".trim(substr($result,20,30));    /* Today Connection Time */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Upload= (float) $result2;
+				echo " Upload Datenvolumen Heute bisher ".$Upload." Mbyte \n";;
+			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Upload */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Download= (float) $result2;
+				echo " Download Datenvolumen Heute bisher ".$Download." MByte \n";
+			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Download */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Today_Totalload= (float) $result2;
+				echo " Gesamt Datenvolumen Heute bisher ".$Today_Totalload." Mbyte \n";
+			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Total */
+
+			/* und die Werte von gestern */
+			$result=substr($result,30,1500);
+			$result_l3=trim(substr($result,10,30));        /* Yesterday */
+			$result=substr($result,20,1500);
+				$result2=trim(substr($result,20,30));
+		   	$pos=strpos($result2,":");
+				$conntime=(int)substr($result2,0,$pos);
+				$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
+				echo " Connection Time von Gestern in Minuten : ".$conntime." sind ".round(($conntime/60),2)." Stunden.\n";
+			$result_l3=$result_l3.";".$result2;    /* Yesterday Connection Time */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Upload= (float) $result2;
+				echo " Upload Datenvolumen von Gestern ".$Upload." Mbyte \n";;
+			$result_l3=$result_l3.";".$result2;    /* Yesterday Upload */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Download= (float) $result2;
+				echo " Download Datenvolumen von Gestern ".$Download." Mbyte \n";
+			$result_l3=$result_l3.";".trim(substr($result,10,30));    /* Yesterday Download */
+			$result=substr($result,30,1500);
+				$result2=trim(substr($result,10,30));
+			   $pos=strpos($result2,".");
+				$Yesterday_Totalload= (float) $result2;
+				echo " Gesamt Datenvolumen gestern bisher ".$Yesterday_Totalload." Mbyte \n";
+			$result_l3=$result_l3.";".trim(substr($result,10,30));    /* Today Total */
+
+			echo "****** ".$result_l1." \n";
+			echo "****** ".$result_l2." \n";
+			echo "****** ".$result_l3." \n";
+
+			if ($actual==false)
+			   {
+			   return ($Yesterday_Totalload);
+			   }
+			else
+			   {
+			   return ($Today_Totalload);
+			   }
+			}
+		}
+
+
+	function get_routerdata($router)
 		{
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
@@ -193,6 +464,11 @@ class OperationCenter
 		      {
             $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
 		   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+		   	foreach ($werte as $wert)
+		   	   {
+		   	   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+		   	   }
+		   	//print_r($werte);
 				$result1[IPS_GetName($oid)]=$oid;
 		   	}
 		   else
@@ -200,8 +476,50 @@ class OperationCenter
 		   	echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
 		      }
 		   }
-		ksort($result1);
-		print_r($result1);
+		//ksort($result1);
+		//print_r($result1);
+		}
+
+	function get_routerdata_MR3420($router)
+		{
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$result=IPS_GetChildrenIDs($router_categoryId);
+		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		$ergebnis=0;
+		foreach($result as $oid)
+		   {
+		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		      {
+		      if (IPS_GetName($oid)=="MBytes_All")
+		         {
+		         $ergebnis=GetValue($oid);
+	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+			   	foreach ($werte as $wert)
+		   		   {
+		   		   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+		   	   	}
+					}
+		   	}
+		   }
+		return $ergebnis;
+		}
+
+
+	function get_data($oid)
+		{
+      $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+	  	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+	  	foreach ($werte as $wert)
+	  	   {
+	  	   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+	  	   }
 		}
 
 	function sort_routerdata_MR3420($router)
@@ -399,15 +717,15 @@ class parsefile
 		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
       if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
          {
+			echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
 			$CatID = IPS_CreateCategory();       // Kategorie anlegen
 			IPS_SetName($CatID, $name); // Kategorie benennen
 			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
 			}
-		echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert.\n";
 		$handle = @fopen($verzeichnis."SystemStatisticRpm.htm", "r");
 		if ($handle)
 			{
-			echo "Ergebnisfile gefunden.\n";
+			echo "Ergebnisfile ".$verzeichnis."SystemStatisticRpm.htm gefunden.\n";
 			$ok=true;
    		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
 				{
@@ -463,8 +781,72 @@ class parsefile
 					}
 				}
 			}
-	return $ergebnis_array;
-	}
+		return $ergebnis_array;
+		}
+
+	function parsetxtfile_Statistic($verzeichnis, $name)
+		{
+		$ergebnis_array=array();
+
+		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
+      if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
+         {
+			echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
+			$CatID = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($CatID, $name); // Kategorie benennen
+			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
+			}
+		/*  Routine sucht in einem File dass zeilenweise ausgelesen wird,
+		 *   es wird zwischen dem Anfangsstring und dem Endstring ausgewertet
+		 */
+		$handle = @fopen($verzeichnis."StatusRpm.htm", "r");
+		if ($handle)
+			{
+			echo "Ergebnisfile ".$verzeichnis."StatusRpm.htm gefunden.\n";
+			$ok=true;
+   		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
+				{
+				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+				//echo $buffer;
+	      	if(preg_match('/statistList/i',$buffer))
+		   		{
+		   		do {
+		   		   if (($buffer = fgets($handle, 4096))==false) {	$ok=false; }
+			      	if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
+						if ($ok)
+						   {
+						   /* nächste Zeile wurde ausgelesen, hier stehen die wichtigen Informationen */
+					  		$pos1=strpos($buffer,'"');
+							//echo "      |".$buffer."    | ".$pos1."  \n";
+							if ($pos1!==false)
+								{
+						  		$pos2=strpos($buffer,'"',$pos1+1);
+						  		//echo "Die ersten zwei Anführungszeichen sind auf Position ".$pos1." und ".$pos2." \n";
+						  		$received_bytes=substr($buffer,$pos1+1,$pos2-$pos1-1);
+						  		$ergebnis_array["RxBytes"]=$this->removecomma($received_bytes);
+								$buffer=trim(substr($buffer,$pos2+1,200));
+						  		$pos1=strpos($buffer,"\"");
+								if ($pos1!=false)
+									{
+							  		$pos2=strpos($buffer,"\"",$pos1+1);
+							  		$transmitted_bytes=substr($buffer,$pos1+1,$pos2-$pos1-1);
+							  		$ergebnis_array["TxBytes"]=$this->removecomma($transmitted_bytes);
+							  		$ok=false;
+									}
+								}
+						   }
+		   		   } while ($ok==true);
+					}
+				}
+			}
+		echo "Received Bytes : ".$ergebnis_array["RxBytes"]." Transmitted Bytes : ".$ergebnis_array["TxBytes"]." \n";
+		return $ergebnis_array;
+		}
+
+	private function removecomma($number)
+	   {
+	   return str_replace(',','',$number);
+	   }
 
 	} /* Ende class */
 

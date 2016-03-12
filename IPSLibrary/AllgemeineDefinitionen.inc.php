@@ -367,7 +367,7 @@ else
 
 	/* verzeichnisse */
 	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
-	define("ADR_Router","11.0.1.1");
+	define("ADR_Router","10.0.0.1");
 	}
 
 //$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
@@ -1002,10 +1002,15 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MR3420')
 				   {
+					$OperationCenter->get_routerdata_MR3420($router);
 					}
 				if ($router['TYP']=='RT1900ac')
 				   {
 
+					}
+				if ($router['TYP']=='MBRN3000')
+				   {
+					$OperationCenter->get_routerdata_MR3420($router);
 					}
 				}
 			}
