@@ -30,7 +30,7 @@ class OperationCenter
 			{
 		   $this->CategoryIdData=$CategoryIdData;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
-         $this->mactable=$this->evaluate_traceroute($subnet);
+         $this->mactable=$this->get_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
@@ -70,12 +70,12 @@ class OperationCenter
 		   }
 		}
 
-	function evaluate_traceroute($subnet)
+	function get_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
 		$ergebnis=""; $print_table="";
-		unset($catch);
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		unset($catch);
 		exec('arp -a',$catch);
 		foreach($catch as $line)
    		{
@@ -91,7 +91,7 @@ class OperationCenter
 			else
 			   {
 		   	//echo $line."\n";
-				if (is_numeric(substr($result1,-1)))   /* letzte Wert in der IP Adresse wirklich eine Zahl */
+				if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
 					{
 					$ergebnis.=$result1.";".$result2;
 					$print_table.=$line;
@@ -123,12 +123,35 @@ class OperationCenter
 			//print_r($result_array);
 			if (sizeof($result_array)>2)
 			   {
-				$mactable[$result_array[1]]=$result_array[0];
+			   if ($result_array[1]!='ff-ff-ff-ff-ff-ff')
+			      {
+					$mactable[$result_array[1]]=$result_array[0];
+					}
 				}
 			}
-		//echo $print_table;
-		return($mactable);
+		if ($printHostnames==true)
+		   {
+			return ($print_table);
+			}
+		else
+		   {
+			return($mactable);
+			}
 		}
+		
+	function find_HostNames()
+	   {
+		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		foreach ($this->mactable as $mac => $ip )
+		   {
+		   $result="unknown";
+		   foreach ($ipadressen as $name => $entry)
+		      {
+		      if ($entry["Mac_Adresse"]==$mac) { $result=$name; }
+		      }
+		   echo "   ".$mac."   ".str_pad($ip,12)." ".$result."\n";
+		   }
+	   }
 
 	function write_routerdata_MR3420($router)
 		{

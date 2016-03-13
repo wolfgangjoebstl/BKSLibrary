@@ -597,7 +597,7 @@ if (isset ($installedModules["RemoteAccess"]))
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		$mactable=$OperationCenter->evaluate_traceroute($subnet);
+		$mactable=$OperationCenter->get_macipTable($subnet);
 		print_r($mactable);
 		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
@@ -739,7 +739,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 			if (isset ($installedModules["IPSCam"]))
 				{
-				$mactable=$OperationCenter->evaluate_traceroute($subnet);
+				$mactable=$OperationCenter->get_macipTable($subnet);
 				print_r($mactable);
 				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
