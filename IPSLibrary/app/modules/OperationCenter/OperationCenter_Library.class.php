@@ -30,7 +30,7 @@ class OperationCenter
 			{
 		   $this->CategoryIdData=$CategoryIdData;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
-         $this->mactable=$this->evaluate_traceroute($subnet);
+         $this->mactable=$this->get_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
@@ -70,12 +70,12 @@ class OperationCenter
 		   }
 		}
 
-	function evaluate_traceroute($subnet)
+	function get_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
 		$ergebnis=""; $print_table="";
-		unset($catch);
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		unset($catch);
 		exec('arp -a',$catch);
 		foreach($catch as $line)
    		{
@@ -91,7 +91,7 @@ class OperationCenter
 			else
 			   {
 		   	//echo $line."\n";
-				if (is_numeric(substr($result1,-1)))   /* letzte Wert in der IP Adresse wirklich eine Zahl */
+				if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
 					{
 					$ergebnis.=$result1.";".$result2;
 					$print_table.=$line;
@@ -123,12 +123,39 @@ class OperationCenter
 			//print_r($result_array);
 			if (sizeof($result_array)>2)
 			   {
-				$mactable[$result_array[1]]=$result_array[0];
+			   if ($result_array[1]!='ff-ff-ff-ff-ff-ff')
+			      {
+					$mactable[$result_array[1]]=$result_array[0];
+					}
 				}
 			}
-		//echo $print_table;
-		return($mactable);
+		if ($printHostnames==true)
+		   {
+			return ($print_table);
+			}
+		else
+		   {
+			return($mactable);
+			}
 		}
+		
+	function find_HostNames()
+	   {
+	   $ergebnis="";
+		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		foreach ($this->mactable as $mac => $ip )
+		   {
+		   $result="unknown"; $result2="";
+		   foreach ($ipadressen as $name => $entry)
+		      {
+		      //echo "Vergleiche ".$entry["Mac_Adresse"]." mit ".$mac."\n";
+		      if (strtoupper($entry["Mac_Adresse"])==strtoupper($mac)) { $result=$name; $result2=$entry["Hostname"];}
+		      }
+		   echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
+		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
+		   }
+		return ($ergebnis);
+	   }
 
 	function write_routerdata_MR3420($router)
 		{
@@ -219,7 +246,7 @@ class OperationCenter
 
 	function write_routerdata_MBRN3000($router)
 		{
-		echo "Daten vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die Tageswerte von gestern erfasst.\n";
+		echo "  Daten vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die Tageswerte von gestern erfasst.\n";
 		//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
 		$Router_Adresse = "http://".$router["USER"].":".$router["PASSWORD"]."@".$router["IPADRESSE"]."/";
 		echo "  Routeradresse die aufgerufen wird : ".$Router_Adresse." \n";
@@ -234,10 +261,10 @@ class OperationCenter
 		$url=$Router_Adresse."traffic_meter.htm";
 		$result=@file_get_contents($url);
 		if ($result===false) {
-		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
+		   echo "  -->Fehler beim holen der Webdatei. Noch einmal probieren. \n";
 			$result=file_get_contents($url);
 			if ($result===false) {
-			   echo "Fehler beim holen der Webdatei. Abbruch. \n";
+			   echo "   Fehler beim holen der Webdatei. Abbruch. \n";
 			   break;
 			   }
 	  		}
@@ -282,7 +309,7 @@ class OperationCenter
 			$conntime=(int)substr($result2,0,$pos);
 			$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
 			SetValue($ConnTimeID,$conntime);
-			echo " Connection Time in Minuten bisher : ".$conntime." sind ".($conntime/60)." Stunden.\n";
+			echo "    Connection Time in Minuten heute bisher : ".$conntime." sind ".($conntime/60)." Stunden.\n";
 
 			$result1=$result1.";".$result2;    /* Yesterday Connection Time */
 			$result=substr($result,30,1500);
@@ -305,7 +332,7 @@ class OperationCenter
 			$Upload= (float) $result2;
 
 			SetValue($UploadID,$Upload);
-			echo " Upload Datenvolumen bisher ".$Upload." Mbyte \n";;
+			echo "     Upload   Datenvolumen gestern ".$Upload." Mbyte \n";;
 
 			$result1=$result1.";".$result2;    /* Yesterday Upload */
 			$result=substr($result,30,1500);
@@ -323,7 +350,7 @@ class OperationCenter
 		   $pos=strpos($result2,".");
 			$Download= (float) $result2;
 			SetValue($DownloadID,$Download);
-			echo " Download Datenvolumen bisher ".$Download." \n";
+			echo "     Download Datenvolumen gestern ".$Download." MByte \n";
 			}
 		}
 
@@ -348,7 +375,7 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$url=$Router_Adresse."traffic_meter.htm";
-		$result=file_get_contents($url);
+		$result=@file_get_contents($url);
 		if ($result===false) {
 		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
 			$result=file_get_contents($url);
@@ -480,7 +507,7 @@ class OperationCenter
 		//print_r($result1);
 		}
 
-	function get_routerdata_MR3420($router)
+	function get_routerdata_MR3420($router,$actual=false)
 		{
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
@@ -496,7 +523,7 @@ class OperationCenter
 		   {
 		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
 		      {
-		      if (IPS_GetName($oid)=="MBytes_All")
+		      if (IPS_GetName($oid)=="Total")
 		         {
 		         $ergebnis=GetValue($oid);
 	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
@@ -522,7 +549,7 @@ class OperationCenter
 	  	   }
 		}
 
-	function sort_routerdata_MR3420($router)
+	function sort_routerdata($router)
 		{
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
@@ -532,13 +559,22 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$result=IPS_GetChildrenIDs($router_categoryId);
-		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		echo "Wir sortieren die Routerdaten in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		/* alle mit Archivfunktion werden an den Anfang geschoben und entsprechend alphabetisch sortieren */
 		$result1=array();
 		foreach($result as $oid)
 		   {
 		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
 		      {
-				$result1[IPS_GetName($oid)]=$oid;
+		      //echo "  --- ".substr(IPS_GetName($oid),0,4)."\n";
+		      if ((substr(IPS_GetName($oid),0,4))=="MByt")
+		         {
+					$result1[IPS_GetName($oid)]=$oid;
+					}
+				else
+				   {
+					$result1["zzy".IPS_GetName($oid)]=$oid;
+				   }
 		   	}
 		   else
 		      {

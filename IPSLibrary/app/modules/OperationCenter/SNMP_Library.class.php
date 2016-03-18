@@ -209,12 +209,13 @@ class SNMP
 		            SetValue($obj->ips_var, $z[0]);
 		            SetValue($ips_vare,$z[1]);
 		            SetValue($ips_varc,$a);
+						echo "           Neuer Wert : ".$z[0].substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
 		            }
 		         else
 		            {
 		            /* Übertrag, zu schwierig zum nachdenken, Wert einfach auslassen */
+						echo "           Übertrag falsch, neuer Wert: ".$z[0]." Alter Wert ".GetValue($obj->ips_var)." \n";
 		            }
-					echo "           Neuer Wert : ".$z[0].substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
 					}
 				else
 				   {

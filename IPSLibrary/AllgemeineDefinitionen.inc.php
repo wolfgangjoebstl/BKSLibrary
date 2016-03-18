@@ -993,24 +993,26 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($CatIdData,$subnet);
 			
-			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
-
+			$ergebnisOperationCenter.="\nAngeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
+			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
 			$OperationCenterConfig = OperationCenter_Configuration();
+
+			$ergebnisOperationCenter.="\nAktuelles Datenvolumen für die verwendeten Router : \n";
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
-			   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+				if ($router['TYP']=='MBRN3000')
+				   {
+					$ergebnisOperationCenter.="    Werte von Heute   : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+				   }
 				if ($router['TYP']=='MR3420')
 				   {
-					$OperationCenter->get_routerdata_MR3420($router);
+					$ergebnisOperationCenter.="    Werte von Heute   : ".$OperationCenter->get_routerdata_MR3420($router)." Mbyte \n";
 					}
 				if ($router['TYP']=='RT1900ac')
 				   {
-
-					}
-				if ($router['TYP']=='MBRN3000')
-				   {
-					$OperationCenter->get_routerdata_MR3420($router);
+					$OperationCenter->get_routerdata($router);
 					}
 				}
 			}
@@ -1376,17 +1378,61 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************/
 
+		if (isset($installedModules["OperationCenter"])==true)
+		   {
+			$ergebnisOperationCenter="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
+
+			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+			IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+			IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+			IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
+			$CatIdData  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.OperationCenter');
+			$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CatIdData, 20);
+			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+			$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+
+			$subnet="10.255.255.255";
+			$OperationCenter=new OperationCenter($CatIdData,$subnet);
+
+			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
+
+			$OperationCenterConfig = OperationCenter_Configuration();
+
+			$ergebnisOperationCenter.="\nHistorisches Datenvolumen für die verwendeten Router : \n";
+	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
+			   {
+			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
+				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+				if ($router['TYP']=='MBRN3000')
+				   {
+					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+				   }
+				if ($router['TYP']=='MR3420')
+				   {
+					$OperationCenter->sort_routerdata($router);
+					$OperationCenter->get_routerdata($router);
+					}
+				if ($router['TYP']=='RT1900ac')
+				   {
+					$OperationCenter->get_routerdata($router);
+					}
+				}
+		   }
+		   
+		/******************************************************************************************/
+
 	   if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$ergebnisOperationCenter.$statusverlauf.$ergebnisStrom.
+			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
-					  $ergebnistab_energie.$ergebnis_tagesenergie.$alleMotionWerte.$inst_modules;
+					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleMotionWerte.$inst_modules;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.
-			$ergebnisRegen.$guthaben.$cost.$internet.$ergebnisOperationCenter.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$IPStatus.$alleMotionWerte.$inst_modules;
+			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleMotionWerte.$inst_modules;
 			}
 		}
 

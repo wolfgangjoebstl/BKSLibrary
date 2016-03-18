@@ -7,7 +7,7 @@
 	 * Script zur Ansteuerung der Giessanlage in BKS
 	 *
 	 *
-	 * @file          Gartensteuerung_Installation.ips.php
+	 * @file          AllgemeineDefinitionen.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.44, 07.08.2014<br/>
@@ -21,7 +21,7 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('Startpage',$repository);
+		$moduleManager = new IPSModuleManager('AllgemeineDefinitionen',$repository);
 	}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
@@ -35,8 +35,8 @@
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Startpage');
-	echo "\nRemoteReadWrite Version : ".$ergebnis;
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('AllgemeineDefinitionen');
+	echo "\nAllgemeineDefinitionen Version : ".$ergebnis;
 	
 
 

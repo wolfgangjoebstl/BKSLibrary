@@ -418,7 +418,7 @@ if ($_IPS['SENDER']=="Execute")
 
 
 
-	}
+	} /* Ende Execute */
 
 
 /*********************************************************************************************/
@@ -431,6 +431,7 @@ if ($_IPS['SENDER']=="Variable")
 	{
 	$variableID=$_IPS['VARIABLE'];
 	$value=GetValue($variableID);
+	$configuration = Autosteuerung_GetEventConfiguration();
 	/* eine Variablenaenderung ist aufgetreten */
 	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
@@ -494,7 +495,9 @@ if ($_IPS['SENDER']=="Variable")
 			}
 		}
 	else  {
-  		tts_play(1,'Taste gedrueckt mit Zahl '.$variable,'',2);
+	  	if ($speak_config["Parameter"][1]=="Debug") {
+  		tts_play(1,'Fehler, Taste gedrueckt mit Zahl '.$variable,'',2);
+  		   }
   		}
 
 
@@ -721,6 +724,7 @@ function Status($params,$status,$simulate=false)
 			   {
 				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
 				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
+				if (strtoupper($params_two[0])=="TOGGLE") { $status=!$status;};
 			   }
 	   case "1":
 	   	$params_one=explode(":",$moduleParams2[0]);
@@ -807,33 +811,46 @@ function Status($params,$status,$simulate=false)
 		{
 		if ($status===true)
 			{
-			IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue);
+			IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
 			}
 		else
 	 		{
 		 	/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
 		  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
 			}
+			
 		if (isset($levelValue)==true)
 		 	{
 	  		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
 			}
 
-
-
-
 		$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
 		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-
+		$prgCategoryId   = IPS_GetObjectIDByIdent('Programs', $baseId);
+		
 		$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 		if ($resultID==false)
 	   	{
 			$resultID=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
 			if ($resultID==false)
 	   		{
-				/* Name nicht bekannt */
+				$resultID=@IPS_GetVariableIDByName($SwitchName,$prgCategoryId);
+				if ($resultID==false)
+		   		{
+					/* Name nicht bekannt */
+		   		}
+		   	else /* Wert ist ein Programm */
+		   	   {
+		  			IPSLogger_Dbg(__file__, 'Wert '.$SwitchName.' ist ein Programm. ');
+		  			$command.="IPSLight_SetProgramNextByName(\"".$SwitchName."\");";
+					$result["COMMAND"]=$command;
+	  		   	if ($simulate==false)
+  		   		   {
+	   	  	   	IPSLight_SetProgramNextByName($SwitchName);
+						}
+		   	   }
 		   	}
 		   else   /* Wert ist eine Gruppe */
 	   	   {

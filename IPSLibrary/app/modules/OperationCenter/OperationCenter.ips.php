@@ -369,6 +369,7 @@ if ($_IPS['SENDER']=="Execute")
 		echo "\nSind die Webcams erreichbar ....\n";
 		foreach ($ipscam_configuration as $webcam)
 	   	{
+	   	/* es gibt einen IPS Component befehl, der wird jetzt zerlegt, da darin die IP Adresse ist */
 			$webcam_config=explode(',',$webcam['Component']);
 			//print_r($webcam_config);
 			if ($webcam_config[0]=="IPSComponentCam_Instar")
@@ -379,7 +380,7 @@ if ($_IPS['SENDER']=="Execute")
 			   {
 				$url="http://".$webcam_config[1]."/info.html";  	/* gets the data from a URL */
 				}
-			echo "Erreichbarkeit Kamera ".$webcam['Name']."  ".$url."\n";
+			echo "  Erreichbarkeit Kamera ".$webcam['Name']."  ".$url."\n";
 			$ch = curl_init($url);
 			$timeout = 5;
 			curl_setopt($ch, CURLOPT_URL, $url);
@@ -402,11 +403,11 @@ if ($_IPS['SENDER']=="Execute")
    		$errmsg  = curl_error( $ch );
 	   	$header  = curl_getinfo( $ch );
 			curl_close($ch);
-			echo "  Channel :".$ch." und IP Adresse aus Header ".$header["primary_ip"].":".$header["primary_port"]."\n";
+			echo "    Channel :".$ch." und IP Adresse aus Header ".$header["primary_ip"].":".$header["primary_port"]."\n";
 
 			if ($err>0)
 			   {
-				echo " Nicht erreicht, Fehler ".$err." von ";
+				echo "    Nicht erreicht, Fehler ".$err." von ";
 				print_r($errmsg);
 				echo "\n";
 				//print_r($header);
@@ -421,11 +422,11 @@ if ($_IPS['SENDER']=="Execute")
 						$result3=substr($data,strpos($data,"alarm_status_info"),50);
 						if (strpos($data,"write(id)")==false)
 			   			{
-							echo " Nicht ausgelesen.\n";
+							echo "    Nicht ausgelesen.\n";
 							}
 						else
 						   {
-				   		echo "   erreicht !\n";
+				   		echo "    erreicht !\n";
 							//echo "  KameraID         : ".htmlentities($result1)."\n";
 							//echo "  Firmware Version : ".htmlentities($result2)."\n";
 							//echo "  Alarm Status     : ".htmlentities($result3)."\n";
@@ -435,12 +436,12 @@ if ($_IPS['SENDER']=="Execute")
 						$result1=substr($data,strpos($data,"Kamera ID"),50);
 						if (strpos($data,"Kamera ID")==false)
 			   			{
-							echo " Nicht ausgelesen.\n";
+							echo "    Nicht ausgelesen.\n";
 							}
 						else
 						   {
-				   		echo "   erreicht !\n";
-							echo "  KameraID         : ".htmlentities($result1)."\n";
+				   		echo "    erreicht !\n";
+							echo "    KameraID         : ".htmlentities($result1)."\n";
 							}
 					default:
 					   break;
@@ -472,7 +473,7 @@ if (isset ($installedModules["RemoteAccess"]))
    	Auswertung Router MR3420   curl
 	**********************************************************/
 
-	echo "\nAuswertung Router Daten.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	echo "\nAuswertung Router Daten.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n\n";
 
 	$mr3420=false;    /* jetzt mit imacro geloest, die können die gesamte Webseite inklusive Unterverzeichnisse abspeichern und beliebig im Frame manövrieren */
 	if ($mr3420==true)
@@ -588,17 +589,18 @@ if (isset ($installedModules["RemoteAccess"]))
 	**********************************************************/
 
 	echo "ARP Auswertung für alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
+	$OperationCenter->find_Hostnames();
 
 	/********************************************************
    	Sys_Ping durchführen basierend auf ermittelter mactable
 	**********************************************************/
 
+	echo "\nSys_Ping für alle bekannten IP Adressen durchführen:                              ".(microtime(true)-$startexec)." Sekunden\n";
 	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		$mactable=$OperationCenter->evaluate_traceroute($subnet);
-		print_r($mactable);
+		$mactable=$OperationCenter->get_macipTable($subnet);
 		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
@@ -662,13 +664,21 @@ if (isset ($installedModules["RemoteAccess"]))
 	   {
 	   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+		if ($router['TYP']=='MBRN3000')
+		   {
+			//$OperationCenter->sort_routerdata($router);
+			//$OperationCenter->get_routerdata($router);
+			echo "MBRN3000 Werte von Heute   : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+			echo "MBRN3000 Werte von Gestern : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+		   }
 		if ($router['TYP']=='MR3420')
 		   {
-			$OperationCenter->sort_routerdata_MR3420($router);
+			$OperationCenter->sort_routerdata($router);
 			$OperationCenter->get_routerdata($router);
 			}
 		if ($router['TYP']=='RT1900ac')
 		   {
+			$OperationCenter->get_routerdata($router);
 			}
 		}
 
@@ -730,6 +740,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					}
 				if ($router['TYP']=='MBRN3000')
 				   {
+					$OperationCenter->write_routerdata_MBRN3000($router);
 				   }
 		   	} /* Ende foreach */
 
@@ -739,7 +750,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 			if (isset ($installedModules["IPSCam"]))
 				{
-				$mactable=$OperationCenter->evaluate_traceroute($subnet);
+				$mactable=$OperationCenter->get_macipTable($subnet);
 				print_r($mactable);
 				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
