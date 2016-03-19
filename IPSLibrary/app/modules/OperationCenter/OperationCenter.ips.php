@@ -601,10 +601,7 @@ if (isset ($installedModules["RemoteAccess"]))
 	if (isset ($installedModules["IPSCam"]))
 		{
 		$mactable=$OperationCenter->get_macipTable($subnet);
-<<<<<<< HEAD
-=======
-		print_r($mactable);
->>>>>>> origin/master
+		//print_r($mactable);
 		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{

@@ -141,7 +141,6 @@ class OperationCenter
 		
 	function find_HostNames()
 	   {
-<<<<<<< HEAD
 	   $ergebnis="";
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
 		foreach ($this->mactable as $mac => $ip )
@@ -156,18 +155,6 @@ class OperationCenter
 		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
 		   }
 		return ($ergebnis);
-=======
-		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
-		foreach ($this->mactable as $mac => $ip )
-		   {
-		   $result="unknown";
-		   foreach ($ipadressen as $name => $entry)
-		      {
-		      if ($entry["Mac_Adresse"]==$mac) { $result=$name; }
-		      }
-		   echo "   ".$mac."   ".str_pad($ip,12)." ".$result."\n";
-		   }
->>>>>>> origin/master
 	   }
 
 	function write_routerdata_MR3420($router)
