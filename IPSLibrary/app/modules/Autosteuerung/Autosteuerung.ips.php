@@ -84,27 +84,6 @@ $configuration = Autosteuerung_GetEventConfiguration();
 $scenes=Autosteuerung_GetScenes();
 //print_r($configuration);
 
-// Sonnenauf.- u. Untergang berechnen
-$longitude = 16.36; //14.074881;
-$latitude = 48.21;  //48.028615;
-$timestamp = time();
-/*php >Funktion: par1: Zeitstempel des heutigen Tages
-					  par2: Format des retourwertes, String, Timestamp, float SUNNFUNCS_RET_xxxxx
-					  par3: north direction (for south use negative)
-					  par4: west direction (for east use negative)
-					  par5: zenith, see example
-							$zenith=90+50/60; Sunrise/sunset
-							$zenith=96; Civilian Twilight Start/end
-							$zenith=102; Nautical Twilight Start/End
-							$zenith=108; Astronomical Twilight start/End
-					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
-					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
-*/
-$sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-$sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-
-echo "Sonnenauf/untergang ".date("H:i",$sunrise)." ".date("H:i",$sunset)." \n";
-
 $speak_config=Autosteuerung_Speak();
 
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
@@ -380,7 +359,7 @@ if ($_IPS['SENDER']=="Execute")
 			{
 			echo "  Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
+       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
        	//print_r($actualTime);
        	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];
@@ -527,7 +506,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   foreach($scenes as $scene)
 			{
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$sunset);}
+       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
        	print_r($actualTime);
        	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];
@@ -811,7 +790,11 @@ function Status($params,$status,$simulate=false)
 				$result["COND"]=$cond;
 				if ($cond=="LIGHT")
 				   {
-				   
+				   if ($auto->isitdark) {unset($switchname);}
+				   }
+				if ($cond=="DARK")
+				   {
+				   if ($auto->isitlight) {unset($switchname);}
 				   }
 				break;
 			}
@@ -1591,19 +1574,58 @@ function switchNameGroup($SwitchName,$status,$simulate=false)
 
 class Autosteuerung
 	{
+	var $sunrise=0;
+	var $sunset=0;
 
 	public function __construct()
-			{
-
-			}
+		{
+		// Sonnenauf.- u. Untergang berechnen
+		$longitude = 16.36; //14.074881;
+		$latitude = 48.21;  //48.028615;
+		$timestamp = time();
+		/*php >Funktion: par1: Zeitstempel des heutigen Tages
+					  par2: Format des retourwertes, String, Timestamp, float SUNNFUNCS_RET_xxxxx
+					  par3: north direction (for south use negative)
+					  par4: west direction (for east use negative)
+					  par5: zenith, see example
+							$zenith=90+50/60; Sunrise/sunset
+							$zenith=96; Civilian Twilight Start/end
+							$zenith=102; Nautical Twilight Start/End
+							$zenith=108; Astronomical Twilight start/End
+					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
+					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
+		*/
+		$sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		$sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		echo "Sonnenauf/untergang ".date("H:i",$sunrise)." ".date("H:i",$sunset)." \n";
+		}
 
 	function isitdark()
 		{
-	
-	
+		$acttime=time();
+		if (($acttime>self::$sunset) || ($acttime<self::$sunrise))
+			{
+			return(true);
+			}
+		else
+		   {
+			return(false);
+			}
 		}
 	
-	
+	function isitlight()
+		{
+		$acttime=time();
+		if (($acttime<self::$sunset) && ($acttime>self::$sunrise))
+			{
+			return(true);
+			}
+		else
+		   {
+			return(false);
+			}
+		}
+
 
 	}
 	
