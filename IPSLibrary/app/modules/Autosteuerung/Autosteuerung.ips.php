@@ -110,6 +110,8 @@ $speak_config=Autosteuerung_Speak();
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 $register=new AutosteuerungHandler($scriptIdAutosteuerung);
 
+$auto=new Autosteuerung();
+
 /*********************************************************************************************/
 
 
@@ -666,8 +668,8 @@ function Status($params,$status,$simulate=false)
    /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe,false',),       														*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe,true,20',),       														*/
-   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
-   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,timer#dawn-23:45',),       			*/
+   /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,if:light',),       				*/
 
 	$result=Array();
 	$moduleParams2=Array();
@@ -803,6 +805,14 @@ function Status($params,$status,$simulate=false)
 		   case "MUTE":
 				$mute=$befehl[1];
 				$result["MUTE"]=$mute;
+				break;
+		   case "IF":
+				$cond=strtoupper($befehl[1]);
+				$result["COND"]=$cond;
+				if ($cond=="LIGHT")
+				   {
+				   
+				   }
 				break;
 			}
 		} /* ende foreach */
@@ -960,16 +970,16 @@ function Status($params,$status,$simulate=false)
 			   	   }
 		   	  	}
 				}
-		  }
-		} // Ende isset Switchname
+		  }   /* Ende Wert ist ein Schalter */
 
-   if ($delayValue>0)
-      {
-   	if ($simulate==false)
+	   if ($delayValue>0)
    	   {
-	      setEventTimer($SwitchName,$delayValue,$command);
-			}
-	   }
+   		if ($simulate==false)
+   	   	{
+		      setEventTimer($SwitchName,$delayValue,$command);
+				}
+	   	}
+		} // Ende isset Switchname
 
   	if (($simulate==false) && (isset($mute)==false))
   	   {
@@ -1577,8 +1587,24 @@ function switchNameGroup($SwitchName,$status,$simulate=false)
 	return $command;
 	}
 
+/*********************************************************************************************/
 
+class Autosteuerung
+	{
 
+	public function __construct()
+			{
 
+			}
+
+	function isitdark()
+		{
+	
+	
+		}
+	
+	
+
+	}
 	
 ?>
