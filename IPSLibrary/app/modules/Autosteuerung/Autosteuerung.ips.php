@@ -48,9 +48,9 @@ echo $inst_modules."\n\n";
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
-	echo "Category App         ID:".$CategoryIdApp."\n";
-	echo "Category Data        ID:".$CategoryIdData."\n";
-	echo "Category Script      ID:".$scriptId."\n";
+	echo "Category App           ID:".$CategoryIdApp."\n";
+	echo "Category Data          ID:".$CategoryIdData."\n";
+	echo "Category Script        ID:".$scriptId."\n";
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -63,8 +63,8 @@ if (isset($NachrichtenScriptID))
 	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
-	echo "Nachrichten Script   ID:".$NachrichtenScriptID."\n";
-	echo "Nachrichten Input    ID: ".$NachrichtenInputID."\n";
+	echo "Nachrichten Script     ID:".$NachrichtenScriptID."\n";
+	echo "Nachrichten Input      ID: ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
 	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
 	}
@@ -115,6 +115,7 @@ if ($_IPS['SENDER']=="Execute")
 	   echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 	   echo "Eintrag fuer : ".$key." Name : ".IPS_GetName($key)." Parent : ".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
+	   print_r($auto->ParseCommand($entry));
 	   switch ($entry[1])
 	      {
 	      case "Switch":
@@ -790,11 +791,11 @@ function Status($params,$status,$simulate=false)
 				$result["COND"]=$cond;
 				if ($cond=="LIGHT")
 				   {
-				   if ($auto->isitdark) {unset($switchname);}
+				   if ($auto->isitdark()) {unset($switchname);}
 				   }
 				if ($cond=="DARK")
 				   {
-				   if ($auto->isitlight) {unset($switchname);}
+				   if ($auto->isitlight()) {unset($switchname);}
 				   }
 				break;
 			}
@@ -966,10 +967,16 @@ function Status($params,$status,$simulate=false)
 
   	if (($simulate==false) && (isset($mute)==false))
   	   {
-		/* Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
+		if (isset($speak)==true)
+		   {
+		  	if ($speak_config["Parameter"][0]=="On") {
+				tts_play(1,$speak,'',2);
+				}
+  	      }
+		/* Debug Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
 		If ($params[0]=="OnUpdate")
 			{
-		  	if ($speak_config["Parameter"][0]=="On") {
+		  	if ($speak_config["Parameter"][1]=="Debug") {
 				tts_play(1,"Taster ".$speak."wurde gedrueckt.",'',2);
 				}
 			}
@@ -977,14 +984,14 @@ function Status($params,$status,$simulate=false)
 			{
 			if ($status)
 				{
-				if ($speak_config["Parameter"][0]=="On")
+				if ($speak_config["Parameter"][1]=="Debug")
 					{
 					tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
 					}
 				}
 			else
 				{
-			  	if ($speak_config["Parameter"][0]=="On")  {
+			  	if ($speak_config["Parameter"][1]=="Debug")  {
 					tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
 					}
 				}
@@ -1056,6 +1063,7 @@ function statusRGB($params,$status,$simulate=false)
 			   {
 				if (strtoupper($params_two[0])=="TRUE") { $value=true; };
 				if (strtoupper($params_two[0])=="FALSE") { $value=false; };
+				if (strtoupper($params_two[0])=="TOGGLE") { $status=!$status;};
 			   }
 	   case "1":         /* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
 	   	$params_one=explode(":",$moduleParams2[0]);
@@ -1140,8 +1148,20 @@ function statusRGB($params,$status,$simulate=false)
 				$result["SPEAK"]=$speak;
 				break;
 		   case "MUTE":
-				$mute=$befehl[1];
+				$mute=strtoupper($befehl[1]);
 				$result["MUTE"]=$mute;
+				break;
+		   case "IF":
+				$cond=strtoupper($befehl[1]);
+				$result["COND"]=$cond;
+				if ($cond=="LIGHT")
+				   {
+				   if ($auto->isitdark()) {unset($SwitchName);}
+				   }
+				if ($cond=="DARK")
+				   {
+				   if ($auto->isitlight()) {unset($SwitchName);}
+				   }
 				break;
 			}
 		} /* ende foreach */
@@ -1364,7 +1384,7 @@ function SwitchFunction()
 	   {
 		IPSLight_SetSwitchByName($params[2],true);
 	  	}
-	if ($speak_config["Parameter"][0]=="On")
+	if ($speak_config["Parameter"][1]=="Debug")
 		{
 		tts_play(1,"Schalter ".$params[2]." manuell auf ".$switchStatus.".",'',2);
 		}
@@ -1430,7 +1450,7 @@ function Ventilator()
 	   {
       /* wenn Parameter ueberschritten etwas tun */
    	$temperatur=GetValue($_IPS['VARIABLE']);
-   	if ($speak_config["Parameter"][0]=="On")
+   	if ($speak_config["Parameter"][1]=="Debug")
   		   {
   			tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
   			}
@@ -1445,7 +1465,7 @@ function Ventilator()
 			if ($status==false)
 			   {
 	     		IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
-		     	if ($speak_config["Parameter"][0]=="On")
+		     	if ($speak_config["Parameter"][1]=="Debug")
 	   	   	{
 	     			tts_play(1,"Ventilator ein.",'',2);
 		  			}
@@ -1456,7 +1476,7 @@ function Ventilator()
 			if ($status==true)
 			   {
 		     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
-	   	  	if ($speak_config["Parameter"][0]=="On")
+	   	  	if ($speak_config["Parameter"][1]=="Debug")
 	  	   		{
 	  				tts_play(1,"Ventilator aus.",'',2);
 	  				}
@@ -1475,7 +1495,7 @@ function Parameter()
 	
 	/* wenn Parameter ueberschritten etwas tun */
 	$temperatur=GetValue($_IPS['VARIABLE']);
-	if ($speak_config["Parameter"][0]=="On")
+	if ($speak_config["Parameter"][1]=="Debug")
 	   {
 		tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
 		}
@@ -1491,7 +1511,7 @@ function Parameter()
 		if ($status==false)
 		   {
 	     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
-	     	if ($speak_config["Parameter"][0]=="On")
+	     	if ($speak_config["Parameter"][1]=="Debug")
 	  	   	{
 	  			tts_play(1,"Ventilator ein.",'',2);
 	  			}
@@ -1502,7 +1522,7 @@ function Parameter()
 		if ($status==true)
 		   {
 	     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
-	     	if ($speak_config["Parameter"][0]=="On")
+	     	if ($speak_config["Parameter"][1]=="Debug")
 	  	   	{
 	  			tts_play(1,"Ventilator aus.",'',2);
 				}
@@ -1624,6 +1644,93 @@ class Autosteuerung
 		   {
 			return(false);
 			}
+		}
+
+	function ParseCommand($params)
+		{
+		$moduleParams2=Array();
+
+	   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
+		 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
+		 *
+		 * Parameter mit : enthalten Befehl:Parameter
+		 */
+
+	   $params2=$params[2];
+  		$moduleParams2 = explode(',', $params2);
+		$count=count($moduleParams2);
+		echo "Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
+		
+		/* in parges werden alle Parameter erfasst und abgespeichert */
+		$parges=array();
+		switch ($count)
+		   {
+	   	case "6":
+		   case "5":
+		   case "4":
+				$i=3;
+				while ($i<count($moduleParams2))
+			   	{
+					$params_more=explode(":",$moduleParams2[$i]);
+					if (count($params)>1)
+      	   		{
+						$parges=self::parseParameter($params_more,$parges);
+					   }
+					$i++;
+				   }
+	   	case "3":
+				$params_three=explode(":",$moduleParams2[2]);
+				if (count($params_three)>1)
+					{
+					$parges=self::parseParameter($params_three,$parges);
+					}
+				else
+				   {
+					$parges["DELAY"]=(integer)$params_three[0];
+					}
+		   case "2":
+		   	$params_two=explode(":",$moduleParams2[1]);
+				if (count($params_two)>1)
+					{
+					$parges=self::parseParameter($params_two,$parges);
+					}
+				else
+				   {
+					$parges["STATUS"]=$params_two[0];
+				   }
+	   	case "1":
+		   	$params_one=explode(":",$moduleParams2[0]);
+				if (count($params_one)>1)
+					{
+					$parges=self::parseParameter($params_one,$parges);
+					}
+				else
+				   {
+					$parges["NAME"]=$params_one[0];
+					}
+		      break;
+			default:
+				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+			   break;
+			}
+		return($parges);
+		}
+
+	/*
+	 * ersten teil des Arrays als befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
+	 * Erweitert das übergebene Array.
+	 *
+	 *
+	 */
+		
+	private function parseParameter($params,$result=array())
+		{
+		if (count($params)>1)
+			{
+			$result[strtoupper($params[0])]=$params;
+			}
+		return($result);
 		}
 
 
