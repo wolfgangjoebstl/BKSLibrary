@@ -100,7 +100,7 @@ $includefile.='function FS20List() { return array('."\n";
 echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
-	echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
+	echo str_pad(IPS_GetName($instanz),45)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
@@ -140,12 +140,35 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function HomematicList() { return array('."\n";
 
 echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
+$sizeHM=array();
+$serienNummer=array();
 foreach ($alleInstanzen as $instanz)
 	{
-	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+	$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+	$HM_Adresse=IPS_GetProperty($instanz,'Address');
+	$result=explode(":",$HM_Adresse);
+	//print_r($result);
+	echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad(IPS_GetProperty($instanz,'Protocol'),3)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+	if (isset($sizeHM[$HM_CCU_Name]))
+	   {
+	   $sizeHM[$HM_CCU_Name]+=1;
+	   }
+	else
+		{
+	   $sizeHM[$HM_CCU_Name]=0;
+	   }
+	if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
+	   {
+	   $serienNummer[$HM_CCU_Name][$result[0]]+=1;
+	   }
+	else
+		{
+	   $serienNummer[$HM_CCU_Name][$result[0]]=1;
+	   }
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+	$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
 	$includefile.="\n         ".'"COID" => array(';
 	
 	$cids = IPS_GetChildrenIDs($instanz);
@@ -191,35 +214,49 @@ $texte = Array(
 );
 
 $ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-if(sizeof($ids) == 0)
-    die("Keine HomeMatic Socket Instanz gefunden!");
-echo "\n\nHomatic Socket ID :".$ids[0]."\n";
+$HomInstanz=sizeof($ids);
+if($HomInstanz == 0)
+   {
+   echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+   }
 
-$msgs = HM_ReadServiceMessages($ids[0]);
-if($msgs === false)
-    die("Verbindung zur CCU fehlgeschlagen");
-
-if(sizeof($msgs) == 0)
-    echo "Keine Servicemeldungen!\n";
-
-foreach($msgs as $msg)
-{
-    if(array_key_exists($msg['Message'], $texte)) {
-        $text = $texte[$msg['Message']];
-    } else {
-        $text = $msg['Message'];
-    }
-
-    $id = GetInstanceIDFromHMID($msg['Address']);
-    if(IPS_InstanceExists($id)) {
-        $name = IPS_GetLocation($id);
-    } else {
-        $name = "Gerät nicht in IP-Symcon eingerichtet";
-    }
-
-    echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-}
-
+for ($i=0;$i < $HomInstanz; $i++)
+   {
+   $ccu_name=IPS_GetName($ids[$i]);
+	echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".$sizeHM[$ccu_name]."\n";
+	$msgs = HM_ReadServiceMessages($ids[$i]);
+	if($msgs === false)
+	   {
+	   echo "  ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+	   }
+	if(sizeof($msgs) == 0)
+	   {
+   	echo "  OK, keine Servicemeldungen!\n";
+		}
+	foreach($msgs as $msg)
+		{
+	   if(array_key_exists($msg['Message'], $texte))
+			{
+  		  	$text = $texte[$msg['Message']];
+   		}
+		else
+			{
+  	  		$text = $msg['Message'];
+  			}
+	   $id = GetInstanceIDFromHMID($msg['Address']);
+	  	if(IPS_InstanceExists($id))
+		 	{
+   		$name = IPS_GetLocation($id);
+	   	}
+		else
+			{
+      	$name = "Gerät nicht in IP-Symcon eingerichtet";
+    		}
+	  	echo "  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
+		}
+	}
+echo "insgesamt sind ".sizeof($serienNummer)." Geräte angeschlossen.\n";
+print_r($serienNummer);
 
 /********************************************************************************************************************/
 
