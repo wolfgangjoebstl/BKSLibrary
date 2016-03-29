@@ -706,7 +706,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim1ID:        /* einmal am Tag */
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 			/********************************************************
-		   nun den Datenverbrauch über den router auslesen
+		   Einmal am Tag: nun den Datenverbrauch über den router auslesen
 			**********************************************************/
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
@@ -746,7 +746,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   	} /* Ende foreach */
 
 			/********************************************************
-	   	Sys_Ping durchführen basierend auf ermittelter mactable
+	   	Einmal am Tag: Sys_Ping durchführen basierend auf ermittelter mactable
 			**********************************************************/
 
 			if (isset ($installedModules["IPSCam"]))
@@ -754,9 +754,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$mactable=$OperationCenter->get_macipTable($subnet);
 				print_r($mactable);
 				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+				$categoryId_RebootCtr  = CreateCategory('RebootCounter',   $CategoryIdData, 210);
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
-					$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					$CamStatusID = CreateVariableByName($categoryId_SysPing,   "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					$CamRebootID = CreateVariableByName($categoryId_RebootCtr, "Cam_".$cam_name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 					if (isset($mactable[$cam_config['MAC']]))
 			   		{
 						echo "Timer, Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
@@ -769,6 +771,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 								SetValue($CamStatusID,true);
+								SetValue($CamRebootID,0);
 				   			}
 							}
 						else
@@ -779,6 +782,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								SetValue($CamStatusID,false);
+								SetValue($CamRebootID,(GetValue($CamRebootID)+1));
 							   }
 							}
 						}

@@ -15,21 +15,23 @@
 class OperationCenter
 	{
 
-	var $CategoryIdData="Default";
-	var $categoryId_SysPing="Default";
+	var $CategoryIdData       = 0;
+	var $categoryId_SysPing   = 0;
+	var $categoryId_RebootCtr = 0;
 	var $archiveHandlerID=0;
 	var $mactable=array();
 
 	/**
 	 * @public
 	 *
-	 * Initialisierung des DetectHumidityHandler Objektes
+	 * Initialisierung des OperationCenter Objektes
 	 *
 	 */
 	public function __construct($CategoryIdData,$subnet)
 			{
 		   $this->CategoryIdData=$CategoryIdData;
-   		$this->categoryId_SysPing    = CreateCategory('SysPing',   $this->CategoryIdData, 200);
+   		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
+   		$this->categoryId_RebootCtr  = CreateCategory('RebootCounter', $this->CategoryIdData, 210);
          $this->mactable=$this->get_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -37,13 +39,19 @@ class OperationCenter
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			}
 
-
+	/**
+	 * @public
+	 *
+	 * Initialisierung des OperationCenter Objektes
+	 *
+	 */
 	function device_ping($device_config, $device, $identifier)
 		{
 		foreach ($device_config as $name => $config)
 		   {
 		   //print_r($config);
-			$StatusID = CreateVariableByName($this->categoryId_SysPing, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			$StatusID = CreateVariableByName($this->categoryId_SysPing,   $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
 		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
 			$status=Sys_Ping($config[$identifier],1000);
@@ -55,6 +63,7 @@ class OperationCenter
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
 					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
 					SetValue($StatusID,true);
+					SetValue($RebootID,0);
 				   }
 				}
 			else
@@ -65,11 +74,18 @@ class OperationCenter
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					SetValue($StatusID,false);
+					SetValue($RebootID,(GetValue($RebootID)+1));
 				   }
 				}
 		   }
 		}
 
+	/**
+	 * @public
+	 *
+	 * Initialisierung des OperationCenter Objektes
+	 *
+	 */
 	function get_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
@@ -138,7 +154,14 @@ class OperationCenter
 			return($mactable);
 			}
 		}
-		
+
+
+	/**
+	 * @public
+	 *
+	 * Initialisierung des OperationCenter Objektes
+	 *
+	 */
 	function find_HostNames()
 	   {
 	   $ergebnis="";
