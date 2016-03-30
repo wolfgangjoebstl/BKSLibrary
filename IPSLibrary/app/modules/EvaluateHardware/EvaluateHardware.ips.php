@@ -140,7 +140,6 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function HomematicList() { return array('."\n";
 
 echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
-$sizeHM=array();
 $serienNummer=array();
 foreach ($alleInstanzen as $instanz)
 	{
@@ -149,21 +148,14 @@ foreach ($alleInstanzen as $instanz)
 	$result=explode(":",$HM_Adresse);
 	//print_r($result);
 	echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad(IPS_GetProperty($instanz,'Protocol'),3)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
-	if (isset($sizeHM[$HM_CCU_Name]))
-	   {
-	   $sizeHM[$HM_CCU_Name]+=1;
-	   }
-	else
-		{
-	   $sizeHM[$HM_CCU_Name]=0;
-	   }
 	if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
 	   {
-	   $serienNummer[$HM_CCU_Name][$result[0]]+=1;
+	   $serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
 	   }
 	else
 		{
-	   $serienNummer[$HM_CCU_Name][$result[0]]=1;
+	   $serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
+	   $serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
 	   }
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
@@ -189,6 +181,7 @@ foreach ($alleInstanzen as $instanz)
             echo "Fehler: ".IPS_GetLocation($id)."\n";
             break;
             }
+         $serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
         	}
     	}
 	$includefile.="\n             ".'	),'."\n";
@@ -223,7 +216,7 @@ if($HomInstanz == 0)
 for ($i=0;$i < $HomInstanz; $i++)
    {
    $ccu_name=IPS_GetName($ids[$i]);
-	echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".$sizeHM[$ccu_name]."\n";
+	echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".sizeof($serienNummer[$ccu_name])." Endgeräte angeschlossen.\n";
 	$msgs = HM_ReadServiceMessages($ids[$i]);
 	if($msgs === false)
 	   {
@@ -255,8 +248,60 @@ for ($i=0;$i < $HomInstanz; $i++)
 	  	echo "  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
 		}
 	}
-echo "insgesamt sind ".sizeof($serienNummer)." Geräte angeschlossen.\n";
-print_r($serienNummer);
+echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
+foreach ($serienNummer as $ccu => $geraete)
+ 	{
+ 	echo "  CCU mit Name :".$ccu."\n";
+ 	echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen.\n";
+	foreach ($geraete as $name => $anzahl)
+		{
+		$register=explode(" ",trim($anzahl["Values"]));
+		sort($register);
+		$registerNew=array();
+		echo "     ".$name."  ".$anzahl["Anzahl"]."  ";
+		$oldvalue="";
+		foreach ($register as $index => $value)
+		   {
+		   //echo "    ".$value."  ".$oldvalue."\n";
+		   if ($value!=$oldvalue) {$registerNew[]=$value;}
+		   $oldvalue=$value;
+		   }
+		sort($registerNew);
+		switch ($registerNew[0])
+		   {
+		   case "ERROR":
+				echo "Funk-Tür-/Fensterkontakt\n";
+				break;
+		   case "INSTALL_TEST":
+		      if ($registerNew[1]=="PRESS_CONT")
+		         {
+					echo "Taster 6fach\n";
+					}
+				else
+				   {
+					echo "Funk-Display-Wandtaster\n";
+				   }
+				break;
+		   case "ACTUAL_HUMIDITY":
+				echo "Funk-Wandthermostat\n";
+				break;
+		   case "ACTUAL_TEMPERATURE":
+				echo "Funk-Heizkörperthermostat\n";
+				break;
+		   case "BRIGHTNESS":
+				echo "Funk-Bewegungsmelder\n";
+				break;
+		   case "INHIBIT":
+				echo "Funk-Schaltaktor 1-fach\n";
+				break;
+			default:
+				echo "unknown\n";
+				print_r($registerNew);
+				break;
+			}
+
+		}
+	}
 
 /********************************************************************************************************************/
 
