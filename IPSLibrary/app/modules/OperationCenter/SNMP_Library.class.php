@@ -93,36 +93,38 @@ class SNMP
       $ips_var = @IPS_GetVariableIDByName($desc, $parentID);
       if($ips_var == false)
 			{
-         if($this->debug) echo "Variable '$desc' not found - create IPSVariable\n";
+         if($this->debug) 							echo "Variable '$desc' not found - create IPSVariable\n";
+         if($convertType == "none") 			$type = $this->getSNMPType($oid);
+         if($convertType == "CapacityMB" || $convertType == "CapacityGB" || $convertType == "CapacityTB")     $type = self::tFLOAT;
+         if($convertType == "Temperature")	$type = self::tINT;
+         if($convertType == "FanSpeed")      $type = self::tINT;
+         if($convertType == "SmartStatus")   $type = self::tBOOL;
+         if($convertType == "Counter32")     $type = self::tLONG;
+         if($this->debug) 							echo "Type of OID '$oid' is $type \n";
 
-            if($convertType == "none") $type = $this->getSNMPType($oid);
-            if($convertType == "CapacityMB" || $convertType == "CapacityGB" || $convertType == "CapacityTB")
-									            $type = self::tFLOAT;
-            if($convertType == "Temperature")
-									            $type = self::tINT;
-            if($convertType == "FanSpeed")
-									            $type = self::tINT;
-            if($convertType == "SmartStatus")
-									            $type = self::tBOOL;
-            if($convertType == "Counter32")
-									            $type = self::tLONG;
-            if($this->debug) echo "Type of OID '$oid' is $type \n";
-
-				if ($type==self::tLONG)
+			if ($type==self::tLONG)
 				   {
 			      $convertType = "Counter32";  /* automatisch zuweisen */
 	            $ips_var = IPS_CreateVariable(1);
 	            IPS_SetName($ips_var, $desc);
   		         IPS_SetParent($ips_var, $parentID);
-  		         IPS_SetPosition($ips_var,20);
+  		         //IPS_SetPosition($ips_var,20);
+					AC_SetLoggingStatus($archiveHandlerID,$ips_var,true);
+					AC_SetAggregationType($archiveHandlerID,$ips_var,0);  /* 0 Standard 1 Zähler */
+					IPS_ApplyChanges($archiveHandlerID);
+
 	            $ips_vare = IPS_CreateVariable(1);
-	            IPS_SetName($ips_vare, $desc."ext");
+	            IPS_SetName($ips_vare, $desc."_ext");
   		         IPS_SetParent($ips_vare, $parentID);
-  		         IPS_SetPosition($ips_vare,20);
+  		         //IPS_SetPosition($ips_vare,20);
+					AC_SetLoggingStatus($archiveHandlerID,$ips_vare,true);
+					AC_SetAggregationType($archiveHandlerID,$ips_vare,0);  /* 0 Standard 1 Zähler */
+					IPS_ApplyChanges($archiveHandlerID);
+
 	            $ips_varc = IPS_CreateVariable(1);
-	            IPS_SetName($ips_varc, $desc."chg");
+	            IPS_SetName($ips_varc, $desc."_chg");
   		         IPS_SetParent($ips_varc, $parentID);
-  		         IPS_SetPosition($ips_varc,10);
+  		         //IPS_SetPosition($ips_varc,10);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
 					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 Zähler */
 					IPS_ApplyChanges($archiveHandlerID);
@@ -135,25 +137,19 @@ class SNMP
 	            }
 
 
-            //Verknüpfe Variablenprofil mit neu erstellter Variable
-            if($convertType == "CapacityMB")
-	            IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityMB");
-            if($convertType == "CapacityGB")
-   	         IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityGB");
-            if($convertType == "CapacityTB")
-      	      IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityTB");
-            if($convertType == "Temperature")
-         	   IPS_SetVariableCustomProfile($ips_var, "SNMP_Temperature");
-            if($convertType == "FanSpeed")
-            	IPS_SetVariableCustomProfile($ips_var, "SNMP_FanSpeed");
-            if($convertType == "SmartStatus")
-            	IPS_SetVariableCustomProfile($ips_var, "SNMP_SmartStatus");
+         //Verknüpfe Variablenprofil mit neu erstellter Variable
+        if($convertType == "CapacityMB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityMB");
+        if($convertType == "CapacityGB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityGB");
+        if($convertType == "CapacityTB") 	      	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityTB");
+        if($convertType == "Temperature")      	   IPS_SetVariableCustomProfile($ips_var, "SNMP_Temperature");
+        if($convertType == "FanSpeed")            	IPS_SetVariableCustomProfile($ips_var, "SNMP_FanSpeed");
+        if($convertType == "SmartStatus")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_SmartStatus");
         }
 
-        $count = count($this->snmpobj);
-        array_push($this->snmpobj, new SNMPObj($oid, $desc, $convertType, $ips_var));
-        $count = count($this->snmpobj);
-        if($this->debug) echo "New SNMPObj (".$oid."/".$convertType.") registered, now monitoring '$count' snmp variables\n";
+    $count = count($this->snmpobj);
+    array_push($this->snmpobj, new SNMPObj($oid, $desc, $convertType, $ips_var));
+    $count = count($this->snmpobj);
+    if($this->debug) echo "New SNMPObj (".$oid."/".$convertType.") registered, now monitoring '$count' snmp variables\n";
     }
 
     //startet eine Abfrage am SNMP Server und aktualisiert die IPS-Variablen der registrierten
@@ -198,8 +194,8 @@ class SNMP
 						//echo "**".$z[$zii]."*".$i." ".$zi." \n";
 						$i++;$k++;
 						}
-					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var));
-					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."chg"),IPS_GetParent($obj->ips_var));
+					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
+					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
 					//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
 					if ($z[0]>=GetValue($obj->ips_var))
 					   { /* kein Übertrag */
@@ -213,8 +209,10 @@ class SNMP
 		            }
 		         else
 		            {
-		            /* Übertrag, zu schwierig zum nachdenken, Wert einfach auslassen */
+		            /* Übertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
 						echo "           Übertrag falsch, neuer Wert: ".$z[0]." Alter Wert ".GetValue($obj->ips_var)." \n";
+		            SetValue($obj->ips_var, $z[0]);
+		            SetValue($ips_vare,$z[1]);
 		            }
 					}
 				else
