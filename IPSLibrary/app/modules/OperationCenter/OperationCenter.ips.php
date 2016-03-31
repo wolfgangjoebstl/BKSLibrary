@@ -94,6 +94,7 @@ if (isset ($installedModules["IPSCam"]))
 else
 	{
 	echo "Modul IPSCam ist NICHT installiert.\n";
+	$tim2ID = 0;
 	}
 
 /* Eventuell Router regelmaessig auslesen */
