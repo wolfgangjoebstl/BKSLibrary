@@ -51,7 +51,7 @@ class OperationCenter
 		   {
 		   //print_r($config);
 			$StatusID = CreateVariableByName($this->categoryId_SysPing,   $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
 		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
 			$status=Sys_Ping($config[$identifier],1000);
