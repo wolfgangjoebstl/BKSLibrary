@@ -194,25 +194,27 @@ class SNMP
 						//echo "**".$z[$zii]."*".$i." ".$zi." \n";
 						$i++;$k++;
 						}
-					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
-					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
+					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
 					//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
-					if ($z[0]>=GetValue($obj->ips_var))
+					if ($z[0]>=GetValue($ips_vare))
 					   { /* kein Übertrag */
-					   $a=($z[0]-GetValue($obj->ips_var));
+					   $a=($z[0]-GetValue($ips_vare));
 					   for ($i=0;$i<$intl;$i++) $a*=10;
-					   $a+=($z[1]-GetValue($ips_vare));
-		            SetValue($obj->ips_var, $z[0]);
-		            SetValue($ips_vare,$z[1]);
+					   $a+=($z[1]-GetValue($obj->ips_var));
+						echo "           Alter Wert : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
+						echo "           Neuer Wert : ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
+		            SetValue($obj->ips_var, $z[1]);
+		            SetValue($ips_vare,$z[0]);
 		            SetValue($ips_varc,$a);
-						echo "           Neuer Wert : ".$z[0].substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
 		            }
 		         else
 		            {
 		            /* Übertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
-						echo "           Übertrag falsch, neuer Wert: ".$z[0]." Alter Wert ".GetValue($obj->ips_var)." \n";
-		            SetValue($obj->ips_var, $z[0]);
-		            SetValue($ips_vare,$z[1]);
+						echo "           Alter Wert                 : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
+						echo "           Übertrag falsch, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)." \n";
+		            SetValue($obj->ips_var, $z[1]);
+		            SetValue($ips_vare,$z[0]);
 		            }
 					}
 				else
@@ -484,6 +486,15 @@ class SNMP
             return true;
         }
     }
+
+    function evalOID($oid)
+	 	{
+	 	$oid_pins=explode(".",$oid);
+	 	$pinMax=sizeof($oid_pins)-1;
+	 	$pos=$oid_pins[$pinMax]+$oid_pins[($pinMax-1)]*100;
+		echo $oid." ".sizeof($oid_pins)." ".$pos."\n";
+		print_r($oid_pins);
+		}
 
 }
 

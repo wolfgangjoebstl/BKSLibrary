@@ -1,13 +1,32 @@
 <?
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 /******************************************************
 
 				INIT
 
 *************************************************************/
+
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager))
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+	$moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
+	}
+
+$installedModules   = $moduleManager->GetInstalledModules();
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+echo "Category Data ID           : ".$CategoryIdData."\n";
+echo "Category App ID            : ".$CategoryIdApp."\n";
+
+/* Config einlesen
+ *
+ *********************************************************************************************/
 
 	$GuthabenConfig = get_GuthabenConfiguration();
 	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
@@ -18,6 +37,21 @@
 	echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
 	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	/* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
+
+/* Logging aktivieren
+ *
+ *********************************************************************************************/
+
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_OperationCenter=new Logging("C:\Scripts\Log_Guthaben.csv",$input);
+
+
+/******************************************************
+
+				RUNSCRIPT
+
+*************************************************************/
 
 	//print_r($GuthabenConfig);
 	$ergebnis="";
@@ -31,6 +65,12 @@
 		SetValue($phone1ID,$ergebnis1);
 		$ergebnis.=$ergebnis1."\n";
 		}
+
+/******************************************************
+
+				Execute
+
+*************************************************************/
 
 if ($_IPS['SENDER']=="Execute")
 	   {
@@ -56,7 +96,7 @@ if ($_IPS['SENDER']=="Execute")
 		//$variableID=get_raincounterID();
 		$endtime=time();
 		$starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
-		$starttime2=$endtime-60*60*24*100;  /* die letzten 100 Tage */
+		$starttime2=$endtime-60*60*24*800;  /* die letzten 100 Tage */
 
 		foreach ($GuthabenConfig as $TelNummer)
 			{
@@ -66,14 +106,97 @@ if ($_IPS['SENDER']=="Execute")
     		$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
 			$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
 			echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
-			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
-			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-	   	$werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
-			foreach ($werteLog as $wert)
-			   {
-	   		echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
-		   	}
+			if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
+		   	{
+			   echo "Werte wird noch nicht gelogged.\n";
+			   }
+			else
+		   	{
+				$werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+				$werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
+	   		//$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
+			   $wertAlt=-1; $letzteZeile="";
+				foreach ($werteLogVol as $wert)
+			   	{
+			   	if ($wertAlt!=$wert["Value"])
+			      	{
+			   		echo $letzteZeile;
+			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+			   		//echo $letzteZeile;
+			   		$wertAlt=$wert["Value"];
+			   		}
+					else
+					   {
+  			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+					   }
+		   		//echo $letzteZeile;
+			   	}
+	   	 	$phone_Cost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
+				$werteLogCost = AC_GetLoggedValues($archiveHandlerID, $phone_Cost_ID, $starttime2, $endtime,0);
+			   echo "Logged Cost Vaules:\n";
+			   $wertAlt=-1; $letzteZeile="";
+				foreach ($werteLogCost as $wert)
+				   {
+			   	if ($wertAlt!=$wert["Value"])
+			      	{
+			   		echo $letzteZeile;
+			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+			   		//echo $letzteZeile;
+			   		$wertAlt=$wert["Value"];
+			   		}
+					else
+					   {
+  			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+					   }
+		   		}
+	   	 	$phone_Load_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
+				$werteLogLoad = AC_GetLoggedValues($archiveHandlerID, $phone_Load_ID, $starttime2, $endtime,0);
+			   echo "Logged Load Vaules:\n";
+			   $wertAlt=-1; $letzteZeile="";
+				foreach ($werteLogLoad as $wert)
+				   {
+			   	if ($wertAlt!=$wert["Value"])
+			      	{
+			   		echo $letzteZeile;
+			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+			   		//echo $letzteZeile;
+			   		$wertAlt=$wert["Value"];
+			   		}
+					else
+					   {
+  			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+					   }
+		   		}
+		   	/*
+	   	 	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Bonus", 2);
+				$werteLogBonus = AC_GetLoggedValues($archiveHandlerID, $phone_Bonus_ID, $starttime2, $endtime,0);
+			   echo "Logged Bonus Vaules:\n";
+			   $wertAlt=-1; $letzteZeile="";
+				foreach ($werteLogBonus as $wert)
+				   {
+			   	if ($wertAlt!=$wert["Value"])
+			      	{
+			   		//echo $letzteZeile;
+			   		$letzteZeile="  Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+			   		echo $letzteZeile;
+			   		$wertAlt=$wert["Value"];
+			   		}
+		   		}
+				*/
 
+
+				}
+				
+				
+				
+			/*
+			foreach ($werteAggVol as $wert)
+			   {
+	   		echo "  Wert : ".number_format($wert["Avg"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+		   	}
+			print_r($werteAggVol);
+			*/
+			
 			//$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
 			//$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
 			//SetValue($phone1ID,$ergebnis1);
@@ -263,7 +386,20 @@ function parsetxtfile($verzeichnis, $nummer)
 		}
 	else
 		{
-      $ergebnis="Handle nicht definiert\n";
+		$ergebnis="Handle nicht definiert\n";
+ 		$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
+  		$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
+    	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);
+     	$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Date", 3);
+     	$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_unchangedDate", 3);
+     	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Bonus", 3);
+     	$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Volume", 2);
+     	$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_VolumeCumm", 2);
+     	$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Cost", 2);
+     	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Load", 2);
+    	$phone_Cost_ID = CreateVariableByName($parentid, "Phone_Cost", 2);
+     	$phone_Load_ID = CreateVariableByName($parentid, "Phone_Load", 2);
+     	$phone_CL_Change_ID = CreateVariableByName($parentid, "Phone_CL_Change", 2);
 		}
 	//$ergebnis.=$result4g." ".$result4v." ".$result4f;
 	SetValue($phone_Summ_ID,$ergebnis);

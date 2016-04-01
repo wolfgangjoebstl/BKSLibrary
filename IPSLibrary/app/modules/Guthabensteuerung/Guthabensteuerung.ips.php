@@ -11,6 +11,18 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
 
 *************************************************************/
 
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+If (!isset($moduleManager)) {
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+	$moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
+}
+$installedModules = $moduleManager->GetInstalledModules();
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+echo "Category Data ID            : ".$CategoryIdData."\n";
+echo "Category App ID             : ".$CategoryIdApp."\n";
+
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 $ScriptCounterID=CreateVariableByName($parentid,"ScriptCounter",1);
 
@@ -46,13 +58,25 @@ $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
 	foreach ($GuthabenConfig as $TelNummer)
 		{
 		//echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
-		$phone[$i++]=$TelNummer["NUMMER"];
+		if (isset($TelNummer["STATUS"])==true)
+		   {
+			if ($TelNummer["STATUS"]=="Active")
+			   {
+				$phone[$i++]=$TelNummer["NUMMER"];
+				}
+			}
+		else	$phone[$i++]=$TelNummer["NUMMER"];
 		}
 	$maxcount=$i;
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-		
+/******************************************************
+
+				TIMER
+
+*************************************************************/
+
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
@@ -82,6 +106,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 		}
 	}
 
+/******************************************************
+
+				Execute or Webfront
+
+*************************************************************/
 
 if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	{
@@ -96,27 +125,18 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	//IPS_SetScriptTimer($_IPS['SELF'], 1);
 	IPS_SetEventActive($tim2ID,true);
    echo "Exectimer gestartet, Auslesung beginnt ....\n";
-   echo "Timer täglich ID:".$tim1ID."   ".$tim2ID."\n";
+   echo "Timer täglich ID:".$tim1ID." und alle 150 Sekunden ID: ".$tim2ID."\n";
    //echo ADR_Programs."Mozilla Firefox/firefox.exe";
    
- 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
-		$moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
-	}
-	$gartensteuerung=false;
-	$installedModules = $moduleManager->GetInstalledModules();
-	$inst_modules="\nInstallierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
-		}
-	echo $inst_modules."\n\n";
 	echo "\n\nGuthabensteuerung laeuft nun, da sie haendisch mit Aufruf dieses Scripts ausgelöst wurde.\n";
    //IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
 	}
+
+/******************************************************
+
+				Execute
+
+*************************************************************/
 
 if ($_IPS['SENDER']=="Execute")
 	{
@@ -134,14 +154,20 @@ if ($_IPS['SENDER']=="Execute")
     	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
 		$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
 		echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
-		$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
-		$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-	   $werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
-		foreach ($werteLog as $wert)
+		if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
 		   {
-	   	echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+		   echo "Werte wird noch nicht gelogged.\n";
 		   }
-
+		else
+		   {
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
+	   	$werte = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0);
+			foreach ($werteLog as $wert)
+			   {
+	   		echo "Wert : ".number_format($wert["Value"], 1, ",", "")."   ".date("d.m H:i",$wert["TimeStamp"])."\n";
+		   	}
+			}
 		//$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
 		//$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
 		//SetValue($phone1ID,$ergebnis1);
