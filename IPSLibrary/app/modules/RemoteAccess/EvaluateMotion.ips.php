@@ -23,7 +23,46 @@ IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::m
 ini_set('max_execution_time', 120);
 $startexec=microtime(true);
 
-	/***************** INSTALLATION **************/
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager))
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
+	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+	$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+	}
+
+$installedModules = $moduleManager->GetInstalledModules();
+$inst_modules="\nInstallierte Module:\n";
+foreach ($installedModules as $name=>$modules)
+	{
+	$inst_modules.=str_pad($name,30)." ".$modules."\n";
+	}
+echo $inst_modules."\n\n";
+
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+echo "RA Category Data ID   : ".$CategoryIdData."\n";
+echo "RA Category App ID    : ".$CategoryIdApp."\n";
+
+$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
+
+echo "OC Script ID          : ".$OperationCenterScriptId."\n";
+echo "OC Data ID            : ".$OperationCenterDataId."\n";
+
+echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
+if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
+if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
+if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
+if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
+if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+echo "\n";
+
+
+/***************** INSTALLATION **************/
 
 	echo "Update Konfiguration und register Events\n";
 

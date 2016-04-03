@@ -127,13 +127,27 @@ class AutosteuerungHandler
 
 			if (array_key_exists($variableId, $configuration))
 				{
-				//echo "Bearbeite Variable with ID ".$variableId." : ".$moduleParams."\n";
 				$moduleParamsNew = explode(',', $moduleParams);
 				$moduleClassNew  = $moduleParamsNew[0];
 
 				$params = $configuration[$variableId];
-
-				for ($i=0; $i<count($params); $i=$i+3)
+				//echo "Bearbeite Variable with ID : ".$variableId." : ".count($params)." Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams."\n";
+				//print_r($params);
+				$ct_par=count($params);
+				if (($ct_par%3)>0)
+				   {
+					echo "Anzahl Parameter bei ID ".$variableId." : ".$ct_par." da sind ",($ct_par%3)." Parameter zuviel.\n";
+					$ct_parN=$ct_par-($ct_par%3);
+					for ($i=$ct_parN; $i<$ct_par; $i++)
+						{
+						unset($configuration[$variableId][$i]);
+						}
+               }
+            else
+               {
+               $ct_parN=$ct_par;
+               }
+				for ($i=0; $i<$ct_parN; $i=$i+3)
 					{
 					$moduleParamsCfg = $params[$i+2];
 					$moduleParamsCfg = explode(',', $moduleParamsCfg);
@@ -150,13 +164,14 @@ class AutosteuerungHandler
 				}
 			else
 			   {
-				//echo "Variable with ID ".$variableId. " not found\n";  
+			   //echo "Lege neue Variable mit ID : ".$variableId." : ".count($params)." Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
+				//echo "Variable with ID ".$variableId. " not found\n";
 				// Variable NOT found --> Create Configuration
 				$configuration[$variableId][] = $eventType;
 				$configuration[$variableId][] = $componentParams;
 				$configuration[$variableId][] = $moduleParams;
 				}
-
+				print_r($configuration);
 				self::StoreEventConfiguration($configuration);
 				self::CreateEvent($variableId, $eventType, self::$scriptID);
    		}
