@@ -993,7 +993,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($CatIdData,$subnet);
 			
-			$ergebnisOperationCenter.="\nAngeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
+			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
 			$OperationCenterConfig = OperationCenter_Configuration();
 
@@ -1004,16 +1004,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MBRN3000')
 				   {
-					$ergebnisOperationCenter.="    Werte von Heute   : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MBRN3000($router,true),2)." Mbyte \n";
 				   }
 				if ($router['TYP']=='MR3420')
 				   {
-					$ergebnisOperationCenter.="    Werte von Heute   : ".$OperationCenter->get_routerdata_MR3420($router)." Mbyte \n";
+					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MR3420($router),2)." Mbyte \n";
 					}
 				if ($router['TYP']=='RT1900ac')
 				   {
-					$OperationCenter->get_routerdata($router);
+					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_RT1900($router,true),2)." Mbyte \n";
 					}
+				$ergebnisOperationCenter.="\n";
 				}
 			}
 

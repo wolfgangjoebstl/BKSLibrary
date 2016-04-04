@@ -145,7 +145,9 @@ $OperationCenterConfig = OperationCenter_Configuration();
 	   }
 
 
-/*********************************************************************************************/
+/* Logging aktivieren
+ *
+ *********************************************************************************************/
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );

@@ -378,7 +378,7 @@ class OperationCenter
 		}
 
 	/*
-	 *  Routerdaten direct aus dem Router auslesen,
+	 *  Routerdaten MBRN3000 direct aus dem Router auslesen,
 	 *
 	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
 	 *
@@ -403,7 +403,7 @@ class OperationCenter
 		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
 			$result=file_get_contents($url);
 			if ($result===false) {
-			   echo "Fehler beim holen der Webdatei. Abbruch. \n";
+			   echo "Fehler beim Holen der Webdatei. Abbruch. \n";
 			   break;
 			   }
 	  		}
@@ -495,9 +495,17 @@ class OperationCenter
 			}
 		}
 
+	/*
+	 *  Routerdaten direct aus dem Router auslesen,
+	 *
+	 *  Allgemeine Routine, sucht die Daten im entsprechenden Verzeichnis, nur Ausgabe auf echo
+	 *
+	 */
 
 	function get_routerdata($router)
 		{
+		$ergebnis=0;      // Gesamtdatenvolumen heute oder gestern
+		
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
 		   {
@@ -528,7 +536,62 @@ class OperationCenter
 		   }
 		//ksort($result1);
 		//print_r($result1);
+		return ($ergebnis);
 		}
+
+	/*
+	 *  Routerdaten Synology RT1900ac direct aus dem Router auslesen,
+	 *
+	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
+	 *
+	 *  derzeit gibt es keinen aktuellen Wert, da der immer vorher mit SNMP Aufrufen ausgelesen werden muesste
+	 *  es fehlt SNMP Aufruf ohne logging !!!
+	 */
+
+	function get_routerdata_RT1900($router,$actual=false)
+		{
+		$ergebnis=0;      // Gesamtdatenvolumen heute oder gestern
+
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$result=IPS_GetChildrenIDs($router_categoryId);
+		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		foreach($result as $oid)
+		   {
+		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		      {
+		      $name=explode("_",IPS_GetName($oid));
+		      if ($name[sizeof($name)-1]=="chg")
+		         {
+		         if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
+		            {
+			         $ergebnis+=GetValue($oid)/1024/1024;
+			         }
+	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+			   	foreach ($werte as $wert)
+		   		   {
+		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"]).
+							  " mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+		   	   	}
+					}
+		   	}
+		   }
+		return $ergebnis;
+		}
+
+
+	/*
+	 *  Routerdaten MBRN3000 direct aus dem Router auslesen,
+	 *
+	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
+	 *
+	 */
 
 	function get_routerdata_MR3420($router,$actual=false)
 		{
