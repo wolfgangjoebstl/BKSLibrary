@@ -152,77 +152,105 @@ class SNMP
     if($this->debug) echo "New SNMPObj (".$oid."/".$convertType.") registered, now monitoring '$count' snmp variables\n";
     }
 
-    //startet eine Abfrage am SNMP Server und aktualisiert die IPS-Variablen der registrierten
-    //SNMP Objekte
-    public function update(){
-        if($this->debug) echo "Updating ". count($this->snmpobj) ." variable(s)\n";
+	/*
+	 * startet eine Abfrage am SNMP Server und aktualisiert die IPS-Variablen der registrierten
+    * SNMP Objekte
+    *
+    */
+    
+	public function update($nolog=false){
+		if($this->debug) echo "Updating ". count($this->snmpobj) ." variable(s)\n";
+      foreach($this->snmpobj as $obj){
+      	$oid = ltrim($obj->OID,".");
+         $exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
+         if($this->debug) echo "Execute SNMP-Query: ". $this->binary, "$exec_param\n";
+         $obj->value = trim(IPS_Execute($this->binary, $exec_param, false, true));
+         //$obj->change = 0;
+         if($this->debug) echo "Result of ". $obj->desc .": ". $obj->value ."\n";
 
-        foreach($this->snmpobj as $obj){
-            $oid = ltrim($obj->OID,".");
-            $exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
-            if($this->debug) echo "Execute SNMP-Query: ". $this->binary, "$exec_param\n";
-            $obj->value = trim(IPS_Execute($this->binary, $exec_param, false, true));
-            if($this->debug) echo "Result of ". $obj->desc .": ". $obj->value ."\n";
+         if($obj->convertType == "CapacityMB") 	$obj->value = $this->convertCapacity($obj->value, "MB");
+         if($obj->convertType == "CapacityGB") 	$obj->value = $this->convertCapacity($obj->value, "GB");
+         if($obj->convertType == "CapacityTB") 	$obj->value = $this->convertCapacity($obj->value, "TB");
+         if($obj->convertType == "Temperature") $obj->value = $this->convertTemperature($obj->value);
+         if($obj->convertType == "FanSpeed") 	$obj->value = $this->convertFanSpeed($obj->value);
+         if($obj->convertType == "SmartStatus") $obj->value = $this->convertSmartStatus($obj->value);
 
-            if($obj->convertType == "CapacityMB") $obj->value = $this->convertCapacity($obj->value, "MB");
-            if($obj->convertType == "CapacityGB") $obj->value = $this->convertCapacity($obj->value, "GB");
-            if($obj->convertType == "CapacityTB") $obj->value = $this->convertCapacity($obj->value, "TB");
-            if($obj->convertType == "Temperature") $obj->value = $this->convertTemperature($obj->value);
-            if($obj->convertType == "FanSpeed") $obj->value = $this->convertFanSpeed($obj->value);
-            if($obj->convertType == "SmartStatus") $obj->value = $this->convertSmartStatus($obj->value);
-
-				if($obj->convertType == "Counter32")
-				   {
-					$intl=PHP_INT_SIZE*2;
-					$j=strlen($obj->value);
-					$z=array();
-					$i=$intl - ($j % $intl);
-					$k=0;
-					//echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang\n";
-					while ($k<$j)
+			if($obj->convertType == "Counter32")
+				{
+				$intl=PHP_INT_SIZE*2;
+				$j=strlen($obj->value);
+				$z=array(); $z[0]=0;
+				$i=$intl - ($j % $intl);
+				$k=0;
+				//if($this->debug) echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang\n";
+				while ($k<$j)
+					{
+					$zi=$i - ($i % $intl);
+					$zii=$zi/$intl;
+					if (isset($z[$zii])==true)
 						{
-						$zi=$i - ($i % $intl);
-						$zii=$zi/$intl;
-						if (isset($z[$zii])==true)
-							{
-							$z[$zii]=$z[$zii]*10+(integer)substr($obj->value,$k,1);
-							}
-						else
-						   {
-							$z[$zii]=	(integer)substr($obj->value,$k,1);
-							}
-						//echo "**".$z[$zii]."*".$i." ".$zi." \n";
-						$i++;$k++;
+						$z[$zii]=$z[$zii]*10+(integer)substr($obj->value,$k,1);
 						}
-					$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
-					$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
-					//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
-					if ($z[0]>=GetValue($ips_vare))
-					   { /* kein Übertrag */
-					   $a=($z[0]-GetValue($ips_vare));
-					   for ($i=0;$i<$intl;$i++) $a*=10;
-					   $a+=($z[1]-GetValue($obj->ips_var));
-						echo "           Alter Wert : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
-						echo "           Neuer Wert : ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
+					else
+					   {
+						$z[$zii]=	(integer)substr($obj->value,$k,1);
+						}
+					//if($this->debug) echo "**".$z[$zii]." ".$k." ".$i." ".$zi." ".$zii." \n";
+					$i++;$k++;
+					}
+				$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
+				$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+				//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
+				if ($z[0]>=GetValue($ips_vare))
+				   { /* kein Übertrag */
+				   $a=($z[0]-GetValue($ips_vare));
+				   for ($i=0;$i<$intl;$i++) $a*=10;
+				   $a+=($z[1]-GetValue($obj->ips_var));
+					echo "           Alter Wert : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
+					echo "           Neuer Wert : ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
+					if ($nolog==false)
+						{
 		            SetValue($obj->ips_var, $z[1]);
 		            SetValue($ips_vare,$z[0]);
 		            SetValue($ips_varc,$a);
 		            }
 		         else
 		            {
-		            /* Übertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
-						echo "           Alter Wert                 : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
-						echo "           Übertrag falsch, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)." \n";
-		            SetValue($obj->ips_var, $z[1]);
-		            SetValue($ips_vare,$z[0]);
+		            $obj->change = $a;
 		            }
-					}
+		         }
 				else
-				   {
-	            SetValue($obj->ips_var, $obj->value);
-	            }
+		         {
+		         /* Übertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
+					$b=42-GetValue($ips_vare);
+			   	for ($i=0;$i<$intl;$i++) $b*=10;
+			   	$b+=94967296-GetValue($obj->ips_var);
+			   	$a=$z[0];
+			   	for ($i=0;$i<$intl;$i++) $a*=10;
+			   	$a+=$z[1];
+			   	//echo "******* a: ".$a." b: ".$b."  Summe: ".($a+$b)."\n";
+			   	$a+=$b;
+					echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
+					echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
+					if ($nolog==false)
+						{
+					   SetValue($obj->ips_var, $z[1]);
+			         SetValue($ips_vare,$z[0]);
+		            SetValue($ips_varc,$a);
+		            }
+		         else
+		            {
+		            $obj->change = $a;
+		            }
+		         }
+    			}
+			else
+			   {
+	         SetValue($obj->ips_var, $obj->value);
+	         }
         }
-    }
+	return ($this->snmpobj);
+   }
 
     /*
 	  *  prüfe um welchen SNMP Rückgabetyp es sich handelt

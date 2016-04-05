@@ -565,7 +565,8 @@ if (isset ($installedModules["RemoteAccess"]))
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-				$snmp->update();
+				$result=$snmp->update(true);           /* mit Parameter true erfolgt kein Logging, also Spontanabfrage */
+				print_r($result);
 				
       		/*		if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
          				{
