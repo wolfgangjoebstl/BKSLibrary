@@ -60,18 +60,25 @@ class RemoteAccess
 		   {
 		   $children=IPS_HasChildren($variableID);
 		   echo "  Variable ".IPS_GetName($variableID)."  ".$children;
-			if ($children)
-			   {
-			   $this->add_variable($variableID,$this->includefile,$count_phone);
-			   $volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
-			   $this->add_variable($volumeID,$his->includefile,$count_phone);
-			   echo"  VolumeID :".$volumeID;
-		      }
-		   else
+		   if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
 		      {
-			   $this->add_variable($variableID,$includefile,$count_var);
+				if ($children)
+				   {
+				   $this->add_variable($variableID,$this->includefile,$count_phone);
+				   $volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
+				   $this->add_variable($volumeID,$his->includefile,$count_phone);
+				   echo"  VolumeID :".$volumeID;
+			      }
+			   else
+			      {
+				   $this->add_variable($variableID,$includefile,$count_var);
+					}
+				echo "\n";
 				}
-			echo "\n";
+			else
+			   {
+			   echo " keine Variable";
+			   }
 		   }
 		$this->includefile.="\n      ".');}'."\n";
 		}
