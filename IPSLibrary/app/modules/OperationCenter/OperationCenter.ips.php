@@ -541,11 +541,11 @@ if (isset ($installedModules["RemoteAccess"]))
 		   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 			if ($router['TYP']=='MR3420')
 			   {
-				$OperationCenter->write_routerdata_MR3420($router);
+				//$OperationCenter->write_routerdata_MR3420($router);   // keine logging Einträge machen
 				}
 			if ($router['TYP']=='MBRN3000')
 			   {
-				$OperationCenter->write_routerdata_MBRN3000($router);
+				//$OperationCenter->write_routerdata_MBRN3000($router);   // keine logging Einträge machen
 				}
 			if ($router['TYP']=='RT1900ac')
 			   {

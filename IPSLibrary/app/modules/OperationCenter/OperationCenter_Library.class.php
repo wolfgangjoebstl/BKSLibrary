@@ -180,6 +180,12 @@ class OperationCenter
 		return ($ergebnis);
 	   }
 
+	/**
+	 * schreibt die gestrigen Download/Upload und Total Werte von einem MR3430 Router
+	 *
+	 * Werte werden aus dem vorher ausgelesenem html file verzeichnis ausgewertet
+	 *
+	 */
 	function write_routerdata_MR3420($router)
 		{
 	   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
@@ -267,6 +273,12 @@ class OperationCenter
 			}
 		}
 
+	/**
+	 * schreibt die gestrigen Download/Upload und Total Werte von einem MBRN3000 Router
+	 *
+	 * Werte werden direkt aus dem Router ausgelesen
+	 *
+	 */
 	function write_routerdata_MBRN3000($router)
 		{
 		echo "  Daten vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die Tageswerte von gestern erfasst.\n";
@@ -374,6 +386,16 @@ class OperationCenter
 			$Download= (float) $result2;
 			SetValue($DownloadID,$Download);
 			echo "     Download Datenvolumen gestern ".$Download." MByte \n";
+			
+			if (($TotalID=@IPS_GetVariableIDByName("Total",$router_categoryId))==false)
+  				{
+			  	$DownloadID = CreateVariableByName($router_categoryId, "Total", 2);
+				IPS_SetVariableCustomProfile($DownloadID,'MByte');
+				AC_SetLoggingStatus($this->archiveHandlerID,$DownloadID,true);
+				AC_SetAggregationType($this->archiveHandlerID,$DownloadID,0);
+				IPS_ApplyChanges($this->archiveHandlerID);
+				}
+			SetValue($TotalID,($Download+$Upload));
 			}
 		}
 
@@ -496,7 +518,7 @@ class OperationCenter
 		}
 
 	/*
-	 *  Routerdaten direct aus dem Router auslesen,
+	 *  Routerdaten aus der allgemeinen Datenbank auslesen,
 	 *
 	 *  Allgemeine Routine, sucht die Daten im entsprechenden Verzeichnis, nur Ausgabe auf echo
 	 *
@@ -540,7 +562,7 @@ class OperationCenter
 		}
 
 	/*
-	 *  Routerdaten Synology RT1900ac direct aus dem Router auslesen,
+	 *  Routerdaten Synology RT1900ac direct als SNMP Werte aus dem Router auslesen,
 	 *
 	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
 	 *
@@ -587,13 +609,13 @@ class OperationCenter
 
 
 	/*
-	 *  Routerdaten MBRN3000 direct aus dem Router auslesen,
+	 *  Routerdaten MR3420 aus dem datenobjekt statt direct aus dem Router auslesen,
 	 *
-	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
+	 *  Routine obsolet durch get_router_history
 	 *
 	 */
 
-	function get_routerdata_MR3420($router,$actual=false)
+	function get_routerdata_MR3420($router)
 		{
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
@@ -616,7 +638,7 @@ class OperationCenter
 			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 			   	foreach ($werte as $wert)
 		   		   {
-		   		   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+		   		   echo "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
 		   	   	}
 					}
 		   	}
@@ -624,6 +646,53 @@ class OperationCenter
 		return $ergebnis;
 		}
 
+	/*
+	 *  Routerdaten direct aus dem Archiv auslesen,
+	 *
+	 *
+	 */
+
+	function get_router_history($router,$start,$duration)
+		{
+		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+		if ($router_categoryId==false)
+		   {
+			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+			IPS_SetParent($router_categoryId,$this->CategoryIdData);
+			}
+		$result=IPS_GetChildrenIDs($router_categoryId);
+		//echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		$ergebnisPrint="";
+		$ergebnis=0;
+		$dateOld="";
+		foreach($result as $oid)
+		   {
+		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		      {
+		      if (IPS_GetName($oid)=="Total")
+		         {
+	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-($start+$duration)*24*60*60, time()-$start*24*60*60,1000);
+			   	//echo "   ".IPS_GetName($oid)." Variable wird gelogged, vor ".$start." Tagen fuer ".$duration." Tagen ".sizeof($werte)." Werte.\n";
+			   	foreach ($werte as $wert)
+		   		   {
+                  if (date("d.m",$wert["TimeStamp"])==$dateOld)
+                     {
+                     //echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
+	                  }
+                  else
+                     {
+     		   		   $ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+                     $dateOld=date("d.m",$wert["TimeStamp"]);
+                     $ergebnis += $wert["Value"];
+                     }
+						}
+					}
+		   	}
+		   }
+		//echo $ergebnisPrint;
+		return round($ergebnis,2);
+		}
 
 	function get_data($oid)
 		{

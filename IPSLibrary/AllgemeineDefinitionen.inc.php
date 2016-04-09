@@ -1006,16 +1006,20 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				   {
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MBRN3000($router,true),2)." Mbyte \n";
 				   }
-				if ($router['TYP']=='MR3420')
+				elseif ($router['TYP']=='MR3420')
 				   {
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MR3420($router),2)." Mbyte \n";
 					}
-				if ($router['TYP']=='RT1900ac')
+				elseif ($router['TYP']=='RT1900ac')
 				   {
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_RT1900($router,true),2)." Mbyte \n";
 					}
-				$ergebnisOperationCenter.="\n";
+				else
+					{
+					$ergebnisOperationCenter.="\n";
+					}
 				}
+			$ergebnisOperationCenter.="\n";
 			}
 
 		/******************************************************************************************/
@@ -1395,29 +1399,41 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($CatIdData,$subnet);
-
 			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
 
 			$OperationCenterConfig = OperationCenter_Configuration();
-
 			$ergebnisOperationCenter.="\nHistorisches Datenvolumen für die verwendeten Router : \n";
+			$historie="";
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
 			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MBRN3000')
 				   {
-					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+					$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+										round($OperationCenter->get_router_history($router,0,7),0)."/".
+					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+										round($OperationCenter->get_router_history($router,30,30),0)." \n";
 				   }
-				if ($router['TYP']=='MR3420')
+				elseif ($router['TYP']=='MR3420')
 				   {
-					$OperationCenter->sort_routerdata($router);
-					$OperationCenter->get_routerdata($router);
+					$ergebnisOperationCenter.= "    Werte von Heute     : ".$OperationCenter->get_router_history($router,0,1)." Mbyte. \n";
+					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_router_history($router,1,1)." Mbyte. \n";
+					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+										round($OperationCenter->get_router_history($router,0,7),0)."/".
+					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+										round($OperationCenter->get_router_history($router,30,30),0)." \n";
 					}
-				if ($router['TYP']=='RT1900ac')
+				elseif ($router['TYP']=='RT1900ac')
 				   {
-					$OperationCenter->get_routerdata($router);
+					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_RT1900ac($router,false)." Mbyte \n";
 					}
+				else
+				   {
+				   $ergebnisOperationCenter.="\n";
+				   }
 				}
 		   }
 		   
