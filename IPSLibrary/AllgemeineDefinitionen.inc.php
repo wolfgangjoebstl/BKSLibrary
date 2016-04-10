@@ -1428,7 +1428,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				elseif ($router['TYP']=='RT1900ac')
 				   {
-					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_RT1900ac($router,false)." Mbyte \n";
+					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
 					}
 				else
 				   {
