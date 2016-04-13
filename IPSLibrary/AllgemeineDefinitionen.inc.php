@@ -1004,14 +1004,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MBRN3000')
 				   {
+					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MBRN3000($router,true),2)." Mbyte \n";
 				   }
 				elseif ($router['TYP']=='MR3420')
 				   {
+					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MR3420($router),2)." Mbyte \n";
 					}
 				elseif ($router['TYP']=='RT1900ac')
 				   {
+					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_RT1900($router,true),2)." Mbyte \n";
 					}
 				else
@@ -1410,6 +1413,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MBRN3000')
 				   {
+					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
 					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
 					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
@@ -1419,6 +1423,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				   }
 				elseif ($router['TYP']=='MR3420')
 				   {
+					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.= "    Werte von Heute     : ".$OperationCenter->get_router_history($router,0,1)." Mbyte. \n";
 					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_router_history($router,1,1)." Mbyte. \n";
 					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
@@ -1428,7 +1433,26 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				elseif ($router['TYP']=='RT1900ac')
 				   {
-					$ergebnisOperationCenter.="    Werte von Gestern : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
+					$ergebnisOperationCenter.="\n";
+					$host          = $router["IPADRESSE"];
+					$community     = "public";                                                                         // SNMP Community
+					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+					$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+					$result=$snmp->update(true);  /* kein Logging */
+					$ergebnis=0;
+					foreach ($result as $object)
+						{
+						$ergebnis+=$object->change;
+						}
+					$ergebnisOperationCenter.= "    Werte von heute     : ".round($ergebnis,2)." Mbyte \n";
+					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
+					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+										round($OperationCenter->get_router_history($router,0,7),0)."/".
+					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+										round($OperationCenter->get_router_history($router,30,30),0)." \n";
 					}
 				else
 				   {

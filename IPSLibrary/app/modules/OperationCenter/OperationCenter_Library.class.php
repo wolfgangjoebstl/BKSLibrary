@@ -524,7 +524,7 @@ class OperationCenter
 	 *
 	 */
 
-	function get_routerdata($router)
+	function get_routerdata($router,$actual=false)
 		{
 		$ergebnis=0;      // Gesamtdatenvolumen heute oder gestern
 		
@@ -558,7 +558,10 @@ class OperationCenter
 		   }
 		//ksort($result1);
 		//print_r($result1);
-		return ($ergebnis);
+		if ($actual==false)
+		   {
+			return ($ergebnis);
+		   }
 		}
 
 	/*
@@ -604,7 +607,10 @@ class OperationCenter
 					}
 		   	}
 		   }
-		return $ergebnis;
+		if ($actual==false)
+		   {
+			return ($ergebnis);
+		   }
 		}
 
 

@@ -105,7 +105,7 @@ class SNMP
 			if ($type==self::tLONG)
 				   {
 			      $convertType = "Counter32";  /* automatisch zuweisen */
-	            $ips_var = IPS_CreateVariable(1);
+	            $ips_var = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
 	            IPS_SetName($ips_var, $desc);
   		         IPS_SetParent($ips_var, $parentID);
   		         //IPS_SetPosition($ips_var,20);
@@ -113,7 +113,7 @@ class SNMP
 					AC_SetAggregationType($archiveHandlerID,$ips_var,0);  /* 0 Standard 1 Zähler */
 					IPS_ApplyChanges($archiveHandlerID);
 
-	            $ips_vare = IPS_CreateVariable(1);
+	            $ips_vare = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
 	            IPS_SetName($ips_vare, $desc."_ext");
   		         IPS_SetParent($ips_vare, $parentID);
   		         //IPS_SetPosition($ips_vare,20);
@@ -121,14 +121,45 @@ class SNMP
 					AC_SetAggregationType($archiveHandlerID,$ips_vare,0);  /* 0 Standard 1 Zähler */
 					IPS_ApplyChanges($archiveHandlerID);
 
-	            $ips_varc = IPS_CreateVariable(1);
+	            $ips_varc = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
 	            IPS_SetName($ips_varc, $desc."_chg");
   		         IPS_SetParent($ips_varc, $parentID);
   		         //IPS_SetPosition($ips_varc,10);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
 					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 Zähler */
 					IPS_ApplyChanges($archiveHandlerID);
-				   }
+
+			      if (@IPS_GetVariableIDByName("Download", $parentID)==false)
+						{
+		            $ips_download = IPS_CreateVariable(2);  			/* Variable Typ Float anlegen */
+		            IPS_SetName($ips_download, "Download");
+  			         IPS_SetParent($ips_download, $parentID);
+  		   	      IPS_SetPosition($ips_download,1000);
+						AC_SetLoggingStatus($archiveHandlerID,$ips_download,true);
+						AC_SetAggregationType($archiveHandlerID,$ips_download,0);  /* 0 Standard 1 Zähler */
+						IPS_ApplyChanges($archiveHandlerID);
+						}
+			      if (@IPS_GetVariableIDByName("Upload", $parentID)==false)
+						{
+		            $ips_upload = IPS_CreateVariable(2);  			/* Variable Typ Float anlegen */
+		            IPS_SetName($ips_upload, "Upload");
+  			         IPS_SetParent($ips_upload, $parentID);
+  		   	      IPS_SetPosition($ips_upload,1000);
+						AC_SetLoggingStatus($archiveHandlerID,$ips_upload,true);
+						AC_SetAggregationType($archiveHandlerID,$ips_upload,0);  /* 0 Standard 1 Zähler */
+						IPS_ApplyChanges($archiveHandlerID);
+						}
+			      if (@IPS_GetVariableIDByName("Total", $parentID)==false)
+						{
+		            $ips_total = IPS_CreateVariable(2);  			/* Variable Typ Float anlegen */
+		            IPS_SetName($ips_total, "Total");
+  			         IPS_SetParent($ips_total, $parentID);
+  		   	      IPS_SetPosition($ips_total,1010);
+						AC_SetLoggingStatus($archiveHandlerID,$ips_total,true);
+						AC_SetAggregationType($archiveHandlerID,$ips_total,0);  /* 0 Standard 1 Zähler */
+						IPS_ApplyChanges($archiveHandlerID);
+					   }
+					}
 				else
 				   {
 	            $ips_var = IPS_CreateVariable($type);
@@ -158,9 +189,13 @@ class SNMP
     *
     */
     
-	public function update($nolog=false){
+	public function update($nolog=false, $download="", $upload="")
+		{
+		$download_val=0; $upload_val=0;
+
 		if($this->debug) echo "Updating ". count($this->snmpobj) ." variable(s)\n";
-      foreach($this->snmpobj as $obj){
+      foreach($this->snmpobj as $obj)
+			{
       	$oid = ltrim($obj->OID,".");
          $exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
          if($this->debug) echo "Execute SNMP-Query: ". $this->binary, "$exec_param\n";
@@ -200,24 +235,18 @@ class SNMP
 					}
 				$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),IPS_GetParent($obj->ips_var));/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
 				$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_chg"),IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+				$ips_download=IPS_GetObjectIDByName("Download",IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+				$ips_upload  =IPS_GetObjectIDByName("Upload"  ,IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+				$ips_total   =IPS_GetObjectIDByName("Total"   ,IPS_GetParent($obj->ips_var)); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+
 				//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
 				if ($z[0]>=GetValue($ips_vare))
 				   { /* kein Übertrag */
 				   $a=($z[0]-GetValue($ips_vare));
 				   for ($i=0;$i<$intl;$i++) $a*=10;
 				   $a+=($z[1]-GetValue($obj->ips_var));
-					echo "           Alter Wert : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
-					echo "           Neuer Wert : ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
-					if ($nolog==false)
-						{
-		            SetValue($obj->ips_var, $z[1]);
-		            SetValue($ips_vare,$z[0]);
-		            SetValue($ips_varc,$a);
-		            }
-		         else
-		            {
-		            $obj->change = $a;
-		            }
+				   $aMByte=$a/1024/1024;
+					if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
 		         }
 				else
 		         {
@@ -230,27 +259,42 @@ class SNMP
 			   	$a+=$z[1];
 			   	//echo "******* a: ".$a." b: ".$b."  Summe: ".($a+$b)."\n";
 			   	$a+=$b;
-					echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
-					echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".($a/1024/1024)." MByte. \n";
-					if ($nolog==false)
-						{
-					   SetValue($obj->ips_var, $z[1]);
-			         SetValue($ips_vare,$z[0]);
-		            SetValue($ips_varc,$a);
-		            }
-		         else
-		            {
-		            $obj->change = $a;
-		            }
+				   $aMByte=$a/1024/1024;
 		         }
+
+				echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
+				echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".round($aMByte,2)." MByte. \n";
+				if ($nolog==false)
+					{
+				   SetValue($obj->ips_var, $z[1]);
+		         SetValue($ips_vare,$z[0]);
+	            SetValue($ips_varc,$a);
+	            /* download etc variablen setzen */
+					if (IPS_GetName($obj->ips_var) == $download)
+						{
+		            SetValue($ips_download,$aMByte);
+		            $download_val=$aMByte;
+						}
+					if (IPS_GetName($obj->ips_var) == $upload)
+						{
+		            SetValue($ips_upload,$aMByte);
+		            $upload_val=$aMByte;
+						}
+	            }
+            $obj->change = $aMByte;
     			}
 			else
 			   {
 	         SetValue($obj->ips_var, $obj->value);
 	         }
-        }
-	return ($this->snmpobj);
-   }
+	   	}   /* ende foreach */
+		if ($download != "")
+		   {
+         SetValue($ips_total,($upload_val+$download_val));
+         echo "*** Gesamtübertragungsvolumen : ".($upload_val+$download_val)." MByte.\n";
+	      }
+		return ($this->snmpobj);
+   	}
 
     /*
 	  *  prüfe um welchen SNMP Rückgabetyp es sich handelt
