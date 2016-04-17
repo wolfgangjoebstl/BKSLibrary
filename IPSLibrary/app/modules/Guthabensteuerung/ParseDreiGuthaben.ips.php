@@ -85,7 +85,7 @@ if ($_IPS['SENDER']=="Execute")
 			$dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
 			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
 			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-			$ergebnis1.=$TelNummer["NUMMER"]."  ".GetValue($userID)."  ".GetValue($dateID)." ".GetValue($udateID)."\n";
+			$ergebnis1.=$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),20)."  ".GetValue($dateID)." ".GetValue($udateID)."\n";
 			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
 			}
 		echo "\nAusgabe der letzten Aenderungen der ausgelesenen Files : \n";
@@ -222,6 +222,7 @@ function parsetxtfile($verzeichnis, $nummer)
 	$result4g="";$result4v="";$result4f="";
 	if ($handle)
 		{
+		$entgelte=false;
    	while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
 			{
 			/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
@@ -236,24 +237,34 @@ function parsetxtfile($verzeichnis, $nummer)
 					}
 				//echo "*********Ausgabe User : ".$result1."\n<br>";
 				}
-      	if(preg_match('/660/i',$buffer))
+      	if(preg_match('/0660/i',$buffer))
 	   		{
 	   		$result2=trim($buffer);
 	   		//echo "*********Ausgabe Nummer : ".$result2."\n<br>";
 				}
+      	if(preg_match('/0676/i',$buffer))      /* manchmal haben wir die Rufnummer mitgenommen */
+	   		{
+	   		$result2=trim($buffer);
+	   		//echo "*********Ausgabe Nummer : ".$result2."\n<br>";
+				}
+
+			/************************* Datum der Aktualisierung */
       	if(preg_match('/Aktualisierung/i',$buffer))
 	   		{
 	   		$pos=strpos($buffer,"Aktualisierung");
+	   		$Ende=strpos($buffer,"\n");
+	   		if (strpos($buffer,"Abrechnung")!==false) { $Ende=strpos($buffer,"Abrechnung"); }
 				if ($pos!=false)
 					{
-					$result3=trim(substr($buffer,$pos+16,200));
+					$result3=trim(substr($buffer,$pos+16,$Ende-$pos-16));
 					}
-				//echo "*********Wert von : ".$result3."\n<br>";
+				//echo "*********Wert von : ".$result3." ".($pos+16). " ".($Ende-$pos-16)." \n<br>";
 				}
 			//echo "-----------------------------------------\n";
 			//echo $buffer;
 
-      	if(preg_match('/MB/i',$buffer) and ($result4g==""))
+			/************************** Ermittlung verfügbares Datenguthaben */
+      	if(preg_match('/MB/i',$buffer) and ($result4g=="") and !preg_match('/MBit/i',$buffer))         /* verfügbares Datenvolumen, was gibt es grundsaetzlich, erstes MB, aber nicht MBit */
       	//if (preg_match('/MB/i',$buffer))
 	   		{
 				$result4g=trim(substr($buffer,$startdatenguthaben,200));
@@ -266,7 +277,8 @@ function parsetxtfile($verzeichnis, $nummer)
 	   		//echo "*********verbraucht : ".$result4v."\n<br>";
 				}
 
-			if (preg_match('/MB frei/i',$buffer))
+			/************************** Ermittlung verbrauchtes Datenguthaben */
+			if (preg_match('/MB frei/i',$buffer))                       /* verbrauchtes Datenvolumen, das heisst was habe ich noch */
 	   		{
 				$result4f=trim(substr($buffer,$startdatenguthaben,200));
 	   		//echo "*********frei : ".$result4f."\n<br>";
@@ -280,23 +292,40 @@ function parsetxtfile($verzeichnis, $nummer)
 	   		//echo "*********frei : ".$result4f."\n<br>";
 				}
 
+			/************************ Gültigkeit des Guthabens */
 			if (preg_match('/bis:/i',$buffer))
 	   		{
 				$result7=trim(substr($buffer,12,200));
 	   		//echo "*********Gültig bis : ".$result7."\n<br>";
 				}
+			if (preg_match('/Abrechnungszeitraum:/i',$buffer))
+	   		{
+				$result7=trim(substr($buffer,strpos($buffer,"-")+1,200));
+	   		//echo "*********Gültig bis : ".$result7."\n<br>";
+				}
 
-
+			/************************** Ermittlung des Guthabens, oder zusätzlicher Verbindungsentgelte */
       	if (preg_match('/haben:/i',$buffer))
 	   		{
 	   		$pos=strpos($buffer,"haben:");
-		  		$Ende=strpos($buffer,"€");
+		  		$Ende=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
 				if ($pos!=false)
 					{
 					$pos=$pos+6;
-					$result5=trim(substr($buffer,$pos,$Ende-$pos));
+					$result5=trim(substr($buffer,$pos,$Ende-$pos+3));
 					}
-				//echo "*********Geldguthaben :".$result5."\n<br>";
+				//echo "*********Geldguthaben : ".$result5." \n<br>";
+    			}
+      	if ($entgelte==true)
+	   		{
+	   		$entgelte=false;
+		  		$Ende=strpos($buffer,",");
+				$result5=trim(substr($buffer,0,$Ende+3));
+				//echo "*********Geldguthaben : ".$result5." \n<br>";
+    			}
+      	if (preg_match('/Verbindungsentgelte:/i',$buffer))
+	   		{
+	   		$entgelte=true;
     			}
 	    	}
     	 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
@@ -371,11 +400,11 @@ function parsetxtfile($verzeichnis, $nummer)
   		 //echo $result1.":".$result6."bis:".$result7.".\n";
   		 if ($result6=="")
 			{
-		   $ergebnis=$nummer." (".$result1.") Guthaben:".$result5." Euro";
+		   $ergebnis=$nummer." ".str_pad("(".$result1.")",25)."  Guthaben:".$result5." Euro";
 			}
 		 else
 		   {
-		   $ergebnis=$nummer." (".$result1.")".$result6." bis ".$result7." Guthaben:".$result5." Euro";
+		   $ergebnis=$nummer." ".str_pad("(".$result1.")",25)." ".$result6." bis ".$result7." Guthaben:".$result5." Euro";
 			}
 
    	 if (!feof($handle))

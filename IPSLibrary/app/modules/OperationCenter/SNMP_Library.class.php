@@ -246,7 +246,6 @@ class SNMP
 				   for ($i=0;$i<$intl;$i++) $a*=10;
 				   $a+=($z[1]-GetValue($obj->ips_var));
 				   $aMByte=$a/1024/1024;
-					if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
 		         }
 				else
 		         {
@@ -261,9 +260,10 @@ class SNMP
 			   	$a+=$b;
 				   $aMByte=$a/1024/1024;
 		         }
-
 				echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
 				echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".round($aMByte,2)." MByte. \n";
+				if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
+
 				if ($nolog==false)
 					{
 				   SetValue($obj->ips_var, $z[1]);

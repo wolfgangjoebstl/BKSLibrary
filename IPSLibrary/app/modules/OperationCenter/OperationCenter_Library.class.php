@@ -679,12 +679,12 @@ class OperationCenter
 		      if (IPS_GetName($oid)=="Total")
 		         {
 	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-($start+$duration)*24*60*60, time()-$start*24*60*60,1000);
-			   	//echo "   ".IPS_GetName($oid)." Variable wird gelogged, vor ".$start." Tagen fuer ".$duration." Tagen ".sizeof($werte)." Werte.\n";
+			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, vor ".$start." Tagen fuer ".$duration." Tagen ".sizeof($werte)." Werte.\n";
 			   	foreach ($werte as $wert)
 		   		   {
                   if (date("d.m",$wert["TimeStamp"])==$dateOld)
                      {
-                     //echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
+                     echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
 	                  }
                   else
                      {
