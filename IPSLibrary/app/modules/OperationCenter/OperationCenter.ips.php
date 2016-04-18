@@ -745,7 +745,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-					$snmp->update();
+					$snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
 					}
 				if ($router['TYP']=='MBRN3000')
 				   {
@@ -841,9 +841,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
 					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 
-					$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+					$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
 					$count+=$count1;
-					$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+					$PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
+					SetValue($PhotoCountID,GetValue($PhotoCountID)+$count1);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */
 					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
 					if ($count1>0)
 					   {
@@ -859,6 +860,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
 				}
 	      break;
+	      
 	   case $tim3ID:
 			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
@@ -886,26 +888,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						   {
 							$OperationCenter->write_routerdata_MR3420($router);
 							}
-         			if ($router['TYP']=='RT1900ac')
-			   			{
-							$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
-							if ($router_categoryId==false)
-							   {
-								$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-								IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
-								IPS_SetParent($router_categoryId,$CategoryIdData);
-								}
-							$host          = $router["IPADRESSE"];
-							$community     = "public";                                                                         // SNMP Community
-							$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-							$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-							$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
-							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
-							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-							$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-							$snmp->update();
-							}
+						/* die anderen Router werden direkt abgefragt, keine nachgelagerte Auswertung notwendig */
 				   	}
 
 					SetValue($ScriptCounterID,$counter+1);
