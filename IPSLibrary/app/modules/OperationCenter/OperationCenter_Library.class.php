@@ -755,7 +755,7 @@ class OperationCenter
 
 /****************************************************************************************************************/
 
-function move_camPicture($verzeichnis,$WebCamWZ_LetzteBewegungID)
+function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
 	{
 	$count=100;
 	//echo "<ol>";
@@ -786,7 +786,7 @@ function move_camPicture($verzeichnis,$WebCamWZ_LetzteBewegungID)
             		}
             	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
             	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-		  		   SetValue($WebCamWZ_LetzteBewegungID,$letztesfotodatumzeit);
+		  		   SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
          		}
       	  	} /* Ende while */
 	     	closedir($handle);
