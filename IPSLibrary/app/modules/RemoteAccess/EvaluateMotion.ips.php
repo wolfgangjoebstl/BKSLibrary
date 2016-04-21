@@ -46,12 +46,6 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 echo "RA Category Data ID   : ".$CategoryIdData."\n";
 echo "RA Category App ID    : ".$CategoryIdApp."\n";
 
-$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
-$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
-
-echo "OC Script ID          : ".$OperationCenterScriptId."\n";
-echo "OC Data ID            : ".$OperationCenterDataId."\n";
-
 echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
 if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
 if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
@@ -188,7 +182,6 @@ echo "\n";
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		echo "IPSCam Modul installiert. \n";
 		IPSUtils_Include ("IPSCam.inc.php",     "IPSLibrary::app::modules::IPSCam");
 
 		$camManager = new IPSCam_Manager();
@@ -201,27 +194,17 @@ echo "\n";
 	   echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
 		if (isset ($installedModules["OperationCenter"]))
 			{
-			echo "OperationCenter Modul installiert. \n";
-
+			echo "IPSCam und OperationCenter Modul installiert. \n";
 			if (isset ($OperationCenterConfig['CAM']))
 				{
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
-					echo "   Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."       ";
-					$verzeichnis = $cam_config['FTPFOLDER'];
-					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-					if ($cam_categoryId==false)
-					   {
-						$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-						IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-						IPS_SetParent($cam_categoryId,$CategoryIdData);
-						}
-					$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
-					$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+					$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
+					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$OperationCenterDataId);
 
-					$WebCam_PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
-					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
+					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					echo "   Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
 
     				$oid=$WebCam_MotionID;
     				$cam_name="IPCam_".$cam_name;

@@ -39,6 +39,7 @@ if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardwar
 if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
 if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; break;}
 if (isset ($installedModules["IPSMessageHandler"])) { echo "Modul IPSMessageHandler ist installiert.\n"; } else { echo "Modul IPSMessageHandler ist NICHT installiert.\n"; break;}
+if (isset ($installedModules["OperationCenter"])) { echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; break;}
 
 /*
 
@@ -121,8 +122,7 @@ if ($_IPS['SENDER']=="Execute")
 		
 		
 		
-	echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
-
+			echo "\n===========================Alle Homematic Bewegungsmelder ausgeben.\n";
 			foreach ($Homematic as $Key)
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
@@ -142,7 +142,7 @@ if ($_IPS['SENDER']=="Execute")
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
 				}
-			echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
+			echo "\n===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			$TypeFS20=RemoteAccess_TypeFS20();
 			foreach ($FS20 as $Key)
@@ -172,6 +172,38 @@ if ($_IPS['SENDER']=="Execute")
 		   	   	}
 					}
 				}
+			echo "\n===========================Alle IPCam Bewegungsmelder ausgeben.\n";
+			if (isset ($installedModules["IPSCam"]))
+				{
+				IPSUtils_Include ("IPSCam.inc.php",     "IPSLibrary::app::modules::IPSCam");
+
+				$camManager = new IPSCam_Manager();
+				$config     = IPSCam_GetConfiguration();
+			   echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
+				foreach ($config as $cam)
+			   	{
+				   echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
+				   }
+				if (isset ($installedModules["OperationCenter"]))
+					{
+					echo "IPSCam und OperationCenter Modul installiert. \n";
+					IPSUtils_Include ("OperationCenter_Configuration.inc.php",     "IPSLibrary::config::modules::OperationCenter");
+					$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
+					$OperationCenterConfig=OperationCenter_Configuration();
+   				if (isset ($OperationCenterConfig['CAM']))
+						{
+						foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+							{
+							$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$OperationCenterDataId);
+							$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+							echo "   Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
+							$log=new Motion_Logging($WebCam_MotionID);
+							$alleMotionWerte.="********* ".$cam_name."\n".$log->writeEvents()."\n\n";
+							}
+						}  	/* im OperationCenter ist die Kamerabehandlung aktiviert */
+					}     /* isset OperationCenter */
+				}     /* isset IPSCam */
+
 
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
 			echo $alleMotionWerte;
