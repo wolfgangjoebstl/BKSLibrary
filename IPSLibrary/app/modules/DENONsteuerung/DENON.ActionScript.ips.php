@@ -5,7 +5,7 @@
 
 Funktionen:
 	*wird vom Script "DENON.Install_Library" in allen DENON-Variablen als Actionsript
-		in den Variableneigenschaften eingetragen
+		in den Variableneigenschaften der /data Variablen Einträge eingetragen
 	* sendet (WFE-)Kommandos an das DENON.Functions-Script
 */
 
@@ -109,8 +109,8 @@ if ($_IPS['SENDER'] == "WebFront")
 
 if (isset($instanz)==false)
 	{
-	$log_Denon->LogMessage("Instanz wurde nicht gefunden");
-	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
+	$log_Denon->LogMessage("Instanz wurde nicht gefunden (AS)");
+	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden (AS)");
 	break;
 	}
 

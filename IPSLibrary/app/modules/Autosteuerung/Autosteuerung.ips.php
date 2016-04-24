@@ -706,7 +706,26 @@ function Status($params,$status,$simulate=false)
 			   {
 				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
 				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
-				if (strtoupper($params_two[0])=="TOGGLE") { $status=!$status;};
+				if (strtoupper($params_two[0])=="TOGGLE")
+					{
+					if (strtoupper($params[0])=="ONUPDATE")
+					   {
+					   /* Bei OnUpdate herausfinden wie der Wert der Variable ist */
+				   	$params_one=explode(":",$moduleParams2[0]);
+						if (count($params_one)==1)
+						   {
+	      				$lightName=$params_one[0];
+							$lightManager = new IPSLight_Manager();
+							$switchId = $lightManager->GetSwitchIdByName($lightName);
+							$status=!$lightManager->GetValue($switchId);
+							}
+					   }
+					else
+					   {
+					   /* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
+						$status=!$status;          
+						}
+					};
 			   }
 	   case "1":
 	   	$params_one=explode(":",$moduleParams2[0]);

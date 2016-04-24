@@ -16,6 +16,7 @@ Funktionen:
 function DENON_POWER($id, $value) // STANDBY oder ON
 {
  CSCK_SendText($id, "PW".$value.chr(13));
+ IPSLogger_Dbg(__file__, "Denon.Functions ".$id." PW".$value);
 }
 
 function DENON_MasterVolume($id, $value) // "UP" or "DOWN"

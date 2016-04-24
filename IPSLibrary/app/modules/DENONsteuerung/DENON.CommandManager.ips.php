@@ -77,7 +77,7 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
-$configuration=Denon_Configuration();
+$DenonConfiguration=Denon_Configuration();
 
 /* include DENON.Functions
   $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
@@ -97,6 +97,10 @@ else
 if ($_IPS['SENDER'] == "Execute")
 	{
 	echo "Script wurde direkt aufgerufen.\n";
+	foreach ($DenonConfiguration as $config)
+		{
+		echo "Instanz ".$config['NAME']." wurde gefunden (CM)\n";
+		}
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
 	}
@@ -111,17 +115,19 @@ else
 	$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
 	/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
 	$instanz=strstr($instanz," Register Variable",true);
-	
+	$log_Denon->LogNachrichten("Daten von Instanz ".$_IPS['INSTANCE']." ".$instanz." mit Wert ".$data." eingelangt (CM)");
 	/* für alle Webfront Instanzen die Variable setzen */
 	$webconfig=Denon_WebfrontConfig();
 
-	foreach ($configuration as $config)
+	reset($DenonConfiguration); unset($config);
+	foreach ($DenonConfiguration as $config)
 		{
 		/* jeder denon receiver ist wie folgt definiert. IP Adresse muss derzeit fix sein.
    	 *        'NAME'               => 'Denon-Wohnzimmer',
 	    *        'IPADRESSE'          => '10.0.1.149',
 	    *        'INSTANZ'          	=> 'DENON1'
     	 */
+		//$log_Denon->LogNachrichten("Check ".$config['INSTANZ']." gleich ".$instanz."  (CM)");
 		if ($config['INSTANZ']==$instanz)
 		   {
 	   	$id=$config['NAME'];
@@ -130,70 +136,73 @@ else
 	
 		if (isset($id)==false)
 			{
-			$log_Denon->LogMessage("Instanz wurde nicht gefunden");
-			$log_Denon->LogNachrichten("Instanz wurde nicht gefunden");
-			break;
+			//$log_Denon->LogMessage("Instanz ".$instanz." wurde nicht gefunden (CM)");
+			//$log_Denon->LogNachrichten("Instanz ".$instanz." wurde nicht gefunden (CM)");
 			}
+		else
+		   {
+			//$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM)");
+			//$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM)");
 
-		$maincat= substr($data,0,2); //Eventidentifikation
-		$zonecat= substr($data,2); //Zoneneventidentifikation
-		switch($maincat)
-			{
+			$maincat= substr($data,0,2); //Eventidentifikation
+			$zonecat= substr($data,2); //Zoneneventidentifikation
+			switch($maincat)
+				{
 	
-			/* Eventidentifikation
+				/* Eventidentifikation
 
-			PW MV MU ZM SI SV MS DC SD SR SL VS PS NS CV Z2 Z3
+				PW MV MU ZM SI SV MS DC SD SR SL VS PS NS CV Z2 Z3
 
 
-		  */
+			  */
 
-			/*---------------------------------------------------------------------------*/
-			case "PW": //MainPower
-				$item = "Power";
-				$vtype = 0;
-				if ($data == "PWON")
-					{
-					$value = true;
-					}
-				elseif ($data == "PWSTANDBY")
-					{
-					$value = false;
-					}
-				else
-				   {
-					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
-				   }
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
-				break;
-
-			/*---------------------------------------------------------------------------*/
-			case "MV": //Mastervolume
-				if (substr($data,2,3) =="MAX")
-					{
-					}
-				else
-					{
-					$item = "MasterVolume";
-					$vtype = 2;
-					$itemdata=substr($data,2);
-					if ( $itemdata == "99")
+				/*---------------------------------------------------------------------------*/
+				case "PW": //MainPower
+					$item = "Power";
+					$vtype = 0;
+					if ($data == "PWON")
 						{
-						$value = "";
+						$value = true;
+						}
+					elseif ($data == "PWSTANDBY")
+						{
+						$value = false;
+						}
+					else
+					   {
+						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+					   }
+					DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+					break;
+
+				/*---------------------------------------------------------------------------*/
+				case "MV": //Mastervolume
+					if (substr($data,2,3) =="MAX")
+						{
 						}
 					else
 						{
-						$itemdata= str_pad ( $itemdata, 3, "0" );
-						$value = (intval($itemdata)/10) -80;
+						$item = "MasterVolume";
+						$vtype = 2;
+						$itemdata=substr($data,2);
+						if ( $itemdata == "99")
+							{
+							$value = "";
+							}
+						else
+							{
+							$itemdata= str_pad ( $itemdata, 3, "0" );
+							$value = (intval($itemdata)/10) -80;
+							}
+						DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						}
-					DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
-					}
-			 	break;
+				 	break;
 
-			/*---------------------------------------------------------------------------*/
+				/*---------------------------------------------------------------------------*/
 			case "MU": //MainMute
 				$item = "MainMute";
 				$vtype = 0;
@@ -2301,6 +2310,7 @@ else
 	   		break;
 			}
 
+			} /* Ende richtigen Denon Receiver erkannt */
 		} /* ende foreach Denon Receiver */
 	} /* ende else execute */
 
