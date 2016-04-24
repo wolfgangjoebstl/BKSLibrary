@@ -105,7 +105,7 @@
 				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
 				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
-				echo "Datenverzeichnis:".$CategoryIdData."\n";
+				//echo "  Datenverzeichnis Category Data :".$CategoryIdData."\n";
 				$name="Motion-Nachrichten";
 				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 				if ($vid==false)
@@ -127,19 +127,18 @@
 	      		
 				if ($variable<>null)
 				   {
-					echo "Construct Motion.\n";
 			   	$this->variable=$variable;
 				   $result=IPS_GetObject($variable);
 				   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
-			   	echo "Uebergeordnete Variable : ".$this->variablename."\n";
+			   	echo "Construct Motion, Uebergeordnete Variable : ".$this->variablename."\n";
 			   	$directories=get_IPSComponentLoggerConfig();
 				   $directory=$directories["MotionLog"];
 			   	mkdirtree($directory);
 				   $filename=$directory.$this->variablename."_Motion.csv";
 
-	  	      	echo "Ereignisspeicher aufsetzen \n";
   		      	$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
 	   	   	$erID=CreateVariable($variablename,3,$mdID, 10 );
+	  	      	echo "  Ereignisspeicher aufsetzen        : ".$erID." \n";
 					$this->EreignisID=$erID;
 					parent::__construct($filename,$vid);
 				   }
@@ -147,11 +146,11 @@
   	      	$variablename="Gesamt_Ereignisspeicher";
 	      	$erID=CreateVariable($variablename,3,$mdID, 0 );
 				$this->GesamtID=$erID;
-				echo "Gesamt Ereignisspeicher aufsetzen: ".$erID." \n";
+				echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
   	      	$variablename="Gesamt_Ereigniszaehler";
 	      	$erID=CreateVariable($variablename,1,$mdID, 0 );
 				$this->GesamtCountID=$erID;
-				echo "Gesamt Ereigniszähler aufsetzen: ".$erID." \n";
+				echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
 		   	//print_r($this);
 				}
 	   	}
@@ -259,7 +258,7 @@
 		private function evaluateEvents($value, $diftimemax=15)
 			{
 			/* keine Indizierung auf Herkunft der Variable, nur String Werte evaluieren */
-			echo "Evaluate Eventliste : ".$value."\n";
+			echo "  Evaluate Eventliste : ".$value."\n";
 			$EventArray = explode(";", $value);
 		   $array_size = count($EventArray);
          $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */
@@ -279,7 +278,7 @@
 					}
 
 				//echo "Array Size is ".$i."  : last values are ".$previous_state." ? ".$previous_time."\n";
-				echo "Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." \n";
+				echo "      Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." \n";
 				$i=$i-2;
 				$delete=false;
 			 	while($i > 0)
@@ -301,7 +300,7 @@
 					   {
 						$dif_time=(($now_time-$bef_time)/60);
 						//echo "Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." und davor ".$EventArray[$i]." am ".date("d.m H:i",$EventArray[$i-1])." Abstand: ".number_format($dif_time,1,",",".")." Minute \n";
-						echo "Betrachteter (".$i.") State jetzt ".$EventArray[$i]." am ".date("d.m H:i",$EventArray[$i-1])." Abstand: ".number_format($dif_time,1,",",".")." Minute \n";
+						echo "      Betrachteter (".$i.") State jetzt ".$EventArray[$i]." am ".date("d.m H:i",$EventArray[$i-1])." Abstand: ".number_format($dif_time,1,",",".")." Minute \n";
 						switch ($previous_state)
    	  				   {
    	  				   /*****************************************************************************
