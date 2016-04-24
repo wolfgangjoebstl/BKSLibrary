@@ -148,13 +148,16 @@
 					{
 				   case 'Motion':
 					case 'Contact':
-						if ($type==$params[0])
+						if (($type==$params[0]) && ($params[1] != ""))
 						   {
 							$result[$params[1]]="available";
 							}
 					   break;
 					default:
-						$result[$params[1]]="available";
+					   if ($params[1] != "")
+					      {
+							$result[$params[1]]="available";
+							}
 					   break;
 					}
 				}

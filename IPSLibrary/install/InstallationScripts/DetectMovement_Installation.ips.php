@@ -16,11 +16,13 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
-/****************************************************************************************************************/
-/*                                                                                                              */
-/*                                      Init                                                                    */
-/*                                                                                                              */
-/****************************************************************************************************************/
+	$startexec=microtime(true);
+
+	/****************************************************************************************************************/
+	/*                                                                                                              */
+	/*                                      Init                                                                    */
+	/*                                                                                                              */
+	/****************************************************************************************************************/
 
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -58,6 +60,8 @@ if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement is
 if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
 if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
 if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; break;}
+if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
 
 /****************************************************************************************************************/
 /*                                                                                                              */
@@ -72,6 +76,13 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+
+	/****************************************************************************************************************
+	 *                                                                                                    
+	 *                                      Movement
+	 *
+	 ****************************************************************************************************************/
+
 
 	$DetectMovementHandler = new DetectMovementHandler();
 	
@@ -115,7 +126,7 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
-			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');
+			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 
 			if (isset ($installedModules["RemoteAccess"]))
 				{
@@ -172,7 +183,7 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
-			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','par3');
+			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 
 			if (isset ($installedModules["RemoteAccess"]))
 				{
@@ -191,6 +202,70 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 			   }
 			}
 		}
+
+	if (isset ($installedModules["IPSCam"]))
+		{
+		IPSUtils_Include ("IPSCam.inc.php",     "IPSLibrary::app::modules::IPSCam");
+
+		$camManager = new IPSCam_Manager();
+		$config     = IPSCam_GetConfiguration();
+	   echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
+		foreach ($config as $cam)
+	   	{
+		   echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
+		   }
+	   echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
+		if (isset ($installedModules["OperationCenter"]))
+			{
+			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+			$OperationCenterConfig = OperationCenter_Configuration();
+			echo "IPSCam und OperationCenter Modul installiert. \n";
+			if (isset ($OperationCenterConfig['CAM']))
+				{
+				echo "Im OperationCenterConfig sind auch die CAM Variablen angelegt.\n";
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+					$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
+					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$OperationCenterDataId);
+
+					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					echo "   Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
+
+    				$oid=$WebCam_MotionID;
+    				$cam_name="IPCam_".$cam_name;
+	  	      	$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+					   {
+						echo "      ".str_pad($cam_name,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+						}
+					else
+					   {
+						echo "      ".str_pad($cam_name,30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+						}
+					$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+			
+					if (isset ($installedModules["RemoteAccess"]))
+						{
+						//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+						}
+					else
+					   {
+					   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+						echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+					   $messageHandler = new IPSMessageHandler();
+					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+					   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
+					   }
+					}
+
+				}  	/* im OperationCenter ist die Kamerabehandlung aktiviert */
+			}     /* isset OperationCenter */
+		}     /* isset IPSCam */
+
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
@@ -251,6 +326,12 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 
 		   }
 		}
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Temperature
+	 *
+	 ****************************************************************************************************************/
 
 	$DetectTemperatureHandler = new DetectTemperatureHandler();
 	echo "\n";
@@ -404,6 +485,12 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 				}
 		   }
 		}
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Humidity
+	 *
+	 ****************************************************************************************************************/
 
 	$DetectHumidityHandler = new DetectHumidityHandler();
 	echo "\n";

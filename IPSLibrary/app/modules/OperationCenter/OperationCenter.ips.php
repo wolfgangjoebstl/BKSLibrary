@@ -724,6 +724,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
 					SetValue($ScriptCounterID,1);
 					IPS_SetEventActive($tim3ID,true);
+					IPSLogger_Dbg(__file__, "Router MR3420 Auswertung gestartet.");
 		   		}
 				if ($router['TYP']=='RT1900ac')
 				   {
@@ -862,7 +863,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	      break;
 	      
 	   case $tim3ID:
-			IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
 		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
@@ -903,6 +904,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			   }
 			break;
 		default:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 		   break;
 		}
 	}

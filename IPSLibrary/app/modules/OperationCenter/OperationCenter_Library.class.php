@@ -694,7 +694,7 @@ class OperationCenter
 		   		   {
                   if (date("d.m",$wert["TimeStamp"])==$dateOld)
                      {
-                     echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
+                     //echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
 	                  }
                   else
                      {

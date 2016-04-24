@@ -10,14 +10,11 @@
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-
-/******************************************************
-
-				INIT
-
-*************************************************************/
+ /******************************************************
+  *
+  *  			INIT
+  *
+  *************************************************************/
 
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 120);
@@ -50,13 +47,24 @@ echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
 if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
 if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
 if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
 if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
 if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
 if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+if (isset ($installedModules["DetectMovement"])) { 	echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
 echo "\n";
 
-
-/***************** INSTALLATION **************/
+if (isset ($installedModules["DetectMovement"]))
+	{
+	IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+	IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+	}
+	
+ /******************************************************
+  *
+  *  			INSTALLATION
+  *
+  *************************************************************/
 
 	echo "Update Konfiguration und register Events\n";
 
@@ -69,7 +77,11 @@ echo "\n";
 	$FHT = FHTList();
 	$FS20= FS20List();
 
-	/******************************************* Bewegungsmelder ***********************************************/
+	/*
+	 *
+	 ******************************************* Bewegungsmelder **********************************************
+	 *
+	 */
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
@@ -114,9 +126,13 @@ echo "\n";
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-			//echo "Detect Movement anlegen.\n";
-		   $DetectMovementHandler = new DetectMovementHandler();
-			$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+
+			if (isset ($installedModules["DetectMovement"]))
+				{
+				//echo "Detect Movement anlegen.\n";
+			   $DetectMovementHandler = new DetectMovementHandler();
+				$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+				}
 			}
 		}
 
@@ -165,9 +181,13 @@ echo "\n";
 			   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-						//echo "Detect Movement anlegen.\n";
-					   $DetectMovementHandler = new DetectMovementHandler();
-						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+						
+						if (isset ($installedModules["DetectMovement"]))
+							{
+							//echo "Detect Movement anlegen.\n";
+						   $DetectMovementHandler = new DetectMovementHandler();
+							$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+							}
 		   	      }
 		   	   }
 
@@ -194,9 +214,12 @@ echo "\n";
 	   echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
 		if (isset ($installedModules["OperationCenter"]))
 			{
+			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+			$OperationCenterConfig = OperationCenter_Configuration();
 			echo "IPSCam und OperationCenter Modul installiert. \n";
 			if (isset ($OperationCenterConfig['CAM']))
 				{
+				echo "Im OperationCenterConfig auch die CAm Variablen angelegt.\n";
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
 					$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
@@ -234,9 +257,13 @@ echo "\n";
 		   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-					//echo "Detect Movement anlegen.\n";
-				   $DetectMovementHandler = new DetectMovementHandler();
-					$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+					
+					if (isset ($installedModules["DetectMovement"]))
+						{
+						//echo "Detect Movement anlegen.\n";
+					   $DetectMovementHandler = new DetectMovementHandler();
+						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+						}
 					}
 
 				}  	/* im OperationCenter ist die Kamerabehandlung aktiviert */
