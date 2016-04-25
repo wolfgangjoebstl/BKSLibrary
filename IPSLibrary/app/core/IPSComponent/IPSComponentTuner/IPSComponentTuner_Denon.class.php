@@ -34,6 +34,7 @@
 		private $instanceId;    /* generelle Instanz mit der das Obkekt erkannt werden kann */
 		private $TunerName;
 		private $ZoneName;
+		private $ChannelName;
 		private $DataCatID;
 		private $log_Denon;
 		private $DenonSocketID;
@@ -45,9 +46,10 @@
 		 *
 		 * @param integer $instanceId InstanceId des Dummy Devices
 		 */
-		public function __construct($TunerName,$ZoneName) {
+		public function __construct($TunerName,$ZoneName="Main Zine",$ChannelName="Radio") {
 			$this->TunerName = $TunerName;
 			$this->ZoneName = $ZoneName;
+			$this->ChannelName = $ChannelName;
 			$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);
 			//echo "   DataCatID : ".$this->DataCatID."\n";
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -132,6 +134,7 @@
 			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
 			$volumeID=IPS_GetObjectIDByName("MasterVolume",$this->DataCatID);
 			$MainZoneID=IPS_GetObjectIDByName("MainZonePower",$this->DataCatID);
+			$InputSourceID=IPS_GetObjectIDByName("InputSource",$this->DataCatID);
 			$PowerID=IPS_GetObjectIDByName("Power",$this->DataCatID);
 			//echo "DataCatID :".$this->DataCatID."   ".$powerID." ".$volumeID."\n";
 			if ($power == false)
@@ -145,8 +148,12 @@
 				{
 				DENON_Power($this->DenonSocketID, "ON");
 				SetValue($PowerID,true);
+				sleep(1);
 				DENON_MainZonePower($this->DenonSocketID, true);
 				SetValue($MainZoneID,true);
+				sleep(1);
+				DENON_InputSource($this->DenonSocketID, 2);
+				SetValue($InputSourceID,2);
 				}
 			DENON_MasterVolumeFix($this->DenonSocketID, $level-80);
 			SetValue($volumeID,$level-80);
