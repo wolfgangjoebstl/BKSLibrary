@@ -165,7 +165,22 @@
 			//LW12_PowerToggle2($this->instanceId,$power);
 			//LW12_setDecRGB2($this->instanceId,$color);
 		}
-
+		
+		/**
+		 * @public
+		 *
+		 * 
+		 *
+		 * 
+		 * 
+		 * 
+		 */
+		public function GetChannels()
+			{
+			$Profile = IPS_GetVariableProfileList();
+			//print_r($Profile);
+			print_r( IPS_GetVariableProfile("DENON.InputSource") );
+			}
 	}
 
 	/** @}*/

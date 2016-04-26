@@ -123,6 +123,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:        /* einmal am Tag */
+  			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Evaluate Trace Route");
 		   evaluate_trace($CategoryIdData);
 	      break;
 		default:

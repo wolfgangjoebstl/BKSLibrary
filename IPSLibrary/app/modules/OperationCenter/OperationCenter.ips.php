@@ -121,6 +121,17 @@ if ($tim3ID==false)
 	/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
 	}
 
+$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
+if ($tim4ID==false)
+	{
+	$tim4ID = IPS_CreateEvent(1);
+	IPS_SetParent($tim4ID, $_IPS['SELF']);
+	IPS_SetName($tim4ID, "SysPingTimer");
+	IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 150 sec , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+	IPS_SetEventCyclicTimeBounds($tim4ID,time()+30,0);
+	IPS_SetEventActive($tim4ID,true);
+	}
+
 /*********************************************************************************************/
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -753,70 +764,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$OperationCenter->write_routerdata_MBRN3000($router);
 				   }
 		   	} /* Ende foreach */
-
-			/********************************************************
-	   	Einmal am Tag: Sys_Ping durchführen basierend auf ermittelter mactable
-			**********************************************************/
-
-			if (isset ($installedModules["IPSCam"]))
-				{
-				$mactable=$OperationCenter->get_macipTable($subnet);
-				print_r($mactable);
-				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
-				$categoryId_RebootCtr  = CreateCategory('RebootCounter',   $CategoryIdData, 210);
-				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-					{
-					$CamStatusID = CreateVariableByName($categoryId_SysPing,   "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-					$CamRebootID = CreateVariableByName($categoryId_RebootCtr, "Cam_".$cam_name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
-					if (isset($mactable[$cam_config['MAC']]))
-			   		{
-						echo "Timer, Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-						$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
-						if ($status)
-							{
-							echo "Kamera wird erreicht   !\n";
-							if (GetValue($CamStatusID)==false)
-					   		{  /* Statusänderung */
-								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-								SetValue($CamStatusID,true);
-								SetValue($CamRebootID,0);
-				   			}
-							}
-						else
-							{
-							echo "Kamera wird NICHT erreicht   !\n";
-							if (GetValue($CamStatusID)==true)
-							   {  /* Statusänderung */
-								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-								SetValue($CamStatusID,false);
-								SetValue($CamRebootID,(GetValue($CamRebootID)+1));
-							   }
-							}
-						}
-					else  /* mac adresse nicht bekannt */
-					   {
-			   		echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-					   }
-					} /* Ende foreach */
-				}
-
-			if (isset ($installedModules["LedAnsteuerung"]))
-				{
-				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
-				$device_config=LedAnsteuerung_Config();
-				$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-				$OperationCenter->device_ping($device_config, $device, $identifier);
-				}
-
-			if (isset ($installedModules["DENONsteuerung"]))
-				{
-				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-				$device_config=Denon_Configuration();
-				$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-				$OperationCenter->device_ping($device_config, $device, $identifier);
-				}
 	      break;
 	      
 	   case $tim2ID:
@@ -902,6 +849,72 @@ if ($_IPS['SENDER']=="TimerEvent")
 				default:
 				   break;
 			   }
+			break;
+	   case $tim4ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
+			/********************************************************
+	   	Einmal am Tag: Sys_Ping durchführen basierend auf ermittelter mactable
+			**********************************************************/
+
+			if (isset ($installedModules["IPSCam"]))
+				{
+				$mactable=$OperationCenter->get_macipTable($subnet);
+				print_r($mactable);
+				$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+				$categoryId_RebootCtr  = CreateCategory('RebootCounter',   $CategoryIdData, 210);
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					$CamStatusID = CreateVariableByName($categoryId_SysPing,   "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					$CamRebootID = CreateVariableByName($categoryId_RebootCtr, "Cam_".$cam_name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+					if (isset($mactable[$cam_config['MAC']]))
+			   		{
+						echo "Timer, Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+						$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+						if ($status)
+							{
+							echo "Kamera wird erreicht   !\n";
+							if (GetValue($CamStatusID)==false)
+					   		{  /* Statusänderung */
+								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+								SetValue($CamStatusID,true);
+								SetValue($CamRebootID,0);
+				   			}
+							}
+						else
+							{
+							echo "Kamera wird NICHT erreicht   !\n";
+							if (GetValue($CamStatusID)==true)
+							   {  /* Statusänderung */
+								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+								SetValue($CamStatusID,false);
+								SetValue($CamRebootID,(GetValue($CamRebootID)+1));
+							   }
+							}
+						}
+					else  /* mac adresse nicht bekannt */
+					   {
+			   		echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+					   }
+					} /* Ende foreach */
+				}
+
+			if (isset ($installedModules["LedAnsteuerung"]))
+				{
+				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+				$device_config=LedAnsteuerung_Config();
+				$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+				$OperationCenter->device_ping($device_config, $device, $identifier);
+				}
+
+			if (isset ($installedModules["DENONsteuerung"]))
+				{
+				Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+				$device_config=Denon_Configuration();
+				$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+				$OperationCenter->device_ping($device_config, $device, $identifier);
+				}
 			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
