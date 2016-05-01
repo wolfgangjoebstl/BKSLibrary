@@ -49,7 +49,7 @@
 		public function __construct($TunerName,$ZoneName="Main Zine",$ChannelName="Radio") {
 			$this->TunerName = $TunerName;
 			$this->ZoneName = $ZoneName;
-			$this->ChannelName = $ChannelName;
+			$this->ChannelName = trim(strtoupper($ChannelName));
 			$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);
 			//echo "   DataCatID : ".$this->DataCatID."\n";
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -152,8 +152,17 @@
 				DENON_MainZonePower($this->DenonSocketID, true);
 				SetValue($MainZoneID,true);
 				sleep(1);
-				DENON_InputSource($this->DenonSocketID, 2);
-				SetValue($InputSourceID,2);
+				$inputsource=$this->GetChannels();
+				//print_r($inputsource);
+				//echo "   |".$this->ChannelName."|";
+				//echo "   ".$inputsource[$this->ChannelName]."\n";
+				if (isset($inputsource[$this->ChannelName]))
+				   {
+					sleep(1);
+				   //echo "Set Denon Input Source to ".$inputsource[$this->ChannelName]."\n";
+					DENON_InputSource($this->DenonSocketID, $this->ChannelName);
+					SetValue($InputSourceID,$inputsource[$this->ChannelName]);
+					}
 				}
 			DENON_MasterVolumeFix($this->DenonSocketID, $level-80);
 			SetValue($volumeID,$level-80);
@@ -169,7 +178,7 @@
 		/**
 		 * @public
 		 *
-		 * 
+		 * Aus dem Profil die installierten Channels herausfinden
 		 *
 		 * 
 		 * 
@@ -177,9 +186,46 @@
 		 */
 		public function GetChannels()
 			{
+			$result=array();
 			$Profile = IPS_GetVariableProfileList();
 			//print_r($Profile);
-			print_r( IPS_GetVariableProfile("DENON.InputSource") );
+			$i=0; $found=false;
+			foreach ($Profile as $profil)
+			   {
+			   $i++;
+			   if ($profil=="DENON.InputSource") $found=true;
+			   }
+			if ($found)
+			   {
+				$ChannelList=IPS_GetVariableProfile("DENON.InputSource");
+				//print_r( $ChannelList );
+				foreach ($ChannelList["Associations"] as $channel)
+				   {
+				   //echo "    ".$channel["Value"]." : ".$channel["Name"]."  \n";
+				   $result[$channel["Name"]]=$channel["Value"];
+				   }
+				}
+			if (isset($result[$this->ChannelName]))
+			   {
+			   //echo "   ".$this->ChannelName." vorhanden, druecken Sie ".$result[$this->ChannelName]."  \n";
+				}
+			return ($result);
+			}
+
+		/**
+		 * @public
+		 *
+		 * Aus dem Profil die installierten Channels herausfinden
+		 *
+		 *
+		 *
+		 *
+		 */
+		public function SetChannels($channel)
+			{
+			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
+			DENON_InputSource($this->DenonSocketID, $channel);
+			
 			}
 	}
 
