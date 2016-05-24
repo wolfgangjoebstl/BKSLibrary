@@ -10,6 +10,8 @@
 /*********************************************************************************************/
 
 
+
+
 /****************************************************************************************************************/
 
 class OperationCenter
@@ -42,7 +44,9 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * Initialisierung des OperationCenter Objektes
+	 * sys ping IP Adresse von LED Modul oder DENON Receiver
+	 *
+	 * config objekt von LED oder DENON Ansteuerung, Device LED oder DENON. Identifier IPADRESSE oder MAC
 	 *
 	 */
 	function device_ping($device_config, $device, $identifier)
@@ -50,14 +54,13 @@ class OperationCenter
 		foreach ($device_config as $name => $config)
 		   {
 		   //print_r($config);
-			$StatusID = CreateVariableByName($this->categoryId_SysPing,   $device."_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+			$StatusID = CreateVariableByName($this->categoryId_SysPing,   $device."_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-		   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."\n";
 			$status=Sys_Ping($config[$identifier],1000);
 			if ($status)
 				{
-				echo $device."-Modul wird erreicht   !\n";
+			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird erreicht       !\n";
 				if (GetValue($StatusID)==false)
 				   {  /* Statusänderung */
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
@@ -68,17 +71,59 @@ class OperationCenter
 				}
 			else
 				{
-				echo $device."-Modul wird NICHT erreicht   !\n";
+			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Stunden.\n";
 				if (GetValue($StatusID)==true)
 				   {  /* Statusänderung */
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					SetValue($StatusID,false);
+				   }
+				else
+				   {
 					SetValue($RebootID,(GetValue($RebootID)+1));
 				   }
 				}
 		   }
 		}
+
+	/**
+	 * @public
+	 *
+	 * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+	 *
+	 * Übergabe nun das Config file vom Operation Center, LED oder DENON, identifier für IPADRESSE oder IPADR
+	 *
+	 */
+	function device_checkReboot($device_config, $device, $identifier)
+		{
+		foreach ($device_config as $name => $config)
+		   {
+		   //print_r($config);
+			if (isset ($config["REBOOTSWITCH"]))
+			   {
+				$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+				$reboot_ctr = GetValue($RebootID);
+				$SwitchName = $config["REBOOTSWITCH"];
+				$maxhours = $config["NOK_HOURS"];
+				if ($reboot_ctr != 0)
+				   {
+					if ($reboot_ctr > $maxhours)
+					   {
+						echo $device."-Modul wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
+						include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+						IPSLight_SetSwitchByName($SwitchName,false);
+						sleep(2);
+						IPSLight_SetSwitchByName($SwitchName,true);
+					   }
+					else
+					   {
+						echo $device."-Modul wird NICHT erreicht ! Zustand seit ".$reboot_ctr." Stunden. Max stunden bis zum Reboot ".$maxhours."\n";
+						}
+					}
+				}
+		   }
+		}
+
 
 	/**
 	 * @public

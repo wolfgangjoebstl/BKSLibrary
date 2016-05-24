@@ -76,6 +76,8 @@
 	*************************************************************/
 
 	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
+
+	echo "Timer programmieren :\n";
 	
 	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptIdOperationCenter);
 	if ($tim2ID==false)
@@ -84,16 +86,36 @@
 		IPS_SetParent($tim2ID, $scriptIdOperationCenter);
 		IPS_SetName($tim2ID, "MoveCamFiles");
 		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,150);      /* alle 150 sec */
-  		IPS_SetEventActive($tim2ID,true);
+  		//IPS_SetEventActive($tim2ID,true);
 		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
-	   echo "   Event neu angelegt. Timer 150 sec ist aktiviert.\n";
-		//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+	   echo "   Timer Event MoveCamFiles neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
 		}
 	else
 	   {
-	   echo "   Event bereits angelegt. Timer 150 sec ist aktiviert.\n";
-  		IPS_SetEventActive($tim2ID,true);
+	   echo "   Timer Event MoveCamFiles bereits angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+  		//IPS_SetEventActive($tim2ID,true);
   		}
+
+	$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptIdOperationCenter);
+	if ($tim3ID==false)
+		{
+		$tim3ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim3ID, $scriptIdOperationCenter);
+		IPS_SetName($tim3ID, "RouterExectimer");
+		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
+		IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+		/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
+	   echo "   Timer Event RouterExectimer neu angelegt. Timer 150 sec ist nicht aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event RouterExectimer bereits angelegt. Timer 150 sec ist nicht aktiviert.\n";
+  		}
+
+	/* Workariund wenn die Timer bereits gesetzt wurden */
+	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+
 
 	/* Eventuell Router regelmaessig auslesen */
 
@@ -105,36 +127,50 @@
 		IPS_SetName($tim1ID, "RouterAufruftimer");
 		IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
 		IPS_SetEventCyclicTimeFrom($tim1ID,0,20,0);  /* immer um 0:20 */
+  		IPS_SetEventActive($tim1ID,true);
+	   echo "   Timer Event RouterAufruftimer neu angelegt. Timer um 0:20 ist aktiviert.\n";
 		}
-	IPS_SetEventActive($tim1ID,true);
+	else
+	   {
+	   echo "   Timer Event RouterAufruftimer bereits angelegt. Timer um 0:20 ist aktiviert.\n";
+  		IPS_SetEventActive($tim1ID,true);
+  		}
 
-	$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptIdOperationCenter);
-	if ($tim3ID==false)
-		{
-		$tim3ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim3ID, $scriptIdOperationCenter);
-		IPS_SetName($tim3ID, "RouterExectimer");
-		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
-		IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
-		/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
-		}
-
-	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
-	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
-
-	/* PC Daten wie zB Trace regelmaessig auslesen */
-
-	$tim4ID = @IPS_GetEventIDByName("DiagnoseAufruftimer", $scriptIdDiagnoseCenter);
+	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptIdOperationCenter);
 	if ($tim4ID==false)
 		{
 		$tim4ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim4ID, $scriptIdDiagnoseCenter);
-		IPS_SetName($tim4ID, "DiagnoseAufruftimer");
-		IPS_SetEventCyclic($tim4ID,0,0,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim4ID,1,40,0);  /* immer um 1:40 */
+		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
+		IPS_SetName($tim4ID, "SysPingTimer");
+		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+		IPS_SetEventCyclicTimeBounds($tim4ID,time()+30,0);
+		IPS_SetEventActive($tim4ID,true);
+	   echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
 		}
-	IPS_SetEventActive($tim4ID,true);
+	else
+	   {
+	   echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
+  		IPS_SetEventActive($tim4ID,true);
+  		}
+  		
+	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptIdOperationCenter);
+	if ($tim5ID==false)
+		{
+		$tim5ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim5ID, $scriptIdOperationCenter);
+		IPS_SetName($tim5ID, "CyclicUpdate");
+		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche Ausführung, alle 1 Monate, Datumstage, Datumstageintervall,  */
+	   echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event CyclicUpdate bereits angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
+  		IPS_SetEventActive($tim5ID,true);
+  		}
 
+  		
+  		
+  		
 	/******************************************************
 
 				INIT, iMacro Router auslesen

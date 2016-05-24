@@ -62,7 +62,12 @@ if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung
 if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
 echo "\n";
 
-/* Webfront zusammenräumen */
+	/******************************************************
+
+	Webfront zusammenräumen
+	
+	*******************************************************/
+	
 if (isset($installedModules["IPSLight"])==true)
 	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
@@ -85,11 +90,22 @@ if (isset($installedModules["IPSPowerControl"])==true)
 	echo "   Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
 
+
+	/******************************************************
+
+				INIT, Timer, sollte eigentlich in der Install Routine sein
+				
+				MoveCamFiles				, alle 150 Sec
+				RouterAufruftimer       , immer um 0:20
+
+	*************************************************************/
+
 if (isset ($installedModules["IPSCam"]))
 	{
 	echo "Modul IPSCam ist installiert.\n";
 	echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
 	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
+	IPS_SetEventActive($tim2ID,true);
 	}
 else
 	{
@@ -97,40 +113,10 @@ else
 	$tim2ID = 0;
 	}
 
-/* Eventuell Router regelmaessig auslesen */
-
 $tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
-if ($tim1ID==false)
-	{
-	$tim1ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim1ID, $_IPS['SELF']);
-	IPS_SetName($tim1ID, "RouterAufruftimer");
-	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,0,20,0);  /* immer um 0:20 */
-	}
-IPS_SetEventActive($tim1ID,true);
-
 $tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
-if ($tim3ID==false)
-	{
-	$tim3ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim3ID, $_IPS['SELF']);
-	IPS_SetName($tim3ID, "RouterExectimer");
-	IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
-	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
-	/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
-	}
-
 $tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
-if ($tim4ID==false)
-	{
-	$tim4ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim4ID, $_IPS['SELF']);
-	IPS_SetName($tim4ID, "SysPingTimer");
-	IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 150 sec , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
-	IPS_SetEventCyclicTimeBounds($tim4ID,time()+30,0);
-	IPS_SetEventActive($tim4ID,true);
-	}
+$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
 
 /*********************************************************************************************/
 
@@ -612,7 +598,8 @@ if (isset ($installedModules["RemoteAccess"]))
    	Sys_Ping durchführen basierend auf ermittelter mactable
 	**********************************************************/
 
-	echo "\nSys_Ping für alle bekannten IP Adressen durchführen:                              ".(microtime(true)-$startexec)." Sekunden\n";
+	echo "\nSys_Ping für alle bekannten IP Adressen durchführen:                              ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+	echo "============================================================================================================\n";
 	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
 
 	if (isset ($installedModules["IPSCam"]))
@@ -661,6 +648,7 @@ if (isset ($installedModules["RemoteAccess"]))
 		$device_config=LedAnsteuerung_Config();
 		$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
 		$OperationCenter->device_ping($device_config, $device, $identifier);
+		$OperationCenter->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
 		}
 
 	if (isset ($installedModules["DENONsteuerung"]))
@@ -673,6 +661,8 @@ if (isset ($installedModules["RemoteAccess"]))
 
 	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+
+	echo "============================================================================================================\n";
 
 	/********************************************************
    	Router daten ausgeben
@@ -850,6 +840,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				   break;
 			   }
 			break;
+			
 	   case $tim4ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
 			/********************************************************
@@ -889,8 +880,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								SetValue($CamStatusID,false);
-								SetValue($CamRebootID,(GetValue($CamRebootID)+1));
 							   }
+							else
+							   {
+								SetValue($CamRebootID,(GetValue($CamRebootID)+1));
+								}
 							}
 						}
 					else  /* mac adresse nicht bekannt */
@@ -906,6 +900,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$device_config=LedAnsteuerung_Config();
 				$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
 				$OperationCenter->device_ping($device_config, $device, $identifier);
+				$OperationCenter->device_checkReboot($device_config, $device, $identifier);
 				}
 
 			if (isset ($installedModules["DENONsteuerung"]))
@@ -915,6 +910,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 				$OperationCenter->device_ping($device_config, $device, $identifier);
 				}
+			break;
+	   case $tim5ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
+			/************************************************************************************
+	   	Einmal am 12.Tag des Monates: CyclicUpdate, alle Module automatisch updaten
+			*************************************************************************************/
+
 			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
