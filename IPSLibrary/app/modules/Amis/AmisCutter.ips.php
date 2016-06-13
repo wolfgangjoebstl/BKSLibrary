@@ -60,9 +60,16 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 
-			//Hier die COM-Port Instanz
+			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-			$com_Port = $serialPortID[0];
+			if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
+			foreach ($serialPortID as $num => $serialPort)
+			   {
+			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+			   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
+				}
+			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
+			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 
 			}
 		print_r($meter);
@@ -79,7 +86,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 if (!file_exists("C:\Scripts\Log_Cutter.csv"))
 		{
       $handle=fopen("C:\Scripts\Log_Cutter.csv", "a");
-	   fwrite($handle, date("d.m.y H:i:s").";Z�hlerdatensatz\r\n");
+	   fwrite($handle, date("d.m.y H:i:s").";Zählerdatensatz\r\n");
       fclose($handle);
 	   }
 
@@ -181,9 +188,9 @@ if ($_IPS['SENDER'] == "Execute")
    $ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	echo "AMIS Root OID:".$ID."  ".$amismetername."\n";
 	$AmisID = CreateVariableByName($ID, "AMIS", 3);
-	echo "Alle mit der AMIS Z�hlerauswertung notwendige Register hier gespeichert :".$AmisID."\n";
+	echo "Alle mit der AMIS Zählerauswertung notwendige Register hier gespeichert :".$AmisID."\n";
    $zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-   echo "Und dort stehen die eigentlichen aus dem AMIS Z�hler ausgelesenen Register :".$zaehlerid."\n";
+   echo "Und dort stehen die eigentlichen aus dem AMIS Zähler ausgelesenen Register :".$zaehlerid."\n";
    echo "\n";
    
 	echo "Testweise letztes Ergebnis auswerten.\n";

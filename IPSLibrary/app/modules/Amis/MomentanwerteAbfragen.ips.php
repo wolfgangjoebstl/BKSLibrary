@@ -50,9 +50,17 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 
-			//Hier die COM-Port Instanz
+			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-			$com_Port = $serialPortID[0];
+			if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
+			foreach ($serialPortID as $num => $serialPort)
+			   {
+			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+			   if (IPS_GetName($serialPort) == "AMIS Serial Port")   { $com_Port = $serialPort; }
+			   if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
+				}
+			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
+			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 
 			}
 		print_r($meter);
@@ -74,7 +82,7 @@ if (Getvalue($MeterReadID))
 	if ($AmisConfig["Type"] == "Serial")
 	   {
       echo "Comport Serial aktiviert. \n";
-		COMPort_SetOpen($com_Port, true); //false f�r aus
+		COMPort_SetOpen($com_Port, true); //false für aus
 		IPS_ApplyChanges($com_Port);
 		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 		}
@@ -175,7 +183,7 @@ else
 	if ($AmisConfig["Type"] == "Serial")
 	   {
 		echo "Comport Serial deaktiviert. \n";
-		COMPort_SetOpen($com_Port, false); //false f�r aus
+		COMPort_SetOpen($com_Port, false); //false für aus
 		IPS_ApplyChanges($com_Port);
 		}
 		
@@ -189,10 +197,17 @@ if ($_IPS['SENDER']=="Execute")
    {
 	echo "********************************************CONFIG**************************************************************\n";
 
-	$SerialComPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-	//print_r($PortID);
-	echo "Serial Port : ".$SerialComPortID[0]." Name : ".IPS_GetName($SerialComPortID[0])."\n";
-	
+	//Hier die COM-Port Instanz festlegen
+	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+	if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
+	foreach ($serialPortID as $num => $serialPort)
+	   {
+	   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+	   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
+		}
+	if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
+	else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
+
 	//echo "Alle I/O Instanzen\n";
 	//$alleInstanzen = IPS_GetInstanceListByModuleType(1); // nur I/O Instanzen auflisten
 
@@ -206,7 +221,7 @@ if ($_IPS['SENDER']=="Execute")
 	   {
 	   $datainstanz=IPS_GetInstance($instanz);
 	   echo " ".$instanz." Name : ".IPS_GetName($instanz)."\n";
-	   if ($instanz==$SerialComPortID[0])
+	   if ($instanz==$com_Port)
 	      {
 	   	//echo "**RegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
 		   //print_r($datainstanz);
@@ -265,7 +280,7 @@ function writeEnergyHomematic($MConfig)
 	      echo "Werte von : ".$meter["NAME"]."\n";
 	      echo "  Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
 	      echo "  Energievorschub aktuell:".$energievorschub."kWh\n";
-	      echo "  Energiez�hlerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
+	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
 			//print_r($meter);
 			}
 		}
