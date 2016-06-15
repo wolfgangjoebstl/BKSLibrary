@@ -2,12 +2,12 @@
 
 /*
  * SNMP Objekte auslesen
- * benötigt Exe File mit CLI
+ * benÃ¶tigt Exe File mit CLI
  *
  *
  */
 
-class SNMP
+class SNMP_OperationCenter
 {
     //Objekteigenschaften
     protected $host;                   //SNMP Serveradresse
@@ -38,11 +38,11 @@ class SNMP
       $this->debug         = $debug;
 		$this->CategoryIdData = $CategoryIdData;
 
-		//Prüfe ob Variablenprofile existieren und erstelle diese wenn nötig
+		//PrÃ¼fe ob Variablenprofile existieren und erstelle diese wenn nÃ¶tig
       $this->createVariableProfile("SNMP_CapacityMB", self::tFLOAT, "", " MB");
       $this->createVariableProfile("SNMP_CapacityGB", self::tFLOAT, "", " GB");
       $this->createVariableProfile("SNMP_CapacityTB", self::tFLOAT, "", " TB");
-      $this->createVariableProfile("SNMP_Temperature", self::tINT, "", " °C");
+      $this->createVariableProfile("SNMP_Temperature", self::tINT, "", " Â°C");
       $this->createVariableProfile("SNMP_FanSpeed", self::tINT, "", " RPM");
       if(!IPS_VariableProfileExists("SNMP_SmartStatus"))
 			{
@@ -66,14 +66,14 @@ class SNMP
 
 	/*
 	 *  Variable erstellen wenn zB Variablen neu angelegt werden
-	 *  dafürd en Variablentyp ermitteln
+	 *  dafÃ¼rd en Variablentyp ermitteln
 	 */
 
     public function registerSNMPObj($oid, $desc, $convertType = "none")
 	 	{
 		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
-      //prüfe auf doppelte Einträge beim Registrieren neuer SNMP Objekte
+      //prÃ¼fe auf doppelte EintrÃ¤ge beim Registrieren neuer SNMP Objekte
       foreach($this->snmpobj as $obj)
 			{
          if($desc==$obj->desc)
@@ -88,7 +88,7 @@ class SNMP
             }
         }
 
-		//prüfe ob IPS Variablen für SNMP Objekt existiert (Variablenname entspricht description)
+		//prÃ¼fe ob IPS Variablen fÃ¼r SNMP Objekt existiert (Variablenname entspricht description)
       $parentID = $this->CategoryIdData;
       $ips_var = @IPS_GetVariableIDByName($desc, $parentID);
       if($ips_var == false)
@@ -110,7 +110,7 @@ class SNMP
   		         IPS_SetParent($ips_var, $parentID);
   		         //IPS_SetPosition($ips_var,20);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_var,true);
-					AC_SetAggregationType($archiveHandlerID,$ips_var,0);  /* 0 Standard 1 Zähler */
+					AC_SetAggregationType($archiveHandlerID,$ips_var,0);  /* 0 Standard 1 ZÃ¤hler */
 					IPS_ApplyChanges($archiveHandlerID);
 
 	            $ips_vare = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
@@ -118,7 +118,7 @@ class SNMP
   		         IPS_SetParent($ips_vare, $parentID);
   		         //IPS_SetPosition($ips_vare,20);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_vare,true);
-					AC_SetAggregationType($archiveHandlerID,$ips_vare,0);  /* 0 Standard 1 Zähler */
+					AC_SetAggregationType($archiveHandlerID,$ips_vare,0);  /* 0 Standard 1 ZÃ¤hler */
 					IPS_ApplyChanges($archiveHandlerID);
 
 	            $ips_varc = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
@@ -126,7 +126,7 @@ class SNMP
   		         IPS_SetParent($ips_varc, $parentID);
   		         //IPS_SetPosition($ips_varc,10);
 					AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
-					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 Zähler */
+					AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 ZÃ¤hler */
 					IPS_ApplyChanges($archiveHandlerID);
 
 			      if (@IPS_GetVariableIDByName("Download", $parentID)==false)
@@ -136,7 +136,7 @@ class SNMP
   			         IPS_SetParent($ips_download, $parentID);
   		   	      IPS_SetPosition($ips_download,1000);
 						AC_SetLoggingStatus($archiveHandlerID,$ips_download,true);
-						AC_SetAggregationType($archiveHandlerID,$ips_download,0);  /* 0 Standard 1 Zähler */
+						AC_SetAggregationType($archiveHandlerID,$ips_download,0);  /* 0 Standard 1 ZÃ¤hler */
 						IPS_ApplyChanges($archiveHandlerID);
 						}
 			      if (@IPS_GetVariableIDByName("Upload", $parentID)==false)
@@ -146,7 +146,7 @@ class SNMP
   			         IPS_SetParent($ips_upload, $parentID);
   		   	      IPS_SetPosition($ips_upload,1000);
 						AC_SetLoggingStatus($archiveHandlerID,$ips_upload,true);
-						AC_SetAggregationType($archiveHandlerID,$ips_upload,0);  /* 0 Standard 1 Zähler */
+						AC_SetAggregationType($archiveHandlerID,$ips_upload,0);  /* 0 Standard 1 ZÃ¤hler */
 						IPS_ApplyChanges($archiveHandlerID);
 						}
 			      if (@IPS_GetVariableIDByName("Total", $parentID)==false)
@@ -156,7 +156,7 @@ class SNMP
   			         IPS_SetParent($ips_total, $parentID);
   		   	      IPS_SetPosition($ips_total,1010);
 						AC_SetLoggingStatus($archiveHandlerID,$ips_total,true);
-						AC_SetAggregationType($archiveHandlerID,$ips_total,0);  /* 0 Standard 1 Zähler */
+						AC_SetAggregationType($archiveHandlerID,$ips_total,0);  /* 0 Standard 1 ZÃ¤hler */
 						IPS_ApplyChanges($archiveHandlerID);
 					   }
 					}
@@ -168,7 +168,7 @@ class SNMP
 	            }
 
 
-         //Verknüpfe Variablenprofil mit neu erstellter Variable
+         //VerknÃ¼pfe Variablenprofil mit neu erstellter Variable
         if($convertType == "CapacityMB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityMB");
         if($convertType == "CapacityGB")         	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityGB");
         if($convertType == "CapacityTB") 	      	IPS_SetVariableCustomProfile($ips_var, "SNMP_CapacityTB");
@@ -241,7 +241,7 @@ class SNMP
 
 				//echo "Alter Wert : ".GetValue($obj->ips_var).GetValue($ips_vare)."\n";
 				if ($z[0]>=GetValue($ips_vare))
-				   { /* kein Übertrag */
+				   { /* kein Ãœbertrag */
 				   $a=($z[0]-GetValue($ips_vare));
 				   for ($i=0;$i<$intl;$i++) $a*=10;
 				   $a+=($z[1]-GetValue($obj->ips_var));
@@ -249,7 +249,7 @@ class SNMP
 		         }
 				else
 		         {
-		         /* Übertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
+		         /* Ãœbertrag, zu schwierig zum nachdenken, Diff-Wert einfach auslassen, neue Werte trotzdem schreiben */
 					$b=42-GetValue($ips_vare);
 			   	for ($i=0;$i<$intl;$i++) $b*=10;
 			   	$b+=94967296-GetValue($obj->ips_var);
@@ -261,8 +261,8 @@ class SNMP
 				   $aMByte=$a/1024/1024;
 		         }
 				echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-8)." \n";
-				echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".round($aMByte,2)." MByte. \n";
-				if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
+				echo "           Ãœbertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-8)."  Differenz : ".$a."   ".round($aMByte,2)." MByte. \n";
+				if ($a>2147483647) { $a=2147483647; }  /* es kÃ¶nnen maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
 
 				if ($nolog==false)
 					{
@@ -291,13 +291,13 @@ class SNMP
 		if ($download != "")
 		   {
          SetValue($ips_total,($upload_val+$download_val));
-         echo "*** Gesamtübertragungsvolumen : ".($upload_val+$download_val)." MByte.\n";
+         echo "*** GesamtÃ¼bertragungsvolumen : ".($upload_val+$download_val)." MByte.\n";
 	      }
 		return ($this->snmpobj);
    	}
 
     /*
-	  *  prüfe um welchen SNMP Rückgabetyp es sich handelt
+	  *  prÃ¼fe um welchen SNMP RÃ¼ckgabetyp es sich handelt
      *  returns 3 => String / 1 => Integer / 2 => Float
      */
 
@@ -326,7 +326,7 @@ class SNMP
     	}
 
 	/*
-	 *    läuft einen kompletten SNMP Pfad durch, praktisch für Tabellen, diese werden automatisch umgewandelt
+	 *    lÃ¤uft einen kompletten SNMP Pfad durch, praktisch fÃ¼r Tabellen, diese werden automatisch umgewandelt
 	 */
 
 	 function walkSNMP($oid='')
@@ -363,7 +363,7 @@ class SNMP
 			$anzahl=sizeof($pathItem)-1;
 			$index1=$pathItem[$anzahl];
 			$index2=$pathItem[$anzahl-1];
-			//echo "Einzelne Objekte mit Grösse : ".($anzahl+1)."  letzter Eintrag : ".$pathItem[$anzahl]."\n";
+			//echo "Einzelne Objekte mit GrÃ¶sse : ".($anzahl+1)."  letzter Eintrag : ".$pathItem[$anzahl]."\n";
 			//print_r($pathItem);
 
 			$result=substr($result,$stop);
@@ -377,7 +377,7 @@ class SNMP
 			//echo substr($result,0,100);
 			$start=stripos($result,"Value=");
 		   $stop=strpos($result,"\n",$start);
-		   $value=substr($result,$start+7,$stop-$start-9);       /* Anführungszeichen vorne und hinten eliminieren */
+		   $value=substr($result,$start+7,$stop-$start-9);       /* AnfÃ¼hrungszeichen vorne und hinten eliminieren */
 		   switch ($type)
 		      {
             case "Integer":

@@ -173,7 +173,8 @@ function DENON_Dimension($id, $value) // Audio Delay 0-200 ms
 
 function DENON_InputSource($id, $value) // Input Source
 {
-  CSCK_SendText($id, "SI".$value.chr(13));
+	//echo "Sende SourceInput ".$value."\n";
+   CSCK_SendText($id, "SI".$value.chr(13));
 }
 
 function DENON_DynamicCompressor($id, $value) // Dynamic Compressor OFF/LOW/MID/HIGH

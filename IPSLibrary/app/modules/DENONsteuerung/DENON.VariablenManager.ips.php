@@ -7,15 +7,15 @@
 /*
 Funktionen:
 	*legt unterhalb der Kategorie "DENON" in den Dummy-Instanzen (Main Zone, Zone 2, Zone 3)
-		eine Variable f¸r die vom DENON empfangene Stausmeldung an sofern diese noch nicht vorhanden ist
+		eine Variable f√ºr die vom DENON empfangene Stausmeldung an sofern diese noch nicht vorhanden ist
 	*legt unterhalb der Kategorie "DENON Webfrontend" in den jeweiligen Dummy-Instanzen
 		einen Link zur DENON-Stausmeldung zur passenden Variable an. Existiert bereits
-		ein Link mit dem selben Namen wird dieser gelˆscht und neu angelegt
+		ein Link mit dem selben Namen wird dieser gel√∂scht und neu angelegt
 	* zuweisen des Actionscripts "DENON.Actionscript" zur Variable
 		(Variablen-Eigenschaften "eigene Aktion"), wenn Variable bereits ein Profil zugewiesen bekommen hat
 	* legt ein Variablenprofil zu der vom DENON empfangenen Stausmeldung an sofern
 		dieses noch nicht vorhanden ist. Variablenprofile haben die Syntax "DENON.Variablenname".
-		Vorhandene Profile werden nicht ¸berschrieben.
+		Vorhandene Profile werden nicht √ºberschrieben.
 	* weist das Variablenprofil der Variable zu falls noch nicht erfolgt
 
 */
@@ -64,13 +64,13 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		$categoryId_WebFront         = CreateCategoryPath($webfrontID);
 		}
 
-	// abh‰ngig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID f¸r Variable und Link ermitteln
+	// abh√§ngig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID f√ºr Variable und Link ermitteln
 	
 	//IPSLogger_Dbg (__file__, 'Received command for '.$id. ' WebfrontID '.$categoryId_WebFront.' find on '.$webfrontID.' with item '.$item);
 	//$DENON_ID = IPS_GetCategoryIDByName("DENON", 0);
    $DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
 	$praefix =substr($item, 0, 5);
-	if ($praefix == "Zone2") // wenn Pr‰fix "Zone2"
+	if ($praefix == "Zone2") // wenn Pr√§fix "Zone2"
 		{
 	  	$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
 	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $VAR_Parent_ID);
@@ -78,7 +78,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $LINK_Parent_ID);
 	   //echo "Script DENON VariablenManager 1a: $VAR_Parent_ID";
 		}
-	elseif ($praefix == "Zone3")// wenn Pr‰fix "Zone3"
+	elseif ($praefix == "Zone3")// wenn Pr√§fix "Zone3"
 		{
 	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
 	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $VAR_Parent_ID);
@@ -86,7 +86,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $LINK_Parent_ID);
 	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
 		}
-	elseif ($praefix == "Displ")// wenn Pr‰fix "Zone3"
+	elseif ($praefix == "Displ")// wenn Pr√§fix "Zone3"
 		{
 	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
 	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Display", $VAR_Parent_ID);
@@ -94,7 +94,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Display", $LINK_Parent_ID);
 	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
 		}
-	else // wenn Pr‰fix nicht "Zone2", "Zone3" oder "Display"
+	else // wenn Pr√§fix nicht "Zone2", "Zone3" oder "Display"
 		{
 		//echo "Datenkategorie ist ".$CategoryIdData." mit ".$id."\n";
 	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
@@ -112,8 +112,8 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	$KAT_DENONWFE_ID = $categoryId_WebFront;
 	$ScriptID = IPS_GetScriptIDByName("DENON.ActionScript", $KAT_DENON_Scripts_ID);
 
-	// Bereinigung $item-Pr‰fix (Displxxx)
-	$item_praefix= substr($item,0,5); //item-Pr‰fix
+	// Bereinigung $item-Pr√§fix (Displxxx)
+	$item_praefix= substr($item,0,5); //item-Pr√§fix
 	if($item_praefix == "Displ")
 	{
 	   $item = rtrim(substr($item, 5, 95));
@@ -170,7 +170,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	// Link anlegen/zuweisen
 	$LinkID = @IPS_GetLinkIDByName($item, $LINK_Parent_ID);
 	$LinkChildID = @IPS_GetLink($LinkID);
-	$LinkChildID = $LinkChildID["LinkChildID"];
+	$LinkChildID = $LinkChildID["TargetID"];
 
 	if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 	{
@@ -179,7 +179,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 		IPS_SetLinkChildID($LinkID, $itemID);
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
 	}
-	elseif ($LinkChildID != $itemID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+	elseif ($LinkChildID != $itemID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 	{
 		IPS_DeleteLink($LinkID);
 		$LinkID = IPS_CreateLink();
@@ -435,7 +435,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 			IPS_SetPosition($LinkID,100);
 			break;
 
-		//default: wenn keine Bedingung erf¸llt ist
+		//default: wenn keine Bedingung erf√ºllt ist
 		default:
 		// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
 
@@ -463,8 +463,8 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 }
 
 // ------------------- Variablen Profil-Management ------------------------------
-// Funktion erstellt f¸r DENON-Variablen gleichnamige Variablenprofile mit Namenspr‰fix "DENON."
-// ¸bergeben werden muss Variablenname ($item), Variablen-ID ($itemID) und Variablentyp ($vtype)
+// Funktion erstellt f√ºr DENON-Variablen gleichnamige Variablenprofile mit Namenspr√§fix "DENON."
+// √ºbergeben werden muss Variablenname ($item), Variablen-ID ($itemID) und Variablentyp ($vtype)
 
 function DENON_SetVarProfile($item, $itemID, $vtype)
 	{
@@ -509,7 +509,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, 0, 200, 1);  //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "ms"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "ms"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 				}
@@ -523,7 +523,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -80.0, 18.0, 0.5); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 				}
@@ -537,7 +537,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -10.0, 0.0, 0.5); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 				}
@@ -628,7 +628,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 	   		{
 				$profil=$webconfig['Visualization.WebFront.Administrator.Audio'][$item];
 				$profil_size=sizeof($profil);
-				echo "Neues Profil mit ".$profil_size." Eintr‰gen.\n";
+				echo "Neues Profil mit ".$profil_size." Eintr√§gen.\n";
 				if (IPS_VariableProfileExists($ProfileName) == false)
 					{
 				   //Var-Profil erstellen
@@ -767,7 +767,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -80.0, 18.0, 0.5); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", " %"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", " %"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -798,7 +798,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -6, 6, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -812,7 +812,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -6, 6, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1003,7 +1003,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 				IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, 0, 7, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1095,7 +1095,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1.0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1109,7 +1109,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1123,7 +1123,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1137,7 +1137,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1151,7 +1151,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1165,7 +1165,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1179,7 +1179,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1193,7 +1193,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1207,7 +1207,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1221,7 +1221,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1235,7 +1235,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1249,7 +1249,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1263,7 +1263,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1.0); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1293,7 +1293,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -80, 18, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1370,7 +1370,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1384,7 +1384,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1434,7 +1434,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -80, 18, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "%"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1511,7 +1511,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1525,7 +1525,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			   IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 				IPS_SetVariableProfileDigits($ProfileName, 1); // PName, Nachkommastellen
 			   IPS_SetVariableProfileValues($ProfileName, -12, 12, 1); //PName, Minimal, Maximal, Schrittweite
-			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr‰fix, Suffix
+			   IPS_SetVariableProfileText($ProfileName, "", "dB"); // Pname, Pr√§fix, Suffix
 			   IPS_SetVariableCustomProfile($itemID, $ProfileName); // Ziel-ID, P-Name
 			   echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellt und zugewiesen; ";
 			}
@@ -1550,7 +1550,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			}
 		break;
 
-		//default: wenn keine Bedingung erf¸llt ist
+		//default: wenn keine Bedingung erf√ºllt ist
 		default:
 		// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
 
@@ -1559,8 +1559,8 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 }
 
 //------------- DENON Function Variablen Profile Manager -----------------------
-// Funktion sschreibt in DENON-Variablenprofile die vom DENON ¸bergebeben Werte
-// ¸bergeben werden muss Variablenname ($item), Assoziations-Position ($ProfilPosition) und Assoziationswert ($ProfilValue)
+// Funktion sschreibt in DENON-Variablenprofile die vom DENON √ºbergebeben Werte
+// √ºbergeben werden muss Variablenname ($item), Assoziations-Position ($ProfilPosition) und Assoziationswert ($ProfilValue)
 
 //
 function DENON_SetProfileValue($item, $ProfilPosition, $ProfilValue)
@@ -1576,7 +1576,7 @@ function DENON_SetProfileValue($item, $ProfilPosition, $ProfilValue)
 				elseif (strlen($ProfilValue) > 0) // wenn in Profilassoziation Werte enthalten sind
 				{
 					IPS_SetVariableProfileAssociation($ProfileName, $ProfilPosition, $ProfilValue, "", -1); //P-Name, Value, Assotiation, Icon, Color
-					// Preset-Variablenprofil dynamisch: Variablenprofil-Max-Wert entspricht den tats‰chlich angelegten Presets im Receiver
+					// Preset-Variablenprofil dynamisch: Variablenprofil-Max-Wert entspricht den tats√§chlich angelegten Presets im Receiver
 					$Profil_maxCount =  IPS_GetVariableProfile($ProfileName);
 					$Profil_maxCount =  count($Profil_maxCount["Associations"]);
 					IPS_SetVariableProfileValues($ProfileName, 0, $Profil_maxCount, 1); //PName, Minimal, Maximal, Schrittweite

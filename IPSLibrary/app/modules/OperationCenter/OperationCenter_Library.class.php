@@ -62,7 +62,7 @@ class OperationCenter
 				{
 			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird erreicht       !\n";
 				if (GetValue($StatusID)==false)
-				   {  /* Statusänderung */
+				   {  /* StatusÃ¤nderung */
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
 					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
 					SetValue($StatusID,true);
@@ -73,7 +73,7 @@ class OperationCenter
 				{
 			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Stunden.\n";
 				if (GetValue($StatusID)==true)
-				   {  /* Statusänderung */
+				   {  /* StatusÃ¤nderung */
 					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
 					SetValue($StatusID,false);
@@ -89,9 +89,9 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+	 * Wenn device_ping zu oft fehlerhaft ist wird das GerÃ¤t rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
 	 *
-	 * Übergabe nun das Config file vom Operation Center, LED oder DENON, identifier für IPADRESSE oder IPADR
+	 * Ãœbergabe nun das Config file vom Operation Center, LED oder DENON, identifier fÃ¼r IPADRESSE oder IPADR
 	 *
 	 */
 	function device_checkReboot($device_config, $device, $identifier)
@@ -478,7 +478,7 @@ class OperationCenter
 		$pos=strpos($result,"Period");
 		if ($pos!=false)
 			{
-			/* Überschriften aus der Tabelle einsammeln, mit Strichpunkt trennen */
+			/* Ãœberschriften aus der Tabelle einsammeln, mit Strichpunkt trennen */
 			$result_l1=substr($result,$pos,6);       /*  Period  */
 	   	$result=substr($result,$pos+7,1500);
 			$result_l1=$result_l1.";".trim(substr($result,20,20));    /* Connection Time  */
@@ -588,12 +588,13 @@ class OperationCenter
 		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
 		      {
             $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+		   	//print_r($werte);
 		   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 		   	foreach ($werte as $wert)
 		   	   {
-		   	   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+		   	   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+		   	   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
 		   	   }
-		   	//print_r($werte);
 				$result1[IPS_GetName($oid)]=$oid;
 		   	}
 		   else
@@ -646,8 +647,8 @@ class OperationCenter
 			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 			   	foreach ($werte as $wert)
 		   		   {
-		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"]).
-							  " mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+		   		   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
 		   	   	}
 					}
 		      if (IPS_GetName($oid)=="Total")
@@ -656,8 +657,8 @@ class OperationCenter
 			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 			   	foreach ($werte as $wert)
 		   		   {
-		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"]).
-							  " mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+		   		   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
 		   	   	}
 					}
 		   	}
@@ -699,7 +700,8 @@ class OperationCenter
 			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 			   	foreach ($werte as $wert)
 		   		   {
-		   		   echo "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+		   		   //echo "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+		   		   echo "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
 		   	   	}
 					}
 		   	}
@@ -743,7 +745,8 @@ class OperationCenter
 	                  }
                   else
                      {
-     		   		   $ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+     		   		   //$ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+     		   		   $ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
                      $dateOld=date("d.m",$wert["TimeStamp"]);
                      $ergebnis += $wert["Value"];
                      }
@@ -761,7 +764,8 @@ class OperationCenter
 	  	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
 	  	foreach ($werte as $wert)
 	  	   {
-	  	   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+	  	   //echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+	  	   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
 	  	   }
 		}
 
@@ -818,7 +822,7 @@ function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
 	// Test, ob ein Verzeichnis angegeben wurde
 	if ( is_dir ( $verzeichnis ))
 		{
-    	// öffnen des Verzeichnisses
+    	// Ã¶ffnen des Verzeichnisses
     	if ( $handle = opendir($verzeichnis) )
     		{
         	/* einlesen der Verzeichnisses
@@ -966,10 +970,10 @@ class parsefile
 		{
 		$ergebnis_array=array();
 
-		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
+		echo "Data ID des aktuellen Moduls: ".$this->dataID." fÃ¼r den folgenden Router: ".$name."\n";
       if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
          {
-			echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
+			echo "Datenkategorie fÃ¼r den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
 			$CatID = IPS_CreateCategory();       // Kategorie anlegen
 			IPS_SetName($CatID, $name); // Kategorie benennen
 			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
@@ -981,7 +985,7 @@ class parsefile
 			$ok=true;
    		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
 				{
-				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+				/* fÃ¤hrt den ganzen Textblock durch, Werte die frÃ¼her detektiert werden, werden ueberschrieben */
 				//echo $buffer;
 	      	if(preg_match('/statList/i',$buffer))
 		   		{
@@ -1040,10 +1044,10 @@ class parsefile
 		{
 		$ergebnis_array=array();
 
-		echo "Data ID des aktuellen Moduls: ".$this->dataID." für den folgenden Router: ".$name."\n";
+		echo "Data ID des aktuellen Moduls: ".$this->dataID." fÃ¼r den folgenden Router: ".$name."\n";
       if (($CatID=@IPS_GetCategoryIDByName($name,$this->dataID))==false)
          {
-			echo "Datenkategorie für den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
+			echo "Datenkategorie fÃ¼r den Router ".$name."  : ".$CatID." existiert nicht, jetzt neu angelegt.\n";
 			$CatID = IPS_CreateCategory();       // Kategorie anlegen
 			IPS_SetName($CatID, $name); // Kategorie benennen
 			IPS_SetParent($CatID, $this->dataID); // Kategorie einsortieren unter dem Objekt mit der ID "12345"
@@ -1058,7 +1062,7 @@ class parsefile
 			$ok=true;
    		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
 				{
-				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
+				/* fÃ¤hrt den ganzen Textblock durch, Werte die frÃ¼her detektiert werden, werden ueberschrieben */
 				//echo $buffer;
 	      	if(preg_match('/statistList/i',$buffer))
 		   		{
@@ -1067,13 +1071,13 @@ class parsefile
 			      	if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
 						if ($ok)
 						   {
-						   /* nächste Zeile wurde ausgelesen, hier stehen die wichtigen Informationen */
+						   /* nÃ¤chste Zeile wurde ausgelesen, hier stehen die wichtigen Informationen */
 					  		$pos1=strpos($buffer,'"');
 							//echo "      |".$buffer."    | ".$pos1."  \n";
 							if ($pos1!==false)
 								{
 						  		$pos2=strpos($buffer,'"',$pos1+1);
-						  		//echo "Die ersten zwei Anführungszeichen sind auf Position ".$pos1." und ".$pos2." \n";
+						  		//echo "Die ersten zwei AnfÃ¼hrungszeichen sind auf Position ".$pos1." und ".$pos2." \n";
 						  		$received_bytes=substr($buffer,$pos1+1,$pos2-$pos1-1);
 						  		$ergebnis_array["RxBytes"]=$this->removecomma($received_bytes);
 								$buffer=trim(substr($buffer,$pos2+1,200));
@@ -1193,7 +1197,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 		$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 		$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
 		$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-		$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+		$id_sk1_musik_vol = IPS_GetVariableIDByName("LautstÃ¤rke", $id_sk1_musik);
 	   $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
 
@@ -1226,11 +1230,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 				 	if($ton == "zeit")
  						{
 						$time = time();
-						// die Integer-Wandlung dient dazu eine führende Null zu beseitigen
+						// die Integer-Wandlung dient dazu eine fÃ¼hrende Null zu beseitigen
 	   				$hrs = (integer)date("H", $time);
    					$min = (integer)date("i", $time);
 	   				$sec = (integer)date("s", $time);
-   					// "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
+   					// "kosmetische Behandlung" fÃ¼r Ein- und Mehrzahl der Minutenangabe
    					if($hrs==1) $hrs = "ein";
 	   				$minuten = "Minuten";
    					if($min==1)
@@ -1238,12 +1242,12 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       					$min = "eine";
 	      				$minuten = "Minute";
 			   			}
-   					// Zeitansage über Text-To-Speech
+   					// Zeitansage Ã¼ber Text-To-Speech
   	 					$ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
 			  	 		$ton        = "";
 					 	}
 
-			   	//Lautstärke von Musik am Anfang speichern
+			   	//LautstÃ¤rke von Musik am Anfang speichern
 					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
       			$musik_status 			 = GetValueInteger($id_sk1_musik_status);
 
@@ -1290,7 +1294,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 						WAC_Play($id_sk1_ton);
 						}
 
-					//Script solange anghalten wie Sprachausgabe läuft
+					//Script solange anghalten wie Sprachausgabe lÃ¤uft
 					if($modus != 1)
 						{
 			   		sleep(1);
@@ -1317,7 +1321,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 			//---------------------------------------------------------------------
 
-			//Hier können weitere Soundkarten eingefügt werden
+			//Hier kÃ¶nnen weitere Soundkarten eingefÃ¼gt werden
 			//case '2':
 			//entsprechende Werte bitte anpassen
 

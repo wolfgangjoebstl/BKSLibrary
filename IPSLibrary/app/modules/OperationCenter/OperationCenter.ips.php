@@ -64,12 +64,12 @@ echo "\n";
 
 	/******************************************************
 
-	Webfront zusammenräumen
+	Webfront zusammenrÃ¤umen
 	
 	*******************************************************/
 	
 if (isset($installedModules["IPSLight"])==true)
-	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	{  /* das IPSLight Webfront ausblenden, es bleibt nur die GlÃ¼hlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 	$pos=strpos($WFC10_Path,"OperationCenter");
 	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
@@ -80,7 +80,7 @@ if (isset($installedModules["IPSLight"])==true)
 	}
 
 if (isset($installedModules["IPSPowerControl"])==true)
-	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die GlÃ¼hlampe stehen */
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 	$pos=strpos($WFC10_Path,"OperationCenter");
 	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
@@ -287,19 +287,19 @@ if ($_IPS['SENDER']=="Execute")
 			}
 
 	/********************************************************
-   	die Webcam anschauen und den FTP Folder zusammenräumen
+   	die Webcam anschauen und den FTP Folder zusammenrÃ¤umen
 	**********************************************************/
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		echo "\nWebcam anschauen und ftp Folder zusammenräumen.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+		echo "\nWebcam anschauen und ftp Folder zusammenrÃ¤umen.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 		IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
 		IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
 
 		if (isset ($OperationCenterConfig['CAM']))
 			{
-			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
+			/* mÃ¶glicherweise sind keine FTP Folders zum zusammenrÃ¤umen definiert */
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
 				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
@@ -315,7 +315,7 @@ if ($_IPS['SENDER']=="Execute")
 				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
   				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
+				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 ZÃ¤hler */
 				IPS_ApplyChanges($archiveHandlerID);
 
 				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -336,7 +336,7 @@ if ($_IPS['SENDER']=="Execute")
 					$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
 					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
 			
-	   		 	// öffnen des Verzeichnisses
+	   		 	// Ã¶ffnen des Verzeichnisses
    		 		if ( $handle = opendir($verzeichnis) )
 		    			{
 	   	 			$count=0; $list="";
@@ -359,7 +359,7 @@ if ($_IPS['SENDER']=="Execute")
 		}
 
 	/********************************************************
-   	Erreichbarkeit der Kameras ueberprüfen
+   	Erreichbarkeit der Kameras ueberprÃ¼fen
 	**********************************************************/
 
 	if (isset ($installedModules["IPSCam"]))
@@ -459,7 +459,7 @@ if ($_IPS['SENDER']=="Execute")
 	SetValue($IPS_UpTimeID,IPS_GetUptime());
 
 	/********************************************************
-   	Die entfernten logserver auf Erreichbarkeit prüfen
+   	Die entfernten logserver auf Erreichbarkeit prÃ¼fen
 	**********************************************************/
 	
 if (isset ($installedModules["RemoteAccess"]))
@@ -475,7 +475,7 @@ if (isset ($installedModules["RemoteAccess"]))
 
 	echo "\nAuswertung Router Daten.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n\n";
 
-	$mr3420=false;    /* jetzt mit imacro geloest, die können die gesamte Webseite inklusive Unterverzeichnisse abspeichern und beliebig im Frame manövrieren */
+	$mr3420=false;    /* jetzt mit imacro geloest, die kÃ¶nnen die gesamte Webseite inklusive Unterverzeichnisse abspeichern und beliebig im Frame manÃ¶vrieren */
 	if ($mr3420==true)
 		{
 		$url="http://10.0.1.201/userRpm/StatusRpm.htm";  	/* gets the data from a URL */
@@ -538,11 +538,11 @@ if (isset ($installedModules["RemoteAccess"]))
 		   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 			if ($router['TYP']=='MR3420')
 			   {
-				//$OperationCenter->write_routerdata_MR3420($router);   // keine logging Einträge machen
+				//$OperationCenter->write_routerdata_MR3420($router);   // keine logging EintrÃ¤ge machen
 				}
 			if ($router['TYP']=='MBRN3000')
 			   {
-				//$OperationCenter->write_routerdata_MBRN3000($router);   // keine logging Einträge machen
+				//$OperationCenter->write_routerdata_MBRN3000($router);   // keine logging EintrÃ¤ge machen
 				}
 			if ($router['TYP']=='RT1900ac')
 			   {
@@ -557,7 +557,7 @@ if (isset ($installedModules["RemoteAccess"]))
 				$community     = "public";                                                                         // SNMP Community
 				$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
 				$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-				$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+				$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
@@ -588,17 +588,17 @@ if (isset ($installedModules["RemoteAccess"]))
 	echo 	$log_OperationCenter->PrintNachrichten();
 
 	/********************************************************
-   	ARP für alle IP Adressen im Netz
+   	ARP fÃ¼r alle IP Adressen im Netz
 	**********************************************************/
 
-	echo "ARP Auswertung für alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
+	echo "ARP Auswertung fÃ¼r alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
 	$OperationCenter->find_Hostnames();
 
 	/********************************************************
-   	Sys_Ping durchführen basierend auf ermittelter mactable
+   	Sys_Ping durchfÃ¼hren basierend auf ermittelter mactable
 	**********************************************************/
 
-	echo "\nSys_Ping für alle bekannten IP Adressen durchführen:                              ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+	echo "\nSys_Ping fÃ¼r alle bekannten IP Adressen durchfÃ¼hren:                              ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 	echo "============================================================================================================\n";
 	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
 
@@ -618,7 +618,7 @@ if (isset ($installedModules["RemoteAccess"]))
 					{
 					echo "Kamera wird erreicht   !\n";
 					if (GetValue($CamStatusID)==false)
-					   {  /* Statusänderung */
+					   {  /* StatusÃ¤nderung */
 						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 						SetValue($CamStatusID,true);
@@ -628,7 +628,7 @@ if (isset ($installedModules["RemoteAccess"]))
 					{
 					echo "Kamera wird NICHT erreicht   !\n";
 					if (GetValue($CamStatusID)==true)
-					   {  /* Statusänderung */
+					   {  /* StatusÃ¤nderung */
 						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 						SetValue($CamStatusID,false);
@@ -713,7 +713,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim1ID:        /* einmal am Tag */
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 			/********************************************************
-		   Einmal am Tag: nun den Datenverbrauch über den router auslesen
+		   Einmal am Tag: nun den Datenverbrauch Ã¼ber den router auslesen
 			**********************************************************/
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
@@ -740,14 +740,14 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$community     = "public";                                                                         // SNMP Community
 					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
 					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-					$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+					$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-					$snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+					$snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert fÃ¼r download und upload verwendet wird */
 					}
 				if ($router['TYP']=='MBRN3000')
 				   {
@@ -803,14 +803,14 @@ if ($_IPS['SENDER']=="TimerEvent")
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
-		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
+		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt fÃ¼r Schritt
 			*********************************************************************************************/
 			
 			$counter=GetValue($ScriptCounterID);
 			switch ($counter)
 			   {
 				case 3:
-				   /* reserviert für Nachbearbeitung */
+				   /* reserviert fÃ¼r Nachbearbeitung */
 		      	SetValue($ScriptCounterID,0);
 			      IPS_SetEventActive($tim3ID,false);
 		      	break;
@@ -844,7 +844,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim4ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
 			/********************************************************
-	   	Einmal am Tag: Sys_Ping durchführen basierend auf ermittelter mactable
+	   	Einmal am Tag: Sys_Ping durchfÃ¼hren basierend auf ermittelter mactable
 			**********************************************************/
 
 			if (isset ($installedModules["IPSCam"]))
@@ -865,7 +865,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 							{
 							echo "Kamera wird erreicht   !\n";
 							if (GetValue($CamStatusID)==false)
-					   		{  /* Statusänderung */
+					   		{  /* StatusÃ¤nderung */
 								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
 								SetValue($CamStatusID,true);
@@ -876,7 +876,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 							{
 							echo "Kamera wird NICHT erreicht   !\n";
 							if (GetValue($CamStatusID)==true)
-							   {  /* Statusänderung */
+							   {  /* StatusÃ¤nderung */
 								$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
 								SetValue($CamStatusID,false);
