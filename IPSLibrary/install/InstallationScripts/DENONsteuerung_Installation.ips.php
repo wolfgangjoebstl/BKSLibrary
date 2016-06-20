@@ -20,20 +20,20 @@ Funktionen:
 	*legt Scripte "DENON.Install_Library.ips.php", "DENON.ActionScript.ips.php"
 		und"DENON.Functions.ips.php in Kategori "DENON Scritpe" an
 	* legt Script "DENON.CommandReceiver.ips.php" unterhalb der RegisterVariablen "Denon Register Variable" an
-	* legt Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON" an (bestehende Instanzen werden nicht gelˆscht)
-	* legt Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront" an (bestehende Instanzen werden nicht gelˆscht)
+	* legt Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON" an (bestehende Instanzen werden nicht gel√∂scht)
+	* legt Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON Webfront" an (bestehende Instanzen werden nicht gel√∂scht)
 
 Erst-Installation:
 	*dieses Script in IPS hochladen
-	*dieses Script ausf¸hren
+	*dieses Script ausf√ºhren
 
 Installation (erneut/Update)
-	* bereits bestehende Kategorieen, Instanzen, Links und Variablen m¸ssen vor Ausf¸hrung des Sripts nicht
-		zwingend gelˆscht werden (bestehende Kategorieen werden nicht ver‰ndert)
-	* existierende Variablenprofile werden nicht gelˆscht (sollen diese gelˆscht werden
-		bitte vor Ausf¸hrung des DENON.Installers das Script DENON.ProfileCleaner ausf¸hren
+	* bereits bestehende Kategorieen, Instanzen, Links und Variablen m√ºssen vor Ausf√ºhrung des Sripts nicht
+		zwingend gel√∂scht werden (bestehende Kategorieen werden nicht ver√§ndert)
+	* existierende Variablenprofile werden nicht gel√∂scht (sollen diese gel√∂scht werden
+		bitte vor Ausf√ºhrung des DENON.Installers das Script DENON.ProfileCleaner ausf√ºhren
 		(Script liegt im Bojektbaum unter "DENON/DENON Scripts")
-	*bestehende Scripte (vorherige Verisionen) werden gelˆscht und neu angelegt
+	*bestehende Scripte (vorherige Verisionen) werden gel√∂scht und neu angelegt
 */
 
 
@@ -142,7 +142,7 @@ foreach ($configuration as $config)
 	   CSCK_SetHost($DENON_CS_ID, $DENON_VAVR_IP);
 	   CSCK_SetPort($DENON_CS_ID, 23);
 	   CSCK_SetOpen($DENON_CS_ID,true);
-		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. ‹berpr¸fe IP Adresse !\n"; }
+		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. √úberpr√ºfe IP Adresse !\n"; }
 		echo "DENON Client Socket angelegt\n";
 		}
 	else
@@ -155,7 +155,7 @@ foreach ($configuration as $config)
 	   CSCK_SetHost($DENON_CS_ID, $DENON_VAVR_IP);
 	   //CSCK_SetPort($DENON_CS_ID, 23);
 	   //CSCK_SetOpen($DENON_CS_ID,true);
-		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. ‹berpr¸fe IP Adresse !\n"; }
+		if (@IPS_ApplyChanges($DENON_CS_ID)===false) {echo "Achtung ".$config['INSTANZ']." Client Socket mit Fehler installiert. √úberpr√ºfe IP Adresse !\n"; }
 		}
 
 	// Cutter "DENON Cutter" anlegen wenn nicht vorhanden und mit Client Socket verbinden
@@ -168,11 +168,11 @@ foreach ($configuration as $config)
    	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
 		Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
 		IPS_ApplyChanges($DENON_Cu_ID);
-		echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verkn¸pft\n";
+		echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verkn√ºpft\n";
 		}
 	else
 		{
-		echo $config['INSTANZ']." Cutter #".$DENON_Cu_ID." ist bereits angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verkn¸pft\n";
+		echo $config['INSTANZ']." Cutter #".$DENON_Cu_ID." ist bereits angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verkn√ºpft\n";
 	   $DENON_Cu_ID = @IPS_GetInstanceIDByName($config['INSTANZ']." Cutter", 0);
 	   IPS_DisconnectInstance($DENON_Cu_ID);
    	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
@@ -192,17 +192,17 @@ foreach ($configuration as $config)
 	   IPS_ConnectInstance($DENON_RegVar_ID, $DENON_Cu_ID);
 
 		IPS_ApplyChanges($DENON_RegVar_ID);
-		echo $config['INSTANZ']." Register Variable angelegt und mit ".$config['INSTANZ']." Cutter #$DENON_Cu_ID verkn¸pft\n";
+		echo $config['INSTANZ']." Register Variable angelegt und mit ".$config['INSTANZ']." Cutter #$DENON_Cu_ID verkn√ºpft\n";
 		}
 	else
 		{
 	   echo $config['INSTANZ']." Register Variable bereits vorhanden (ID: $DENON_RegVar_ID)\n";
 		}
 	$scriptId_DENONCommandManager = IPS_GetScriptIDByName('DENON.CommandManager', $CategoryIdApp);
-	echo "\nScript ID DENON Command Manager f¸r Register Variable :".$scriptId_DENONCommandManager."\n";
+	echo "\nScript ID DENON Command Manager f√ºr Register Variable :".$scriptId_DENONCommandManager."\n";
 	RegVar_SetRXObjectID($DENON_RegVar_ID , $scriptId_DENONCommandManager);
 	IPS_ApplyChanges($DENON_RegVar_ID);
-	echo "DENON Register Variable  mit Script DENON.CommandManager #".$scriptId_DENONCommandManager." verkn¸pft\n";
+	echo "DENON Register Variable  mit Script DENON.CommandManager #".$scriptId_DENONCommandManager." verkn√ºpft\n";
 
 	// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden
 	$DENON_DisplayRefresh_ID = IPS_GetScriptIDByName("DENON.DisplayRefresh", $CategoryIdApp);
@@ -284,7 +284,7 @@ foreach ($configuration as $config)
 
 	echo "Category App           ID: ".$CategoryIdApp."\n";
 	echo "Category Data          ID: ".$CategoryIdData."\n";
-	//echo "Pfad f¸r Webfront        :".$WFC10_Path." \n";
+	//echo "Pfad f√ºr Webfront        :".$WFC10_Path." \n";
 
 	/* include DENON.Functions
 	  $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
@@ -394,7 +394,7 @@ foreach ($configuration as $config)
 	$item="AuswahlFunktion";
 	$vtype = 1;
 	$value=1;
-	echo "Shortcut anlegen f¸r ".$id.".".$item." in ".$Audio_Path." \n";
+	echo "Shortcut anlegen f√ºr ".$id.".".$item." in ".$Audio_Path." \n";
 	DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
 
    }  /* ende foreach Denon Device */
@@ -520,7 +520,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 		}
 
 	$DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
-	echo "\nScript ID DENON.ActionScript f¸r Cursor Steuerung ".$DENON_ActionScript_ID."\n";
+	echo "\nScript ID DENON.ActionScript f√ºr Cursor Steuerung ".$DENON_ActionScript_ID."\n";
 	IPS_SetVariableCustomProfile($DENON_Cursor_ID, "DENON.CursorUP"); // Ziel-ID, P-Name
 	IPS_SetVariableCustomAction($DENON_Cursor_ID, $DENON_ActionScript_ID);
 
@@ -529,7 +529,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("UP", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -539,7 +539,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 10);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
@@ -578,7 +578,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("DOWN", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -588,7 +588,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 40);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
@@ -626,7 +626,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("LEFT", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -636,7 +636,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 20);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
@@ -675,7 +675,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("RIGHT", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -685,7 +685,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 30);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
@@ -724,7 +724,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("ENTER", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -734,7 +734,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 50);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
@@ -773,7 +773,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 	// Link anlegen/zuweisen
 		$LinkID = @IPS_GetLinkIDByName("RETURN", $DENON_SteuerungWFE_ID);
 		$LinkChildID = @IPS_GetLink($LinkID);
-		$LinkChildID = $LinkChildID["LinkChildID"];
+		$LinkChildID = $LinkChildID["TargetID"];
 
 		if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 			{
@@ -783,7 +783,7 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 			IPS_SetParent($LinkID, $DENON_SteuerungWFE_ID);
 			IPS_SetPosition($LinkID, 60);
 			}
-		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> lˆschen und neu anlegen
+		elseif ($LinkChildID != $DENON_Cursor_ID) // wenn Link nicht korrekt verlinkt -> l√∂schen und neu anlegen
 			{
 			IPS_DeleteLink($LinkID);
 			$LinkID = IPS_CreateLink();
