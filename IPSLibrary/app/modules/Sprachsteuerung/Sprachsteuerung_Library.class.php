@@ -17,7 +17,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			{
 			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-			echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+			echo 'ModuleManager Variable not set --> Create "default" ModuleManager\n';
 			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
 			}
 		$sprachsteuerung=false;
@@ -38,8 +38,13 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 		$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 		$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 		$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+		$id_sk1_musik_vol = IPS_GetVariableIDByName("LautstÃ¤rke", $id_sk1_musik);
 		$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-		$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+		
+		//echo "\n";
+		//echo "Status        :".IPS_GetVariableIDByName("Status", $id_sk1_musik)."  ".$id_sk1_musik_status."\n";
+		//echo "LautstÃ¤rke    :".IPS_GetVariableIDByName("LautstÃ¤rke", $id_sk1_musik)."  ".$id_sk1_musik_vol."\n";
+
 	   $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
 
@@ -72,11 +77,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 				 	if($ton == "zeit")
  						{
 						$time = time();
-						// die Integer-Wandlung dient dazu eine führende Null zu beseitigen
+						// die Integer-Wandlung dient dazu eine fÃ¼hrende Null zu beseitigen
 	   				$hrs = (integer)date("H", $time);
    					$min = (integer)date("i", $time);
 	   				$sec = (integer)date("s", $time);
-   					// "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
+   					// "kosmetische Behandlung" fÃ¼r Ein- und Mehrzahl der Minutenangabe
    					if($hrs==1) $hrs = "ein";
 	   				$minuten = "Minuten";
    					if($min==1)
@@ -84,12 +89,12 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       					$min = "eine";
 	      				$minuten = "Minute";
 			   			}
-   					// Zeitansage über Text-To-Speech
+   					// Zeitansage Ã¼ber Text-To-Speech
   	 					$ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
 			  	 		$ton        = "";
 					 	}
 
-			   	//Lautstärke von Musik am Anfang speichern
+			   	//LautstÃ¤rke von Musik am Anfang speichern
 					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
       			$musik_status 			 = GetValueInteger($id_sk1_musik_status);
 
@@ -136,7 +141,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 						WAC_Play($id_sk1_ton);
 						}
 
-					//Script solange anghalten wie Sprachausgabe läuft
+					//Script solange anghalten wie Sprachausgabe lÃ¤uft
 					if($modus != 1)
 						{
 			   		sleep(1);
@@ -163,7 +168,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 			//---------------------------------------------------------------------
 
-			//Hier können weitere Soundkarten eingefügt werden
+			//Hier kÃ¶nnen weitere Soundkarten eingefÃ¼gt werden
 			//case '2':
 			//entsprechende Werte bitte anpassen
 

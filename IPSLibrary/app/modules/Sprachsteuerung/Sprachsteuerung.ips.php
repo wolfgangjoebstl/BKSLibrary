@@ -5,7 +5,7 @@
  *    Sprachsteuerung
  *
  *
- * gibt über den entsprechenden Lautsprecherausgang Musik, Hinweistöne oder Text aus
+ * gibt Ã¼ber den entsprechenden Lautsprecherausgang Musik, HinweistÃ¶ne oder Text aus
  * Lautsprecherausgang wird von MP Ton definiert
  *
  ***********************************************************/
@@ -47,21 +47,23 @@ $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
 $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-echo "TTSAudioOutput :".IPS_GetProperty($id_sk1_tts,"TTSAudioOutput")."\n";
-echo "TTSEngine :".IPS_GetProperty($id_sk1_tts,"TTSEngine")."\n";
-echo "DeviceName :".IPS_GetProperty($id_sk1_ton,"DeviceName")."\n";
-echo "DeviceNum :".IPS_GetProperty($id_sk1_ton,"DeviceNum")."\n";
-echo "UpdateInterval :".IPS_GetProperty($id_sk1_ton,"UpdateInterval")."\n";
-echo "DeviceDriver :".IPS_GetProperty($id_sk1_ton,"DeviceDriver")."\n";
-echo "DeviceName :".IPS_GetProperty($id_sk1_musik,"DeviceName")."\n";
-echo "DeviceNum :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
-echo "UpdateInterval :".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
-echo "DeviceDriver :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n";
+echo "TTSAudioOutput:".IPS_GetProperty($id_sk1_tts,"TTSAudioOutput")."\n";
+echo "TTSEngine     :".IPS_GetProperty($id_sk1_tts,"TTSEngine")."\n\n";
+echo "DeviceName    :".IPS_GetProperty($id_sk1_ton,"DeviceName")."\n";
+echo "DeviceNum     :".IPS_GetProperty($id_sk1_ton,"DeviceNum")."\n";
+echo "UpdateInterval:".IPS_GetProperty($id_sk1_ton,"UpdateInterval")."\n";
+echo "DeviceDriver  :".IPS_GetProperty($id_sk1_ton,"DeviceDriver")."\n\n";
+echo "DeviceName    :".IPS_GetProperty($id_sk1_musik,"DeviceName")."\n";
+echo "DeviceNum     :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
+echo "UpdateInterval:".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
+echo "DeviceDriver  :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n";
+echo "Status        :".IPS_GetVariableIDByName("Status", $id_sk1_musik)."\n";
+echo "LautstÃ¤rke    :".IPS_GetVariableIDByName("LautstÃ¤rke", $id_sk1_musik)."\n";
 
 //echo "TTSAudioOutput :".IPS_GetProperty(50984,"TTSAudioOutput")."\n";
 //echo "TTSEngine :".IPS_GetProperty(50984,"TTSEngine")."\n";
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 //wird in das Standard Include script kopiert
 
@@ -72,7 +74,7 @@ if (isset($_IPS['Text']))
 else
 	{
 	tts_play(2,'','hinweis',2);
-	tts_play(1,'Hallo Claudia Wie gehts','',2);
+	tts_play(1,'Hallo Claudia ich liebe dich so sehr','',2);
 	//tts_play(1,'Hello Wolfgang How are you ?','',2);
 	}
 
