@@ -82,8 +82,26 @@ if (Getvalue($MeterReadID))
 	if ($AmisConfig["Type"] == "Serial")
 	   {
       echo "Comport Serial aktiviert. \n";
-		COMPort_SetOpen($com_Port, true); //false für aus
-		IPS_ApplyChanges($com_Port);
+      $config = IPS_GetConfiguration($com_Port);
+      $remove = array("{", "}", '"');
+		$config = str_replace($remove, "", $config);
+		$Config = explode (',',$config);
+		$AllConfig=array();
+		foreach ($Config as $configItem)
+		   {
+		   $items=explode (':',$configItem);
+		   $Allconfig[$items[0]]=$items[1];
+		   }
+		print_r($Allconfig);
+		if ($Allconfig["Open"]==false) 
+		   {
+			COMPort_SetOpen($com_Port, true); //false für aus
+			IPS_ApplyChanges($com_Port);
+			}
+		else
+     		{
+			echo "Port ist offen.\n";
+			}
 		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 		}
 	}
@@ -96,6 +114,10 @@ if (Getvalue($MeterReadID))
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 echo "Archive Handler OID : ".$archiveHandlerID." und Name : ".IPS_GetName($archiveHandlerID)."\n";
+
+if (false)
+{
+
 
 /*****
 *
@@ -171,8 +193,6 @@ else
 	}
 
 
-if (false)
-{
 
 
 /******************************************************

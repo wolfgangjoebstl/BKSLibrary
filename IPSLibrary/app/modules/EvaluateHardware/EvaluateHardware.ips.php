@@ -25,7 +25,7 @@ IPS_SetEventActive($tim1ID,true);
 
 //$includefile='<?'."\n".'$fileList = array('."\n";
 $includefile='<?'."\n"; 
-$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Ger‰te Instanzen auflisten
+$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Ger√§te Instanzen auflisten
 foreach ($alleInstanzen as $instanz)
 	{
 	$result=IPS_GetInstance($instanz);
@@ -42,7 +42,7 @@ $guid = "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function FHTList() { return array('."\n";
 
-echo "\nFHT Ger‰te: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFHT Ger√§te: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
@@ -60,16 +60,11 @@ foreach ($alleInstanzen as $instanz)
       //echo "\nCID :".$cid;
       //print_r($o);
       if($o['ObjectIdent'] != "")
-		{
+			{
 			$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
 			$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
 			$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
 			$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
-      	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
-				{
-            echo "Fehler: ".IPS_GetLocation($id)."\n";
-            break;
-            }
         }
     }
 
@@ -84,7 +79,7 @@ $guid = "{56800073-A809-4513-9618-1C593EE1240C}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 
-echo "\nFS20EX Ger‰te: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFS20EX Ger√§te: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
@@ -97,7 +92,7 @@ $guid = "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function FS20List() { return array('."\n";
 
-echo "\nFS20 Ger‰te: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFS20 Ger√§te: ".sizeof($alleInstanzen)."\n\n";
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),45)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
@@ -120,11 +115,6 @@ foreach ($alleInstanzen as $instanz)
 				$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
 				$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
 				$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
-   	   	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
-					{
-         	   echo "Fehler: ".IPS_GetLocation($id)."\n";
-         	   break;
-            	}
 	        }
    	 }
 	$includefile.="\n             ".'	),'."\n";
@@ -139,7 +129,7 @@ $guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function HomematicList() { return array('."\n";
 
-echo "\nHomematic Ger‰te: ".sizeof($alleInstanzen)."\n\n";
+echo "\nHomematic Ger√§te: ".sizeof($alleInstanzen)."\n\n";
 $serienNummer=array();
 foreach ($alleInstanzen as $instanz)
 	{
@@ -176,11 +166,6 @@ foreach ($alleInstanzen as $instanz)
 			$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
 			$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
 			$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
-      	if(@HM_RequestStatus($id, $o['ObjectIdent']) === false)
-				{
-            echo "Fehler: ".IPS_GetLocation($id)."\n";
-            break;
-            }
          $serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
         	}
     	}
@@ -200,10 +185,10 @@ if (!file_put_contents($filename, $includefile)) {
 
 
 $texte = Array(
-    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur ‹bertragung an",
+    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur √úbertragung an",
     "LOWBAT" => "Batterieladezustand gering",
-    "STICKY_UNREACH" => "Ger‰tekommunikation war gestˆrt",
-    "UNREACH" => "Ger‰tekommunikation aktuell gestˆrt"
+    "STICKY_UNREACH" => "Ger√§tekommunikation war gest√∂rt",
+    "UNREACH" => "Ger√§tekommunikation aktuell gest√∂rt"
 );
 
 $ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
@@ -216,7 +201,7 @@ if($HomInstanz == 0)
 for ($i=0;$i < $HomInstanz; $i++)
    {
    $ccu_name=IPS_GetName($ids[$i]);
-	echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".sizeof($serienNummer[$ccu_name])." Endger‰te angeschlossen.\n";
+	echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".sizeof($serienNummer[$ccu_name])." Endger√§te angeschlossen.\n";
 	$msgs = HM_ReadServiceMessages($ids[$i]);
 	if($msgs === false)
 	   {
@@ -243,7 +228,7 @@ for ($i=0;$i < $HomInstanz; $i++)
 	   	}
 		else
 			{
-      	$name = "Ger‰t nicht in IP-Symcon eingerichtet";
+      	$name = "Ger√§t nicht in IP-Symcon eingerichtet";
     		}
 	  	echo "  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
 		}
@@ -270,7 +255,7 @@ foreach ($serienNummer as $ccu => $geraete)
 		switch ($registerNew[0])
 		   {
 		   case "ERROR":
-				echo "Funk-T¸r-/Fensterkontakt\n";
+				echo "Funk-T√ºr-/Fensterkontakt\n";
 				break;
 		   case "INSTALL_TEST":
 		      if ($registerNew[1]=="PRESS_CONT")
@@ -286,7 +271,7 @@ foreach ($serienNummer as $ccu => $geraete)
 				echo "Funk-Wandthermostat\n";
 				break;
 		   case "ACTUAL_TEMPERATURE":
-				echo "Funk-Heizkˆrperthermostat\n";
+				echo "Funk-Heizk√∂rperthermostat\n";
 				break;
 		   case "BRIGHTNESS":
 				echo "Funk-Bewegungsmelder\n";
