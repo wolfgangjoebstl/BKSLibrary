@@ -20,8 +20,9 @@ class OperationCenter
 	var $CategoryIdData       = 0;
 	var $categoryId_SysPing   = 0;
 	var $categoryId_RebootCtr = 0;
-	var $archiveHandlerID=0;
-	var $mactable=array();
+	var $archiveHandlerID     = 0;
+	var $subnet               = "";
+	var $mactable             = array();
 
 	/**
 	 * @public
@@ -32,6 +33,7 @@ class OperationCenter
 	public function __construct($CategoryIdData,$subnet)
 			{
 		   $this->CategoryIdData=$CategoryIdData;
+		   $this->subnet=$subnet;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
    		$this->categoryId_RebootCtr  = CreateCategory('RebootCounter', $this->CategoryIdData, 210);
          $this->mactable=$this->get_macipTable($subnet);

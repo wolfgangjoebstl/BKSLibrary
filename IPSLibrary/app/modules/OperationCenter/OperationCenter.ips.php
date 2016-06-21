@@ -117,6 +117,7 @@ $tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
 $tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
 $tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
 $tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
+$tim6ID = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
 
 /*********************************************************************************************/
 
@@ -690,7 +691,33 @@ if (isset ($installedModules["RemoteAccess"]))
 			}
 		}
 
+	echo "============================================================================================================\n";
+
+	/********************************************************
+   	Sys Ping the Devices
+	**********************************************************/
+
+	SysPingAllDevices($OperationCenter,$log_OperationCenter);
+
+	echo "============================================================================================================\n";
+
+	/********************************************************
+   	UpdateAll
+	**********************************************************/
+
+	CyclicUpdate();
+
+	echo "============================================================================================================\n";
+
+	/********************************************************
+   	CopyScripts
+	**********************************************************/
+
+	CopyScripts(DIR_copyscriptsdropbox);
+
+	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+
 
 	} /* ende Execute */
 
@@ -916,7 +943,14 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
 	   	Einmal am 12.Tag des Monates: CyclicUpdate, alle Module automatisch updaten
 			*************************************************************************************/
-
+			CyclicUpdate();
+			break;
+	   case $tim6ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
+			/************************************************************************************
+	   	Alle Scripts auf ein Dropboxverzeichnis kopieren und wenn notwendig umbenennen
+			*************************************************************************************/
+			CopyScripts(DIR_copyscriptsdropbox);
 			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
@@ -927,9 +961,153 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 /**************************************************************************************************************/
 
+function SysPingAllDevices($OperationCenter,$log_OperationCenter)
+	{
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager))
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+		}
+	$installedModules = $moduleManager->GetInstalledModules();
+	$CategoryIdData   = $moduleManager->GetModuleCategoryID('data');
 
-
-
+	echo "Subnet : ".$OperationCenter->subnet."\n";
+	$subnet=$OperationCenter->subnet;
+	$OperationCenterConfig = OperationCenter_Configuration();
+	print_r($OperationCenterConfig);
 	
+	if (isset ($installedModules["IPSCam"]))
+		{
+		$mactable=$OperationCenter->get_macipTable($subnet);
+		//print_r($mactable);
+		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+			{
+			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			if (isset($mactable[$cam_config['MAC']]))
+			   {
+				echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+				$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+				if ($status)
+					{
+					echo "Kamera wird erreicht   !\n";
+					if (GetValue($CamStatusID)==false)
+					   {  /* Statusänderung */
+						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+						SetValue($CamStatusID,true);
+				   	}
+					}
+				else
+					{
+					echo "Kamera wird NICHT erreicht   !\n";
+					if (GetValue($CamStatusID)==true)
+					   {  /* Statusänderung */
+						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+						SetValue($CamStatusID,false);
+					   }
+					}
+				}
+			else  /* mac adresse nicht bekannt */
+			   {
+			   echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+			   }
+			} /* Ende foreach */
+		}
+
+	if (isset ($installedModules["LedAnsteuerung"]))
+		{
+		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+		$device_config=LedAnsteuerung_Config();
+		$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+		$OperationCenter->device_ping($device_config, $device, $identifier);
+		$OperationCenter->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
+		}
+
+	if (isset ($installedModules["DENONsteuerung"]))
+		{
+		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+		$device_config=Denon_Configuration();
+		$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+		$OperationCenter->device_ping($device_config, $device, $identifier);
+		}
+
+	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+	}
+
+/****************************************************/
+
+function CyclicUpdate()
+	{
+	
+	
+	}
+	
+/****************************************************/
+
+function CopyScripts($DIR_copyscriptsdropbox)
+	{
+	/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
+	mkdirtree($DIR_copyscriptsdropbox);
+
+	$count=0;
+
+	$alleSkripte = IPS_GetScriptList();
+	//print_r($alleSkripte);
+
+	/* ein includefile mit allen Dateien erstellen, als Inhaltsverzeichnis */
+	$includefile='<?'."\n".'$fileList = array('."\n";
+
+	echo "Alle Scriptfiles werden vom IP Symcon Scriptverzeichnis auf ".$DIR_copyscriptsdropbox." kopiert und in einen Dropbox lesbaren Filenamen umbenannt.\n";
+	echo "\n";
+
+	foreach ($alleSkripte as &$value)
+		{
+		$filename=IPS_GetScriptFile($value);
+		$name=IPS_GetName($value);
+		$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
+		$name=strtr($name, $trans);
+		$destination=$name."-".$value.".php";
+
+		/* herausfinden ob ein Dateiname nur eine Nummer ist, dann vollstaendigen Namen und Struktur geben */
+		if (preg_match('/\d+/',$filename,$zahl)==1)
+			{
+			if ($zahl[0]==$value)
+			   {
+			   $dir="";
+		   	while (($parent=IPS_GetParent($value))!=0)
+		      	{
+			      $Struktur=IPS_GetObject($parent);
+					if ($Struktur["ObjectType"]==0) {$dir=IPS_GetName($parent).'/'.$dir;}
+					$value=$parent;
+					}
+				$destname=$dir.$name.".ips.php";
+				$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
+				$destname=strtr($destname, $trans);
+				}
+			}
+		else
+		   {
+	   	$destname=$filename;
+		   }
+		echo IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
+		copy(IPS_GetKernelDir().'scripts/'.$filename,$DIR_copyscriptsdropbox.$destination);
+
+		$includefile.='\''.$destname.'\','."\n";
+		$count+=1;
+	   }
+	unset($value);
+
+	$includefile.=');'."\n".'?>';
+
+	echo "\n";
+	echo "-------------------------------------------------------------\n\n";
+	echo "Insgesamt ".$count." Scripts kopiert.\n";
+	}
+	
+
 	
 ?>

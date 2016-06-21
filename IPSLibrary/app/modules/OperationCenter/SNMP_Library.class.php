@@ -214,7 +214,7 @@ class SNMP_OperationCenter
 				{
 				$intl=PHP_INT_SIZE*2;
 				$j=strlen($obj->value);
-				$z=array(); $z[0]=0;
+				$z=array(); $z[0]=0; $z[1]=0;
 				$i=$intl - ($j % $intl);
 				$k=0;
 				//if($this->debug) echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang\n";

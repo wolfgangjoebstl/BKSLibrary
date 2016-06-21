@@ -87,7 +87,7 @@
 		IPS_SetName($tim2ID, "MoveCamFiles");
 		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,150);      /* alle 150 sec */
   		//IPS_SetEventActive($tim2ID,true);
-		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgefÃ¼hrt werden */
 	   echo "   Timer Event MoveCamFiles neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
 		}
 	else
@@ -113,7 +113,7 @@
   		}
 
 	/* Workariund wenn die Timer bereits gesetzt wurden */
-	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgefÃ¼hrt werden */
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 
 
@@ -142,7 +142,7 @@
 		$tim4ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
 		IPS_SetName($tim4ID, "SysPingTimer");
-		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , TÃ¤gliche AusfÃ¼hrung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
 		IPS_SetEventCyclicTimeBounds($tim4ID,time()+30,0);
 		IPS_SetEventActive($tim4ID,true);
 	   echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
@@ -159,7 +159,7 @@
 		$tim5ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim5ID, $scriptIdOperationCenter);
 		IPS_SetName($tim5ID, "CyclicUpdate");
-		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche Ausführung, alle 1 Monate, Datumstage, Datumstageintervall,  */
+		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche AusfÃ¼hrung, alle 1 Monate, Datumstage, Datumstageintervall,  */
 	   echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
 		}
 	else
@@ -168,7 +168,23 @@
   		IPS_SetEventActive($tim5ID,true);
   		}
 
-  		
+	$tim6ID = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptIdOperationCenter);
+	if ($tim6ID==false)
+		{
+		$tim6ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim6ID, $scriptIdOperationCenter);
+		IPS_SetName($tim6ID, "CopyScriptsTimer");
+		IPS_SetEventCyclic($tim6ID,0,0,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim6ID,2,20,0);  /* immer um 2:20 */
+  		IPS_SetEventActive($tim6ID,true);
+	   echo "   Timer Event CopyScriptsTimer neu angelegt. Timer um 2:20 ist aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event CopyScriptsTimer bereits angelegt. Timer um 2:20 ist aktiviert.\n";
+  		IPS_SetEventActive($tim6ID,true);
+  		}
+
   		
   		
 	/******************************************************
@@ -185,7 +201,7 @@
 		//print_r($router);
 		if ($router['TYP']=='MR3420')
 		   {
-		   echo "    iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
+		   echo "    iMacro Command-File fÃ¼r Router Typ MR3420 wird hergestellt.\n";
 			$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
       	fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
 	      fwrite($handle2,'TAB T=1'."\n");
@@ -255,14 +271,14 @@
 
 	if (isset ($installedModules["IPSCam"]))
 		{
-		echo "\nWebcam anschauen und ftp Folder zusammenräumen.\n";
+		echo "\nWebcam anschauen und ftp Folder zusammenrÃ¤umen.\n";
 
 		IPSUtils_Include ("IPSCam_Constants.inc.php",         "IPSLibrary::app::modules::IPSCam");
 		IPSUtils_Include ("IPSCam_Configuration.inc.php",     "IPSLibrary::config::modules::IPSCam");
 
 		if (isset ($OperationCenterConfig['CAM']))
 			{
-			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
+			/* mÃ¶glicherweise sind keine FTP Folders zum zusammenrÃ¤umen definiert */
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
 				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
@@ -278,7 +294,7 @@
 				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
   				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
+				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 ZÃ¤hler */
 				IPS_ApplyChanges($archiveHandlerID);
 
 				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -289,7 +305,7 @@
 				// Test, ob ein Verzeichnis angegeben wurde
 				if ( is_dir ( $verzeichnis ))
 					{
-	   		 	// öffnen des Verzeichnisses
+	   		 	// Ã¶ffnen des Verzeichnisses
    		 		if ( $handle = opendir($verzeichnis) )
 		    			{
 	   	 			$count=0; $list="";

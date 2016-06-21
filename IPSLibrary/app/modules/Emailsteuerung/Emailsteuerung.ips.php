@@ -80,10 +80,18 @@ if ($_IPS['SENDER']=="Execute")
 	//$starttime=$endtime-60*2;
 	//$werte = AC_GetLoggedValues($archive_handler, 24129, $starttime, $endtime, 0);
 
-	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
-		"\n\n************************************************************************************************************************\n".send_status(false);
-	//SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status LBG70", $event);
-	echo $event;
+	$device=IPS_GetName(0);
+	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
+
+	$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
+		"\n\n************************************************************************************************************************\n";
+	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
+
+	$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
+		"\n\n************************************************************************************************************************\n";
+	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
+
+	echo $event1.$event2;
 	}
 
 /*********************************************************************************************/
@@ -99,9 +107,10 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
+	$device=IPS_GetName(0);
 	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
 		"\n\n************************************************************************************************************************\n".send_status(false);
-	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Regelmaesig nachgefragter Status LBG70", $event);
+	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Regelmaesig nachgefragter Status ".$device, $event);
 	}
 
 

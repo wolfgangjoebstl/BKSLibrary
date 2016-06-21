@@ -5,8 +5,7 @@
 
 /********************************************* CONFIG *******************************************************/
 
-//Include_once(IPS_GetKernelDir()."../IPS-Config/AllgemeineDefinitionen.php");
-//Include_once(IPS_GetKernelDir()."scripts\AllgemeineDefinitionen.inc.php");
+
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');

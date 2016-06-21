@@ -28,15 +28,15 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
+	echo "\nKernelversion           : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
+	echo "\nIPS Version             : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Startpage');
-	echo "\nRemoteReadWrite Version : ".$ergebnis;
+	echo "\nStartpage       Version : ".$ergebnis;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -105,7 +105,7 @@
 
 	// Add Scripts, they have auto install
 	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
-	IPS_SetScriptTimer($scriptIdStartpage, 8*60);  /* wenn keine Ver‰nderung einer Variablen trotzdem updaten */
+	IPS_SetScriptTimer($scriptIdStartpage, 8*60);  /* wenn keine Ver√§nderung einer Variablen trotzdem updaten */
 	IPS_RunScript($scriptIdStartpage);
 
 	IPS_SetVariableCustomAction($vid, $scriptIdStartpage);
