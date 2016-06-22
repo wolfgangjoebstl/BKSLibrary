@@ -91,15 +91,16 @@
 		}
 
 	$SmtpID=$SendEmailID;
-	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
-	echo "Recipient :".IPS_GetProperty($SmtpID,"Recipient")."\n";
-	echo "SenderAddress :".IPS_GetProperty($SmtpID,"SenderAddress")."\n";
-	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
-	echo "SenderName :".IPS_GetProperty($SmtpID,"SenderName")."\n";
-	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
-	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
-	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
-	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+	echo "Sendemail Daten:\n";
+	echo "  Password           :".IPS_GetProperty($SmtpID,"Password")."\n";
+	echo "  Recipient          :".IPS_GetProperty($SmtpID,"Recipient")."\n";
+	echo "  SenderAddress      :".IPS_GetProperty($SmtpID,"SenderAddress")."\n";
+	echo "  Username           :".IPS_GetProperty($SmtpID,"Username")."\n";
+	echo "  SenderName         :".IPS_GetProperty($SmtpID,"SenderName")."\n";
+	echo "  UseAuthentication  :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
+	echo "  Port               :".IPS_GetProperty($SmtpID,"Port")."\n";
+	echo "  Host               :".IPS_GetProperty($SmtpID,"Host")."\n";
+	echo "  UseSSL             :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
 
 	$ReceiveEmailID = @IPS_GetInstanceIDByName("ReceiveEmail", $CategoryIdData);
 	$ImapConfig = Imap_Configuration();
@@ -118,26 +119,62 @@
 		}
 
 	$SmtpID=$ReceiveEmailID;
-	echo "CacheInterval :".IPS_GetProperty($SmtpID,"CacheInterval")."\n";
-	echo "Password :".IPS_GetProperty($SmtpID,"Password")."\n";
-	echo "CacheSize :".IPS_GetProperty($SmtpID,"CacheSize")."\n";
-	echo "Username :".IPS_GetProperty($SmtpID,"Username")."\n";
-	echo "UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
-	echo "Port :".IPS_GetProperty($SmtpID,"Port")."\n";
-	echo "Host :".IPS_GetProperty($SmtpID,"Host")."\n";
-	echo "UseSSL :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+	echo "ReceiveEmail Daten:\n";
+	echo "  CacheInterval 	  :".IPS_GetProperty($SmtpID,"CacheInterval")."\n";
+	echo "  Password          :".IPS_GetProperty($SmtpID,"Password")."\n";
+	echo "  CacheSize         :".IPS_GetProperty($SmtpID,"CacheSize")."\n";
+	echo "  Username 	        :".IPS_GetProperty($SmtpID,"Username")."\n";
+	echo "  UseAuthentication :".IPS_GetProperty($SmtpID,"UseAuthentication")."\n";
+	echo "  Port 	           :".IPS_GetProperty($SmtpID,"Port")."\n";
+	echo "  Host 	           :".IPS_GetProperty($SmtpID,"Host")."\n";
+	echo "  UseSSL            :".IPS_GetProperty($SmtpID,"UseSSL")."\n";
+
+	/******************************************************
+
+				INIT, Timer
+
+	*************************************************************/
+
+	echo "\nTimer Events neu anlegen:\n";
+	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdEmailsteuerung);
+	if ($tim1ID==false)
+		{
+		$tim1ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim1ID, $scriptIdEmailsteuerung);
+		IPS_SetName($tim1ID, "Aufruftimer");
+		IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
+	   echo "  Timer Event Aufruftimer neu angelegt. Timer um 04:10 ist aktiviert.\n";
+		}
+	else
+	   {
+	   echo "  Timer Event Aufruftimer bereits angelegt. Timer um 04:10 ist aktiviert.\n";
+  		}
+
+	IPS_SetEventActive($tim1ID,true);
+
+	$tim3ID = @IPS_GetEventIDByName("EmailExectimer",  $scriptIdEmailsteuerung);
+	if ($tim3ID==false)
+		{
+		$tim3ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim3ID,  $scriptIdEmailsteuerung);
+		IPS_SetName($tim3ID, "EmailExectimer");
+		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
+		IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+		/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
+	   echo "  Timer Event EmailExectimer neu angelegt. Timer 150 sec ist nicht aktiviert.\n";
+		}
+	else
+	   {
+	   echo "  Timer Event EmailExectimer bereits angelegt. Timer 150 sec ist nicht aktiviert.\n";
+  		}
+
+	/* Workariund wenn die Timer bereits gesetzt wurden */
+	IPS_SetEventCyclicTimeBounds($tim1ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 
 
-$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdEmailsteuerung);
-if ($tim1ID==false)
-	{
-	$tim1ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim1ID, $scriptIdEmailsteuerung);
-	IPS_SetName($tim1ID, "Aufruftimer");
-	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
-	}
-IPS_SetEventActive($tim1ID,true);
+
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation

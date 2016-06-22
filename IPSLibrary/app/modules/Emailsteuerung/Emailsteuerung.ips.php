@@ -33,30 +33,37 @@ echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
 $scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Emailsteuerung'));
 echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
-echo "\nAlle SMTP Clients:\n";
-$smtp_clients=IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
-foreach ($smtp_clients as $smtp_client)
-	{
-	echo "  Smtp Client ID: ".$smtp_client."  -> ".IPS_GetName($smtp_client)."\n";
-	}
+	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+
+	$device=IPS_GetName(0);
+
+	echo "\nAlle SMTP Clients:\n";
+	$smtp_clients=IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
+	foreach ($smtp_clients as $smtp_client)
+		{
+		echo "  Smtp Client ID: ".$smtp_client."  -> ".IPS_GetName($smtp_client)."\n";
+		}
 	
-$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
-echo "\nSend Email ID: ".$SendEmailID."\n";
+	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
+	echo "\nSend Email ID: ".$SendEmailID."\n";
+
+	/******************************************************
+
+				INIT, Timer, sollte eigentlich in der Install Routine sein
+
+				MoveCamFiles				, alle 150 Sec
+				RouterAufruftimer       , immer um 0:20
+
+	*************************************************************/
 	
-$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
-if ($tim1ID==false)
-	{
-	$tim1ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim1ID, $_IPS['SELF']);
-	IPS_SetName($tim1ID, "Aufruftimer");
-	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
-	}
-IPS_SetEventActive($tim1ID,true);
+	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptId);
+   $tim3ID = @IPS_GetEventIDByName("EmailExectimer", $scriptId);
+
 
 /*********************************************************************************************/
 
@@ -80,7 +87,6 @@ if ($_IPS['SENDER']=="Execute")
 	//$starttime=$endtime-60*2;
 	//$werte = AC_GetLoggedValues($archive_handler, 24129, $starttime, $endtime, 0);
 
-	$device=IPS_GetName(0);
 	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
 
 	$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
@@ -107,14 +113,63 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-	$device=IPS_GetName(0);
-	$event=date("D d.m.y h:i:s")." Die Werte aus der Hausautomatisierung: \n\n".send_status(true).
-		"\n\n************************************************************************************************************************\n".send_status(false);
-	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Regelmaesig nachgefragter Status ".$device, $event);
+	switch ($_IPS['EVENT'])
+	   {
+	   case $tim1ID:        /* einmal am Tag */
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Aufruftimer email Status Auswertung");
+			/********************************************************
+		   Einmal am Tag: den Staus auslesen und als zwei emails verschicken
+			**********************************************************/
+			SetValue($ScriptCounterID,1);
+			IPS_SetEventActive($tim3ID,true);
+	      break;
+
+	   case $tim3ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Email Status Auswertung. ScriptcountID:".GetValue($ScriptCounterID));
+
+			/******************************************************************************************
+		     Email Status Auswertung, Schritt für Schritt
+			*********************************************************************************************/
+
+			$counter=GetValue($ScriptCounterID);
+			switch ($counter)
+			   {
+				case 3:
+				   /* reserviert für Nachbearbeitung */
+		      	SetValue($ScriptCounterID,0);
+			      IPS_SetEventActive($tim3ID,false);
+		      	break;
+			   case 2:
+					/* Email Auswertung Teil 2*/
+					$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
+							"\n\n************************************************************************************************************************\n";
+					SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
+					SetValue($ScriptCounterID,$counter+1);
+		      	break;
+			   case 1:
+					/* Email Auswertung Teil 1 */
+					$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
+						"\n\n************************************************************************************************************************\n";
+					SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
+			      SetValue($ScriptCounterID,$counter+1);
+					break;
+			   case 0:
+				default:
+				   break;
+			   }
+			break;
+		default:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
+		   break;
+		}
 	}
 
 
+
 /*********************************************************************************************/
+
+/* reserviert für functions */
+
 
 
 /*********************************************************************************************/

@@ -697,7 +697,7 @@ if (isset ($installedModules["RemoteAccess"]))
    	Sys Ping the Devices
 	**********************************************************/
 
-	SysPingAllDevices($OperationCenter,$log_OperationCenter);
+	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
 
 	echo "============================================================================================================\n";
 
@@ -705,7 +705,7 @@ if (isset ($installedModules["RemoteAccess"]))
    	UpdateAll
 	**********************************************************/
 
-	CyclicUpdate();
+	//CyclicUpdate();
 
 	echo "============================================================================================================\n";
 
@@ -713,7 +713,8 @@ if (isset ($installedModules["RemoteAccess"]))
    	CopyScripts
 	**********************************************************/
 
-	CopyScripts(DIR_copyscriptsdropbox);
+	echo " Dropbox Verezichnis: ".DIR_copyscriptsdropbox."\n";
+	CopyScripts($OperationCenter);
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -911,7 +912,7 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 
 	echo "Subnet : ".$OperationCenter->subnet."\n";
 	$subnet=$OperationCenter->subnet;
-	$OperationCenterConfig = OperationCenter_Configuration();
+	$OperationCenterConfig = $OperationCenter->oc_Configuration();
 	print_r($OperationCenterConfig);
 	
 	if (isset ($installedModules["IPSCam"]))
@@ -1028,10 +1029,17 @@ function CyclicUpdate()
 	}
 	
 /****************************************************/
+/*
+ * kopiert die Scriptfiles auf ein Dropboxverzeichnis um di eFiles sicherheitshalber auch immer zur Verfügung zu haben
+ * auch wenn Github nicht mehr geht
 
-function CopyScripts($DIR_copyscriptsdropbox)
+ */
+
+function CopyScripts($OperationCenter)
 	{
 	/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
+	$DIR_copyscriptsdropbox = $OperationCenter->oc_Setup()['DropboxDirectory'];
+	
 	mkdirtree($DIR_copyscriptsdropbox);
 
 	$count=0;
@@ -1089,6 +1097,12 @@ function CopyScripts($DIR_copyscriptsdropbox)
 	echo "Insgesamt ".$count." Scripts kopiert.\n";
 	}
 	
+/****************************************************/
 
+function MoveLogs()
+	{
+	
+	
+	}
 	
 ?>
