@@ -595,74 +595,6 @@ if (isset ($installedModules["RemoteAccess"]))
 	echo "ARP Auswertung für alle bekannten MAC Adressen aus AllgDefinitionen.       ".(microtime(true)-$startexec)." Sekunden\n";
 	$OperationCenter->find_Hostnames();
 
-	/********************************************************
-   	Sys_Ping durchführen basierend auf ermittelter mactable
-	**********************************************************/
-
-	echo "\nSys_Ping für alle bekannten IP Adressen durchführen:                              ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-	echo "============================================================================================================\n";
-	$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
-
-	if (isset ($installedModules["IPSCam"]))
-		{
-		$mactable=$OperationCenter->get_macipTable($subnet);
-		//print_r($mactable);
-		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
-		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-			{
-			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			if (isset($mactable[$cam_config['MAC']]))
-			   {
-				echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-				$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
-				if ($status)
-					{
-					echo "Kamera wird erreicht   !\n";
-					if (GetValue($CamStatusID)==false)
-					   {  /* Statusänderung */
-						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-						SetValue($CamStatusID,true);
-				   	}
-					}
-				else
-					{
-					echo "Kamera wird NICHT erreicht   !\n";
-					if (GetValue($CamStatusID)==true)
-					   {  /* Statusänderung */
-						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-						SetValue($CamStatusID,false);
-					   }
-					}
-				}
-			else  /* mac adresse nicht bekannt */
-			   {
-			   echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-			   }
-			} /* Ende foreach */
-		}
-
-	if (isset ($installedModules["LedAnsteuerung"]))
-		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
-		$device_config=LedAnsteuerung_Config();
-		$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-		$OperationCenter->device_ping($device_config, $device, $identifier);
-		$OperationCenter->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
-		}
-
-	if (isset ($installedModules["DENONsteuerung"]))
-		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-		$device_config=Denon_Configuration();
-		$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-		$OperationCenter->device_ping($device_config, $device, $identifier);
-		}
-
-	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
-
 	echo "============================================================================================================\n";
 
 	/********************************************************
@@ -713,8 +645,13 @@ if (isset ($installedModules["RemoteAccess"]))
    	CopyScripts
 	**********************************************************/
 
-	echo " Dropbox Verezichnis: ".DIR_copyscriptsdropbox."\n";
-	CopyScripts($OperationCenter);
+	//CopyScripts($OperationCenter);
+
+	/********************************************************
+   	Move Logs
+	**********************************************************/
+
+	MoveLogs();
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -1038,7 +975,8 @@ function CyclicUpdate()
 function CopyScripts($OperationCenter)
 	{
 	/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
-	$DIR_copyscriptsdropbox = $OperationCenter->oc_Setup()['DropboxDirectory'];
+	print_r($OperationCenter->oc_Setup);
+	$DIR_copyscriptsdropbox = $OperationCenter->oc_Setup['DropboxDirectory'].IPS_GetName(0).'/';
 	
 	mkdirtree($DIR_copyscriptsdropbox);
 
@@ -1101,7 +1039,54 @@ function CopyScripts($OperationCenter)
 
 function MoveLogs()
 	{
+	$verzeichnis=IPS_GetKernelDir().'logs/';
+	echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
+
+	$count=100;
+	//echo "<ol>";
 	
+	echo "Heute      : ".date("Ymd", time())."\n";
+	echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+	echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+	$vorgestern = date("Ymd", strtotime("-2 day"));
+	
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ) )
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					if ($unterverzeichnis == $vorgestern)
+					   {
+	            	if (is_dir($verzeichnis.$unterverzeichnis))
+   	         		{
+      	      		}
+         	   	else
+							{
+            			mkdir($verzeichnis.$unterverzeichnis);
+            			}
+	            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+   	         	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+   	         	}
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
 	
 	}
 	

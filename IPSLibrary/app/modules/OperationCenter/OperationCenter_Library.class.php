@@ -23,8 +23,8 @@ class OperationCenter
 	var $archiveHandlerID     = 0;
 	var $subnet               = "";
 	var $mactable             = array();
-	var $oc_configuration     = array();
-	var $oc_setup			     = array();
+	var $oc_Configuration     = array();
+	var $oc_Setup			     = array();
 	var $AllHostnames         = array();
 	
 	/**
@@ -47,8 +47,8 @@ class OperationCenter
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$this->oc_configuration = OperationCenter_Configuration();
-			$this->oc_setup = OperationCenter_SetUp();
+			$this->oc_Configuration = OperationCenter_Configuration();
+			$this->oc_Setup = OperationCenter_SetUp();
 			$this->AllHostnames = LogAlles_Hostnames();
 			}
 
