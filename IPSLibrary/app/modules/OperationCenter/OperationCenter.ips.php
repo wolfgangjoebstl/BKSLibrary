@@ -1070,10 +1070,10 @@ function MoveLogs()
 				$dateityp=filetype( $verzeichnis.$file );
             if ($dateityp == "file")
             	{
-					$count-=1;
 					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
 					if ($unterverzeichnis == $vorgestern)
 					   {
+						$count-=1;
 	            	if (is_dir($verzeichnis.$unterverzeichnis))
    	         		{
       	      		}
