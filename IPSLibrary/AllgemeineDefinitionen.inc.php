@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier ihren Skriptquellcode ein
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
    IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
@@ -14,7 +14,7 @@
    
 /* ObjectID Adresse vom send email server */
 
-$sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
+$sendResponse = 30887; //ID einer SMTP Instanz angeben, um RÃ¼ckmelde-Funktion zu aktivieren
 
 
 /* Unterschiede getaktete und nicht getaktete Verbindung
@@ -31,7 +31,7 @@ $sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu
 
  nach Batterie einlegen Uhrzeit und Datum einstellen
 
- Hyst:  0,6 °C
+ Hyst:  0,6 Â°C
  HC 1: 2412
  HC 2: 4141
  AG:    14
@@ -132,30 +132,30 @@ function LogAnwesenheit_Configuration()
 			"AZ"    => array("Leistung"           	 => 190, 				/* zwei Radiatoren 110 Arbeitszimmer und 80 Gaestezimmer */
 							  "OID_PosHT80b"         => 54440,           /* OID Position vom Regler */
   			              	  "OID_Zeit"           	 => 30741,
-  			              	  "OID_Energie"          => 34120,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_Energie"          => 34120,           /* Energieverbrauch Verlauf, ideal fÃ¼r Kurvendarstellung - Faktor egal */
   			              	  "OID_EnergieVortag"    => 38894,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 43184,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+  			              	  "OID_EnergieTag"       => 43184,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur KompatibilitÃ¤t */
 			              ),
 			"BZ"    => array("Leistung"           	 => 50, 					/* ein Radiator 50 */
 							  "OID_PosHT80b"         => 14642,           /* OID Position vom Regler */
   			              	  "OID_Zeit"           	 => 46077,
-  			              	  "OID_Energie"          => 30563,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_Energie"          => 30563,           /* Energieverbrauch Verlauf, ideal fÃ¼r Kurvendarstellung - Faktor egal */
   			              	  "OID_EnergieVortag"    => 38725,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 41149,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+  			              	  "OID_EnergieTag"       => 41149,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur KompatibilitÃ¤t */
 			              ),
 			"SZ"    => array("Leistung"           	 => 140,					/* ein Radiator 70 doppelt aufgebaut */
 							  "OID_PosHT80b"         => 34186,           /* OID Position vom Regler */
   			              	  "OID_Zeit"           	 => 56091,
-  			              	  "OID_Energie"          => 29754,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_Energie"          => 29754,           /* Energieverbrauch Verlauf, ideal fÃ¼r Kurvendarstellung - Faktor egal */
   			              	  "OID_EnergieVortag"    => 10710,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 22670,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+  			              	  "OID_EnergieTag"       => 22670,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur KompatibilitÃ¤t */
 			              ),
 			"WZ"    => array("Leistung"           	 => 170,   				/* zwei Radiatoren Kueche 70 und Essplatz 100 */
 							  "OID_PosHT80b"         => 27073,           /* OID Position vom Regler */
   			              	  "OID_Zeit"           	 => 52403,
-  			              	  "OID_Energie"          => 46217,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
+  			              	  "OID_Energie"          => 46217,           /* Energieverbrauch Verlauf, ideal fÃ¼r Kurvendarstellung - Faktor egal */
   			              	  "OID_EnergieVortag"    => 40178,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 47674,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
+  			              	  "OID_EnergieTag"       => 47674,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur KompatibilitÃ¤t */
 			              ),
 			"TOTAL" => array("OID_Energie"          => 30163,
   			              	  "OID_EnergieSumme"     => 43589,
@@ -190,7 +190,7 @@ function LogAlles_Temperatur() {
   			              		"OID_TempWert"    	=> 18688,           /* OID vom Spiegelregister, kann ruhig versteckt angeordnet werden, oder statt echtem Aussensensorwert */
   			              		"Type"               => "Aussen",
 			              ),
-			"TOTAL"   => array(	"OID_TempWert_Aussen"    	=> 11477,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
+			"TOTAL"   => array(	"OID_TempWert_Aussen"    	=> 11477,   /* einfach Temperaturwerte von vorher zusammengezÃ¤hlt und richtig dividiert */
 			                    "OID_TempWert_Innen"    	=> 21157,
 			                    "OID_TempTagesWert_Aussen" => 34862,   /* Tageswerte sind immer der letzte Tag */
 			                    "OID_TempTagesWert_Innen"  => 29829,
@@ -226,7 +226,7 @@ define("ADR_SchlafzimmerLampe",31970);
 define("ADR_SchlafzimmerKastenlampe",10987);
 
 $id_sound = 23225;
-$sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
+$sendResponse = 43606; //ID einer SMTP Instanz angeben, um RÃ¼ckmelde-Funktion zu aktivieren
 
 
 
@@ -328,7 +328,7 @@ else
   			              	  		"OID_Min"            => 17535,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
   			              	  		"Type"               => "Andere",
 			              ),
-			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
+			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416,   /* einfach Temperaturwerte von vorher zusammengezÃ¤hlt und richtig dividiert */
 			                     "OID_TempWert_Innen"    	=> 56688,
 			                     "OID_TempTagesWert_Aussen" => 13320,   /* Tageswerte sind immer der letzte Tag */
 			                     "OID_TempTagesWert_Innen"  => 35271,
@@ -381,14 +381,14 @@ $iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 /* immer wenn eine Statusmeldung per email angefragt wird */
 
 
-/* wird später unter Allgemein gespeichert */
+/* wird spÃ¤ter unter Allgemein gespeichert */
 
 function send_status($aktuell)
 	{
 	$sommerzeit=false;
 	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
-	/* alte Programaufrufe sind ohne Parameter, daher für den letzten Tag */
+	/* alte Programaufrufe sind ohne Parameter, daher fÃ¼r den letzten Tag */
 
 	if ($aktuell)
 	   {
@@ -414,11 +414,11 @@ function send_status($aktuell)
 	$versionHandler->BuildKnownModules();
 	$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-	$inst_modules = "Verfügbare Module und die installierte Version :\n\n";
+	$inst_modules = "VerfÃ¼gbare Module und die installierte Version :\n\n";
 	$inst_modules.= "Modulname                  Version    Version      Beschreibung\n";
-	$inst_modules.= "                          verfügbar installiert                   \n";
+	$inst_modules.= "                          verfÃ¼gbar installiert                   \n";
 	
-	$upd_modules = "Module die upgedated werden müssen und die installierte Version :\n\n";
+	$upd_modules = "Module die upgedated werden mÃ¼ssen und die installierte Version :\n\n";
 	$upd_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
 
 	foreach ($knownModules as $module=>$data)
@@ -490,7 +490,7 @@ if (IPS_GetName(0)=="LBG70")
 	$cost="\n\nInternetkosten:\n".
 			"\nAufgeladen wurde bisher : ".GetValue(29162)." Euro".
 			"\nVerbraucht wurde bisher : ".GetValue(37190)." Euro".
-			"\nÄnderung heute          : ".GetValue(29370)." Euro\n";
+			"\nÃ„nderung heute          : ".GetValue(29370)." Euro\n";
 
 	$internet="Internet Erreichbarkeit:\n".
 			  "\nLBG70 Server  : ".GetValue(27549)." seit ".date("d.m.y H:i:s",GetValue(26654)).
@@ -551,7 +551,7 @@ if (IPS_GetName(0)=="LBG70")
 		/**********************************************/
 	}
 	
-if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
+if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine fÃ¼r BKS01    */
 	{
 
 	if ($aktuell)   /* aktuelle Werte */
@@ -682,7 +682,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 			}
 		//echo $identifier;
 		$TempWertID = $station["OID_Sensor"];
-		$ergebnisTemperatur = $ergebnisTemperatur.$identifier." : ".number_format(GetValue($TempWertID), 2, ",", "" )."°C ";
+		$ergebnisTemperatur = $ergebnisTemperatur.$identifier." : ".number_format(GetValue($TempWertID), 2, ",", "" )."Â°C ";
 		}
 	unset($identifier); // break the reference with the last element
 
@@ -808,7 +808,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 
 /******************************************************************************************
 		
-Allgemeiner Teil, unabhängig von Hardware oder Server
+Allgemeiner Teil, unabhÃ¤ngig von Hardware oder Server
 		
 ******************************************************************************************/
 
@@ -819,7 +819,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************
 		
-		Allgemeiner Teil, Auswertung für aktuelle Werte
+		Allgemeiner Teil, Auswertung fÃ¼r aktuelle Werte
 		
 		******************************************************************************************/
 		if (isset($installedModules["RemoteReadWrite"])==true)
@@ -889,7 +889,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
-				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknÃ¼pfen */
 				if ((isset($Key["COID"]["StatusVariable"])==true))
 			   	{
 		   		foreach ($TypeFS20 as $Type)
@@ -928,7 +928,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				if ($meter["TYPE"]=="Amis")
 				   {
-			   	$alleStromWerte.="\nAMIS Zähler im ".$meter["NAME"].":\n\n";
+			   	$alleStromWerte.="\nAMIS ZÃ¤hler im ".$meter["NAME"].":\n\n";
 					$amismeterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					$AmisID = CreateVariableByName($amismeterID, "AMIS", 3);
 					$AmisVarID = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
@@ -948,7 +948,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				if ($meter["TYPE"]=="Homematic")
 				   {
-				   $alleStromWerte.="\nHomematic Zähler im ".$meter["NAME"].":\n\n";
+				   $alleStromWerte.="\nHomematic ZÃ¤hler im ".$meter["NAME"].":\n\n";
 					$HM_meterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					$HM_Wirkenergie_meterID = CreateVariableByName($HM_meterID, "Wirkenergie", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					if (IPS_GetVariable($HM_Wirkenergie_meterID)["VariableCustomProfile"]!="")
@@ -993,11 +993,11 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($CatIdData,$subnet);
 			
-			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
+			$ergebnisOperationCenter.="Angeschlossene bekannte EndgerÃ¤te im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
 			$OperationCenterConfig = OperationCenter_Configuration();
 
-			$ergebnisOperationCenter.="\nAktuelles Datenvolumen für die verwendeten Router : \n";
+			$ergebnisOperationCenter.="\nAktuelles Datenvolumen fÃ¼r die verwendeten Router : \n";
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
 			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
@@ -1029,7 +1029,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 
 			
-		/* Remote Access Crawler für Ausgabe aktuelle Werte */
+		/* Remote Access Crawler fÃ¼r Ausgabe aktuelle Werte */
 
 		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$jetzt=time();
@@ -1157,7 +1157,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************
 
-		Allgemeiner Teil, Auswertung für historische Werte
+		Allgemeiner Teil, Auswertung fÃ¼r historische Werte
 
 		******************************************************************************************/
 
@@ -1200,7 +1200,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
 				$vorigertag=date("d.m.Y",$jetzt);
 
-				echo "Create Variableset for :".$meter["NAME"]." für Variable ".$variableID."  \n";
+				echo "Create Variableset for :".$meter["NAME"]." fÃ¼r Variable ".$variableID."  \n";
 				echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
 				echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
 				//echo "Voriger Tag :".$vorigertag."\n";
@@ -1290,6 +1290,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if (isset($installedModules["DetectMovement"])==true)
 		   {
 		   IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+
 			$Homematic = HomematicList();
 			$FS20= FS20List();
 		   
@@ -1323,7 +1325,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					$log=new Motion_Logging($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
-				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknÃ¼pfen */
 				if ((isset($Key["COID"]["StatusVariable"])==true))
 			   	{
 		   		foreach ($TypeFS20 as $Type)
@@ -1405,7 +1407,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
 
 			$OperationCenterConfig = OperationCenter_Configuration();
-			$ergebnisOperationCenter.="\nHistorisches Datenvolumen für die verwendeten Router : \n";
+			$ergebnisOperationCenter.="\nHistorisches Datenvolumen fÃ¼r die verwendeten Router : \n";
 			$historie="";
 	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 			   {
@@ -1438,7 +1440,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					$community     = "public";                                                                         // SNMP Community
 					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
 					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-					$snmp=new SNMP($router_categoryId, $host, $community, $binary, $debug);
+					$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
 					$result=$snmp->update(true);  /* kein Logging */
@@ -1609,7 +1611,7 @@ function writeLogEventClass($event,$class)
 function CreateVariableByName($id, $name, $type)
 {
 
-	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+	/* type steht fÃ¼r 0 Boolean 1 Integer 2 Float 3 String */
 	
     global $IPS_SELF;
     $vid = @IPS_GetVariableIDByName($name, $id);
@@ -1723,11 +1725,11 @@ function CreateVariableByNameFull($id, $name, $type, $profile = "")
 function Get_IdentByName2($name)
 {
 		$ident = str_replace(' ', '', $name);
-		$ident = str_replace(array('ö','ä','ü','Ö','Ä','Ü'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
+		$ident = str_replace(array('Ã¶','Ã¤','Ã¼','Ã–','Ã„','Ãœ'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
 		$ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), '', $ident);
 		$ident = str_replace(array(',','.',':',';','!','?'), '', $ident);
 		$ident = str_replace(array('+','-','/','*'), '', $ident);
-		$ident = str_replace(array('ß'), 'ss', $ident);
+		$ident = str_replace(array('ÃŸ'), 'ss', $ident);
 		return $ident;
 }
 
@@ -1768,7 +1770,7 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 	//echo "Increment :".$increment."\n";
 	$gepldauer=($endtime-$starttime)/24/60/60;
 	do {
-		/* es könnten mehr als 10.000 Werte sein
+		/* es kÃ¶nnten mehr als 10.000 Werte sein
 			Abfrage generisch lassen
 		*/
 
@@ -1864,7 +1866,7 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 		} while (count($werte)==10000);
 
 	$dauer=($ersterzeit-$letzterzeit)/24/60/60;
-	echo "   Bearbeitete Werte:".$zaehler." für ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
+	echo "   Bearbeitete Werte:".$zaehler." fÃ¼r ".number_format($dauer, 2, ",", "")." Tage davon erwartet: ".$gepldauer." \n";
 	switch ($increment)
 	   {
 	   case 0:
@@ -1927,7 +1929,7 @@ function mkdirtree($directory)
 function RPC_CreateVariableByName($rpc, $id, $name, $type)
 	{
 
-	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+	/* type steht fÃ¼r 0 Boolean 1 Integer 2 Float 3 String */
 
 	$result="";
 	$struktur=$rpc->IPS_GetChildrenIDs($id);
@@ -2019,7 +2021,7 @@ function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 				}
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 		   if ($keyword=="TEMPERATURE")
 		      {
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
@@ -2039,10 +2041,10 @@ function HomematicFehlermeldungen()
 	{
 		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
 		$texte = Array(
-		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
+		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Ãœbertragung an",
 		    "LOWBAT" => "Batterieladezustand gering",
-		    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
-		    "UNREACH" => "Gerätekommunikation aktuell gestört"
+		    "STICKY_UNREACH" => "GerÃ¤tekommunikation war gestÃ¶rt",
+		    "UNREACH" => "GerÃ¤tekommunikation aktuell gestÃ¶rt"
 			);
 
 		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
@@ -2087,7 +2089,7 @@ function HomematicFehlermeldungen()
 			   	}
 				else
 					{
-      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
+      	  		$name = "GerÃ¤t nicht in IP-Symcon eingerichtet";
     				}
 			  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
 			  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
