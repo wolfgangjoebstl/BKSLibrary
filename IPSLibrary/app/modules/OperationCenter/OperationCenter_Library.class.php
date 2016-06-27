@@ -466,7 +466,6 @@ class OperationCenter
 		{
 		echo "Daten direkt vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die aktuellen Tageswerte erfasst.\n";
 		$Router_Adresse = "http://".$router["USER"].":".$router["PASSWORD"]."@".$router["IPADRESSE"]."/";
-		echo "    -> Routeradresse die aufgerufen wird : ".$Router_Adresse." \n";
 		//print_r($router);
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
@@ -476,13 +475,14 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$url=$Router_Adresse."traffic_meter.htm";
+		echo "    -> Routeradresse die aufgerufen wird : ".$url." \n";
 		$result=@file_get_contents($url);
 		if ($result===false) {
 		   echo "Fehler beim holen der Webdatei. Noch einmal probieren. \n";
-			$result=file_get_contents($url);
+			$result=@file_get_contents($url);
 			if ($result===false) {
 			   echo "Fehler beim Holen der Webdatei. Abbruch. \n";
-			   break;
+			   return(false);
 			   }
 	  		}
 		$result=strip_tags($result);

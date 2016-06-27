@@ -722,7 +722,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	      break;
 	      
 	   case $tim2ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammenraeumen:");
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam und Logdateien zusammenraeumen:");
 			/********************************************************
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
@@ -759,9 +759,15 @@ if ($_IPS['SENDER']=="TimerEvent")
 					   }
 					}
 				}
-			if ($count>0) {
+			if ($count>0)
+				{
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
 				}
+			else
+			   {
+			   $countlog=MoveLogs();
+			   IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+			   }
 	      break;
 	      
 	   case $tim3ID:
@@ -1087,7 +1093,7 @@ function MoveLogs()
 	   {
 	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 		}
-	
+	return (100-$count);
 	}
 	
 ?>
