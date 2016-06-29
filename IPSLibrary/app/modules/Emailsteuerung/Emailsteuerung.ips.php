@@ -15,6 +15,10 @@ IPSUtils_Include ("Emailsteuerung_Configuration.inc.php","IPSLibrary::config::mo
 
 *************************************************************/
 
+// max. Scriptlaufzeit definieren
+ini_set('max_execution_time', 500);
+$startexec=microtime(true);
+
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager)) {
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -39,7 +43,8 @@ echo "Category App ID:".$CategoryIdApp."\n";
 echo "Category Script ID:".$scriptId."\n";
 
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
-
+	$ScriptExecTimeID=CreateVariableByName($CategoryIdData,"ScriptExecTime",1);
+	
 	$device=IPS_GetName(0);
 
 	echo "\nAlle SMTP Clients:\n";
@@ -88,16 +93,21 @@ if ($_IPS['SENDER']=="Execute")
 	//$werte = AC_GetLoggedValues($archive_handler, 24129, $starttime, $endtime, 0);
 
 	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
-
+	SetValue($ScriptExecTimeID,0); /* timer ausschalten, wenn gerade laeuft */
+	
 	$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
 		"\n\n************************************************************************************************************************\n";
+	echo "******************** sendstatus true bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
 	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
-
+	echo "******************** sendemail bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
 	$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
 		"\n\n************************************************************************************************************************\n";
+	echo "******************** sendstatus false bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
 	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
-
+	echo "******************** sendemail bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
+	
 	echo $event1.$event2;
+	SetValue($ScriptExecTimeID,1); /* timer wieder einschalten, wenn gerade laeuft */
 	}
 
 /*********************************************************************************************/
@@ -125,7 +135,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 	      break;
 
 	   case $tim3ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Email Status Auswertung. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
 		     Email Status Auswertung, Schritt für Schritt
@@ -141,22 +150,32 @@ if ($_IPS['SENDER']=="TimerEvent")
 		      	break;
 			   case 2:
 					/* Email Auswertung Teil 2*/
-					$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
+					if (GetValue($ScriptExecTimeID)>0)
+					   {
+					   SetValue($ScriptExecTimeID,0);
+						$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
 							"\n\n************************************************************************************************************************\n";
-					SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
-					SetValue($ScriptCounterID,$counter+1);
-		      	break;
+						SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
+						SetValue($ScriptCounterID,$counter+1);
+						}
+			   	break;
 			   case 1:
 					/* Email Auswertung Teil 1 */
-					$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
-						"\n\n************************************************************************************************************************\n";
-					SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
-			      SetValue($ScriptCounterID,$counter+1);
+					if (GetValue($ScriptExecTimeID)>0)
+					   {
+					   SetValue($ScriptExecTimeID,0);
+						$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
+							"\n\n************************************************************************************************************************\n";
+						SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
+			      	SetValue($ScriptCounterID,$counter+1);
+			      	SetValue($ScriptExecTimeID,(microtime(true)-$startexec));
+			         }
 					break;
 			   case 0:
 				default:
 				   break;
 			   }
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Email Status Auswertung. ScriptcountID neu: ".GetValue($ScriptCounterID)." Laufzeit ".(microtime(true)-$startexec)." Sek");
 			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");

@@ -76,7 +76,7 @@ if (Getvalue($MeterReadID))
 	if ($AmisConfig["Type"] == "Bluetooth")
 	   {
       echo "Comport Bluetooth aktiviert. \n";
-      IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetoothj Comport Serial aktiviert.");
+      //IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
       COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 		}
 		
@@ -101,7 +101,7 @@ if (Getvalue($MeterReadID))
 			//IPS_ApplyChanges($com_Port);
 			if (!@IPS_ApplyChanges($com_Port))
 				{
-				IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
+				IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
 				}
 			}
 		else

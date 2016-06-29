@@ -57,6 +57,7 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			   {
 			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 			   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
+			   if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
 				}
 			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
 			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
@@ -115,7 +116,7 @@ if (Getvalue($MeterReadID))
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 echo "Archive Handler OID : ".$archiveHandlerID." und Name : ".IPS_GetName($archiveHandlerID)."\n";
 
-if (false)
+if (true)
 {
 
 
@@ -155,6 +156,7 @@ if ($_IPS['SENDER'] == "Execute")
 	}
 else
 	{
+	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reaggregation von Variablen");
 	$variableIDs = IPS_GetVariableList();
 
 	foreach ($variableIDs as $variableID)
@@ -192,7 +194,8 @@ else
 	IPS_SetScriptTimer($_IPS['SELF'], $finished ? 0 : 60);
 	}
 
-
+if (false)
+{
 
 
 /******************************************************
@@ -311,6 +314,7 @@ if ($_IPS['SENDER'] == "Execute")
 	}
 }
 
+}
 
 /******************************************************************************************************************/
 
