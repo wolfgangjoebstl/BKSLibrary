@@ -117,5 +117,6 @@ if ($_IPS['SENDER'] == "TimerEvent")
 		}
 
 	IPS_SetScriptTimer($_IPS['SELF'], $finished ? 0 : 60);
+	}
 
 ?>

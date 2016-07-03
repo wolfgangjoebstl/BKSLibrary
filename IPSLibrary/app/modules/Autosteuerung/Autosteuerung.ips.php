@@ -509,6 +509,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			{
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
        	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
+       	if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$auto->sunrise);}
        	print_r($actualTime);
        	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];

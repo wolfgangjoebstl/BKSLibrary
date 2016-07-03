@@ -41,7 +41,9 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 		$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
 		$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
 		
-		//echo "\n";
+		echo "\n";
+		echo " Musik ID : ".$id_sk1_musik."\n";
+		echo " Ton ID   : ".$id_sk1_ton."\n";
 		//echo "Status        :".IPS_GetVariableIDByName("Status", $id_sk1_musik)."  ".$id_sk1_musik_status."\n";
 		//echo "Lautstärke    :".IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik)."  ".$id_sk1_musik_vol."\n";
 
@@ -100,7 +102,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 					if($modus == 2)
 						{
-					   if($musik_status != 2)	WAC_Pause($id_sk1_musik);
+					   if($musik_status != 2)
+							{
+							//WAC_Play($id_sk1_musik);
+							WAC_Pause($id_sk1_musik);
+							}
 						}
 
 
@@ -169,9 +175,12 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			//---------------------------------------------------------------------
 
 			//Hier können weitere Soundkarten eingefügt werden
-			//case '2':
+			case '2':
 			//entsprechende Werte bitte anpassen
-
+			      echo "Fehler: Soundkarte 2 nicht definiert.\n";
+					break;
+			default:
+			      break;
 		}  //end switch
  	}   //end function
 
