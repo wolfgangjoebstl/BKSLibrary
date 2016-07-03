@@ -70,8 +70,8 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
-/* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
-/* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
+/* Dummy Objekte fÃ¼r typische Anwendungsbeispiele erstellen, geht nicht automatisch */
+/* kÃ¶nnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
 
 $name="Ansteuerung";
@@ -361,6 +361,7 @@ if ($_IPS['SENDER']=="Execute")
 			echo "  Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
        	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
        	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
+       	if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$auto->sunrise);}
        	//print_r($actualTime);
        	$actualTimeStart = explode(":",$actualTime[0]);
         	$actualTimeStartHour = $actualTimeStart[0];
@@ -389,12 +390,12 @@ if ($_IPS['SENDER']=="Execute")
      		}
 	/* Events registrieren. Umsetzung des Config Files */
 
-	echo "\nProgramme für Schalter registrieren nach OID des Events.\n";
+	echo "\nProgramme fÃ¼r Schalter registrieren nach OID des Events.\n";
 
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
-		echo "Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
+		echo "Create Event fÃ¼r ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
 
@@ -522,7 +523,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 
        	if ($now > $timeStart && $now < $timeStop)
 			 	{
-			 	echo "Es ist Zeit für Szene ".$scene['NAME']."\n";
+			 	echo "Es ist Zeit fÃ¼r Szene ".$scene['NAME']."\n";
           	$minutesRange = ($timeStop-$timeStart)/60;
           	$actionTriggerMinutes = 5;
             $rndVal = rand(1,100);
@@ -551,7 +552,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                   IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
                	}
                IPS_SetEventActive($EreignisID,true);
-               IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+               IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tÃ¤gliche AusfÃ¼hrung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds fÃ¼r Zielzeit */
                IPS_SetEventCyclicTimeBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
                IPS_SetEventCyclicDateBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
 					if ($scene["EVENT_CHANCE"]==100)
@@ -562,13 +563,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 		      	if (isset($scene["EVENT_IPSLIGHT"]))
       			   {
   	               IPS_SetEventScript($EreignisID,
-                                                "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
+                                                "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
                                                 "IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
 						}
 					else
 					   {
 	               IPS_SetEventScript($EreignisID,
-                                                "include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
+                                                "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
                                                 "IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
 						}
             	}
@@ -609,8 +610,8 @@ function setEventTimer($name,$delay,$command)
      	}
    IPS_SetEventActive($EreignisID,true);
    IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
-	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-	/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+	/* EreignisID, 0 kein Datumstyp:  tÃ¤gliche AusfÃ¼hrung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds fÃ¼r Zielzeit */
+	/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds fÃ¼r Zielzeit */
    IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
    IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
    IPS_SetEventScript($EreignisID,$command);
@@ -625,12 +626,12 @@ function Anwesenheit()
    /* Funktion um Anwesenheitssimulation ein und auszuschalten */
 	If (GetValue($AnwesenheitssimulationID)>0)
 	   {
-	   //Script alle 5 Minuten ausführen
+	   //Script alle 5 Minuten ausfÃ¼hren
 		IPS_SetScriptTimer($_IPS['SELF'], 5*60);
 		}
 	else
 	   {
-	   //Script nicht mehr automatisch ausführen
+	   //Script nicht mehr automatisch ausfÃ¼hren
 		IPS_SetScriptTimer($_IPS['SELF'], 0);
 	   }
 	}
@@ -837,7 +838,7 @@ function Status($params,$status,$simulate=false)
 	  		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
 			}
 
-		$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
 		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
@@ -1005,13 +1006,13 @@ function Status($params,$status,$simulate=false)
 				{
 				if ($speak_config["Parameter"][1]=="Debug")
 					{
-					tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
+					tts_play(1,'Der Wert fÃ¼r '.$speak.' geht auf ein.','',2);
 					}
 				}
 			else
 				{
 			  	if ($speak_config["Parameter"][1]=="Debug")  {
-					tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
+					tts_play(1,'Der Wert fÃ¼r '.$speak.' geht auf aus.','',2);
 					}
 				}
 			}
@@ -1034,13 +1035,13 @@ function statusRGB($params,$status,$simulate=false)
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
-	/* in result wird die Zusammenfassung für die Simulation gegeben */
+	/* in result wird die Zusammenfassung fÃ¼r die Simulation gegeben */
 	$result=array();
 
 	/* in parges werden alle Parameter erfasst und abgespeichert */
 	$parges=array();
-	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl geführt 		*/
-	/* in params[2] ist die Ausführung versteckt                                             	*/
+	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl gefÃ¼hrt 		*/
+	/* in params[2] ist die AusfÃ¼hrung versteckt                                             	*/
 	$value=$status; 
   	$moduleParams2 = explode(',', $params[2]);
 	switch (count($moduleParams2))
@@ -1186,7 +1187,7 @@ function statusRGB($params,$status,$simulate=false)
 		} /* ende foreach */
 
 	/*-------------------------------------------------------------------------------*/
-	/* und schlussendlich ausgeführt 																		*/
+	/* und schlussendlich ausgefÃ¼hrt 																		*/
 
 	if ( (isset($SwitchName)==true) && (isset($value_on)==false) && (isset($value_off)==false) )
 		{
@@ -1392,7 +1393,7 @@ function SwitchFunction()
 	
 	global $params2,$speak_config;
 	
-	/* Anlegen eines Schalters in der GUI der Autosteuerung, Bedienelemente können angegeben werden */
+	/* Anlegen eines Schalters in der GUI der Autosteuerung, Bedienelemente kÃ¶nnen angegeben werden */
 	$switchStatus=GetValue($_IPS['VARIABLE']);
 	$moduleParams2 = explode(',', $params[2]);
 	if ($switchStatus==0)
@@ -1579,7 +1580,7 @@ function switchNameGroup($SwitchName,$status,$simulate=false)
 	$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 	$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
 	
-	$command="include(\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+	$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
 
 	$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
 	if ($resultID==false)
@@ -1632,7 +1633,7 @@ class Autosteuerung
 							$zenith=102; Nautical Twilight Start/End
 							$zenith=108; Astronomical Twilight start/End
 					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
-					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
+					  mÃ¶glicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
 		*/
 		$sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
 		$sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
@@ -1738,7 +1739,7 @@ class Autosteuerung
 
 	/*
 	 * ersten teil des Arrays als befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
-	 * Erweitert das übergebene Array.
+	 * Erweitert das Ã¼bergebene Array.
 	 *
 	 *
 	 */

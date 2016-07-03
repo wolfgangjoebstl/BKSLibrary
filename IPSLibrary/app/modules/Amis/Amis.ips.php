@@ -62,8 +62,8 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
 			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 			}
-		echo "\nZählerkonfigursation: \n";
-		print_r($meter);
+		//echo "\nZählerkonfiguration: \n";
+		//print_r($meter);
 		}
 
 
@@ -113,6 +113,9 @@ if (Getvalue($MeterReadID))
 
 *************************************************************/
 
+echo "\n---------------------------------------------------------------------\n";
+echo "Archive Handler ueberpruefen, wurde notwendig bei Update auf IPS 4.0 \n";
+
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 echo "Archive Handler OID : ".$archiveHandlerID." und Name : ".IPS_GetName($archiveHandlerID)."\n";
 
@@ -136,6 +139,7 @@ $historyID = CreateVariableByName($_IPS['SELF'], "History", 3, "");
 
 $finished = true;
 $history = explode(',', GetValue($historyID));
+$variableIDs = IPS_GetVariableList();
 
 if ($_IPS['SENDER'] == "Execute")
 	{
@@ -152,11 +156,17 @@ if ($_IPS['SENDER'] == "Execute")
 		   $count++;
 		   }
 		}
-	echo "\nInsgesamt wurden ".$count." Archiv Variablen reagreggiert.\n";
+	echo "\nInsgesamt wurden ".$count." Archiv Variablen von ".sizeof($variableIDs)." reagreggiert.\n";
+	if ( (sizeof($variableIDs)) > $count )
+	   {
+		IPSLogger_Dbg(__file__, "TimerEvent für Reaggregation von Variablen gestartet");
+		IPS_SetScriptTimer($_IPS['SELF'], 60);
+	   }
 	}
-else
+
+if ($_IPS['SENDER'] == "TimerEvent")
 	{
-	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reaggregation von Variablen");
+	IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reaggregation von Variablen. Status ".sizeof($history)." reaggregiert");
 	$variableIDs = IPS_GetVariableList();
 
 	foreach ($variableIDs as $variableID)

@@ -855,7 +855,7 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 
 	echo "Subnet : ".$OperationCenter->subnet."\n";
 	$subnet=$OperationCenter->subnet;
-	$OperationCenterConfig = $OperationCenter->oc_Configuration();
+	$OperationCenterConfig = $OperationCenter->oc_Configuration;
 	print_r($OperationCenterConfig);
 	
 	if (isset ($installedModules["IPSCam"]))

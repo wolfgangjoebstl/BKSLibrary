@@ -142,7 +142,9 @@
 		$tim1ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim1ID, $scriptIdEmailsteuerung);
 		IPS_SetName($tim1ID, "Aufruftimer");
-		IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
+		//IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0); /* 0 kein Datumstyp, täglich , einmalig  */
+		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0); /* 2 täglich , jeden Tag  */
+		//IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 		IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
 	   echo "  Timer Event Aufruftimer neu angelegt. Timer um 04:10 ist aktiviert.\n";
 		}
@@ -170,7 +172,6 @@
   		}
 
 	/* Workariund wenn die Timer bereits gesetzt wurden */
-	IPS_SetEventCyclicTimeBounds($tim1ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 
 
