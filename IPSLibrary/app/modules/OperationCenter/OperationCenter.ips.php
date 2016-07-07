@@ -831,7 +831,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
 	   	Alle Scripts auf ein Dropboxverzeichnis kopieren und wenn notwendig umbenennen
 			*************************************************************************************/
-			CopyScripts(DIR_copyscriptsdropbox);
+			CopyScripts($OperationCenter);
 			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
@@ -1026,7 +1026,7 @@ function CopyScripts($OperationCenter)
 		   {
 	   	$destname=$filename;
 		   }
-		echo IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
+		//echo "-Copy File: ".IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
 		copy(IPS_GetKernelDir().'scripts/'.$filename,$DIR_copyscriptsdropbox.$destination);
 
 		$includefile.='\''.$destname.'\','."\n";
