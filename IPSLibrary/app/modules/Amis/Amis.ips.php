@@ -156,8 +156,27 @@ if ($_IPS['SENDER'] == "Execute")
 		   $count++;
 		   }
 		}
-	echo "\nInsgesamt wurden ".$count." Archiv Variablen von ".sizeof($variableIDs)." reagreggiert.\n";
-	if ( (sizeof($variableIDs)) > $count )
+	/* welche Variablen muessen agreggiert werden */
+	$total=0;
+	foreach ($variableIDs as $variableID)
+		{
+	   $v = IPS_GetVariable($variableID);
+   	if(isset($v['VariableValue']['ValueType']))
+			{
+      	$variableType = ($v['VariableValue']['ValueType']);
+   	   }
+		else
+			{
+   	   $variableType = ($v['VariableType']);
+	    	}
+   	if($variableType != 3)
+			{
+      	if (AC_GetLoggingStatus($archiveHandlerID, $variableID)) { $total++; }
+   	 	}
+		}
+
+	echo "\nInsgesamt wurden ".$count." Archiv Variablen von ".$total." reagreggiert. Insgesamt ". sizeof($variableIDs)." Variablen !\n";
+	if ( (sizeof($variableIDs)) > $total )
 	   {
 		IPSLogger_Dbg(__file__, "TimerEvent für Reaggregation von Variablen gestartet");
 		IPS_SetScriptTimer($_IPS['SELF'], 60);
