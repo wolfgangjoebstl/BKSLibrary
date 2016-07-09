@@ -383,8 +383,9 @@ $iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 
 /* wird später unter Allgemein gespeichert */
 
-function send_status($aktuell)
+function send_status($aktuell, $exectime=0)
 	{
+	if ($exectime==0) { $exectime=time(); }
 	$sommerzeit=false;
 	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
@@ -393,10 +394,12 @@ function send_status($aktuell)
 	if ($aktuell)
 	   {
 	   $einleitung.="Ausgabe der aktuellen Werte.\n";
+	   echo "Ausgabe der aktuellen Werte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 	   }
 	else
 	   {
 	   $einleitung.="Ausgabe der historischen Werte - Vortag.\n";
+	   echo "Ausgabe der historischen Werte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 	   }
 	if (date("I")=="1")
 		{
@@ -441,6 +444,7 @@ function send_status($aktuell)
 		$inst_modules .=  $infos['Description']."\n";
 		}
 	$inst_modules .= "\n".$upd_modules;
+   echo "Auswertung der Module die upgedatet werden müssen. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 
 	if (isset($installedModules["Amis"])==true)
 	   {
@@ -448,6 +452,7 @@ function send_status($aktuell)
 		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
 		//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
    	IPS_RunScript($updatePeriodenwerteID);
+   	echo "AMIS Update Periodenwerte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 		}
 
 	/* Alle werte aus denen eine Ausgabe folgt initialisieren */
@@ -568,6 +573,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
    IPS_RunScript(32860);
    IPS_RunScript(45023);
    IPS_RunScript(41653);
+  	echo "Vorwertberechnung. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 
 	if (!$aktuell)       /* die Werte vom Vortag */
 	   {
@@ -600,6 +606,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 			$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
    		$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
 			}
+  		echo "Heizungswerte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 		}
 	unset($identifier); // break the reference with the last element
 
@@ -663,9 +670,9 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 		//echo $ergebnis_tabelle."\n";
 		}
 	$ergebnistab_energie=$ergebnis_tabelle1."\n\n";
-
-
 	$ergebnistab_heizung=$ergebnis_tabelle."\n\n";
+
+  	echo "Vorwertberechnung Energie. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
 
 	//print_r($zeile);
 
