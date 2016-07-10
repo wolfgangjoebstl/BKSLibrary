@@ -94,19 +94,28 @@ if ($_IPS['SENDER']=="Execute")
 
 	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
 	SetValue($ScriptExecTimeID,0); /* timer ausschalten, wenn gerade laeuft */
+
+	if (true)
+	   {
+		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true,$startexec).
+			"\n\n************************************************************************************************************************\n";
+		echo "******************** sendstatus true bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+		//	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
+		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false,$startexec).
+			"\n\n************************************************************************************************************************\n";
+		echo "******************** sendstatus false bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+		//SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event2);
+		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
 	
-	$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
-		"\n\n************************************************************************************************************************\n";
-	echo "******************** sendstatus true bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
-	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
-	echo "******************** sendemail bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
-	$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
-		"\n\n************************************************************************************************************************\n";
-	echo "******************** sendstatus false bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
-	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
-	echo "******************** sendemail bislang genutzte Rechenzeit : ".(microtime(true)-$startexec)."\n";
-	
-	echo $event1.$event2;
+		echo $event1.$event2;
+		}
+	echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+	echo "Groesse : ".strlen($event1)."  ".strlen($event2)."\n";
+	$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event1.$event1);
+	if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+	echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+
 	SetValue($ScriptExecTimeID,1); /* timer wieder einschalten, wenn gerade laeuft */
 	}
 

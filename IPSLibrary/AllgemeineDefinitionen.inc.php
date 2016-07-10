@@ -383,9 +383,9 @@ $iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 
 /* wird später unter Allgemein gespeichert */
 
-function send_status($aktuell, $exectime=0)
+function send_status($aktuell, $startexec=0)
 	{
-	if ($exectime==0) { $exectime=time(); }
+	if ($startexec==0) { $startexec=microtime(true); }
 	$sommerzeit=false;
 	$einleitung="Erstellt am ".date("D d.m.Y H:i")." fuer die ";
 
@@ -394,12 +394,12 @@ function send_status($aktuell, $exectime=0)
 	if ($aktuell)
 	   {
 	   $einleitung.="Ausgabe der aktuellen Werte.\n";
-	   echo "Ausgabe der aktuellen Werte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+	   echo ">>Ausgabe der aktuellen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 	   }
 	else
 	   {
 	   $einleitung.="Ausgabe der historischen Werte - Vortag.\n";
-	   echo "Ausgabe der historischen Werte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+	   echo ">>Ausgabe der historischen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 	   }
 	if (date("I")=="1")
 		{
@@ -444,7 +444,7 @@ function send_status($aktuell, $exectime=0)
 		$inst_modules .=  $infos['Description']."\n";
 		}
 	$inst_modules .= "\n".$upd_modules;
-   echo "Auswertung der Module die upgedatet werden müssen. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+   echo ">>Auswertung der Module die upgedatet werden müssen. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 	if (isset($installedModules["Amis"])==true)
 	   {
@@ -452,7 +452,7 @@ function send_status($aktuell, $exectime=0)
 		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
 		//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
    	IPS_RunScript($updatePeriodenwerteID);
-   	echo "AMIS Update Periodenwerte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+   	echo ">>AMIS Update Periodenwerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
 
 	/* Alle werte aus denen eine Ausgabe folgt initialisieren */
@@ -573,7 +573,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
    IPS_RunScript(32860);
    IPS_RunScript(45023);
    IPS_RunScript(41653);
-  	echo "Vorwertberechnung. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+  	echo ">>Vorwertberechnung. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 	if (!$aktuell)       /* die Werte vom Vortag */
 	   {
@@ -606,7 +606,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 			$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
    		$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
 			}
-  		echo "Heizungswerte. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+  		echo ">>Heizungswerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
 	unset($identifier); // break the reference with the last element
 
@@ -672,7 +672,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 	$ergebnistab_energie=$ergebnis_tabelle1."\n\n";
 	$ergebnistab_heizung=$ergebnis_tabelle."\n\n";
 
-  	echo "Vorwertberechnung Energie. Abgelaufene Zeit : ".time()-$exectime." Sek \n";
+  	echo ">>Vorwertberechnung Energie. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 	//print_r($zeile);
 
@@ -871,6 +871,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 						}
 					}
 				}
+		  	echo ">>RemoteReadWrite. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+			}
 
 			/******************************************************************************************/
 
@@ -918,7 +920,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			   	   }
 					}
 				}
-			}
+		  	echo ">>RemoteAccess. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
 		/******************************************************************************************/
@@ -978,6 +980,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 					} /* endeif */
 				} /* ende foreach */
+		  	echo ">>AMIS. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			} /* endeif */
 
 		/******************************************************************************************/
@@ -1030,6 +1033,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 			$ergebnisOperationCenter.="\n";
+		  	echo ">>OperationCenter. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
 		/******************************************************************************************/
@@ -1157,6 +1161,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
 			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 		   }
+	  	echo ">>Ende aktuelle Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
 	else   /* historische Werte */
 	   {
@@ -1262,6 +1267,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 				}
 			//print_r($zeile);
+		  	echo ">>AMIS historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 			
 		/************** Guthaben auslesen ****************************************************************************/
@@ -1285,6 +1291,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			  //"\n".GetValue(50426)."\n\n";
 				}
 			$guthaben .= "\n\n";
+		  	echo ">>Guthaben historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 		else
 			{
@@ -1350,7 +1357,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				}
 
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
-
+		  	echo ">>DetectMovement historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		   }
 		/******************************************************************************************/
 
@@ -1391,6 +1398,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$ergebnisGarten=$ergebnisGarten.GetValue($zeile14)."\n";
 			$ergebnisGarten=$ergebnisGarten.GetValue($zeile15)."\n";
 			$ergebnisGarten=$ergebnisGarten.GetValue($zeile16)."\n";
+		  	echo ">>Gartensteuerung historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
 		/******************************************************************************************/
@@ -1468,6 +1476,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				   $ergebnisOperationCenter.="\n";
 				   }
 				}
+		  	echo ">>OperationCenter historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		   }
 		   
 		/******************************************************************************************/
@@ -1485,7 +1494,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleMotionWerte.$inst_modules;
 			}
 		}
-
+  	echo ">>ENDE. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
    return $ergebnis;
 }
 
@@ -2135,6 +2144,13 @@ function ReadTemperaturWerte()
 				}
 			}
 	return ($alleTempWerte);
+	}
+
+/******************************************************************/
+
+function exectime($startexec)
+	{
+	return (number_format((microtime(true)-$startexec),2));
 	}
 
 /******************************************************************
