@@ -769,6 +769,11 @@ class OperationCenter
 		return round($ergebnis,2);
 		}
 
+	/*
+	 *
+	 *
+	 */
+
 	function get_data($oid)
 		{
       $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
@@ -779,6 +784,11 @@ class OperationCenter
 	  	   echo "       Wert : ".$wert["Value"]." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
 	  	   }
 		}
+
+	/*
+	 *
+	 *
+	 */
 
 	function sort_routerdata($router)
 		{
@@ -819,6 +829,167 @@ class OperationCenter
 			IPS_SetPosition($oid,$i);
 			$i+=10;
 			}
+		}
+
+
+	/*
+	 *
+	 *
+	 */
+
+function MoveLogs()
+	{
+	$verzeichnis=IPS_GetKernelDir().'logs/';
+	echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
+
+	$count=100;
+	//echo "<ol>";
+
+	echo "Heute      : ".date("Ymd", time())."\n";
+	echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+	echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+	$vorgestern = date("Ymd", strtotime("-2 day"));
+
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ) )
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					if ($unterverzeichnis == $vorgestern)
+					   {
+						$count-=1;
+	            	if (is_dir($verzeichnis.$unterverzeichnis))
+   	         		{
+      	      		}
+         	   	else
+							{
+            			mkdir($verzeichnis.$unterverzeichnis);
+            			}
+	            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+   	         	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+   	         	}
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
+	return (100-$count);
+	}
+
+	/****************************************************/
+	/*
+	 * kopiert die Scriptfiles auf ein Dropboxverzeichnis um di eFiles sicherheitshalber auch immer zur Verfügung zu haben
+	 * auch wenn Github nicht mehr geht
+
+	 */
+
+	function CopyScripts()
+		{
+		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
+		print_r($this->oc_Setup);
+		$DIR_copyscriptsdropbox = $this->oc_Setup['DropboxDirectory'].IPS_GetName(0).'/';
+
+		mkdirtree($DIR_copyscriptsdropbox);
+
+		$count=0;
+
+		$alleSkripte = IPS_GetScriptList();
+		//print_r($alleSkripte);
+
+		/* ein includefile mit allen Dateien erstellen, als Inhaltsverzeichnis */
+		$includefile='<?'."\n".'$fileList = array('."\n";
+
+		echo "Alle Scriptfiles werden vom IP Symcon Scriptverzeichnis auf ".$DIR_copyscriptsdropbox." kopiert und in einen Dropbox lesbaren Filenamen umbenannt.\n";
+		echo "\n";
+
+		foreach ($alleSkripte as &$value)
+			{
+			$filename=IPS_GetScriptFile($value);
+			$name=IPS_GetName($value);
+			$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
+			$name=strtr($name, $trans);
+			$destination=$name."-".$value.".php";
+
+			/* herausfinden ob ein Dateiname nur eine Nummer ist, dann vollstaendigen Namen und Struktur geben */
+			if (preg_match('/\d+/',$filename,$zahl)==1)
+				{
+				if ($zahl[0]==$value)
+			   	{
+				   $dir="";
+			   	while (($parent=IPS_GetParent($value))!=0)
+			      	{
+				      $Struktur=IPS_GetObject($parent);
+						if ($Struktur["ObjectType"]==0) {$dir=IPS_GetName($parent).'/'.$dir;}
+						$value=$parent;
+						}
+					$destname=$dir.$name.".ips.php";
+					$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
+					$destname=strtr($destname, $trans);
+					}
+				}
+			else
+			   {
+	   		$destname=$filename;
+		   	}
+			//echo "-Copy File: ".IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
+			copy(IPS_GetKernelDir().'scripts/'.$filename,$DIR_copyscriptsdropbox.$destination);
+
+			$includefile.='\''.$destname.'\','."\n";
+			$count+=1;
+	   	}
+		unset($value);
+
+		$includefile.=');'."\n".'?>';
+
+		echo "\n";
+		echo "-------------------------------------------------------------\n\n";
+		echo "Insgesamt ".$count." Scripts kopiert.\n";
+		}
+
+
+
+	/*
+	 * Statusinfo von AllgemeineDefinitionen in einem File auf der Dropbox abspeichern
+	 *
+	 */
+
+	function FileStatus()
+	   {
+		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
+		print_r($this->oc_Setup);
+		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+
+		mkdirtree($DIR_copystatusdropbox);
+
+		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
+			"\n\n************************************************************************************************************************\n";
+		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
+			"\n\n************************************************************************************************************************\n";
+
+		//$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
+		if (!file_put_contents($filename, $event1)) {
+      	  	throw new Exception('Create File '.$filename.' failed!');
+    			}
+		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
+		if (!file_put_contents($filename, $event2)) {
+      	  	throw new Exception('Create File '.$filename.' failed!');
+    			}
+
 		}
 		
 	}  /* ende class */

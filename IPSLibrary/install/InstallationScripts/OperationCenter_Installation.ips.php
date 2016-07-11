@@ -185,7 +185,23 @@
   		IPS_SetEventActive($tim6ID,true);
   		}
 
-  		
+	$tim7ID = @IPS_GetEventIDByName("FileStatus", $scriptIdOperationCenter);
+	if ($tim7ID==false)
+		{
+		$tim7ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim7ID, $scriptIdOperationCenter);
+		IPS_SetName($tim7ID, "FileStatus");
+		IPS_SetEventCyclic($tim7ID,0,0,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($tim7ID,3,50,0);  /* immer um 3:50 */
+  		IPS_SetEventActive($tim7ID,true);
+	   echo "   Timer Event FileStatus neu angelegt. Timer um 3:50 ist aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event FileStatus bereits angelegt. Timer um 3:50 ist aktiviert.\n";
+  		IPS_SetEventActive($tim7ID,true);
+  		}
+
   		
 	/******************************************************
 
