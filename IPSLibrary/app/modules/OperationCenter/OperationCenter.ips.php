@@ -60,6 +60,7 @@ if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installi
 if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
 if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
 if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+if (isset ($installedModules["IPSWeatherForcastAT"])){ 	echo "  Modul IPSWeatherForcastAT ist installiert.\n"; } else { echo "Modul IPSWeatherForcastAT ist NICHT installiert.\n";}
 echo "\n";
 
 	/******************************************************
@@ -464,12 +465,12 @@ if ($_IPS['SENDER']=="Execute")
    	Die entfernten logserver auf Erreichbarkeit prüfen
 	**********************************************************/
 	
-if (isset ($installedModules["RemoteAccess"]))
-	{
-	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 	
 	
-	}
+		}
 	
 	/********************************************************
    	Auswertung Router MR3420   curl
@@ -604,6 +605,7 @@ if (isset ($installedModules["RemoteAccess"]))
 
   	foreach ($OperationCenterConfig['ROUTER'] as $router)
 	   {
+	   echo "\n";
 	   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 		if ($router['TYP']=='MBRN3000')
@@ -646,18 +648,43 @@ if (isset ($installedModules["RemoteAccess"]))
    	CopyScripts
 	**********************************************************/
 
-	$OperationCenter->CopyScripts();
+	//$OperationCenter->CopyScripts();
 
 	/********************************************************
    	Move Logs
 	**********************************************************/
 
-	$OperationCenter->MoveLogs();
+	//$OperationCenter->MoveLogs();
 
 	/************************************************************************************
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
 	*************************************************************************************/
-	$OperationCenter->FileStatus();
+
+	//$OperationCenter->FileStatus();
+
+	/************************************************************************************
+  	Überprüfen ob Wunderground noch funktioniert.
+	*************************************************************************************/
+	if (isset ($installedModules["IPSWeatherForcastAT"]))
+	   {
+	   echo "\nWunderground API überprüfen.\n";
+		IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+		IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
+		IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+		$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
+		IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
+		$urlContent = @Sys_GetURLContent($urlWunderground);
+		if ($urlContent===false)
+			{
+			echo "Wunderground Key ist defekt oder überlastet.\n";
+			}
+		else
+		   {
+		   echo "  -> APP ist okay !.\n";
+		   }
+		$api = @simplexml_load_string($urlContent);
+		//print_r($api);
+		}
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
