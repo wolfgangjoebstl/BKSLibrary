@@ -52,6 +52,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+	   	IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.' mit Wert '.$value);
+
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();
 			
@@ -190,9 +192,12 @@
 			if ($variable<>null)
 			   {
 			   /* lokale Spiegelregister aufsetzen */
-	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10 );  /* lege Typ Boolean an */
+            echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
+				echo " mit Wert ".GetValueFormatted($variable)."\n";
+		   	IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
+	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10, '~Motion', null );  /* lege Typ Boolean an */
    	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
+   	   	//IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
       		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
@@ -201,10 +206,28 @@
 	   
 		function Motion_LogValue()
 			{
-			echo "Lets log motion\n";
-			$result=GetValueFormatted($this->variable);
-			SetValue($this->variableLogID,GetValue($this->variable));
-
+			echo "Lets log motion".$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") ";
+			echo "mit Wert ".GetValueFormatted($this->variable)."\n";
+	   	IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
+			$resultf=GetValueFormatted($this->variable);
+			$result=GetValue($this->variable);
+			if ($result==true)
+				{
+				SetValue($this->variableLogID,$result);
+				echo "Jetzt wird der Timer gesetzt : ".$this->variable."_EVENT"."\n";
+		     	$now = time();
+      	   $EreignisID = @IPS_GetEventIDByName($this->variable."_EVENT", IPS_GetParent($_IPS['SELF']));
+         	if ($EreignisID === false)
+					{ //Event nicht gefunden > neu anlegen
+	            $EreignisID = IPS_CreateEvent(1);
+   	         IPS_SetName($EreignisID,$this->variable."_EVENT");
+      	      IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+         	   }
+        		IPS_SetEventCyclic($EreignisID,0,1,0,0,1,600);      /* alle 600 sec */
+				IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+		      IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
+	         IPS_SetEventActive($EreignisID,true);
+				}
 			//print_r($this);
 			$EreignisVerlauf=GetValue($this->EreignisID);
 			$GesamtVerlauf=GetValue($this->GesamtID);
@@ -273,7 +296,7 @@
 			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
 				$log=new Motion_Logging($oid);
 				$class=$log->GetComponent($oid);
-				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
+				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)),10, 'EinAus', null,false);
 				SetValue($statusID,(integer)$status);
 				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)));
 				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;

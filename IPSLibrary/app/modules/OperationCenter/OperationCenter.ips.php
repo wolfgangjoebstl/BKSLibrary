@@ -755,7 +755,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	      break;
 	      
 	   case $tim2ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam und Logdateien zusammenraeumen:");
+			//IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam und Logdateien zusammenraeumen:");
 			/********************************************************
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
@@ -775,7 +775,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						}
 					$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
 					$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 					$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
 					$count+=$count1;
@@ -799,7 +799,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 			else
 			   {
 			   $countlog=$OperationCenter->MoveLogs();
-			   IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+			   if ($countlog>0)
+					{
+			   	IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+			   	}
 			   }
 	      break;
 	      
