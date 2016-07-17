@@ -2,12 +2,14 @@
 
 /***********************************************************************
 
-Sprachsteuerung
+Emailsteuerung
 
 ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("Emailsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Emailsteuerung");
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 
 /******************************************************
 
@@ -57,6 +59,10 @@ echo "Category Script ID:".$scriptId."\n";
 	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
 	echo "\nSend Email ID: ".$SendEmailID."\n";
 
+	//$result=IPS_GetModule("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
+	$result=IPS_GetConfiguration($SendEmailID);
+	print_r($result);
+	
 	/******************************************************
 
 				INIT, Timer, sollte eigentlich in der Install Routine sein
@@ -95,27 +101,52 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
 	SetValue($ScriptExecTimeID,0); /* timer ausschalten, wenn gerade laeuft */
 
-	if (true)
-	   {
-		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true,$startexec).
-			"\n\n************************************************************************************************************************\n";
-		echo "******************** sendstatus true bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
-		//	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
-		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
-		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false,$startexec).
-			"\n\n************************************************************************************************************************\n";
-		echo "******************** sendstatus false bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
-		//SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event2);
-		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
-	
-		echo $event1.$event2;
+	if (isset($installedModules['OperationCenter']))
+		{
+		echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
+		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+		$OperationCenter=new OperationCenter();
+		$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+		echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
+		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
+		if ( ($status=file_get_contents($filename)) === false)
+			{
+			echo "Filename wurde noch nicht erzeugt.\n";
+			}
+		$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
+		if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
+		if ( ($status=file_get_contents($filename)) === false)
+			{
+			echo "Filename wurde noch nicht erzeugt.\n";
+			}
+		$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
 		}
-	echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
-	echo "Groesse : ".strlen($event1)."  ".strlen($event2)."\n";
-	$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event1.$event1);
-	if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
-	echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
 
+	if (false)
+	   {
+		if (true)
+		   {
+			$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true,$startexec).
+				"\n\n************************************************************************************************************************\n";
+			echo "******************** sendstatus true bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+			//	SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
+			echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+			$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false,$startexec).
+				"\n\n************************************************************************************************************************\n";
+			echo "******************** sendstatus false bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+			//SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event2);
+			echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+	
+			echo $event1.$event2;
+			}
+		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+		echo "Groesse : ".strlen($event1)."  ".strlen($event2)."\n";
+		$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle und historische Werte ".$device, $event1.$event1);
+		if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+		echo "******************** sendemail bislang genutzte Rechenzeit : ".exectime($startexec)."\n";
+		}
 	SetValue($ScriptExecTimeID,1); /* timer wieder einschalten, wenn gerade laeuft */
 	}
 
@@ -139,9 +170,35 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/********************************************************
 		   Einmal am Tag: den Staus auslesen und als zwei emails verschicken
 			**********************************************************/
-			SetValue($ScriptCounterID,1);
-			IPS_SetEventActive($tim3ID,true);
-	      break;
+			if (isset($installedModules['OperationCenter']))
+				{
+				echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
+				IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+				IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+				$OperationCenter=new OperationCenter();
+				$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+				echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
+				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
+				if ( ($status=file_get_contents($filename)) === false)
+					{
+					echo "Filename wurde noch nicht erzeugt.\n";
+					}
+				$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
+				if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
+				if ( ($status=file_get_contents($filename)) === false)
+					{
+					echo "Filename wurde noch nicht erzeugt.\n";
+					}
+				$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+				}
+			else
+			   {
+			   /* wenn nicht OperationCenter geladen, selbst erstellen und verschicken probieren */
+				SetValue($ScriptCounterID,1);
+				IPS_SetEventActive($tim3ID,true);
+				}
+		   break;
 
 	   case $tim3ID:
 

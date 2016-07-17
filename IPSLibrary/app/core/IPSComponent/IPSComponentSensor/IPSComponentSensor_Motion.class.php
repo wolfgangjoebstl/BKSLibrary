@@ -3,9 +3,9 @@
    /**
     * @class IPSComponentSensor_Motion
     *
-    * Definiert ein IPSComponentSensor_Motion Object, das ein IPSComponentSensor Object für einen Bewegungsmelder implementiert.
+    * Definiert ein IPSComponentSensor_Motion Object, das ein IPSComponentSensor Object fÃ¼r einen Bewegungsmelder implementiert.
     *
-    * @author Wolfgang Jöbstl
+    * @author Wolfgang JÃ¶bstl
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
     */
@@ -30,7 +30,7 @@
 		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
-		 * @param string $tempValue Wert für Beleuchtungs Änderung
+		 * @param string $tempValue Wert fÃ¼r Beleuchtungs Ã„nderung
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 		   //echo "Build Motion Sensor with ".$var1.".\n";
@@ -46,12 +46,12 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
-			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "Bewegungs Message Handler fÃ¼r VariableID : ".$variable." mit Wert : ".$value." \n";
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();
 			
@@ -80,7 +80,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -93,13 +93,25 @@
 	
 	class Motion_Logging extends Logging
 	   {
+
+	   private $variable;
+	   private $variablename;
+		private $MoveAuswertungID;
+
 	   
 	   function __construct($variable=null)
 		   {
 
+		   $this->variable=$variable;
+		   $result=IPS_GetObject($variable);
+		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
+
+
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$installedmodules=$moduleManager->GetInstalledModules();
+
+			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
 			if (isset ($installedmodules["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
@@ -124,7 +136,6 @@
       			IPS_SetName($mdID, $name);
 	      		IPS_SetInfo($mdID, "this category was created by script. ");
 	      		}
-	      		
 				if ($variable<>null)
 				   {
 			   	$this->variable=$variable;
@@ -142,7 +153,6 @@
 					$this->EreignisID=$erID;
 					parent::__construct($filename,$vid);
 				   }
-				   
   	      	$variablename="Gesamt_Ereignisspeicher";
 	      	$erID=CreateVariable($variablename,3,$mdID, 0 );
 				$this->GesamtID=$erID;
@@ -150,14 +160,51 @@
   	      	$variablename="Gesamt_Ereigniszaehler";
 	      	$erID=CreateVariable($variablename,1,$mdID, 0 );
 				$this->GesamtCountID=$erID;
-				echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
+				echo "  Gesamt EreigniszÃ¤hler aufsetzen   : ".$erID." \n";
 		   	//print_r($this);
+				}
+
+			/* Spiegelregister und dynamische Anwesenheitsauswertung */
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			//echo "Datenverzeichnis:".$CategoryIdData."\n";
+			$name="Bewegung-Nachrichten";
+			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid==false)
+			   {
+				$vid = IPS_CreateCategory();
+   	   	IPS_SetParent($vid, $CategoryIdData);
+      		IPS_SetName($vid, $name);
+	      	IPS_SetInfo($vid, "this category was created by script. ");
+	      	}
+			$name="Bewegung-Auswertung";
+			$MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($MoveAuswertungID==false)
+			   {
+				$MoveAuswertungID = IPS_CreateCategory();
+   	   	IPS_SetParent($MoveAuswertungID, $CategoryIdData);
+     			IPS_SetName($MoveAuswertungID, $name);
+      		IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
+      		}
+			$this->MoveAuswertungID=$MoveAuswertungID;
+			if ($variable<>null)
+			   {
+			   /* lokale Spiegelregister aufsetzen */
+	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10 );  /* lege Typ Boolean an */
+   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
+      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
 				}
 	   	}
 	   
 		function Motion_LogValue()
 			{
 			echo "Lets log motion\n";
+			$result=GetValueFormatted($this->variable);
+			SetValue($this->variableLogID,GetValue($this->variable));
+
 			//print_r($this);
 			$EreignisVerlauf=GetValue($this->EreignisID);
 			$GesamtVerlauf=GetValue($this->GesamtID);
@@ -241,7 +288,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -261,7 +308,7 @@
 			echo "  Evaluate Eventliste : ".$value."\n";
 			$EventArray = explode(";", $value);
 		   $array_size = count($EventArray);
-         $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */
+         $i = $array_size-2;  /* Array Index geht von 0 bis LÃ¤nge minus 1 */
          if ($i>0)
             {
             /* Events komprimieren erst wenn gross genug */
@@ -330,7 +377,7 @@
 	 			     		   	case STAT_Bewegung:
 		 							   $previous_state=$EventArray[$i];
 						   			$previous_time=(integer)$EventArray[$i-1];
-				   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
+				   				 	/* einfach die aktuellen zwei EintrÃ¤ge loeschen, ich brauche keinen Default Wert */
 				   				 	if (isset($EventArray[$i+2]))
 											{
 											/* nicht zweimal loeschen */
@@ -347,7 +394,7 @@
 										   {
 										   // Warum mus dif_time >0 sein ????
 	  			   						$previous_state=10;    /* default, einen ueberspringen, damit voriger Wert vorerst nicht mehr geloescht werden kann */
-		   							 	/* einfach die letzten zwei Einträge loeschen, nachdem Wert kein zweites Mal geloescht werden kann vorerst mit Default Wert arbeiten */
+		   							 	/* einfach die letzten zwei EintrÃ¤ge loeschen, nachdem Wert kein zweites Mal geloescht werden kann vorerst mit Default Wert arbeiten */
 											echo "--->WenigBewegung, wir loeschen Eintrag ".($i)." mit ".$EventArray[$i+0]." am ".date("d.m H:i",$EventArray[$i-1])."\n";
    									 	unset($EventArray[$i+0]);
 	   								 	unset($EventArray[$i-1]);
@@ -372,7 +419,7 @@
 	 			     		   	case STAT_WenigBewegung:
 		 							   $previous_state=$EventArray[$i];
 						   			$previous_time=(integer)$EventArray[$i-1];
-				   				 	/* einfach die aktuellen zwei Einträge loeschen, ich brauche keinen Default Wert */
+				   				 	/* einfach die aktuellen zwei EintrÃ¤ge loeschen, ich brauche keinen Default Wert */
 				   				 	if (isset($EventArray[$i+2]))
 											{
 											/* nicht zweimal loeschen */
@@ -390,14 +437,14 @@
 			   	  	      break;
 			   	   	case STAT_vonzuHauseweg:
 						       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
-								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
-								    2 eliminiert den vorigen 2 er und lässt aktuelle Zeit
+								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem frÃ¼heren
+								    2 eliminiert den vorigen 2 er und lÃ¤sst aktuelle Zeit
 							    */
 				   	   	 switch ($EventArray[$i])
 								    {
 				 					 case STAT_vonzuHauseweg:
 				   					 $previous_state=10;    /* default */
-				   					 /* einfach von den letzten zwei Einträgen rausloeschen */
+				   					 /* einfach von den letzten zwei EintrÃ¤gen rausloeschen */
 			   						 unset($EventArray[$i+0]);
 						   			 unset($EventArray[$i-1]);
 							 		 break;
@@ -409,8 +456,8 @@
 								break;
    	  			   	case STAT_Abwesend:
 						       /* Wenn zletzt bereits Abwesend erkannt wurde, kann ich von zuHause weg und nicht zu Hause
-								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem früheren
-								    0 übernimmt die Zeit des Vorgängers und eliminiert 0,1 und 2
+								    wegfiltern, allerdings ich lasse die Zeit des jetzigen events ,also dem frÃ¼heren
+								    0 Ã¼bernimmt die Zeit des VorgÃ¤ngers und eliminiert 0,1 und 2
 							     */
 					   	    switch ($EventArray[$i])
 								    {
@@ -418,7 +465,7 @@
 									 case STAT_nichtzuHause:
 					 				 case STAT_vonzuHauseweg:
 						   			 $previous_state=10;    /* default */
-   									 /* einfach von den letzten zwei Einträgen die mittleren Werte rausloeschen */
+   									 /* einfach von den letzten zwei EintrÃ¤gen die mittleren Werte rausloeschen */
 		   							 unset($EventArray[$i+1]);
    									 unset($EventArray[$i+0]);
 								 		 break;

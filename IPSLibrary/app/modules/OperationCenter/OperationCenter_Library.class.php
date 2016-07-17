@@ -33,11 +33,20 @@ class OperationCenter
 	 * Initialisierung des OperationCenter Objektes
 	 *
 	 */
-	public function __construct($CategoryIdData,$subnet)
+	public function __construct($subnet="10.255.255.255")
 			{
 
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
+			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			if (!isset($moduleManager))
+				{
+				IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
+				//echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
+				$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+				}
+			$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 		   $this->CategoryIdData=$CategoryIdData;
 		   $this->subnet=$subnet;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
@@ -833,62 +842,63 @@ class OperationCenter
 
 
 	/*
-	 *
+	 *  Die oft umfangreichen Logfiles in einem Ordner pro tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann.
 	 *
 	 */
 
-function MoveLogs()
-	{
-	$verzeichnis=IPS_GetKernelDir().'logs/';
-	echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
-
-	$count=100;
-	//echo "<ol>";
-
-	echo "Heute      : ".date("Ymd", time())."\n";
-	echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-	echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
-	$vorgestern = date("Ymd", strtotime("-2 day"));
-
-	// Test, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ) )
+	function MoveLogs()
 		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-        	/* einlesen der Verzeichnisses
-			nur count mal Eintraege
-        	*/
-        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-					if ($unterverzeichnis == $vorgestern)
-					   {
-						$count-=1;
-	            	if (is_dir($verzeichnis.$unterverzeichnis))
-   	         		{
-      	      		}
-         	   	else
-							{
-            			mkdir($verzeichnis.$unterverzeichnis);
-            			}
-	            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-   	         	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-   	         	}
-         		}
-      	  	} /* Ende while */
-	     	closedir($handle);
-   		} /* end if dir */
-		}/* ende if isdir */
-	else
-	   {
-	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		$verzeichnis=IPS_GetKernelDir().'logs/';
+		echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
+
+		$count=100;
+		//echo "<ol>";
+
+		echo "Heute      : ".date("Ymd", time())."\n";
+		echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+		echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+		$vorgestern = date("Ymd", strtotime("-2 day"));
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $verzeichnis ) )
+			{
+	    	// öffnen des Verzeichnisses
+   	 	if ( $handle = opendir($verzeichnis) )
+    			{
+        		/* einlesen der Verzeichnisses
+				nur count mal Eintraege
+   	     	*/
+	        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+   	     		{
+					$dateityp=filetype( $verzeichnis.$file );
+         	   if ($dateityp == "file")
+            		{
+						$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+						if ($unterverzeichnis == $vorgestern)
+						   {
+							$count-=1;
+	      	      	if (is_dir($verzeichnis.$unterverzeichnis))
+   	      	   		{
+      	      			}
+         	   		else
+								{
+	            			mkdir($verzeichnis.$unterverzeichnis);
+   	         			}
+	   	         	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+   	   	      	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+   	      	   	}
+         			}
+	      	  	} /* Ende while */
+		     	closedir($handle);
+   			} /* end if dir */
+			}/* ende if isdir */
+		else
+	   	{
+		   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+			}
+		return (100-$count);
 		}
-	return (100-$count);
-	}
 
 	/****************************************************/
 	/*
@@ -1435,7 +1445,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 					if($modus == 2)
 						{
-					   if($musik_status != 2)	WAC_Pause($id_sk1_musik);
+					   if($musik_status == 1)
+							{
+							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
+							WAC_Pause($id_sk1_musik);
+							}
 						}
 
 
@@ -1497,8 +1511,12 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       				}
 					if($modus == 2)
 						{
-				   	if($musik_status != 2)	WAC_Pause($id_sk1_musik);
-				   	}
+					   if($musik_status == 1)
+							{
+							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
+							WAC_Pause($id_sk1_musik);
+							}
+						}
 					break;
 
 			//---------------------------------------------------------------------

@@ -156,7 +156,7 @@ $OperationCenterConfig = OperationCenter_Configuration();
 /*********************************************************************************************/
 
 	$subnet="10.255.255.255";
-	$OperationCenter=new OperationCenter($CategoryIdData,$subnet);
+	$OperationCenter=new OperationCenter($subnet);
 
 /*********************************************************************************************/
 
