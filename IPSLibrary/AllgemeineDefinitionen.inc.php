@@ -1001,7 +1001,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 
 			$subnet="10.255.255.255";
-			$OperationCenter=new OperationCenter($CatIdData,$subnet);
+			$OperationCenter=new OperationCenter($subnet);
 			
 			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
@@ -1418,7 +1418,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 
 			$subnet="10.255.255.255";
-			$OperationCenter=new OperationCenter($CatIdData,$subnet);
+			$OperationCenter=new OperationCenter($subnet);
 			$ergebnisOperationCenter.=$log_OperationCenter->PrintNachrichten();
 
 			$OperationCenterConfig = OperationCenter_Configuration();

@@ -154,46 +154,53 @@ class OperationCenter
 	function get_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
+		//echo "Schnittstelle mit Subnet ".$subnet." Filter ".$subnetok."\n";
 		$ergebnis=""; $print_table="";
-		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
 		unset($catch);
 		exec('arp -a',$catch);
+  		//print_r($catch);
 		foreach($catch as $line)
    		{
-		   $result=trim($line);
-   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
-	   	$result=trim(substr($result,strpos($result," "),100));
-	   	$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
-		   $result=trim(substr($result,strpos($result," "),100));
-			if ($result1=="10.0.255.255") { break; }
-			if (strpos($result1,$subnetok)===false)
-			   {
-			   }
-			else
-			   {
-		   	//echo $line."\n";
-				if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
-					{
-					$ergebnis.=$result1.";".$result2;
-					$print_table.=$line;
-					$found=false;
-					foreach ($ipadressen as $ip)
-					   {
-				   	if ($result2==$ip["Mac_Adresse"])
-		   		   	{
-							$ergebnis.=";".$ip["Hostname"].",";
-							$print_table.=" ".$ip["Hostname"]."\n";
-							$found=true;
+   		if (strlen($line)>0)
+   		   {
+			   $result=trim($line);
+   			$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
+	   		$result=trim(substr($result,strpos($result," "),100));
+	   		$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
+			   $result=trim(substr($result,strpos($result," "),100));
+			   //echo "  IP   :".$result1."  MAC  :".$result2."\n";
+				if ($result1=="10.0.255.255") { break; }
+				//echo "Wir suchen ".$result1." in ".$subnetok." ".strlen($line)."\n";
+				if (strpos($result1,$subnetok)===false)
+			   	{
+				   }
+				else
+				   {
+		   		//echo $line."\n";
+					if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
+						{
+						$ergebnis.=$result1.";".$result2;
+						$print_table.=$line;
+						$found=false;
+						foreach ($ipadressen as $ip)
+						   {
+				   		if ($result2==$ip["Mac_Adresse"])
+			   		   	{
+								$ergebnis.=";".$ip["Hostname"].",";
+								$print_table.=" ".$ip["Hostname"]."\n";
+								$found=true;
+								}
+							}
+						if ($found==false)
+							{
+							$ergebnis.=";none,";
+							$print_table.=" \n";
 							}
 						}
-					if ($found==false)
-						{
-						$ergebnis.=";none,";
-						$print_table.=" \n";
-						}
 					}
-				}
-		  }
+				}  // ende len>0
+		  	}  // ende foreach
 		$ergebnis_array=explode(",",$ergebnis);
 		$result_array=array();
 		$mactable=array();
