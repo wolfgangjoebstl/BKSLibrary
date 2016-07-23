@@ -13,7 +13,10 @@
 */
 
 
-	include_once IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\NetPlayer\NetPlayer.inc.php";
+include_once IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\NetPlayer\NetPlayer.inc.php";
+
+if (false)
+	{
 	NetPlayer_Power(true);
 	$value=0;   /* MP3 Player */
 	$value=1;   /* Radio */
@@ -38,6 +41,7 @@
 	$radioUrl  = $radioList[$radioName];
 	NetPlayer_PlayRadio($radioUrl, $radioName);
 	echo "Es spielt jetzt ".$radioName." von ".$radioUrl."\n";
-
+	}
+//NetPlayer_Power(false);
 
 ?>

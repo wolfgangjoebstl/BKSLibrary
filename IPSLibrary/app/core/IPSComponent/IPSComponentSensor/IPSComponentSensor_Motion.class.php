@@ -106,8 +106,15 @@
 
 		   $this->variable=$variable;
 		   $result=IPS_GetObject($variable);
-		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
-
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)
+				{
+				$this->variablename=IPS_GetName((integer)$result["ParentID"]);
+				}
+			else
+				{
+				$this->variablename=IPS_GetName($variable);
+				}
 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -193,7 +200,15 @@
 			   {
 			   /* lokale Spiegelregister aufsetzen */
             echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
-				echo " mit Wert ".GetValueFormatted($variable)."\n";
+   	   	$variabletyp=IPS_GetVariable($variable);
+            if ($variabletyp["VariableProfile"]!="")
+			   	{  /* Formattierung vorhanden */
+					echo " mit Wert ".GetValueFormatted($variable)."\n";
+					}
+				else
+				   {
+					echo " mit Wert ".GetValue($variable)."\n";
+				   }
 		   	IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
 	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10, '~Motion', null );  /* lege Typ Boolean an */
    	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];

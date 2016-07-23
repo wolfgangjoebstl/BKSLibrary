@@ -163,6 +163,7 @@ class OperationCenter
 		foreach($catch as $line)
    		{
    		if (strlen($line)>0)
+<<<<<<< HEAD
    		   {
 			   $result=trim($line);
    			$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
@@ -178,6 +179,22 @@ class OperationCenter
 				else
 				   {
 		   		//echo $line."\n";
+=======
+				{
+			   $result=trim($line);
+	   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
+		   	$result=trim(substr($result,strpos($result," "),100));
+	   		$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
+		   	$result=trim(substr($result,strpos($result," "),100));
+				if ($result1=="10.0.255.255") { break; }
+				echo "*** ".$line." ** ".$result1." ** ".$subnetok." ** ".$subnet."\n";
+				if (strpos($result1,$subnetok)===false)
+				   {
+			   	}
+				else
+				   {
+			   	//echo $line."\n";
+>>>>>>> origin/master
 					if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
 						{
 						$ergebnis.=$result1.";".$result2;
@@ -185,8 +202,13 @@ class OperationCenter
 						$found=false;
 						foreach ($ipadressen as $ip)
 						   {
+<<<<<<< HEAD
 				   		if ($result2==$ip["Mac_Adresse"])
 			   		   	{
+=======
+					   	if ($result2==$ip["Mac_Adresse"])
+		   			   	{
+>>>>>>> origin/master
 								$ergebnis.=";".$ip["Hostname"].",";
 								$print_table.=" ".$ip["Hostname"]."\n";
 								$found=true;

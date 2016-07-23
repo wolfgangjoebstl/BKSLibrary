@@ -660,7 +660,7 @@ if ($_IPS['SENDER']=="Execute")
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
 	*************************************************************************************/
 
-	//$OperationCenter->FileStatus();
+	$OperationCenter->FileStatus();
 
 	/************************************************************************************
   	Überprüfen ob Wunderground noch funktioniert.
