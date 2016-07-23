@@ -110,18 +110,27 @@ if ($_IPS['SENDER']=="Execute")
 		$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
 		echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
 		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
-		if ( ($status=file_get_contents($filename)) === false)
+		if ( ($status=@file_get_contents($filename)) === false)
 			{
 			echo "Filename wurde noch nicht erzeugt.\n";
+			$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !");
 			}
-		$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
-		if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+		else
+		   {
+			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
+			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+			}
 		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
-		if ( ($status=file_get_contents($filename)) === false)
+		if ( ($status=@file_get_contents($filename)) === false)
 			{
 			echo "Filename wurde noch nicht erzeugt.\n";
+			$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !");
 			}
-		$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+		else
+		   {
+			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+			}
 		}
 
 	if (false)
@@ -179,18 +188,27 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
 				echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
 				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
-				if ( ($status=file_get_contents($filename)) === false)
+				if ( ($status=@file_get_contents($filename)) === false)
 					{
 					echo "Filename wurde noch nicht erzeugt.\n";
+					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !");
 					}
-				$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
-				if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+				else
+				   {
+					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
+					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+					}
 				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
-				if ( ($status=file_get_contents($filename)) === false)
+				if ( ($status=@file_get_contents($filename)) === false)
 					{
 					echo "Filename wurde noch nicht erzeugt.\n";
+					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !");
 					}
-				$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+				else
+				   {
+					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+					}
 				}
 			else
 			   {
@@ -236,8 +254,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 			      	SetValue($ScriptCounterID,$counter+1);
 			      	SetValue($ScriptExecTimeID,(microtime(true)-$startexec));
 			         }
+			      else
+			         {
+			         IPS_SetEventActive($tim3ID,false);
+			         }
 					break;
 			   case 0:
+  			      IPS_SetEventActive($tim3ID,false);
 				default:
 				   break;
 			   }
