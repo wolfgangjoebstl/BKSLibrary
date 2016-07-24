@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("DENONsteuerung_Configuration.inc.php","IPSLibrary::config::modules::DENONsteuerung");
@@ -28,6 +28,22 @@ if (!isset($moduleManager))
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
+
+
+$installedModules = $moduleManager->GetInstalledModules();
+echo "Folgende Module werden von DenonSteuerung bearbeitet:\n";
+if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
+if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
+if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
+if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
+if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+if (isset ($installedModules["NetPlayer"])){ 			echo "  Modul NetPlayer ist installiert.\n"; } else { echo "Modul NetPlayer ist NICHT installiert.\n";}
+echo "\n";
+
+
+
+
 $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 $Audio_Enabled        = $moduleManager->GetConfigValue('Enabled', 'AUDIO');
@@ -115,11 +131,88 @@ if ($_IPS['SENDER'] == "Execute")
 		$display=$display_variables[$WFC10_Path];
 		foreach ($display as $variable)
 		   {
-		   echo "    Link für Variable ".$variable."\n";
+		   echo "    Link fÃ¼r Variable ".$variable."\n";
 		   }
 		}
 	if ($Audio_Enabled==true)
 	   {
+		if (isset ($installedModules["NetPlayer"]))
+			{
+			include_once IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\NetPlayer\NetPlayer_Constants.inc.php";
+			$moduleManager_NP  = new IPSModuleManager('NetPlayer');     /*   <--- change here */
+			$CategoryIdData_NP = $moduleManager_NP->GetModuleCategoryID('data');
+
+
+			echo "Auch die Links fÃ¼r den Netplayer in Audio einbauen.\n";
+			if (@IPS_GetCategoryIDByName('NetPlayer',$categoryId_WebFrontAudio)===false)
+			   {
+				$NetPlayer_WFE_ID = IPS_CreateCategory();
+				IPS_SetName($NetPlayer_WFE_ID, 'NetPlayer');
+				IPS_SetInfo($NetPlayer_WFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+				IPS_SetParent($NetPlayer_WFE_ID, $categoryId_WebFrontAudio);
+				echo "Kategorie DENON Webfront #$NetPlayer_WFE_ID angelegt\n";
+			   }
+			else
+			   {
+			   $NetPlayer_WFE_ID=IPS_GetCategoryIDByName('NetPlayer',$categoryId_WebFrontAudio);
+			   }
+			$NP_powerID=NP_ID_POWER;
+			CreateLinkByDestination('Power', $NP_powerID,    $NetPlayer_WFE_ID,  10);
+			$NP_sourceID=NP_ID_SOURCE;
+			CreateLinkByDestination('Source', $NP_sourceID,    $NetPlayer_WFE_ID,  20);
+			$NP_controlID=NP_ID_CONTROL;
+			CreateLinkByDestination('Control', $NP_controlID,    $NetPlayer_WFE_ID,  30);
+			$NP_albumID=NP_ID_CDALBUM;
+			CreateLinkByDestination('Album', $NP_albumID,    $NetPlayer_WFE_ID,  40);
+			$NP_radiolistID=NP_ID_RADIOLIST;
+			CreateLinkByDestination('Radio Liste', $NP_radiolistID,    $NetPlayer_WFE_ID,  100);
+	  		$NP_radionavID=NP_ID_RADIONAV;
+			CreateLinkByDestination('Radio Navigation', $NP_radionavID,    $NetPlayer_WFE_ID,  60);
+			}
+		if (function_exists('Denon_RemoteNetplayer'))
+		   {
+			if (@IPS_GetCategoryIDByName('RemoteNetPlayer',$categoryId_WebFrontAudio)===false)
+			   {
+				echo "Auch die Links fÃ¼r den Netplayer in Audio einbauen.\n";
+				$NetPlayer_rWFE_ID = IPS_CreateCategory();
+				IPS_SetName($NetPlayer_rWFE_ID, 'RemoteNetPlayer');
+				IPS_SetInfo($NetPlayer_rWFE_ID, "this Object was created by Script DENON.Installer.ips.php");
+				IPS_SetParent($NetPlayer_rWFE_ID, $categoryId_WebFrontAudio);
+				echo "Kategorie DENON Webfront #$NetPlayer_rWFE_ID angelegt\n";
+				}
+			else
+			   {
+			   $NetPlayer_rWFE_ID=IPS_GetCategoryIDByName('RemoteNetPlayer',$categoryId_WebFrontAudio);
+			   }
+			if (@IPS_GetCategoryIDByName('RemoteNetPlayer',$CategoryIdData)===false)
+			   {
+				echo "Auch die Datenobjekte fÃ¼r den RemoteNetplayer in data Denon einbauen.\n";
+				$NetPlayer_rData_ID = IPS_CreateCategory();
+				IPS_SetName($NetPlayer_rData_ID, 'RemoteNetPlayer');
+				IPS_SetInfo($NetPlayer_rData_ID, "this Object was created by Script DENON.Installer.ips.php");
+				IPS_SetParent($NetPlayer_rData_ID, $CategoryIdData);
+				echo "Kategorie DENON Webfront #$NetPlayer_rData_ID angelegt\n";
+				}
+			else
+			   {
+			   $NetPlayer_rData_ID=IPS_GetCategoryIDByName('RemoteNetPlayer',$CategoryIdData);
+			   }
+			$actionScriptId = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
+
+			$powerId               = CreateVariable("Power",           0 /*Boolean*/,  $NetPlayer_rData_ID, 100 , '~Switch', $actionScriptId, 0);
+			$sourceId              = CreateVariable("Source",          1 /*Integer*/,  $NetPlayer_rData_ID, 110 , 'NetPlayer_Source', $actionScriptId, 0 /*CD*/);
+			$controlId             = CreateVariable("Control",         1 /*Integer*/,  $NetPlayer_rData_ID, 120 , 'NetPlayer_Control', $actionScriptId, 2 /*Stop*/);
+			$albumId               = CreateVariable("Album",           3 /*String*/,   $NetPlayer_rData_ID, 130, '~String');
+			$radioNavId            = CreateVariable("RadioNav",        1 /*Integer*/,  $NetPlayer_rData_ID, 200 , 'NetPlayer_RadioNav', $actionScriptId, -1);
+			$radioListId           = CreateVariable("RadioList",       1 /*Integer*/,  $NetPlayer_rData_ID, 210 , 'NetPlayer_RadioList', $actionScriptId,-1);
+			CreateLinkByDestination('Power', $powerId,    $NetPlayer_rWFE_ID,  10);
+			CreateLinkByDestination('Source', $sourceId,    $NetPlayer_rWFE_ID,  20);
+			CreateLinkByDestination('Control', $controlId,    $NetPlayer_rWFE_ID,  30);
+			CreateLinkByDestination('Album', $albumId,    $NetPlayer_rWFE_ID,  40);
+			CreateLinkByDestination('Radio Liste', $radioListId,    $NetPlayer_rWFE_ID,  100);
+			CreateLinkByDestination('Radio Navigation', $radioNavId,    $NetPlayer_rWFE_ID,  60);
+			}
+
 		echo "Webfront Administrator Audio ID: ".$categoryId_WebFrontAudio."     ".$Audio_Path."\n";
 		foreach ($configuration as $config)
 			{
@@ -134,7 +227,7 @@ if ($_IPS['SENDER'] == "Execute")
 		$display=$display_variables[$Audio_Path];
 		foreach ($display as $variable)
 		   {
-		   echo "    Link für Variable ".$variable."\n";
+		   echo "    Link fÃ¼r Variable ".$variable."\n";
 		   }
 		}
 
@@ -154,7 +247,7 @@ if ($_IPS['SENDER'] == "Execute")
 		$display=$display_variables[$WFC10User_Path];
 		foreach ($display as $variable)
 		   {
-		   echo "    Link für Variable ".$variable."\n";
+		   echo "    Link fÃ¼r Variable ".$variable."\n";
 		   }
 		}
 	if ($Mobile_Enabled==true)
@@ -203,11 +296,11 @@ if ($_IPS['SENDER'] == "Execute")
 		$value=1;
 		$itemID = @IPS_GetVariableIDByName($item, $VAR_Parent_ID);
 		$ProfileName = "DENON.".$item;
-		echo "Variablenprofil neu anlegen für ".$item." mit Profilname ".$ProfileName." mit Item ID ".$itemID." \n";
+		echo "Variablenprofil neu anlegen fÃ¼r ".$item." mit Profilname ".$ProfileName." mit Item ID ".$itemID." \n";
       @IPS_DeleteVariableProfile($ProfileName);
 		DENON_SetVarProfile($item, $itemID, $vtype);
 
-		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+		echo "Shortcut anlegen fÃ¼r ".$id.".".$item." in ".$Audio_Path." \n";
 		DenonSetValue($item, $value, $vtype, $id, $Audio_Path);
 		}
 	}

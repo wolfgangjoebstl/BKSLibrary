@@ -204,12 +204,13 @@
             if ($variabletyp["VariableProfile"]!="")
 			   	{  /* Formattierung vorhanden */
 					echo " mit Wert ".GetValueFormatted($variable)."\n";
+			   	IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
 					}
 				else
 				   {
 					echo " mit Wert ".GetValue($variable)."\n";
+		   		IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValue($variable));
 				   }
-		   	IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
 	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10, '~Motion', null );  /* lege Typ Boolean an */
    	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	   	//IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
