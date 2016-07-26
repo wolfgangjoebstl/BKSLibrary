@@ -1,9 +1,9 @@
 <?
 
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
- *	hier für Homematic und FS20 bewegungsmelder
+ *	hier fÃ¼r Homematic und FS20 bewegungsmelder
  *
  */
 
@@ -102,6 +102,16 @@ if (isset ($installedModules["DetectMovement"]))
 
 	      $oid=(integer)$Key["COID"][$keyword]["OID"];
       	$variabletyp=IPS_GetVariable($oid);
+      	
+  	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+      	if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
+				{
+				/* Wenn variable noch nicht gelogged automatisch logging einschalten */
+				AC_SetLoggingStatus($archiveHandlerID,$oid,true);
+				AC_SetAggregationType($archiveHandlerID,$oid,0);
+				IPS_ApplyChanges($archiveHandlerID);
+				echo "Variable ".$oid." Archiv logging aktiviert.\n";
+				}
 			if ($variabletyp["VariableProfile"]!="")
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
@@ -124,7 +134,7 @@ if (isset ($installedModules["DetectMovement"]))
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 
 			if (isset ($installedModules["DetectMovement"]))
@@ -179,7 +189,7 @@ if (isset ($installedModules["DetectMovement"]))
 						$messageHandler = new IPSMessageHandler();
 					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 			   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 						
 						if (isset ($installedModules["DetectMovement"]))
@@ -255,7 +265,7 @@ if (isset ($installedModules["DetectMovement"]))
 					$messageHandler = new IPSMessageHandler();
 				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 					
 					if (isset ($installedModules["DetectMovement"]))

@@ -152,8 +152,8 @@
 
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["HumidityLog"];
-	   	mkdirtree($directory);
+		   $directory=$directories["LogDirectories"]["HumidityLog"];
+		   mkdirtree($directory);
 		   $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
 		   parent::__construct($filename,$vid);
 	   	}

@@ -637,7 +637,21 @@ function Anwesenheit()
 	   }
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ *  Statusbefehle
+ *
+ *  egal ob bei einer variablenänderung oder bei einem Update werden verschiedene Befehle die im Parameterfeld stehen abgearbeitet
+ *  IpsLight Name und optional ob ein, aus und am Ende noch ein delay kann ohne Spezialbefehle eingegeben werden
+ *
+ *  komplizierte Algorithmen werden immer mit befehl:parameter eigegeben
+ *
+ *  DELAY:TIME      ein timer wird aktiviert, nach Ablauf wird der Schalter ausgeschaltet
+ *  ENVELOPE:TIME   ein Statuswert wird so verschliffen, das nur selten tatsächlich der Schalter aktiviert wird
+ *                      immer bei Wert 1 wird der timer neu aktiviert, ein Ablaufen des Timers führt zum Ausschalten
+ *
+ *
+ ************************************************************************************************/
 
 function Status($params,$status,$simulate=false)
 	{
@@ -795,6 +809,10 @@ function Status($params,$status,$simulate=false)
 				$delayValue=(integer)$befehl[1];
 				$result["DELAY"]=$delayValue;
 				break;
+		   case "ENVELOPE":
+				$envelValue=(integer)$befehl[1];
+				$result["ENVEL"]=$envelValue;
+				break;
 		   case "LEVEL":
 				$levelValue=(integer)$befehl[1];
 				$result["LEVEL"]=$levelValue;
@@ -812,11 +830,13 @@ function Status($params,$status,$simulate=false)
 				$result["COND"]=$cond;
 				if ($cond=="LIGHT")
 				   {
-				   if ($auto->isitdark()) {unset($switchname);}
+				   /* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+				   if ($auto->isitdark()) {unset($Switchname);}
 				   }
 				if ($cond=="DARK")
 				   {
-				   if ($auto->isitlight()) {unset($switchname);}
+				   /* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+				   if ($auto->isitlight()) {unset($Switchname);}
 				   }
 				break;
 			}
@@ -977,6 +997,7 @@ function Status($params,$status,$simulate=false)
 				}
 		  }   /* Ende Wert ist ein Schalter */
 
+		/* Ein Delaywert ist definiert, den Eventtimer mit dem entsprechenden vorher eingesammelten Befehl starten */
 	   if ($delayValue>0)
    	   {
    		if ($simulate==false)

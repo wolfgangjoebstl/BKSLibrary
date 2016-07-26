@@ -21,7 +21,7 @@
 	 * @class Report_Class
 	 *
 	 *
-	 * @author Wolfgang Jöbstl
+	 * @author Wolfgang JÃ¶bstl
 	 * @version
 	 *   Version 2.50.1, 2.02.2016<br/>
 	 */
@@ -29,13 +29,13 @@
 
 		/**
 		 * @private
-		 * ID Kategorie für die berechneten Werte
+		 * ID Kategorie fÃ¼r die berechneten Werte
 		 */
 		private $categoryIdValues;
 
 		/**
 		 * @private
-		 * ID Kategorie für allgemeine Steuerungs Daten
+		 * ID Kategorie fÃ¼r allgemeine Steuerungs Daten
 		 */
 		private $categoryIdCommon;
 
@@ -71,12 +71,12 @@
 		 *
 		 * Modifiziert einen Variablen Wert der Kamera Steuerung
 		 *
-		 * @param integer $variableId ID der Variable die geändert werden soll
+		 * @param integer $variableId ID der Variable die geÃ¤ndert werden soll
 		 * @param variant $value Neuer Wert der Variable
 		 */
 		public function ChangeSetting($variableId, $value) {
 			$variableIdent = IPS_GetIdent($variableId);
-			//echo "Variableident : ".$variableIdent." mit Wert ".$value."   \n";
+			echo "VariableID : ".$variableId."Variableident : ".$variableIdent." mit Wert ".$value."   \n";
 			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)
 				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
 				$powerIdx      = substr($variableIdent,-1,-1);
@@ -87,17 +87,17 @@
 				$powerIdx      = substr($variableIdent,-1,-2);
 				$variableIdent = substr($variableIdent,0,-2);
 			}
-			/* der Identifier von SelectValue 0 .. 99 wird herausgearbeitet und zusätzlich nach poweridx indexiert
-			   sonst wird entsprechend der gedrückten Variable auf die Funktion aufgeteilt
+			/* der Identifier von SelectValue 0 .. 99 wird herausgearbeitet und zusÃ¤tzlich nach poweridx indexiert
+			   sonst wird entsprechend der gedrÃ¼ckten Variable auf die Funktion aufgeteilt
 			*/
 			switch ($variableIdent) {
-				case IPSRP_VAR_SELECTVALUE:         /* Änderung der Variable SelectValue, Auswahlfeld links */
+				case IPSRP_VAR_SELECTVALUE:         /* Ã„nderung der Variable SelectValue, Auswahlfeld links */
 					SetValue($variableId, $value);
 					$this->CheckValueSelection($variableId);
 					$this->RebuildGraph();
 					break;
-				case IPSRP_VAR_TYPEOFFSET:          /* Änderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
-				case IPSRP_VAR_PERIODCOUNT:         /* Änderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
+				case IPSRP_VAR_TYPEOFFSET:          /* Ã„nderung der Variable TypeandOffset, Auswahlfeld erste Zeile */
+				case IPSRP_VAR_PERIODCOUNT:         /* Ã„nderung der Variable PeriodandCount, Auswahlfeld zweite Zeile */
 					$this->Navigation($variableId, $value);
 					$this->RebuildGraph();
 					break;
@@ -136,7 +136,9 @@
 				}
 			}
 
-		private function Navigation($variableId, $value) {
+		private function Navigation($variableId, $value)
+			{
+			/* Wert 10 ist Stunde, 11 Tag, 12 Woche */
 			$lastValue = GetValue($variableId);
 			$variableIdOffset = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMEOFFSET, $this->categoryIdCommon);
 			$variableIdCount  = IPS_GetObjectIDByIdent(IPSRP_VAR_TIMECOUNT,  $this->categoryIdCommon);
@@ -180,12 +182,13 @@
 				IPS_Sleep(200);
 				SetValue($variableId, $lastValue);
 			}
+			echo "Neuer Wert ist ".GetValue($variableId)."\n";
 		}
 		
 		/**
 		 * @public
 		 *
-		 * Diese Funktion wird beim Auslösen eines Timers aufgerufen
+		 * Diese Funktion wird beim AuslÃ¶sen eines Timers aufgerufen
 		 *
 		 * @param integer $timerId ID des Timers
 		 */
@@ -212,6 +215,9 @@
 			$count  = GetValue($variableIdCount);
 			$return = mktime(0,0,0, date("m", time()), date("d",time()), date("Y",time())); 
 			switch(GetValue($variableIdPeriod)) {
+				case IPSRP_PERIOD_HOUR:
+					$return = strtotime('-'.($offset+$count).' hour');
+					break;
 				case IPSRP_PERIOD_DAY:
 					$return = strtotime('-'.($offset+$count-1).' day', $return);
 					break;
@@ -227,6 +233,7 @@
 				default:
 					trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
+			echo "Startzeit ".date("d.m.Y H:i",$return)."\n";
 			return $return;
 		}
 
@@ -236,8 +243,11 @@
 			$variableIdPeriod  = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 
 			$offset=abs(GetValue($variableIdOffset));
-			$return = mktime(23,59,59, date("m", time()), date("d",time()), date("Y",time())); 
+			$return = mktime(23,59,59, date("m", time()), date("d",time()), date("Y",time()));
 			switch(GetValue($variableIdPeriod)) {
+				case IPSRP_PERIOD_HOUR:
+					$return = strtotime('-'.($offset).' hour');
+					break;
 				case IPSRP_PERIOD_DAY:
 					$return = strtotime('-'.($offset).' day', $return);
 					break;
@@ -253,6 +263,7 @@
 				default:
 					trigger_error('Unknown Period '.$GetValue($variableIdPeriod));
 			}
+			echo "Endzeit ".date("d.m.Y H:i",$return)."\n";
 			return $return;
 		}
 
@@ -272,7 +283,8 @@
 			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 			$variableIdChartHTML = IPS_GetObjectIDByIdent(IPSRP_VAR_CHARTHTML,  $this->categoryIdCommon);
 
-			$periodList = array (IPSRP_PERIOD_DAY          => 'Tag',
+			$periodList = array (IPSRP_PERIOD_HOUR       => 'Stunde',
+										IPSRP_PERIOD_DAY          => 'Tag',
 			                     IPSRP_PERIOD_WEEK         => 'Woche',
 			                     IPSRP_PERIOD_MONTH        => 'Monat',
 			                     IPSRP_PERIOD_YEAR         => 'Jahr');
@@ -302,13 +314,13 @@
 			$CfgDaten['EndTime']          = $this->GetGraphEndTime();
 			$CfgDaten['RunMode']          = "file"; 	// file, script, popup
 
-			// Serienübergreifende Einstellung für das Laden von Werten
-			$CfgDaten['AggregatedValues']['HourValues']     = -1;      // ist der Zeitraum größer als X Tage werden Stundenwerte geladen
-			$CfgDaten['AggregatedValues']['DayValues']      = -1;      // ist der Zeitraum größer als X Tage werden Tageswerte geladen
-			$CfgDaten['AggregatedValues']['WeekValues']     = -1;      // ist der Zeitraum größer als X Tage werden Wochenwerte geladen
-			$CfgDaten['AggregatedValues']['MonthValues']    = -1;      // ist der Zeitraum größer als X Tage werden Monatswerte geladen
-			$CfgDaten['AggregatedValues']['YearValues']     = -1;      // ist der Zeitraum größer als X Tage werden Jahreswerte geladen
-			$CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;    // ist der Zeitraum größer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen	$CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
+			// SerienÃ¼bergreifende Einstellung fÃ¼r das Laden von Werten
+			$CfgDaten['AggregatedValues']['HourValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Stundenwerte geladen
+			$CfgDaten['AggregatedValues']['DayValues']      = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Tageswerte geladen
+			$CfgDaten['AggregatedValues']['WeekValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Wochenwerte geladen
+			$CfgDaten['AggregatedValues']['MonthValues']    = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Monatswerte geladen
+			$CfgDaten['AggregatedValues']['YearValues']     = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Jahreswerte geladen
+			$CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;    // ist der Zeitraum grÃ¶ÃŸer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen	$CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
 			$CfgDaten['AggregatedValues']['MixedMode']      = false;
 			$CfgDaten['title']['text']    = "Energieverbrauch";
 			$CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%";
@@ -319,6 +331,7 @@
 			//$CfgDaten['HighChart']['Height'] = 'Auto'; 		// in px
 
 			switch (GetValue($variableIdPeriod)) {
+				case IPSRP_PERIOD_HOUR:	 $aggType = 0;	break;
 				case IPSRP_PERIOD_DAY:   $aggType = 0; break;
 				case IPSRP_PERIOD_WEEK:  $aggType = 1; break;
 				case IPSRP_PERIOD_MONTH: $aggType = 1; break;
@@ -333,7 +346,7 @@
 				 * valueIdx geht vpn 0 bis x und valuedata ist die aktuelle config des kanals mit
 				 *    IPSRP_PROPERTY_NAME			Name
 				 *    IPSRP_PROPERTY_DISPLAY  	true,false ob Anzeige
-				 *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten für die Anzeige
+				 *		IPSRP_PROPERTY_VALUETYPE	ValueType Total, Detail, Other aber auch Einheiten fÃ¼r die Anzeige
 				 *
 				 */
 				$valueType = $valueData[IPSRP_PROPERTY_VALUETYPE];
@@ -459,7 +472,7 @@
 								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
 								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 								   {
-								   /* wenn ich index erhöhe mache ich mehrere pies */
+								   /* wenn ich index erhÃ¶he mache ich mehrere pies */
 									$serie['type'] = 'pie'; // $defserie['type']
 									$CfgDaten['series'][0]['ScaleFactor'] = 1;
 									$CfgDaten['series'][0]['name']        = $valueData[IPSRP_PROPERTY_NAME];
@@ -477,7 +490,7 @@
 						case IPSRP_TYPE_KWH:                         /* Graphendarstellung */
 							if (GetValue($variableIdValueDisplay))    /* im linken Auswahlfeld selektiert */
 								{
-								$yaxis=array();                        /* Einstellungen der yaxis für alle einzelne Graphen sammeln */
+								$yaxis=array();                        /* Einstellungen der yaxis fÃ¼r alle einzelne Graphen sammeln */
 								$i=0; $j=0;
 								//echo " ---wird angezeigt ...\n";
 								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
@@ -539,7 +552,7 @@
 									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
-						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'Â°C';
 							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
 							    		if ($opposite==false) { $opposite_=true; }
 								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
@@ -584,7 +597,7 @@
 						 			if ($unit==IPSRP_VALUETYPE_POWER)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Leistung";
-								     	/* in der Report_getconfiguration können unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
+								     	/* in der Report_getconfiguration kÃ¶nnen unterschiedliche Werte stehen, zB W und kW, hier vereinheitlichen */
 						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'kW';
 							    		$CfgDaten['yAxis'][$index]['opposite'] = $opposite;
 							    		if ($opposite==false) { $opposite_=true; }
@@ -603,7 +616,7 @@
 									{
 									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
-									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
+									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"mÂ³";
 									$serie['Id']          = $variableIdValueM3;
 									$serie['ScaleFactor'] = ($chartType==IPSRP_TYPE_EURO)?(IPSRP_GASRATE_KWH*IPSRP_GASRATE_EURO/100):1;
 									$serie['yAxis']       = $yAxisIdx;
@@ -617,7 +630,7 @@
 									{
 									$yAxisText = ($chartType==IPSRP_TYPE_EURO)?"Euro":"Gas / Wasser";
 									$yAxisIdx  = $this->GetYAxisIdx($CfgDaten, $yAxisText);
-									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"m³";
+									$serie['Unit']        = ($chartType==IPSRP_TYPE_EURO)?"Euro":"mÂ³";
 									$serie['Id']          = $variableIdValueM3;
 									$serie['ScaleFactor'] = ($chartType==IPSRP_TYPE_EURO)?(IPSRP_WATERRATE/100):1;
 									$serie['yAxis']       = $yAxisIdx;
@@ -657,7 +670,9 @@
 			// Create Chart with Config File
 			IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
 			$CfgDaten    = CheckCfgDaten($CfgDaten);
+			//print_r($CfgDaten);
 			$sConfig     = CreateConfigString($CfgDaten);            
+			//echo $sConfig;
 			$tmpFilename = CreateConfigFile($sConfig, 'IPSPowerControl');    
 			WriteContentWithFilename ($CfgDaten, $tmpFilename);      
 		}
