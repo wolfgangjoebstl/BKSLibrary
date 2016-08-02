@@ -3,9 +3,9 @@
    /**
     * @class IPSComponentSensor_Temperatur
     *
-    * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
+    * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object fÃ¼r einen Sensor implementiert.
     *
-    * @author Wolfgang Jöbstl
+    * @author Wolfgang JÃ¶bstl
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
     */
@@ -32,7 +32,7 @@
 		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
-		 * @param string $tempValue Wert für Beleuchtungs Änderung
+		 * @param string $tempValue Wert fÃ¼r Beleuchtungs Ã„nderung
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
@@ -47,12 +47,12 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
-			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "Temperatur Message Handler fÃ¼r VariableID : ".$variable." mit Wert : ".$value." \n";
 			
 			$log=new Temperature_Logging($variable);
 			$result=$log->Temperature_LogValue();
@@ -61,7 +61,7 @@
 			   {
 				//print_r($this);
 				//print_r($module);
-				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
+				//echo "-----Hier jetzt alles programmieren was bei VerÃ¤nderung passieren soll:\n";
 				$params= explode(';', $this->RemoteOID);
 				//print_r($params);
 				foreach ($params as $val)
@@ -85,7 +85,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -152,7 +152,7 @@
 
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["TemperatureLog"];
+		   $directory=$directories["LogDirectories"]["TemperatureLog"];
 	   	mkdirtree($directory);
 		   $filename=$directory.$this->variablename."_Temperature.csv";
 		   parent::__construct($filename,$vid);
@@ -160,9 +160,9 @@
 
 		function Temperature_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." °C";
+			$result=number_format(GetValue($this->variable),2,',','.')." Â°C";
 			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C\n";
+			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." Â°C\n";
 			
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$installedmodules=$moduleManager->GetInstalledModules();

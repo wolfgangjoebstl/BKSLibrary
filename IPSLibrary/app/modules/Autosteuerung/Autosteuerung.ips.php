@@ -669,6 +669,7 @@ function Status($params,$status,$simulate=false)
 
 	$result=Array();
 	$moduleParams2=Array();
+	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	
    $delayValue=0; $speak="Status"; $switchOID=0;
    
@@ -1057,8 +1058,8 @@ function statusRGB($params,$status,$simulate=false)
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
 
-	/* in result wird die Zusammenfassung für die Simulation gegeben */
-	$result=array();
+	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+	$result=array();  	/* in result wird die Zusammenfassung für die Simulation gegeben */
 
 	/* in parges werden alle Parameter erfasst und abgespeichert */
 	$parges=array();
@@ -1657,15 +1658,15 @@ class Autosteuerung
 					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
 					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
 		*/
-		$sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-		$sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-		echo "Sonnenauf/untergang ".date("H:i",$sunrise)." ".date("H:i",$sunset)." \n";
+		$this->sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		$this->sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
 		}
 
 	function isitdark()
 		{
 		$acttime=time();
-		if (($acttime>self::$sunset) || ($acttime<self::$sunrise))
+		if (($acttime>$this->sunset) || ($acttime<$this->sunrise))
 			{
 			return(true);
 			}
@@ -1678,7 +1679,7 @@ class Autosteuerung
 	function isitlight()
 		{
 		$acttime=time();
-		if (($acttime<self::$sunset) && ($acttime>self::$sunrise))
+		if (($acttime<$this->sunset) && ($acttime>$this->sunrise))
 			{
 			return(true);
 			}
