@@ -35,7 +35,7 @@ class RemoteAccess
 		{
 		$this->includefile='<?'."\n";
 
-		/* Beispiel für RemoteAccess_GetConfiguration()
+		/* Beispiel fÃ¼r RemoteAccess_GetConfiguration()
 		 *		"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
 		 *		"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
 		 */
@@ -45,7 +45,7 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * zum Include File werden die Variablen der Guthabensteuerung hinzugefügt
+	 * zum Include File werden die Variablen der Guthabensteuerung hinzugefÃ¼gt
 	 *
 	 */
 	public function add_Guthabensteuerung()
@@ -86,7 +86,7 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * zum Include File werden die Variablen der Stromablesung hinzugefügt
+	 * zum Include File werden die Variablen der Stromablesung hinzugefÃ¼gt
 	 *
 	 */
 	public function add_Amis()
@@ -134,7 +134,7 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * zum Include File werden die OIDs der Kategorien der Remote Server hinzugefügt
+	 * zum Include File werden die OIDs der Kategorien der Remote Server hinzugefÃ¼gt
 	 *
 	 *   legt function ROID_List() an
 	 *
@@ -249,7 +249,7 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * Profile aus den Remote Servern löschen
+	 * Profile aus den Remote Servern lÃ¶schen
 	 *
 	 *
 	 */
@@ -268,7 +268,7 @@ class RemoteAccess
 					}
 				else
 				   {
-					echo "  Profil ".$pname." existiert, wird gelöscht. \n";
+					echo "  Profil ".$pname." existiert, wird gelÃ¶scht. \n";
 					$rpc->IPS_DeleteVariableProfile($pname);
 				   }
 				}
@@ -299,7 +299,7 @@ class RemoteAccess
 					   case "Temperatur":
 					 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 					  		$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-					  		$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+					  		$rpc->IPS_SetVariableProfileText($pname,'',' Â°C');
 					  		break;
 						case "Humidity";
 					 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
@@ -309,7 +309,7 @@ class RemoteAccess
 						case "Switch";
 					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 					 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* GrÃ¼n */
 					  		break;
 						case "Contact";
 					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
@@ -398,9 +398,9 @@ class RemoteAccess
 		$includefile.='"'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($variableID).'", ';
 		$variabletyp=IPS_GetVariable($variableID);
-		//print_r($variabletyp);
-		//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
-		$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableValue"]["ValueType"].', ';
+		print_r($variabletyp);
+		//echo "Typ:".$variabletyp["VariableType"]."\n";
+		$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableType"].', ';
 		$includefile.="\n         ".'"Order" => "'.$count++.'", ';
 		$includefile.="\n             ".'	),'."\n";
 		}
@@ -413,8 +413,8 @@ class RemoteAccess
 		$includefile.="\n         ".'"Name" => "'.$name.'", ';
 		$variabletyp=IPS_GetVariable($variableID);
 		//print_r($variabletyp);
-		//echo "Typ:".$variabletyp["VariableValue"]["ValueType"]."\n";
-		$includefile.="\n         ".'"Typ"      => '.$variabletyp["VariableValue"]["ValueType"].', ';
+		//echo "Typ:".$variabletyp["VariableType"]."\n";
+		$includefile.="\n         ".'"Typ"      => '.$variabletyp["VariableType"].', ';
 		$includefile.="\n         ".'"Profile"  => "'.$variabletyp["VariableCustomProfile"].'", ';
 		$includefile.="\n         ".'"Order"    => "'.$count++.'", ';
 		$includefile.="\n             ".'	),'."\n";
