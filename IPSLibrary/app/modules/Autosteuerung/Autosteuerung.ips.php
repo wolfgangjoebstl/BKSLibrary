@@ -649,6 +649,7 @@ function Anwesenheit()
  *  DELAY:TIME      ein timer wird aktiviert, nach Ablauf wird der Schalter ausgeschaltet
  *  ENVELOPE:TIME   ein Statuswert wird so verschliffen, das nur selten tatsächlich der Schalter aktiviert wird
  *                      immer bei Wert 1 wird der timer neu aktiviert, ein Ablaufen des Timers führt zum Ausschalten
+ *  MONITOR:ON|OFF  die custom function monitorOnOff wird aufgerufen
  *
  *
  ************************************************************************************************/
@@ -821,6 +822,10 @@ function Status($params,$status,$simulate=false)
 		   case "SPEAK":
 				$speak=$befehl[1];
 				$result["SPEAK"]=$speak;
+				break;
+		   case "MONITOR":
+				$monitor=$befehl[1];
+				$result["MONITOR"]=$monitor;
 				break;
 		   case "MUTE":
 				$mute=$befehl[1];
@@ -1008,6 +1013,15 @@ function Status($params,$status,$simulate=false)
 	   	}
 		} // Ende isset Switchname
 
+	if (isset($monitor)==true)
+	   {
+      if (function_exists('monitorOnOff')==true)
+         {
+			monitorOnOff($result["MONITOR"])
+         }
+      }
+
+	/* Sprachausgabe durchführen, immer letzter befehl, sonst ist die Reaktion zu langsam */
   	if (($simulate==false) && (isset($mute)==false))
   	   {
 		if (isset($speak)==true)
