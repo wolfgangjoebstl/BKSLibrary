@@ -51,7 +51,7 @@ class OperationCenter
 		   $this->subnet=$subnet;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
    		$this->categoryId_RebootCtr  = CreateCategory('RebootCounter', $this->CategoryIdData, 210);
-         $this->mactable=$this->get_macipTable($subnet);
+         $this->mactable=$this->create_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
@@ -151,7 +151,7 @@ class OperationCenter
 	 * Initialisierung des OperationCenter Objektes
 	 *
 	 */
-	function get_macipTable($subnet,$printHostnames=false)
+	function create_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
 		$ergebnis=""; $print_table="";
@@ -168,7 +168,7 @@ class OperationCenter
 	   		$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
 		   	$result=trim(substr($result,strpos($result," "),100));
 				if ($result1=="10.0.255.255") { break; }
-				echo "*** ".$line." ** ".$result1." ** ".$subnetok." ** ".$subnet."\n";
+				//echo "*** ".$line." ** ".$result1." ** ".$subnetok." ** ".$subnet."\n";
 				if (strpos($result1,$subnetok)===false)
 				   {
 			   	}
@@ -224,6 +224,16 @@ class OperationCenter
 			}
 		}
 
+	/**
+	 * @public
+	 *
+	 * Initialisierung des OperationCenter Objektes
+	 *
+	 */
+	function get_macipTable($subnet,$printHostnames=false)
+		{
+		return($this->mactable);
+		}
 
 	/**
 	 * @public
@@ -366,7 +376,7 @@ class OperationCenter
 		$result=@file_get_contents($url);
 		if ($result===false) {
 		   echo "  -->Fehler beim holen der Webdatei. Noch einmal probieren. \n";
-			$result=file_get_contents($url);
+			$result=@file_get_contents($url);
 			if ($result===false) {
 			   echo "   Fehler beim holen der Webdatei. Abbruch. \n";
 			   break;
