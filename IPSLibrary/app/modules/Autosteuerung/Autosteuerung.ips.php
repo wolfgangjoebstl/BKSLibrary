@@ -1017,7 +1017,7 @@ function Status($params,$status,$simulate=false)
 	   {
       if (function_exists('monitorOnOff')==true)
          {
-			monitorOnOff($result["MONITOR"])
+			monitorOnOff($result["MONITOR"]);
          }
       }
 

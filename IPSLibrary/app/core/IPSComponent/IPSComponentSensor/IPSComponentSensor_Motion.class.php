@@ -226,9 +226,18 @@
 		function Motion_LogValue()
 			{
 			echo "Lets log motion".$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") ";
-			echo "mit Wert ".GetValueFormatted($this->variable)."\n";
-	   	IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
-			$resultf=GetValueFormatted($this->variable);
+  	   	$variabletyp=IPS_GetVariable($this->variable);
+           if ($variabletyp["VariableProfile"]!="")
+		   	{  /* Formattierung vorhanden */
+				echo " mit Wert ".GetValueFormatted($this->variable)."\n";
+		   	IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
+				}
+			else
+			   {
+				echo " mit Wert ".GetValue($this->variable)."\n";
+	   		IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValue($this->variable));
+			   }
+			//$resultf=GetValueFormatted($this->variable);
 			$result=GetValue($this->variable);
 			$delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
 			if ($result==true)

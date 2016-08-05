@@ -21,7 +21,7 @@
 	 * @ingroup IPSComponentLogger
 	 * @{
 	 *
-	 * Konfigurations File f�r IPSComponentLogger
+	 * Konfigurations File für IPSComponentLogger
 	 *
 	 * @file          IPSComponentLogger_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -33,11 +33,16 @@
 	function get_IPSComponentLoggerConfig()
 		{
 		return array(
-			"TemperatureLog"		=> "C:/Users/wolfg_000/Documents/iMacros/Macros/", 	/* Verzeichnis von iMacro */
-			"HumidityLog" 			=> "C:/Users/wolfg_000/Documents/iMacros/Downloads/", 	/* Verzeichnis von iMacro */
+		   "LogDirectories"    => array (
+			"TemperatureLog"		=> "C:/Scripts/Temperature/",
+			"HumidityLog" 			=> "C:/Scripts/Humidity/",
+			"MotionLog" 			=> "C:/Scripts/Motion/",
+										),
+			"LogConfigs"         => array (
+			   "DelayMotion"        => 1800,                            /* verzoegerte Bewegungswerte um Hüllkurve zu erzeugen und kurze Unterbrechungen auszufiltern */
+			                     ),
 			);
 		}
-
 	 
 
 	/** @}*/
