@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
@@ -114,8 +114,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	{
-	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
-	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+	echo "Verzeichnis fÃ¼r Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
+	echo "Verzeichnis fÃ¼r Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	
 	//print_r($phone);
 
@@ -125,10 +125,10 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	//IPS_SetScriptTimer($_IPS['SELF'], 1);
 	IPS_SetEventActive($tim2ID,true);
    echo "Exectimer gestartet, Auslesung beginnt ....\n";
-   echo "Timer täglich ID:".$tim1ID." und alle 150 Sekunden ID: ".$tim2ID."\n";
+   echo "Timer tÃ¤glich ID:".$tim1ID." und alle 150 Sekunden ID: ".$tim2ID."\n";
    //echo ADR_Programs."Mozilla Firefox/firefox.exe";
    
-	echo "\n\nGuthabensteuerung laeuft nun, da sie haendisch mit Aufruf dieses Scripts ausgelöst wurde.\n";
+	echo "\n\nGuthabensteuerung laeuft nun, da sie haendisch mit Aufruf dieses Scripts ausgelÃ¶st wurde.\n";
    //IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
 	}
 
@@ -140,6 +140,7 @@ if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 
 if ($_IPS['SENDER']=="Execute")
 	{
+	echo "\n-----------------------------------------------------\n";
 	echo "Historie der Guthaben und verbrauchten Datenvolumen.\n";
 	//$variableID=get_raincounterID();
 	$endtime=time();

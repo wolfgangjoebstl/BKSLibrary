@@ -22,10 +22,12 @@ class OperationCenter
 	var $categoryId_RebootCtr = 0;
 	var $archiveHandlerID     = 0;
 	var $subnet               = "";
+	var $log_OperationCenter  = array();
 	var $mactable             = array();
 	var $oc_Configuration     = array();
 	var $oc_Setup			     = array();
 	var $AllHostnames         = array();
+	var $installedModules     = array();
 	
 	/**
 	 * @public
@@ -46,13 +48,13 @@ class OperationCenter
 				//echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
 				$moduleManager = new IPSModuleManager('OperationCenter',$repository);
 				}
-			$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-		   $this->CategoryIdData=$CategoryIdData;
+		   $this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
+		   $this->installedModules = $moduleManager->GetInstalledModules();
 		   $this->subnet=$subnet;
    		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
    		$this->categoryId_RebootCtr  = CreateCategory('RebootCounter', $this->CategoryIdData, 210);
          $this->mactable=$this->create_macipTable($subnet);
-         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -984,8 +986,6 @@ class OperationCenter
 		echo "Insgesamt ".$count." Scripts kopiert.\n";
 		}
 
-
-
 	/*
 	 * Statusinfo von AllgemeineDefinitionen in einem File auf der Dropbox abspeichern
 	 *
@@ -1013,6 +1013,97 @@ class OperationCenter
 		if (!file_put_contents($filename, $event2)) {
       	  	throw new Exception('Create File '.$filename.' failed!');
     			}
+		}
+
+
+	/*
+	 * Statusinfo von Hardware, auslesen der Sensoren udn Alarm wenn laenger keine Aktion
+	 *
+	 */
+
+	function HardwareStatus()
+	   {
+		if (isset($this->installedModules["RemoteReadWrite"])==true)
+		   {
+		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+
+			$Homematic = HomematicList();
+			$FS20= FS20List();
+
+			foreach ($Homematic as $Key)
+				{
+				/* alle Homematic Temperaturwerte ausgeben */
+				if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   			{
+		      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+					   {
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			$FHT = FHTList();
+			foreach ($FHT as $Key)
+				{
+				/* alle FHT Temperaturwerte ausgeben */
+				if (isset($Key["COID"]["TemeratureVar"])==true)
+				   {
+	   	   	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+					   {
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
+
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Feuchtigkeitswerte ausgeben */
+				if (isset($Key["COID"]["HUMIDITY"])==true)
+	   			{
+	      		$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+					   {
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			$alleMotionWerte="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+			   	{
+		   		/* alle Bewegungsmelder */
+
+			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+   	   		$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+				   	{
+						echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+					   {
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+			}
 
 		}
 		

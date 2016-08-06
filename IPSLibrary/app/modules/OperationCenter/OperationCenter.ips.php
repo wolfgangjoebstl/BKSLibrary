@@ -177,6 +177,12 @@ if ($_IPS['SENDER']=="Execute")
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 	/********************************************************
+   	Erreichbarkeit Hardware
+	**********************************************************/
+
+	$OperationCenter->HardwareStatus();
+
+	/********************************************************
    	Externe Ip Adresse immer ermitteln
 	**********************************************************/
 	echo "\nExterne IP Adresse ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";

@@ -325,8 +325,8 @@
 			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
 				$log=new Motion_Logging($oid);
 				$class=$log->GetComponent($oid);
-				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)),10, 'EinAus', null,false);
-				SetValue($statusID,(integer)$status);
+				$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)),10, '~Motion', null,false);
+				SetValue($statusID,$status);
 				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)));
 				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
             SetValue($ereignisID,$EreignisVerlauf);

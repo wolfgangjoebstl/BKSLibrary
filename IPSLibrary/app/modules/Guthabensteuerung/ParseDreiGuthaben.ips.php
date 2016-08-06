@@ -34,8 +34,8 @@ echo "Category App ID            : ".$CategoryIdApp."\n";
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	
-	echo "Verzeichnis für Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
-	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+	echo "Verzeichnis fÃ¼r Macros     : ".$GuthabenAllgConfig["MacroDirectory"]."\n";
+	echo "Verzeichnis fÃ¼r Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	/* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
 
 /* Logging aktivieren
@@ -74,7 +74,7 @@ echo "Category App ID            : ".$CategoryIdApp."\n";
 
 if ($_IPS['SENDER']=="Execute")
 	   {
-		echo "Execute, Script wird ausgeführt:\n\n";
+		echo "Execute, Script wird ausgefÃ¼hrt:\n\n";
 		echo $ergebnis;
 	   $ergebnis1="";
 		foreach ($GuthabenConfig as $TelNummer)
@@ -85,7 +85,7 @@ if ($_IPS['SENDER']=="Execute")
 			$dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
 			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
 			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-			$ergebnis1.=$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),20)."  ".GetValue($dateID)." ".GetValue($udateID)."\n";
+			$ergebnis1.=$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".GetValue($udateID)."\n";
 			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
 			}
 		echo "\nAusgabe der letzten Aenderungen der ausgelesenen Files : \n";
@@ -114,7 +114,7 @@ if ($_IPS['SENDER']=="Execute")
 		   	{
 				$werteLogVolC = AC_GetLoggedValues($archiveHandlerID, $phone_VolumeCumm_ID, $starttime2, $endtime,0);
 				$werteLogVol = AC_GetLoggedValues($archiveHandlerID, $phone_Volume_ID, $starttime2, $endtime,0);
-	   		//$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tägliche Aggregation */
+	   		//$werteAggVol = AC_GetAggregatedValues($archiveHandlerID, $phone_Volume_ID, 1, $starttime2, $endtime,0); /* tÃ¤gliche Aggregation */
 			   $wertAlt=-1; $letzteZeile="";
 				foreach ($werteLogVol as $wert)
 			   	{
@@ -220,13 +220,16 @@ function parsetxtfile($verzeichnis, $nummer)
 	$handle = @fopen($verzeichnis."/report_dreiat_".$nummer.".txt", "r");
 	$result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
 	$result4g="";$result4v="";$result4f="";
+	$entgelte=false;
+	unset($tarif);
+	$postpaid=false;
 	if ($handle)
 		{
-		$entgelte=false;
    	while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
 			{
-			/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
-			
+			/* fÃ¤hrt den ganzen Textblock durch, Werte die frÃ¼her detektiert werden, werden ueberschrieben */
+
+			/********** zuerst den User ermitteln, steht hinter Willkommen */
       	//echo $buffer;
       	if(preg_match('/Willkommen/i',$buffer))
 	   		{
@@ -237,6 +240,7 @@ function parsetxtfile($verzeichnis, $nummer)
 					}
 				//echo "*********Ausgabe User : ".$result1."\n<br>";
 				}
+			/********** dann die rufnummer, am einfachsten zu finden mit der 0660er oder 0676er Kennung */
       	if(preg_match('/0660/i',$buffer))
 	   		{
 	   		$result2=trim($buffer);
@@ -248,23 +252,45 @@ function parsetxtfile($verzeichnis, $nummer)
 	   		//echo "*********Ausgabe Nummer : ".$result2."\n<br>";
 				}
 
-			/************************* Datum der Aktualisierung */
+			/********* dann das Datum der letzten Aktualisierung, zu finden nach Aktualisierung
+			 *         bei postpaid kommt noch der Begriff Abrechnung als Endemarkierung hinzu
+			 *
+			 *         in den nÃ¤chsten drei Zeilen wÃ¤re beim ersten mal der Tarif beschrieben, Zeilenvorschub auch rausnehmen
+			 *         beim zweiten mal wÃ¤re es das Guthaben
+			 *
+			 *********************/
       	if(preg_match('/Aktualisierung/i',$buffer))
 	   		{
 	   		$pos=strpos($buffer,"Aktualisierung");
 	   		$Ende=strpos($buffer,"\n");
-	   		if (strpos($buffer,"Abrechnung")!==false) { $Ende=strpos($buffer,"Abrechnung"); }
+	   		if (strpos($buffer,"Abrechnung")!==false)
+					{
+					$Ende=strpos($buffer,"Abrechnung");
+					$postpaid=true;
+					}
 				if ($pos!=false)
 					{
 					$result3=trim(substr($buffer,$pos+16,$Ende-$pos-16));
+					}
+				if (isset($tarif)==false)
+				   {
+				   /* nur beim ersten mal machen */
+					$tarif=json_encode(fgets($handle, 4096).fgets($handle, 4096).fgets($handle, 4096));
+					$order   = array('\r\n', '\n', '\r');
+					$replace = '';
+					$tarif1 = json_decode(str_replace($order, $replace, $tarif));
+					//echo "******".$result2." ".$tarif." \n";
+					//echo "******".$result2." ".$tarif1." \n";
 					}
 				//echo "*********Wert von : ".$result3." ".($pos+16). " ".($Ende-$pos-16)." \n<br>";
 				}
 			//echo "-----------------------------------------\n";
 			//echo $buffer;
 
-			/************************** Ermittlung verfügbares Datenguthaben */
-      	if(preg_match('/MB/i',$buffer) and ($result4g=="") and !preg_match('/MBit/i',$buffer))         /* verfügbares Datenvolumen, was gibt es grundsaetzlich, erstes MB, aber nicht MBit */
+			/************ Ermittlung verfÃ¼gbares Datenguthaben
+			 *            Suchen nach erstem Auftreten von MB, die MBit und den Roaming Disclaimer ausnehmen
+			 *****************/
+      	if(preg_match('/MB/i',$buffer) and ($result4g=="") and !preg_match('/MBit/i',$buffer) and !preg_match('/MB,/i',$buffer))         /* verfÃ¼gbares Datenvolumen, was gibt es grundsaetzlich, erstes MB, aber nicht MBit */
       	//if (preg_match('/MB/i',$buffer))
 	   		{
 				$result4g=trim(substr($buffer,$startdatenguthaben,200));
@@ -292,19 +318,19 @@ function parsetxtfile($verzeichnis, $nummer)
 	   		//echo "*********frei : ".$result4f."\n<br>";
 				}
 
-			/************************ Gültigkeit des Guthabens */
+			/************************ GÃ¼ltigkeit des Guthabens */
 			if (preg_match('/bis:/i',$buffer))
 	   		{
 				$result7=trim(substr($buffer,12,200));
-	   		//echo "*********Gültig bis : ".$result7."\n<br>";
+	   		//echo "*********GÃ¼ltig bis : ".$result7."\n<br>";
 				}
 			if (preg_match('/Abrechnungszeitraum:/i',$buffer))
 	   		{
 				$result7=trim(substr($buffer,strpos($buffer,"-")+1,200));
-	   		//echo "*********Gültig bis : ".$result7."\n<br>";
+	   		//echo "*********GÃ¼ltig bis : ".$result7."\n<br>";
 				}
 
-			/************************** Ermittlung des Guthabens, oder zusätzlicher Verbindungsentgelte */
+			/************************** Ermittlung des Guthabens, oder zusÃ¤tzlicher Verbindungsentgelte */
       	if (preg_match('/haben:/i',$buffer))
 	   		{
 	   		$pos=strpos($buffer,"haben:");
@@ -398,15 +424,28 @@ function parsetxtfile($verzeichnis, $nummer)
 
 
   		 //echo $result1.":".$result6."bis:".$result7.".\n";
-  		 if ($result6=="")
-			{
-		   $ergebnis=$nummer." ".str_pad("(".$result1.")",25)."  Guthaben:".$result5." Euro";
+  		 if ($postpaid==true)
+  		   {
+  		 	if ($result6=="")
+				{
+		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Rechnung:".$result5." Euro";
+				}
+		 	else
+		   	{
+		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)." ".$result6." bis ".$result7." Rechnung:".$result5." Euro";
+				}
+  		   }
+  		 else   /* prepaid tarif */
+  		   {
+  		 	if ($result6=="")
+				{
+		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Guthaben:".$result5." Euro";
+				}
+		 	else
+		   	{
+		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)." ".$result6." bis ".$result7." Guthaben:".$result5." Euro";
+				}
 			}
-		 else
-		   {
-		   $ergebnis=$nummer." ".str_pad("(".$result1.")",25)." ".$result6." bis ".$result7." Guthaben:".$result5." Euro";
-			}
-
    	 if (!feof($handle))
 		 	{
       	$ergebnis="Fehler: unerwarteter fgets() Fehlschlag\n";

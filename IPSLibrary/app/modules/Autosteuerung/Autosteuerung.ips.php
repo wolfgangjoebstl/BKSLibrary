@@ -837,12 +837,20 @@ function Status($params,$status,$simulate=false)
 				if ($cond=="LIGHT")
 				   {
 				   /* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-				   if ($auto->isitdark()) {unset($Switchname);}
+				   if ($auto->isitdark())
+						{
+						unset($SwitchName);
+						unset($speak);
+						}
 				   }
 				if ($cond=="DARK")
 				   {
 				   /* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-				   if ($auto->isitlight()) {unset($Switchname);}
+				   if ($auto->isitlight())
+						{
+						unset($SwitchName);
+						unset($speak);
+						}
 				   }
 				break;
 			}
