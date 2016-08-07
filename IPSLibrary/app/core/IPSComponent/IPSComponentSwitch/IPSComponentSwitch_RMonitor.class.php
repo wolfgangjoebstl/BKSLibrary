@@ -22,7 +22,7 @@
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-	class IPSComponentSwitch_Monitor extends IPSComponentSwitch {
+	class IPSComponentSwitch_RMonitor extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;
@@ -77,17 +77,26 @@
 		 * @param boolean $value Wert für Schalter
 		 * @param integer $onTime Zeit in Sekunden nach der der Aktor automatisch ausschalten soll
 		 */
-		public function SetState($value, $onTime=false) {
+		public function SetState($value, $onTime=false)
+			{
+			$remServer=array(
+				"BKS-Server"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
+						);
+			foreach ($remServer as $Server)
+				{
+				$rpc = new JSONRPC($Server);
+				}
 			if ($value==true)
 			   {
-			   /* Monitor einschalten, zwei Varianten zur Auswahl, Befehl monitor on funktioniert nicht immer */
-				IPS_ExecuteEX("c:/Scripts/nircmd.exe", "sendkeypress ctrl+alt+F1", false, false, 1);
-         	//IPS_ExecuteEX("c:/Scripts/nircmd.exe", "monitor on", true, false, 1);
+			   /* Monitor einschalten */
+				$monitor=array("Monitor" => "on");
+				$rpc->IPS_RunScriptEx(20996,$monitor);
 			   }
 			else
 			   {
 			   /* Monitor ausschalten */
-         	IPS_ExecuteEX("c:/Scripts/nircmd.exe", "monitor off", true, false, 1);
+				$monitor=array("Monitor" => "off");
+				$rpc->IPS_RunScriptEx(20996,$monitor);
 			   }
 		}
 
