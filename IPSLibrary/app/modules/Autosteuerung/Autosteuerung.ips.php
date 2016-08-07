@@ -646,11 +646,16 @@ function Anwesenheit()
  *
  *  komplizierte Algorithmen werden immer mit befehl:parameter eigegeben
  *
- *  DELAY:TIME      ein timer wird aktiviert, nach Ablauf wird der Schalter ausgeschaltet
+ *  OID:12345        Definition des zu schaltenden objektes
+ *  NAME:Wohnzimmer  Definition des zu schaltenden IPSLight Schlaters, Gruppe oder programms, wird automatisch der reihe nach auf
+ *                       	Vorhandensein überprüft
+ * 								Wenn keine Angabe wird der Status des Objektes (OnUpdate/OnChange) für den neuen Schaltzustand verwendet
+ *
+ *  DELAY:TIME      ein timer wird aktiviert, nach Ablauf von TIME (in Sekunden) wird der Schalter ausgeschaltet
  *  ENVELOPE:TIME   ein Statuswert wird so verschliffen, das nur selten tatsächlich der Schalter aktiviert wird
  *                      immer bei Wert 1 wird der timer neu aktiviert, ein Ablaufen des Timers führt zum Ausschalten
- *  MONITOR:ON|OFF  die custom function monitorOnOff wird aufgerufen
- *
+ *  MONITOR:ON|OFF|STATUS  die custom function monitorOnOff wird aufgerufen
+ *  MUTE:ON|OFF|STATUS
  *
  ************************************************************************************************/
 
@@ -673,6 +678,7 @@ function Status($params,$status,$simulate=false)
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	
    $delayValue=0; $speak="Status"; $switchOID=0;
+	$switch=true;  /* Erkennungsvariable ob wirklich geschalten werden soll, wird von if zb auf false gestellt */
    
    /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
 	 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
@@ -825,11 +831,43 @@ function Status($params,$status,$simulate=false)
 				break;
 		   case "MONITOR":
 				$monitor=$befehl[1];
-				$result["MONITOR"]=$monitor;
+				if ($monitor=="STATUS")
+				   {
+					if ($status==true)
+						{
+						$result="ON";
+						$result["MONITOR"]=$monitor;
+						}
+					else
+					   {
+						$result="OFF";
+						$result["MONITOR"]=$monitor;
+					   }
+				   }
+				else
+				   {
+					$result["MONITOR"]=$monitor;
+					}
 				break;
 		   case "MUTE":
 				$mute=$befehl[1];
-				$result["MUTE"]=$mute;
+				if ($mute=="STATUS")
+				   {
+					if ($status==true)
+						{
+						$mute="ON";
+						$result["MONITOR"]=$mute;
+						}
+					else
+					   {
+						$mute="OFF";
+						$result["MONITOR"]=$mute;
+					   }
+				   }
+				else
+				   {
+					$result["MUTE"]=$mute;
+					}
 				break;
 		   case "IF":
 				$cond=strtoupper($befehl[1]);
@@ -841,6 +879,8 @@ function Status($params,$status,$simulate=false)
 						{
 						unset($SwitchName);
 						unset($speak);
+						$switch=false;
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
 						}
 				   }
 				if ($cond=="DARK")
@@ -850,6 +890,8 @@ function Status($params,$status,$simulate=false)
 						{
 						unset($SwitchName);
 						unset($speak);
+						$switch=false;
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
 						}
 				   }
 				break;
@@ -916,7 +958,7 @@ function Status($params,$status,$simulate=false)
    					      {
 				   	  	   IPSLight_SetGroupByName($SwitchName,false);
 				   	  	   }
-			   		  	else
+	   				   if ($value_on=="TRUE")
 			   		  	   {
 			   	  		   IPSLight_SetGroupByName($SwitchName,true);
 			   	  	   	}
@@ -934,7 +976,7 @@ function Status($params,$status,$simulate=false)
    					      {
 				   	  	   IPSLight_SetGroupByName($SwitchName,false);
 				   	  	   }
-			   		  	else
+	   				   if ($value_off=="TRUE")
 			   		  	   {
 			   	  		   IPSLight_SetGroupByName($SwitchName,true);
 			   	  	   	}
@@ -962,7 +1004,7 @@ function Status($params,$status,$simulate=false)
   					      {
 		   		  	   IPSLight_SetSwitchByName($SwitchName,false);
 			   	  	   }
-			   	  	else
+  					   if ($value_on=="TRUE")
 			   	  	   {
 			    		   IPSLight_SetSwitchByName($SwitchName,true);
 							if (isset($levelValue)==true)
@@ -992,7 +1034,7 @@ function Status($params,$status,$simulate=false)
   					      {
 		   		  	   IPSLight_SetSwitchByName($SwitchName,false);
 		   		  	   }
-		   	  		else
+  					   if ($value_off=="TRUE")
 			   	  	   {
 			   	  	   IPSLight_SetSwitchByName($SwitchName,true);
 							if (isset($levelValue)==true)
@@ -1029,6 +1071,12 @@ function Status($params,$status,$simulate=false)
          }
       }
 
+	if (isset($result["OID"])==true)
+	   {
+	   /* Kein IPSLight Objekt sondern normales Objekt das gesetzt wird */
+	   
+	   }
+	   
 	/* Sprachausgabe durchführen, immer letzter befehl, sonst ist die Reaktion zu langsam */
   	if (($simulate==false) && (isset($mute)==false))
   	   {
@@ -1065,10 +1113,11 @@ function Status($params,$status,$simulate=false)
 	return $result;
 	}
 
-/*********************************************************************************************/
-
-
-/*********************************************************************************************/
+/*********************************************************************************************
+ *  StatusRGB
+ *
+ *
+ *********************************************************************************************/
 
 function statusRGB($params,$status,$simulate=false)
 	{
