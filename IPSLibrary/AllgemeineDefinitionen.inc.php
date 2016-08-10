@@ -121,7 +121,6 @@ function LogAnwesenheit_Configuration()
 			"VZB"    =>    30700,                                       /* Bewegungsmelder im VZ */
 			"AZB"    =>    54389,                                       /* Bewegungsmelder im AZ */
 			"WZB"    =>    11681,                                       /* Bewegungsmelder in der Kueche */
-			"ZZB"    =>    21581,                                       /* Bewegungsmelder im zentralen VZ */
 			"BZT"    =>    25921,                                       /* Kontakt Badezimmertuere */
 			"EGT"    =>    41275,                                       /* Kontakt Eingangstuere */
 		         );
