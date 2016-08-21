@@ -47,20 +47,24 @@ $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
 $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-echo "TTSAudioOutput:".IPS_GetProperty($id_sk1_tts,"TTSAudioOutput")."\n";
-echo "TTSEngine     :".IPS_GetProperty($id_sk1_tts,"TTSEngine")."\n\n";
-echo "DeviceName    :".IPS_GetProperty($id_sk1_ton,"DeviceName")."\n";
-echo "DeviceNum     :".IPS_GetProperty($id_sk1_ton,"DeviceNum")."\n";
-echo "UpdateInterval:".IPS_GetProperty($id_sk1_ton,"UpdateInterval")."\n";
-echo "DeviceDriver  :".IPS_GetProperty($id_sk1_ton,"DeviceDriver")."\n\n";
-echo "DeviceName    :".IPS_GetProperty($id_sk1_musik,"DeviceName")."\n";
-echo "DeviceNum     :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
-echo "UpdateInterval:".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
-echo "DeviceDriver  :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n";
-echo "Status        :".IPS_GetVariableIDByName("Status", $id_sk1_musik)."\n";
-echo "Lautstärke    :".IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik)."\n";
+echo "Text To Speech Werte\n";
+echo "  TTSAudioOutput:".IPS_GetProperty($id_sk1_tts,"TTSAudioOutput")."\n";
+echo "  TTSEngine     :".IPS_GetProperty($id_sk1_tts,"TTSEngine")."\n\n";
+echo "Tonausgabe Werte\n";
+echo "  DeviceName    :".IPS_GetProperty($id_sk1_ton,"DeviceName")."\n";
+echo "  DeviceNum     :".IPS_GetProperty($id_sk1_ton,"DeviceNum")."\n";
+echo "  UpdateInterval:".IPS_GetProperty($id_sk1_ton,"UpdateInterval")."\n";
+echo "  DeviceDriver  :".IPS_GetProperty($id_sk1_ton,"DeviceDriver")."\n\n";
+echo "Musikausgabe Werte\n";
+echo "  DeviceName    :".IPS_GetProperty($id_sk1_musik,"DeviceName")."\n";
+echo "  DeviceNum     :".IPS_GetProperty($id_sk1_musik,"DeviceNum")."\n";
+echo "  UpdateInterval:".IPS_GetProperty($id_sk1_musik,"UpdateInterval")."\n";
+echo "  DeviceDriver  :".IPS_GetProperty($id_sk1_musik,"DeviceDriver")."\n\n";
+echo "Einstellungen\n";
+echo "  Status        :".IPS_GetVariableIDByName("Status", $id_sk1_musik)."\n";
+echo "  Lautstärke    :".IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik)."\n";
 
-//echo "TTSAudioOutput :".IPS_GetProperty(50984,"TTSAudioOutput")."\n";
+//echo "TTSAudioOutput :".IPS_GetProperty($id_sk1_ton,"TTSAudioOutput")."\n";
 //echo "TTSEngine :".IPS_GetProperty(50984,"TTSEngine")."\n";
 
  //Fügen Sie hier Ihren Skriptquellcode ein
@@ -80,7 +84,7 @@ else
 
 /*
 
-Routine tts_play ist schon in ind er Library definiert
+Routine tts_play ist schon in der Library definiert
 
 Allerdings die Installation der Mediaplayer funktioniert noch nicht muessen haendisch angelegt werden
 

@@ -7,6 +7,8 @@ function tts_play($sk,$ansagetext,$ton,$modus)
  	{
 
   	/*
+  	   sk    soundkarte   es gibt immer nur 1, andere kann man implementioeren
+  	
 		modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
 		modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
 		modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
@@ -99,12 +101,13 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			   	//Lautstärke von Musik am Anfang speichern
 					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
       			$musik_status 			 = GetValueInteger($id_sk1_musik_status);
+					$ton_status           = GetValueInteger($id_sk1_ton_status);
 
-					if($modus == 2)
+					if($modus == 2)  /* Musik vom Mp3 Player pausieren */
 						{
-					   if($musik_status != 2)
+					   if($musik_status == 1)
 							{
-							//WAC_Play($id_sk1_musik);
+							/* Wenn Musik Wiedergabe auf Play steht dann auf Pause druecken */
 							WAC_Pause($id_sk1_musik);
 							}
 						}
@@ -124,9 +127,13 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 
 					if($ton != "" and $modus != 1)
 						{
-  	   				WAC_Stop($id_sk1_ton);
-		      		WAC_SetRepeat($id_sk1_ton, false);
-     					WAC_ClearPlaylist($id_sk1_ton);
+					   if($ton_status == 1)
+							{
+							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+	  	   				WAC_Stop($id_sk1_ton);
+			      		WAC_SetRepeat($id_sk1_ton, false);
+     						WAC_ClearPlaylist($id_sk1_ton);
+     						}
      					WAC_AddFile($id_sk1_ton,$wav[$ton]);
 		     			WAC_Play($id_sk1_ton);
 		            //solange in Schleife bleiben wie 1 = play
@@ -135,11 +142,16 @@ function tts_play($sk,$ansagetext,$ton,$modus)
   	   			  while ($status == 1)	$status = getvalue($id_sk1_ton_status);
 			 		  }
 
+					/* hier die Sprachausgabe vorbereiten */
 					if($ansagetext !="")
 						{
-  						WAC_Stop($id_sk1_ton);
-			      	WAC_SetRepeat($id_sk1_ton, false);
-			         WAC_ClearPlaylist($id_sk1_ton);
+					   if($ton_status == 1)
+							{
+							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+	  						WAC_Stop($id_sk1_ton);
+				      	WAC_SetRepeat($id_sk1_ton, false);
+				         WAC_ClearPlaylist($id_sk1_ton);
+				         }
    			      $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) echo "Error";
 		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
@@ -168,7 +180,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
       				}
 					if($modus == 2)
 						{
-				   	if($musik_status != 2)	WAC_Pause($id_sk1_musik);
+				   	if($musik_status == 1)
+							{
+							/* Wenn Musik Wiedergabe auf Play steht dann auf Pause druecken */
+							WAC_Pause($id_sk1_musik);
+							}
 				   	}
 					break;
 

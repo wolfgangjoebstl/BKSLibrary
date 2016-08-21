@@ -1039,6 +1039,8 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 		   {
 		   $IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
 			IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+			
+			$ServerStatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 		   $RemoteServer[$Name]["Name"]=$UrlAddress;
 			$rpc = new JSONRPC($UrlAddress);
@@ -1106,6 +1108,12 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 				echo "   Server : ".$url." Context: ".$context." nicht erreicht.\n";
 				SetValue($IPS_UpTimeID,0);
 				$RemoteServer[$Name]["Status"]=false;
+				if (GetValue($ServerStatusID)==true)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+					SetValue($ServerStatusID,false);
+		   		}
 				}
 			else
 			   {
@@ -1114,6 +1122,12 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 				echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 				SetValue($IPS_UpTimeID,$ServerUptime);
 				$RemoteServer[$Name]["Status"]=true;
+				if (GetValue($ServerStatusID)==false)
+				   {  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+					SetValue($ServerStatusID,true);
+		   		}
 				}
 		   }
 		}
