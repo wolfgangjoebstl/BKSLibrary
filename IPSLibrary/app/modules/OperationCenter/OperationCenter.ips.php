@@ -308,10 +308,11 @@ if ($_IPS['SENDER']=="Execute")
 
 		if (isset ($OperationCenterConfig['CAM']))
 			{
-			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
+			
+			/* möglicherweise ist der Archivstatus für die Variablen noch nicht definiert --> Teil des Install Prozesses */
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
-				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+				echo "Create Variable Structure für Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
 				$verzeichnis = $cam_config['FTPFOLDER'];
 				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
 				if ($cam_categoryId==false)
@@ -332,19 +333,9 @@ if ($_IPS['SENDER']=="Execute")
 				AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 
-				$count=100;
-				//echo "<ol>";
-
-				//print_r(dirToArray($verzeichnis));      /* zuviel fileeintraege, dauert zu lange */
-				//print_r(scandir($verzeichnis));
-				//print_r(dirToArray2($verzeichnis));       /* anzahl der neuen Dateiein einfach feststellen */
-
 				// Test, ob ein Verzeichnis angegeben wurde
 				if ( is_dir ( $verzeichnis ))
 					{
-					$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
-					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
-			
 	   		 	// öffnen des Verzeichnisses
    		 		if ( $handle = opendir($verzeichnis) )
 		    			{
@@ -362,14 +353,40 @@ if ($_IPS['SENDER']=="Execute")
 						echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
 						//echo $list."\n";
 						}
-					} /* ende ifisdir */
+					}
+				}  /* ende foreach */
+
+			/* eigentliche Zusammenräum Routine, siehe auch Timeraufrufe */
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+				{
+				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+				$verzeichnis = $cam_config['FTPFOLDER'];
+				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+				if ($cam_categoryId==false)
+				   {
+					$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+					IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+					IPS_SetParent($cam_categoryId,$CategoryIdData);
+					}
+				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+
+					$count=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);
+					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
+			
+
 				}  /* ende foreach */
 			}
 		}
 
 	/********************************************************
-   	Erreichbarkeit der Kameras ueberprüfen
-	**********************************************************/
+    *	Erreichbarkeit der Kameras ueberprüfen
+    *
+    * andere Routine als bei pingalldevices, es ist kein Sys_ping sondern direkter Webzugriff
+    *
+	 **********************************************************/
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -460,25 +477,6 @@ if ($_IPS['SENDER']=="Execute")
 		}
 
 	/********************************************************
-   	Sys Uptime ermitteln
-	**********************************************************/
-
-	$IPS_UpTimeID = CreateVariableByName($CategoryIdData, "IPS_UpTime", 1);
-	IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
-	SetValue($IPS_UpTimeID,IPS_GetUptime());
-
-	/********************************************************
-   	Die entfernten logserver auf Erreichbarkeit prüfen
-	**********************************************************/
-	
-	if (isset ($installedModules["RemoteAccess"]))
-		{
-		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-	
-	
-		}
-	
-	/********************************************************
    	Auswertung Router MR3420   curl
 	**********************************************************/
 
@@ -551,7 +549,8 @@ if ($_IPS['SENDER']=="Execute")
 				}
 			if ($router['TYP']=='MBRN3000')
 			   {
-				//$OperationCenter->write_routerdata_MBRN3000($router);   // keine logging Einträge machen
+				$RouterResult=$OperationCenter->write_routerdata_MBRN3000($router,true);   // keine logging Einträge machen, debug=false
+				print_r($RouterResult);
 				}
 			if ($router['TYP']=='RT1900ac')
 			   {
@@ -638,7 +637,7 @@ if ($_IPS['SENDER']=="Execute")
    	Sys Ping the Devices
 	**********************************************************/
 
-	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
+	SysPingAllDevices($OperationCenter,$log_OperationCenter);
 
 	echo "============================================================================================================\n";
 
@@ -666,31 +665,7 @@ if ($_IPS['SENDER']=="Execute")
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
 	*************************************************************************************/
 
-	$OperationCenter->FileStatus();
-
-	/************************************************************************************
-  	Überprüfen ob Wunderground noch funktioniert.
-	*************************************************************************************/
-	if (isset ($installedModules["IPSWeatherForcastAT"]))
-	   {
-	   echo "\nWunderground API überprüfen.\n";
-		IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-		IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
-		IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-		$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
-		IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
-		$urlContent = @Sys_GetURLContent($urlWunderground);
-		if ($urlContent===false)
-			{
-			echo "Wunderground Key ist defekt oder überlastet.\n";
-			}
-		else
-		   {
-		   echo "  -> APP ist okay !.\n";
-		   }
-		$api = @simplexml_load_string($urlContent);
-		//print_r($api);
-		}
+	//$OperationCenter->FileStatus();
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -797,27 +772,30 @@ if ($_IPS['SENDER']=="TimerEvent")
   				   	SetValue($WebCam_MotionID,false);
 					   }
 					}
-				}
-			if ($count>0)
-				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
-				}
-			else
-			   {
-			   $countlog=$OperationCenter->MoveLogs();
-			   if ($countlog>0)
+				if ($count>0)
 					{
-			   	IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
-			   	}
-			   }
+					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
+					}
+				else
+				   {
+				   $countlog=$OperationCenter->MoveLogs();
+				   if ($countlog>0)
+						{
+			   		IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+				   	}
+				   }
+				} /* Ende isset */
 	      break;
 	      
 	   case $tim3ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************
-		     Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
-			*********************************************************************************************/
+			 *
+			 * Router Auswertung, zuerst Imacro und danach die Files auswerten, Schritt für Schritt
+			 * Wird nur von tim1 gestartet und arbeitet das vom Router heruntergeladene File ab
+			 *
+			 *********************************************************************************************/
 			
 			$counter=GetValue($ScriptCounterID);
 			switch ($counter)
@@ -857,29 +835,39 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim4ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
 			/********************************************************
-	   	Einmal am Tag: Sys_Ping durchführen basierend auf ermittelter mactable
-			**********************************************************/
+	   	 *
+			 * Alle 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable
+			 *
+			 **********************************************************/
          SysPingAllDevices($OperationCenter,$log_OperationCenter);
 			break;
 	   case $tim5ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
 			/************************************************************************************
-	   	Einmal am 12.Tag des Monates: CyclicUpdate, alle Module automatisch updaten
-			*************************************************************************************/
+	   	 *
+			 * Einmal am 12.Tag des Monates: CyclicUpdate, alle Module automatisch updaten
+			 *
+			 *************************************************************************************/
 			CyclicUpdate();
 			break;
 	   case $tim6ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
 			/************************************************************************************
-	   	Alle Scripts auf ein Dropboxverzeichnis kopieren und wenn notwendig umbenennen
-			*************************************************************************************/
+	   	 *
+			 * Alle Scripts auf ein Dropboxverzeichnis kopieren und wenn notwendig umbenennen
+			 * Timer einmal am Tag
+			 *
+			 *************************************************************************************/
 			$OperationCenter->CopyScripts();
 			break;
 	   case $tim7ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
-	   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
-			*************************************************************************************/
+ 			 *
+			 * StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
+	   	 * Timer einmal am Tag um 3:50
+	   	 *
+			 *************************************************************************************/
 			$OperationCenter->FileStatus();
 			break;
 
@@ -903,11 +891,14 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 	$installedModules = $moduleManager->GetInstalledModules();
 	$CategoryIdData   = $moduleManager->GetModuleCategoryID('data');
 
-	echo "Subnet : ".$OperationCenter->subnet."\n";
+	echo "Sysping All Devices. Subnet : ".$OperationCenter->subnet."\n";
 	$subnet=$OperationCenter->subnet;
 	$OperationCenterConfig = $OperationCenter->oc_Configuration;
-	print_r($OperationCenterConfig);
-	
+	//print_r($OperationCenterConfig);
+
+	/************************************************************************************
+  	 * Erreichbarkeit IPCams
+	 *************************************************************************************/
 	if (isset ($installedModules["IPSCam"]))
 		{
 		$mactable=$OperationCenter->get_macipTable($subnet);
@@ -948,6 +939,9 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 			} /* Ende foreach */
 		}
 
+	/************************************************************************************
+  	 * Erreichbarkeit LED Ansteuerungs WLAN Geräte
+	 *************************************************************************************/
 	if (isset ($installedModules["LedAnsteuerung"]))
 		{
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
@@ -957,6 +951,9 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 		$OperationCenter->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
 		}
 
+	/************************************************************************************
+  	 * Erreichbarkeit Denon Receiver
+	 *************************************************************************************/
 	if (isset ($installedModules["DENONsteuerung"]))
 		{
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
@@ -965,8 +962,162 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 		$OperationCenter->device_ping($device_config, $device, $identifier);
 		}
 
+	/************************************************************************************
+  	 * Erreichbarkeit Router
+	 *************************************************************************************/
 	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+
+	/************************************************************************************
+  	 * Überprüfen ob Wunderground noch funktioniert.
+	 *************************************************************************************/
+	if (isset ($installedModules["IPSWeatherForcastAT"]))
+	   {
+	   echo "\nWunderground API überprüfen.\n";
+		IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+		IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
+		IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+		$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
+		IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
+		$urlContent = @Sys_GetURLContent($urlWunderground);
+		$ServerStatusID = CreateVariableByName($categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		if ($urlContent===false)
+			{
+			echo "Wunderground Key ist defekt oder überlastet.\n";
+			if (GetValue($ServerStatusID)==true)
+			   {  /* Statusänderung */
+				$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+				$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+				SetValue($ServerStatusID,false);
+		   	}
+			}
+		else
+		   {
+		   echo "  -> APP ist okay !.\n";
+			if (GetValue($ServerStatusID)==false)
+			   {  /* Statusänderung */
+				$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+				$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+				SetValue($ServerStatusID,true);
+		   	}
+		   }
+		$api = @simplexml_load_string($urlContent);
+		//print_r($api);
+		}
+
+	/********************************************************
+   	Sys Uptime lokaler Server ermitteln
+	**********************************************************/
+
+	echo "\nSind die RemoteAccess Server erreichbar ....\n";
+
+	$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
+	if ($Access_categoryId==false)
+		{
+		$Access_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+		IPS_SetName($Access_categoryId, "AccessServer"); // Kategorie benennen
+		IPS_SetParent($Access_categoryId,$CategoryIdData);
+		}
+	$IPS_UpTimeID = CreateVariableByName($Access_categoryId, IPS_GetName(0)."_IPS_UpTime", 1);
+	IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+	SetValue($IPS_UpTimeID,IPS_GetKernelStartTime());
+	echo "   Server : ".IPS_GetName(0)." zuletzt rebootet am: ".date("d.m H:i:s",GetValue($IPS_UpTimeID)).".\n";
+
+	/********************************************************
+   	Die entfernten logserver auf Erreichbarkeit prüfen
+	**********************************************************/
+
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetConfiguration();
+		$RemoteServer=array();
+
+		$method="IPS_GetName"; $params=array();
+
+		foreach ($remServer as $Name => $UrlAddress)
+		   {
+		   $IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+			IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+
+		   $RemoteServer[$Name]["Name"]=$UrlAddress;
+			$rpc = new JSONRPC($UrlAddress);
+			//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
+			$data = @parse_url($UrlAddress);
+			if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
+				throw new Exception("Invalid URL");
+			$url = $data['scheme']."://".$data['host'];
+			if(isset($data['port'])) $url .= ":".$data['port'];
+			if(isset($data['path'])) $url .= $data['path'];
+			if(isset($data['user']))
+				{
+				$username = $data['user'];
+				}
+			else
+				{
+				$username = "";
+				}
+			if(isset($data['pass']))
+			   {
+				$password = $data['pass'];
+				}
+			else
+				{
+				$password = "";
+				}
+			if (!is_scalar($method)) {
+					throw new Exception('Method name has no scalar value');
+				}
+			if (!is_array($params)) {
+					throw new Exception('Params must be given as array');
+				}
+			$id = round(fmod(microtime(true)*1000, 10000));
+			$params = array_values($params);
+			$strencode = function(&$item, $key) {
+			if ( is_string($item) )
+						$item = utf8_encode($item);
+					else if ( is_array($item) )
+						array_walk_recursive($item, $strencode);
+				};
+			array_walk_recursive($params, $strencode);
+			$request = Array(
+									"jsonrpc" => "2.0",
+									"method" => $method,
+									"params" => $params,
+									"id" => $id
+								);
+			$request = json_encode($request);
+			$header = "Content-type: application/json"."\r\n";
+			if(($username != "") || ($password != "")) {
+				$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+				}
+			$options = Array(
+						"http" => array (
+						"method"  => 'POST',
+						"header"  => $header,
+						"content" => $request
+										)
+							);
+			$context  = stream_context_create($options);
+
+			$response = @file_get_contents($url, false, $context);
+			if ($response===false)
+			   {
+				echo "   Server : ".$url." Context: ".$context." nicht erreicht.\n";
+				SetValue($IPS_UpTimeID,0);
+				$RemoteServer[$Name]["Status"]=false;
+				}
+			else
+			   {
+			   $ServerName=$rpc->IPS_GetName(0);
+			   $ServerUptime=$rpc->IPS_GetKernelStartTime();
+				echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+				SetValue($IPS_UpTimeID,$ServerUptime);
+				$RemoteServer[$Name]["Status"]=true;
+				}
+		   }
+		}
+
 	}
 
 /****************************************************/

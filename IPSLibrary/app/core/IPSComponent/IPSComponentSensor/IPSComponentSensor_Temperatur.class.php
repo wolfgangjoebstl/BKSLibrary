@@ -34,12 +34,13 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
+		public function __construct($var1=null, $lightObject=null, $lightValue=null)
+			{
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
-			$this->remServer    = RemoteAccess_GetConfiguration();
-		}
+			$this->remServer	  = RemoteAccessServerTable();
+			}
 	
 		/**
 		 * @public
@@ -70,12 +71,15 @@
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
 	            if (count($para)==2)
    	            {
-						$Server=$this->remServer[$para[0]];
-						//echo "Server : ".$Server."\n";
-						$rpc = new JSONRPC($Server);
-						$roid=(integer)$para[1];
-						//echo "Remote OID: ".$roid."\n";
-						$rpc->SetValue($roid, $value);
+						$Server=$this->remServer[$para[0]]["Url"];
+						if ($this->remServer[$para[0]]["Status"]==true)
+						   {
+							//echo "Server : ".$Server."\n";
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Remote OID: ".$roid."\n";
+							$rpc->SetValue($roid, $value);
+							}
 						}
 					}
 				}

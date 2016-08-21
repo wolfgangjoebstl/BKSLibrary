@@ -32,13 +32,14 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
+		public function __construct($var1=null, $lightObject=null, $lightValue=null)
+			{
 		   //echo "Build Motion Sensor with ".$var1.".\n";
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
-			$this->remServer    = RemoteAccess_GetConfiguration();
-		}
+			$this->remServer	  = RemoteAccessServerTable();
+			}
 	
 		/**
 		 * @public
@@ -50,7 +51,8 @@
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleSensor $module){
+		public function HandleEvent($variable, $value, IPSModuleSensor $module)
+			{
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 	   	IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.' mit Wert '.$value);
 
@@ -67,16 +69,19 @@
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
             	if (count($para)==2)
                	{
-						$Server=$this->remServer[$para[0]];
-						//echo "Server : ".$Server."\n";
-						$rpc = new JSONRPC($Server);
-						$roid=(integer)$para[1];
-						//echo "Remote OID: ".$roid."\n";
-						$rpc->SetValue($roid, $value);
+						$Server=$this->remServer[$para[0]]["Url"];
+						if ($this->remServer[$para[0]]["Status"]==true)
+						   {
+							//echo "Server : ".$Server."\n";
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Remote OID: ".$roid."\n";
+							$rpc->SetValue($roid, $value);
+							}
 						}
 					}
 			   }
-		}
+			}
 
 		/**
 		 * @public

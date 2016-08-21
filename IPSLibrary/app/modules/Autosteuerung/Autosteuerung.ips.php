@@ -898,7 +898,7 @@ function Status($params,$status,$simulate=false)
 			}
 		} /* ende foreach */
 
-	if (isset($SwitchName)==true)
+	if ((isset($SwitchName)==true) && ($switch==true))
 		{
 		if ($status===true)
 			{

@@ -170,7 +170,7 @@ class OperationCenter
 	   		$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
 		   	$result=trim(substr($result,strpos($result," "),100));
 				if ($result1=="10.0.255.255") { break; }
-				//echo "*** ".$line." ** ".$result1." ** ".$subnetok." ** ".$subnet."\n";
+				//echo "*** ".$line." Result:  ".$result1." SubnetOk: ".$subnetok." SubNet: ".$subnet."\n";
 				if (strpos($result1,$subnetok)===false)
 				   {
 			   	}
@@ -360,8 +360,9 @@ class OperationCenter
 	 * Werte werden direkt aus dem Router ausgelesen
 	 *
 	 */
-	function write_routerdata_MBRN3000($router)
+	function write_routerdata_MBRN3000($router, $debug=false)
 		{
+		$ergebnis=array();
 		echo "  Daten vom Router ".$router['NAME']. " mit IP Adresse ".$router["IPADRESSE"]." einsammeln. Es werden die Tageswerte von gestern erfasst.\n";
 		//$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
 		$Router_Adresse = "http://".$router["USER"].":".$router["PASSWORD"]."@".$router["IPADRESSE"]."/";
@@ -385,6 +386,7 @@ class OperationCenter
 			   }
 	  		}
 		$result=strip_tags($result);
+		//#echo $result;
 		$pos=strpos($result,"Period");
 		if ($pos!=false)
 			{
@@ -424,7 +426,8 @@ class OperationCenter
 		   $pos=strpos($result2,":");
 			$conntime=(int)substr($result2,0,$pos);
 			$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
-			SetValue($ConnTimeID,$conntime);
+			if ($debug==false) { SetValue($ConnTimeID,$conntime); }
+			$ergebnis["ConnectionTime"]=$conntime;
 			echo "    Connection Time in Minuten heute bisher : ".$conntime." sind ".($conntime/60)." Stunden.\n";
 
 			$result1=$result1.";".$result2;    /* Yesterday Connection Time */
@@ -447,7 +450,8 @@ class OperationCenter
 			//	}
 			$Upload= (float) $result2;
 
-			SetValue($UploadID,$Upload);
+			if ($debug==false) { SetValue($UploadID,$Upload); }
+			$ergebnis["Upload"]=$Upload;
 			echo "     Upload   Datenvolumen gestern ".$Upload." Mbyte \n";;
 
 			$result1=$result1.";".$result2;    /* Yesterday Upload */
@@ -465,7 +469,8 @@ class OperationCenter
 			$result2=trim(substr($result,10,30));
 		   $pos=strpos($result2,".");
 			$Download= (float) $result2;
-			SetValue($DownloadID,$Download);
+			if ($debug==false) { SetValue($DownloadID,$Download); }
+			$ergebnis["Download"]=$Download;
 			echo "     Download Datenvolumen gestern ".$Download." MByte \n";
 			
 			if (($TotalID=@IPS_GetVariableIDByName("Total",$router_categoryId))==false)
@@ -476,8 +481,16 @@ class OperationCenter
 				AC_SetAggregationType($this->archiveHandlerID,$DownloadID,0);
 				IPS_ApplyChanges($this->archiveHandlerID);
 				}
-			SetValue($TotalID,($Download+$Upload));
+			if ($debug==false) { SetValue($TotalID,($Download+$Upload)); }
+			$ergebnis["Total"]=($Download+$Upload);
+			echo "     Gesamt Datenvolumen gestern ".($Download+$Upload)." MByte \n";
 			}
+		else
+		   {
+		   echo "Daten vom Router sind im falschen Format. Bitte überprüfen ob TrafficMeter am Router aktiviert ist.\n";
+			$ergebnis["Fehler"]="Daten vom Router sind im falschen Format";
+			}
+		return $ergebnis;
 		}
 
 	/*
@@ -1017,7 +1030,7 @@ class OperationCenter
 
 
 	/*
-	 * Statusinfo von Hardware, auslesen der Sensoren udn Alarm wenn laenger keine Aktion
+	 * Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion
 	 *
 	 */
 
