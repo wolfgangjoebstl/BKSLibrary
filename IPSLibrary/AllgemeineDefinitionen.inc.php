@@ -2049,7 +2049,52 @@ function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 		}
 
 	}
-	
+
+/*****************************************************************
+ *
+ * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+ * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
+ *
+ *****************************************************************************/
+
+function RemoteAccessServerTable()
+	{
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$result=$moduleManager->GetInstalledModules();
+			if (isset ($result["OperationCenter"]))
+				{
+				$moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
+				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
+				$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
+	        	$remServer=RemoteAccess_GetConfiguration();
+				$RemoteServer=array();
+				foreach ($remServer as $Name => $UrlAddress)
+				   {
+			   	$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+			   	$RemoteServer[$Name]["Url"]=$UrlAddress;
+			   	$RemoteServer[$Name]["Name"]=$Name;
+				   if (GetValue($IPS_UpTimeID)==0)
+				      {
+						$RemoteServer[$Name]["Status"]=false;
+		   	   	}
+				   else
+				      {
+						$RemoteServer[$Name]["Status"]=true;
+		   		   }
+					}
+				}
+			else
+			   {
+				foreach ($remServer as $Name => $UrlAddress)
+				   {
+			   	$RemoteServer[$Name]["Url"]=$UrlAddress;
+			   	$RemoteServer[$Name]["Name"]=$Name;
+					$RemoteServer[$Name]["Status"]=true;
+					}
+			   }
+	return($RemoteServer);
+	}
+
 /******************************************************************/
 
 function HomematicFehlermeldungen()
