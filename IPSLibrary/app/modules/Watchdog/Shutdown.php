@@ -1,12 +1,14 @@
 <?
 
- // Parent-ID der Kategorie ermitteln
-$parentID = IPS_GetObject($IPS_SELF);
-$parentID = $parentID['ParentID'];
+			echo "Selber Ausschalten und PC herunterfahren.\n";
+			$handle2=fopen("c:/scripts/process_self_shutdown.bat","w");
+			fwrite($handle2,'net stop IPSServer');
+			fwrite($handle2,"\r\n");
+			fwrite($handle2,'shutdown');
+			fwrite($handle2,"\r\n");
+			fclose($handle2);
+			//IPS_ExecuteEx("c:/scripts/process_self_shutdown.bat","", true, false,1);
 
-// ID der Skripte ermitteln
-$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
 
- IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'stop'));
 
 ?>

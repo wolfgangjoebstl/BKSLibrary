@@ -65,7 +65,8 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-
+$config = IPS_GetConfiguration(43851);
+echo $config;
 
 
 

@@ -119,7 +119,7 @@ echo "Archive Handler ueberpruefen, wurde notwendig bei Update auf IPS 4.0 \n";
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 echo "Archive Handler OID : ".$archiveHandlerID." und Name : ".IPS_GetName($archiveHandlerID)."\n";
 
-if (true)
+if (false)
 {
 
 
