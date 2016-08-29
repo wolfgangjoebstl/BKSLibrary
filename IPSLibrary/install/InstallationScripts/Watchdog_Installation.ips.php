@@ -34,7 +34,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Watchdog');
-	echo "\nSprachsteuerung Version : ".$ergebnis;
+	echo "\nWatchdog Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -65,9 +65,46 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$config = IPS_GetConfiguration(43851);
+	//Alle Modulnamen mit GUID ausgeben
+	foreach(IPS_GetModuleList() as $guid)
+		{
+    	$module = IPS_GetModule($guid);
+    	$pair[$module['ModuleName']] = $guid;
+		}
+	ksort($pair);
+	foreach($pair as $key=>$guid)
+		{
+    	//echo $key." = ".$guid."\n";
+		}
+
+$name=IPS_GetModule("{ED573B53-8991-4866-B28C-CBE44C59A2DA}");
+$oid=IPS_GetInstanceListByModuleID("{ED573B53-8991-4866-B28C-CBE44C59A2DA}")["0"];
+echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid." und Name : ".IPS_GetName($oid)."\n";
+
+$config = IPS_GetConfiguration($oid);
+echo "Konfiguration vorher: \n";
 echo $config;
 
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
+	$scriptIdStopWD     = IPS_GetScriptIDByName('StopIPSWatchDog', $CategoryIdApp);
+	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
+	echo "StartIPSWatchDog hat die ScriptID ".$scriptIdStartWD." \n";
+	echo "StopIPSWatchDog hat die ScriptID ".$scriptIdStopWD." \n";
 
+	IPS_SetConfiguration($oid, '{"ShutdownScript":'.$scriptIdStopWD.',"StartupScript":'.$scriptIdStartWD.'}');
+	IPS_ApplyChanges($oid);
+
+/*
+ShutdownScript 	integer 	0
+StartupScript 	integer 	0
+StatusEvents 	string 	[]
+WatchdogScript 	integer 	0
+*/
+
+$config = IPS_GetConfiguration($oid);
+echo "Konfiguration nachhher: \n";
+echo $config;
 
 ?>

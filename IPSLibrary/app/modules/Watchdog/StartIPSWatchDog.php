@@ -7,7 +7,7 @@
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-	echo "Logspeicher vribereiten.\n";
+	echo "Logspeicher vorbereiten.\n";
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
@@ -23,25 +23,23 @@
 
 	IPS_EXECUTEEX("C:/IP-Symcon/IPSWatchDog.exe","",true,false,1);   /* Watchdog starten */
 
+ 	// Parent-ID der Kategorie ermitteln
+	$parentID = IPS_GetObject($IPS_SELF);
+	$parentID = $parentID['ParentID'];
 
+	// ID der Skripte ermitteln
+	$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
+	$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
 
-SetValue(27651,date("d.m.y H:i:s")." : Reboot PC oder IPS ");
-IPS_RunScript(48195);
-
- // Parent-ID der Kategorie ermitteln
-$parentID = IPS_GetObject($IPS_SELF);
-$parentID = $parentID['ParentID'];
-
-// ID der Skripte ermitteln
-$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
-$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
-
- IPS_RunScript($IWDAliveFileSkriptScID);
- IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
+	IPS_RunScript($IWDAliveFileSkriptScID);
+ 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
+ 
+ 
  
 writeLogEvent("Autostart (Firefox)");
 
 IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,1);
+//IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,1);
 writeLogEvent("Autostart (VMware)");
 
 //if (GetValueBoolean(46719))
