@@ -22,7 +22,75 @@
 	$log_OperationCenter->LogMessage('Lokaler Server wird hochgefahren');
 	$log_OperationCenter->LogNachrichten('Lokaler Server wird hochgefahren');
 
-	$startWD=false;
+	/********************************************************************
+	 *
+	 * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+	 *
+	 **********************************************************************/
+
+	$startWD=true; /* also wir wollen ihn starten, ausser es spricht etwas dagegegen */
+	$startVM=true;
+	
+	$result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
+
+	$trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
+	$result = strtr($result,$trans);
+	$handle=fopen("c:/scripts/process.txt","w");
+	fwrite($handle,$result);
+	fclose($handle);
+
+	$ergebnis=explode("\x0D",$result);
+	foreach ($ergebnis as &$resultvalue)
+		{
+		$value=$resultvalue;
+		//echo $value;
+		$resultvalue=array();
+		$resultvalue['Commandline']=trim(substr($value,0,526));
+		$resultvalue['CSName']=rtrim(substr($value,526,8));
+		$resultvalue['Description']=rtrim(substr($value,534,30));
+		$resultvalue['ExecutablePath']=rtrim(substr($value,564,94));
+		$resultvalue['ExecutionState']=rtrim(substr($value,662,16));
+		$resultvalue['Handle']=rtrim(substr($value,678,8));
+		$resultvalue['HandleCount']=rtrim(substr($value,686,13));
+		$resultvalue['InstallDate']=rtrim(substr($value,699,13));
+		}
+	unset($resultvalue);
+
+	$LineProcesses="";
+	$processes=array();
+	foreach ($ergebnis as $valueline)
+		{
+		echo $valueline['Commandline'];
+	   if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
+	      {
+	      echo "****\n";
+	      $process=$valueline['ExecutablePath'];
+	      $pos=strrpos($process,'\\');
+	      $process=substr($process,$pos+1,100);
+	      if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="SMSvcHost.exe")   )
+	         {
+	         }
+	      else
+	         {
+	         if ($process=="IPSWatchDog.exe")
+					{
+					$startWD=false;
+					echo "Prozess IPSWatchdog.exe läuft bereits.\n";
+					}
+	         if ($process=="vmplayer.exe")
+					{
+					$startVM=false;
+					echo "Prozess vmplayer.exe läuft bereits.\n";
+					}
+		      //echo $process."  Pos : ".$pos."  \n";
+				//$processes.=$valueline['ExecutablePath']."\n";
+				$LineProcesses.=$process.",";
+				$processes[]=$process;
+				}
+			}
+		}
+
+	$IWDexe=false;
 	$verzeichnis='C:/IP-Symcon/';
 	if ( is_dir ( $verzeichnis ))
 		{
@@ -37,7 +105,7 @@
             	if ($file == "IPSWatchDog.exe")
 						 {
 						 echo "IWD Watchdog bereits installiert.\n";
-						 $startWD=true;
+						 $IWDexe=true;
 						 }
             	//echo $file."\n";
          		}
@@ -49,6 +117,7 @@
 	   {
 	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 		}
+	if ($IWDexe==false) { $startWD=false; }
 
 	$handle2=fopen("c:/scripts/process_username.bat","w");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
@@ -77,8 +146,12 @@
 		IPS_RunScript($IWDAliveFileSkriptScID);
 	 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
 		}
+	else
+	   {
+	   echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
+	   }
 
-	$startVM=false;
+	$VMexe=false;
 	$verzeichnis='C:/Program Files (x86)/VMware/VMware Player/';
 	if ( is_dir ( $verzeichnis ))
 		{
@@ -93,7 +166,7 @@
             	if ($file == "vmplayer.exe")
 						 {
 						 echo "VMware Player bereits installiert.\n";
-						 $startVM=true;
+						 $VMexe=true;
 						 }
             	//echo $file."\n";
          		}
@@ -105,8 +178,9 @@
 	   {
 	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 		}
+	if ($VMexe==false) { $startVM=false; }
 
-
+	$vxdAvail=false;
 	$verzeichnis='c:/Scripts/Windows 7 IPS/';
 	if ( is_dir ( $verzeichnis ))
 		{
@@ -118,11 +192,12 @@
 				$dateityp=filetype( $verzeichnis.$file );
             if ($dateityp == "file")
             	{
-            	if ($file == "vmplayer.exe")
+				 	//echo "-->".$file."\n";
+               if ( (strpos($file,".vmx") > 0 ) and (strpos($file,".vmxf") === false) )
 						 {
-						 echo "VMware Player bereits installiert.\n";
+						 echo $file."\n";
+					 	 $vxdAvail=true;
 						 }
-            	echo $file."\n";
          		}
       	  	} /* Ende while */
 	     	closedir($handle);
@@ -132,11 +207,30 @@
 	   {
 	   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 		}
+	if ($vxdAvail=false)
+	   {
+	   echo "Keine Dateien mit der Erweiterung .vmx vorhanden.\n";
+	   }
+	if ($vxdAvail==false) { $startVM=false; }
 
+	if ($startVM == true)
+	   {
+		/*********************************************************************/
+		writeLogEvent("Autostart (VMPlayer)");
+		IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,-1);
+		}
+	else
+	   {
+	   echo "vmplayer.exe muss daher nicht erneut gestartet werden.\n";
+	   }
 
-	IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,-1);
+	echo $LineProcesses;
+	sort($processes);
+	print_r($processes);
 
-	writeLogEvent("Autostart (VMware)");
+	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/svc", true, true);
+	echo $result;
+
 
 //if (GetValueBoolean(46719))
 	   	{
@@ -148,7 +242,7 @@
 			//fwrite($handle2,"pause\r\n");
 			fclose($handle2);
 			IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, false,-1);
-			IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);
+			//IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);
 			writeLogEvent("Autostart (iTunes)");
 			}
 
@@ -162,7 +256,7 @@
 			//fwrite($handle2,"pause\r\n");
 			fclose($handle2);
 			IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, false,-1);
-			IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
+			//IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
 			writeLogEvent("Autostart (SOAP)");
 			}
 /* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
@@ -172,7 +266,7 @@
 	writeLogEvent("Autostart (Firefox)");
 
 
-IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
+//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
 //IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
 /* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
 
