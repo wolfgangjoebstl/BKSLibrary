@@ -30,63 +30,51 @@
 
 	$startWD=true; /* also wir wollen ihn starten, ausser es spricht etwas dagegegen */
 	$startVM=true;
+	$startIT=true;
+
+	$processes=getProcessList();
+	sort($processes);
+	//print_r($processes);
 	
-	$result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
-
-	$trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
-	$result = strtr($result,$trans);
-	$handle=fopen("c:/scripts/process.txt","w");
-	fwrite($handle,$result);
-	fclose($handle);
-
-	$ergebnis=explode("\x0D",$result);
-	foreach ($ergebnis as &$resultvalue)
+	foreach ($processes as $process)
 		{
-		$value=$resultvalue;
-		//echo $value;
-		$resultvalue=array();
-		$resultvalue['Commandline']=trim(substr($value,0,526));
-		$resultvalue['CSName']=rtrim(substr($value,526,8));
-		$resultvalue['Description']=rtrim(substr($value,534,30));
-		$resultvalue['ExecutablePath']=rtrim(substr($value,564,94));
-		$resultvalue['ExecutionState']=rtrim(substr($value,662,16));
-		$resultvalue['Handle']=rtrim(substr($value,678,8));
-		$resultvalue['HandleCount']=rtrim(substr($value,686,13));
-		$resultvalue['InstallDate']=rtrim(substr($value,699,13));
+		//echo "***  ".$process."\n";
+      if ($process=="IPSWatchDog.exe")
+			{
+			$startWD=false;
+			echo "Prozess IPSWatchdog.exe läuft bereits.\n";
+			}
+       if ($process=="vmplayer.exe")
+			{
+			$startVM=false;
+			echo "Prozess vmplayer.exe läuft bereits.\n";
+			}
+       if ($process=="itunes.exe")
+			{
+			$startIT=false;
+			echo "Prozess itunes.exe läuft bereits.\n";
+			}
 		}
-	unset($resultvalue);
-
-	$LineProcesses="";
-	$processes=array();
-	foreach ($ergebnis as $valueline)
+		
+	$processes=getTaskList();
+	sort($processes);
+	foreach ($processes as $process)
 		{
-		echo $valueline['Commandline'];
-	   if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
-	      {
-	      echo "****\n";
-	      $process=$valueline['ExecutablePath'];
-	      $pos=strrpos($process,'\\');
-	      $process=substr($process,$pos+1,100);
-	      if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="SMSvcHost.exe")   )
-	         {
-	         }
-	      else
-	         {
-	         if ($process=="IPSWatchDog.exe")
-					{
-					$startWD=false;
-					echo "Prozess IPSWatchdog.exe läuft bereits.\n";
-					}
-	         if ($process=="vmplayer.exe")
-					{
-					$startVM=false;
-					echo "Prozess vmplayer.exe läuft bereits.\n";
-					}
-		      //echo $process."  Pos : ".$pos."  \n";
-				//$processes.=$valueline['ExecutablePath']."\n";
-				$LineProcesses.=$process.",";
-				$processes[]=$process;
-				}
+		//echo "*** \"".$process."\"\n";
+      if ($process=="IPSWatchDog.exe")
+			{
+			$startWD=false;
+			echo "Prozess IPSWatchdog.exe läuft bereits.\n";
+			}
+       if ($process=="vmplayer.exe")
+			{
+			$startVM=false;
+			echo "Prozess vmplayer.exe läuft bereits.\n";
+			}
+       if ($process=="iTunes.exe")
+			{
+			$startIT=false;
+			echo "Prozess iTunes.exe läuft bereits.\n";
 			}
 		}
 
@@ -224,13 +212,12 @@
 	   echo "vmplayer.exe muss daher nicht erneut gestartet werden.\n";
 	   }
 
-	echo $LineProcesses;
-	sort($processes);
-	print_r($processes);
 
-	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/svc", true, true);
+
+
+
+	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/APPS", true, true);
 	echo $result;
-
 
 //if (GetValueBoolean(46719))
 	   	{
@@ -241,8 +228,8 @@
 			fwrite($handle2,"\r\n");
 			//fwrite($handle2,"pause\r\n");
 			fclose($handle2);
-			IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, false,-1);
-			//IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);
+			IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
+			IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
 			writeLogEvent("Autostart (iTunes)");
 			}
 
@@ -255,8 +242,8 @@
 			fwrite($handle2,"\r\n");
 			//fwrite($handle2,"pause\r\n");
 			fclose($handle2);
-			IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, false,-1);
-			//IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
+			IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
+			IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
 			writeLogEvent("Autostart (SOAP)");
 			}
 /* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
@@ -265,6 +252,7 @@
 
 	writeLogEvent("Autostart (Firefox)");
 
+IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
 
 //IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
 //IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);

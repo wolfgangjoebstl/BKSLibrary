@@ -2197,6 +2197,160 @@ function exectime($startexec)
 	return (number_format((microtime(true)-$startexec),2));
 	}
 
+/******************************************************************/
+
+function getProcessList()
+	{
+	$processList=array();
+	echo "Die aktuell gestarteten Dienste werden erfasst.\n";
+	$result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
+
+	$trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
+	$result = strtr($result,$trans);
+	$handle=fopen("c:/scripts/process.txt","w");
+	fwrite($handle,$result);
+	fclose($handle);
+
+	$firstLine=true;
+	$ergebnis=explode("\x0D",$result);
+	foreach ($ergebnis as &$resultvalue)
+		{
+		if ($firstLine==true)
+		   {
+		   $posCommandline=strpos($resultvalue,'CommandLine');
+		   $posCSName=strpos($resultvalue,'CSName');
+		   $posDescription=strpos($resultvalue,'Description');
+		   $posExecutablePath=strpos($resultvalue,'ExecutablePath');
+		   $posExecutionState=strpos($resultvalue,'ExecutionState');
+		   $posHandle=strpos($resultvalue,'Handle');
+		   $posHandleCount=strpos($resultvalue,'HandleCount');
+		   $posInstallDate=strpos($resultvalue,'InstallDate');
+		   //echo 'CommandLine    : '.$posCommandline."\n";
+		   //echo 'CSName         : '.$posCSName."\n";
+		   //echo 'Description    : '.$posDescription."\n";
+		   //echo 'ExecutablePath : '.$posExecutablePath."\n";
+		   //echo 'ExecutionState : '.$posExecutionState."\n";
+		   //echo 'Handle         : '.$posHandle."\n";
+		   //echo 'HandleCount    : '.$posHandleCount."\n";
+		   //echo 'InstallDate    : '.$posInstallDate."\n";
+		   $firstLine=false;
+		   }
+		$value=$resultvalue;
+		//echo $value;
+		$resultvalue=array();
+		$resultvalue['Commandline']=trim(substr($value,$posCommandline,$posCSName));
+		$resultvalue['CSName']=rtrim(substr($value,$posCSName,$posDescription-$posCSName));
+		$resultvalue['Description']=rtrim(substr($value,$posDescription,$posExecutablePath-$posDescription));
+		$resultvalue['ExecutablePath']=rtrim(substr($value,$posExecutablePath,$posExecutionState-$posExecutablePath));
+		$resultvalue['ExecutionState']=rtrim(substr($value,$posExecutionState,$posHandle-$posExecutionState));
+		$resultvalue['Handle']=rtrim(substr($value,$posHandle,$posHandleCount-$posHandle));
+		$resultvalue['HandleCount']=rtrim(substr($value,$posHandleCount,$posInstallDate-$posHandleCount));
+		$resultvalue['InstallDate']=rtrim(substr($value,$posInstallDate,13));
+		}
+	unset($resultvalue);
+	//print_r($ergebnis);
+	
+	$LineProcesses="";
+	foreach ($ergebnis as $valueline)
+		{
+		//echo $valueline['Commandline'];
+	   if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
+	      {
+	      //echo "****\n";
+	      $process=$valueline['ExecutablePath'];
+	      $pos=strrpos($process,'\\');
+	      $process=substr($process,$pos+1,100);
+	      if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe")or ($process=="SMSvcHost.exe")  or ($process=="WmiPrvSE.exe")  )
+	         {
+	         }
+	      else
+	         {
+		      //echo $process."  Pos : ".$pos."  \n";
+				//$processes.=$valueline['ExecutablePath']."\n";
+				$LineProcesses.=$process.",";
+				$processList[]=$process;
+				}
+			}
+		}
+
+	return ($processList);
+	}
+
+/******************************************************************/
+
+function getTaskList()
+	{
+	$taskList=array();
+	echo "Die aktuell gestarteten Programme werden erfasst.\n";
+	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
+	//echo $result;
+
+	//$trans = array("\x0D\x0A" => "\x0D");
+	//$result = strtr($result,$trans);
+	$handle=fopen("c:/scripts/tasks.txt","w");
+	fwrite($handle,$result);
+	fclose($handle);
+
+	$firstLine=0;
+	$ergebnis=explode("\x0A",$result);
+	//print_r($ergebnis);
+	foreach ($ergebnis as &$resultvalue)
+		{
+		//echo $resultvalue;
+		if ($firstLine<3)
+		   {
+		   $pos=strpos($resultvalue,'Abbildname');
+			if ($pos === false)
+				{
+				}
+			else
+				{
+				$posAbbild=$pos;
+				$posPID=strpos($resultvalue,'PID')-5;
+			   $posSitzung=strpos($resultvalue,'Sitzungsname');
+			   $posSitzNr=strpos($resultvalue,'Sitz.-Nr.')-2;
+		   	$posSpeicher=strpos($resultvalue,'Speichernutzung');
+
+			   //echo 'Abbildname    : '.$posAbbild."\n";
+			   //echo 'PID           : '.$posPID."\n";
+			   //echo 'Sitzung       : '.$posSitzung."\n";
+		   	//echo 'SitzungsNr    : '.$posSitzNr."\n";
+			   //echo 'Speicher      : '.$posSpeicher."\n";
+			   }
+		   }
+		else
+		   {
+			$value=$resultvalue;
+			$resultvalue=array();
+			$resultvalue['Abbildname']=trim(substr($value,$posAbbild,$posPID));
+			$resultvalue['PID']=rtrim(substr($value,$posPID,$posSitzung-$posPID));
+			$resultvalue['Sitzung']=rtrim(substr($value,$posSitzung,$posSitzNr-$posSitzung));
+			$resultvalue['ExecutablePath']=rtrim(substr($value,$posSitzNr,$posSpeicher-$posSitzNr));
+			$resultvalue['ExecutionState']=rtrim(substr($value,$posSpeicher,15));
+		   }
+		$firstLine+=1;
+		}
+	unset($resultvalue);
+	//print_r($ergebnis);
+
+	foreach ($ergebnis as $valueline)
+		{
+		if (isset($valueline['Abbildname'])==true)
+		   {
+	      $process=$valueline['Abbildname'];
+   	  	//echo "**** ".$process."\n";
+	   	if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe") or ($process=="SMSvcHost.exe") or ($process=="WmiPrvSE.exe")  )
+	      	{
+		      }
+		   else
+	   	   {
+				$taskList[]=$process;
+				}
+			}
+		}
+	return ($taskList);
+	}
+
 /******************************************************************
 
 Moudule und Klassendefinitionen
