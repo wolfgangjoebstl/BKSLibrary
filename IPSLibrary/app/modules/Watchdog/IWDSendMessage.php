@@ -1,16 +1,16 @@
 <?
 
-// Dieses Skript übermittelt Nachrichten und Befehle an IPSWatchDog
+// Dieses Skript Ã¼bermittelt Nachrichten und Befehle an IPSWatchDog
 // (c) 2011 by Andreas Pieroth
 //
 // Es MUSS von einem anderen Skript aufgerufen werden, welches in der
-// Variablen $state die zu übermittelnde Nachricht enthält.
+// Variablen $state die zu Ã¼bermittelnde Nachricht enthÃ¤lt.
 // Beispiel:
 // IPS_RunScriptEx(<ID dieses Skriptes>, Array('state' =>  'Nachricht'));
 
 
 // Hier wird der Dateiname der Message-Datei festgelegt.
-// Er ist standardmäßig auf "message.iwd" gesetzt und muss, falls geändert, im
+// Er ist standardmÃ¤ÃŸig auf "message.iwd" gesetzt und muss, falls geÃ¤ndert, im
 // Setup von IPSWatchDog angepasst werden!
 
 $DateiName = 'message.iwd';
@@ -21,8 +21,8 @@ $parentID = IPS_GetObject($IPS_SELF);
 $parentID = $parentID['ParentID'];
 
 
-define("MessageDateiName", "..\\".$DateiName); //Dateiname für Nachrichten-Datei definieren
-//erst mal alle Dateileichen löschen
+define("MessageDateiName", IPS_GetKernelDir().$DateiName); //Dateiname fÃ¼r Nachrichten-Datei definieren
+//erst mal alle Dateileichen lÃ¶schen
 @unlink (MessageDateiName);
 
 $datei = fopen(MessageDateiName, "a");

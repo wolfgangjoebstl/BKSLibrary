@@ -81,30 +81,63 @@ $name=IPS_GetModule("{ED573B53-8991-4866-B28C-CBE44C59A2DA}");
 $oid=IPS_GetInstanceListByModuleID("{ED573B53-8991-4866-B28C-CBE44C59A2DA}")["0"];
 echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid." und Name : ".IPS_GetName($oid)."\n";
 
-$config = IPS_GetConfiguration($oid);
-echo "Konfiguration vorher: \n";
-echo $config;
+	/******************************************************
+	 *
+	 *			INIT, Autostart Configuration
+	 *
+	 *************************************************************/
+
+	$config = IPS_GetConfiguration($oid);
+	echo "Konfiguration vorher: \n";
+	echo $config;
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
 	$scriptIdStopWD     = IPS_GetScriptIDByName('StopIPSWatchDog', $CategoryIdApp);
+	$scriptIdAliveWD    = IPS_GetScriptIDByName('IWDAliveFileSkript', $CategoryIdApp);
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
 	echo "StartIPSWatchDog hat die ScriptID ".$scriptIdStartWD." \n";
 	echo "StopIPSWatchDog hat die ScriptID ".$scriptIdStopWD." \n";
-
+	echo "Alive WatchDog hat die ScriptID ".$scriptIdAliveWD." \n";
+	
 	IPS_SetConfiguration($oid, '{"ShutdownScript":'.$scriptIdStopWD.',"StartupScript":'.$scriptIdStartWD.'}');
 	IPS_ApplyChanges($oid);
 
-/*
-ShutdownScript 	integer 	0
-StartupScript 	integer 	0
-StatusEvents 	string 	[]
-WatchdogScript 	integer 	0
-*/
+	/*
+	ShutdownScript 	integer 	0
+	StartupScript 	integer 	0
+	StatusEvents 	string 	[]
+	WatchdogScript 	integer 	0
+	*/
 
-$config = IPS_GetConfiguration($oid);
-echo "Konfiguration nachhher: \n";
-echo $config;
+	$config = IPS_GetConfiguration($oid);
+	echo "Konfiguration nachhher: \n";
+	echo $config;
+
+	/******************************************************
+	 *
+	 *			INIT, Timer
+	 *
+	 *************************************************************/
+	
+	echo "\nTimer programmieren :\n";
+
+	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
+	if ($tim2ID==false)
+		{
+		$tim2ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim2ID, $scriptIdAliveWD);
+		IPS_SetName($tim2ID, "KeepAlive");
+		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,15);      /* alle 15 sec */
+  		IPS_SetEventActive($tim2ID,true);
+		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	   echo "   Timer Event KeepAlive neu angelegt. Timer 15 sec ist bereits aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event KeepAlive bereits angelegt. Timer 15 sec ist aktiviert.\n";
+  		}
+
 
 ?>

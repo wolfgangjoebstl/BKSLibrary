@@ -20,6 +20,49 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 	$ShutdownId = IPS_GetScriptIDByName('Shutdown', $WatchdogId);
 	echo "Lokale Shutdown ID : ".$ShutdownId."\n";
 
+	/********************************************************************
+	 *
+	 * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
+	 *
+	 **********************************************************************/
+
+	$startWD=true; /* also wir wollen alle stoppen, ausser es spricht etwas dagegegen */
+	$startVM=true;
+	$startIT=true;
+
+	$processes=getTaskList();
+	sort($processes);
+	foreach ($processes as $process)
+		{
+		//echo "*** \"".$process."\"\n";
+      if ($process=="IPSWatchDog.exe")
+			{
+			$startWD=false;
+			echo "Prozess IPSWatchdog.exe läuft bereits.\n";
+			}
+       if ($process=="vmplayer.exe")
+			{
+			$startVM=false;
+			echo "Prozess vmplayer.exe läuft bereits.\n";
+			}
+       if ($process=="iTunes.exe")
+			{
+			$startIT=false;
+			echo "Prozess iTunes.exe läuft bereits.\n";
+			}
+		}
+	if ($startIT==false)
+	   {
+		echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
+   	/* iTunes ausschalten */
+		$handle2=fopen("c:/scripts/process_kill_itunes.bat","w");
+		fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
+		fwrite($handle2,"\r\n");
+		//fwrite($handle2,"pause\r\n");
+		fclose($handle2);
+		IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
+		}
+
 	$WDconfig=Watchdog_Configuration();
 	//print_r($WDconfig);
 

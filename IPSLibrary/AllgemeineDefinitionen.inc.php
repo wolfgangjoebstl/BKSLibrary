@@ -2351,6 +2351,64 @@ function getTaskList()
 	return ($taskList);
 	}
 
+/******************************************************************/
+
+function fileAvailable($filename,$verzeichnis)
+	{
+	$status=false;
+	/* Wildcards beim Filenamen zulassen */
+	$pos=strpos($filename,"*.");
+	if ( $pos === false )
+	   {
+	   echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
+	   $detName=true;
+	   $detExt=false;
+	   }
+	else
+	   {
+	   $filename=substr($filename,$pos+1,20);
+	   echo "Wir suchen nach der Extension \"*".$filename."\"\n";
+	   $detExt=true;
+	   }
+	if ( is_dir ( $verzeichnis ))
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	while (($file = readdir($handle)) !== false)
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+				 	if ($detExt == false)
+				 	   {
+				 	   /* Wir suchen einen Filenamen */
+	            	if ($file == $filename)
+							 {
+							 $status=true;
+							 }
+            		//echo $file."\n";
+            		}
+            	else
+            	   {
+				 	   /* Wir suchen eine Extension */
+				 	   //echo $file."\n";
+				 	   $pos = strpos($file,$filename);
+	               if ( ($pos > 0 ) )
+							 {
+							 $len =strlen($file)-strlen($filename)-$pos;
+							 //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
+							 if ( $len == 0 ) { $status=true; }
+							 }
+            	   }
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	return $status;
+	}
+
 /******************************************************************
 
 Moudule und Klassendefinitionen
