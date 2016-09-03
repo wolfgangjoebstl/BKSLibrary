@@ -96,9 +96,12 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
 	$scriptIdStopWD     = IPS_GetScriptIDByName('StopIPSWatchDog', $CategoryIdApp);
 	$scriptIdAliveWD    = IPS_GetScriptIDByName('IWDAliveFileSkript', $CategoryIdApp);
+	$scriptIdShutdownWD    = IPS_GetScriptIDByName('Shutdown', $CategoryIdApp);
+
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
 	echo "StartIPSWatchDog hat die ScriptID ".$scriptIdStartWD." \n";
 	echo "StopIPSWatchDog hat die ScriptID ".$scriptIdStopWD." \n";
+	echo "Shutdown hat die ScriptID ".$scriptIdShutdownWD." \n";
 	echo "Alive WatchDog hat die ScriptID ".$scriptIdAliveWD." \n";
 	
 	IPS_SetConfiguration($oid, '{"ShutdownScript":'.$scriptIdStopWD.',"StartupScript":'.$scriptIdStartWD.'}');
@@ -139,5 +142,52 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	   echo "   Timer Event KeepAlive bereits angelegt. Timer 15 sec ist aktiviert.\n";
   		}
 
+	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
+	if ($tim3ID==false)
+		{
+		$tim3ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim3ID, $scriptIdStartWD);
+		IPS_SetName($tim3ID, "StartWD");
+		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,60);      /* alle 60 sec */
+  		//IPS_SetEventActive($tim3ID,true);
+		IPS_SetEventCyclicTimeBounds($tim3ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	   echo "   Timer Event StartWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event StartWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+  		}
 
+	$tim4ID = @IPS_GetEventIDByName("StopWD", $scriptIdStopWD);
+	if ($tim4ID==false)
+		{
+		$tim4ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim4ID, $scriptIdStopWD);
+		IPS_SetName($tim4ID, "StopWD");
+		IPS_SetEventCyclic($tim4ID,0,1,0,0,1,60);      /* alle 60 sec */
+  		//IPS_SetEventActive($tim4ID,true);
+		IPS_SetEventCyclicTimeBounds($tim4ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	   echo "   Timer Event StopWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event StopWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+  		}
+
+	$tim5ID = @IPS_GetEventIDByName("ShutdownWD", $scriptIdShutdownWD);
+	if ($tim5ID==false)
+		{
+		$tim5ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim5ID, $scriptIdShutdownWD);
+		IPS_SetName($tim5ID, "ShutdownWD");
+		IPS_SetEventCyclic($tim5ID,0,1,0,0,1,60);      /* alle 60 sec */
+  		//IPS_SetEventActive($tim5ID,true);
+		IPS_SetEventCyclicTimeBounds($tim5ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+	   echo "   Timer Event ShutdownWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event ShutdownWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+  		}
+  		
 ?>

@@ -2408,6 +2408,43 @@ function fileAvailable($filename,$verzeichnis)
 		}/* ende if isdir */
 	return $status;
 	}
+	
+/************************************************************************************/
+
+function checkProcess($processStart)
+	{
+	$processes=getProcessList();
+	sort($processes);
+	//print_r($processes);
+
+	foreach ($processes as $process)
+		{
+		foreach ($processStart as $key => &$start)
+		   {
+      	if ($process==$key)
+      	   {
+      	   $start="Off";
+      	   }
+		   }
+		unset($start);
+		}
+	//print_r($processStart);
+
+	$processes=getTaskList();
+	sort($processes);
+	foreach ($processes as $process)
+		{
+		foreach ($processStart as $key => &$start)
+		   {
+      	if ($process==$key)
+      	   {
+      	   $start="Off";
+      	   }
+		   }
+		unset($start);
+		}
+	return($processStart);
+	}
 
 /******************************************************************
 

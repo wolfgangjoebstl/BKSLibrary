@@ -49,6 +49,7 @@
 	//print_r($config);
 	
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
+	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
 
 
 	/********************************************************************
@@ -60,7 +61,7 @@
 	echo "\n";
 	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
 	$processStart=checkProcess($processStart);
-	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
+	echo "Die folgenden Programme muessen gesstartet (wenn On) werden:\n";
 	print_r($processStart);
 	
 	if ( (fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
@@ -68,7 +69,6 @@
 	   echo "Keine Installation von IPSWatchdog vorhanden.\n";
 	   $processStart["IPSWatchDog.exe"]=="Off";
 		}
-
 
 	$handle2=fopen("c:/scripts/process_username.bat","w");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
@@ -176,41 +176,5 @@ IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.
 writeLogEvent("Autostart (Ende)");
 
 
-/************************************************************************************/
 
-function checkProcess($processStart)
-	{
-	$processes=getProcessList();
-	sort($processes);
-	//print_r($processes);
-
-	foreach ($processes as $process)
-		{
-		foreach ($processStart as $key => &$start)
-		   {
-      	if ($process==$key)
-      	   {
-      	   $start="Off";
-      	   }
-		   }
-		unset($start);
-		}
-	//print_r($processStart);
-
-	$processes=getTaskList();
-	sort($processes);
-	foreach ($processes as $process)
-		{
-		foreach ($processStart as $key => &$start)
-		   {
-      	if ($process==$key)
-      	   {
-      	   $start="Off";
-      	   }
-		   }
-		unset($start);
-		}
-	return($processStart);
-	}
-	
 ?>
