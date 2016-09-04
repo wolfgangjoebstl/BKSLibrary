@@ -62,7 +62,11 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 		if (isset($state) == true )
 			{
 			IPSLogger_Dbg(__file__, "Shutdown: Script aufgerufen mit Befehl : ".$state." *****************  ");
-			if ($state == "Shutdown") { $ShutRestart=false; }
+			if ($state == "Shutdown")
+				{
+				$ShutRestart=false;
+				IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Shutdown  ");
+				}
 			}
 		}
 
@@ -103,13 +107,15 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 							fwrite($handle2,"\r\n");
 							if ($debug == false)
 								{
-								if ($shutRestart == true)   /* Restart */
+								if ($ShutRestart == true)   /* Restart */
 								   {
 									fwrite($handle2,'shutdown /r');     /* Restart */
+									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Restart ");
 									}
 								else
 								   {
 									fwrite($handle2,'shutdown /s');
+									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Shutdown  ");
 									}
 								}
 							fwrite($handle2,"\r\n");
@@ -203,7 +209,7 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 									$rWatchdogId = $rpc->IPS_GetObjectIDByName('Watchdog', $rModulesId);
 									$rShutdownId = $rpc->IPS_GetScriptIDByName('Shutdown', $rWatchdogId);
 									echo "Remote Shutdown ID : ".$rShutdownId."\n";
-									$rpc->IPS_RunScriptEx($rShutdownId, Array('state' =>  'start'));
+									$rpc->IPS_RunScriptEx($rShutdownId, Array('state' =>  'Shutdown'));
 
 									IPSLogger_Dbg(__file__, "Shutdown: entfernter PC wird nun heruntergefahren. Remote Script ".$rShutdownId." gestartet");
 									}
