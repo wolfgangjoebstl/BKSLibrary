@@ -126,7 +126,7 @@ echo "DENON Action   Script ID:".$DENON_ActionScript_ID."\n";
 
 
 $configuration=Denon_Configuration();
-foreach ($configuration as $config)
+foreach ($configuration as $Denon => $config)
 	{
 	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
 	echo "\n\n****************************************************************************************************\n";

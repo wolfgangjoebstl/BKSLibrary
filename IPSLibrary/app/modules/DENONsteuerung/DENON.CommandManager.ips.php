@@ -263,7 +263,7 @@ else
 
 				if (isset($webconfig[$NameTag]["DATA"]['AuswahlFunktion'])==true)
 		   		{
-					$profil=$webconfig[[$NameTag]["DATA"]['AuswahlFunktion'];
+					$profil=$webconfig[$NameTag]["DATA"]['AuswahlFunktion'];
 					$profil_size=sizeof($profil);
 				   $i=0;
 				   $done=false;

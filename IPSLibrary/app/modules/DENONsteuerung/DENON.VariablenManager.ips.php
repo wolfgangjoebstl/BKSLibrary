@@ -137,7 +137,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	if (IPS_VariableProfileExists($ProfileName)== false)
 	{
 		echo "Script DENON VariablenManager Profil ".$ProfileName." existiert nicht.\n";
-		DENON_SetVarProfile($item, $itemID, $vtype);
+		DENON_SetVarProfile($item, $itemID, $vtype, $id);
 	}
 
 	// DENON-Variablenprofil zuweisen wenn nicht bereits zugewiesen
@@ -622,13 +622,22 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 			break;
 
 		case "AuswahlFunktion":
-		   //$ProfileName = "DENON.".$item;
+		   $configuration=Denon_Configuration();
+			foreach ($configuration as $Denon => $config)
+				{
+				if ($config['NAME']==$id)
+				   {
+				   $NameTag=$Denon;
+				   $instanz=$config['INSTANZ'];
+				   }
+				}
 	   	$ProfileName = "DENON.".$item."_".$id;
 			$webconfig=Denon_WebfrontConfig();
-			print_r($webconfig);
-			if (isset($webconfig[$id]['Visualization.WebFront.Administrator.Audio'][$item])==true)
+			echo "Jetzt Profil erstellen : ".$ProfileName."mit der ID : \"".$id."\" NameTag zur Wiedererkennung \"".$NameTag."\"\n";
+			print_r($webconfig[$NameTag]);
+			if (isset($webconfig[$NameTag]['DATA'][$item])==true)
 	   		{
-				$profil=$webconfig[$id]['Visualization.WebFront.Administrator.Audio'][$item];
+				$profil=$webconfig[$NameTag]['DATA'][$item];
 				$profil_size=sizeof($profil);
 				echo "Neues Profil mit ".$profil_size." Einträgen.\n";
 				if (IPS_VariableProfileExists($ProfileName) == false)

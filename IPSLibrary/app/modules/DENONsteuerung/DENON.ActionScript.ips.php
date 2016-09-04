@@ -86,78 +86,93 @@ if ($_IPS['SENDER'] == "Execute")
 else
 	{
 	
-$oid=$_IPS['VARIABLE'];
-$name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
+	$oid=$_IPS['VARIABLE'];
+	$name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
+	/* Wenn kein Clustering dann eine Ebene drueber nehmen */
+	if ($name == "DENONsteuerung")  { $name=IPS_GetName(IPS_GetParent($oid)); }
 
-$configuration=Denon_Configuration();
+	$configuration=Denon_Configuration();
 
-foreach ($configuration as $Denon => $config)
-	{
-	if ($config['NAME']==$name)
-	   {
-	   $NameTag=$Denon;
-	   $instanz=$config['INSTANZ'];
-	   }
-	//print_r($config);
-	}
+	foreach ($configuration as $Denon => $config)
+		{
+		if ($config['NAME']==$name)
+		   {
+	   	$NameTag=$Denon;
+		   $instanz=$config['INSTANZ'];
+		   }
+		//print_r($config);
+		}
 
-if ($_IPS['SENDER'] == "WebFront")
-	{
-	//echo "Script wurde über Webfront aufgerufen.\n";
-	$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
-	$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$oid." aufgerufen.");
-	}
+	if ($_IPS['SENDER'] == "WebFront")
+		{
+		//echo "Script wurde über Webfront aufgerufen.\n";
+		$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
+		$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$oid." aufgerufen.");
+		}
 
-if (isset($instanz)==false)
-	{
-	$log_Denon->LogMessage("Instanz wurde nicht gefunden (AS)");
-	$log_Denon->LogNachrichten("Instanz wurde nicht gefunden (AS)");
-	break;
-	}
-
-if (IPS_GetObjectIDByName($instanz." Client Socket", 0) >0)
-	{
-	$id = IPS_GetObjectIDByName($instanz." Client Socket", 0);
-	$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
-	$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
-	}
-else
-	{
-	//echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
-	$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
-	$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
-	}
-
-/* include DENON.Functions
-  $id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
-*/
-if (IPS_GetObjectIDByName("DENON.Functions", $CategoryIdApp) >0)
-	{
-	include "DENON.Functions.ips.php";
-	}
-else
-	{
-	echo "Script DENON.Functions kann nicht gefunden werden!";
-	}
-
-//if ($IPS_SENDER == "WebFront")
-//{
-	SetValue($IPS_VARIABLE, $IPS_VALUE);
-	$VarName = IPS_GetName($IPS_VARIABLE);
-
-	switch ($VarName)
-	{
-	   ############### Main Zone ################################################
-		case "Power":
-			if (getValueBoolean($IPS_VARIABLE) == false)
-			{
-				DENON_Power($id, "STANDBY");
-			}
-			else
-			{
-				DENON_Power($id, "ON");
-			}
+	if (isset($instanz)==false)
+		{
+		$log_Denon->LogMessage("Instanz wurde nicht gefunden (AS)");
+		$log_Denon->LogNachrichten("Instanz wurde nicht gefunden (AS)");
+		IPSLogger_Dbg(__file__, "Denon: neue unbekannte Instanz, aufgerufen wurde von Webfront Name \"".$name."\"  ");
 		break;
+		}
+
+	if ($name='RemoteNetPlayer')
+		{
+		/* kleine Umleitung für Remote Netplayer */
+
+
+
+		}
+	else
+		{
+
+		if (IPS_GetObjectIDByName($instanz." Client Socket", 0) >0)
+			{
+			$id = IPS_GetObjectIDByName($instanz." Client Socket", 0);
+			$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
+			$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
+			}
+		else
+			{
+			//echo "die ID des DENON Client Sockets kann nicht ermittelt werden/n ->		Client Socket angelegt?/n Name richtig geschrieben (DENON Client Socket)?";
+			$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
+			$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" wurde nicht gefunden");
+			}
+
+			/* include DENON.Functions
+			  	$id des DENON Client sockets muss nun selbst berechnet werden, war vorher automatisch
+				*/
+
+			if (IPS_GetObjectIDByName("DENON.Functions", $CategoryIdApp) >0)
+				{
+				include "DENON.Functions.ips.php";
+				}
+			else
+				{
+				echo "Script DENON.Functions kann nicht gefunden werden!";
+				}
+
+			//if ($IPS_SENDER == "WebFront")
+				//{
+				SetValue($IPS_VARIABLE, $IPS_VALUE);
+				$VarName = IPS_GetName($IPS_VARIABLE);
+
+				switch ($VarName)
+					{
+				   ############### Main Zone ################################################
+
+					case "Power":
+					if (getValueBoolean($IPS_VARIABLE) == false)
+						{
+						DENON_Power($id, "STANDBY");
+						}
+					else
+						{
+						DENON_Power($id, "ON");
+						}
+					break;
 
 		case "DigitalInputMode":
          $DigitalInputMode_val = GetValueFormatted($IPS_VARIABLE);
@@ -172,6 +187,7 @@ else
 		case "AuswahlFunktion":
          $InputSource_val = GetValueFormatted($IPS_VARIABLE);
 			$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
+			IPSLogger_Dbg(__file__, "Denon: Umgeschaltet auf die neue Quelle \"".$InputSource_val."\"  ");
 
 			$webconfig=Denon_WebfrontConfig();
 			if (isset($webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val])==true)
@@ -474,5 +490,7 @@ else
 		break;
 
 	}
+	
+	} /* elseif RemoteNetplayer */
 }
 ?>
