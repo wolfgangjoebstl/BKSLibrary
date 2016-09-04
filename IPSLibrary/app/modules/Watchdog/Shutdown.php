@@ -39,7 +39,7 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ShutdownScriptCounter",1);
 
 	$ShutRestart=true;  	/* true bedeutet restart */
-	$debug=true;         /* für debug Zwecke die eigene Maschine nicht neu starten */
+	$debug=false;         /* für debug Zwecke die eigene Maschine nicht neu starten */
 
 	/********************************************************************
 	 *
@@ -55,17 +55,17 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 
 	if ($_IPS['SENDER']=="RunScript")
 		{
-		echo "Von der Console aus gestartet, Shutdown Prozess beginnen.\n";
+		echo "Von einem anderen Script aus gestartet, Shutdown Prozess beginnen.\n";
 		tts_play(1,"IP Symcon Visualisierung herunterfahren",'',2);
 		IPS_SetEventActive($tim5ID,true);
    	SetValue($ScriptCounterID,1);
 		if (isset($state) == true )
 			{
-			IPSLogger_Dbg(__file__, "Shutdown: Script aufgerufen mit Befehl : ".$state." *****************  ");
+			IPSLogger_Dbg(__file__, "Shutdown: Script extern aufgerufen mit Befehl : ".$state." *****************  ");
 			if ($state == "Shutdown")
 				{
 				$ShutRestart=false;
-				IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Shutdown  ");
+				IPSLogger_Dbg(__file__, "Shutdown: daher erfolgt nun ein Shutdown  ");
 				}
 			}
 		}
@@ -76,7 +76,7 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 		tts_play(1,"IP Symcon Visualisierung herunterfahren",'',2);
 		IPS_SetEventActive($tim5ID,true);
    	SetValue($ScriptCounterID,1);
-	   IPSLogger_Dbg(__file__, "Shutdown: aus dem Execute des Scripts initiert ***********************************************");
+	   IPSLogger_Dbg(__file__, "Shutdown: Script direkt aufgerufen ***********************************************");
 		}
 
 	if ($_IPS['SENDER']=="TimerEvent")
@@ -94,13 +94,15 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 				$counter=GetValue($ScriptCounterID);
 				switch ($counter)
 				   {
-					case 3:
+					case 4:
 			   	   SetValue($ScriptCounterID,0);
 			      	IPS_SetEventActive($tim5ID,false);
+						IPSLogger_Dbg(__file__, "Shutdown: Prozess abgeschlossen");
 			      	break;
-				   case 2:
+					case 3:
 						if ( $processStart["vmplayer.exe"]=="On" )
 						   {
+						   /* VMPlayer läuft nicht mehr, daher naechster Schritt möglich. */
 							IPSLogger_Dbg(__file__, "Shutdown: PC wird heruntergefahren.");
 							$handle2=fopen("c:/scripts/process_self_shutdown.bat","w");
 							fwrite($handle2,'net stop IPSServer');
@@ -109,24 +111,42 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 								{
 								if ($ShutRestart == true)   /* Restart */
 								   {
-									fwrite($handle2,'shutdown /r');     /* Restart */
-									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Restart ");
+									fwrite($handle2,'shutdown /r /t 150 /c "Es erfolgt ein Restart in 2 Minuten"');     /* Restart */
+									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Restart, Befehl wurde abgesetzt ");
 									}
 								else
 								   {
-									fwrite($handle2,'shutdown /s');
-									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Shutdown  ");
+									fwrite($handle2,'shutdown /s /t 150 /c "Es erfolgt ein Shutdown in 2 Minuten"');
+									IPSLogger_Dbg(__file__, "Shutdown: es erfolgt ein Shutdown, Befehl wurde abgesetzt  ");
 									}
 								}
 							fwrite($handle2,"\r\n");
+							fwrite($handle2,"pause\r\n");
 							fclose($handle2);
-							IPS_ExecuteEx("c:/scripts/process_self_shutdown.bat","", true, false,1);
 							SetValue($ScriptCounterID,$counter+1);
+							IPS_ExecuteEx("c:/scripts/process_self_shutdown.bat","", true, false,-1);
 							}
 						else
 						   {
 						   IPSLogger_Dbg(__file__, "Shutdown: entfernter PC noch nicht vollständig heruntergefahren.");
 					   	}
+			      	break;
+				   case 2:
+						if ( $processStart["iTunes.exe"]=="Off" )
+						   {
+						   /* iTunes läuft, am besten stoppen */
+							echo "Itunes UND soap Ausschalten.\n";
+							$handle2=fopen("c:/scripts/process_kill_itunes.bat","w");
+							fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
+							fwrite($handle2,"\r\n");
+							fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
+							fwrite($handle2,"\r\n");
+							//fwrite($handle2,"pause\r\n");
+							fclose($handle2);
+							IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, false,-1); 
+							writeLogEvent("sHUTDOWN iTunes");
+							}
+						SetValue($ScriptCounterID,$counter+1);
 	   			  	break;
 				   case 1:
 
@@ -216,7 +236,7 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 							   }
 							else
 							   {
-								IPSLogger_Dbg(__file__, "Shutdown: vmplayer nicht gestartet.");
+								IPSLogger_Dbg(__file__, "Shutdown: Remote Server konfiguriert, aber vmplayer nicht gestartet.");
 								}
 							} // endif Remote Server ueberhaupt definiert
 

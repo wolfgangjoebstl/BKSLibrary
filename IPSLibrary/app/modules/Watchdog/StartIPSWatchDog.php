@@ -4,7 +4,10 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
-	
+
+	IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
+	IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
+
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
@@ -32,10 +35,6 @@
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
 	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 	
-	/*********************************************************************/
-	writeLogEvent("Autostart (Beginn)");
-	IPSLogger_Dbg(__file__, "Autostart: Prozedur beginnt");
-
 	$log_OperationCenter->LogMessage('Lokaler Server wird hochgefahren');
 	$log_OperationCenter->LogNachrichten('Lokaler Server wird hochgefahren');
 
@@ -50,7 +49,7 @@
 	
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
 	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
-
+	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
 
 	/********************************************************************
 	 *
@@ -61,14 +60,39 @@
 	echo "\n";
 	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
 	$processStart=checkProcess($processStart);
-	echo "Die folgenden Programme muessen gesstartet (wenn On) werden:\n";
+	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
 	print_r($processStart);
-	
-	if ( (fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
+
+	if (isset($config["Software"]["Watchdog"]["Directory"])==true )
 	   {
-	   echo "Keine Installation von IPSWatchdog vorhanden.\n";
-	   $processStart["IPSWatchDog.exe"]=="Off";
+		if ( (fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
+		   {
+	   	echo "Keine Installation von IPSWatchdog vorhanden.\n";
+		   $processStart["IPSWatchDog.exe"]=="Off";
+			}
 		}
+	else
+	   {
+	   $processStart["IPSWatchDog.exe"]=="Off";
+	   }
+
+	if (isset($config["Software"]["VMware"]["Directory"])==true )
+	   {
+		if ( (fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
+		   {
+		   echo "Keine Installation von VMware vorhanden.\n";
+		   $processStart["vmplayer.exe"]=="Off";
+			}
+		if ( (fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
+		   {
+	   	echo "Keine Images für VMPlayer vorhanden.\n";
+		   $processStart["vmplayer.exe"]=="Off";
+			}
+		}
+	else
+	   {
+	   $processStart["vmplayer.exe"]=="Off";
+	   }
 
 	$handle2=fopen("c:/scripts/process_username.bat","w");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
@@ -79,101 +103,171 @@
 	echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
 	fclose($handle3);
 
-	if ($processStart["IPSWatchDog.exe"] == "On")
-	   {
-	   echo "IPSWatchdog.exe wird neu gestartet.\n";
-		IPSLogger_Dbg(__file__, "Autostart: Watchdog wird gestartet");
-	
-		/*********************************************************************/
-		writeLogEvent("Autostart (Watchdog)");
+	/********************************************************************
+	 *
+	 * Execute
+	 *
+	 **********************************************************************/
 
-		IPS_EXECUTEEX("C:/IP-Symcon/IPSWatchDog.exe","",true,true,-1);   /* Watchdog starten */
-		
-	 	// Parent-ID der Kategorie ermitteln
-		$parentID = IPS_GetObject($IPS_SELF);
-		$parentID = $parentID['ParentID'];
+	if ($_IPS['SENDER']=="RunScript")
+		{
+		echo "Von einem anderen Script aus gestartet, Autostart Prozess beginnen.\n";
+		IPSLogger_Dbg(__file__, "Autostart: Script extern aufgerufen *****************  ");
 
-		// ID der Skripte ermitteln
-		$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
-		$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
-
-		IPS_RunScript($IWDAliveFileSkriptScID);
-	 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
-		}
-	else
-	   {
-	   echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
-	   }
-
-	if ( (fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
-	   {
-	   echo "Keine Installation von VMware vorhanden.\n";
-	   $processStart["vmplayer.exe"]=="Off";
-		}
-		
-	if ( (fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
-	   {
-	   echo "Keine Images für VMPlayer vorhanden.\n";
-	   $processStart["vmplayer.exe"]=="Off";
+		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		IPS_SetEventActive($tim3ID,true);
+   	SetValue($ScriptCounterID,1);
 		}
 
-	if ($processStart["vmplayer.exe"] == "On")
-	   {
-		writeLogEvent("Autostart (VMPlayer)");
-		IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
-	
-		/*********************************************************************/
-
-		IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,-1);
+	if ($_IPS['SENDER']=="Execute")
+		{
+		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
+		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		IPS_SetEventActive($tim3ID,true);
+   	SetValue($ScriptCounterID,1);
+	   IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
 		}
-	else
-	   {
-	   echo "vmplayer.exe muss daher nicht erneut gestartet werden.\n";
-	   }
+
+	if ($_IPS['SENDER']=="Startup")
+		{
+		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
+		IPSLogger_Dbg(__file__, "Autostart: Script durch Autostart aufgerufen *****************  ");
+
+		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		IPS_SetEventActive($tim3ID,true);
+   	SetValue($ScriptCounterID,1);
+		}
+
+	if ($_IPS['SENDER']=="TimerEvent")
+		{
+		switch ($_IPS['EVENT'])
+		   {
+	   	case $tim3ID:
+				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID:".GetValue($ScriptCounterID));
+
+				/******************************************************************************************
+				 *
+				 *
+				 *********************************************************************************************/
+
+				$counter=GetValue($ScriptCounterID);
+				switch ($counter)
+				   {
+					case 6:
+			   	   SetValue($ScriptCounterID,0);
+			      	IPS_SetEventActive($tim3ID,false);
+						IPSLogger_Dbg(__file__, "Autostart: Prozess abgeschlossen");
+						writeLogEvent("Autostart (Ende)");
+			      	break;
+					case 5:
+						/* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
+						//IPS_ExecuteEx("c:/Users/wolfg_000/Downloads/Programme/47 ftp server/ftpserver31lite/ftpserver.exe","", true, false,1);
+						//writeLogEvent("Autostart (ftpserverlite)");
+
+						writeLogEvent("Autostart (Firefox)");
+
+						IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
+
+						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
+						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
+						/* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
+
+						SetValue($ScriptCounterID,$counter+1);
+			      	break;
+					case 4:
+						//if (GetValueBoolean(50871))
+						   {
+							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
+					   	/* Soap ausschalten */
+							$handle2=fopen("c:/scripts/process_kill_java.bat","w");
+							fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
+							fwrite($handle2,"\r\n");
+							//fwrite($handle2,"pause\r\n");
+							fclose($handle2);
+							IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
+							IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
+							writeLogEvent("Autostart (SOAP)");
+							}
+						SetValue($ScriptCounterID,$counter+1);
+			      	break;
+					case 3:
+						//if (GetValueBoolean(46719))
+					   	{
+							echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
+				   		/* iTunes ausschalten */
+							$handle2=fopen("c:/scripts/process_kill_itunes.bat","w");
+							fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
+							fwrite($handle2,"\r\n");
+							//fwrite($handle2,"pause\r\n");
+							fclose($handle2);
+							IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
+							IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
+							writeLogEvent("Autostart (iTunes)");
+							}
+						SetValue($ScriptCounterID,$counter+1);
+			      	break;
+				   case 2:
+						if ($processStart["vmplayer.exe"] == "On")
+						   {
+							writeLogEvent("Autostart (VMPlayer)");
+							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
+
+							/*********************************************************************/
+
+							IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,-1);
+							}
+						else
+						   {
+						   echo "vmplayer.exe muss daher nicht erneut gestartet werden.\n";
+						   }
+						SetValue($ScriptCounterID,$counter+1);
+	   			  	break;
+				   case 1:
+						if ($processStart["IPSWatchDog.exe"] == "On")
+						   {
+						   echo "IPSWatchdog.exe wird neu gestartet.\n";
+							IPSLogger_Dbg(__file__, "Autostart: Watchdog wird gestartet");
+
+							/*********************************************************************/
+							writeLogEvent("Autostart (Watchdog)");
+
+							IPS_EXECUTEEX("C:/IP-Symcon/IPSWatchDog.exe","",true,false,-1);   /* Watchdog starten */
+
+						 	// Parent-ID der Kategorie ermitteln
+							$parentID = IPS_GetObject($IPS_SELF);
+							$parentID = $parentID['ParentID'];
+
+							// ID der Skripte ermitteln
+							$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
+							$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
+
+							IPS_RunScript($IWDAliveFileSkriptScID);
+						 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
+							}
+						else
+						   {
+						   echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
+						   }
+				      SetValue($ScriptCounterID,$counter+1);
+						break;
+				   case 0:
+					default:
+					   break;
+				   }
+				break;
+
+			default:
+				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
+			   break;
+			}
+		}
+
+
+
+
 
 	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/APPS", true, true);
 	echo $result;
-
-//if (GetValueBoolean(46719))
-	   	{
-			echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
-   		/* iTunes ausschalten */
-			$handle2=fopen("c:/scripts/process_kill_itunes.bat","w");
-			fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
-			fwrite($handle2,"\r\n");
-			//fwrite($handle2,"pause\r\n");
-			fclose($handle2);
-			IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
-			IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
-			writeLogEvent("Autostart (iTunes)");
-			}
-
-//if (GetValueBoolean(50871))
-		   {
-			echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
-	   	/* Soap ausschalten */
-			$handle2=fopen("c:/scripts/process_kill_java.bat","w");
-			fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
-			fwrite($handle2,"\r\n");
-			//fwrite($handle2,"pause\r\n");
-			fclose($handle2);
-			IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
-			IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
-			writeLogEvent("Autostart (SOAP)");
-			}
-/* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
-//IPS_ExecuteEx("c:/Users/wolfg_000/Downloads/Programme/47 ftp server/ftpserver31lite/ftpserver.exe","", true, false,1);
-//writeLogEvent("Autostart (ftpserverlite)");
-
-	writeLogEvent("Autostart (Firefox)");
-
-IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
-
-//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
-//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
-/* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
-
-writeLogEvent("Autostart (Ende)");
 
 
 
