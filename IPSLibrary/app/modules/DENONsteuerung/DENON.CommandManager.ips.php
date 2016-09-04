@@ -4,11 +4,11 @@
 /*
 Inital-Autor: philipp, Quelle: http://www.ip-symcon.de/forum/f53/denon-avr-3808-integration-7007/
 Inital-Autor: www.raketenschnecke.com
-Weiterentwickelt: Wolfgang Jöbstl
+Weiterentwickelt: Wolfgang JÃ¶bstl
 
 Funktionen:
 	* liest und interpretiert die vom DENON empfangenen Statusmeldungen und
-		übergibt diese zur Veiterverarbeitung an das Script "DENON.VariablenManager"
+		Ã¼bergibt diese zur Veiterverarbeitung an das Script "DENON.VariablenManager"
 		
 	holt sich die Telegramme direkt von den am Netzwerk gesendeten Telegrammen und wertet sie aus
 
@@ -109,18 +109,18 @@ else
 	
 /*****************************************************************************************************************************************************/
 
-/* hier ist der Bearbeitung der empfangenen Telegramme, sollte auch für mehrere Denon Receiver funktionieren */
+/* hier ist der Bearbeitung der empfangenen Telegramme, sollte auch fÃ¼r mehrere Denon Receiver funktionieren */
 	
 	$data=$_IPS['VALUE'];
 	$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
 	/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
 	$instanz=strstr($instanz," Register Variable",true);
 	$log_Denon->LogNachrichten("Daten von Instanz ".$_IPS['INSTANCE']." ".$instanz." mit Wert ".$data." eingelangt (CM)");
-	/* für alle Webfront Instanzen die Variable setzen */
+	/* fÃ¼r alle Webfront Instanzen die Variable setzen */
 	$webconfig=Denon_WebfrontConfig();
 
 	reset($DenonConfiguration); unset($config);
-	foreach ($DenonConfiguration as $config)
+	foreach ($DenonConfiguration as $Denon => $config)
 		{
 		/* jeder denon receiver ist wie folgt definiert. IP Adresse muss derzeit fix sein.
    	 *        'NAME'               => 'Denon-Wohnzimmer',
@@ -131,6 +131,7 @@ else
 		if ($config['INSTANZ']==$instanz)
 		   {
 	   	$id=$config['NAME'];
+	   	$NameTag=$Denon;        /* der NameTag verbindet die beiden Tabellen */
 		   }
 		//print_r($config);
 	
@@ -172,7 +173,7 @@ else
 					   {
 						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 					   }
-					DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+					DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
@@ -196,7 +197,7 @@ else
 							$itemdata= str_pad ( $itemdata, 3, "0" );
 							$value = (intval($itemdata)/10) -80;
 							}
-						DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 						}
@@ -218,7 +219,7 @@ else
 				   {
 				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 		   	}
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -239,7 +240,7 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 				break;
@@ -260,15 +261,15 @@ else
 				$itemdata=substr($data,2);
 				$vtype = 1;
 
-				if (isset($webconfig['Visualization.WebFront.Administrator.Audio']['AuswahlFunktion'])==true)
+				if (isset($webconfig[$NameTag]["DATA"]['AuswahlFunktion'])==true)
 		   		{
-					$profil=$webconfig['Visualization.WebFront.Administrator.Audio']['AuswahlFunktion'];
+					$profil=$webconfig[[$NameTag]["DATA"]['AuswahlFunktion'];
 					$profil_size=sizeof($profil);
 				   $i=0;
 				   $done=false;
 				   foreach ($profil as $name => $assoc)
 				      {
-				      /* Wenn ein Eintrag für Data und Auswahlfunktion besteht, dann alle Einträge durchgehen ob itemdata dabei ist */
+				      /* Wenn ein Eintrag fÃ¼r Data und Auswahlfunktion besteht, dann alle EintrÃ¤ge durchgehen ob itemdata dabei ist */
 				      $i++;
 						if ($itemdata==$assoc)
 						   {
@@ -390,7 +391,7 @@ else
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
 				$value = intval($value);
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
 				break;
@@ -714,7 +715,7 @@ else
 				   {
 					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 				   }
-				/* kein Logging da dauernd die RDS Daten übertragen werden */
+				/* kein Logging da dauernd die RDS Daten Ã¼bertragen werden */
 				DenonSetValue($item, $value, $vtype, $id);
 				break;
 
@@ -890,7 +891,7 @@ else
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
-			case "PA": //Verteilung Front-Signal auf Surround-Kanäle
+			case "PA": //Verteilung Front-Signal auf Surround-KanÃ¤le
 				$item = "Panorama";
 				$vtype = 0;
 				if ($data == "PSPAN ON")
@@ -974,7 +975,7 @@ else
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 			break;
 
-			case "MO": //Surround-Spielmodi für Surround-Mode
+			case "MO": //Surround-Spielmodi fÃ¼r Surround-Mode
 				$item = "SurroundPlayMode";
 				$vtype = 1;
 				if ($data == "PSMODE:CINEMA")
@@ -1050,7 +1051,7 @@ else
 						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 					break;
 
-					case "NV": //Surround-Spielmodi für Surround-Mode
+					case "NV": //Surround-Spielmodi fÃ¼r Surround-Mode
 						$item = "DynamicVolume";
 						$vtype = 1;
 						if ($data == "PSDYNVOL OFF")
@@ -1148,7 +1149,7 @@ else
 				$pssubsub1=substr($data,4,1);
 				switch($pssubsub1)
 				{
-					case "T": //Surround-Spielmodi für Surround-Mode
+					case "T": //Surround-Spielmodi fÃ¼r Surround-Mode
 						$item = "AudioRestorer";
 						$vtype = 1;
 						if ($data == "PSRSTR OFF")
@@ -1696,7 +1697,7 @@ else
 ############### Zone 2 #########################################################
 
 			case "Z2":
-			   /* für alle Zone2 Befehle gilt dieser prefix */
+			   /* fÃ¼r alle Zone2 Befehle gilt dieser prefix */
 	   		if (intval($zonecat) <100 and intval($zonecat) >9)
 					{
 					$item = "Zone2Volume";
@@ -1710,7 +1711,7 @@ else
 						{
 						$value = (intval($itemdata)) -80;
 						}
-					DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+					DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 					}
@@ -1922,7 +1923,7 @@ else
 				$vtype = 0;
 				$itemdata= false;
 				$value = $itemdata;
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
@@ -1932,7 +1933,7 @@ else
 				$vtype = 0;
 				$itemdata= true;
 				$value = $itemdata;
-				DenonSetValueAll($webconfig, $item, $value, $vtype, $id);
+				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
 				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;

@@ -287,22 +287,6 @@ if ($_IPS['SENDER'] == "Execute")
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
 
-	echo " ... sicherstellen das Configfile uebernommen wird.\n";
-	foreach ($configuration as $config)
-		{
-   	$id=$config['NAME'];
-		$item="AuswahlFunktion";
-		$vtype = 1;
-		$value=1;
-		$itemID = @IPS_GetVariableIDByName($item, $VAR_Parent_ID);
-		$ProfileName = "DENON.".$item;
-		echo "Variablenprofil neu anlegen für ".$item." mit Profilname ".$ProfileName." mit Item ID ".$itemID." \n";
-      @IPS_DeleteVariableProfile($ProfileName);
-		DENON_SetVarProfile($item, $itemID, $vtype);
-
-		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
-		DenonSetValue($item, $value, $vtype, $id, $Audio_Path);
-		}
 	}
 
 

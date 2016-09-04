@@ -5,7 +5,7 @@
 
 Funktionen:
 	*wird vom Script "DENON.Install_Library" in allen DENON-Variablen als Actionsript
-		in den Variableneigenschaften der /data Variablen Einträge eingetragen
+		in den Variableneigenschaften der /data Variablen EintrÃ¤ge eingetragen
 	* sendet (WFE-)Kommandos an das DENON.Functions-Script
 */
 
@@ -91,10 +91,11 @@ $name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
 
 $configuration=Denon_Configuration();
 
-foreach ($configuration as $config)
+foreach ($configuration as $Denon => $config)
 	{
 	if ($config['NAME']==$name)
 	   {
+	   $NameTag=$Denon;
 	   $instanz=$config['INSTANZ'];
 	   }
 	//print_r($config);
@@ -102,9 +103,9 @@ foreach ($configuration as $config)
 
 if ($_IPS['SENDER'] == "WebFront")
 	{
-	//echo "Script wurde über Webfront aufgerufen.\n";
-	$log_Denon->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
-	$log_Denon->LogNachrichten("Script wurde über Webfront  von Variable ID :".$oid." aufgerufen.");
+	//echo "Script wurde Ã¼ber Webfront aufgerufen.\n";
+	$log_Denon->LogMessage("Script wurde Ã¼ber Webfront von Variable ID :".$oid." aufgerufen.");
+	$log_Denon->LogNachrichten("Script wurde Ã¼ber Webfront  von Variable ID :".$oid." aufgerufen.");
 	}
 
 if (isset($instanz)==false)
@@ -173,9 +174,9 @@ else
 			$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
 
 			$webconfig=Denon_WebfrontConfig();
-			if (isset($webconfig['DATA']['AuswahlFunktion'][$InputSource_val])==true)
+			if (isset($webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val])==true)
 	   		{
-				$InputSource_val=$webconfig['DATA']['AuswahlFunktion'][$InputSource_val];
+				$InputSource_val=$webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val];
 				DENON_InputSource($id, $InputSource_val);
 				}
 		break;

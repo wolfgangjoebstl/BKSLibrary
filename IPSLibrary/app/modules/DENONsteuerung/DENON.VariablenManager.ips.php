@@ -466,7 +466,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 // Funktion erstellt für DENON-Variablen gleichnamige Variablenprofile mit Namenspräfix "DENON."
 // übergeben werden muss Variablenname ($item), Variablen-ID ($itemID) und Variablentyp ($vtype)
 
-function DENON_SetVarProfile($item, $itemID, $vtype)
+function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 	{
 
 	switch ($item)
@@ -622,11 +622,13 @@ function DENON_SetVarProfile($item, $itemID, $vtype)
 			break;
 
 		case "AuswahlFunktion":
-		   $ProfileName = "DENON.".$item;
+		   //$ProfileName = "DENON.".$item;
+	   	$ProfileName = "DENON.".$item."_".$id;
 			$webconfig=Denon_WebfrontConfig();
-			if (isset($webconfig['Visualization.WebFront.Administrator.Audio'][$item])==true)
+			print_r($webconfig);
+			if (isset($webconfig[$id]['Visualization.WebFront.Administrator.Audio'][$item])==true)
 	   		{
-				$profil=$webconfig['Visualization.WebFront.Administrator.Audio'][$item];
+				$profil=$webconfig[$id]['Visualization.WebFront.Administrator.Audio'][$item];
 				$profil_size=sizeof($profil);
 				echo "Neues Profil mit ".$profil_size." Einträgen.\n";
 				if (IPS_VariableProfileExists($ProfileName) == false)

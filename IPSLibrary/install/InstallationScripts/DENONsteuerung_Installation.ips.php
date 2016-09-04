@@ -4,7 +4,7 @@
 
 Script von www.raketenschnecke
 
-Modifiziert auf IPS Library und kleine Anpassungen
+Modifiziert auf IPS Library und kleine Anpassungen von Wolfgang Joebstl
 
 
 Funktionen:
@@ -132,6 +132,12 @@ foreach ($configuration as $config)
 	echo "\n\n****************************************************************************************************\n";
    echo "\nDENON.Installer for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n";
 
+	/************************************************************************************
+	 *
+	 * DENON Sockets aufsetzen, für jedes Gerät einen eigenen
+	 *
+	 *******************************************************************************************/
+
 	// Client Socket "DENON Client Socket" anlegen wenn nicht vorhanden
 	$DENON_CS_ID = @IPS_GetObjectIDByName($config['INSTANZ']." Client Socket", 0);
 	if ($DENON_CS_ID === false)
@@ -223,6 +229,12 @@ foreach ($configuration as $config)
 		IPS_SetEventActive($DENON_DisplayRefreshTimer_ID, false);    //Ereignis deaktivieren
 		}
 
+	/************************************************************************************
+	 *
+	 * Datenstrukturen aufsetzen, für jedes Gerät eigene
+	 *
+	 *******************************************************************************************/
+
 	$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 
 	// Dummy-Instanzen "Main Zone", "Zone2", "Zone2", "Steuerung", "Display" in Kategorie "DENON"
@@ -299,9 +311,12 @@ foreach ($configuration as $config)
 		echo "Script DENON.VariablenManager kann nicht gefunden werden!";
 		}
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/************************************************************************************
+	 *
+	 * Webfron Installation
+	 *
+	 *******************************************************************************************/
+
 
 	if ($WFC10_Enabled)
 		{
@@ -390,13 +405,21 @@ foreach ($configuration as $config)
 
 	/***************************************************************************************/
 
+	echo " ... sicherstellen das Configfile uebernommen wird.\n";
   	$id=$config['NAME'];
 	$item="AuswahlFunktion";
 	$vtype = 1;
 	$value=1;
-	echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
-	DenonSetValue($item, $value, $vtype, $id,$Audio_Path);
+   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+	$itemID = @IPS_GetVariableIDByName($item, $VAR_Parent_ID);
+	$ProfileName = "DENON.".$item."_".$id;
+	echo "Variablenprofil neu anlegen für ".$item." mit Profilname ".$ProfileName." mit Item ID ".$itemID." \n";
+   @IPS_DeleteVariableProfile($ProfileName);
+	DENON_SetVarProfile($item, $itemID, $vtype, $id);
 
+	echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+	DenonSetValue($item, $value, $vtype, $id, $Audio_Path);
    }  /* ende foreach Denon Device */
 
 echo "\nInstallation abgeschlossen\n\nwww.raketenschnecke.net";
