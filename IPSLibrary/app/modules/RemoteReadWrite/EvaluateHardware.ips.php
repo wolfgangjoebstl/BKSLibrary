@@ -7,10 +7,10 @@
 */
 
 /******************************************************
-
-				INIT
-
-*************************************************************/
+ *
+ *				INIT
+ *
+ *************************************************************/
 
 $tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
 if ($tim1ID==false)
@@ -36,17 +36,23 @@ foreach ($alleInstanzen as $instanz)
 
 	}
 
-//FHT Sender
+/*********************************************************************************
+ *
+ *   FHT Sender
+ *
+ *********************************************************************************/
+ 
 $guid = "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function FHTList() { return array('."\n";
 
-echo "\nFHT Geräte: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFHT Geräte             (Anzahl : ".sizeof($alleInstanzen).")\n\n";
+echo str_pad("Name",30)." OID   Adresse Status   \n";
+
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
@@ -72,29 +78,43 @@ foreach ($alleInstanzen as $instanz)
 	}
 $includefile.=');}'."\n";
 
-//FS20EX Sender
+/*********************************************************************************
+ *
+ *   FS20EX Sender
+ *
+ *********************************************************************************/
+
 $guid = "{56800073-A809-4513-9618-1C593EE1240C}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 
-echo "\nFS20EX Geräte: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFS20EX Geräte             (Anzahl : ".sizeof($alleInstanzen).")\n\n";
+echo str_pad("Name",30)." OID  Homecode Adresse    \n";
+
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
 	//echo IPS_GetName($instanz)." ".$instanz." \n";
 	}
 
-//FS20 Sender
+/*********************************************************************************
+ *
+ *   FS20 Sender
+ *
+ *********************************************************************************/
+
+
 $guid = "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";
 //Auflisten
 $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function FS20List() { return array('."\n";
 
-echo "\nFS20 Geräte: ".sizeof($alleInstanzen)."\n\n";
+echo "\nFS20 Geräte             (Anzahl : ".sizeof($alleInstanzen).")\n\n";
+echo str_pad("Name",50)."OID   Homecode Adresse Letzte Änderung Stati   \n";
+
 foreach ($alleInstanzen as $instanz)
 	{
-	echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
-	//echo IPS_GetName($instanz)." ".$instanz." \n";
+	$lastchanged=0;
 	$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 	$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 	$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
@@ -105,7 +125,11 @@ foreach ($alleInstanzen as $instanz)
    foreach($cids as $cid)
     	{
       $o = IPS_GetObject($cid);
-      //echo "\nCID :".$cid;
+		if ( (IPS_GetName($cid)=="Status") )
+		   {
+		   $lastchanged=IPS_GetVariable($cid)["VariableChanged"];
+   	   //echo "   CID :".$cid,"   ".str_pad(IPS_GetName($cid),20)." ".date("d.m.Y H:i",$lastchanged)."\n";
+   	   }
       //print_r($o);
       if($o['ObjectIdent'] != "")
 				{
@@ -117,6 +141,7 @@ foreach ($alleInstanzen as $instanz)
    	 }
 	$includefile.="\n             ".'	),'."\n";
 	$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
+	echo str_pad(IPS_GetName($instanz),50)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')."    ".date("d.m.Y H:i",$lastchanged)." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 	}
 $includefile.=');}'."\n";
 
@@ -128,6 +153,8 @@ $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 $includefile.='function HomematicList() { return array('."\n";
 
 echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
+echo str_pad("Name",30)." OID       Homecode   Adresse    \n";
+
 foreach ($alleInstanzen as $instanz)
 	{
 	echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
