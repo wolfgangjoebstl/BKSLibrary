@@ -633,10 +633,10 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 				}
 	   	$ProfileName = "DENON.".$item."_".$id;
 			$webconfig=Denon_WebfrontConfig();
-			echo "Jetzt Profil erstellen : ".$ProfileName."mit der ID : \"".$id."\" NameTag zur Wiedererkennung \"".$NameTag."\"\n";
-			print_r($webconfig[$NameTag]);
+			echo "Jetzt Profil erstellen : ".$ProfileName." mit der ID : \"".$id."\" NameTag zur Wiedererkennung \"".$NameTag."\"\n";
 			if (isset($webconfig[$NameTag]['DATA'][$item])==true)
 	   		{
+				print_r($webconfig[$NameTag]);
 				$profil=$webconfig[$NameTag]['DATA'][$item];
 				$profil_size=sizeof($profil);
 				echo "Neues Profil mit ".$profil_size." Einträgen.\n";

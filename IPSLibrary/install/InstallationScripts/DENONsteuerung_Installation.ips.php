@@ -313,7 +313,7 @@ foreach ($configuration as $Denon => $config)
 
 	/************************************************************************************
 	 *
-	 * Webfron Installation
+	 * Webfront Installation
 	 *
 	 *******************************************************************************************/
 
@@ -405,7 +405,8 @@ foreach ($configuration as $Denon => $config)
 
 	/***************************************************************************************/
 
-	echo " ... sicherstellen das Configfile uebernommen wird.\n";
+	echo "\n\nWebportal Installation abgeschlossen.\n";
+	echo "Jetzt sicherstellen das Configfile uebernommen wird.\n";
   	$id=$config['NAME'];
 	$item="AuswahlFunktion";
 	$vtype = 1;
