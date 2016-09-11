@@ -458,12 +458,12 @@ function WebfrontInstall($categoryId_WebFront,$config,$moduleManager)
 		$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_WFE_ID);
 		if ($DENON_MainZone_ID == false)
 			{
-			$DENON_Main_Instance_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
-			IPS_SetParent($DENON_Main_Instance_ID, $DENON_WFE_ID);
-			IPS_SetName($DENON_Main_Instance_ID, "Main Zone");
-			IPS_SetInfo($DENON_Main_Instance_ID, "this Object was created by Script DENON.Installer.ips.php");
-			IPS_ApplyChanges($DENON_Main_Instance_ID);
-			echo "Dummy-Instanz Main Zone #$DENON_Main_Instance_ID in Kategorie DENON Webfront angelegt\n";
+			$DENON_MainZone_ID = IPS_CreateInstance("{485D0419-BE97-4548-AA9C-C083EB82E61E}");
+			IPS_SetParent($DENON_MainZone_ID, $DENON_WFE_ID);
+			IPS_SetName($DENON_MainZone_ID, "Main Zone");
+			IPS_SetInfo($DENON_MainZone_ID, "this Object was created by Script DENON.Installer.ips.php");
+			IPS_ApplyChanges($DENON_MainZone_ID);
+			echo "Dummy-Instanz Main Zone #$DENON_MainZone_ID in Kategorie DENON Webfront angelegt\n";
 			}
 		IPS_SetPosition($DENON_MainZone_ID,0);
 
