@@ -166,7 +166,7 @@
 
 						writeLogEvent("Autostart (Firefox)");
 
-						IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
+						IPS_EXECUTEEX($config["Software"]["Firefox"]["Directory"]."firefox.exe",$config["Software"]["Firefox"]["Url"],true,false,-1);
 
 						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
 						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
@@ -231,7 +231,7 @@
 							/*********************************************************************/
 							writeLogEvent("Autostart (Watchdog)");
 
-							IPS_EXECUTEEX("C:/IP-Symcon/IPSWatchDog.exe","",true,false,-1);   /* Watchdog starten */
+							IPS_EXECUTEEX($config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe","",true,false,-1);   /* Watchdog starten */
 
 						 	// Parent-ID der Kategorie ermitteln
 							$parentID = IPS_GetObject($IPS_SELF);
