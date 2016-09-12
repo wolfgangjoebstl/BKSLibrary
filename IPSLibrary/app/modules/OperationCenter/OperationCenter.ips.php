@@ -645,7 +645,7 @@ if ($_IPS['SENDER']=="Execute")
    	UpdateAll
 	**********************************************************/
 
-	//CyclicUpdate();
+	CyclicUpdate();
 
 	echo "============================================================================================================\n";
 
@@ -653,19 +653,19 @@ if ($_IPS['SENDER']=="Execute")
    	CopyScripts
 	**********************************************************/
 
-	//$OperationCenter->CopyScripts();
+	$OperationCenter->CopyScripts();
 
 	/********************************************************
    	Move Logs
 	**********************************************************/
 
-	//$OperationCenter->MoveLogs();
+	$OperationCenter->MoveLogs();
 
 	/************************************************************************************
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
 	*************************************************************************************/
 
-	//$OperationCenter->FileStatus();
+	$OperationCenter->FileStatus();
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
@@ -958,8 +958,14 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 		{
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 		$device_config=Denon_Configuration();
+		$deviceConfig=array();
+		foreach ($device_config as $name => $config)
+		   {
+		   if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
+		   if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
+			}
 		$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-		$OperationCenter->device_ping($device_config, $device, $identifier);
+		$OperationCenter->device_ping($deviceConfig, $device, $identifier);
 		}
 
 	/************************************************************************************

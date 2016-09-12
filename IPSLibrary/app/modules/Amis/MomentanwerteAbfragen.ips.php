@@ -223,13 +223,13 @@ if ($_IPS['SENDER']=="Execute")
 
 	//Hier die COM-Port Instanz festlegen
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-	if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
+	if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; }
 	foreach ($serialPortID as $num => $serialPort)
 	   {
 	   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 	   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
 		}
-	if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
+	if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; }
 	else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 
 	//echo "Alle I/O Instanzen\n";
@@ -284,28 +284,42 @@ function writeEnergyHomematic($MConfig)
 	   	{
 	   	$homematic=true;
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      //IPS_SetVariableCustomProfile($EnergieID,'~Electricity');
-	      //AC_SetLoggingStatus($archiveHandlerID,$EnergieID,true);
-			//AC_SetAggregationType($archiveHandlerID,$EnergieID,1);
-			//IPS_ApplyChanges($archiveHandlerID);
-	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-  	      //IPS_SetVariableCustomProfile($LeistungID,'~Power');
-	      $energie=GetValue($meter["HM_EnergieID"])/1000;
-  	      //IPS_SetVariableCustomProfile($meter["WirkenergieID"],'Wh');
-	      $energievorschub=$energie-GetValue($HM_EnergieID);
-			SetValue($HM_EnergieID,$energie);
+	      $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	      if ( isset($meter["OID"]) == true )
+				{
+				$OID  = $meter["OID"];
+				$cids = IPS_GetChildrenIDs($OID);
+			   foreach($cids as $cid)
+			    	{
+			      $o = IPS_GetObject($cid);
+			      if($o['ObjectIdent'] != "")
+			         {
+			         if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
+			         if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
+			        	}
+			    	}
+		      echo "OID Werte selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+				}
+			else
+				{
+				$HMenergieID  = $meter["HM_EnergieID"];
+				$HMleistungID = $meter["HM_LeistungID"];
+				}
+	      $energie=GetValue($HMenergieID)/1000;
+	      $leistung=GetValue($HMleistungID);
+	      $energievorschub=$energie-GetValue($Homematic_WirkergieID);
+			SetValue($Homematic_WirkergieID,$energie);
 			$energie_neu=GetValue($EnergieID)+$energievorschub;
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
-	      //echo "Energie Aktuell :".$energie." gespeichert auf ID:".$EnergieID."\n";
 	      echo "Werte von : ".$meter["NAME"]."\n";
-	      echo "  Homematicwerte :".(GetValue($meter["HM_EnergieID"])/1000)."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+	      echo "  Homematicwerte :".$energie."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
 	      echo "  Energievorschub aktuell:".$energievorschub."kWh\n";
 	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
-			//print_r($meter);
 			}
 		}
 	return ($homematic);

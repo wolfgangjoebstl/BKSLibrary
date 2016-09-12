@@ -110,6 +110,9 @@
 	      AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
+			
+	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 		   }
 		if ($meter["TYPE"]=="Amis")
 		   {
