@@ -14,19 +14,23 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-/******************************************************
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 
-				INIT
-				
-*************************************************************/
+	/******************************************************
+	 *
+	 *			INIT
+	 *
+	 *************************************************************/
 
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 	$MeterConfig = get_MeterConfiguration();
 	//print_r($MeterConfig);
+
+	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	foreach ($MeterConfig as $meter)
 		{
@@ -38,7 +42,7 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 		   /* kann derzeit nur ein AMIS Modul installieren */
 			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			$MeterReadID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -223,46 +227,26 @@ if ($_IPS['SENDER']=="Execute")
 
 	//Hier die COM-Port Instanz festlegen
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-	if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; }
+	echo "Alle Seriellen Ports auflisten:\n";
 	foreach ($serialPortID as $num => $serialPort)
 	   {
-	   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-	   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
+	   echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 		}
-	if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; }
-	else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
-
 	//echo "Alle I/O Instanzen\n";
 	//$alleInstanzen = IPS_GetInstanceListByModuleType(1); // nur I/O Instanzen auflisten
 
 	//echo "Alle Kern Instanzen\n";
 	//$alleInstanzen = IPS_GetInstanceListByModuleType(0); // nur Kern Instanzen auflisten
 
-	//echo "Alle Splitter Instanzen\n";
+	echo "\nAlle Splitter Instanzen auflisten:\n";
 	$alleInstanzen = IPS_GetInstanceListByModuleType(1); // nur Splitter Instanzen auflisten
 	//print_r($alleInstanzen);
 	foreach ($alleInstanzen as $instanz)
 	   {
 	   $datainstanz=IPS_GetInstance($instanz);
 	   echo " ".$instanz." Name : ".IPS_GetName($instanz)."\n";
-	   if ($instanz==$com_Port)
-	      {
-	   	//echo "**RegisterVariable ".$instanz." Name : ".IPS_GetName($instanz)."\n";
-		   //print_r($datainstanz);
-		   }
-	   //print_r($datainstanz);
-		//print_r($instanz);
 	   }
 
-	if (false)
-	   {
-		COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-		IPS_Sleep(1550);
-		COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-		IPS_Sleep(1550);
-		COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
-		}
-		
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
 	echo "\n********************************************VALUES**************************************************************\n\n";
@@ -283,6 +267,8 @@ function writeEnergyHomematic($MConfig)
 		if ($meter["TYPE"]=="Homematic")
 	   	{
 	   	$homematic=true;
+	   	echo "Werte von : ".$meter["NAME"]."\n";
+	   		      
 	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -302,7 +288,7 @@ function writeEnergyHomematic($MConfig)
 			         if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
 			        	}
 			    	}
-		      echo "OID Werte selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+		      echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
 				}
 			else
 				{
@@ -316,10 +302,9 @@ function writeEnergyHomematic($MConfig)
 			$energie_neu=GetValue($EnergieID)+$energievorschub;
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
-	      echo "Werte von : ".$meter["NAME"]."\n";
-	      echo "  Homematicwerte :".$energie."kWh  ".GetValue($meter["HM_LeistungID"])."W\n";
+	      echo "  Homematicwerte :".$energie."kWh  ".GetValue($HMleistungID)."W\n";
 	      echo "  Energievorschub aktuell:".$energievorschub."kWh\n";
-	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n";
+	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n\n";
 			}
 		}
 	return ($homematic);
