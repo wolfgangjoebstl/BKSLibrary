@@ -58,7 +58,7 @@
 	 **********************************************************************/
 
 	echo "\n";
-	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
+	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On", "Firefox.exe" => "On");
 	$processStart=checkProcess($processStart);
 	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
 	print_r($processStart);
@@ -68,12 +68,12 @@
 		if ( (fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
 		   {
 	   	echo "Keine Installation von IPSWatchdog vorhanden.\n";
-		   $processStart["IPSWatchDog.exe"]=="Off";
+		   $processStart["IPSWatchDog.exe"]="Off";
 			}
 		}
 	else
 	   {
-	   $processStart["IPSWatchDog.exe"]=="Off";
+	   $processStart["IPSWatchDog.exe"]="Off";
 	   }
 
 	if (isset($config["Software"]["VMware"]["Directory"])==true )
@@ -81,17 +81,43 @@
 		if ( (fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
 		   {
 		   echo "Keine Installation von VMware vorhanden.\n";
-		   $processStart["vmplayer.exe"]=="Off";
+		   $processStart["vmplayer.exe"]="Off";
 			}
 		if ( (fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
 		   {
 	   	echo "Keine Images für VMPlayer vorhanden.\n";
-		   $processStart["vmplayer.exe"]=="Off";
+		   $processStart["vmplayer.exe"]="Off";
 			}
 		}
 	else
 	   {
-	   $processStart["vmplayer.exe"]=="Off";
+	   $processStart["vmplayer.exe"]="Off";
+	   }
+
+	if (isset($config["Software"]["iTunes"]["Directory"])==true )
+	   {
+		if ( (fileAvailable("iTunes.exe",$config["Software"]["iTunes"]["Directory"])) == false )
+		   {
+		   echo "Keine Installation von iTunes vorhanden.\n";
+		   $processStart["iTunes.exe"]="Off";
+			}
+		}
+	else
+	   {
+	   $processStart["iTunes.exe"]="Off";
+	   }
+
+	if (isset($config["Software"]["Firefox"]["Directory"])==true )
+	   {
+		if ( (fileAvailable("firefox.exe",$config["Software"]["Firefox"]["Directory"])) == false )
+		   {
+		   echo "Keine Installation von Firefox vorhanden.\n";
+		   $processStart["Firefox.exe"]="Off";
+			}
+		}
+	else
+	   {
+	   $processStart["Firefox.exe"]="Off";
 	   }
 
 	$handle2=fopen("c:/scripts/process_username.bat","w");
@@ -122,6 +148,7 @@
 	if ($_IPS['SENDER']=="Execute")
 		{
 		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
+		print_r($processStart);
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
    	SetValue($ScriptCounterID,1);
@@ -163,19 +190,21 @@
 						/* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
 						//IPS_ExecuteEx("c:/Users/wolfg_000/Downloads/Programme/47 ftp server/ftpserver31lite/ftpserver.exe","", true, false,1);
 						//writeLogEvent("Autostart (ftpserverlite)");
+						if ($processStart["Firefox.exe"] == "On")
+						   {
+							writeLogEvent("Autostart (Firefox)");
 
-						writeLogEvent("Autostart (Firefox)");
+							IPS_EXECUTEEX($config["Software"]["Firefox"]["Directory"]."firefox.exe",$config["Software"]["Firefox"]["Url"],true,false,-1);
 
-						IPS_EXECUTEEX($config["Software"]["Firefox"]["Directory"]."firefox.exe",$config["Software"]["Firefox"]["Url"],true,false,-1);
-
-						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
-						//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
-						/* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
-
+							//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
+							//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
+							/* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
+							}
 						SetValue($ScriptCounterID,$counter+1);
 			      	break;
 					case 4:
 						//if (GetValueBoolean(50871))
+						if ($processStart["iTunes.exe"] == "On")
 						   {
 							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 					   	/* Soap ausschalten */
@@ -192,6 +221,7 @@
 			      	break;
 					case 3:
 						//if (GetValueBoolean(46719))
+						if ($processStart["iTunes.exe"] == "On")
 					   	{
 							echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 				   		/* iTunes ausschalten */

@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 $startexec=microtime(true);
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -33,7 +33,7 @@ if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist in
 
 /*
 
-jetzt wird für jeden Bewegungsmelder ein Event registriert. Das führt beim Message handler dazu das die class function handle event aufgerufen woird
+jetzt wird fÃ¼r jeden Bewegungsmelder ein Event registriert. Das fÃ¼hrt beim Message handler dazu das die class function handle event aufgerufen woird
 
 Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server zusaetzlich geloggt
 
@@ -66,6 +66,7 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::
 if ($_IPS['SENDER']=="Execute")
 	{
 			$Homematic = HomematicList();
+			//print_r($Homematic);
 			$FS20= FS20List();
 		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 
@@ -73,9 +74,10 @@ if ($_IPS['SENDER']=="Execute")
 		   echo "\n";
 		   echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
 			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
-			foreach ($Homematic as $Key)
+			foreach ($Homematic as $Name => $Key)
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
+				echo "Bearbeite ".$Name."\n";
 				if ( (isset($Key["COID"]["MOTION"])==true) )
 		   		{
 		   		/* alle Bewegungsmelder */
@@ -106,7 +108,7 @@ if ($_IPS['SENDER']=="Execute")
 					$log=new Motion_Logging($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
-				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknÃ¼pfen */
 				if ((isset($Key["COID"]["StatusVariable"])==true))
 			   	{
 		   		foreach ($TypeFS20 as $Type)
