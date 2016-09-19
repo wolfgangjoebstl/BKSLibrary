@@ -118,10 +118,10 @@ else
 		break;
 		}
 
-	if ($name='RemoteNetPlayer')
+	if ($name=='RemoteNetPlayer')
 		{
 		/* kleine Umleitung für Remote Netplayer */
-
+		$log_Denon->LogNachrichten("Netplayer, Bearbeitung von Variable ID :".$oid.".");
 
 
 		}
@@ -158,7 +158,7 @@ else
 				//{
 				SetValue($IPS_VARIABLE, $IPS_VALUE);
 				$VarName = IPS_GetName($IPS_VARIABLE);
-
+				//$log_Denon->LogNachrichten("Bearbeitung von Variable : ".$VarName." (Switch).");
 				switch ($VarName)
 					{
 				   ############### Main Zone ################################################
@@ -174,28 +174,31 @@ else
 						}
 					break;
 
-		case "DigitalInputMode":
-         $DigitalInputMode_val = GetValueFormatted($IPS_VARIABLE);
-			DENON_DigitalInputMode($id, $DigitalInputMode_val);
-		break;
+					case "DigitalInputMode":
+			         $DigitalInputMode_val = GetValueFormatted($IPS_VARIABLE);
+						DENON_DigitalInputMode($id, $DigitalInputMode_val);
+						break;
 
-		case "InputSource":
-         $InputSource_val = GetValueFormatted($IPS_VARIABLE);
-			DENON_InputSource($id, $InputSource_val);
-		break;
+					case "InputSource":
+         			$InputSource_val = GetValueFormatted($IPS_VARIABLE);
+						DENON_InputSource($id, $InputSource_val);
+					break;
 
-		case "AuswahlFunktion":
-         $InputSource_val = GetValueFormatted($IPS_VARIABLE);
-			$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
-			IPSLogger_Dbg(__file__, "Denon: Umgeschaltet auf die neue Quelle \"".$InputSource_val."\"  ");
+					case "AuswahlFunktion":
+         			$InputSource_val = GetValueFormatted($IPS_VARIABLE);
+						$log_Denon->LogMessage("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val);
+						IPSLogger_Dbg(__file__, "Denon: Umgeschaltet auf die neue Quelle \"".$InputSource_val."\"  ");
 
-			$webconfig=Denon_WebfrontConfig();
-			if (isset($webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val])==true)
-	   		{
-				$InputSource_val=$webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val];
-				DENON_InputSource($id, $InputSource_val);
-				}
-		break;
+						$webconfig=Denon_WebfrontConfig();
+						//print_r($webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val]);
+
+						if (isset($webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val])==true)
+				   		{
+							$InputSource_new=$webconfig[$NameTag]['DATA']['AuswahlFunktion'][$InputSource_val];
+							DENON_InputSource($id, $InputSource_new);
+							$log_Denon->LogNachrichten("Denon Telegramm;Webfront;Auswahlfunktion;".$InputSource_val." auf ".$InputSource_new." mit ".$NameTag);
+							}
+						break;
 
 		case "InputMode":
          $InputMode_val = GetValueFormatted($IPS_VARIABLE);

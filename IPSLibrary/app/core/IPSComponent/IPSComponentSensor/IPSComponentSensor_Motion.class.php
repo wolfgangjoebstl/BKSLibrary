@@ -76,7 +76,7 @@
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Remote OID: ".$roid."\n";
-							$rpc->SetValue($roid, $value);
+							$rpc->SetValueBoolean($roid, $value);
 							}
 						}
 					}
