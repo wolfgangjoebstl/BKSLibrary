@@ -4,7 +4,9 @@
 	 * @ingroup modules_weather
 	 * @{
 	 *
-	 * Script um Herauszufinden ob wer zu Hause ist
+	 * Script um Ereignisse zusammenzufassen, ursprünglich für die Bewegungserfassung gecshrieben
+	 *
+	 * funktioniert nun auch für Bewegung, Temperatur und feuchtigkeit
 	 *
 	 *
 	 * @file          DetectMovement_Installation.ips.php
@@ -26,12 +28,13 @@
 
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager))
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('DetectMovement',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -45,7 +48,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('DetectMovement');
-	echo "\nDetectMovement Version : ".$ergebnis;
+	echo "\nDetectMovement Version : ".$ergebnis."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	
@@ -56,27 +59,27 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
-if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
-if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
-if (isset ($installedModules["RemoteAccess"]))
-	{
-	echo "Modul RemoteAccess ist installiert.\n";
-	IPSUtils_Include ('RemoteAccess_Configuration.inc.php', 'IPSLibrary::config::modules::RemoteAccess');
-	}
-else
-	{
-	echo "Modul RemoteAccess ist NICHT installiert.\n";
-	break;
-	}
-if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
-if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
+	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
+	if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
+	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		echo "Modul RemoteAccess ist installiert.\n";
+		IPSUtils_Include ('RemoteAccess_Configuration.inc.php', 'IPSLibrary::config::modules::RemoteAccess');
+		}
+	else
+		{
+		echo "Modul RemoteAccess ist NICHT installiert.\n";
+		break;
+		}
+	if (isset ($installedModules["IPSCam"])) { 				echo "Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+	if (isset ($installedModules["OperationCenter"])) { 	echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
 
-/****************************************************************************************************************/
-/*                                                                                                              */
-/*                                      Install                                                                 */
-/*                                                                                                              */
-/****************************************************************************************************************/
+	/****************************************************************************************************************/
+	/*                                                                                                              */
+	/*                                      Install                                                                 */
+	/*                                                                                                              */
+	/****************************************************************************************************************/
 
 	IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 	IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
@@ -103,9 +106,9 @@ if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCent
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
 	echo "\n";
-	echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
 	if (function_exists('HomematicList'))
 	   {
+		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
 		$Homematic = HomematicList();
 		$keyword="MOTION";
 		foreach ($Homematic as $Key)
@@ -131,11 +134,11 @@ if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCent
       		$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
 			   	{
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				else
 				   {
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 
@@ -191,11 +194,11 @@ if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCent
       		$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
 			   	{
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				else
 				   {
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 
@@ -285,7 +288,7 @@ if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCent
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "\n";
-		echo "Remote Access installiert, Gruppen Variablen für Bewegung/Motion auch am VIS Server aufmachen.\n";
+		echo "Remote Access installiert, Gruppen Variablen für Bewegung/Motion auch auf den RemoteAccess VIS Server aufmachen.\n";
 		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
 		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();

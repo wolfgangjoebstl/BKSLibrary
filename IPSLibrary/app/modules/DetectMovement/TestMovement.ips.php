@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 $startexec=microtime(true);
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -43,7 +43,7 @@ if (isset ($installedModules["OperationCenter"])) { echo "Modul OperationCenter 
 
 /*
 
-jetzt wird für jeden Bewegungsmelder ein Event registriert. Das führt beim Message handler dazu das die class function handle event aufgerufen woird
+jetzt wird fÃ¼r jeden Bewegungsmelder ein Event registriert. Das fÃ¼hrt beim Message handler dazu das die class function handle event aufgerufen woird
 
 Selbe Routine in RemoteAccess, allerdings wird dann auch auf einem Remote Server zusaetzlich geloggt
 
@@ -84,7 +84,7 @@ if ($_IPS['SENDER']=="Execute")
 		   
 	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
 	echo"\n";
-	echo "Zusätzliche Checks bei der Eventbearebitung:\n";
+	echo "ZusÃ¤tzliche Checks bei der Eventbearbeitung:\n";
 	echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
 	echo"\n";
    $children=IPS_GetChildrenIDs($scriptId);
@@ -156,7 +156,7 @@ if ($_IPS['SENDER']=="Execute")
 					$log=new Motion_Logging($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
-				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknÃ¼pfen */
 				if ((isset($Key["COID"]["StatusVariable"])==true))
 			   	{
 		   		foreach ($TypeFS20 as $Type)

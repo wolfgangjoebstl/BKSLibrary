@@ -21,7 +21,7 @@
 	 * @ingroup RemoteAccess
 	 * @{
 	 *
-	 * Konfigurations File für RemoteACcess
+	 * Konfigurations File fÃ¼r RemoteACcess
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -36,8 +36,25 @@
 function RemoteAccess_GetConfiguration()
 	{
 		return array(
-				"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
-				"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.0.46:86/api/',
+				"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
+						);
+	}
+
+function LocalAccess_GetConfiguration()
+	{
+		return array(
+				//"LBG70"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.0.20:82/api/',
+						);
+	}
+
+
+function RemoteAccess_TypeFS20()
+	{
+		return array(
+				/*"Zentralzimmer"      => 	array(
+	                              			"OID" 	=> 50080,
+	                                       "Type"   => "Motion",
+																  ) */
 						);
 	}
 
