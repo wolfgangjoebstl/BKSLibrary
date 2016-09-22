@@ -1,12 +1,17 @@
 <?
 
 /***********************************************************************
-
-OperationCenter
-
-Allerlei betriebliche Abfragen und Wartungsmassnahmen
-
-***********************************************************/
+ *
+ * OperationCenter
+ *
+ * Allerlei betriebliche Abfragen und Wartungsmassnahmen
+ *
+ * SysPing, alle bekannten Geräte (Router, LED, Denon, Cams) pingen und Status ermitteln
+ *
+ *
+ * Update aller IPS Module, zB immer am 12. des Monates
+ *
+ ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");

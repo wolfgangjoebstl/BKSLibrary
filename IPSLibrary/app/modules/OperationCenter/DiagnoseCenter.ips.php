@@ -1,12 +1,14 @@
 <?
 
 /***********************************************************************
-
-DiagnoseCenter
-
-Allerlei betriebliche Abfragen und Wartungsmassnahmen
-
-***********************************************************/
+ *
+ * DiagnoseCenter
+ *
+ * Allerlei betriebliche Abfragen und Wartungsmassnahmen
+ *
+ * derzeit nur evaluate traceRoute einmal am Tag bis zu Google verfolgen
+ *
+ ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -90,7 +92,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 	/********************************************************
-   	Über eigene Ip Adresse auf Gateway Adresse schliessen
+   	Ãœber eigene Ip Adresse auf Gateway Adresse schliessen
 	**********************************************************/
 
 	echo "\nGateway Adresse und Trace ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
