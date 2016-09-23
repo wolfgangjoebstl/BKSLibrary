@@ -14,6 +14,8 @@ IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::m
 
 *************************************************************/
 
+$startexec=microtime(true);
+
 //$repository = 'https://10.0.1.6/user/repository/';
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
@@ -167,8 +169,28 @@ if ($_IPS['SENDER']=="Execute")
 				echo "ParentID:".IPS_GetParent(intval($log->EreignisID))." Name :","Gesamtauswertung_".$params[1]."\n";
 				$erID=CreateVariable("Gesamtauswertung_".$params[1],1,IPS_GetParent(intval($log->EreignisID)));
 				}
+
+		   $alleTempWerte="\n\nHistorische Temperaturwerte aus den Logs der CustomComponents:\n\n";
+		   echo "\n";
+		   echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
+			echo "===========================Alle Homematic Temperaturmelder ausgeben.\n";
+
+			foreach ($Homematic as $Key)
+				{
+				/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
+				if (isset($Key["COID"]["TEMPERATURE"])==true)
+	   			{
+	 				$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+					$log=new Temperature_Logging($oid);
+					$alleTempWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+					}
+				}
+			$alleTempWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
+			echo $alleTempWerte;
+
+
 			
 			
-	}
+	}  // Ende if execute
 
 ?>

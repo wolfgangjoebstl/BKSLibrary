@@ -1,6 +1,6 @@
 <?
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
  * Guthabenvariablen am Remote Server anlegen
  *
@@ -29,13 +29,13 @@ $installedModules=$moduleManager->GetInstalledModules();
 //print_r($result);
 
 echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "Modul Guthabensteuerung ist NICHT installiert.\n"; }
-if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
+if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "  Modul Guthabensteuerung ist NICHT installiert.\n"; }
+if (isset ($installedModules["OperationCenter"])) { 	echo "  Modul OperationCenter ist installiert.\n"; } else { echo "  Modul OperationCenter ist NICHT installiert.\n"; }
 echo "\n";
 
 if (isset ($installedModules["Guthabensteuerung"]))
   	{
-  	/* nur wenn Guthabensteuerung installiert ist ausführen */
+  	/* nur wenn Guthabensteuerung installiert ist ausfÃ¼hren */
 	echo "Mobilfunk Guthaben Struktur auf Remote Servern aufbauen:\n";
 	
 	foreach ($remServer as $Name => $Server)
@@ -77,15 +77,16 @@ if (isset ($installedModules["Guthabensteuerung"]))
 			$parameter.=$Name.":".$result.";";
 			}
 	   $messageHandler = new IPSMessageHandler();
+
 	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 		}
 	}
 
 if (isset ($installedModules["OperationCenter"]))
   	{
-  	/* nur wenn OperationCenter installiert ist ausführen */
+  	/* nur wenn OperationCenter installiert ist ausfÃ¼hren */
 	echo "Router Datenverbrauch Struktur auf Remote Servern aufbauen:\n";
 
 	foreach ($remServer as $Name => $Server)
@@ -117,12 +118,13 @@ if (isset ($installedModules["OperationCenter"]))
 
 function setup_variable($name, $router, $rpc_catID)
 	{
+   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	$remServer=ROID_List();
 
 	$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
 	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router,$OperationCenterDataId);
 	$router_OID=@IPS_GetObjectIDByName($name,$router_categoryId);
-	echo "   folgende Ergebnisse für ".$router." in OID : ".$OperationCenterDataId." Cat-OID : ".	$router_categoryId."  Data OID : ".$router_OID."\n";
+	echo "   folgende Ergebnisse fÃ¼r ".$router." in OID : ".$OperationCenterDataId." Cat-OID : ".	$router_categoryId."  Data OID : ".$router_OID."\n";
 	if (($router_categoryId != false) && ($router_OID != false))
    	{
 	  	/* nur wenn bereits zumindest das Datenfeld angelegt wurde weitermachen */
@@ -150,7 +152,7 @@ function setup_variable($name, $router, $rpc_catID)
 			}
 	   $messageHandler = new IPSMessageHandler();
 	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($router_OID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+	   $messageHandler->CreateEvent($router_OID,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($router_OID,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 
 
