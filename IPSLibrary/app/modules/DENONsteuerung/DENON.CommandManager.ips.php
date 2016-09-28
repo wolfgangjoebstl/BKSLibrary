@@ -142,273 +142,279 @@ else
 			}
 		else
 		   {
-			//$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM)");
-			//$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM)");
+			$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM),Typ ".$config['TYPE']."\n");
+			$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM), Typ ".$config['TYPE']."\n");
 
-			$maincat= substr($data,0,2); //Eventidentifikation
-			$zonecat= substr($data,2); //Zoneneventidentifikation
-			switch($maincat)
+			if ($config['TYPE'] == "Netplayer")
 				{
+
+				}
+			if ($config['TYPE'] == "Denon")
+				{
+				$maincat= substr($data,0,2); //Eventidentifikation
+				$zonecat= substr($data,2); //Zoneneventidentifikation
+				switch($maincat)
+					{
 	
-				/* Eventidentifikation
+					/* Eventidentifikation
 
-				PW MV MU ZM SI SV MS DC SD SR SL VS PS NS CV Z2 Z3
+					PW MV MU ZM SI SV MS DC SD SR SL VS PS NS CV Z2 Z3
 
 
-			  */
+				  */
 
-				/*---------------------------------------------------------------------------*/
-				case "PW": //MainPower
-					$item = "Power";
-					$vtype = 0;
-					if ($data == "PWON")
-						{
-						$value = true;
-						}
-					elseif ($data == "PWSTANDBY")
-						{
-						$value = false;
-						}
-					else
-					   {
-						$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
-					   }
-					DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-					$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-					$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
-					break;
-
-				/*---------------------------------------------------------------------------*/
-				case "MV": //Mastervolume
-					if (substr($data,2,3) =="MAX")
-						{
-						}
-					else
-						{
-						$item = "MasterVolume";
-						$vtype = 2;
-						$itemdata=substr($data,2);
-						if ( $itemdata == "99")
+					/*---------------------------------------------------------------------------*/
+					case "PW": //MainPower
+						$item = "Power";
+						$vtype = 0;
+						if ($data == "PWON")
 							{
-							$value = "";
+							$value = true;
+							}
+						elseif ($data == "PWSTANDBY")
+							{
+							$value = false;
+							}
+						else
+					   	{
+							$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+						   }
+						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+						break;
+
+					/*---------------------------------------------------------------------------*/
+					case "MV": //Mastervolume
+						if (substr($data,2,3) =="MAX")
+							{
 							}
 						else
 							{
-							$itemdata= str_pad ( $itemdata, 3, "0" );
-							$value = (intval($itemdata)/10) -80;
+							$item = "MasterVolume";
+							$vtype = 2;
+							$itemdata=substr($data,2);
+							if ( $itemdata == "99")
+								{
+								$value = "";
+								}
+							else
+								{
+								$itemdata= str_pad ( $itemdata, 3, "0" );
+								$value = (intval($itemdata)/10) -80;
+								}
+							DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
+							$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+							$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 							}
-						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
-						}
-				 	break;
+					 	break;
 
-				/*---------------------------------------------------------------------------*/
-			case "MU": //MainMute
-				$item = "MainMute";
-				$vtype = 0;
-				if ($data == "MUON")
-					{
-					$value = true;
-					}
-				elseif ($data == "MUOFF")
-					{
-					$value = false;
-					}
-				else
-				   {
-				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
-		   	}
-				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
-				break;
-
-			/*---------------------------------------------------------------------------*/
-			case "ZM": //MainZone
-				$item = "MainZonePower";
-				$vtype = 0;
-				if ($data == "ZMON")
-					{
-					$value = true;
-					}
-				elseif ($data == "ZMOFF")
-					{
-					$value = false;
-					}
-				else
-				   {
-					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
-				   }
-				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
-				break;
-
-			/*---------------------------------------------------------------------------*/
-			case "EC": //Eco mode
-				$item = "Ecomode";
-				$value=substr($data,3); /* das O von ECO wird verschluckt */
-				$vtype = 3;  /* String */
-				DenonSetValue($item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$value);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$value);
-				break;
-
-			/*---------------------------------------------------------------------------*/
-			case "SI": //Source Input
-				$item = "InputSource";
-				$itemdata=substr($data,2);
-				$vtype = 1;
-
-				if (isset($webconfig[$NameTag]["DATA"]['AuswahlFunktion'])==true)
-		   		{
-					$profil=$webconfig[$NameTag]["DATA"]['AuswahlFunktion'];
-					$profil_size=sizeof($profil);
-				   $i=0;
-				   $done=false;
-				   foreach ($profil as $name => $assoc)
-				      {
-				      /* Wenn ein Eintrag für Data und Auswahlfunktion besteht, dann alle Einträge durchgehen ob itemdata dabei ist */
-				      $i++;
-						if ($itemdata==$assoc)
+					/*---------------------------------------------------------------------------*/
+					case "MU": //MainMute
+						$item = "MainMute";
+						$vtype = 0;
+						if ($data == "MUON")
+							{
+							$value = true;
+							}
+						elseif ($data == "MUOFF")
+							{
+							$value = false;
+							}
+						else
 						   {
-							/* zB Tuner Befehl wurde empfangen auf Webfront Shortlist Audio Anzeige umsetzen */
-							DenonSetValue("AuswahlFunktion",$i, 1, $id,$Audio_Path);
-				   		/* zB 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
-				   		$done=true;
+							$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+					   	}
+						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+						break;
+
+					/*---------------------------------------------------------------------------*/
+					case "ZM": //MainZone
+						$item = "MainZonePower";
+						$vtype = 0;
+						if ($data == "ZMON")
+							{
+							$value = true;
+							}
+						elseif ($data == "ZMOFF")
+							{
+							$value = false;
+							}
+						else
+						   {
+							$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 						   }
-						}
-					if ($done==false)
-						{
-						/* wenn Befehl nicht bekannt ist dann auf VOID 0 setzen */
-						DenonSetValue("AuswahlFunktion",0, 1, $id,$Audio_Path);
-					   }
-					}
+						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+						break;
 
-				if ($itemdata == "PHONO")
-					{
-					$value = 0;
-					}
-				elseif ($itemdata == "CD")
-					{
-					$value = 1;
-					}
-				elseif ($itemdata == "TUNER")
-					{
-					$value = 2;
-					}
-				elseif ($itemdata == "DVD")
-					{
-					$value = 3;
-					}
-				elseif ($itemdata == "BD")
-					{
-					$value = 4;
-					}
-				elseif ($itemdata == "TV")
-					{
-					$value = 5;
-					}
-				elseif ($itemdata == "SAT/CBL")
-					{
-					$value = 6;
-					}
-				elseif ($itemdata == "DVR")
-					{
-					$value = 7;
-					}
-				elseif ($itemdata == "GAME")
-					{
-					$value = 8;
-					}
-				elseif ($itemdata == "V.AUX")
-					{
-					$value = 9;
-					}
-				elseif ($itemdata == "DOCK")
-					{
-					$value = 10;
-					}
-				elseif ($itemdata == "IPOD")
-					{
-					$value = 11;
-					}
-				elseif ($itemdata == "NET/USB")
-					{
-					$value = 12;
-					}
-				elseif ($itemdata == "NAPSTER")
-					{
-					$value = 13;
-					}
-				elseif ($itemdata == "LASTFM")
-					{
-					$value = 14;
-					}
-				elseif ($itemdata == "FLICKR")
-					{
-					$value = 15;
-					}
-				elseif ($itemdata == "FAVORITES")
-					{
-					$value = 16;
-					}
-				elseif ($itemdata == "IRADIO")
-					{
-					$value = 17;
-					}
-				elseif ($itemdata == "SERVER")
-					{
-					$value = 18;
-					}
-				elseif ($itemdata == "USB/IPOD")
-					{
-					$value = 19;
-					}
-				elseif ($itemdata == "MPLAY")    /* new one */
-					{
-					$value = 20;
-					}
-				elseif ($itemdata == "NET")    /* new one */
-					{
-					$value = 21;
-					}
-				elseif ($itemdata == "IPOD DIRECT")
-					{
-					$value = 22;
-					}
-				elseif ($itemdata == "BT")
-					{
-					$value = 23;
-					}
-				elseif ($itemdata == "AUX2")
-					{
-					$value = 24;
-					}
-				else
-				   {
-					$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
-				   }
-				$value = intval($value);
-				DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
-				break;
+					/*---------------------------------------------------------------------------*/
+					case "EC": //Eco mode
+						$item = "Ecomode";
+						$value=substr($data,3); /* das O von ECO wird verschluckt */
+						$vtype = 3;  /* String */
+						DenonSetValue($item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$value);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$value);
+						break;
 
-			/*---------------------------------------------------------------------------*/
-			case "SV": //Video Select
-				$item = "VideoSelect";
-				$itemdata=substr($data,2);
-				$vtype = 1;
-				if ($itemdata == "DVD")
-					{
-					$value = 0;
-					}
-				elseif ($itemdata == "BD")
-					{
-					$value = 1;
-					}
+					/*---------------------------------------------------------------------------*/
+					case "SI": //Source Input
+						$item = "InputSource";
+						$itemdata=substr($data,2);
+						$vtype = 1;
+
+						if (isset($webconfig[$NameTag]["DATA"]['AuswahlFunktion'])==true)
+				   		{
+							$profil=$webconfig[$NameTag]["DATA"]['AuswahlFunktion'];
+							$profil_size=sizeof($profil);
+						   $i=0;
+						   $done=false;
+						   foreach ($profil as $name => $assoc)
+						      {
+						      /* Wenn ein Eintrag für Data und Auswahlfunktion besteht, dann alle Einträge durchgehen ob itemdata dabei ist */
+				      		$i++;
+								if ($itemdata==$assoc)
+								   {
+									/* zB Tuner Befehl wurde empfangen auf Webfront Shortlist Audio Anzeige umsetzen */
+									DenonSetValue("AuswahlFunktion",$i, 1, $id,$Audio_Path);
+						   		/* zB 0, "VOID", 	1, "PC",	2, "XBOX",	3, "TUNER"			*/
+						   		$done=true;
+								   }
+								}
+							if ($done==false)
+								{
+								/* wenn Befehl nicht bekannt ist dann auf VOID 0 setzen */
+								DenonSetValue("AuswahlFunktion",0, 1, $id,$Audio_Path);
+							   }
+							}
+
+						if ($itemdata == "PHONO")
+							{
+							$value = 0;
+							}
+						elseif ($itemdata == "CD")
+							{
+							$value = 1;
+							}
+						elseif ($itemdata == "TUNER")
+							{
+							$value = 2;
+							}
+						elseif ($itemdata == "DVD")
+							{
+							$value = 3;
+							}
+						elseif ($itemdata == "BD")
+							{
+							$value = 4;
+							}
+						elseif ($itemdata == "TV")
+							{
+							$value = 5;
+							}
+						elseif ($itemdata == "SAT/CBL")
+							{
+							$value = 6;
+							}
+						elseif ($itemdata == "DVR")
+							{
+							$value = 7;
+							}
+						elseif ($itemdata == "GAME")
+							{
+							$value = 8;
+							}
+						elseif ($itemdata == "V.AUX")
+							{
+							$value = 9;
+							}
+						elseif ($itemdata == "DOCK")
+							{
+							$value = 10;
+							}
+						elseif ($itemdata == "IPOD")
+							{
+							$value = 11;
+							}
+						elseif ($itemdata == "NET/USB")
+							{
+							$value = 12;
+							}
+						elseif ($itemdata == "NAPSTER")
+							{
+							$value = 13;
+							}
+						elseif ($itemdata == "LASTFM")
+							{
+							$value = 14;
+							}
+						elseif ($itemdata == "FLICKR")
+							{
+							$value = 15;
+							}
+						elseif ($itemdata == "FAVORITES")
+							{
+							$value = 16;
+							}
+						elseif ($itemdata == "IRADIO")
+							{
+							$value = 17;
+							}
+						elseif ($itemdata == "SERVER")
+							{
+							$value = 18;
+							}
+						elseif ($itemdata == "USB/IPOD")
+							{
+							$value = 19;
+							}
+						elseif ($itemdata == "MPLAY")    /* new one */
+							{
+							$value = 20;
+							}
+						elseif ($itemdata == "NET")    /* new one */
+							{
+							$value = 21;
+							}
+						elseif ($itemdata == "IPOD DIRECT")
+							{
+							$value = 22;
+							}
+						elseif ($itemdata == "BT")
+							{
+							$value = 23;
+							}
+						elseif ($itemdata == "AUX2")
+							{
+							$value = 24;
+							}
+						else
+						   {
+							$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
+						   }
+						$value = intval($value);
+						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$data);
+						break;
+
+					/*---------------------------------------------------------------------------*/
+					case "SV": //Video Select
+						$item = "VideoSelect";
+						$itemdata=substr($data,2);
+						$vtype = 1;
+						if ($itemdata == "DVD")
+							{
+							$value = 0;
+							}
+						elseif ($itemdata == "BD")
+							{
+							$value = 1;
+							}
 				elseif ($itemdata == "TV")
 					{
 					$value = 2;
@@ -2310,7 +2316,7 @@ else
 				$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 	   		break;
 			}
-
+				} /* Ende Type Denon */
 			} /* Ende richtigen Denon Receiver erkannt */
 		} /* ende foreach Denon Receiver */
 	} /* ende else execute */

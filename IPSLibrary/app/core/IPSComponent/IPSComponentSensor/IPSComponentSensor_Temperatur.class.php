@@ -145,7 +145,8 @@
 				if ($variable<>null)
 				   {
 				   /* lokale Spiegelregister aufsetzen */
-	   	   	$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10 );
+				   echo "Lokales Spiegelregister als Float auf ".$this->variablename." ".$TempAuswertungID." ".IPS_GetName($TempAuswertungID)." anlegen.\n";
+	   	   	$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10, "", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
 	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
 	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);

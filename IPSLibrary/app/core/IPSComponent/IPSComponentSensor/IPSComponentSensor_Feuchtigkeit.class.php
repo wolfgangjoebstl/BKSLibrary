@@ -145,7 +145,7 @@
 				if ($variable<>null)
 				   {
 				   /* lokale Spiegelregister aufsetzen */
-	   	   	$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10 );
+	   	   	$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10,"",null,null );
 	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity');
 	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
