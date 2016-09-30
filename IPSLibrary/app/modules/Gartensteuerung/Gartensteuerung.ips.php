@@ -61,7 +61,7 @@ if ($eid1==false)
 	$eid1 = IPS_CreateEvent(1);
 	IPS_SetParent($eid1, $_IPS['SELF']);
 	IPS_SetName($eid1, "Timer1");
-	IPS_SetEventCyclic($eid1, 0 /* Keine Datums¸berpr¸fung */, 0, 0, 2, 2 /* Min¸tlich */ , 10 /* Alle 10 Minuten */);
+	IPS_SetEventCyclic($eid1, 0 /* Keine Datums√ºberpr√ºfung */, 0, 0, 2, 2 /* Min√ºtlich */ , 10 /* Alle 10 Minuten */);
 	}
 
 $eid2 = @IPS_GetEventIDByName("Timer2", $_IPS['SELF']);
@@ -195,13 +195,14 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
 		Nicht mer als 10.000 Werte ...
 	*/
-	//print_r($werte);
+	print_r($werte);
   	//$anzahl=count($werte);
  	//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
   	/* array AC_GetAggregatedValues ( integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit )
-  	0 St¸ndliche Aggregation, 1 T‰gliche Aggregation, 2 Wˆchentliche Aggregation, 3 Monatliche Aggregation
-	4 J‰hrliche Aggregation, 5 5-Min¸tige Aggregation (Aus Rohdaten berechnet), 6 1-Min¸tige Aggregation (Aus Rohdaten berechnet)
+  	0 St√ºndliche Aggregation, 1 T√§gliche Aggregation, 2 W√∂chentliche Aggregation, 3 Monatliche Aggregation
+	4 J√§hrliche Aggregation, 5 5-Min√ºtige Aggregation (Aus Rohdaten berechnet), 6 1-Min√ºtige Aggregation (Aus Rohdaten berechnet)
 	*/
+	print_r($tempwerte);
 
   	$anzahl=count($tempwerte);
  	echo "   Agg. Variable: ".$variableTempName." mit ".$anzahl." Werte \n";
@@ -211,8 +212,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
  	echo "Maxtemperatur gestern     : ".number_format($tempwerte[1]["Max"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[1]["MaxTime"]))."\n";
  	echo "Mintemperatur heute       : ".number_format($tempwerte[0]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[0]["MinTime"]))."\n";
  	echo "Mintemperatur gestern     : ".number_format($tempwerte[1]["Min"], 1, ",", "")." Grad um ".date("d.m H:i",($tempwerte[1]["MinTime"]))."\n";
- 	echo "Dauer heute : ".number_format(($tempwerte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
- 	echo "LastTime    : ".date("d.m H:i",($tempwerte[0]["LastTime"]))." \n";
+ 	//echo "Dauer heute : ".number_format(($tempwerte[0]["Duration"]/60/60), 1, ",", "")."Stunden \n";
+ 	//echo "LastTime    : ".date("d.m H:i",($tempwerte[0]["LastTime"]))." \n";
  	echo "TimeStamp   : ".date("d.m H:i",($tempwerte[1]["TimeStamp"]))." \n";
  	
 
@@ -220,10 +221,12 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
  	echo "   Variable: ".$variableName." mit ".$anzahl." agreggierten Werten.\n";
 	echo "   Variable: WerteLog mit ".count($werteLog)." geloggten Werten.\n";
 	
-	/* Letzen Regen ermitteln, alle Eintr‰ge der letzten 48 Stunden durchgehen */
+	/* Letzen Regen ermitteln, alle Eintr√§ge der letzten 48 Stunden durchgehen */
 	$letzterRegen=0;
+	$regenStand=0;
 	$regenStand2h=0;
-	$regenStandAnfang=0;  /* f¸r den Fall dass gar keine Werte gelogget wurden */
+	$regenStand48h=0;
+	$regenStandAnfang=0;  /* f√ºr den Fall dass gar keine Werte gelogget wurden */
 	$regenStandEnde=0;
 	foreach ($werteLog as $wert)
 	   {
@@ -231,7 +234,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	   $regenStandAnfang=$wert["Value"];
 	   If (($letzterRegen==0) && ($wert["Value"]>0))
 	      {
-	      /* Wenn nur ein Wert in der Datenbank ohne Ver‰nderung dann problem */
+	      /* Wenn nur ein Wert in der Datenbank ohne Ver√§nderung dann problem */
 	      $letzterRegen=$wert["TimeStamp"];
 	      $regenStandEnde=$wert["Value"];
 			}
@@ -267,14 +270,14 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	//print_r($werte);
 
 	//echo $parentid."\n";
-	/* Berechnung f¸r Giessdauer , Routinen in Config Datei mit Funktion befuellen */
+	/* Berechnung f√ºr Giessdauer , Routinen in Config Datei mit Funktion befuellen */
 	/*
 	$AussenTemperaturGesternMax=$tempwerte[1]["Max"];
 	echo "Aussentemperatur max : ".get_AussenTemperaturGesternMax()."   ".$tempwerte[1]["Max"]." \n";
 	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	echo "Aussentemperatur med : ".AussenTemperaturGestern()."   ".$tempwerte[1]["Avg"]." \n";
 	*/
-	$RegenGestern=$werte[1]["Avg"];
+	if ( isset($werte[1]["Avg"]) == true ) {	$RegenGestern=$werte[1]["Avg"]; }
 	/*
 	echo "Regen gestern : ".RegenGestern()."   ".$werte[1]["Avg"]." \n";
 	echo "Letzter Regen Zeit : ".date("d.m H:i",LetzterRegen())."   ".date("d.m H:i",$letzterRegen)." \n\n";
@@ -296,9 +299,9 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	$resultEvent=IPS_GetEvent($calcgiesstimeID);
 	If($resultEvent["EventActive"]){echo "Timer zur Berechnung Giessdauer aktiv (immer 5 Min vorher).\n";};
 	$resultEvent=IPS_GetEvent($timerDawnID);
-	If($resultEvent["EventActive"]){echo "Timer zum tats‰chlichen Giessen aktiv.\n";};
+	If($resultEvent["EventActive"]){echo "Timer zum tats√§chlichen Giessen aktiv.\n";};
 	
-	/* Beginnzeit Timer f¸r morgen ausrechnen */
+	/* Beginnzeit Timer f√ºr morgen ausrechnen */
 			$dawnID = @IPS_GetObjectIDByName("Program",0);
 			$dawnID = @IPS_GetObjectIDByName("IPSLibrary",$dawnID);
 			$dawnID = @IPS_GetObjectIDByName("data",$dawnID);
@@ -319,7 +322,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 				$startminuten=$hour*60+$minute-90;
 				$calcminuten=$startminuten-5;
 				}
-			else     /* keine D‰mmerungszeit verf¸gbar */
+			else     /* keine D√§mmerungszeit verf√ºgbar */
 				{
 				$startminuten=16*60;
 				$calcminuten=$startminuten-5;
@@ -329,7 +332,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 
 			$zeitdauergiessen=(GetValue($GiessTimeID)+1)*$GartensteuerungConfiguration["KREISE"];
 			$endeminuten=$startminuten+$zeitdauergiessen;
-			$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60))." f¸r die Dauer von ".
+			$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60))." f√ºr die Dauer von ".
 			    $zeitdauergiessen." Minuten bis ".(floor($endeminuten/60)).":".sprintf("%2d",($endeminuten%60))." .";
 			$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n";
@@ -345,7 +348,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	$variableID=$_IPS['VARIABLE'];
 	$value=$_IPS['VALUE'];
 	if (GetValue($variableID)==$value)
-	   { /* die selbe Taste nocheinmal gedr¸ckt */
+	   { /* die selbe Taste nocheinmal gedr√ºckt */
 		$samebutton=true;
 	   }
 	else
@@ -371,8 +374,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 			SetValue($GiessTimeID,10);
 			if ($samebutton==true)
 			   { /* gleiche Taste heisst weiter */
-				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf‰ngt und nicht zur vollen Stunde */
-				IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums¸berpr¸fung */, 0, 0, 2, 2 /* Min¸tlich */ , $pauseTime);
+				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf√§ngt und nicht zur vollen Stunde */
+				IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums√ºberpr√ºfung */, 0, 0, 2, 2 /* Min√ºtlich */ , $pauseTime);
       		IPS_SetEventActive($giesstimerID,true);
       		IPS_SetEventActive($timerDawnID,false);
 	      	SetValue($GiessCountID,GetValue($GiessCountID)+1);
@@ -382,8 +385,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 			   }
 			else
 			   {
-				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf‰ngt und nicht zur vollen Stunde */
-				IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums¸berpr¸fung */, 0, 0, 2, 2 /* Min¸tlich */ , $pauseTime);
+				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf√§ngt und nicht zur vollen Stunde */
+				IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums√ºberpr√ºfung */, 0, 0, 2, 2 /* Min√ºtlich */ , $pauseTime);
       		IPS_SetEventActive($giesstimerID,true);
       		IPS_SetEventActive($timerDawnID,false);
 	      	SetValue($GiessCountID,1);
@@ -415,8 +418,8 @@ if($_IPS['SENDER'] == "TimerEvent")
 	$TEventName = $_IPS['EVENT'];
    Switch ($TEventName)
 		{
-		case $giesstimerID: /* Alle 10 Minuten f¸r Monitor Ein/Aus */
-			/* Alle giesdauer Minuten f¸r Monitor Ein/Aus
+		case $giesstimerID: /* Alle 10 Minuten f√ºr Monitor Ein/Aus */
+			/* Alle giesdauer Minuten f√ºr Monitor Ein/Aus
             Beregner auf der Birkenseite
             (4) Beregner beim Brunnen 1 und 2
       		Schlauchbewaesserung
@@ -440,7 +443,7 @@ if($_IPS['SENDER'] == "TimerEvent")
      				if ($GartensteuerungConfiguration["DEBUG"]==true)
 					   {
 						$log_Giessanlage->message("Gartengiessanlage Vorgang abgeschlossen");
-						$log_Giessanlage->message("Gartengiessanlage zur¸ck auf ".GetValue($GiessAnlagePrevID)." (0-Aus, 1-EinmalEin, 2-Auto) gesetzt");
+						$log_Giessanlage->message("Gartengiessanlage zur√ºck auf ".GetValue($GiessAnlagePrevID)." (0-Aus, 1-EinmalEin, 2-Auto) gesetzt");
 						}
 		   	   }
 		   	else
@@ -452,7 +455,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 						   {
 						   $failure=set_gartenpumpe(true);
 							//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",true);
-							IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums¸berpr¸fung */, 0, 0, 2, 2 /* Min¸tlich */ , $giessTime);
+							IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums√ºberpr√ºfung */, 0, 0, 2, 2 /* Min√ºtlich */ , $giessTime);
    	   	         $GiessCount+=1;
 		     				if ($GartensteuerungConfiguration["DEBUG"]==true)
 							   {
@@ -473,7 +476,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 				      /*  gerade Zahl des Giesscounters bedeutet weiterschalten Giessen */
    	   		 	$failure=set_gartenpumpe(false);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
-						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums¸berpr¸fung */, 0, 0, 2, 2 /* Min¸tlich */ , $pauseTime);
+						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datums√ºberpr√ºfung */, 0, 0, 2, 2 /* Min√ºtlich */ , $pauseTime);
             	   $GiessCount+=1;
 				   	}
 		      	}  /* if nicht ende */
@@ -481,11 +484,11 @@ if($_IPS['SENDER'] == "TimerEvent")
 		     	SetValue($GiessCountID,$GiessCount);
 			break;
 
-		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den n‰chsten Wert ¸bernehmen  */
+		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den n√§chsten Wert √ºbernehmen  */
 			if ((GetValue($GiessTimeID)>0) and (GetValue($GiessAnlageID)>0))
 			   {
 				SetValue($GiessCountID,1);
-				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf‰ngt und nicht zur vollen Stunde */
+				IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anf√§ngt und nicht zur vollen Stunde */
       		IPS_SetEventActive($giesstimerID,true);
       		}
       	else /* wenn giessdauer 0 ist nicht giessen */
@@ -501,7 +504,7 @@ if($_IPS['SENDER'] == "TimerEvent")
       	$failure=set_gartenpumpe(false);
 			//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false);
 
-			/* Beginnzeit Timer f¸r morgen ausrechnen */
+			/* Beginnzeit Timer f√ºr morgen ausrechnen */
 			$dawnID = @IPS_GetObjectIDByName("Program",0);
 			$dawnID = @IPS_GetObjectIDByName("IPSLibrary",$dawnID);
 			$dawnID = @IPS_GetObjectIDByName("data",$dawnID);
@@ -522,7 +525,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 				$startminuten=$hour*60+$minute-90;
 				$calcminuten=$startminuten-5;
 				}
-			else     /* keine D‰mmerungszeit verf¸gbar */
+			else     /* keine D√§mmerungszeit verf√ºgbar */
 				{
 				$startminuten=16*60;
 				$calcminuten=$startminuten-5;
@@ -545,9 +548,9 @@ if($_IPS['SENDER'] == "TimerEvent")
 function giessdauer($debug=false)
 	{
 
-	global $archiveHandlerID, $variableID, $display;  /* f¸r agregate Regen */
+	global $archiveHandlerID, $variableID, $display;  /* f√ºr agregate Regen */
 	global $GiessTimeID,$log_Giessanlage;
-	global $GartensteuerungConfiguration; /* f¸r minimale mittlere Temperatur */
+	global $GartensteuerungConfiguration; /* f√ºr minimale mittlere Temperatur */
 
 	$giessdauer=0;
 	$display=$debug;
@@ -590,11 +593,13 @@ function giessdauer($debug=false)
 	$AussenTemperaturGestern=$tempwerte[1]["Avg"];
 	
 	$letzterRegen=0;
+	$regenStand=0;
 	$regenStand2h=0;
-	$regenStandAnfang=0;  /* f¸r den Fall dass gar keine Werte gelogget wurden */
+	$regenStand48h=0;
+	$regenStandAnfang=0;  /* f√ºr den Fall dass gar keine Werte gelogget wurden */
 	$regenStandEnde=0;
-
-	/* Letzen Regen ermitteln, alle Eintr‰ge der letzten 48 Stunden durchgehen */
+	$RegenGestern=0;
+	/* Letzen Regen ermitteln, alle Eintr√§ge der letzten 48 Stunden durchgehen */
 
 	foreach ($werteLog as $wert)
 	   {
@@ -633,14 +638,14 @@ function giessdauer($debug=false)
 	//echo "Letzter Regen vor ".number_format((time()-$letzterRegen)/60/60, 1, ",", ""). "Stunden.\n";
 
 	//$RegenGestern=RegenGestern();
-	$RegenGestern=$werte[1]["Avg"];
+	if ( isset($werte[1]["Avg"]) == true ) {	$RegenGestern=$werte[1]["Avg"]; }
 	//$LetzterRegen=time()-LetzterRegen();
 	$letzterRegenStd=(time()-$letzterRegen)/60/60;
 
 	if ($debug)
 		{
 		echo "Letzter Regen : ".date("d.m H:i",$letzterRegen)." also vor ".$letzterRegenStd." Stunden.\n";
- 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > ".$GartensteuerungConfiguration["TEMPERATUR-MITTEL"]."∞ sein).\n";
+ 		echo "Aussentemperatur Gestern : ".number_format($AussenTemperaturGestern, 1, ",", "")." Grad (muss > ".$GartensteuerungConfiguration["TEMPERATUR-MITTEL"]."¬∞ sein).\n";
  		if ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"]))
  		   {
  		   echo "Doppelte Giesszeit da Maximumtemperatur  : ".number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad groesser als ".$GartensteuerungConfiguration["TEMPERATUR-MAX"]." Grad ist.\n";
@@ -653,7 +658,7 @@ function giessdauer($debug=false)
 		else
 		   {
 			echo "Regen Gestern : ".number_format($RegenGestern, 1, ",", "").
-				" mm und letzter Regen war aktuell vor l‰nger als 48 Stunden.\n";
+				" mm und letzter Regen war aktuell vor l√§nger als 48 Stunden.\n";
 		   }
 		echo "Regen letzte 2/48 Stunden : ".$regenStand2h." mm / ".$regenStand48h." mm \n\n";
 		if ($regenStand48h<($GartensteuerungConfiguration["REGEN48H"]))
@@ -667,7 +672,7 @@ function giessdauer($debug=false)
 		}
 
 	if (($regenStand48h<($GartensteuerungConfiguration["REGEN48H"])) && ($AussenTemperaturGestern>($GartensteuerungConfiguration["TEMPERATUR-MITTEL"])))
-	   { /* es hat in den letzten 48h weniger als 10mm geregnet und die mittlere Aussentemperatur war groesser xx Grad*/
+	   { /* es hat in den letzten 48h weniger als xx mm geregnet und die mittlere Aussentemperatur war groesser xx Grad*/
 	   if (($regenStand2h)==0)
 	      { /* und es regnet aktuell nicht */
 			if ( ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"])) || ($regenStand<($GartensteuerungConfiguration["REGEN10T"])) )
@@ -675,7 +680,7 @@ function giessdauer($debug=false)
 				$giessdauer=20;
 				}
 			else
-			   { /* oder nur gleichm‰ssig warm */
+			   { /* oder nur gleichm√§ssig warm */
 				$giessdauer=10;
 			   }
 	      }
