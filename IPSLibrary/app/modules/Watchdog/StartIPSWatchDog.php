@@ -49,6 +49,7 @@
 	
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
 	$tim3ID = @IPS_GetEventIDByName("StartWD", $scriptIdStartWD);
+	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
 
 	/********************************************************************

@@ -133,6 +133,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 $OperationCenterConfig = OperationCenter_Configuration();
+$OperationCenterSetup  = OperationCenter_SetUp();
 
 	$pname="MByte";
 	if (IPS_VariableProfileExists($pname) == false)
@@ -647,10 +648,14 @@ if ($_IPS['SENDER']=="Execute")
 	echo "============================================================================================================\n";
 
 	/********************************************************
-   	UpdateAll
-	**********************************************************/
+    *
+	 *	UpdateAll
+	 *
+	 * Aufpassen, ueberschreibt wieder alle bereits programmierten Änderungen. besser auskommentiert lassen
+	 *
+	 **********************************************************/
 
-	CyclicUpdate();
+	//CyclicUpdate();
 
 	echo "============================================================================================================\n";
 
@@ -706,7 +711,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 				if ($router['TYP']=='MR3420')
 				   {
 					/* und gleich ausprobieren */
-		   		IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+		   		IPS_ExecuteEX($OperationCenterSetup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+		   		//IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
 					SetValue($ScriptCounterID,1);
 					IPS_SetEventActive($tim3ID,true);
 					IPSLogger_Dbg(__file__, "Router MR3420 Auswertung gestartet.");

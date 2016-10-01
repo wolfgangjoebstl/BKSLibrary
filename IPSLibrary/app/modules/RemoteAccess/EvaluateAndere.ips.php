@@ -62,7 +62,7 @@ $remServer=ROID_List();
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Counter,'.$parameter,'IPSModuleSensor_Counter');
 			echo "Regenfall Register mit Parameter :".$parameter." erzeugt.\n";
 		   //print_r($Key);
 		   }

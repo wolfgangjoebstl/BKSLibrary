@@ -165,17 +165,17 @@
 					$filename=$directory.$this->variablename."_Motion.csv";
 
 					$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
-					$erID=CreateVariable($variablename,3,$mdID, 10 );
+					$erID=CreateVariable($variablename,3,$mdID, 10, '', null );
 					echo "  Ereignisspeicher aufsetzen        : ".$erID." \n";
 					$this->EreignisID=$erID;
 					parent::__construct($filename,$vid);
 					}
   	      	$variablename="Gesamt_Ereignisspeicher";
-	      	$erID=CreateVariable($variablename,3,$mdID, 0 );
+	      	$erID=CreateVariable($variablename,3,$mdID, 0, '', null );
 				$this->GesamtID=$erID;
 				echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
   	      	$variablename="Gesamt_Ereigniszaehler";
-	      	$erID=CreateVariable($variablename,1,$mdID, 0 );
+	      	$erID=CreateVariable($variablename,1,$mdID, 0, '', null );
 				$this->GesamtCountID=$erID;
 				echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
 		   	//print_r($this);
@@ -332,7 +332,7 @@
 				$class=$log->GetComponent($oid);
 				$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)),10, '~Motion', null,false);
 				SetValue($statusID,$status);
-				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)));
+				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)),0, '', null);
 				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
             SetValue($ereignisID,$EreignisVerlauf);
 			   }

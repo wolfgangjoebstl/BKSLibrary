@@ -37,13 +37,13 @@
 			"TemperatureLog"		=> "C:/Scripts/Temperature/",
 			"HumidityLog" 			=> "C:/Scripts/Humidity/",
 			"MotionLog" 			=> "C:/Scripts/Motion/",
+			"CounterLog" 			=> "C:/Scripts/Counter/",
 										),
 			"LogConfigs"         => array (
 			   "DelayMotion"        => 1800,                            /* verzoegerte Bewegungswerte um Hüllkurve zu erzeugen und kurze Unterbrechungen auszufiltern */
 			                     ),
 			);
 		}
-	 
 
 	/** @}*/
 ?>
