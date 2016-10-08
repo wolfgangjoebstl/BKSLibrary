@@ -6,13 +6,17 @@
 function tts_play($sk,$ansagetext,$ton,$modus)
  	{
 
-  	/*
-  	   sk    soundkarte   es gibt immer nur 1, andere kann man implementioeren
-  	
-		modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
-		modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
-		modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
-		*/
+  	/************************************************************************************
+	 *
+  	 *  sk    soundkarte   es gibt immer nur 1, andere kann man implementioeren
+	 *
+	 * 	modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
+	 * 	modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
+	 * 	modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
+	 *
+	 * zum Beispiel  tts_play(1,$speak,'',2);  // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2
+	 *
+	 ***********************************************************************************/
 
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager))
@@ -53,20 +57,20 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 		echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
 
 		$wav = array
-		(
-      "hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
-      "meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
-      "abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
-      "aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
-      "coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
-      "thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
-      "clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
-      "bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
-      "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
-      "sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
-		);
-		switch ($sk)
-		{
+			(
+   	   "hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
+      	"meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
+	      "abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
+   	   "aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
+      	"coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
+	      "thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
+   	   "clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
+	      "bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
+   	   "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
+      	"sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
+			);
+		switch ($sk)   /* Switch unterschiedliche Routinen anhand der Spoundkarten ID, meistens eh nur eine */
+			{
 			//---------------------------------------------------------------------
 			case '1':
 
@@ -134,12 +138,17 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			      		WAC_SetRepeat($id_sk1_ton, false);
      						WAC_ClearPlaylist($id_sk1_ton);
      						}
-     					WAC_AddFile($id_sk1_ton,$wav[$ton]);
-		     			WAC_Play($id_sk1_ton);
-		            //solange in Schleife bleiben wie 1 = play
-		   	  		sleep(1);
-      			  $status = getvalue($id_sk1_ton_status);
-  	   			  while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+						if (isset($wav[$ton])==true)
+						   {
+	     					WAC_AddFile($id_sk1_ton,$wav[$ton]);
+   	  					echo "Check SoundID: ".$id_sk1_ton." Ton: ".$wav[$ton]." Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+			     			while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
+			     			WAC_Play($id_sk1_ton);
+		   	         //solange in Schleife bleiben wie 1 = play
+		   		  		sleep(1);
+      			  		$status = getvalue($id_sk1_ton_status);
+  	   			  		while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+  	   			  		}
 			 		  }
 
 					/* hier die Sprachausgabe vorbereiten */
@@ -151,20 +160,26 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 	  						WAC_Stop($id_sk1_ton);
 				      	WAC_SetRepeat($id_sk1_ton, false);
 				         WAC_ClearPlaylist($id_sk1_ton);
+				         echo "Tonwiedergabe auf Stopp stellen \n";
 				         }
    			      $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) echo "Error";
 		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
-		     			echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
+		     			echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+		     			while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
 						WAC_Play($id_sk1_ton);
 						}
 
-					//Script solange anghalten wie Sprachausgabe läuft
+					//Script solange angehalten wie Sprachausgabe läuft
 					if($modus != 1)
 						{
-			   		sleep(1);
-						$status = GetValueInteger($id_sk1_ton_status);
-   	  				while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
+			   		echo "Noch warten bis Status des Ton Moduls ungleich 1 :";
+   	  				while (GetValueInteger($id_sk1_ton_status) == 1)
+						  	{
+  				   		sleep(1);
+							echo ".";
+							}
+						echo "\nLänge der Playliste : ".WAC_GetPlaylistLength($id_sk1_ton)." Position : ".WAC_GetPlaylistPosition($id_sk1_ton)."\n";
 			   		}
 
 			 		if($modus == 3)
@@ -184,6 +199,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 							{
 							/* Wenn Musik Wiedergabe auf Play steht dann auf Pause druecken */
 							WAC_Pause($id_sk1_musik);
+				         echo "Musikwiedergabe auf Pause stellen \n";
 							}
 				   	}
 					break;

@@ -45,10 +45,10 @@ class AutosteuerungHandler
 		/**
 		 * @public
 		 *
-		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
+		 * Erzeugt ein Event fÃ¼r eine Ã¼bergebene Variable, das den IPSMessageHandler beim AuslÃ¶sen
 		 * aufruft.
 		 *
-		 * @param integer $variableId ID der auslösenden Variable
+		 * @param integer $variableId ID der auslÃ¶senden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
 		 */
 		function CreateEvent($variableId, $eventType, $scriptId)
@@ -171,7 +171,7 @@ class AutosteuerungHandler
 				$configuration[$variableId][] = $componentParams;
 				$configuration[$variableId][] = $moduleParams;
 				}
-				print_r($configuration);
+				//print_r($configuration);
 				self::StoreEventConfiguration($configuration);
 				self::CreateEvent($variableId, $eventType, self::$scriptID);
    		}

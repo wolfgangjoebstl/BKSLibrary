@@ -44,16 +44,57 @@
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	echo $inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+/* Webfront GUID herausfinden */
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		echo "Webfront Konfigurator Name : ".IPS_GetName($instanz)." ID : ".$result["InstanceID"]."\n";
+		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		/* alle Instanzen dargestellt */
+		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+		//print_r($result);
+		}
+
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	if ($WFC10_Enabled==true)
+	   {
+      $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
+		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
+		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
+		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
+		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
+		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
+		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
+		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
+		echo "WF10 \n";
+		echo "  Path          : ".$WFC10_Path."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."\n";
+		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
+		echo "  TabItem       : ".$WFC10_TabItem."\n";
+		echo "  TabName       : ".$WFC10_TabName."\n";
+		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
+		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
+		}
+
+	echo "\n";
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
@@ -123,6 +164,74 @@
 		{
 	   // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	   $AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		switch ($AutoSetSwitch["NAME"])
+			{
+			case "GutenMorgenWecker":
+			   $WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "","",null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+   			$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
+   			if ($Wochenplan_ID === false)
+					{
+					$Wochenplan_ID = IPS_CreateEvent(2);                  //Wochenplan Ereignis
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 0, 1); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 1, 2); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 2, 4); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 3, 8); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 4, 16); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 5, 32); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+					IPS_SetEventScheduleGroup($Wochenplan_ID, 6, 64); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
+
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetVariable(".(string)$WeckerID.",false)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "");
+
+					IPS_SetParent($Wochenplan_ID, $AutosteuerungID);         //Ereignis zuordnen
+               IPS_SetName($Wochenplan_ID,"Beleuchtung");
+					IPS_SetEventActive($Wochenplan_ID, true);
+					}
+   			$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
+				//Montag
+	  				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 0 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 1 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 0/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 2 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 0/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 3 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Dienstag
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 3 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 1/*s*/, 0 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 4 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 1/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 5 /*Schaltpunkt*/, 9/*H*/, 1/*M*/, 1/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 6 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Mittwoch
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 6 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 2/*s*/, 0 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 7 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 2/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 8 /*Schaltpunkt*/, 9/*H*/, 2/*M*/, 2/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 9 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Donnerstag
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 9 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 10 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 3/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 11 /*Schaltpunkt*/, 9/*H*/, 3/*M*/, 3/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 12 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Freitag
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 11 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 12 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 4/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 13 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 4/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 14 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Samstag
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 13 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 14 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 5/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 15 /*Schaltpunkt*/, 10/*H*/, 0/*M*/, 5/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 16 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   			//Sonntag
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 15 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 16 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 6/*s*/, 1 /*Aktion*/);
+    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 17 /*Schaltpunkt*/, 12/*H*/, 0/*M*/, 6/*s*/, 2 /*Aktion*/);
+   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 18 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+
+				$EventInfos = IPS_GetEvent($Wochenplan_ID);
+				print_r($EventInfos);
+			   break;
+			default:
+		      echo "..".$AutoSetSwitch["NAME"]."\n";
+				break;
+			}
 		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
 		$webfront_links[$AutosteuerungID]["NAME"]=$AutoSetSwitch["NAME"];
 		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
@@ -173,19 +282,43 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 
 	print_r($webfront_links);
+	
+	$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+	//CreateWFCItemTabPane   ($WFC10_ConfigId, "AdminTP", "roottp",  0, "Admin", "");
+	CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, '', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-      IPS_SetPosition($categoryId_WebFront,700);
+		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+		EmptyCategory($categoryId_WebFrontAdministrator);
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
+		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+
+		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
+		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
+		DeleteWFCItems($WFC10_ConfigId, $tabItem);
+		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+		// Left Panel
 		foreach ($webfront_links as $OID => $webfront_link)
 		   {
 		   if ($webfront_link["ADMINISTRATOR"]==true)
 				{
-				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId_WebFront,  10);
+				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
 				}
 			}
-		CreateLinkByDestination("Nachrichtenverlauf", $categoryId_Nachrichten,    $categoryId_WebFront,  20);
+
+		// Right Panel
+		CreateLinkByDestination("Nachrichtenverlauf", $input,    $categoryIdRight,  20);
+
+		ReloadAllWebFronts();
+
 		}
 
 	if ($WFC10User_Enabled)

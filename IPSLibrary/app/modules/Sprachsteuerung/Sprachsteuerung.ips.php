@@ -78,7 +78,7 @@ if (isset($_IPS['Text']))
 else
 	{
 	tts_play(1,'','hinweis',2);      /* erste Position ist die Soundkarte, steht immer auf 1, was anderes haben wir noch nicht programmiert. */
-	tts_play(1,'Hallo Claudia ich liebe dich so sehr','',2);
+	//tts_play(1,'Hallo Claudia ich liebe dich so sehr','',2);
 	//tts_play(1,'Hello Wolfgang How are you ?','',2);
 	}
 

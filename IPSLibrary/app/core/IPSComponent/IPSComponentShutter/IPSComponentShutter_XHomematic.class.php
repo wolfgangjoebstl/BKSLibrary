@@ -12,7 +12,7 @@
    /**
     * @class IPSComponentShutter_Homematic
     *
-    * Definiert ein IPSComponentShutter_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
+    * Definiert ein IPSComponentShutter_Homematic Object, das ein IPSComponentShutter Object fÃ¼r Homematic implementiert.
     *
     * @author Andreas Brauneis
     * @version
@@ -35,7 +35,7 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
 		 */
-		public function __construct($instanceId, $rpcADR, $reverseControl=false) {
+		public function __construct($instanceId, $rpcADR="", $reverseControl=false) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->reverseControl = $reverseControl;
 			$this->rpcADR = $rpcADR;
@@ -47,7 +47,7 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleShutter $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
@@ -63,7 +63,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -77,20 +77,36 @@
 		 *
 		 * Zustand Setzen
 		 *
-		 * @param integer $power Geräte Power
-		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
+		 * @param integer $power GerÃ¤te Power
+		 * @param integer $level Wert fÃ¼r Dimmer Einstellung (Wertebereich 0-100)
 		 */
-		public function SetState($power, $level) {
+		public function SetState($power, $level)
+			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			$rpc = new JSONRPC($this->rpcADR);
-			if (!$power) {
-				$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
-			} else {
-				$levelHM = $level / 100;
-				$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
+			if ($this->rpcADR=="")
+			   {
+				if (!$power) {
+					HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
+					}
+				else
+					{
+					$levelHM = $level / 100;
+					HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
+					}
+			   }
+			else
+			   {
+				$rpc = new JSONRPC($this->rpcADR);
+				if (!$power) {
+					$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
+					}
+				else
+					{
+					$levelHM = $level / 100;
+					$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
+					}
+				}
 			}
-
-		}
 
 		/**
 		 * @public

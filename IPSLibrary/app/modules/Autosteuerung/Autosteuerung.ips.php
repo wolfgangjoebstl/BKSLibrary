@@ -1105,7 +1105,10 @@ function Status($params,$status,$simulate=false)
 		if (isset($speak)==true)
 		   {
 		  	if ($speak_config["Parameter"][0]=="On") {
-				if ($speak != "Status") { tts_play(1,$speak,'',2); }
+				if ($speak != "Status")
+					{
+					tts_play(1,$speak,'',2);    // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2
+					}
 				}
   	      }
 		/* Debug Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
