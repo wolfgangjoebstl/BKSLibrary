@@ -907,6 +907,11 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 	$OperationCenterConfig = $OperationCenter->oc_Configuration;
 	//print_r($OperationCenterConfig);
 
+	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+	$SysPingStatusID = CreateVariableByName($categoryId_SysPing, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+	IPS_SetVariableCustomProfile($SysPingStatusID,"~UnixTimestamp");
+	SetValue($SysPingStatusID,time());
+
 	/************************************************************************************
   	 * Erreichbarkeit IPCams
 	 *************************************************************************************/
@@ -914,7 +919,6 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 		{
 		$mactable=$OperationCenter->get_macipTable($subnet);
 		//print_r($mactable);
-		$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 			{
 			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -1122,7 +1126,7 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 			$response = @file_get_contents($url, false, $context);
 			if ($response===false)
 			   {
-				echo "   Server : ".$url." Context: ".$context." nicht erreicht.\n";
+				echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
 				SetValue($IPS_UpTimeID,0);
 				$RemoteServer[$Name]["Status"]=false;
 				if (GetValue($ServerStatusID)==true)
