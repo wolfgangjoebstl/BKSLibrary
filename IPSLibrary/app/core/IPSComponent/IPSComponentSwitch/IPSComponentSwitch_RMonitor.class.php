@@ -25,6 +25,7 @@
 	class IPSComponentSwitch_RMonitor extends IPSComponentSwitch {
 
 		private $instanceId;
+		private $remoteAdr;
 		private $supportsOnTime;
 	
 		/**
@@ -35,8 +36,11 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
-		public function __construct($var1=0, $instanceId=0, $supportsOnTime=true) {
-			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
+		public function __construct($var1=0, $instanceId=0, $supportsOnTime=true)
+			{
+			//echo "Remote Monitor bearbeiten. Aufruf mit ".$var1." und ".$instanceId."\n";
+			//$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
+			$this->remoteAdr     = $instanceId;
 			$this->supportsOnTime = $supportsOnTime;
 		}
 
@@ -79,13 +83,7 @@
 		 */
 		public function SetState($value, $onTime=false)
 			{
-			$remServer=array(
-				"BKS-Server"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
-						);
-			foreach ($remServer as $Server)
-				{
-				$rpc = new JSONRPC($Server);
-				}
+			$rpc = new JSONRPC($this->remoteAdr);
 			if ($value==true)
 			   {
 			   /* Monitor einschalten */

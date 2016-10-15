@@ -87,12 +87,13 @@
 		IPS_SetName($tim2ID, "MoveCamFiles");
 		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,150);      /* alle 150 sec */
   		//IPS_SetEventActive($tim2ID,true);
-		IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+		IPS_SetEventCyclicTimeFrom($tim2ID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
 	   echo "   Timer Event MoveCamFiles neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
 		}
 	else
 	   {
 	   echo "   Timer Event MoveCamFiles bereits angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+		IPS_SetEventCyclicTimeFrom($tim2ID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
   		//IPS_SetEventActive($tim2ID,true);
   		}
 
@@ -103,18 +104,16 @@
 		IPS_SetParent($tim3ID, $scriptIdOperationCenter);
 		IPS_SetName($tim3ID, "RouterExectimer");
 		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
-		IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
+		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);
 		/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
 	   echo "   Timer Event RouterExectimer neu angelegt. Timer 150 sec ist nicht aktiviert.\n";
 		}
 	else
 	   {
 	   echo "   Timer Event RouterExectimer bereits angelegt. Timer 150 sec ist nicht aktiviert.\n";
+		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);
   		}
 
-	/* Workariund wenn die Timer bereits gesetzt wurden */
-	IPS_SetEventCyclicTimeBounds($tim2ID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
-	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 
 
 	/* Eventuell Router regelmaessig auslesen */
@@ -143,7 +142,7 @@
 		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
 		IPS_SetName($tim4ID, "SysPingTimer");
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
-		IPS_SetEventCyclicTimeBounds($tim4ID,time()+30,0);
+		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
 		IPS_SetEventActive($tim4ID,true);
 	   echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
 		}
@@ -151,6 +150,7 @@
 	   {
 	   echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
   		IPS_SetEventActive($tim4ID,true);
+		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
   		}
   		
 	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptIdOperationCenter);
