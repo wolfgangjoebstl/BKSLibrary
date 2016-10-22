@@ -150,6 +150,7 @@
 		}
 	else
 	   {
+		IPS_SetEventCyclicTimeFrom($tim1ID,4,10,0);  /* immer um 04:10 */
 	   echo "  Timer Event Aufruftimer bereits angelegt. Timer um 04:10 ist aktiviert.\n";
   		}
 
