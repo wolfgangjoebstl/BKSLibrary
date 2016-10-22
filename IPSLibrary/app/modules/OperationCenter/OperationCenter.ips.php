@@ -673,6 +673,7 @@ if ($_IPS['SENDER']=="Execute")
 
 	/************************************************************************************
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
+  	einmal als aktuelle Werte und einmal als historische Werte
 	*************************************************************************************/
 
 	$OperationCenter->FileStatus();

@@ -1,11 +1,11 @@
 <?
 
-	/**@defgroup Sprachsteuerung
+	/**@defgroup OperationCenter
 	 *
-	 * Script um automatisch irgendetwas ein und auszuschalten
+	 * Script zur Unterstützung der Betriebsführung
 	 *
 	 *
-	 * @file          Sprachsteuerungung_Installation.ips.php
+	 * @file          OperationCenter_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 07.12.2014<br/>
@@ -351,6 +351,9 @@
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  20);
+		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 
 		}
 
