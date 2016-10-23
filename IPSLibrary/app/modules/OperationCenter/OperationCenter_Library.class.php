@@ -247,17 +247,25 @@ class OperationCenter
 	   {
 	   $ergebnis="";
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
+		$manufacturers=LogAlles_Manufacturers();   /* lange Liste in Config */
 		foreach ($this->mactable as $mac => $ip )
 		   {
 		   $result="unknown"; $result2="";
 		   foreach ($ipadressen as $name => $entry)
 		      {
 		      //echo "Vergleiche ".$entry["Mac_Adresse"]." mit ".$mac."\n";
-		      if (strtoupper($entry["Mac_Adresse"])==strtoupper($mac)) { $result=$name; $result2=$entry["Hostname"];}
-		      }
-		   echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
+		      if (strtoupper($entry["Mac_Adresse"])==strtoupper($mac))
+					{
+					$result=$name;
+					$result2=$entry["Hostname"];
+					}
+    	      }
+    	   $manuID=substr($mac,0,8);
+    	   if (isset ($manufacturers[$manuID])==true) { $manuID=$manufacturers[$manuID]; }
+		   echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
 		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
 		   }
+		echo "\n\n";
 		return ($ergebnis);
 	   }
 

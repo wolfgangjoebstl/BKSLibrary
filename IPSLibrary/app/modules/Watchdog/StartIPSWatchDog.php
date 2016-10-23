@@ -5,14 +5,23 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
 
-	IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
-	IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
-
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+
+	if (isset ($installedModules["Sprachsteuerung"]))
+	   {
+		IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
+		IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
+	   }
+	else
+	   {
+	   function tts_play() {};
+	   }
+
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
@@ -193,7 +202,7 @@
 						//writeLogEvent("Autostart (ftpserverlite)");
 						if ($processStart["Firefox.exe"] == "On")
 						   {
-							writeLogEvent("Autostart (Firefox)");
+							writeLogEvent("Autostart (Firefox)".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"]);
 
 							IPS_EXECUTEEX($config["Software"]["Firefox"]["Directory"]."firefox.exe",$config["Software"]["Firefox"]["Url"],true,false,-1);
 
@@ -232,20 +241,20 @@
 							//fwrite($handle2,"pause\r\n");
 							fclose($handle2);
 							IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
-							IPS_ExecuteEx("c:/Program Files/iTunes/iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
-							writeLogEvent("Autostart (iTunes)");
+							IPS_ExecuteEx($config["Software"]["iTunes"]["Directory"]."iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
+							writeLogEvent("Autostart (iTunes)".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							}
 						SetValue($ScriptCounterID,$counter+1);
 			      	break;
 				   case 2:
 						if ($processStart["vmplayer.exe"] == "On")
 						   {
-							writeLogEvent("Autostart (VMPlayer)");
+							writeLogEvent("Autostart (VMPlayer)".$config["Software"]["VMware"]["Directory"]."vmplayer.exe ".$config["Software"]["VMware"]["FileName"]);
 							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
 
 							/*********************************************************************/
 
-							IPS_EXECUTEEX("C:/Program Files (x86)/VMware/VMware Player/vmplayer.exe",'"c:\Scripts\Windows 7 IPS\Windows 7 IPS.vmx"',true,false,-1);
+							IPS_EXECUTEEX($config["Software"]["VMware"]["Directory"]."vmplayer.exe",$config["Software"]["VMware"]["FileName"],true,false,-1);
 							}
 						else
 						   {
@@ -260,7 +269,7 @@
 							IPSLogger_Dbg(__file__, "Autostart: Watchdog wird gestartet");
 
 							/*********************************************************************/
-							writeLogEvent("Autostart (Watchdog)");
+							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe");
 
 							IPS_EXECUTEEX($config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe","",true,false,-1);   /* Watchdog starten */
 

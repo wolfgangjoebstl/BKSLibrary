@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup Watchdog
-	 * @ingroup Watchdog
+	/**@defgroup DetectMovement
+	 * @ingroup DetectMovement
 	 * @{
 	 *
-	 * Konfigurations File für Watchdog
+	 * Konfigurations File für DetectMovement
 	 *
-	 * @file          Watchdog_Configuration.inc.php
+	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -33,36 +33,10 @@
 
 	/* Beispiele zum EInstellen:
 
-	function Watchdog_Configuration() {
-		return array(
-		   "Software" => array(
-				"Watchdog"  =>  array (
-					"Directory"        		=> 'C:/IP-Symcon/',
-					"Autostart"             => 'Yes'
-					                  ),
-				"VMware"  =>  array (
-					"Directory"        		=> 'C:/Program Files (x86)/VMware/VMware Player/',
-					"DirFiles"        		=> 'c:/Scripts/Windows 7 IPS/',
-					"Autostart"             => 'Yes'
-					                  ),
-				"iTunes"  =>  array (
-					"Directory"        		=> 'German',
-					"Autostart"             => 'Yes'
-					                  ),
-				"Firefox"  =>  array (
-					"Directory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
-					"Url"                   => 'http://10.0.0.20:82/#37538',
-					"Autostart"             => 'Yes'
-					                  ),									  
-					              ),
-			"RemoteShutDown"     => array(
-				"Server"  =>	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
-				                  ),
-							);
-	}
-
 	*/
-	
+
+
+
 	function Sprachsteuerung_Configuration() {
 		$eventConfiguration = array(
 
@@ -71,35 +45,8 @@
 		return $eventConfiguration;
 	}
 
-	function Watchdog_Configuration() {
-		return array(
-		   "Software" => array(
-				/*"Watchdog"  =>  array (
-					"Directory"        		=> 'C:/IP-Symcon/',
-					"Autostart"             => 'Yes'
-					                  ),
-				"VMware"  =>  array (
-					"Directory"        		=> 'C:/Program Files (x86)/VMware/VMware Player/',
-					"DirFiles"        		=> 'c:/Scripts/Windows 7 IPS/',
-					"Autostart"             => 'Yes'
-					                  ),
-				"iTunes"  =>  array (
-					"Directory"        		=> 'German',
-					"Autostart"             => 'Yes'
-					                  ),
-				"Firefox"  =>  array (
-					"Directory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
-					"Url"                   => 'http://10.0.0.20:82/#37538',
-					"Autostart"             => 'Yes'
-					                  ),									  */
-					              ),
-			"RemoteShutDown"     => array(
-				/* "Server"  =>	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
-				                  ), */
-							);
-	}
 
-
+	 
 
 	/** @}*/
 ?>

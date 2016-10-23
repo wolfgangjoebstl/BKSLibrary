@@ -245,6 +245,10 @@ function LogAlles_Hostnames() {
 				              ),
 			"CAM" 		=> array(                                          
 								),
+			"LED" 		=> array(                                          
+								),
+			"DENON" 	=> array(                                          
+								),
 		);
 		return $eventConfiguration;
 	}
@@ -253,7 +257,25 @@ function LogAlles_Hostnames() {
 		return array(
 					);
 	}
-	 
+
+
+function LogAlles_Manufacturers() {
+		return array(
+			"00-05-cd"      => "Denon Ltd",
+			"00-0c-29"      => "VMware Inc",
+			"00-11-32"      => "Synology Incorporated",
+			"00-1a-22"      => "eQ3 Entwicklung GmbH",
+			"00-17-88"   	 => "Philips Lighting BV",
+			"00-e0-4c"   	 => "Realtek Semiconductor Corp",
+			"90-84-0d"      => "Apple Inc",
+			"90-e6-ba"      => "AsusTek Compunter Inc",
+			"ac-cf-23"      => "Hi-flying electronics technology Co ltd",
+			"c8-bc-c8"      => "Apple Inc",
+			"d8-30-62"      => "Apple Inc",
+			"e8-ab-fa"      => "Shenzen Reecam Tech Ltd",
+			
+			         );
+			     }	
 
 	/** @}*/
 ?>
