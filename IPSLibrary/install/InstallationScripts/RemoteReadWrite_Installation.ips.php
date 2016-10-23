@@ -125,6 +125,17 @@
 		} /* Ende gartensteuerung */
 
 	// ----------------------------------------------------------------------------------------------------------------------------
+	// Hardware zum ersten Mal analysieren
+	// ----------------------------------------------------------------------------------------------------------------------------
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
+	echo "\n\nDie Scripts sind auf               ".$CategoryIdApp."\n";
+	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
+	IPS_RunScript($scriptIdEvaluateHardware);
+
+	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 	if ($WFC10_Enabled)

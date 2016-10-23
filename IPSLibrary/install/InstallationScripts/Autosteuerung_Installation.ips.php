@@ -295,7 +295,8 @@
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
 		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
-
+		/* in der normalen Viz Darstellung verstecken */
+		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
 		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
 		DeleteWFCItems($WFC10_ConfigId, $tabItem);
