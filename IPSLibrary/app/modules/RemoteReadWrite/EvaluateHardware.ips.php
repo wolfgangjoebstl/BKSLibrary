@@ -202,35 +202,47 @@ $texte = Array(
 
 $ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
 if(sizeof($ids) == 0)
-    die("Keine HomeMatic Socket Instanz gefunden!");
-echo "\n\nHomatic Socket ID :".$ids[0]."\n";
+	{
+   echo "Keine HomeMatic Socket Instanz gefunden!\n";
+   }
+else
+	{
+	echo "\n\nHomatic Socket ID :".$ids[0]."\n";
+   $msgs = @HM_ReadServiceMessages($ids[0]);
+	if($msgs === false)
+	   {
+    	echo "Homematic Socket vorhanden, aber Verbindung zur CCU fehlgeschlagen\n";
+    	}
+	else
+	   {
+		if(sizeof($msgs) == 0) echo "Keine Servicemeldungen!\n";
 
-$msgs = HM_ReadServiceMessages($ids[0]);
-if($msgs === false)
-    die("Verbindung zur CCU fehlgeschlagen");
+		foreach($msgs as $msg)
+			{
+		   if(array_key_exists($msg['Message'], $texte))
+				{
+	        	$text = $texte[$msg['Message']];
+	        	}
+			else
+				{
+	        	$text = $msg['Message'];
+   			}
 
-if(sizeof($msgs) == 0)
-    echo "Keine Servicemeldungen!\n";
+		    $id = GetInstanceIDFromHMID($msg['Address']);
+		    if(IPS_InstanceExists($id))
+			 	{
+	        	$name = IPS_GetLocation($id);
+   			}
+			else
+				{
+	        	$name = "Gerät nicht in IP-Symcon eingerichtet";
+    			}
 
-foreach($msgs as $msg)
-{
-    if(array_key_exists($msg['Message'], $texte)) {
-        $text = $texte[$msg['Message']];
-    } else {
-        $text = $msg['Message'];
-    }
-
-    $id = GetInstanceIDFromHMID($msg['Address']);
-    if(IPS_InstanceExists($id)) {
-        $name = IPS_GetLocation($id);
-    } else {
-        $name = "Gerät nicht in IP-Symcon eingerichtet";
-    }
-
-    echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-}
-
-
+		    echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+			}
+		}
+	}
+	
 /********************************************************************************************************************/
 
 function GetInstanceIDFromHMID($sid)
