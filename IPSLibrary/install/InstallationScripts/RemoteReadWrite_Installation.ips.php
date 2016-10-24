@@ -133,7 +133,7 @@
 	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
 	echo "\n\nDie Scripts sind auf               ".$CategoryIdApp."\n";
 	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
-	IPS_RunScript($scriptIdEvaluateHardware);
+	IPS_RunScriptWait($scriptIdEvaluateHardware);
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation

@@ -61,6 +61,45 @@
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
 
+	$handle2=fopen("c:/scripts/process_username.bat","w");
+	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+	//fwrite($handle2,"pause\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_firefox.bat","w");
+	fwrite($handle2,'"'.$config["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$config["Software"]["Firefox"]["Url"].'"'."\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_kill_java.bat","w");
+	fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+	//fwrite($handle2,"pause\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_start_soap.bat","w");
+	fwrite($handle2,'c:/scripts/nircmd.exe closeprocess java.exe'."\r\n");
+	fwrite($handle2,'echo ------------------------------------------------ >>c:/scripts/log.txt'."\r\n");
+	fwrite($handle2,'echo %date% %time% shutdown soap >>c:/scripts/log.txt'."\r\n");
+	fwrite($handle2,'ping 127.0.0.1 -n 4'."\r\n");
+	fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+	//fwrite($handle2,'c:/Windows/System32/Taskkill.exe /F /FI "IMAGENAME eq java.exe"'."\r\n");
+	fwrite($handle2,'ping 127.0.0.1 -n 2'."\r\n");
+	fwrite($handle2,'cd c:/scripts/'."\r\n");
+	fwrite($handle2,'%windir%/system32/java -jar iTunesSoap_Beta1.jar '.$config["Software"]["iTunes"]["SoapIP"].' '.$config["Software"]["iTunes"]["SoapIP"].':8085'."\r\n");
+	fwrite($handle2,'rem pause'."\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_start_iTunes.bat","w");
+  	fwrite($handle2,'"'.$config["Software"]["iTunes"]["Directory"].'iTunes.exe"'."\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_start_VMware.bat","w");
+  	fwrite($handle2,'"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'"'."\r\n");
+	fclose($handle2);
+
+	$handle2=fopen("c:/scripts/process_start_Watchdog.bat","w");
+  	fwrite($handle2,'\"'.$config["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe\"'."\r\n");
+	fclose($handle2);
+	
 	/********************************************************************
 	 *
 	 * feststellen ob Prozesse schon laufen, dann muessen sie nicht mehr gestartet werden
@@ -130,14 +169,11 @@
 	   $processStart["Firefox.exe"]="Off";
 	   }
 
-	$handle2=fopen("c:/scripts/process_username.bat","w");
-	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
-	//fwrite($handle2,"pause\r\n");
-	fclose($handle2);
 	IPS_ExecuteEx("c:/scripts/process_username.bat","", true, false,-1);
 	$handle3=fopen("c:/scripts/username.txt","r");
 	echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
 	fclose($handle3);
+
 
 	/********************************************************************
 	 *
@@ -202,13 +238,8 @@
 						//writeLogEvent("Autostart (ftpserverlite)");
 						if ($processStart["Firefox.exe"] == "On")
 						   {
-							writeLogEvent("Autostart (Firefox)".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"]);
-
-							IPS_EXECUTEEX($config["Software"]["Firefox"]["Directory"]."firefox.exe",$config["Software"]["Firefox"]["Url"],true,false,-1);
-
-							//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe",'http://10.0.1.20:88/',true,false,-1);
-							//IPS_EXECUTEEX("C:/Program Files (x86)/Mozilla Firefox/firefox.exe","https://127.0.0.1:82/",true,false,1);
-							/* ab und zu Fehlermeldung Warning: There were no token found for specified session: 1 */
+							writeLogEvent("Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"]);
+							IPS_ExecuteEx("c:/scripts/process_firefox.bat","", true, false,-1);
 							}
 						SetValue($ScriptCounterID,$counter+1);
 			      	break;
@@ -218,13 +249,8 @@
 						   {
 							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
 					   	/* Soap ausschalten */
-							$handle2=fopen("c:/scripts/process_kill_java.bat","w");
-							fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
-							fwrite($handle2,"\r\n");
-							//fwrite($handle2,"pause\r\n");
-							fclose($handle2);
-							IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
-							IPS_ExecuteEx("c:/Scripts/Startsoap.bat","",true,false,-1);
+							//IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
+							IPS_ExecuteEx("c:/Scripts/process_Startsoap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
 							writeLogEvent("Autostart (SOAP)");
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -241,20 +267,20 @@
 							//fwrite($handle2,"pause\r\n");
 							fclose($handle2);
 							IPS_ExecuteEx("c:/scripts/process_kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
-							IPS_ExecuteEx($config["Software"]["iTunes"]["Directory"]."iTunes.exe","",true,false,-1);  // C:\Program Files\iTunes
-							writeLogEvent("Autostart (iTunes)".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
+							IPS_ExecuteEx("c:/scripts/process_start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
+							writeLogEvent("Autostart (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							}
 						SetValue($ScriptCounterID,$counter+1);
 			      	break;
 				   case 2:
 						if ($processStart["vmplayer.exe"] == "On")
 						   {
-							writeLogEvent("Autostart (VMPlayer)".$config["Software"]["VMware"]["Directory"]."vmplayer.exe ".$config["Software"]["VMware"]["FileName"]);
+							writeLogEvent("Autostart (VMPlayer) ".'\"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe\" \"'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'\"');
 							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
 
 							/*********************************************************************/
 
-							IPS_EXECUTEEX($config["Software"]["VMware"]["Directory"]."vmplayer.exe",$config["Software"]["VMware"]["FileName"],true,false,-1);
+							IPS_EXECUTEEX("c:/scripts/process_start_VMWare.bat","",true,false,-1);
 							}
 						else
 						   {
@@ -271,7 +297,7 @@
 							/*********************************************************************/
 							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe");
 
-							IPS_EXECUTEEX($config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe","",true,false,-1);   /* Watchdog starten */
+							IPS_EXECUTEEX("c:/scripts/process_start_Watchdog.bat","",true,false,-1);
 
 						 	// Parent-ID der Kategorie ermitteln
 							$parentID = IPS_GetObject($IPS_SELF);
