@@ -189,5 +189,76 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	   {
 	   echo "   Timer Event ShutdownWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
   		}
+
+	/******************************************************
+	 *
+	 *			INIT, Batchdateien, Scripts
+	 *
+	 *************************************************************/
+
+	$verzeichnis="C:/scripts/";
+	$unterverzeichnis="process/";
+	if (is_dir($verzeichnis.$unterverzeichnis))
+   	{
+      }
+   else
+		{
+	   mkdir($verzeichnis.$unterverzeichnis);
+   	}
+
+
+	$configWD=Watchdog_Configuration();
+	
+	$handle2=fopen($verzeichnis.$unterverzeichnis."read_username.bat","w");
+	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
+	//fwrite($handle2,"pause\r\n");
+	fclose($handle2);
+
+	if (isset($config["Software"]["Firefox"]["Directory"])==true )
+	   {
+		$handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");
+		fwrite($handle2,'"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWD["Software"]["Firefox"]["Url"].'"'."\r\n");
+		fclose($handle2);
+		}
+		
+	if (isset($config["Software"]["iTunes"]["Directory"])==true )
+	   {
+		$handle2=fopen($verzeichnis.$unterverzeichnis."kill_java.bat","w");
+		fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+		//fwrite($handle2,"pause\r\n");
+		fclose($handle2);
+
+		$handle2=fopen($verzeichnis.$unterverzeichnis."start_soap.bat","w");
+		fwrite($handle2,'c:/scripts/nircmd.exe closeprocess java.exe'."\r\n");
+		fwrite($handle2,'echo ------------------------------------------------ >>c:/scripts/log.txt'."\r\n");
+		fwrite($handle2,'echo %date% %time% shutdown soap >>c:/scripts/log.txt'."\r\n");
+		fwrite($handle2,'ping 127.0.0.1 -n 4'."\r\n");
+		fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
+		//fwrite($handle2,'c:/Windows/System32/Taskkill.exe /F /FI "IMAGENAME eq java.exe"'."\r\n");
+		fwrite($handle2,'ping 127.0.0.1 -n 2'."\r\n");
+		fwrite($handle2,'cd c:/scripts/'."\r\n");
+		fwrite($handle2,'%windir%/system32/java -jar iTunesSoap_Beta1.jar '.$configWD["Software"]["iTunes"]["SoapIP"].' '.$configWD["Software"]["iTunes"]["SoapIP"].':8085'."\r\n");
+		fwrite($handle2,'rem pause'."\r\n");
+		fclose($handle2);
+
+		$handle2=fopen($verzeichnis.$unterverzeichnis."start_iTunes.bat","w");
+  		fwrite($handle2,'"'.$configWD["Software"]["iTunes"]["Directory"].'iTunes.exe"'."\r\n");
+		fclose($handle2);
+		}
+		
+	if (isset($config["Software"]["VMware"]["Directory"])==true )
+	   {
+		$handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
+  		fwrite($handle2,'"'.$configWD["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWD["Software"]["VMware"]["DirFiles"].$configWD["Software"]["VMware"]["FileName"].'"'."\r\n");
+		fclose($handle2);
+		}
+		
+	if (isset($config["Software"]["Watchdog"]["Directory"])==true )
+	   {
+		$handle2=fopen($verzeichnis.$unterverzeichnis."start_Watchdog.bat","w");
+  		fwrite($handle2,'\"'.$configWD["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe\"'."\r\n");
+		fclose($handle2);
+		}
+
   		
 ?>
