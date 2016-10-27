@@ -194,7 +194,7 @@
 	   {
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
-   IPS_SetVariableCustomProfile($AmisReadMeterID,'Zaehlt');
+	if (isset($AmisReadMeterID)==true) { IPS_SetVariableCustomProfile($AmisReadMeterID,'Zaehlt'); }
    IPS_SetVariableCustomProfile($MeterReadID,'Zaehlt');
 
 	$pname="kWh";

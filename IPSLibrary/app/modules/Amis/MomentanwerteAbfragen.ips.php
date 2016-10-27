@@ -78,7 +78,10 @@ $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
 
 echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
-echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
+if (isset($AmisReadMeterID)==true)
+	{
+	echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
+	}
 
 if (Getvalue($MeterReadID))
 	{
@@ -136,19 +139,22 @@ if (Getvalue($MeterReadID))
 			break;
 		case "11":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-		   if (Getvalue($AmisReadMeterID))
+		   if (isset($AmisReadMeterID)==true)
 		      {
-			   Setvalue($SendTimeID,time());
-			   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
+			   if (Getvalue($AmisReadMeterID))
+			      {
+				   Setvalue($SendTimeID,time());
+				   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
 
-				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
- 				fwrite($handlelog, $ausgabewert."\r\n");
- 				fclose($handlelog);
+					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
+ 					fwrite($handlelog, $ausgabewert."\r\n");
+ 					fclose($handlelog);
+ 					}
  				}
 			break;
 		case "10":  /* Auto */
@@ -159,20 +165,22 @@ if (Getvalue($MeterReadID))
 			break;
 		case "8":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
+			if (isset($AmisReadMeterID)==true)
+			   {
+			   if (Getvalue($AmisReadMeterID))
+			      {
+				   Setvalue($SendTimeID,time());
+				   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
 
-		   if (Getvalue($AmisReadMeterID))
-		      {
-			   Setvalue($SendTimeID,time());
-			   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
-
-				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
- 				fwrite($handlelog, $ausgabewert."\r\n");
- 				fclose($handlelog);
+					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
+ 					fwrite($handlelog, $ausgabewert."\r\n");
+ 					fclose($handlelog);
+ 					}
  				}
 			break;
 		case "7":  /* Auto */
@@ -196,19 +204,22 @@ if (Getvalue($MeterReadID))
 			break;
 		case "1":
 			Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-		   if (Getvalue($AmisReadMeterID))
-		      {
-			   Setvalue($SendTimeID,time());
-				COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
-				IPS_Sleep(1550);
-				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
+			if (isset($AmisReadMeterID)==true)
+			   {
+			   if (Getvalue($AmisReadMeterID))
+			      {
+				   Setvalue($SendTimeID,time());
+					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
+					IPS_Sleep(1550);
+					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
 			
-				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
-	 			fwrite($handlelog, $ausgabewert."\r\n");
- 				fclose($handlelog);
+					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
+		 			fwrite($handlelog, $ausgabewert."\r\n");
+ 					fclose($handlelog);
+					}
 				}
 			break;
 
