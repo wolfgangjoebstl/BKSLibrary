@@ -217,14 +217,14 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	$handle2=fopen($verzeichnis.$unterverzeichnis."self_shutdown.bat","w");
 	fwrite($handle2,'net stop IPSServer'."\r\n");
 	fwrite($handle2,'shutdown /s /t 150 /c "Es erfolgt ein Shutdown in 2 Minuten'."\r\n");
-	fwrite($handle2,"pause\r\n");
+	fwrite($handle2,'pause'."\r\n");
 	fwrite($handle2,'shutdown /a'."\r\n");
 	fclose($handle2);
 
 	$handle2=fopen($verzeichnis.$unterverzeichnis."self_restart.bat","w");
 	fwrite($handle2,'net stop IPSServer'."\r\n");
 	fwrite($handle2,'shutdown /r /t 150 /c "Es erfolgt ein Restart in 2 Minuten'."\r\n");
-	fwrite($handle2,"pause\r\n");
+	fwrite($handle2,'pause'."\r\n");
 	fwrite($handle2,'shutdown /a'."\r\n");
 	fclose($handle2);
 	
@@ -285,7 +285,7 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	   {
 	   echo "Schreib Batchfile zum automatischen Start des Watchdogs.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_Watchdog.bat","w");
-  		fwrite($handle2,'\"'.$configWD["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe\"'."\r\n");
+  		fwrite($handle2,'"'.$configWD["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe"'."\r\n");
 		fclose($handle2);
 		}
 
