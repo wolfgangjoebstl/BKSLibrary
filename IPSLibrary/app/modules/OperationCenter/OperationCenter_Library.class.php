@@ -263,7 +263,7 @@ class OperationCenter
     	   $manuID=substr($mac,0,8);
     	   if (isset ($manufacturers[$manuID])==true) { $manuID=$manufacturers[$manuID]; }
 		   echo "   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
-		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".$result2."\n";
+		   $ergebnis.="   ".$mac."   ".str_pad($ip,12)." ".str_pad($result,12)." ".str_pad($result2,20)."  ".$manuID."\n";
 		   }
 		echo "\n\n";
 		return ($ergebnis);

@@ -35,10 +35,11 @@
 	foreach ($MeterConfig as $meter)
 		{
 		echo"-------------------------------------------------------------\n";
-		echo "Create Variableset for :".$meter["NAME"]." \n";
+		echo "Create Category/Variable for : ".$meter["NAME"]." \n";
 		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
 		   {
+			echo "  Create Variableset for AMIS :".$meter["NAME"]." \n";
 		   /* kann derzeit nur ein AMIS Modul installieren */
 			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
@@ -46,6 +47,8 @@
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
 			$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
@@ -59,34 +62,36 @@
 			if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
 			foreach ($serialPortID as $num => $serialPort)
 			   {
-			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+			   echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 			   if (IPS_GetName($serialPort) == "AMIS Serial Port")   { $com_Port = $serialPort; }
 			   if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
 				}
-			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
-			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
+			if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
+			else { echo "\n  AMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 
 			}
-		print_r($meter);
+		//print_r($meter);
 		}
 
 
 $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
 
-echo "Meter read eingeschaltet:".Getvalue($MeterReadID)."\n";
+echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
+echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
+
 if (Getvalue($MeterReadID))
 	{
 	if ($AmisConfig["Type"] == "Bluetooth")
 	   {
-      echo "Comport Bluetooth aktiviert. \n";
+      echo "  Comport Bluetooth aktiviert. \n";
       //IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
       COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 		}
 		
 	if ($AmisConfig["Type"] == "Serial")
 	   {
-      echo "Comport Serial aktiviert. \n";
+      echo "  Comport Serial aktiviert. \n";
       //IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
       $config = IPS_GetConfiguration($com_Port);
       $remove = array("{", "}", '"');
@@ -110,7 +115,7 @@ if (Getvalue($MeterReadID))
 			}
 		else
      		{
-			echo "Port ist bereits offen.\n";
+			echo "    Port ist bereits offen.\n";
 			}
 		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 		}
@@ -131,17 +136,20 @@ if (Getvalue($MeterReadID))
 			break;
 		case "11":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-		   Setvalue($SendTimeID,time());
-		   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
+		   if (Getvalue($AmisReadMeterID))
+		      {
+			   Setvalue($SendTimeID,time());
+			   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
 
-			$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-			$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
- 			fwrite($handlelog, $ausgabewert."\r\n");
- 			fclose($handlelog);
+				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
+ 				fwrite($handlelog, $ausgabewert."\r\n");
+ 				fclose($handlelog);
+ 				}
 			break;
 		case "10":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
@@ -151,17 +159,21 @@ if (Getvalue($MeterReadID))
 			break;
 		case "8":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-		   Setvalue($SendTimeID,time());
-		   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
 
-			$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-			$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
- 			fwrite($handlelog, $ausgabewert."\r\n");
- 			fclose($handlelog);
+		   if (Getvalue($AmisReadMeterID))
+		      {
+			   Setvalue($SendTimeID,time());
+			   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
+
+				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
+ 				fwrite($handlelog, $ausgabewert."\r\n");
+ 				fclose($handlelog);
+ 				}
 			break;
 		case "7":  /* Auto */
 			writeEnergyHomematic($MeterConfig);
@@ -182,21 +194,22 @@ if (Getvalue($MeterReadID))
 		case "2":  /* Auto */
 		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
 			break;
-
 		case "1":
-		   Setvalue($SendTimeID,time());
-			COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
-			IPS_Sleep(1550);
-			COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
 			Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
+		   if (Getvalue($AmisReadMeterID))
+		      {
+			   Setvalue($SendTimeID,time());
+				COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
+				IPS_Sleep(1550);
+				COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
 			
-			$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-			$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
- 			fwrite($handlelog, $ausgabewert."\r\n");
- 			fclose($handlelog);
-
+				$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+				$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
+	 			fwrite($handlelog, $ausgabewert."\r\n");
+ 				fclose($handlelog);
+				}
 			break;
 
 		default:
@@ -208,16 +221,17 @@ if (Getvalue($MeterReadID))
 	}
 else
 	{
+	echo "MeterRead deaktiviert, keine Zählwerte definiert.\n";
 	if ($AmisConfig["Type"] == "Serial")
 	   {
-		echo "Comport Serial deaktiviert. \n";
+		echo "  Comport Serial deaktiviert. \n";
 		//COMPort_SetOpen($com_Port, false); //false für aus
 		//IPS_ApplyChanges($com_Port);
 		}
 		
 	if ($AmisConfig["Type"] == "Bluetooth")
 	   {
-		echo "Comport Bluetooth deaktiviert. \n";
+		echo "  Comport Bluetooth deaktiviert. \n";
 		}
 	}
 

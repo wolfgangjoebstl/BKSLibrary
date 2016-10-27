@@ -833,6 +833,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$alleTempWerte="";
 		$alleHumidityWerte="";
 		$alleMotionWerte="";
+		$alleHelligkeitsWerte="";
 		$alleStromWerte.="";
 		
 		/******************************************************************************************
@@ -862,6 +863,28 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
+			$alleHelligkeitsWerte.="\n\nAktuelle Helligkeitswerte direkt aus den HW-Registern:\n\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Bewegungsmelder ausgeben */
+				if ( (isset($Key["COID"]["MOTION"])==true) )
+			   	{
+		   		/* alle Bewegungsmelder, aber die Helligkeitswerte, um herauszufinden ob bei einem der Melder die Batterie leer ist */
+
+			      $oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
+   	   		$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+				   	{
+						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					}
+				}
+
+
 			$alleMotionWerte.="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
 			foreach ($Homematic as $Key)
 				{
@@ -883,7 +906,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
-			/******************************************************************************************/
+			/**
+			  * Bewegungswerte von den FS20 Registern, eigentlich schon ausgemustert
+			  *
+			  *******************************************************************************/
 
 			if (isset($installedModules["RemoteAccess"])==true)
 				{
@@ -1186,11 +1212,11 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
-			$alleHumidityWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
+			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleHelligkeitsWerte.
 			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
 		   }
 	  	echo ">>Ende aktuelle Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";

@@ -214,15 +214,31 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	//fwrite($handle2,"pause\r\n");
 	fclose($handle2);
 
-	if (isset($config["Software"]["Firefox"]["Directory"])==true )
+	$handle2=fopen($verzeichnis.$unterverzeichnis."self_shutdown.bat","w");
+	fwrite($handle2,'net stop IPSServer'."\r\n");
+	fwrite($handle2,'shutdown /s /t 150 /c "Es erfolgt ein Shutdown in 2 Minuten'."\r\n");
+	fwrite($handle2,"pause\r\n");
+	fwrite($handle2,'shutdown /a'."\r\n");
+	fclose($handle2);
+
+	$handle2=fopen($verzeichnis.$unterverzeichnis."self_restart.bat","w");
+	fwrite($handle2,'net stop IPSServer'."\r\n");
+	fwrite($handle2,'shutdown /r /t 150 /c "Es erfolgt ein Restart in 2 Minuten'."\r\n");
+	fwrite($handle2,"pause\r\n");
+	fwrite($handle2,'shutdown /a'."\r\n");
+	fclose($handle2);
+	
+	if (isset($configWD["Software"]["Firefox"]["Directory"])==true )
 	   {
+	   echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");
 		fwrite($handle2,'"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWD["Software"]["Firefox"]["Url"].'"'."\r\n");
 		fclose($handle2);
 		}
 		
-	if (isset($config["Software"]["iTunes"]["Directory"])==true )
+	if (isset($configWD["Software"]["iTunes"]["Directory"])==true )
 	   {
+  	   echo "Schreibe Batchfile zum automatischen Kill von Java und Soap zur Steuerung von iTunes.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."kill_java.bat","w");
 		fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe'."\r\n");
 		//fwrite($handle2,"pause\r\n");
@@ -241,20 +257,33 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 		fwrite($handle2,'rem pause'."\r\n");
 		fclose($handle2);
 
+	   echo "Schreibe Batchfile zum automatischen Start von iTunes.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_iTunes.bat","w");
   		fwrite($handle2,'"'.$configWD["Software"]["iTunes"]["Directory"].'iTunes.exe"'."\r\n");
 		fclose($handle2);
+
+	   echo "Schreibe Batchfile zum automatischen Stopp von iTunes.\n";
+		$handle2=fopen($verzeichnis.$unterverzeichnis."kill_itunes.bat","w");
+		fwrite($handle2,'c:/Windows/System32/taskkill.exe /im itunes.exe');
+		fwrite($handle2,"\r\n");
+		fwrite($handle2,'c:/Windows/System32/taskkill.exe /f /im java.exe');
+		fwrite($handle2,"\r\n");
+		//fwrite($handle2,"pause\r\n");
+		fclose($handle2);
+		
 		}
 		
-	if (isset($config["Software"]["VMware"]["Directory"])==true )
+	if (isset($configWD["Software"]["VMware"]["Directory"])==true )
 	   {
+	   echo "Schreib Batchfile zum automatischen Start der VMware.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
   		fwrite($handle2,'"'.$configWD["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWD["Software"]["VMware"]["DirFiles"].$configWD["Software"]["VMware"]["FileName"].'"'."\r\n");
 		fclose($handle2);
 		}
 		
-	if (isset($config["Software"]["Watchdog"]["Directory"])==true )
+	if (isset($configWD["Software"]["Watchdog"]["Directory"])==true )
 	   {
+	   echo "Schreib Batchfile zum automatischen Start des Watchdogs.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_Watchdog.bat","w");
   		fwrite($handle2,'\"'.$configWD["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe\"'."\r\n");
 		fclose($handle2);

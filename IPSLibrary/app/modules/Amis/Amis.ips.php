@@ -5,7 +5,8 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Auslesung von Energiewerten. Diese Script ist verweist und wird zu Testzzecken weiterhin verwendet !
+	 * Script zur Auslesung von Energiewerten. Diese Script ist verweist und wird zu Testzzecken weiterhin verwendet
+	 * Aufgabe wird jetzt von MomentanwerteAbfragen uebernommen.
 	 *
 	 *
 	 * @file      
@@ -27,6 +28,9 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 	$MeterConfig = get_MeterConfiguration();
 	//print_r($MeterConfig);
+
+	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	foreach ($MeterConfig as $meter)
 		{
@@ -70,6 +74,7 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
 
+echo "Genereller Meter Read eingeschaltet:".Getvalue($MeterReadID)."\n";
 echo "\nAMIS Meter Read eingeschaltet:".Getvalue($MeterReadID)." auf Com-Port : ".$com_Port."\n";
 
 if (Getvalue($MeterReadID))

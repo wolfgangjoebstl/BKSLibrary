@@ -37,16 +37,19 @@
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
 
-	echo "Logspeicher für OperationCenter mitnutzen.\n";
-	$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-	$CategoryIdDataOC     = $moduleManager->GetModuleCategoryID('data');
-	$categoryId_NachrichtenOC    = CreateCategory('Nachrichtenverlauf',   $CategoryIdDataOC, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+	if (isset ($installedModules["OperationCenter"]))
+	   {
+		echo "Logspeicher für OperationCenter mitnutzen.\n";
+		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+		$CategoryIdDataOC     = $moduleManager->GetModuleCategoryID('data');
+		$categoryId_NachrichtenOC    = CreateCategory('Nachrichtenverlauf',   $CategoryIdDataOC, 20);
+		$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
+		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 	
-	$log_OperationCenter->LogMessage('Lokaler Server wird hochgefahren');
-	$log_OperationCenter->LogNachrichten('Lokaler Server wird hochgefahren');
-
+		$log_OperationCenter->LogMessage('Lokaler Server wird hochgefahren');
+		$log_OperationCenter->LogNachrichten('Lokaler Server wird hochgefahren');
+		}
+		
 	/********************************************************************
 	 *
 	 * Init
@@ -257,22 +260,21 @@
 							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe");
 
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Watchdog.bat","",true,false,-1);
-
-						 	// Parent-ID der Kategorie ermitteln
-							$parentID = IPS_GetObject($IPS_SELF);
-							$parentID = $parentID['ParentID'];
-
-							// ID der Skripte ermitteln
-							$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
-							$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
-
-							IPS_RunScript($IWDAliveFileSkriptScID);
-						 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
 							}
 						else
 						   {
 						   echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
 						   }
+					 	// Parent-ID der Kategorie ermitteln
+						$parentID = IPS_GetObject($IPS_SELF);
+						$parentID = $parentID['ParentID'];
+
+						// ID der Skripte ermitteln
+						$IWDAliveFileSkriptScID = IPS_GetScriptIDByName("IWDAliveFileSkript", $parentID);
+						$IWDSendMessageScID = IPS_GetScriptIDByName("IWDSendMessage", $parentID);
+
+						IPS_RunScript($IWDAliveFileSkriptScID);
+					 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
 				      SetValue($ScriptCounterID,$counter+1);
 						break;
 				   case 0:

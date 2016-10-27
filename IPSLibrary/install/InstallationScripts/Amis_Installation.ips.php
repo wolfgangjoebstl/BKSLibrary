@@ -52,7 +52,6 @@
 		echo "Admin ";
 		}
 
-
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	if ($WFC10User_Enabled)
 		{
@@ -82,6 +81,9 @@
 
 	$parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
+	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+	$MeterReadID = CreateVariableByName($parentid1, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
@@ -113,6 +115,8 @@
 			
 	      $HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+	      
+	      SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 		   }
 		if ($meter["TYPE"]=="Amis")
 		   {
@@ -120,7 +124,7 @@
 		   /* kann derzeit nur ein AMIS Modul installieren */
 			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2);
@@ -134,6 +138,8 @@
 	      AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
+			
+	      SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			}
 		print_r($meter);
 
@@ -170,7 +176,27 @@
 	
 	
 	/******************* Profile Definition **********************/
-	
+
+	$pname="Zaehlt";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+
+	   IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+	   IPS_SetVariableProfileAssociation($pname, 0, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   IPS_SetVariableProfileAssociation($pname, 1, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+
+	   print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+   IPS_SetVariableCustomProfile($AmisReadMeterID,'Zaehlt');
+   IPS_SetVariableCustomProfile($MeterReadID,'Zaehlt');
+
 	$pname="kWh";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
