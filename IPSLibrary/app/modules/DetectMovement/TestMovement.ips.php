@@ -101,18 +101,27 @@ if ($_IPS['SENDER']=="Execute")
 			   {
 			   if (isset($eventlist[$eventID_str]))
 			      {
-  			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)."   ".$eventID."  Movement: ".IPS_GetName(IPS_GetParent($eventID)).
+  			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."  Movement: ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36).
 					  			"  ".$eventlist[$eventID_str][1]."\n";
   			   	//print_r($eventlist[$eventID_str]);
 			      }
 			   else
 			      {
-			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)."   ".$eventID."  Movement: ".IPS_GetName(IPS_GetParent($eventID))."\n";
+			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."  Movement: ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)."\n";
 			   	}
 				}
 			else
 			   {
-			   echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)."   ".$eventID."  \n";
+			   if (isset($eventlist[$eventID_str]))
+			      {
+  			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36).
+					  			"  ".$eventlist[$eventID_str][1]."\n";
+  			   	//print_r($eventlist[$eventID_str]);
+			      }
+			   else
+			      {
+			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." \n";
+					}
 				}
 			}
 		$i++;

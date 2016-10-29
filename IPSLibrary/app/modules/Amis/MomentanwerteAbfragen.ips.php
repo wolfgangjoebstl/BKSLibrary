@@ -31,7 +31,8 @@
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
+	$TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			
 	foreach ($MeterConfig as $meter)
 		{
 		echo"-------------------------------------------------------------\n";
@@ -44,7 +45,6 @@
 			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
 
-			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -85,42 +85,44 @@ if (isset($AmisReadMeterID)==true)
 
 if (Getvalue($MeterReadID))
 	{
-	if ($AmisConfig["Type"] == "Bluetooth")
-	   {
-      echo "  Comport Bluetooth aktiviert. \n";
-      //IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
-      COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
-		}
-		
-	if ($AmisConfig["Type"] == "Serial")
-	   {
-      echo "  Comport Serial aktiviert. \n";
-      //IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
-      $config = IPS_GetConfiguration($com_Port);
-      $remove = array("{", "}", '"');
-		$config = str_replace($remove, "", $config);
-		$Config = explode (',',$config);
-		$AllConfig=array();
-		foreach ($Config as $configItem)
+	if (isset($AmisReadMeterID)==true)
+		{
+		if ($AmisConfig["Type"] == "Bluetooth")
+	   	{
+	      echo "  Comport Bluetooth aktiviert. \n";
+   	   //IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
+      	COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+			}
+ 		if ($AmisConfig["Type"] == "Serial")
 		   {
-		   $items=explode (':',$configItem);
-		   $Allconfig[$items[0]]=$items[1];
-		   }
-		//print_r($Allconfig);
-		if ($Allconfig["Open"]==false)
-		   {
-			COMPort_SetOpen($com_Port, true); //false für aus
-			//IPS_ApplyChanges($com_Port);
-			if (!@IPS_ApplyChanges($com_Port))
-				{
-				IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
+      	echo "  Comport Serial aktiviert. \n";
+	      //IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
+   	   $config = IPS_GetConfiguration($com_Port);
+      	$remove = array("{", "}", '"');
+			$config = str_replace($remove, "", $config);
+			$Config = explode (',',$config);
+			$AllConfig=array();
+			foreach ($Config as $configItem)
+			   {
+			   $items=explode (':',$configItem);
+		   	$Allconfig[$items[0]]=$items[1];
+			   }
+			//print_r($Allconfig);
+			if ($Allconfig["Open"]==false)
+			   {
+				COMPort_SetOpen($com_Port, true); //false für aus
+				//IPS_ApplyChanges($com_Port);
+				if (!@IPS_ApplyChanges($com_Port))
+					{
+					IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
+					}
 				}
+			else
+     			{
+				echo "    Port ist bereits offen.\n";
+				}
+			COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 			}
-		else
-     		{
-			echo "    Port ist bereits offen.\n";
-			}
-		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 		}
 
    switch (Getvalue($TimeSlotReadID))

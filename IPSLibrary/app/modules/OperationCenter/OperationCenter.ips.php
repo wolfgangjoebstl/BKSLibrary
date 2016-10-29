@@ -1031,7 +1031,7 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
    	Sys Uptime lokaler Server ermitteln
 	**********************************************************/
 
-	echo "\nSind die RemoteAccess Server erreichbar ....\n";
+	echo "\nSind die LocalAccess Server erreichbar ....\n";
 
 	$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
 	if ($Access_categoryId==false)
@@ -1051,6 +1051,7 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
+		echo "\nSind die RemoteAccess Server erreichbar ....\n";
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetConfiguration();
 		$RemoteServer=array();

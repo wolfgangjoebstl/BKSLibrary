@@ -978,6 +978,27 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
+			$ergebnisRegen.="\n\nAktuelle Regenmengen direkt aus den HW-Registern:\n\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Energiesensoren ausgeben */
+				if ( (isset($Key["COID"]["RAIN_COUNTER"])==true) )
+			   	{
+		   		/* alle Regenwerte */
+
+			      $oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
+   	   		$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+				   	{
+						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+					   {
+						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					}
+				}
+
 		  	echo ">>RemoteReadWrite. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
@@ -1096,7 +1117,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************/
 
-
+		$ServerRemoteAccess.="LocalAccess Variablen dieses Servers:\n\n";
 			
 		/* Remote Access Crawler für Ausgabe aktuelle Werte */
 
@@ -1105,7 +1126,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 		$starttime=$endtime-60*60*24*1; /* ein Tag */
 
-		$ServerRemoteAccess="RemoteAccess Variablen aller hier gespeicherten Server:\n\n";
+		$ServerRemoteAccess.="RemoteAccess Variablen aller hier gespeicherten Server:\n\n";
 
 		$visID=@IPS_GetObjectIDByName ( "Visualization", 0 );
 		$ServerRemoteAccess .=  "Visualization ID : ";
@@ -1354,6 +1375,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		else
 			{
 			$guthaben="";
+			}
+
+		/************** Werte der Custom Components ****************************************************************************/
+
+		if (isset($installedModules["CustomComponents"])==true)
+		   {
+
 			}
 
 		/************** Detect Movement Motion Detect ****************************************************************************/
@@ -1817,8 +1845,15 @@ function UpdateObjectData2($ObjectId, $Position, $Icon="")
 
 /**********************************************************************************************/
 
-/* Summestartende, Gemeinschaftsfunktion:
-*/
+/******************************************************
+ *
+ * Summestartende,
+ *
+ * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
+ *
+ * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
+ *
+ ******************************************************************************************/
 
 function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
 	{
@@ -1900,12 +1935,26 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 								//$ergebnis=$aktwert;
 								}
 							break;
-						case 0:
+						case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
 							$ergebnis+=$aktwert;
 	                  break;
 	               default:
 	               }
 				   $vorigertag=$tag;
+				   }
+				else
+				   {
+				   /* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
+			   	switch ($increment)
+			   		{
+			   		case 1:
+			   		case 2:
+							break;
+						case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+							$ergebnis+=$aktwert;
+	                  break;
+	               default:
+	               }
 				   }
 
 				if ($display==true)

@@ -50,14 +50,16 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-/* Webfront GUID herausfinden */
+	/* Webfront GUID herausfinden */
+
+	echo "\n";
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	foreach ($alleInstanzen as $instanz)
 		{
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".IPS_GetName($instanz)." ID : ".$result["InstanceID"]."\n";
+		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
 		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
@@ -156,6 +158,8 @@
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	/* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
+
+	/* Links für Webfront identifizieren */
 
 	$AutoSetSwitches = Autosteuerung_SetSwitches();
 	$register=new AutosteuerungHandler($scriptIdAutosteuerung);
