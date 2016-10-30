@@ -13,6 +13,7 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -68,6 +69,7 @@
 	$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
 
+	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	/******************************************************
 
@@ -308,7 +310,6 @@
 					}
 				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
 				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-  				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
 				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
 				IPS_ApplyChanges($archiveHandlerID);
@@ -343,7 +344,79 @@
 			}
 		}
 
+	/******************************************************
 
+				INIT SysPing Variablen und auf Archivierung setzen
+
+	*************************************************************/
+
+	$subnet="10.255.255.255";
+	$OperationCenter=new OperationCenter($subnet);
+	$OperationCenterConfig = $OperationCenter->oc_Configuration;
+
+	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+
+	if (isset ($installedModules["IPSCam"]))
+		{
+		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+			{
+			$StatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+			}
+		}
+
+	if (isset ($installedModules["LedAnsteuerung"]))
+		{
+		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+		$device_config=LedAnsteuerung_Config();
+		foreach ($device_config as $name => $config)
+		   {
+			$StatusID = CreateVariableByName($categoryId_SysPing, "LED_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+			}
+		}
+
+	if (isset ($installedModules["DENONsteuerung"]))
+		{
+		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+		$device_config=Denon_Configuration();
+		foreach ($device_config as $name => $config)
+		   {
+			$StatusID = CreateVariableByName($categoryId_SysPing, "Denon_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+			}
+		}
+
+	foreach ($OperationCenterConfig['ROUTER'] as $cam_name => $cam_config)
+		{
+		$StatusID = CreateVariableByName($categoryId_SysPing, "Router_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+		}
+
+	if (isset ($installedModules["IPSWeatherForcastAT"]))
+	   {
+		$StatusID = CreateVariableByName($categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+		}
+
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetConfiguration();
+		foreach ($remServer as $Name => $UrlAddress)
+		   {
+			$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+			}
+		}
+	IPS_ApplyChanges($archiveHandlerID);
+		
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
