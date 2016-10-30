@@ -116,7 +116,8 @@ if (isset ($installedModules["IPSCam"]))
 else
 	{
 	echo "Modul IPSCam ist NICHT installiert.\n";
-	$tim2ID = 0;
+	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
+	if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
 	}
 
 $tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
@@ -125,6 +126,15 @@ $tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
 $tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
 $tim6ID = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
 $tim7ID = @IPS_GetEventIDByName("FileStatus", $scriptId);
+
+echo "Timer Installation : \n";
+echo "  Timer RouterAufruftimer OID : ".$tim1ID."\n";
+echo "  Timer MoveCamFiles OID      : ".$tim2ID."\n";
+echo "  Timer RouterExectimer OID   : ".$tim3ID."\n";
+echo "  Timer SysPingTimer OID      : ".$tim4ID."\n";
+echo "  Timer CyclicUpdate OID      : ".$tim5ID."\n";
+echo "  Timer CopyScriptsTimer OID  : ".$tim6ID."\n";
+echo "  Timer FileStatus OID        : ".$tim7ID."\n";
 
 /*********************************************************************************************/
 
@@ -1142,8 +1152,11 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 			   {
 			   $ServerName=$rpc->IPS_GetName(0);
 			   $ServerUptime=$rpc->IPS_GetKernelStartTime();
-				echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+   		   $IPS_VersionID = CreateVariableByName($Access_categoryId, $Name."_IPS_Version", 3);
+  			   $ServerVersion=$rpc->IPS_GetKernelVersion();
+				echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 				SetValue($IPS_UpTimeID,$ServerUptime);
+				SetValue($IPS_VersionID,$ServerVersion);
 				$RemoteServer[$Name]["Status"]=true;
 				if (GetValue($ServerStatusID)==false)
 				   {  /* Statusänderung */

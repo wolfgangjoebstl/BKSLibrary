@@ -459,7 +459,7 @@ function send_status($aktuell, $startexec=0)
 	$cost=""; $internet=""; $statusverlauf=""; $ergebnis_tabelle=""; $alleStromWerte=""; $ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
 	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung=""; $energieverbrauch="";
 
-	$ergebnisOperationCenter="";
+	$ergebnisOperationCenter=""; $ServerRemoteAccess=""; $SystemInfo="";
 
 /* -----------------------------------------------------------------------------------------------------------------
  *
@@ -1229,16 +1229,37 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		/******************************************************************************************/
 
 		$alleHM_Errors=HomematicFehlermeldungen();
+
+		/*****************************************************************************************
+		 *
+		 * SystemInfo des jeweiligen PCs ausgeben
+		 *
+		 *******************************************************************************/
+
+		$SystemInfo.="System Informationen dieses Servers:\n\n";
+
+		exec('systeminfo',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
+
+		$PrintLines="";
+		foreach($catch as $line)
+   		{
+			if (strlen($line)>2)
+			   {
+   			$PrintLines.=$line."\n";
+				}  /* ende strlen */
+		  	}
+		$SystemInfo.=$PrintLines."\n\n";
+		
 		
 		if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
-			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
+			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleHelligkeitsWerte.
-			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess;
+			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo;
 		   }
 	  	echo ">>Ende aktuelle Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
@@ -2213,45 +2234,76 @@ function HomematicFehlermeldungen()
 		   //die("Keine HomeMatic Socket Instanz gefunden!");
 		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
 		   }
-		//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
-
-		for ($i=0;$i < $HomInstanz; $i++)
+		else
 		   {
-	      $alleHM_Errors.="\nHomatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
-			$msgs = HM_ReadServiceMessages($ids[$i]);
-			if($msgs === false)
-			   {
-				//die("Verbindung zur CCU fehlgeschlagen");
-			   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
-			   }
-
-			if(sizeof($msgs) == 0)
-			   {
-				//echo "Keine Servicemeldungen!\n";
-		   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
+			/* Homematic Instanzen vorhanden, sind sie aber auch aktiv ? */
+			$aktiv=false;
+			foreach ($ids as $id)
+	   		{
+				$ergebnis=IPS_GetConfiguration($id);
+				echo "Homematic Socket : ".IPS_GetName($id)."\n";
+				echo "  Konfig : ".$ergebnis."\n";
+      		$remove = array("{", "}", '"');
+				$ergebnis = str_replace($remove, "", $ergebnis);
+				$result = explode(",",$ergebnis);
+				$AllConfig=array();
+				foreach ($result as $configItem)
+				   {
+				   $items=explode (':',$configItem);
+				   $Allconfig[$items[0]]=$items[1];
+				   }
+				//print_r($Allconfig);
+				if ( $Allconfig["Open"]="false" )
+				   {
+					echo "Homematic Port nicht aktiviert.\n";
+					}
+				else
+				   {
+				   $aktiv=true;
+				   }
 				}
+			//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
+			if ($aktiv==true)
+	   		{
+				for ($i=0;$i < $HomInstanz; $i++)
+				   {
+			      $alleHM_Errors.="\nHomatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
+					$msgs = HM_ReadServiceMessages($ids[$i]);
+					if($msgs === false)
+					   {
+						//die("Verbindung zur CCU fehlgeschlagen");
+					   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+					   }
 
-			foreach($msgs as $msg)
-				{
-			   if(array_key_exists($msg['Message'], $texte))
-					{
-      		  	$text = $texte[$msg['Message']];
-		   		}
-				else
-					{
-      	  		$text = $msg['Message'];
-        			}
-			   $id = GetInstanceIDFromHMID($msg['Address']);
-		    	if(IPS_InstanceExists($id))
-				 	{
-        			$name = IPS_GetLocation($id);
-			   	}
-				else
-					{
-      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
-    				}
-			  	//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-			  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+					if(sizeof($msgs) == 0)
+					   {
+						//echo "Keine Servicemeldungen!\n";
+				   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
+						}
+
+					foreach($msgs as $msg)
+						{
+			   		if(array_key_exists($msg['Message'], $texte))
+							{
+      				  	$text = $texte[$msg['Message']];
+		   				}
+						else
+							{
+      	  				$text = $msg['Message'];
+		        			}
+					   $id = GetInstanceIDFromHMID($msg['Address']);
+				    	if(IPS_InstanceExists($id))
+						 	{
+        					$name = IPS_GetLocation($id);
+					   	}
+						else
+							{
+		      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
+    						}
+			  			//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+					  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+						}
+					}
 				}
 			}
 		return($alleHM_Errors);
