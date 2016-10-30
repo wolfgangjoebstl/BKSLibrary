@@ -56,6 +56,34 @@
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
+	/* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
+	
+  	$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
+   if(!IPS_InstanceExists($AdministratorID))
+		{
+     	echo "\nWebfront Configurator Administrator  erstellen !\n";
+	  	$AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+		IPS_SetName($AdministratorID, "Administrator");
+		$config = IPS_GetConfiguration($AdministratorID);
+		echo " Konfig: ".$config."\n";
+
+  	 	IPS_ApplyChanges($AdministratorID);
+		echo "Webfront Configurator Administrator aktiviert. \n";
+		}
+
+  	$UserID = @IPS_GetInstanceIDByName("User", 0);
+   if(!IPS_InstanceExists($UserID))
+		{
+     	echo "\nWebfront Configurator User  erstellen !\n";
+	  	$UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+		IPS_SetName($UserID, "User");
+		$config = IPS_GetConfiguration($UserID);
+		echo "Konfig : ".$config."\n";
+
+  	 	IPS_ApplyChanges($UserID);
+		echo "Webfront Configurator User aktiviert. \n";
+		}
+
 	/* Webfront GUID herausfinden */
 	
 	echo "\n";
