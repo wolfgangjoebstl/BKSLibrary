@@ -287,12 +287,16 @@
 
 	print_r($webfront_links);
 	
-	$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-	//CreateWFCItemTabPane   ($WFC10_ConfigId, "AdminTP", "roottp",  0, "Admin", "");
-	CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, '', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
-
 	if ($WFC10_Enabled)
 		{
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+		
+		$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+
+		/* jetzt ein eigenes TabPane schaffen */
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		EmptyCategory($categoryId_WebFrontAdministrator);
