@@ -281,7 +281,13 @@ if ($_IPS['SENDER']=="Execute")
 	}
 
 
-/*************************************************************************************************************************/
+/************************************************************************************************************************
+ *
+ * Alle Homematic Energiesensoren auslesen
+ *
+ * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+ *
+ *****************************************************************************************************************************/
 
 function writeEnergyHomematic($MConfig)
 	{
@@ -300,6 +306,7 @@ function writeEnergyHomematic($MConfig)
 
 	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	      $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	      $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	      if ( isset($meter["OID"]) == true )
@@ -322,16 +329,22 @@ function writeEnergyHomematic($MConfig)
 				$HMenergieID  = $meter["HM_EnergieID"];
 				$HMleistungID = $meter["HM_LeistungID"];
 				}
-	      $energie=GetValue($HMenergieID)/1000;
+	      $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
 	      $leistung=GetValue($HMleistungID);
 	      $energievorschub=$energie-GetValue($Homematic_WirkergieID);
+	      if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+	         {
+	         $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+				$energievorschub=$energie;
+	         SetValue($OffsetID,$offset);
+	         }
 			SetValue($Homematic_WirkergieID,$energie);
 			$energie_neu=GetValue($EnergieID)+$energievorschub;
 			SetValue($EnergieID,$energie_neu);
 			SetValue($LeistungID,$energievorschub*4);
-	      echo "  Homematicwerte :".$energie."kWh  ".GetValue($HMleistungID)."W\n";
-	      echo "  Energievorschub aktuell:".$energievorschub."kWh\n";
-	      echo "  Energiezählerstand :".$energie_neu."kWh Leistung :".GetValue($LeistungID)."kW \n\n";
+	      echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
+	      echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
+	      echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
 			}
 		}
 	return ($homematic);
