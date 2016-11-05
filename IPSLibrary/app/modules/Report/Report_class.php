@@ -76,7 +76,7 @@
 		 */
 		public function ChangeSetting($variableId, $value) {
 			$variableIdent = IPS_GetIdent($variableId);
-			echo "VariableID : ".$variableId."Variableident : ".$variableIdent." mit Wert ".$value."   \n";
+			//echo "VariableID : ".$variableId."Variableident : ".$variableIdent." mit Wert ".$value."   \n";
 			if (substr($variableIdent,0,-1)==IPSRP_VAR_SELECTVALUE)
 				{   /* bei SelectValue die Zahl am Ende wegnehmen und als Power Index speichern */
 				$powerIdx      = substr($variableIdent,-1,-1);
@@ -182,7 +182,7 @@
 				IPS_Sleep(200);
 				SetValue($variableId, $lastValue);
 			}
-			echo "Neuer Wert ist ".GetValue($variableId)."\n";
+			//echo "Neuer Wert ist ".GetValue($variableId)."\n";
 		}
 		
 		/**
@@ -233,7 +233,7 @@
 				default:
 					trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
-			echo "Startzeit ".date("d.m.Y H:i",$return)."\n";
+			//echo "Startzeit ".date("d.m.Y H:i",$return)."\n";
 			return $return;
 		}
 
@@ -263,7 +263,7 @@
 				default:
 					trigger_error('Unknown Period '.$GetValue($variableIdPeriod));
 			}
-			echo "Endzeit ".date("d.m.Y H:i",$return)."\n";
+			//echo "Endzeit ".date("d.m.Y H:i",$return)."\n";
 			return $return;
 		}
 
@@ -277,7 +277,6 @@
 			   $associationsValues[$count]=$displaypanel;
 			   $count++;
 				}
-
 
 			$variableIdChartType = IPS_GetObjectIDByIdent(IPSRP_VAR_TYPEOFFSET, $this->categoryIdCommon);
 			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
@@ -322,7 +321,7 @@
 			$CfgDaten['AggregatedValues']['YearValues']     = -1;      // ist der Zeitraum größer als X Tage werden Jahreswerte geladen
 			$CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;    // ist der Zeitraum größer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen	$CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
 			$CfgDaten['AggregatedValues']['MixedMode']      = false;
-			$CfgDaten['title']['text']    = "Energieverbrauch";
+			$CfgDaten['title']['text']    = "";
 			$CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%";
 			$CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";
 			$CfgDaten['HighChart']['Theme']  = "ips.js";
@@ -494,7 +493,8 @@
 								$i=0; $j=0;
 								//echo " ---wird angezeigt ...\n";
 								$displaypanel=$associationsValues[$valueIdx];   /* welches Feld in getConfiguration */
-								
+								$CfgDaten['title']['text']    = $displaypanel;
+
 								/* zuerst yaxis erfassen und schreiben */
 								foreach ($report_config[$displaypanel]['series'] as $name=>$defserie)
 								   {

@@ -77,10 +77,10 @@
 $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
 
-echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
+echo  "\nGenereller Meter Read eingeschaltet : ".GetvalueFormatted($MeterReadID)."\n";
 if (isset($AmisReadMeterID)==true)
 	{
-	echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
+	echo "AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
 	}
 
 if (Getvalue($MeterReadID))

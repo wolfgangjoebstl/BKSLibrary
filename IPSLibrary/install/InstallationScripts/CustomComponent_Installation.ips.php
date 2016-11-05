@@ -103,9 +103,9 @@
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
+   $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
 	if ($WFC10_Enabled==true)
 	   {
-      $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
 		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
 		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
 		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
@@ -133,9 +133,9 @@
 	echo "\n";
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
+	$WFC10User_ConfigId       = $WebfrontConfigID["User"];
 	if ($WFC10User_Enabled==true)
 	   {
-		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
 		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
 		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
 		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');

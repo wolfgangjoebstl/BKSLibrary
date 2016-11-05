@@ -459,7 +459,9 @@ function send_status($aktuell, $startexec=0)
 	$cost=""; $internet=""; $statusverlauf=""; $ergebnis_tabelle=""; $alleStromWerte=""; $ergebnisTemperatur=""; $ergebnisRegen=""; $aktheizleistung=""; $ergebnis_tagesenergie=""; $alleTempWerte=""; $alleHumidityWerte="";
 	$ergebnisStrom=""; $ergebnisStatus=""; $ergebnisBewegung=""; $ergebnisGarten=""; $IPStatus=""; $ergebnisSteuerung=""; $energieverbrauch="";
 
-	$ergebnisOperationCenter=""; $ServerRemoteAccess=""; $SystemInfo="";
+	$ergebnisOperationCenter="";
+	$ServerRemoteAccess="";
+	$SystemInfo="";
 
 /* -----------------------------------------------------------------------------------------------------------------
  *
@@ -834,7 +836,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$alleHumidityWerte="";
 		$alleMotionWerte="";
 		$alleHelligkeitsWerte="";
-		$alleStromWerte.="";
+		$alleStromWerte="";
 		
 		/******************************************************************************************
 		
@@ -1067,7 +1069,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		if (isset($installedModules["OperationCenter"])==true)
 		   {
-			$ergebnisOperationCenter="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
+			$ergebnisOperationCenter.="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
 
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 			IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -1117,7 +1119,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/******************************************************************************************/
 
-		$ServerRemoteAccess.="LocalAccess Variablen dieses Servers:\n\n";
+		$ServerRemoteAccess .="LocalAccess Variablen dieses Servers:\n\n";
 			
 		/* Remote Access Crawler für Ausgabe aktuelle Werte */
 

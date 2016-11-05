@@ -42,7 +42,7 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 		   /* kann derzeit nur ein AMIS Modul installieren */
 			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			$MeterReadID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -74,8 +74,13 @@ $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 $AmisConfig = get_AmisConfiguration();
 $MeterConfig = get_MeterConfiguration();
 
-echo "Genereller Meter Read eingeschaltet:".Getvalue($MeterReadID)."\n";
-echo "\nAMIS Meter Read eingeschaltet:".Getvalue($MeterReadID)." auf Com-Port : ".$com_Port."\n";
+echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
+if (isset($AmisReadMeterID)==true)
+	{
+	echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
+	}
+echo   "Genereller Meter Read eingeschaltet : ".GetValueFormatted($MeterReadID)."\n";
+echo "\nAMIS Meter Read eingeschaltet       : ".GetValueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
 
 if (Getvalue($MeterReadID))
 	{
