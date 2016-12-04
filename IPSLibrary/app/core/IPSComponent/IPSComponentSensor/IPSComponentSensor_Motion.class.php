@@ -72,11 +72,11 @@
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 						   {
-							//echo "Server : ".$Server."\n";
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							//echo "Remote OID: ".$roid."\n";
-							$rpc->SetValueBoolean($roid, $value);
+							echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+							/* bei setValueBoolean muss sichergestellt sein dass gegenüberliegender Server auch auf Boolean formattiert ist. */
+							$rpc->SetValueBoolean($roid, (boolean)$value);
 							}
 						}
 					}
@@ -159,7 +159,7 @@
 					$this->variable=$variable;
 					$result=IPS_GetObject($variable);
 					$this->variablename=IPS_GetName((integer)$result["ParentID"]);
-					echo "Construct Motion, Uebergeordnete Variable : ".$this->variablename."\n";
+					echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
 					$directory=$this->configuration["LogDirectories"]["MotionLog"];
 					mkdirtree($directory);
 					$filename=$directory.$this->variablename."_Motion.csv";
@@ -230,16 +230,16 @@
 	   
 		function Motion_LogValue()
 			{
-			echo "Lets log motion".$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") ";
-  	   	$variabletyp=IPS_GetVariable($this->variable);
-           if ($variabletyp["VariableProfile"]!="")
-		   	{  /* Formattierung vorhanden */
-				echo " mit Wert ".GetValueFormatted($this->variable)."\n";
+			echo "Lets log motion, Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") ";
+			$variabletyp=IPS_GetVariable($this->variable);
+			if ($variabletyp["VariableProfile"]!="")
+				{  /* Formattierung vorhanden */
+				echo " mit formattiertem Wert : ".GetValueFormatted($this->variable)."\n";
 		   	IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
 				}
 			else
 			   {
-				echo " mit Wert ".GetValue($this->variable)."\n";
+				echo " mit Wert : ".GetValue($this->variable)."\n";
 	   		IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValue($this->variable));
 			   }
 			//$resultf=GetValueFormatted($this->variable);
@@ -248,7 +248,7 @@
 			if ($result==true)
 				{
 				SetValue($this->variableLogID,$result);
-				echo "Jetzt wird der Timer gesetzt : ".$this->variable."_EVENT"."\n";
+				echo "Jetzt wird der Timer im selben verzeichnis wie Script gesetzt : ".$this->variable."_EVENT"."\n";
 		     	$now = time();
       	   $EreignisID = @IPS_GetEventIDByName($this->variable."_EVENT", IPS_GetParent($_IPS['SELF']));
          	if ($EreignisID === false)
@@ -263,6 +263,7 @@
 	         IPS_SetEventActive($EreignisID,true);
 				}
 			//print_r($this);
+			/* Achtung die folgenden Werte haben keine Begrenzung, sicherstellen dass String Variablen nicht zu gross werden. */
 			$EreignisVerlauf=GetValue($this->EreignisID);
 			$GesamtVerlauf=GetValue($this->GesamtID);
 			$GesamtZaehler=GetValue($this->GesamtCountID);
@@ -303,9 +304,9 @@
 					}
 				$EreignisVerlauf.=$Ereignis;
 				}
-			echo "\n".IPS_GetName($this->EreignisID)." \n";
+			echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->EreignisID)." \n";
 			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
-			echo "\n".IPS_GetName($this->GesamtID)." \n";
+			echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->GesamtID)." \n";
 			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
 			SetValue($this->GesamtCountID,$GesamtZaehler);
 			
@@ -319,22 +320,26 @@
 			$groups=$DetectMovementHandler->ListGroups();
 			foreach($groups as $group=>$name)
 			   {
-			   echo "Gruppe ".$group." behandeln.\n";
+			   echo "\nDetectMovement Gruppe ".$group." behandeln.\n";
 				$config=$DetectMovementHandler->ListEvents($group);
 				$status=false;
 				foreach ($config as $oid=>$params)
 					{
 					$status=$status || GetValue($oid);
-					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					echo "  OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
 					}
-			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+			   echo "  Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
 				$log=new Motion_Logging($oid);
 				$class=$log->GetComponent($oid);
 				$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)),10, '~Motion', null,false);
 				SetValue($statusID,$status);
 				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)),0, '', null);
+				echo "  EreignisID       : ".$ereignisID." (".IPS_GetName($ereignisID).")\n";
+				echo "  Ereignis         : ".$Ereignis."\n";
+				//echo "  Size             : ".strlen(GetValue($ereignisID))."\n";
 				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
-            SetValue($ereignisID,$EreignisVerlauf);
+				//echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
+				SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
 			   }
 			
 			parent::LogMessage($result);
@@ -358,11 +363,71 @@
 			return ($this);
 			}
 
+		/*************************************************************************************
+		Bearbeiten des Eventspeichers
+		hier nur überprüfen ober der Eventspeicher nicht zu lang wird
+
+		*************************************************************************************/
+
+		private function addEvents($value)
+			{
+			/* keine Indizierung auf Herkunft der Variable, nur String Werte evaluieren */
+			echo "  Check Eventliste (max 20.000 Eintraege), derzeit Länge Ereignisstring: ".strlen($value)."\n";
+			$max=20000;
+			$EventArray = explode(";", $value);
+		   $array_size = count($EventArray);
+         $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */
+         if ($i>0)
+            {
+            /* Events komprimieren erst wenn gross genug */
+				$previous_state=$EventArray[$i];
+				$previous_time=(integer)$EventArray[$i-1];
+				if ($i>($max*2))
+				   {
+				   /* events nicht groesser Eintraege werden lassen */
+					$indexbefordelete=$max;
+					}
+				else
+					{
+					$indexbefordelete=0;
+					}
+
+				//echo "Array Size is ".$i."  : last values are ".$previous_state." ? ".$previous_time."\n";
+				//echo "      Betrachteter (".$i.") State jetzt ".$previous_state," am ".date("d.m H:i",$previous_time)." \n";
+				$i=$i-2;
+				$delete=false;
+			 	while($i > 0)
+ 					{
+		   		/* Process array data:  Bewegungsmelder kennt nur zwei Zustaende, Bewegung:7 und wenigBewegung:6
+						Wenn zwischen 7 und vorher 6 weniger als 15 Minuten vergangen sind den Zustand 6 loeschen
+						Wenn 7 auf 7 folgt den juengsten wert 7 loeschen
+					*/
+					$now_time=$previous_time;
+					$bef_time=(integer)$EventArray[$i-1];
+
+					if ($i<$indexbefordelete) {$delete=true;}
+					if ($delete==true)
+					   {
+  					   unset($EventArray[$i+0]);
+					   unset($EventArray[$i-1]);
+					   }
+					$i=$i-2; /* immer zwei Werte, Zeit ueberspringen */
+				 	}
+				 }
+			$value=implode(";",$EventArray);
+			return ($value);
+			}
+
+		/*************************************************************************************
+		Bearbeiten des Eventspeichers
+
+
+		*************************************************************************************/
 
 		private function evaluateEvents($value, $diftimemax=15)
 			{
 			/* keine Indizierung auf Herkunft der Variable, nur String Werte evaluieren */
-			echo "  Evaluate Eventliste : ".$value."\n";
+			echo "  Evaluate Eventliste (max 20 Eintraege) : ".$value."\n";
 			$EventArray = explode(";", $value);
 		   $array_size = count($EventArray);
          $i = $array_size-2;  /* Array Index geht von 0 bis Länge minus 1 */

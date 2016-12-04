@@ -6,6 +6,9 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watc
 IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
 IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
 
+IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 /***************************
  *
  *
@@ -22,7 +25,32 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
+	$scriptIdStopWD     = IPS_GetScriptIDByName('StopIPSWatchDog', $CategoryIdApp);
+	$scriptIdAliveWD    = IPS_GetScriptIDByName('IWDAliveFileSkript', $CategoryIdApp);
+	echo "Die Scripts sind auf              : ".$CategoryIdApp."\n";
+	echo "StartIPSWatchDog hat die ScriptID : ".$scriptIdStartWD." \n";
+	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
+	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
+	echo "\nEigenen Logspeicher für Watchdog vorbereiten.\n";
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
+
+	$log_Watchdog->LogMessage(    'Lokaler Server wird heruntergefahren, Aufruf der Routine shutdown');
+	$log_Watchdog->LogNachrichten('Lokaler Server wird heruntergefahren, Aufruf der Routine shutdown');
+	
+	if (isset ($installedModules["OperationCenter"]))
+	   {
+		echo "Logspeicher für OperationCenter mitnutzen.\n";
+		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+		$CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
+		$categoryId_NachrichtenOC    = CreateCategory('Nachrichtenverlauf',   $CategoryIdDataOC, 20);
+		$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
+		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		}
 
 	/********************************************************************
 	 *
@@ -69,7 +97,15 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 				{
 				$ShutRestart=false;
 				IPSLogger_Dbg(__file__, "Shutdown: daher erfolgt nun ein Shutdown  ");
+				$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script herunter gefahren');
+				$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script herunter gefahren');
 				}
+			else
+				{
+				$ShutRestart=true;
+				$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script restartet');
+				$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script restartet');
+				}	
 			}
 		}
 
@@ -80,6 +116,8 @@ IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules:
 		IPS_SetEventActive($tim5ID,true);
    	SetValue($ScriptCounterID,1);
 	   IPSLogger_Dbg(__file__, "Shutdown: Script direkt aufgerufen ***********************************************");
+		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script restartet');
+		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script restartet');
 		}
 
 	if ($_IPS['SENDER']=="TimerEvent")
