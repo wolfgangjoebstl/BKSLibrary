@@ -120,7 +120,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 			fclose ($f); 
 			echo "Es wurden insgesamt ".$ln." Zeilen bearbeitet.\n";
 
-			$datei2=fopen (IPS_GetKernelDir()."logs\crash".strtotime($result).".log","w");
+			$datei2=fopen (IPS_GetKernelDir()."logs/".date("YmdHis")."crash.log","w");
 			foreach ($temp as $line)
 				{
 				echo $line;

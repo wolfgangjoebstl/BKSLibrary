@@ -132,7 +132,7 @@ else
 			{
 			$id = IPS_GetObjectIDByName($instanz." Client Socket", 0);
 			$log_Denon->LogMessage("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
-			$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
+			//$log_Denon->LogNachrichten("ID Client Socket \"".$instanz." Client Socket\" ist ".$id." ");
 			}
 		else
 			{

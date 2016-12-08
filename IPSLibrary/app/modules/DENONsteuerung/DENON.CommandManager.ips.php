@@ -143,7 +143,7 @@ else
 		else
 		   {
 			$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM),Typ ".$config['TYPE']."\n");
-			$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM), Typ ".$config['TYPE']."\n");
+			//$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM), Typ ".$config['TYPE']."\n");
 
 			if ($config['TYPE'] == "Netplayer")
 				{
@@ -806,7 +806,7 @@ else
 							}
 						DenonSetValue($item, $value, $vtype, $id);
 						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
-						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
+						//$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 						break;
 
 					case "DE": //Tone Defeat (AVR 3808)
@@ -1118,7 +1118,7 @@ else
 				$value = (0 - intval($itemdata));
 				DenonSetValue($item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				//$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			 break;
 
 			case "BA": //Bass Pegel
@@ -1128,7 +1128,7 @@ else
 				$value = (intval($itemdata)) -50;
 				DenonSetValue($item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				//$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			 break;
 
 			case "TR": //Treble Pegel
@@ -1138,7 +1138,7 @@ else
 				$value = (intval($itemdata)) -50;
 				DenonSetValue($item, $value, $vtype, $id);
 				$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
-				$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
+				//$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 			break;
 
 			case "DE": //Audio Delay 0-200ms
