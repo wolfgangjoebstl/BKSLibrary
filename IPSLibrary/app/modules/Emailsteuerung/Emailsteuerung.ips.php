@@ -193,6 +193,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 				echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
 				IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 				IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
+				$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+				$CategoryIdData  = $moduleManagerOC->GetModuleCategoryID('data');
+
+				$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+				$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+				$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+
+				$emailText="\nLogspeicher ausgedruckt:\n".$log_OperationCenter->PrintNachrichten();
+				
 				$OperationCenter=new OperationCenter();
 				$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
 				echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
@@ -204,7 +214,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					}
 				else
 				   {
-					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Siehe Anhang",$filename);
+					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
 					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
 					}
 				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
@@ -215,7 +225,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					}
 				else
 				   {
-					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Siehe Anhang",$filename);
+					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
 					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
 					}
 				}
