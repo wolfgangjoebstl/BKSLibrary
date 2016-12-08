@@ -18,14 +18,11 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');	
-	echo "\nEigenen Logspeicher für Watchdog vorbereiten.\n";
+	echo "\nIWDAliveFileSkript : Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
 
-	$log_Watchdog->LogMessage(    'Lokaler Server wird heruntergefahren, Aufruf der Routine shutdown');
-	$log_Watchdog->LogNachrichten('Lokaler Server wird heruntergefahren, Aufruf der Routine shutdown');
-	
 	if (isset ($installedModules["OperationCenter"]))
 	   {
 		echo "Logspeicher für OperationCenter mitnutzen.\n";
@@ -90,8 +87,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
     	if (isset ($installedModules["OperationCenter"]))
 		   {
 			echo "Logspeicher für OperationCenter mitnutzen.\n";
-			$log_OperationCenter->LogMessage('Watchdog seit '.$result_num.' Sekunden ausgefallen');
-			$log_OperationCenter->LogNachrichten('Watchdog seit '.$result_num.' Sekunden ausgefallen');
+			$log_OperationCenter->LogMessage('Watchdog seit '.time2string($result_num).' ausgefallen');
+			$log_OperationCenter->LogNachrichten('Watchdog seit '.time2string($result_num).' ausgefallen');
 			
 			$logFile 							= IPS_GetKernelDir() . "logs\logfile.log";  	// Pfad- und File-Angabe (Standard: "logs\logfile.log") 
  
@@ -132,6 +129,19 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 			fclose($datei2);   			
 			}
 		}
+
+function time2string($timeline) 
+	{
+	$periods = array('day' => 86400, 'hour' => 3600, 'minute' => 60, 'second' => 1);
+	$ret="";
+	foreach($periods AS $name => $seconds)
+		{
+		$num = floor($timeline / $seconds);
+      $timeline -= ($num * $seconds);
+      $ret .= $num.' '.$name.(($num > 1) ? 's' : '').' ';
+    	}
+	return trim($ret);
+}
 
 
 		

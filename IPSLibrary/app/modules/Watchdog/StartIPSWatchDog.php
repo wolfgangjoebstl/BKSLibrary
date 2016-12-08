@@ -32,13 +32,13 @@
 	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
 	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
-	echo "\nEigenen Logspeicher für Watchdog vorbereiten.\n";
+	echo "\nStartIPSWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
 
-	$log_Watchdog->LogMessage(    'Lokaler Server wird hochgefahren, Aufruf der Routine');
-	$log_Watchdog->LogNachrichten('Lokaler Server wird hochgefahren, Aufruf der Routine');
+	$log_Watchdog->LogMessage(    'Lokaler Server wird hochgefahren, Aufruf der Routine StartIPSWatchdog');
+	$log_Watchdog->LogNachrichten('Lokaler Server wird hochgefahren, Aufruf der Routine StartIPSWatchdog');
 	
 	if (isset ($installedModules["OperationCenter"]))
 	   {
