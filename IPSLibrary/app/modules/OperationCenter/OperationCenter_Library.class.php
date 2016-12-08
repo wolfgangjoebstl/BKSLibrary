@@ -17,17 +17,18 @@
 class OperationCenter
 	{
 
-	var $CategoryIdData       = 0;
-	var $categoryId_SysPing   = 0;
-	var $categoryId_RebootCtr = 0;
-	var $archiveHandlerID     = 0;
-	var $subnet               = "";
-	var $log_OperationCenter  = array();
-	var $mactable             = array();
-	var $oc_Configuration     = array();
-	var $oc_Setup			     = array();
-	var $AllHostnames         = array();
-	var $installedModules     = array();
+	var $CategoryIdData       	= 0;
+	var $categoryId_SysPing   	= 0;
+	var $categoryId_RebootCtr 	= 0;
+	var $categoryId_Access 		= 0;	
+	var $archiveHandlerID     	= 0;
+	var $subnet               	= "";
+	var $log_OperationCenter  	= array();
+	var $mactable             	= array();
+	var $oc_Configuration     	= array();
+	var $oc_Setup			     	= array();
+	var $AllHostnames         	= array();
+	var $installedModules     	= array();
 	
 	/**
 	 * @public
@@ -51,8 +52,11 @@ class OperationCenter
 		   $this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
 		   $this->installedModules = $moduleManager->GetInstalledModules();
 		   $this->subnet=$subnet;
-   		$this->categoryId_SysPing    = CreateCategory('SysPing',       $this->CategoryIdData, 200);
-   		$this->categoryId_RebootCtr  = CreateCategory('RebootCounter', $this->CategoryIdData, 210);
+
+   		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
+   		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
+   		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
+
          $this->mactable=$this->create_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -106,6 +110,128 @@ class OperationCenter
 				   }
 				}
 		   }
+		}
+
+	/**
+	 * @public
+	 *
+	 * sys ping IP Adresse von bekannten IP Symcon Servern
+	 *
+	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
+	 *
+	 */
+	function server_ping()
+		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetServerConfig();
+		$RemoteServer=array();
+		//print_r($remServer);
+		$method="IPS_GetName"; $params=array();
+
+		foreach ($remServer as $Name => $Server)
+		   {
+			//print_r($Server);
+			$UrlAddress=$Server["ADRESSE"];
+			if ($Server["STATUS"]=="Active")
+				{
+		   	$IPS_UpTimeID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_UpTime", 1);
+				IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+			
+				$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+			   $RemoteServer[$Name]["Name"]=$UrlAddress;
+				$rpc = new JSONRPC($UrlAddress);
+				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
+				$data = @parse_url($UrlAddress);
+				if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
+					throw new Exception("Invalid URL");
+				$url = $data['scheme']."://".$data['host'];
+				if(isset($data['port'])) $url .= ":".$data['port'];
+				if(isset($data['path'])) $url .= $data['path'];
+				if(isset($data['user']))
+					{
+					$username = $data['user'];
+					}
+				else
+					{
+					$username = "";
+					}
+				if(isset($data['pass']))
+				   {
+					$password = $data['pass'];
+					}
+				else
+					{
+					$password = "";
+					}
+				if (!is_scalar($method)) {
+						throw new Exception('Method name has no scalar value');
+					}
+				if (!is_array($params)) {
+						throw new Exception('Params must be given as array');
+					}
+				$id = round(fmod(microtime(true)*1000, 10000));
+				$params = array_values($params);
+				$strencode = function(&$item, $key) {
+				if ( is_string($item) )
+						$item = utf8_encode($item);
+					else if ( is_array($item) )
+						array_walk_recursive($item, $strencode);
+					};
+				array_walk_recursive($params, $strencode);
+				$request = Array(
+									"jsonrpc" => "2.0",
+									"method" => $method,
+									"params" => $params,
+									"id" => $id
+								);
+				$request = json_encode($request);
+				$header = "Content-type: application/json"."\r\n";
+				if(($username != "") || ($password != "")) {
+					$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+					}
+				$options = Array(
+						"http" => array (
+						"method"  => 'POST',
+						"header"  => $header,
+						"content" => $request
+										)
+							);
+				$context  = stream_context_create($options);
+
+				$response = @file_get_contents($url, false, $context);
+				if ($response===false)
+				   {
+					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					SetValue($IPS_UpTimeID,0);
+					$RemoteServer[$Name]["Status"]=false;
+					if (GetValue($ServerStatusID)==true)
+					   {  /* Statusänderung */
+						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
+						SetValue($ServerStatusID,false);
+			   		}
+					}
+				else
+				   {
+				   $ServerName=$rpc->IPS_GetName(0);
+				   $ServerUptime=$rpc->IPS_GetKernelStartTime();
+	   		   $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
+  				   $ServerVersion=$rpc->IPS_GetKernelVersion();
+					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+					SetValue($IPS_UpTimeID,$ServerUptime);
+					SetValue($IPS_VersionID,$ServerVersion);
+					$RemoteServer[$Name]["Status"]=true;
+					if (GetValue($ServerStatusID)==false)
+					   {  /* Statusänderung */
+						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
+						SetValue($ServerStatusID,true);
+			   		}
+					}
+			   }
+			}
+			return ($RemoteServer);
 		}
 
 	/**

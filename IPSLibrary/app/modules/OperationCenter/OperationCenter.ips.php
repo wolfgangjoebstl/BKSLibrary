@@ -1062,6 +1062,9 @@ function SysPingAllDevices($OperationCenter,$log_OperationCenter)
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "\nSind die RemoteAccess Server erreichbar ....\n";
+		
+		
+		
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetConfiguration();
 		$RemoteServer=array();
