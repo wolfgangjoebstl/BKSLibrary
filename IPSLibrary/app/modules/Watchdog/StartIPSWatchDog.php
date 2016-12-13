@@ -36,9 +36,6 @@
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
-
-	$log_Watchdog->LogMessage(    'Lokaler Server wird hochgefahren, Aufruf der Routine StartIPSWatchdog');
-	$log_Watchdog->LogNachrichten('Lokaler Server wird hochgefahren, Aufruf der Routine StartIPSWatchdog');
 	
 	if (isset ($installedModules["OperationCenter"]))
 	   {
@@ -156,9 +153,11 @@
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
    	SetValue($ScriptCounterID,1);
-
-		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script hochgefahren');
-		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script hochgefahren');
+		
+		$log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 
 		}
 
@@ -170,22 +169,26 @@
 		IPS_SetEventActive($tim3ID,true);
    	SetValue($ScriptCounterID,1);
 	   IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
-
-		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren');
-		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren');
+		
+		$log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		}
 
 	if ($_IPS['SENDER']=="Startup")
 		{
 		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
-		IPSLogger_Dbg(__file__, "Autostart: Script durch Autostart aufgerufen *****************  ");
+		IPSLogger_Dbg(__file__, "Autostart: Script durch IPS Startup prozess aufgerufen *****************  ");
 
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
    	SetValue($ScriptCounterID,1);
 
-		$log_OperationCenter->LogMessage(    'Lokaler Server wird im Startup Prozess hochgefahren');
-		$log_OperationCenter->LogNachrichten('Lokaler Server wird im Startup Prozess hochgefahren');
+		$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogMessage(    'Lokaler Server wird im Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		$log_OperationCenter->LogNachrichten('Lokaler Server wird im Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		}
 
 	if ($_IPS['SENDER']=="TimerEvent")

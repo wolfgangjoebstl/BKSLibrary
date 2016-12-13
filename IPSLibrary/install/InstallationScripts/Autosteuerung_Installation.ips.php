@@ -230,7 +230,7 @@
    				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 18 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 
 				$EventInfos = IPS_GetEvent($Wochenplan_ID);
-				print_r($EventInfos);
+				//print_r($EventInfos);
 			   break;
 			default:
 		      echo "..".$AutoSetSwitch["NAME"]."\n";

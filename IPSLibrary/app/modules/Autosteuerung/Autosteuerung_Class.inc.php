@@ -1,5 +1,12 @@
 <?
 
+/*****************************************************************************************************
+ *
+ * Autosteuerung Handler
+ *
+ * alle Routinen die mit der Erstellung und Verwaltung der Events der Autostuerung zu tun haben
+ *
+ **************************************************************************************************************/
 
 class AutosteuerungHandler 
 	{
@@ -177,5 +184,241 @@ class AutosteuerungHandler
    		}
 
 	} /* ende class */
+
+/*****************************************************************************************************
+ *
+ * Autosteuerung Operator
+ *
+ * mächtige Routinen für den Betrieb
+ *
+ **************************************************************************************************************/
+
+class AutosteuerungOperator 
+	{
+
+	public function __construct()
+		{
+		}
+
+	public function Anwesend()
+		{
+		
+		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+		
+		$logic=Autosteuerung_Anwesend();
+		$result=false;
+		foreach($logic as $type => $operation)
+			{
+			if ($type == "OR")
+				{
+				foreach ($operation as $oid)
+					{
+					$result = $result || GetValueBoolean($oid);
+					echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
+					}
+				}
+			if ($type == "AND")
+				{
+				foreach ($operation as $oid)
+					{
+					$result = $result && GetValue($oid);
+					echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
+					}
+				
+				}
+			}
+		return ($result);				
+		}
+
+	} /* ende class */
+
+	
+/*****************************************************************************************************
+ *
+ * Autosteuerung
+ *
+ * Routinen zur Evaluierung der Befehlsketten
+ *
+ **************************************************************************************************************/
+
+
+class Autosteuerung
+	{
+	var $sunrise=0;
+	var $sunset=0;
+
+	var $now=0;
+	var $timeStop=0;
+	var $timeStart=0;
+
+	public function __construct()
+		{
+		// Sonnenauf.- u. Untergang berechnen
+		$longitude = 16.36; //14.074881;
+		$latitude = 48.21;  //48.028615;
+		$timestamp = time();
+		/*php >Funktion: par1: Zeitstempel des heutigen Tages
+					  par2: Format des retourwertes, String, Timestamp, float SUNNFUNCS_RET_xxxxx
+					  par3: north direction (for south use negative)
+					  par4: west direction (for east use negative)
+					  par5: zenith, see example
+							$zenith=90+50/60; Sunrise/sunset
+							$zenith=96; Civilian Twilight Start/end
+							$zenith=102; Nautical Twilight Start/End
+							$zenith=108; Astronomical Twilight start/End
+					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
+					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
+		*/
+		$this->sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		$this->sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
+		echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
+		}
+
+	function isitdark()
+		{
+		$acttime=time();
+		if (($acttime>$this->sunset) || ($acttime<$this->sunrise))
+			{
+			return(true);
+			}
+		else
+		   {
+			return(false);
+			}
+		}
+	
+	function isitlight()
+		{
+		$acttime=time();
+		if (($acttime<$this->sunset) && ($acttime>$this->sunrise))
+			{
+			return(true);
+			}
+		else
+		   {
+			return(false);
+			}
+		}
+
+
+	function timeright($scene)
+		{
+		echo "Szene ".$scene["NAME"]."\n";
+       	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
+       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$this->sunset);}
+       	if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$this->sunrise);}
+       	//print_r($actualTime);
+       	$actualTimeStart = explode(":",$actualTime[0]);
+        	$actualTimeStartHour = $actualTimeStart[0];
+        	$actualTimeStartMinute = $actualTimeStart[1];
+        	$actualTimeStop = explode(":",$actualTime[1]);
+        	$actualTimeStopHour = $actualTimeStop[0];
+        	$actualTimeStopMinute = $actualTimeStop[1];
+			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+        	$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+        	$this->timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+      	$this->now = time();
+
+       	if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
+				{
+          	$minutesRange = ($this->timeStop-$this->timeStart)/60;
+          	$actionTriggerMinutes = 5;
+            $rndVal = rand(1,100);
+				echo "Zufallszahl:".$rndVal."\n";
+				return (($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100));
+				}
+			else return (false);	
+		}	
+
+	function ParseCommand($params)
+		{
+		$moduleParams2=Array();
+
+	   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
+		 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
+		 *
+		 * Parameter mit : enthalten Befehl:Parameter
+		 */
+
+	   $params2=$params[2];
+  		$moduleParams2 = explode(',', $params2);
+		$count=count($moduleParams2);
+		echo "Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
+		
+		/* in parges werden alle Parameter erfasst und abgespeichert */
+		$parges=array();
+		switch ($count)
+		   {
+	   	case "6":
+		   case "5":
+		   case "4":
+				$i=3;
+				while ($i<count($moduleParams2))
+			   	{
+					$params_more=explode(":",$moduleParams2[$i]);
+					if (count($params)>1)
+      	   		{
+						$parges=self::parseParameter($params_more,$parges);
+					   }
+					$i++;
+				   }
+	   	case "3":
+				$params_three=explode(":",$moduleParams2[2]);
+				if (count($params_three)>1)
+					{
+					$parges=self::parseParameter($params_three,$parges);
+					}
+				else
+				   {
+					$parges["DELAY"]=(integer)$params_three[0];
+					}
+		   case "2":
+		   	$params_two=explode(":",$moduleParams2[1]);
+				if (count($params_two)>1)
+					{
+					$parges=self::parseParameter($params_two,$parges);
+					}
+				else
+				   {
+					$parges["STATUS"]=$params_two[0];
+				   }
+	   	case "1":
+		   	$params_one=explode(":",$moduleParams2[0]);
+				if (count($params_one)>1)
+					{
+					$parges=self::parseParameter($params_one,$parges);
+					}
+				else
+				   {
+					$parges["NAME"]=$params_one[0];
+					}
+		      break;
+			default:
+				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+			   break;
+			}
+		return($parges);
+		}
+
+	/*
+	 * ersten teil des Arrays als befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
+	 * Erweitert das übergebene Array.
+	 *
+	 *
+	 */
+		
+	private function parseParameter($params,$result=array())
+		{
+		if (count($params)>1)
+			{
+			$result[strtoupper($params[0])]=$params;
+			}
+		return($result);
+		}
+
+
+	}
+		
 
 ?>

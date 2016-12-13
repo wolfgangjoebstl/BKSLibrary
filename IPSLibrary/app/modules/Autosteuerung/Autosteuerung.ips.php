@@ -88,7 +88,7 @@ $speak_config=Autosteuerung_Speak();
 
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-
+$operate=new AutosteuerungOperator();
 $auto=new Autosteuerung();
 
 /*********************************************************************************************/
@@ -507,84 +507,58 @@ if ($_IPS['SENDER']=="TimerEvent")
 	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
 	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
 
-	if (GetValue($AnwesenheitssimulationID)>0)
+	if ( (GetValue($AnwesenheitssimulationID)==1) || (GetValue($AnwesenheitssimulationID)==2) && ($operate->Anwesend()==true)) 
  		{
-		//Anwesenheitssimulation aktiv
+		//Anwesenheitssimulation aktiv, bedeutet ein (1) oder auto (2), bei auto wird bei Anwesenheit nicht simuliert
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
-
+		IPSLogger_Dbg(__file__, 'Aufruf Anwesenheitssimulation Timer, Funktion aktiviert.');
 		//print_r($scenes);
 	   foreach($scenes as $scene)
 			{
-       	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
-       	if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$auto->sunrise);}
-       	print_r($actualTime);
-       	$actualTimeStart = explode(":",$actualTime[0]);
-        	$actualTimeStartHour = $actualTimeStart[0];
-        	$actualTimeStartMinute = $actualTimeStart[1];
-        	$actualTimeStop = explode(":",$actualTime[1]);
-        	$actualTimeStopHour = $actualTimeStop[0];
-        	$actualTimeStopMinute = $actualTimeStop[1];
-			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-        	$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-        	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
-      	$now = time();
-
-       	if ($now > $timeStart && $now < $timeStop)
+			$switch = $auto->timeright($scene);
+			$now = time();
+       	if ($switch)
 			 	{
-			 	echo "Es ist Zeit für Szene ".$scene['NAME']."\n";
-          	$minutesRange = ($timeStop-$timeStart)/60;
-          	$actionTriggerMinutes = 5;
-            $rndVal = rand(1,100);
-				echo "Zufallszahl:".$rndVal."\n";
-            if (($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100))
+	      	if (isset($scene["EVENT_IPSLIGHT"]))
+      		   {
+      			echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+					IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+      		  	}
+		      else
+      		   {
+      			if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	   		{
+			      	echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+   			   	IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+      	   		}
+					}
+				echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
+            $EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
+            if ($EreignisID === false)
+					{ //Event nicht gefunden > neu anlegen
+               $EreignisID = IPS_CreateEvent(1);
+               IPS_SetName($EreignisID,$scene["NAME"]."_EVENT");
+               IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+           		}
+            IPS_SetEventActive($EreignisID,true);
+            IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+            IPS_SetEventCyclicTimeBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
+            IPS_SetEventCyclicDateBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
+				if ($scene["EVENT_CHANCE"]==100)
 					{
-		      	if (isset($scene["EVENT_IPSLIGHT"]))
-      			   {
-      				echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
-						IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
-      		   	}
-		         else
-      		      {
-      				if (isset($scene["EVENT_IPSLIGHT_GRP"]))
-      	   			{
-			      		echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
-   			      	IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
-      	   			}
-						}
-					echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
-               $EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
-               if ($EreignisID === false)
-						{ //Event nicht gefunden > neu anlegen
-                  $EreignisID = IPS_CreateEvent(1);
-                  IPS_SetName($EreignisID,$scene["NAME"]."_EVENT");
-                  IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-               	}
-               IPS_SetEventActive($EreignisID,true);
-               IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-               IPS_SetEventCyclicTimeBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
-               IPS_SetEventCyclicDateBounds($EreignisID,$now+$scene["EVENT_DURATION"]*60,0);
-					if ($scene["EVENT_CHANCE"]==100)
-						{
-						echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
-	               IPS_SetEventCyclicTimeBounds($EreignisID,$timeStop,0);
-						}
-		      	if (isset($scene["EVENT_IPSLIGHT"]))
-      			   {
-  	               IPS_SetEventScript($EreignisID,
-                                                "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
-                                                "IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
-						}
-					else
-					   {
-	               IPS_SetEventScript($EreignisID,
-                                                "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n".
-                                                "IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
-						}
-            	}
-        		}
+					echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
+	            IPS_SetEventCyclicTimeBounds($EreignisID,$auto->timeStop,0);
+					}
+		      if (isset($scene["EVENT_IPSLIGHT"]))
+      		   {
+  	            IPS_SetEventScript($EreignisID, "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
+					}
+				else
+					{
+	            IPS_SetEventScript($EreignisID,"include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
+					}
+         	}
 		   } /* end of foreach */
-
 		 }  /* endif */
 	else
 		{
@@ -597,6 +571,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 			  	{
          	IPS_SetEventActive($EreignisID,false);
         		}
+			/* aber auch die Lampen ausschalten, sonst bleiben sie eingeschaltet */
+			
+				
+						
     		}
  		} /* endif Anwesenheitssimulation */
 	} /* Endif Timer */
@@ -1731,148 +1709,4 @@ function switchNameGroup($SwitchName,$status,$simulate=false)
 
 /*********************************************************************************************/
 
-class Autosteuerung
-	{
-	var $sunrise=0;
-	var $sunset=0;
-
-	public function __construct()
-		{
-		// Sonnenauf.- u. Untergang berechnen
-		$longitude = 16.36; //14.074881;
-		$latitude = 48.21;  //48.028615;
-		$timestamp = time();
-		/*php >Funktion: par1: Zeitstempel des heutigen Tages
-					  par2: Format des retourwertes, String, Timestamp, float SUNNFUNCS_RET_xxxxx
-					  par3: north direction (for south use negative)
-					  par4: west direction (for east use negative)
-					  par5: zenith, see example
-							$zenith=90+50/60; Sunrise/sunset
-							$zenith=96; Civilian Twilight Start/end
-							$zenith=102; Nautical Twilight Start/End
-							$zenith=108; Astronomical Twilight start/End
-					  par6: GMT offset  zB mit date("O")/100 oder date("Z")/3600 bestimmen
-					  möglicherweise mit Sommerzeitberechnung addieren:  date("I") == 1 ist Sommerzeit
-		*/
-		$this->sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-		$this->sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-		echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
-		}
-
-	function isitdark()
-		{
-		$acttime=time();
-		if (($acttime>$this->sunset) || ($acttime<$this->sunrise))
-			{
-			return(true);
-			}
-		else
-		   {
-			return(false);
-			}
-		}
-	
-	function isitlight()
-		{
-		$acttime=time();
-		if (($acttime<$this->sunset) && ($acttime>$this->sunrise))
-			{
-			return(true);
-			}
-		else
-		   {
-			return(false);
-			}
-		}
-
-	function ParseCommand($params)
-		{
-		$moduleParams2=Array();
-
-	   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
-		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
-		 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
-		 *
-		 * Parameter mit : enthalten Befehl:Parameter
-		 */
-
-	   $params2=$params[2];
-  		$moduleParams2 = explode(',', $params2);
-		$count=count($moduleParams2);
-		echo "Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
-		
-		/* in parges werden alle Parameter erfasst und abgespeichert */
-		$parges=array();
-		switch ($count)
-		   {
-	   	case "6":
-		   case "5":
-		   case "4":
-				$i=3;
-				while ($i<count($moduleParams2))
-			   	{
-					$params_more=explode(":",$moduleParams2[$i]);
-					if (count($params)>1)
-      	   		{
-						$parges=self::parseParameter($params_more,$parges);
-					   }
-					$i++;
-				   }
-	   	case "3":
-				$params_three=explode(":",$moduleParams2[2]);
-				if (count($params_three)>1)
-					{
-					$parges=self::parseParameter($params_three,$parges);
-					}
-				else
-				   {
-					$parges["DELAY"]=(integer)$params_three[0];
-					}
-		   case "2":
-		   	$params_two=explode(":",$moduleParams2[1]);
-				if (count($params_two)>1)
-					{
-					$parges=self::parseParameter($params_two,$parges);
-					}
-				else
-				   {
-					$parges["STATUS"]=$params_two[0];
-				   }
-	   	case "1":
-		   	$params_one=explode(":",$moduleParams2[0]);
-				if (count($params_one)>1)
-					{
-					$parges=self::parseParameter($params_one,$parges);
-					}
-				else
-				   {
-					$parges["NAME"]=$params_one[0];
-					}
-		      break;
-			default:
-				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-			   break;
-			}
-		return($parges);
-		}
-
-	/*
-	 * ersten teil des Arrays als befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
-	 * Erweitert das übergebene Array.
-	 *
-	 *
-	 */
-		
-	private function parseParameter($params,$result=array())
-		{
-		if (count($params)>1)
-			{
-			$result[strtoupper($params[0])]=$params;
-			}
-		return($result);
-		}
-
-
-	}
-	
 ?>

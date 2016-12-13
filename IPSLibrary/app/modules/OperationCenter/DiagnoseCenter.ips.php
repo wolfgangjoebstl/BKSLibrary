@@ -21,7 +21,7 @@ IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules:
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
+ini_set('max_execution_time', 900);
 $startexec=microtime(true);
 
 $dir655=false;
@@ -199,7 +199,7 @@ function evaluate_trace($CategoryIdData)
 		$categoryId_Route    = CreateCategory('TraceRouteVerlauf',   $CategoryIdData, 20);
 		foreach ($googleroute as $trace=>$ip)
 		   {
-		   $traceID=CreateVariableByName($categoryId_Route,"RoutePoint".$i,1);
+		   $traceID=CreateVariableByName($categoryId_Route,"RoutePoint".$i,3);
 		   $i++;
 		   if (isset($ip["NAME"]))
 		      {
