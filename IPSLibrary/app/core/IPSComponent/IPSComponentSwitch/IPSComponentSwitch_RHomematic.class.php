@@ -40,7 +40,7 @@
 			$this->supportsOnTime = $supportsOnTime;
 			$this->RemoteOID    = $var1;
 			echo "InstanceID gesucht : ".$this->instanceId."\n";
-			$this->remServer    = RemoteAccess_GetConfiguration();
+			$this->remServer    = RemoteAccess_GetConfigurationNew();
 		}
 
 		/**

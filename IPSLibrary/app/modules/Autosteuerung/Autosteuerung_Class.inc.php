@@ -125,6 +125,13 @@ class AutosteuerungHandler
 			file_put_contents($fileNameFull, $fileContentNew);
 			self::Set_EventConfigurationAuto($configuration);
 						}
+		/************************************************************************
+		 *
+		 * Events neu registrieren
+		 * Parameter werden ueberschrieben, wenn sie vorher leer waren
+		 * Parameter werden nicht ueberschrieben wenn sie aktuell leer sind 
+		 *		
+		 ********************************************************************************/	
 
 		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
@@ -182,6 +189,25 @@ class AutosteuerungHandler
 				self::StoreEventConfiguration($configuration);
 				self::CreateEvent($variableId, $eventType, self::$scriptID);
    		}
+		
+		/************************************************************************
+		 *
+		 * einmal registrierte Events können auch gelöscht werden
+		 * das Event muss auch später gelöscht werden 
+		 *		
+		 ********************************************************************************/	
+			
+		function UnRegisterAutoEvent($variableId)
+			{
+			$configuration = self::Get_EventConfigurationAuto();
+
+			if (array_key_exists($variableId, $configuration))
+				{
+				unset($configuration[$variableId]);
+				self::StoreEventConfiguration($configuration);
+				//self::CreateEvent($variableId, $eventType, self::$scriptID);
+				}
+   		}			
 
 	} /* ende class */
 

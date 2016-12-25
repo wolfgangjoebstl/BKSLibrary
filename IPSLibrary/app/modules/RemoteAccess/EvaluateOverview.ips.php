@@ -1,8 +1,8 @@
 <?
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
- *	hier kann man schnell einen Ueberblick über die angeschlossenen VIS Server erhalten
+ *	hier kann man schnell einen Ueberblick Ã¼ber die angeschlossenen VIS Server erhalten
  *
  */
 
@@ -16,10 +16,10 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 *************************************************************/
 
 // max. Scriptlaufzeit definieren
-//ini_set('max_execution_time', 500);
-//$startexec=microtime(true);
+ini_set('max_execution_time', 500);
+$startexec=microtime(true);
 
-	echo "Overview of registered Events\n";
+IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
@@ -30,19 +30,81 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 	$Homematic = HomematicList();
 
-	$messageHandler = new IPSMessageHandler();
+	$messageHandler = new IPSMessageHandlerExtended(); /* auch delete von Events moeglich */
 
-	$eventConfigurationAuto = IPSMessageHandler_GetEventConfiguration();
-	print_r($eventConfigurationAuto);
+ 	//$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
+ 	$eventlist = IPSMessageHandler_GetEventConfiguration();
+	
+	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+	foreach ($eventlist as $oid => $data)
+		{
+		echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]." \n";
+		}
+	
+	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
+	echo"\n";
+	echo "ZusÃ¤tzliche Checks bei der Eventbearbeitung:\n";
+	echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
+	echo"\n";
+   $children=IPS_GetChildrenIDs($scriptId);
+   $i=0;
+   //print_r($children);
+	foreach ($children as $childrenID)
+		{
+		$name=IPS_GetName($childrenID);
+		$eventID_str=substr($name,Strpos($name,"_")+1,10);
+		$eventID=(integer)$eventID_str;
+		if (substr($name,0,1)=="O")
+		   {
+			//if (isset($movement_config[$eventID_str]))
+			//   {
+			//   if (isset($eventlist[$eventID_str]))
+			//      {
+  			//   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."  Movement: ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36).
+			//		  			"  ".$eventlist[$eventID_str][1]."\n";
+  			//   	//print_r($eventlist[$eventID_str]);
+			//      }
+			//   else
+			//      {
+			//   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."  Movement: ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)."\n";
+			//   	}
+			//	}
+			//else
+			   {
+			   if (isset($eventlist[$eventID_str]))
+			      {
+					$parent=@IPS_GetParent($eventID);
+					if ($parent===false)
+						{
+						echo "Objekt ".$eventID." existiert nicht fÃ¼r Event ".$childrenID.". Wird als ".$name." gelÃ¶scht.\n";
+						$messageHandler->UnRegisterEvent($eventID);
+						IPS_DeleteEvent($childrenID);
+						}
+					else
+						{	
+  			   		echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName($parent),36)."  ".$eventlist[$eventID_str][1]."\n";
+  			   		//print_r($eventlist[$eventID_str]);
+						}
+			      }
+			   else
+			      {
+			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration().\n";
+					}
+				}
+			}
+		$i++;
+		//IPS_SetPosition($childrenID,$eventID);
+		}	
+	
 	
 	/* manchmal geht die Adressierung mit der externen Adresse leichter als mit der internen Adresse ? */
 	//$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/");
 	//$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
 
-	/* Wenn die Servernamen geändert werden muss auch Remoteaccess ausgeführt werden, damit wieder die ROID_List() richtig gestellt wird */
+	/* Wenn die Servernamen geÃ¤ndert werden muss auch Remoteaccess ausgefÃ¼hrt werden, damit wieder die ROID_List() richtig gestellt wird */
 	
 	echo "Overview of registered Data Servers\n";
-	$remServer=RemoteAccess_GetConfiguration();
+	$remServer=RemoteAccess_GetConfigurationNew();
 	print_r($remServer);
 	foreach ($remServer as $Name => $Server)
 		{

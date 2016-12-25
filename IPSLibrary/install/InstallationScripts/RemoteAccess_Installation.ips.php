@@ -63,6 +63,24 @@
 	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "Modul Amis ist NICHT installiert.\n"; }
 	echo "\n";
 
+	/******************************************************
+
+				INIT, Timer
+
+	*************************************************************/
+
+	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
+
+	echo "Timer programmieren für :\n";
+	$tim1ID=CreateTimerRA("EvaluateHomematic",20);
+	$tim2ID=CreateTimerRA("EvaluateMotion",25);
+	$tim3ID=CreateTimerRA("EvaluateAndere",30);
+	$tim4ID=CreateTimerRA("EvaluateContact",35);
+	$tim5ID=CreateTimerRA("EvaluateStromverbrauch",40);
+	$tim6ID=CreateTimerRA("EvaluateSwitch",45);
+	$tim7ID=CreateTimerRA("EvaluateButton",50);
+	$tim8ID=CreateTimerRA("EvaluateVariables",55);
+
 	/************************************************************************************************
 	 *
 	 * Create Include file
@@ -72,7 +90,7 @@
 	$remote=new RemoteAccess();
 	if (isset ($installedModules["Guthabensteuerung"])) { $remote->add_Guthabensteuerung(); }
 	if (isset ($installedModules["Amis"]))	{ $remote->add_Amis(); }
-	echo "Ende Variablen zum include file honzuf�gen : ".(microtime(true)-$startexec)." Sekunden \n";
+	echo "Ende Variablen zum include file honzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
 	$remote->add_RemoteServer();
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
 	$remote->write_includeFile();
@@ -158,7 +176,39 @@
 		}
 
 
-
+function CreateTimerRA($name,$minute)
+	{
+	/* EventHandler Config regelmaessig bearbeiten */
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+	$app_oid=$moduleManager->GetModuleCategoryID()."\n";
+	$oid_children=IPS_GetChildrenIDs($app_oid);
+	$result=array();
+	echo "  Alle Skript Files :\n";
+	foreach($oid_children as $oid)
+		{
+		$result[IPS_GetName($oid)]=$oid;
+		//echo "      OID : ".$oid." Name : ".IPS_GetName($oid)."\n";
+		}
+			
+	$timID=@IPS_GetEventIDByName($name, $result[$name]);
+	if ($timID==false)
+		{
+		$timID = IPS_CreateEvent(1);
+		IPS_SetParent($timID, $result[$name]);
+		IPS_SetName($timID, $name);
+		IPS_SetEventCyclic($timID,0,0,0,0,0,0);
+		IPS_SetEventCyclicTimeFrom($timID,5,$minute,0);  /* immer um 05:xx */
+  		IPS_SetEventActive($timID,true);
+	   echo "   Timer Event ".$name." neu angelegt. Timer um 05:20 ist aktiviert.\n";
+		}
+	else
+	   {
+	   echo "   Timer Event ".$name." bereits angelegt. Timer um 05:".$minute." ist aktiviert.\n";
+  		IPS_SetEventActive($timID,true);
+  		}
+	return($timID);
+	}
 
 
 ?>

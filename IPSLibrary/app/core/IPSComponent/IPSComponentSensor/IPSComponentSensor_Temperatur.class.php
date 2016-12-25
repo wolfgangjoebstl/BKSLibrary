@@ -62,6 +62,7 @@
 			   {
 				//print_r($this);
 				//print_r($module);
+				//echo "RemoteOID : ".$this->RemoteOID."\n";
 				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
 				$params= explode(';', $this->RemoteOID);
 				//print_r($params);
@@ -74,10 +75,9 @@
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 						   {
-							//echo "Server : ".$Server."\n";
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							//echo "Remote OID: ".$roid."\n";
+							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
 							$rpc->SetValue($roid, $value);
 							}
 						}
@@ -109,7 +109,7 @@
 		
 	   function __construct($variable)
 		   {
-		   echo "Construct Temperature Logging for Variable ID : ".$variable."\n";
+		   echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
 		   $this->variable=$variable;
 		   $result=IPS_GetObject($variable);
 		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);

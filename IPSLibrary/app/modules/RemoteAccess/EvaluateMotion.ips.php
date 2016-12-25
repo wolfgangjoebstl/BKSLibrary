@@ -17,7 +17,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
   *************************************************************/
 
 // max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 120);
+set_time_limit(120);
 $startexec=microtime(true);
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -133,7 +133,7 @@ if (isset ($installedModules["DetectMovement"]))
 				}
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		   echo "Message Handler hat Homematic Bewegungsmelder Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 
@@ -151,7 +151,7 @@ if (isset ($installedModules["DetectMovement"]))
 	 *
 	 */
 
-
+	set_time_limit(120);
 	$TypeFS20=RemoteAccess_TypeFS20();
 
 	foreach ($FS20 as $Key)
@@ -188,7 +188,7 @@ if (isset ($installedModules["DetectMovement"]))
 							}
 						$messageHandler = new IPSMessageHandler();
 					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+			   		echo "Message Handler hat FS20 Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
 					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 						
@@ -209,6 +209,7 @@ if (isset ($installedModules["DetectMovement"]))
 	 *
 	 */
 
+	set_time_limit(120);
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -264,7 +265,7 @@ if (isset ($installedModules["DetectMovement"]))
 						}
 					$messageHandler = new IPSMessageHandler();
 				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   		echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		   		echo "Message Handler hat IPCAM Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
 				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 					

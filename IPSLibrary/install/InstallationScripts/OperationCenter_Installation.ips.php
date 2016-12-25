@@ -407,7 +407,7 @@
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-		$remServer    = RemoteAccess_GetConfiguration();
+		$remServer    = RemoteAccess_GetConfigurationNew();
 		foreach ($remServer as $Name => $UrlAddress)
 		   {
 			$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */

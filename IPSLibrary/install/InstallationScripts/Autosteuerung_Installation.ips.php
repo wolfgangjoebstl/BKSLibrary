@@ -170,6 +170,19 @@
 	   $AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		switch ($AutoSetSwitch["NAME"])
 			{
+			case "Anwesenheitserkennung":
+				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence");
+				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
+				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);				
+				/* wird als Unterelemnt automatisch gelinked */
+				//$webfront_links[$StatusAnwesendID]["NAME"]="StatusAnwesend";
+				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
+				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
+				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];				
+			   break;						
 			case "GutenMorgenWecker":
 			   $WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "","",null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
    			$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
@@ -233,9 +246,9 @@
 				//print_r($EventInfos);
 			   break;
 			default:
-		      echo "..".$AutoSetSwitch["NAME"]."\n";
 				break;
 			}
+		echo "..".$AutoSetSwitch["NAME"]."\n";
 		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
 		$webfront_links[$AutosteuerungID]["NAME"]=$AutoSetSwitch["NAME"];
 		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];

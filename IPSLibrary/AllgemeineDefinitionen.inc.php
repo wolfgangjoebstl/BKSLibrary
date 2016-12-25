@@ -2063,24 +2063,32 @@ function mkdirtree($directory)
 
 /******************************************************************/
 
-function RPC_CreateVariableByName($rpc, $id, $name, $type)
+function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
 	{
 
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 
 	$result="";
-	$struktur=$rpc->IPS_GetChildrenIDs($id);
-	//echo "Struktur :\n";
-	//print_r($struktur);
-	foreach ($struktur as $category)
+	$size=sizeof($struktur);
+	if ($size==0)
+		{
+		$children=$rpc->IPS_GetChildrenIDs($id);
+		foreach ($children as $oid)
+	   	{
+	   	$struktur[$oid]=$rpc->IPS_GetName($oid);
+	   	}		
+		echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+		//echo "Struktur :\n";
+		//print_r($struktur);
+		}
+	foreach ($struktur as $oid => $oname)
 	   {
-	   $oname=$rpc->IPS_GetName($category);
-	   //echo str_pad($oname,20)." ".$category."\n";
-	   if ($name==$oname) {$result=$name;$vid=$category;}
+	   if ($name==$oname) {$result=$name;$vid=$oid;}
+		//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
 	   }
 	if ($result=="")
 	   {
-	   echo "Variable ".$name." erzeugen.\n";
+	   echo "Variable ".$name." auf Server neu erzeugen.\n";
       $vid = $rpc->IPS_CreateVariable($type);
       $rpc->IPS_SetParent($vid, $id);
       $rpc->IPS_SetName($vid, $name);
@@ -2186,36 +2194,70 @@ function RemoteAccessServerTable()
 			if (isset ($result["OperationCenter"]))
 				{
 				$moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
-				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
+				$CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
 				$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
-	        	$remServer=RemoteAccess_GetConfiguration();
 				$RemoteServer=array();
-				foreach ($remServer as $Name => $UrlAddress)
-				   {
-			   	$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
-			   	$RemoteServer[$Name]["Url"]=$UrlAddress;
-			   	$RemoteServer[$Name]["Name"]=$Name;
-				   if (GetValue($IPS_UpTimeID)==0)
-				      {
-						$RemoteServer[$Name]["Status"]=false;
-		   	   	}
-				   else
-				      {
-						$RemoteServer[$Name]["Status"]=true;
-		   		   }
+	        	//$remServer=RemoteAccess_GetConfiguration();
+				//foreach ($remServer as $Name => $UrlAddress)
+				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+				foreach ($remServer as $Name => $Server)
+					{
+					$UrlAddress=$Server["ADRESSE"];
+					if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+						{				
+						$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+						$RemoteServer[$Name]["Url"]=$UrlAddress;
+						$RemoteServer[$Name]["Name"]=$Name;
+						if (GetValue($IPS_UpTimeID)==0)
+							{
+							$RemoteServer[$Name]["Status"]=false;
+							}
+						else
+							{
+							$RemoteServer[$Name]["Status"]=true;
+							}
+						}
 					}
 				}
 			else
-			   {
-				foreach ($remServer as $Name => $UrlAddress)
-				   {
-			   	$RemoteServer[$Name]["Url"]=$UrlAddress;
-			   	$RemoteServer[$Name]["Name"]=$Name;
-					$RemoteServer[$Name]["Status"]=true;
-					}
+				{
+				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+				foreach ($remServer as $Name => $Server)
+					{
+					$UrlAddress=$Server["ADRESSE"];
+					if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+						{				
+						$RemoteServer[$Name]["Url"]=$UrlAddress;
+						$RemoteServer[$Name]["Name"]=$Name;
+						$RemoteServer[$Name]["Status"]=true;
+						}
+					}	
 			   }
 	return($RemoteServer);
 	}
+
+/*****************************************************************
+ *
+ * wandelt die Liste der remoteAccess_GetServerConfig  in das alte Format der tabelle RemoteAccess_GetConfiguration um
+ * Neuer Name , damit alte Funktionen keine Fehlermeldung liefern 
+ *
+ *****************************************************************************/
+ 
+function RemoteAccess_GetConfigurationNew()
+	{
+	$RemoteServer=array();
+	$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+	foreach ($remServer as $Name => $Server)
+		{
+		$UrlAddress=$Server["ADRESSE"];
+		if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+			{				
+			$RemoteServer[$Name]=$UrlAddress;
+			}
+		}	
+	return($RemoteServer);
+	}
+
 
 /******************************************************************/
 

@@ -16,6 +16,7 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
 
+	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
 class RemoteAccess
 	{
@@ -39,7 +40,7 @@ class RemoteAccess
 		 *		"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
 		 *		"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
 		 */
-		$this->remServer=RemoteAccess_GetConfiguration();
+		$this->remServer=RemoteAccess_GetConfigurationNew();
 		}
 		
 	/**
@@ -420,8 +421,139 @@ class RemoteAccess
 		$includefile.="\n             ".'	),'."\n";
 		}
 
-
-
 	}  /* Ende class */
+	
+class IPSMessageHandlerExtended extends IPSMessageHandler 
+	{
+
+	private static $eventConfigurationAuto = array();
+	private static $eventConfigurationCust = array();
+
+		/**
+		 * @private
+		 *
+		 * Liefert die aktuelle Auto Event Konfiguration
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		private static function Get_EventConfigurationAuto() {
+			if (self::$eventConfigurationAuto == null) {
+				self::$eventConfigurationAuto = IPSMessageHandler_GetEventConfiguration();
+			}
+			return self::$eventConfigurationAuto;
+		}
+
+		/**
+		 * @private
+		 *
+		 * Liefert die aktuelle Customer Event Konfiguration
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		private static function Get_EventConfigurationCust() {
+			if (self::$eventConfigurationCust == null and function_exists('IPSMessageHandler_GetEventConfigurationCust')) {
+				self::$eventConfigurationCust = IPSMessageHandler_GetEventConfigurationCust();
+			}
+			return self::$eventConfigurationCust;
+		}
+
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		private static function StoreEventConfiguration($configuration) {
+
+			// Build Configuration String
+			$configString = '$eventConfiguration = array(';
+			foreach ($configuration as $variableId=>$params) {
+				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+				for ($i=0; $i<count($params); $i=$i+3) {
+					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+				}
+				$configString .= '),';
+			}
+			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
+
+			// Write to File
+			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/core/IPSMessageHandler/IPSMessageHandler_Configuration.inc.php';
+			if (!file_exists($fileNameFull)) {
+				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+			}
+			$fileContent = file_get_contents($fileNameFull, true);
+			$pos1 = strpos($fileContent, '$eventConfiguration = array(');
+			$pos2 = strpos($fileContent, 'return $eventConfiguration;');
+
+			if ($pos1 === false or $pos2 === false) {
+				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
+			}
+			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+			//echo  $fileContentNew;
+			file_put_contents($fileNameFull, $fileContentNew);
+			self::$eventConfigurationAuto = $configuration;
+		}
+				
+								
+	public static function DeleteEvent($eventName) 
+		{
+		$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
+		$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+		if ($eventId === false) 
+			{
+			}
+		else
+			{
+			//IPS_DeleteEvent($eventId);
+			echo 'Deleted IPSMessageHandler Event ='.$eventName."\n";	
+			IPSLogger_Dbg (__file__, 'Deleted IPSMessageHandler Event ='.$eventName);
+			}
+		}	
+		
+	/**
+	 * @public
+	 *
+	 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
+	 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
+	 * Konfigurations File.
+	 *
+	 * @param integer $variableId ID der auslösenden Variable
+	 * @param string $eventType Type des Events (OnUpdate oder OnChange)
+	 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
+	 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
+	 */
+	public static function UnRegisterEvent($variableId) 
+		{
+		$configurationAuto = self::Get_EventConfigurationAuto();
+		$configurationCust = self::Get_EventConfigurationCust();
+		
+		// Search Configuration
+		$found = false;
+		if (array_key_exists($variableId, $configurationCust)) 
+			{
+			$found = true;
+			unset($configurationCust[$variableId]); 
+			echo "UnregisterEvent in CustomConfiguration.\n";
+   		}
+		if (array_key_exists($variableId, $configurationAuto)) 
+			{
+			$found = true;
+			unset($configurationAuto[$variableId]); 
+			echo "UnregisterEvent in AutoConfiguration.\n";
+			}
+		if ($found==true)
+			{	
+			self::StoreEventConfiguration($configurationAuto);
+			}
+		}
+	
+		
+		
+		
+	}	
+	
+	
 	/** @}*/
 ?>

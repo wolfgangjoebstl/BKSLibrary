@@ -77,6 +77,8 @@ else break;
 $name="Ansteuerung";
 $categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
 $AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
+$AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitserkennung",$categoryId_Autosteuerung);
+$StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitssimulationID);
 
 /* wichtigste Parameter vorbereiten */
 
@@ -506,6 +508,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
 	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
+	
+	SetValue($StatusAnwesendID, $operate->Anwesend());
 
 	if ( (GetValue($AnwesenheitssimulationID)==1) || (GetValue($AnwesenheitssimulationID)==2) && ($operate->Anwesend()==true)) 
  		{

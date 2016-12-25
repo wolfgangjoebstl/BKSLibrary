@@ -3,9 +3,9 @@
    /**
     * @class IPSComponentLogger
     *
-    * Loggt die Werte der Sensoren in allen möglichen Medien und Arten
+    * Loggt die Werte der Sensoren in allen mÃ¶glichen Medien und Arten
     *
-    * @author Wolfgang Jöbstl
+    * @author Wolfgang JÃ¶bstl
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
     */
@@ -224,14 +224,14 @@ class Logging
 		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
-		 * @param string $tempValue Wert für Beleuchtungs Änderung
+		 * @param string $tempValue Wert fÃ¼r Beleuchtungs Ã„nderung
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) {
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
 			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-			$this->remServer    = RemoteAccess_GetConfiguration();
+			$this->remServer    = RemoteAccess_GetConfigurationNew();
 		}
 	
 		/**
@@ -240,12 +240,12 @@ class Logging
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module){
-			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "Bewegungs Message Handler fÃ¼r VariableID : ".$variable." mit Wert : ".$value." \n";
 
 		}
 
@@ -253,7 +253,7 @@ class Logging
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
