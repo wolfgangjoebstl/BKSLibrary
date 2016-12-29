@@ -356,6 +356,20 @@ class Autosteuerung
 			else return (false);	
 		}	
 
+	/***************************************
+	 *
+	 * hier wird der Befehl in die Einzelbefehkle zerlegt
+	 *
+	 * Es gibt folgende befehle die extrahiert werden:
+	 *  NAME, SPEAK, OFF, ON, oFF_MASK, ON_MASK, COND, DELAY
+	 *
+	 * Kurzbefehle:
+	 *  1 Parameter:   "NAME"
+	 *  2 Parameter    "NAME" "STATUS"
+	 *  3 Parameter:   "NAME" "STATUS" "DELAY"
+	 *
+	 *******************************************************/
+
 	function ParseCommand($params)
 		{
 		$moduleParams2=Array();

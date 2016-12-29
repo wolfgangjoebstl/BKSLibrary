@@ -162,34 +162,10 @@ function FHTList() { return array(
       	),
 );}
 function FS20List() { return array(
-"Wohnzimmer Fernseher Receiver FS20 Gerät" => array(
-         "OID" => 47562, 
-         "Adresse" => "13", 
-         "Name" => "Wohnzimmer Fernseher Receiver FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "52047", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "10035", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "16837", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "37489", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Arbeitszimmer Festplatten FS20 Gerät" => array(
+"Arbeitszimmer Festplatten FS20 Geraet" => array(
          "OID" => 10020, 
          "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Festplatten FS20 Gerät", 
+         "Name" => "Arbeitszimmer Festplatten FS20 Geraet", 
          "COID" => array(
                 "IntensityVariable" => array(
                               "OID" => "19290", 
@@ -210,10 +186,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Gästezimmer FS20 Gerät" => array(
+"Gaestezimmer FS20 Geraet" => array(
          "OID" => 24122, 
          "Adresse" => "12", 
-         "Name" => "Gästezimmer FS20 Gerät", 
+         "Name" => "Gaestezimmer FS20 Geraet", 
          "COID" => array(
                 "DataVariable" => array(
                               "OID" => "51047", 
@@ -258,10 +234,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Arbeitszimmer Media Verstärker FS20 Gerät" => array(
+"Arbeitszimmer Media Verstaerker FS20 Geraet" => array(
          "OID" => 39136, 
          "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Media Verstärker FS20 Gerät", 
+         "Name" => "Arbeitszimmer Media Verstaerker FS20 Geraet", 
          "COID" => array(
                 "DataVariable" => array(
                               "OID" => "33400", 
@@ -282,10 +258,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Wohnzimmer Dekolampe FS20 Gerät" => array(
+"Wohnzimmer Dekolampe FS20 Geraet" => array(
          "OID" => 38359, 
          "Adresse" => "12", 
-         "Name" => "Wohnzimmer Dekolampe FS20 Gerät", 
+         "Name" => "Wohnzimmer Dekolampe FS20 Geraet", 
          "COID" => array(
                 "IntensityVariable" => array(
                               "OID" => "57601", 
@@ -306,34 +282,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Arbeitszimmer Netzwerk" => array(
-         "OID" => 37160, 
-         "Adresse" => "11", 
-         "Name" => "Arbeitszimmer Netzwerk", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "49375", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "55161", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "51292", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "12007", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Schlafzimmer Deckenbeleuchtung FS20 Gerät" => array(
+"Schlafzimmer Deckenbeleuchtung FS20 Geraet" => array(
          "OID" => 31970, 
          "Adresse" => "14", 
-         "Name" => "Schlafzimmer Deckenbeleuchtung FS20 Gerät", 
+         "Name" => "Schlafzimmer Deckenbeleuchtung FS20 Geraet", 
          "COID" => array(
                 "StatusVariable" => array(
                               "OID" => "13362", 
@@ -354,10 +306,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Eckstehlampe FS20 Gerät" => array(
+"Eckstehlampe FS20 Geraet" => array(
          "OID" => 12828, 
          "Adresse" => "13", 
-         "Name" => "Eckstehlampe FS20 Gerät", 
+         "Name" => "Eckstehlampe FS20 Geraet", 
          "COID" => array(
                 "IntensityVariable" => array(
                               "OID" => "51581", 
@@ -402,34 +354,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Wohnzimmer Netzwerk FS20 Gerät" => array(
-         "OID" => 24744, 
-         "Adresse" => "12", 
-         "Name" => "Wohnzimmer Netzwerk FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "38807", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "40130", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "38476", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "18795", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Wohnzimmer Kastenventilator FS20 Gerät" => array(
+"Wohnzimmer Kastenventilator FS20 Geraet" => array(
          "OID" => 19599, 
          "Adresse" => "13", 
-         "Name" => "Wohnzimmer Kastenventilator FS20 Gerät", 
+         "Name" => "Wohnzimmer Kastenventilator FS20 Geraet", 
          "COID" => array(
                 "DataVariable" => array(
                               "OID" => "51686", 
@@ -450,58 +378,10 @@ function FS20List() { return array(
              	),
 
       	),
-"Wohnzimmer XBOX PS3 FS20 Gerät" => array(
-         "OID" => 16013, 
-         "Adresse" => "13", 
-         "Name" => "Wohnzimmer XBOX PS3 FS20 Gerät", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "59913", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "58879", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "25829", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "25234", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"unbekannt G Fernbedienung FS20 Gerät" => array(
-         "OID" => 15703, 
-         "Adresse" => "13", 
-         "Name" => "unbekannt G Fernbedienung FS20 Gerät", 
-         "COID" => array(
-                "IntensityVariable" => array(
-                              "OID" => "10229", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "22511", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-                "StatusVariable" => array(
-                              "OID" => "37073", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "23858", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Schlafzimmer Kastenbeleuchtung FS20 Gerät" => array(
+"Schlafzimmer Kastenbeleuchtung FS20 Geraet" => array(
          "OID" => 10987, 
          "Adresse" => "14", 
-         "Name" => "Schlafzimmer Kastenbeleuchtung FS20 Gerät", 
+         "Name" => "Schlafzimmer Kastenbeleuchtung FS20 Geraet", 
          "COID" => array(
                 "StatusVariable" => array(
                               "OID" => "16712", 
@@ -524,10 +404,10 @@ function FS20List() { return array(
       	),
 );}
 function HomematicList() { return array(
-"Arbeitszimmer-Stellmotor" => array(
+"Gaestezimmer-Stellmotor" => array(
          "OID" => 48718, 
          "Adresse" => "MEQ0806357:4", 
-         "Name" => "Arbeitszimmer-Stellmotor", 
+         "Name" => "Gaestezimmer-Stellmotor", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "ACTUAL_TEMPERATURE" => array(
@@ -574,6 +454,10 @@ function HomematicList() { return array(
                               "OID" => "33846", 
                               "Name" => "BATTERY_STATE", 
                               "Typ" => "2",), 
+                "PARTY_STOP_MONTH" => array(
+                              "OID" => "20112", 
+                              "Name" => "PARTY_STOP_MONTH", 
+                              "Typ" => "2",), 
                 "PARTY_START_MONTH" => array(
                               "OID" => "22596", 
                               "Name" => "PARTY_START_MONTH", 
@@ -581,10 +465,6 @@ function HomematicList() { return array(
                 "VALVE_STATE" => array(
                               "OID" => "20767", 
                               "Name" => "VALVE_STATE", 
-                              "Typ" => "2",), 
-                "PARTY_STOP_MONTH" => array(
-                              "OID" => "20112", 
-                              "Name" => "PARTY_STOP_MONTH", 
                               "Typ" => "2",), 
                 "PARTY_STOP_YEAR" => array(
                               "OID" => "15177", 
@@ -622,12 +502,16 @@ function HomematicList() { return array(
              	),
 
       	),
-"ArbeitszimmerComputer" => array(
+"ArbeitszimmerComputer2" => array(
          "OID" => 55176, 
          "Adresse" => "LEQ0627606:2", 
-         "Name" => "ArbeitszimmerComputer", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "Name" => "ArbeitszimmerComputer2", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "30276", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
                 "STATE" => array(
                               "OID" => "53884", 
                               "Name" => "STATE", 
@@ -635,10 +519,6 @@ function HomematicList() { return array(
                 "WORKING" => array(
                               "OID" => "47419", 
                               "Name" => "WORKING", 
-                              "Typ" => "2",), 
-                "INHIBIT" => array(
-                              "OID" => "30276", 
-                              "Name" => "INHIBIT", 
                               "Typ" => "2",), 
              	),
 
@@ -663,6 +543,35 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
                               "OID" => "34072", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Badezimmer-Taster-3" => array(
+         "OID" => 26820, 
+         "Adresse" => "MEQ1084617:3", 
+         "Name" => "Badezimmer-Taster-3", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PRESS_LONG" => array(
+                              "OID" => "26279", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "56653", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "21583", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "30265", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "21973", 
                               "Name" => "INSTALL_TEST", 
                               "Typ" => "2",), 
              	),
@@ -701,15 +610,15 @@ function HomematicList() { return array(
          "OID" => 54788, 
          "Adresse" => "JEQ0004086:1", 
          "Name" => "Arbeitszimmer-Taster-Aus", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
-                "PRESS_LONG" => array(
-                              "OID" => "52467", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
                 "PRESS_SHORT" => array(
                               "OID" => "56742", 
                               "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "52467", 
+                              "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
                               "OID" => "37416", 
@@ -718,19 +627,15 @@ function HomematicList() { return array(
              	),
 
       	),
-"Arbeitszimmer-Heizung" => array(
+"Gaestezimmer-Heizung" => array(
          "OID" => 53984, 
          "Adresse" => "LEQ0591638:2", 
-         "Name" => "Arbeitszimmer-Heizung", 
+         "Name" => "Gaestezimmer-Heizung", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "PARTY_START_DAY" => array(
                               "OID" => "57191", 
                               "Name" => "PARTY_START_DAY", 
-                              "Typ" => "2",), 
-                "PARTY_STOP_YEAR" => array(
-                              "OID" => "12391", 
-                              "Name" => "PARTY_STOP_YEAR", 
                               "Typ" => "2",), 
                 "LOWBAT_REPORTING" => array(
                               "OID" => "11332", 
@@ -792,9 +697,42 @@ function HomematicList() { return array(
                               "OID" => "13117", 
                               "Name" => "WINDOW_OPEN_REPORTING", 
                               "Typ" => "2",), 
+                "PARTY_STOP_YEAR" => array(
+                              "OID" => "12391", 
+                              "Name" => "PARTY_STOP_YEAR", 
+                              "Typ" => "2",), 
                 "PARTY_TEMPERATURE" => array(
                               "OID" => "11891", 
                               "Name" => "PARTY_TEMPERATURE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Badezimmer-Taster-1" => array(
+         "OID" => 19854, 
+         "Adresse" => "MEQ1084617:1", 
+         "Name" => "Badezimmer-Taster-1", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PRESS_LONG" => array(
+                              "OID" => "46754", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "14378", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "25309", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "50533", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "33086", 
+                              "Name" => "PRESS_LONG_RELEASE", 
                               "Typ" => "2",), 
              	),
 
@@ -849,11 +787,65 @@ function HomematicList() { return array(
              	),
 
       	),
+"Zentralzimmer Bewegung" => array(
+         "OID" => 46830, 
+         "Adresse" => "NEQ0046162:1", 
+         "Name" => "Zentralzimmer Bewegung", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "ERROR" => array(
+                              "OID" => "14781", 
+                              "Name" => "ERROR", 
+                              "Typ" => "2",), 
+                "BRIGHTNESS" => array(
+                              "OID" => "58559", 
+                              "Name" => "BRIGHTNESS", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "28750", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "MOTION" => array(
+                              "OID" => "50455", 
+                              "Name" => "MOTION", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Badezimmer-Taster-2" => array(
+         "OID" => 27224, 
+         "Adresse" => "MEQ1084617:2", 
+         "Name" => "Badezimmer-Taster-2", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PRESS_LONG" => array(
+                              "OID" => "34413", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "38429", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "10555", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "31146", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "26393", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 "Homematic Dummy Schalter" => array(
          "OID" => 47301, 
          "Adresse" => "JEQ0066960:1", 
          "Name" => "Homematic Dummy Schalter", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "51119", 
@@ -949,6 +941,39 @@ function HomematicList() { return array(
              	),
 
       	),
+"IPSchalter:6" => array(
+         "OID" => 55996, 
+         "Adresse" => "0001D3C98DD615:6", 
+         "Name" => "IPSchalter:6", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "POWER" => array(
+                              "OID" => "12366", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "30790", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "30834", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER_OVERFLOW" => array(
+                              "OID" => "49773", 
+                              "Name" => "ENERGY_COUNTER_OVERFLOW", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "35307", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "36231", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 "Kueche Bewegung" => array(
          "OID" => 38387, 
          "Adresse" => "IEQ0538004:1", 
@@ -1030,6 +1055,10 @@ function HomematicList() { return array(
                               "OID" => "54389", 
                               "Name" => "MOTION", 
                               "Typ" => "2",), 
+                "ERROR" => array(
+                              "OID" => "32746", 
+                              "Name" => "ERROR", 
+                              "Typ" => "2",), 
                 "STICKY_UNREACH" => array(
                               "OID" => "48636", 
                               "Name" => "STICKY_UNREACH", 
@@ -1041,10 +1070,6 @@ function HomematicList() { return array(
                 "UNREACH" => array(
                               "OID" => "34587", 
                               "Name" => "UNREACH", 
-                              "Typ" => "2",), 
-                "ERROR" => array(
-                              "OID" => "32746", 
-                              "Name" => "ERROR", 
                               "Typ" => "2",), 
                 "BRIGHTNESS" => array(
                               "OID" => "21180", 
@@ -1136,11 +1161,36 @@ function HomematicList() { return array(
              	),
 
       	),
-"ArbeitszimmerFussheizung" => array(
+"Arbeitszimmerfenster-Kontakt" => array(
+         "OID" => 30480, 
+         "Adresse" => "LEQ1060012:1", 
+         "Name" => "Arbeitszimmerfenster-Kontakt", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "ERROR" => array(
+                              "OID" => "11727", 
+                              "Name" => "ERROR", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "39823", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "41623", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "LOWBAT" => array(
+                              "OID" => "32544", 
+                              "Name" => "LOWBAT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"ArbeitszimmerSchalter1" => array(
          "OID" => 36225, 
          "Adresse" => "LEQ0627606:1", 
-         "Name" => "ArbeitszimmerFussheizung", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "Name" => "ArbeitszimmerSchalter1", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "22272", 
@@ -1157,10 +1207,10 @@ function HomematicList() { return array(
              	),
 
       	),
-"Arbeitszimmer-Messwerte" => array(
+"Gaestezimmer-Messwerte" => array(
          "OID" => 24690, 
          "Adresse" => "LEQ0591638:1", 
-         "Name" => "Arbeitszimmer-Messwerte", 
+         "Name" => "Gaestezimmer-Messwerte", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "TEMPERATURE" => array(
@@ -1174,11 +1224,11 @@ function HomematicList() { return array(
              	),
 
       	),
-"ArbeitszimmerLampe" => array(
+"ArbeitszimmerLampe4" => array(
          "OID" => 34651, 
          "Adresse" => "LEQ0627606:4", 
-         "Name" => "ArbeitszimmerLampe", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "Name" => "ArbeitszimmerLampe4", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "36236", 
@@ -1224,7 +1274,7 @@ function HomematicList() { return array(
          "OID" => 31985, 
          "Adresse" => "LEQ0538372:2", 
          "Name" => "Wohnzimmer-Mediencenter-Leistungswerte", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "VOLTAGE" => array(
                               "OID" => "54469", 
@@ -1278,7 +1328,7 @@ function HomematicList() { return array(
          "OID" => 30531, 
          "Adresse" => "LEQ0538372:1", 
          "Name" => "Wohnzimmer-Mediencenter", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "22784", 
@@ -1295,11 +1345,40 @@ function HomematicList() { return array(
              	),
 
       	),
+"Badezimmer-Taster-5" => array(
+         "OID" => 53153, 
+         "Adresse" => "MEQ1084617:5", 
+         "Name" => "Badezimmer-Taster-5", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "18119", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "53190", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "29022", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "54323", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "57543", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 "Aussen-Westseite" => array(
          "OID" => 16874, 
          "Adresse" => "JEQ0267840:1", 
          "Name" => "Aussen-Westseite", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "HUMIDITY" => array(
                               "OID" => "51998", 
@@ -1341,11 +1420,32 @@ function HomematicList() { return array(
              	),
 
       	),
-"ArbeitszimmerFestplatten" => array(
+"IPSchalter:3" => array(
+         "OID" => 16639, 
+         "Adresse" => "0001D3C98DD615:3", 
+         "Name" => "IPSchalter:3", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "57749", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "26782", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "58640", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"ArbeitszimmerFestplatten3" => array(
          "OID" => 21427, 
          "Adresse" => "LEQ0627606:3", 
-         "Name" => "ArbeitszimmerFestplatten", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "Name" => "ArbeitszimmerFestplatten3", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "35165", 
@@ -1362,23 +1462,31 @@ function HomematicList() { return array(
              	),
 
       	),
-"Arbeitszimmer Computer" => array(
-         "OID" => 21196, 
-         "Adresse" => "IEQ0089391:1", 
-         "Name" => "Arbeitszimmer Computer", 
-         "CCU" => "HomeMatic LanAdapter", 
+"Badezimmer-Taster-4" => array(
+         "OID" => 43364, 
+         "Adresse" => "MEQ1084617:4", 
+         "Name" => "Badezimmer-Taster-4", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
-                "STATE" => array(
-                              "OID" => "47551", 
-                              "Name" => "STATE", 
+                "INSTALL_TEST" => array(
+                              "OID" => "25127", 
+                              "Name" => "INSTALL_TEST", 
                               "Typ" => "2",), 
-                "WORKING" => array(
-                              "OID" => "26276", 
-                              "Name" => "WORKING", 
+                "PRESS_SHORT" => array(
+                              "OID" => "58395", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
-                "INHIBIT" => array(
-                              "OID" => "19399", 
-                              "Name" => "INHIBIT", 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "21384", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "39019", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "34746", 
+                              "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
              	),
 
@@ -1408,7 +1516,7 @@ function HomematicList() { return array(
          "OID" => 14662, 
          "Adresse" => "JEQ0004086:2", 
          "Name" => "Arbeitszimmer-Taster-An", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "24705", 
@@ -1450,7 +1558,7 @@ function HomematicList() { return array(
          "OID" => 13989, 
          "Adresse" => "IEQ0206685:1", 
          "Name" => "Aussen-Ostseite", 
-         "CCU" => "HomeMatic LanAdapter", 
+         "CCU" => "Homematic-CCU", 
          "COID" => array(
                 "HUMIDITY" => array(
                               "OID" => "22550", 
@@ -1463,27 +1571,164 @@ function HomematicList() { return array(
              	),
 
       	),
-"Zentralzimmer Bewegung" => array(
-         "OID" => 46830, 
-         "Adresse" => "NEQ0046162:1", 
-         "Name" => "Zentralzimmer Bewegung", 
+"Badezimmer-Taster-6" => array(
+         "OID" => 34547, 
+         "Adresse" => "MEQ1084617:6", 
+         "Name" => "Badezimmer-Taster-6", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
-                "BRIGHTNESS" => array(
-                              "OID" => "58559", 
-                              "Name" => "BRIGHTNESS", 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "15006", 
+                              "Name" => "PRESS_LONG_RELEASE", 
                               "Typ" => "2",), 
-                "ERROR" => array(
-                              "OID" => "14781", 
-                              "Name" => "ERROR", 
+                "PRESS_LONG" => array(
+                              "OID" => "55035", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "28998", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
-                              "OID" => "28750", 
+                              "OID" => "33242", 
                               "Name" => "INSTALL_TEST", 
                               "Typ" => "2",), 
-                "MOTION" => array(
-                              "OID" => "50455", 
-                              "Name" => "MOTION", 
+                "PRESS_CONT" => array(
+                              "OID" => "51237", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"Arbeitszimmer-Netzwerk-Leistungswerte" => array(
+         "OID" => 30642, 
+         "Adresse" => "LEQ1346339:2", 
+         "Name" => "Arbeitszimmer-Netzwerk-Leistungswerte", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "POWER" => array(
+                              "OID" => "20347", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "BOOT" => array(
+                              "OID" => "35214", 
+                              "Name" => "BOOT", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "54265", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "36433", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "11825", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "12599", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"IPSchalter:4" => array(
+         "OID" => 52598, 
+         "Adresse" => "0001D3C98DD615:4", 
+         "Name" => "IPSchalter:4", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "35181", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "51106", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "50064", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"IPSchalter:5" => array(
+         "OID" => 54617, 
+         "Adresse" => "0001D3C98DD615:5", 
+         "Name" => "IPSchalter:5", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "17026", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "11780", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "43758", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"IPSchalter:2" => array(
+         "OID" => 26967, 
+         "Adresse" => "0001D3C98DD615:2", 
+         "Name" => "IPSchalter:2", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "16327", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "23359", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "23358", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
+"WohnzimmerEffektlicht:Status" => array(
+         "OID" => 47310, 
+         "Adresse" => "0001D3C98DD615:0", 
+         "Name" => "WohnzimmerEffektlicht:Status", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "OPERATING_VOLTAGE" => array(
+                              "OID" => "51103", 
+                              "Name" => "OPERATING_VOLTAGE", 
+                              "Typ" => "2",), 
+                "RSSI_DEVICE" => array(
+                              "OID" => "54859", 
+                              "Name" => "RSSI_DEVICE", 
+                              "Typ" => "2",), 
+                "CONFIG_PENDING" => array(
+                              "OID" => "33735", 
+                              "Name" => "CONFIG_PENDING", 
+                              "Typ" => "2",), 
+                "UNREACH" => array(
+                              "OID" => "12315", 
+                              "Name" => "UNREACH", 
+                              "Typ" => "2",), 
+                "RSSI_PEER" => array(
+                              "OID" => "33127", 
+                              "Name" => "RSSI_PEER", 
+                              "Typ" => "2",), 
+                "UPDATE_PENDING" => array(
+                              "OID" => "12923", 
+                              "Name" => "UPDATE_PENDING", 
+                              "Typ" => "2",), 
+                "DUTY_CYCLE" => array(
+                              "OID" => "31450", 
+                              "Name" => "DUTY_CYCLE", 
                               "Typ" => "2",), 
              	),
 

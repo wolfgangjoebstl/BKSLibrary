@@ -126,6 +126,8 @@ $tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
 $tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
 $tim6ID = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
 $tim7ID = @IPS_GetEventIDByName("FileStatus", $scriptId);
+$tim8ID = @IPS_GetEventIDByName("SystemInfo", $scriptId);
+$tim9ID = @IPS_GetEventIDByName("Reserved", $scriptId);
 
 echo "Timer Installation : \n";
 echo "  Timer RouterAufruftimer OID : ".$tim1ID."\n";
@@ -135,6 +137,8 @@ echo "  Timer SysPingTimer OID      : ".$tim4ID."\n";
 echo "  Timer CyclicUpdate OID      : ".$tim5ID."\n";
 echo "  Timer CopyScriptsTimer OID  : ".$tim6ID."\n";
 echo "  Timer FileStatus OID        : ".$tim7ID."\n";
+echo "  Timer SystemInfo OID        : ".$tim8ID."\n";
+echo "  Timer Reserved OID          : ".$tim9ID."\n";
 
 /*********************************************************************************************/
 
@@ -892,6 +896,19 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			$OperationCenter->FileStatus();
 			break;
+		case $tim8ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
+			/************************************************************************************
+ 			 *
+			 * System Information von sysinfo auauswerten
+	   	 * Timer einmal am Tag um 00:50
+	   	 *
+			 *************************************************************************************/
+			$OperationCenter->SystemInfo();
+			break;		
+		case $tim9ID:
+			break;		
+		default:
 
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");

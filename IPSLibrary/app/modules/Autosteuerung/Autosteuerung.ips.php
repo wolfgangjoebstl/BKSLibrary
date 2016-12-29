@@ -115,7 +115,7 @@ if ($_IPS['SENDER']=="Execute")
 	foreach ($configuration as $key=>$entry)
 	   {
 	   echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-	   echo "Eintrag fuer : ".$key." Name : ".IPS_GetName($key)." Parent : ".IPS_GetName(IPS_GetParent($key))."\n";
+	   echo "Eintrag fuer : ".$key." Name : ".IPS_GetName($key)."/".IPS_GetName(IPS_GetParent($key))."\n";
 	   print_r($entry);
 	   print_r($auto->ParseCommand($entry));
 	   switch ($entry[1])
@@ -457,10 +457,10 @@ if ($_IPS['SENDER']=="Variable")
 		   case "Status":
 			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
 			   /* array($params[0], $params[1], $params[2],),                     													*/
-			   /* array('OnChange','Status',   'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
-				/* array('OnUpdate','Status','ArbeitszimmerLampe,true',),    bei Update Taster LightSwitch einschalten   */
-			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
-			   /* array('OnChange','Status',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       					*/
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
+				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
 				Status($params,$value);
 				break;
 			/*********************************************************************************************/
@@ -679,6 +679,7 @@ function Status($params,$status,$simulate=false)
 
 	$result=Array();
 	$moduleParams2=Array();
+
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	
    $delayValue=0; $speak="Status"; $switchOID=0;
@@ -690,48 +691,25 @@ function Status($params,$status,$simulate=false)
 	 *
 	 * Parameter mit : enthalten Befehl:Parameter
 	 */
-   
-   $params2=$params[2];
-  	$moduleParams2 = explode(',', $params2);  
-	//print_r($moduleParams2);
-	//print_r($params);
+	 
+  	$moduleParams2 = explode(',', $params[2]);  
 
-	/* in parges werden alle Parameter erfasst und abgespeichert */
+	/* in parges werden alle Parameter erfasst und abgespeichert. nur mehr Sonderbefehle werden hier abgeabrbeitet */
 	$parges=array();
 	switch (count($moduleParams2))
 	   {
 	   case "6":
 	   case "5":
 	   case "4":
-			$i=3;
-			while ($i<count($moduleParams2))
-			   {
-				$params_more=explode(":",$moduleParams2[$i]);
-				if (count($params)>1)
-         		{
-					$parges=parseParameter($params_more,$parges);
-				   }
-				$i++;
-			   }
 	   case "3":
-			$params_three=explode(":",$moduleParams2[2]);
-			if (count($params_three)>1)
-				{
-				$parges=parseParameter($params_three,$parges);
-				}
-			else
-			   {
-				$delayValue=(integer)$params_three[0];
-				$result["DELAY"]=$delayValue;
-				}
 	   case "2":
 	   	$params_two=explode(":",$moduleParams2[1]);
 			if (count($params_two)>1)
 				{
-				$parges=parseParameter($params_two,$parges);
 				}
 			else
 			   {
+				//$parges["STATUS"]=$params_two[0];
 				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
 				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
 				if (strtoupper($params_two[0])=="TOGGLE")
@@ -756,23 +734,19 @@ function Status($params,$status,$simulate=false)
 					};
 			   }
 	   case "1":
-	   	$params_one=explode(":",$moduleParams2[0]);
-			if (count($params_one)>1)
-				{
-				$parges=parseParameter($params_one,$parges);
-				}
-			else
-			   {
-	      	$SwitchName=$params_one[0];
-				$result["NAME"]=$SwitchName;
-				}
 	      break;
 		default:
 			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 		   break;
 		}
-	if ($simulate==true) {
-		//print_r($parges);
+	
+	$parges=$auto->ParseCommand($params);
+	
+	if ($simulate==true) 
+		{
+		echo "***Simulationsergebnisse (parges):";
+		// wird eh schon oben ausgegeben
+		print_r($parges);
 		}
 	
 	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden */
@@ -785,10 +759,16 @@ function Status($params,$status,$simulate=false)
 			   $switchOID=$befehl[1];
 				$result["OID"]=$SwitchOID;
 				break;
+				
 		   case "NAME":
 			   $SwitchName=$befehl[1];
 				$result["NAME"]=$SwitchName;
 				break;
+				
+			case "STATUS":
+				/* von oben hineinkopieren */
+				break;
+					
 		   case "ON":
 		      $value_on=strtoupper($befehl[1]);
 		      $i=2;
@@ -803,6 +783,7 @@ function Status($params,$status,$simulate=false)
 		         }
 				$result["ON"]=$value_on;
 				break;
+				
 		   case "OFF":
 		      $value_off=strtoupper($befehl[1]);
 		      $i=2;
@@ -817,22 +798,27 @@ function Status($params,$status,$simulate=false)
 		         }
 				$result["OFF"]=$value_off;
 				break;
+				
 		   case "DELAY":
 				$delayValue=(integer)$befehl[1];
 				$result["DELAY"]=$delayValue;
 				break;
+				
 		   case "ENVELOPE":
 				$envelValue=(integer)$befehl[1];
 				$result["ENVEL"]=$envelValue;
 				break;
+				
 		   case "LEVEL":
 				$levelValue=(integer)$befehl[1];
 				$result["LEVEL"]=$levelValue;
 				break;
+				
 		   case "SPEAK":
 				$speak=$befehl[1];
 				$result["SPEAK"]=$speak;
 				break;
+				
 		   case "MONITOR":
 				$monitor=$befehl[1];
 				if ($monitor=="STATUS")
@@ -853,6 +839,7 @@ function Status($params,$status,$simulate=false)
 					$result["MONITOR"]=$monitor;
 					}
 				break;
+				
 		   case "MUTE":
 				$mute=$befehl[1];
 				if ($mute=="STATUS")
@@ -873,6 +860,7 @@ function Status($params,$status,$simulate=false)
 					$result["MUTE"]=$mute;
 					}
 				break;
+				
 		   case "IF":
 				$cond=strtoupper($befehl[1]);
 				$result["COND"]=$cond;
@@ -899,7 +887,10 @@ function Status($params,$status,$simulate=false)
 						}
 				   }
 				break;
-			}
+			default:
+				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+		   	break;				
+			}  /* ende switch */
 		} /* ende foreach */
 
 	if ((isset($SwitchName)==true) && ($switch==true))

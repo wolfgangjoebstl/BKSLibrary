@@ -56,7 +56,8 @@ class OperationCenter
    		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
    		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
    		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
-
+   		$this->categoryId_SysInfo  	= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
+			
          $this->mactable=$this->create_macipTable($subnet);
          $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -237,6 +238,70 @@ class OperationCenter
 			}
 			return ($RemoteServer);
 		}
+
+	/**
+	 * @public
+	 *
+	 * liest systeminfo aus und speichert die relevanten Daten
+	 *
+	 */
+	 function SystemInfo()
+	 	{
+
+		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
+		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		
+		$result=array();	/* fuer Zwischenberechnungen */
+		$results=array();
+		$results2=array();
+	
+	$PrintSI="";
+		$PrintLines="";		
+		
+		exec('systeminfo',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
+		foreach($catch as $line)
+			{
+			if (strlen($line)>2)
+				{
+				//echo "  | ".$line."\n<br>";
+				$PrintLines.=$line."\n";
+				if (substr($line,0,1)!=" ")
+					{
+					/* Ueberschrift */
+					$pos1=strpos($line,":");
+					$VarName=trim(substr($line,0,$pos1));
+					$VarField=trim(substr($line,$pos1+1));
+					$result[1]="";$result[2]="";$result[3]="";
+					$result=explode(":",$line);
+					$results[trim($result[0])]=trim($result[1]);
+					for ($i=2; $i<sizeof($result); $i++) { $results[trim($result[0])].=":".trim($result[$i]);  }
+					$results2[$VarName]=$VarField;
+					$PrintSI.="\n".$line;
+					}
+				else
+					{
+					/* Fortsetzung der Paraemeter Ausgabe */
+					$PrintSI.=" ".trim($line);
+					$results[trim($result[0])].=" ".trim($line);
+					$results2[$VarName].=" ".trim($line);
+					}
+				}  /* ende strlen */
+	  		}
+			echo "Ausgabe direkt:\n".$PrintLines."\n";		
+
+			print_r($results);
+			print_r($results2);
+			echo $PrintSI;
+		
+		SetValue($HostnameID,$results["Hostname"]);
+		SetValue($SystemNameID,$results["Betriebssystemname"]);
+		SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
+		SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
+		
+		return $results;
+		}	
 
 	/**
 	 * @public

@@ -23,6 +23,12 @@ if ($tim1ID==false)
 	}
 IPS_SetEventActive($tim1ID,true);
 
+/******************************************************
+
+				EXECUTE
+
+*************************************************************/
+
 if ($_IPS['SENDER']=="Execute")
 	{
 	echo "\nVon der Konsole aus gestartet.\n";
@@ -30,7 +36,7 @@ if ($_IPS['SENDER']=="Execute")
 	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 	//Auflisten
 	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
+	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)." (angeführt nach Ports, keine Zusammenfassung auf Geräte)\n\n";
 	$serienNummer=array();
 	foreach ($alleInstanzen as $instanz)
 		{
@@ -52,6 +58,7 @@ if ($_IPS['SENDER']=="Execute")
 	   foreach($cids as $cid)
    	 	{
       	$o = IPS_GetObject($cid);
+			echo "   CID : ".$cid."  ".IPS_GetName($cid)."  ".date("d.m H:i",IPS_GetVariable($cid)["VariableChanged"])."\n";
       	if($o['ObjectIdent'] != "")
 				{
    	      $serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
@@ -113,7 +120,7 @@ if ($_IPS['SENDER']=="Execute")
 	foreach ($serienNummer as $ccu => $geraete)
  		{
 	 	echo "  CCU mit Name :".$ccu."\n";
- 		echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen.\n";
+ 		echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
 		foreach ($geraete as $name => $anzahl)
 			{
 			//echo "\n *** ".$name."  \n";
@@ -130,6 +137,7 @@ if ($_IPS['SENDER']=="Execute")
 			   $oldvalue=$value;
 			   }
 			//print_r($registerNew);
+			/* Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
 			sort($registerNew);
 			switch ($registerNew[0])
 			   {
@@ -175,8 +183,17 @@ if ($_IPS['SENDER']=="Execute")
 
 	}
 //else
+
+/******************************************************
+
+				TIMER
+
+*************************************************************/
+
 	{
 
+	echo "\nVom Timer gestartet.\n";
+	
 	//$includefile='<?'."\n".'$fileList = array('."\n";
 	$includefile='<?'."\n";
 	$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten

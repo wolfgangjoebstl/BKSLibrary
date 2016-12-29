@@ -37,17 +37,17 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 	$MeterConfig = get_MeterConfiguration();
 	//print_r($MeterConfig);
 
-	foreach ($MeterConfig as $meter)
+	foreach ($MeterConfig as $identifier => $meter)
 		{
 		echo"-------------------------------------------------------------\n";
 		echo "Create Variableset for :".$meter["NAME"]." \n";
 		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
 		   {
-		   /* kann derzeit nur ein AMIS Modul installieren, daher Name zwischenspeichern */
 		   $amismetername=$meter["NAME"];
+
+			echo "Amis Zähler, verfügbare Ports:\n";			
 		   
-			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
 			$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -59,15 +59,34 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 
 			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-
+			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
+			
 			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 			if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
 			foreach ($serialPortID as $num => $serialPort)
 			   {
 			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-			   if (IPS_GetName($serialPort) == "AMIS Serial Port") { $com_Port = $serialPort; }
-				}
+			   if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+					{ 
+					$com_Port = $serialPort;
+					$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+					if (IPS_InstanceExists($regVarID) )
+	   				{
+						echo "     Registervariable : ".$regVarID."\n";
+						$configPort[$regVarID]=$amismetername;							 
+						}
+					}	
+			   if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
+					{ 
+					$com_Port = $serialPort; 
+					$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+					if (IPS_InstanceExists($regVarID) )
+	   				{
+						echo "     Registervariable : ".$regVarID."\n";
+						$configPort[$regVarID]=$amismetername;	 
+						}					
+					}				}
 			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
 			else { echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 
@@ -93,7 +112,8 @@ if (!file_exists("C:\Scripts\Log_Cutter.csv"))
 if ($_IPS['SENDER'] == "RegisterVariable")
 	 {
     $content = $_IPS['VALUE'];
-    
+    $sender=$_IPS['INSTANCE'];   /* damit kann festgestellt werden von wo der Datensatz kommt */	 
+    $amismetername=$configPort[$sender];
     /* parentid1 ist das Data Verzeichnis fuer AMIS */
 	 $ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	 $AmisID = CreateVariableByName($ID, "AMIS", 3);
