@@ -46,6 +46,9 @@ $donotregister=false; $i=0; $maxi=40;
 	 */
 	$remServer=ROID_List();
 	$struktur=array();
+	
+	$status=RemoteAccessServerTable();
+	
 	foreach ($remServer as $Name => $Server)
 		{
 		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";

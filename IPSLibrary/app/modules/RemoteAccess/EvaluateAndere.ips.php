@@ -30,6 +30,8 @@ $startexec=microtime(true);
 IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 $remServer=ROID_List();
 
+$status=RemoteAccessServerTable();
+
 	$Homematic = HomematicList();
 	//print_r($Homematic);
 	foreach ($Homematic as $Key)
@@ -51,13 +53,17 @@ $remServer=ROID_List();
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
 				{
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Andere"], $Key["Name"], 2);
-   			$rpc->IPS_SetVariableCustomProfile($result,"~Rainfall");
-				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);       /* 0 Standard 1 ist Zähler */
-				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-				$parameter.=$Name.":".$result.";";
+				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				if ( $status[$Name]["Status"] == true )
+					{					
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Andere"], $Key["Name"], 2);
+					$rpc->IPS_SetVariableCustomProfile($result,"~Rainfall");
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);       /* 0 Standard 1 ist Zähler */
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
 				}
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
@@ -92,13 +98,17 @@ $remServer=ROID_List();
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
 				{
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Temperatur"], $Key["Name"], 2);
-   			$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
-				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0); /* 0 Standard 1 ist Zähler */
-				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-				$parameter.=$Name.":".$result.";";
+				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				if ( $status[$Name]["Status"] == true )
+					{				
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Temperatur"], $Key["Name"], 2);
+					$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0); /* 0 Standard 1 ist Zähler */
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
 				}
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */

@@ -22,9 +22,14 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 
 IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
-	$remServer=ROID_List();
-	$struktur=array();$guthID=array();
-	foreach ($remServer as $Name => $Server)
+$remServer=ROID_List();
+$status=RemoteAccessServerTable();
+
+$struktur=array();$guthID=array();
+foreach ($remServer as $Name => $Server)
+	{
+	echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+	if ( $status[$Name]["Status"] == true )
 		{
 		$rpc = new JSONRPC($Server["Adresse"]);
 		$guthID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Guthaben");
@@ -34,8 +39,9 @@ IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteA
 	   	$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
 	   	}		
 		}
-	echo "Struktur Server :\n";
-	print_r($struktur);
+	}	
+echo "Struktur Server :\n";
+print_r($struktur);
 
 $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 $installedModules=$moduleManager->GetInstalledModules();
@@ -76,13 +82,17 @@ if (isset ($installedModules["Guthabensteuerung"]))
 		$parameter="";
 		foreach ($remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
-			//$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
-			//$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
-			//$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
-			//$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
-			$parameter.=$Name.":".$result.";";
+			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+			if ( $status[$Name]["Status"] == true )
+				{			
+				$rpc = new JSONRPC($Server["Adresse"]);
+				$result=RPC_CreateVariableByName($rpc, $guthID[$Name], $Key["Name"], $Key["Typ"],$struktur[$Name]);
+				//$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
+				//$rpc->AC_SetLoggingStatus($RPCarchiveHandlerID,$result,true);
+				//$rpc->AC_SetAggregationType($RPCarchiveHandlerID,$result,1);
+				//$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
+				$parameter.=$Name.":".$result.";";
+				}
 			}
 	   $messageHandler = new IPSMessageHandler();
 

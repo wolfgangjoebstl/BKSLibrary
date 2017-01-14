@@ -85,6 +85,7 @@ if (isset ($installedModules["DetectMovement"]))
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
+	$status=RemoteAccessServerTable();	
 	//print_r($remServer);
 	
 	/*
@@ -123,13 +124,17 @@ if (isset ($installedModules["DetectMovement"]))
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
 				{
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-	   			$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				if ( $status[$Name]["Status"] == true )
+					{				
+					$rpc = new JSONRPC($Server["Adresse"]);
+					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+					$rpc->IPS_SetVariableCustomProfile($result,"Motion");
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
+					}
 				}
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
@@ -178,13 +183,17 @@ if (isset ($installedModules["DetectMovement"]))
 						$parameter="";
 						foreach ($remServer as $Name => $Server)
 							{
-							$rpc = new JSONRPC($Server["Adresse"]);
-							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-	   					$rpc->IPS_SetVariableCustomProfile($result,"Motion");
-							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-							$parameter.=$Name.":".$result.";";
+							echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+							if ( $status[$Name]["Status"] == true )
+								{							
+								$rpc = new JSONRPC($Server["Adresse"]);
+								$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+								$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+								$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+								$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+								$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+								$parameter.=$Name.":".$result.";";
+								}
 							}
 						$messageHandler = new IPSMessageHandler();
 					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
@@ -255,13 +264,17 @@ if (isset ($installedModules["DetectMovement"]))
 					$parameter="";
 					foreach ($remServer as $Name => $Server)
 						{
-						$rpc = new JSONRPC($Server["Adresse"]);
-						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $cam_name, 0);
-   					$rpc->IPS_SetVariableCustomProfile($result,"Motion");
-						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-						$parameter.=$Name.":".$result.";";
+						echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+						if ( $status[$Name]["Status"] == true )
+							{						
+							$rpc = new JSONRPC($Server["Adresse"]);
+							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $cam_name, 0);
+							$rpc->IPS_SetVariableCustomProfile($result,"Motion");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							}
 						}
 					$messageHandler = new IPSMessageHandler();
 				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */

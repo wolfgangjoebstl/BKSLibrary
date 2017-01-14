@@ -1,8 +1,8 @@
 <?
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
- *	hier für alle Homematic Kontakte
+ *	hier fÃ¼r alle Homematic Kontakte
  *
  */
 
@@ -39,6 +39,7 @@ $startexec=microtime(true);
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
+	$status=RemoteAccessServerTable();
 
 	echo "******* Alle Homematic Kontakte ausgeben.\n";
 	$keyword="MOTION";
@@ -60,6 +61,9 @@ $startexec=microtime(true);
 				}
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
+				{
+				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				if ( $status[$Name]["Status"] == true )
 					{
 					$rpc = new JSONRPC($Server["Adresse"]);
 					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Kontakte"], $Key["Name"], 0);
@@ -69,10 +73,11 @@ $startexec=microtime(true);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
+				}	
 		   $messageHandler = new IPSMessageHandler();
 		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 			//echo "Detect Movement anlegen.\n";
 		   $DetectMovementHandler = new DetectMovementHandler();

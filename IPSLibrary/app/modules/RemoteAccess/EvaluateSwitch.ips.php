@@ -39,16 +39,22 @@ $donotregister=false; $i=0; $maxi=600;
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
+	$status=RemoteAccessServerTable();
+	
 	$struktur=array();
 	foreach ($remServer as $Name => $Server)
 		{
-		$id=(integer)$Server["Schalter"];
-		$rpc = new JSONRPC($Server["Adresse"]);	
-		$children=$rpc->IPS_GetChildrenIDs($id);
-		foreach ($children as $oid)
-	   	{
-	   	$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-	   	}		
+		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+		if ( $status[$Name]["Status"] == true )
+			{
+			$id=(integer)$Server["Schalter"];
+			$rpc = new JSONRPC($Server["Adresse"]);	
+			$children=$rpc->IPS_GetChildrenIDs($id);
+			foreach ($children as $oid)
+				{
+				$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
+				}
+			}		
 		}
 	echo "Struktur Server :\n";
 	foreach ($struktur as $Name => $Eintraege)
@@ -79,14 +85,18 @@ $donotregister=false; $i=0; $maxi=600;
 					$i++; if ($i>$maxi) { $donotregister=true; }				
 					foreach ($remServer as $Name => $Server)
 						{
-						//print_r($Server);
-						$rpc = new JSONRPC($Server["Adresse"]);
-						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
-	   				$rpc->IPS_SetVariableCustomProfile($result,"Switch");
-						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-						$parameter.=$Name.":".$result.";";
+						echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+						if ( $status[$Name]["Status"] == true )
+							{						
+							//print_r($Server);
+							$rpc = new JSONRPC($Server["Adresse"]);
+							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
+							$rpc->IPS_SetVariableCustomProfile($result,"Switch");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							}
 						}
 					}	
 			   $messageHandler = new IPSMessageHandler();
@@ -121,14 +131,18 @@ set_time_limit(120);
 			   	{
 					$i++; if ($i>$maxi) { $donotregister=true; }				
 					foreach ($remServer as $Name => $Server)
-						{				
-						$rpc = new JSONRPC($Server["Adresse"]);
-						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
-						$rpc->IPS_SetVariableCustomProfile($result,"Switch");
-						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-						$parameter.=$Name.":".$result.";";
+						{
+						echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+						if ( $status[$Name]["Status"] == true )
+							{										
+							$rpc = new JSONRPC($Server["Adresse"]);
+							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
+							$rpc->IPS_SetVariableCustomProfile($result,"Switch");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							}
 						}
 					}
 			   $messageHandler = new IPSMessageHandler();
