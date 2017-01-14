@@ -1,10 +1,10 @@
 <?
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem oder mehreren remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
  * es wird die Struktur am remote Server aufgebaut
  *
- * zusaetzlich wird ein evaluate.inc erstellt
+ * zusaetzlich wird ein evaluate.inc erstellt, damit Variablen auf den Remote Servern schneller adressierbar sind
  *    mit function GuthabensteuerungList(), function AmisStromverbrauchList() und function ROID_List()
  *
  * function ROID_List() beinhaltet die Liste der VIS Server
@@ -48,15 +48,15 @@ $startexec=microtime(true);
 	echo $inst_modules."\n\n";
 
 	echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
-	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "Modul Guthabensteuerung ist NICHT installiert.\n"; }
+	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "   Modul Guthabensteuerung ist NICHT installiert.\n"; }
 	//if (isset ($installedModules["Gartensteuerung"])) { 	echo "  Modul Gartensteuerung ist installiert.\n"; } else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
-	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "   Modul Amis ist NICHT installiert.\n"; }
 	echo "\n";
 
 	$remote=new RemoteAccess();
 	if (isset ($installedModules["Guthabensteuerung"])) { $remote->add_Guthabensteuerung(); }
 	if (isset ($installedModules["Amis"]))	{ $remote->add_Amis(); }
-	echo "Ende Variablen zum include file honzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
+	echo "Ende Variablen zum include file hinzufÃ¼gen : ".(microtime(true)-$startexec)." Sekunden \n";
 	$remote->add_RemoteServer();
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
 	$remote->write_includeFile();

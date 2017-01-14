@@ -1,8 +1,8 @@
 <?
 
-/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
+/* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder VerÃ¤nderung Werte geschrieben werden
  *
- * Stromverbrauch variablen am Remote Server anlegen, kommen vom AMIS Modul
+ * Stromverbrauch Variablen am Remote Server anlegen, kommen vom AMIS Modul
  *
  */
 
@@ -25,26 +25,37 @@ IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMess
 /* wird von Remote Access erzeugt : */
 IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
-
+/*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
+ *  Function Ist in EvaluateVariables.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !
+ *  Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Struktur aufgebaut und in EvaluateVariables.inc gespeichert.
+ */
 $remServer=ROID_List();
 
 $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 $modules=$moduleManager->GetInstalledModules();
 
+$status=RemoteAccessServerTable();
+	
 if (isset ($modules["Amis"]))
   	{
-  	/* nur wenn AMIS installiert ist ausführen */
+  	/* nur wenn AMIS installiert ist ausfÃ¼hren */
 	echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
-	echo "---------------------------------------------------------\n\n";
-
+	//print_r($status);
+	//print_r($remServer);
 	foreach ($remServer as $Name => $Server)
 		{
-		$rpc = new JSONRPC($Server["Adresse"]);
-		$stromID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Stromverbrauch");
+		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+		if ( $status[$Name]["Status"] == true )
+			{		
+			$rpc = new JSONRPC($Server["Adresse"]);
+			$stromID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Stromverbrauch");
+			}
 		}
-
+	echo "---------------------------------------------------------\n\n";
+	echo "Struktur Server :\n";	
+	print_r($stromID);
   	
-  	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routin AmisStromverbrauchlist */
+  	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthÃ¤lt Routine AmisStromverbrauchlist */
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$stromverbrauch=AmisStromverbrauchList();
 	print_r($stromverbrauch);
@@ -65,24 +76,27 @@ if (isset ($modules["Amis"]))
 		$parameter="";
 		foreach ($remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
-			$rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
-			$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-			if ($Key["Profile"]=="~Electricity")
-			   {
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+			if ( $status[$Name]["Status"] == true )
+				{				
+				$rpc = new JSONRPC($Server["Adresse"]);
+				$result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
+				$rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
+				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+				if ($Key["Profile"]=="~Electricity")
+			   		{
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+					}
+				else
+				   {
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					}
+				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
+				$parameter.=$Name.":".$result.";";
 				}
-			else
-			   {
-				$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-				}
-			$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
-			$parameter.=$Name.":".$result.";";
-			}
+			}				
 	   $messageHandler = new IPSMessageHandler();
 	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird fÃ¼r HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 		echo "Stromverbrauch mit Parameter :".$parameter." erzeugt.\n\n";
 		}
