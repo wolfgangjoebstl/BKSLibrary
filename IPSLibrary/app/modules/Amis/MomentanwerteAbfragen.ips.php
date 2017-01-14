@@ -41,8 +41,6 @@
 		if ($meter["TYPE"]=="Amis")
 		   {
 			echo "  Create Variableset for AMIS :".$meter["NAME"]." \n";
-		   /* kann derzeit nur ein AMIS Modul installieren */
-			$variableID = $meter["WirkenergieID"];
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
 
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
@@ -56,10 +54,10 @@
 
 			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-
+			$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+			
 			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-			if (isset($com_Port) === true) { echo "Nur ein AMIS Zähler möglich\n"; break; }
 			foreach ($serialPortID as $num => $serialPort)
 			   {
 			   echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
@@ -88,28 +86,28 @@ if (Getvalue($MeterReadID))
 	if (isset($AmisReadMeterID)==true)
 		{
 		if ($AmisConfig["Type"] == "Bluetooth")
-	   	{
-	      echo "  Comport Bluetooth aktiviert. \n";
-   	   //IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
-      	COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+	   		{
+	      	echo "  Comport Bluetooth aktiviert. \n";
+   	   		//IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
+      		COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 			}
  		if ($AmisConfig["Type"] == "Serial")
-		   {
-      	echo "  Comport Serial aktiviert. \n";
-	      //IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
-   	   $config = IPS_GetConfiguration($com_Port);
-      	$remove = array("{", "}", '"');
+		   	{
+      		echo "  Comport Serial aktiviert. \n";
+	      	//IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
+   	   		$config = IPS_GetConfiguration($com_Port);
+      		$remove = array("{", "}", '"');
 			$config = str_replace($remove, "", $config);
 			$Config = explode (',',$config);
 			$AllConfig=array();
 			foreach ($Config as $configItem)
 			   {
 			   $items=explode (':',$configItem);
-		   	$Allconfig[$items[0]]=$items[1];
+		   		$Allconfig[$items[0]]=$items[1];
 			   }
 			//print_r($Allconfig);
 			if ($Allconfig["Open"]==false)
-			   {
+			   	{
 				COMPort_SetOpen($com_Port, true); //false für aus
 				//IPS_ApplyChanges($com_Port);
 				if (!@IPS_ApplyChanges($com_Port))
@@ -170,9 +168,9 @@ if (Getvalue($MeterReadID))
 			if (isset($AmisReadMeterID)==true)
 			   {
 			   if (Getvalue($AmisReadMeterID))
-			      {
-				   Setvalue($SendTimeID,time());
-				   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+			      	{
+				   	Setvalue($SendTimeID,time());
+				   	COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
 					IPS_Sleep(1550);
 					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
 					IPS_Sleep(1550);
@@ -209,7 +207,7 @@ if (Getvalue($MeterReadID))
 			if (isset($AmisReadMeterID)==true)
 			   {
 			   if (Getvalue($AmisReadMeterID))
-			      {
+			      	{
 				   Setvalue($SendTimeID,time());
 					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
 					IPS_Sleep(1550);
@@ -236,28 +234,28 @@ else
 	{
 	echo "MeterRead deaktiviert, keine Zählwerte definiert.\n";
 	if ($AmisConfig["Type"] == "Serial")
-	   {
+	   	{
 		echo "  Comport Serial deaktiviert. \n";
 		//COMPort_SetOpen($com_Port, false); //false für aus
 		//IPS_ApplyChanges($com_Port);
 		}
 		
 	if ($AmisConfig["Type"] == "Bluetooth")
-	   {
+	   	{
 		echo "  Comport Bluetooth deaktiviert. \n";
 		}
 	}
 
 if ($_IPS['SENDER']=="Execute")
-   {
+   	{
 	echo "********************************************CONFIG**************************************************************\n";
 
 	//Hier die COM-Port Instanz festlegen
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 	echo "Alle Seriellen Ports auflisten:\n";
 	foreach ($serialPortID as $num => $serialPort)
-	   {
-	   echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+	   	{
+	   	echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 		}
 	//echo "Alle I/O Instanzen\n";
 	//$alleInstanzen = IPS_GetInstanceListByModuleType(1); // nur I/O Instanzen auflisten

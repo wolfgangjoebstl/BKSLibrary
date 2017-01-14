@@ -44,7 +44,7 @@ foreach ($MeterConfig as $meter)
 	echo"-------------------------------------------------------------\n";
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-   /* ID von Wirkenergie bestimmen */
+   	/* ID von Wirkenergie bestimmen */
 	if ($meter["TYPE"]=="Amis")
 		{
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
@@ -53,36 +53,36 @@ foreach ($MeterConfig as $meter)
 		}
 	if ($meter["TYPE"]=="Homematic")
 	  	{
-	   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	   	$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	  	}
 
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
-   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+   	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
 	$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
-   IPS_SetVariableCustomProfile($letzterTagID,'kWh');
+   	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
 	IPS_SetPosition($letzterTagID, 100);
 	$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
-   IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
+   	IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
   	IPS_SetPosition($letzte7TageID, 110);
 	$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
-   IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
+   	IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
   	IPS_SetPosition($letzte30TageID, 120);
 	$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
-   IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
+   	IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
   	IPS_SetPosition($letzte360TageID, 130);
   	
 	$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
-   IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
+   	IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
   	IPS_SetPosition($letzterTagEurID, 200);
 	$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
-   IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
+   	IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
   	IPS_SetPosition($letzte7TageEurID, 210);
 	$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
-   IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
+   	IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
   	IPS_SetPosition($letzte30TageEurID, 220);
 	$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
-   IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
+   	IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
   	IPS_SetPosition($letzte360TageEurID, 230);
   	
 	$vorwert=0;
@@ -116,7 +116,7 @@ foreach ($MeterConfig as $meter)
 	echo "Ergebnis Wert letzte 360 Tage : ".$ergebnis."kWh \n";
 	SetValue($letzte360TageID,$ergebnis);
 	SetValue($letzte360TageEurID,$ergebnis*GetValue($KostenID));
-   }
+   	}
 
 if ($_IPS['SENDER'] == "Execute")
 	{
@@ -149,13 +149,13 @@ if ($_IPS['SENDER'] == "Execute")
 
 		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Homematic")
-	   	{
+	   		{
 			/* Variable ID selbst bestimmen */
 		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	   	}
+	   		}
 		else
-		   {
-			$variableID = $meter["WirkenergieID"];
+		   	{
+			if (isset($meter["WirkenergieID"]) == true ) { $variableID = $meter["WirkenergieID"]; }
 			}
 		
 		$vorwert=0;
@@ -168,7 +168,7 @@ if ($_IPS['SENDER'] == "Execute")
 		//echo "Increment :".$increment."\n";
 		$gepldauer=($endtime-$starttime)/24/60/60;
 		do {
-			/* es könnten mehr als 10.000 Werte sein
+			/* es kÃ¶nnten mehr als 10.000 Werte sein
 				Abfrage generisch lassen
 			*/
 
@@ -177,8 +177,8 @@ if ($_IPS['SENDER'] == "Execute")
 				Nicht mer als 10.000 Werte ...
 			*/
 			//print_r($werte);
-   		$anzahl=count($werte);
-	   	echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+   			$anzahl=count($werte);
+	   		echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
 			if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
 
@@ -186,14 +186,14 @@ if ($_IPS['SENDER'] == "Execute")
 			   {
 			   /* allererster Durchlauf */
 				$ersterwert=$werte['0']['Value'];
-		   	$ersterzeit=$werte['0']['TimeStamp'];
-		   	}
+		   		$ersterzeit=$werte['0']['TimeStamp'];
+		   		}
 
 			if ($anzahl<10000)
-		   	{
-	   		/* letzter Durchlauf */
-		   	$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-			   $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+		   		{
+	   			/* letzter Durchlauf */
+		   		$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+			   	$letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
 				//echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
 				//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
 				}
