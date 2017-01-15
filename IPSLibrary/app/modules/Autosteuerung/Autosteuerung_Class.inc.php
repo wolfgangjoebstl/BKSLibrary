@@ -386,7 +386,11 @@ class Autosteuerung
 		$count=count($moduleParams2);
 		echo "Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
 		
-		/* in parges werden alle Parameter erfasst und abgespeichert */
+		/* in parges werden alle Parameter erfasst und abgespeichert 
+		 *
+		 * im uebergeordneten Element steht der Befehl der aber als Unterobjekt im array wiederholt wird, vorbereiten für ; Befehl, damit können mehrere Befehle nacheinander abgearbeitet werden
+		 * 
+		 */
 		$parges=array();
 		switch ($count)
 		   {
@@ -411,7 +415,8 @@ class Autosteuerung
 					}
 				else
 				   {
-					$parges["DELAY"]=(integer)$params_three[0];
+					$parges["DELAY"][]="DELAY";
+					$parges["DELAY"][]=(integer)$params_three[0];
 					}
 		   case "2":
 		   	$params_two=explode(":",$moduleParams2[1]);
@@ -421,7 +426,8 @@ class Autosteuerung
 					}
 				else
 				   {
-					$parges["STATUS"]=$params_two[0];
+					$parges["STATUS"][]="STATUS";
+					$parges["STATUS"][]=$params_two[0];
 				   }
 	   	case "1":
 		   	$params_one=explode(":",$moduleParams2[0]);
@@ -431,13 +437,16 @@ class Autosteuerung
 					}
 				else
 				   {
-					$parges["NAME"]=$params_one[0];
+					$parges["NAME"][]="NAME";
+					$parges["NAME"][]=$params_one[0];
 					}
 		      break;
 			default:
 				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
 			   break;
 			}
+		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */	
+		asort($parges);
 		return($parges);
 		}
 

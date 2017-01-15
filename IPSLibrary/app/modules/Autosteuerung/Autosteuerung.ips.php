@@ -27,7 +27,7 @@ $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/mas
 if (!isset($moduleManager)) {
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
+	echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
 	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 }
 
@@ -43,14 +43,10 @@ foreach ($installedModules as $name=>$modules)
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
 		}
 	}
-echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
-	echo "Category App           ID:".$CategoryIdApp."\n";
-	echo "Category Data          ID:".$CategoryIdData."\n";
-	echo "Category Script        ID:".$scriptId."\n";
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -111,18 +107,19 @@ if ($_IPS['SENDER']=="Execute")
 	test();
 	/* von der Konsole aus gestartet */
 	echo "--------------------------------------------------\n";
+	echo "        EXECUTE\n";
 	echo "\nEingestellte Programme:\n\n";
 	foreach ($configuration as $key=>$entry)
-	   {
-	   echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-	   echo "Eintrag fuer : ".$key." Name : ".IPS_GetName($key)."/".IPS_GetName(IPS_GetParent($key))."\n";
-	   print_r($entry);
-	   print_r($auto->ParseCommand($entry));
-	   switch ($entry[1])
-	      {
-	      case "Switch":
-	      	$status=true;
-			   $lightManager = new IPSLight_Manager();
+		{
+		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."\n\n";
+		//print_r($entry);
+		print_r($auto->ParseCommand($entry));
+		switch ($entry[1])
+			{
+			case "Switch":
+				$status=true;
+				$lightManager = new IPSLight_Manager();
 				$moduleParams2 = explode(",",$entry[2]);
 				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
 				print_r($moduleParams2);
@@ -357,6 +354,7 @@ if ($_IPS['SENDER']=="Execute")
 
 	/*********************************************************************************************/
 
+	echo "----------------------------------------------\n";
 	echo "\nEingestellte Anwesenheitssimulation:\n\n";
    foreach($scenes as $scene)
 			{
@@ -392,6 +390,7 @@ if ($_IPS['SENDER']=="Execute")
      		}
 	/* Events registrieren. Umsetzung des Config Files */
 
+	echo "----------------------------------------------\n";
 	echo "\nProgramme für Schalter registrieren nach OID des Events.\n";
 
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
@@ -401,8 +400,13 @@ if ($_IPS['SENDER']=="Execute")
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
 
-
-
+	echo "----------------------------------------------\n";
+	echo $inst_modules."\n\n";
+	echo "----------------------------------------------\n";
+	echo "Category App           ID:".$CategoryIdApp."\n";
+	echo "Category Data          ID:".$CategoryIdData."\n";
+	echo "Category Script        ID:".$scriptId."\n";
+	
 	} /* Ende Execute */
 
 
@@ -648,6 +652,9 @@ function GutenMorgenWecker()
  *  egal ob bei einer variablenänderung oder bei einem Update werden verschiedene Befehle die im Parameterfeld stehen abgearbeitet
  *  IpsLight Name und optional ob ein, aus und am Ende noch ein delay kann ohne Spezialbefehle eingegeben werden
  *
+ * zum Beispiel:  'OnUpdate','Status','WohnzimmerKugellampe,toggle',
+ *                 siehe auch Beispiele iweiter unten 
+ *
  *  komplizierte Algorithmen werden immer mit befehl:parameter eigegeben
  *
  *  OID:12345        Definition des zu schaltenden objektes
@@ -683,9 +690,11 @@ function Status($params,$status,$simulate=false)
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	
    $delayValue=0; $speak="Status"; $switchOID=0;
-	$switch=true;  /* Erkennungsvariable ob wirklich geschalten werden soll, wird von if zb auf false gestellt */
+	
+	/* Erkennungsvariable ob wirklich geschalten werden soll, wird von if zb auf false gestellt */
+	$result["SWITCH"]=false; $switch=true;  // fuer Kompatibilitaetszwecke
    
-   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+	/* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
 	 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
 	 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
 	 *
@@ -753,6 +762,8 @@ function Status($params,$status,$simulate=false)
 
 	foreach ($parges as $befehl)
 	   {
+		//print_r($befehl);
+		/* im uebrgeordneten Element steht der Befehl der aber als Unterobjekt im array wiederholt wird, vorbereiten für ; Befehl, damit können mehrere Befehle nacheinander abgearbeitet werden */
 		switch (strtoupper($befehl[0]))
 		   {
 		   case "OID":
@@ -766,7 +777,25 @@ function Status($params,$status,$simulate=false)
 				break;
 				
 			case "STATUS":
-				/* von oben hineinkopieren */
+				if (strtoupper($befehl[1])=="TRUE") { $status=true;};
+				if (strtoupper($befehl[1])=="FALSE") { $status=false;};
+				if (strtoupper($befehl[1])=="TOGGLE")
+					{
+					if (strtoupper($params[0])=="ONUPDATE")
+						{
+						/* Bei OnUpdate herausfinden wie der Wert der Variable ist */
+						//print_r($result);
+						$lightName=$result["NAME"];
+						$lightManager = new IPSLight_Manager();
+						$switchId = $lightManager->GetSwitchIdByName($lightName);
+						$status=!$lightManager->GetValue($switchId);
+						}
+					else
+					   {
+					   /* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
+						$status=!$status;          
+						}
+					};
 				break;
 					
 		   case "ON":
@@ -872,6 +901,7 @@ function Status($params,$status,$simulate=false)
 						unset($SwitchName);
 						unset($speak);
 						$switch=false;
+						$result["SWITCH"]=false;						
 						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
 						}
 				   }
@@ -883,6 +913,7 @@ function Status($params,$status,$simulate=false)
 						unset($SwitchName);
 						unset($speak);
 						$switch=false;
+						$result["SWITCH"]=false;
 						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
 						}
 				   }
@@ -893,7 +924,7 @@ function Status($params,$status,$simulate=false)
 			}  /* ende switch */
 		} /* ende foreach */
 
-	if ((isset($SwitchName)==true) && ($switch==true))
+	if ((isset($SwitchName)==true) && ($result["SWITCH"]==true))
 		{
 		if ($status===true)
 			{
