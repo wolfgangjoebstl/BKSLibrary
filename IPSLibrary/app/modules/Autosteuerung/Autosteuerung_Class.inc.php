@@ -372,81 +372,198 @@ class Autosteuerung
 
 	function ParseCommand($params)
 		{
-		$moduleParams2=Array();
-
-	   /* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+	   	/* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
 		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
 		 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
 		 *
 		 * Parameter mit : enthalten Befehl:Parameter
 		 */
 
-	   $params2=$params[2];
-  		$moduleParams2 = explode(',', $params2);
-		$count=count($moduleParams2);
-		echo "Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
-		
-		/* in parges werden alle Parameter erfasst und abgespeichert 
+		/* in parges werden alle Parameter pro Kommando erfasst und abgespeichert 
 		 *
 		 * im uebergeordneten Element steht der Befehl der aber als Unterobjekt im array wiederholt wird, vorbereiten für ; Befehl, damit können mehrere Befehle nacheinander abgearbeitet werden
 		 * 
 		 */
 		$parges=array();
-		switch ($count)
-		   {
-	   	case "6":
-		   case "5":
-		   case "4":
-				$i=3;
-				while ($i<count($moduleParams2))
-			   	{
-					$params_more=explode(":",$moduleParams2[$i]);
-					if (count($params)>1)
-      	   		{
-						$parges=self::parseParameter($params_more,$parges);
-					   }
-					$i++;
-				   }
-	   	case "3":
-				$params_three=explode(":",$moduleParams2[2]);
-				if (count($params_three)>1)
-					{
-					$parges=self::parseParameter($params_three,$parges);
+
+	   	$params2=$params[2];
+		$commands = explode(';', $params2);
+		$Kommando=0;
+		foreach ($commands as $command)
+			{
+			$Kommando++;
+  			$moduleParams2 = explode(',', $command);
+			$count=count($moduleParams2);
+			$Eintrag=$count;
+			echo "Kommando : ".$Kommando." Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
+
+			if (strtoupper($params[1])=="VENTILATOR") 
+				{ 
+				echo "Es geht um Ventilatoren \n"; 
+				// Dieser Befehl muss erkannt werden "Ventilator,25,true,24,false"
+				switch ($count)
+				   	{
+	   				case "6":
+						$i=5;
+						while ($i<count($moduleParams2))
+			   				{
+							$params_more=explode(":",$moduleParams2[$i]);
+							if (count($params_more)>1)
+      		   					{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+								$Eintrag--;
+						   		}
+							$i++;
+					   		}					
+		   			case "5":
+						$i=4;					
+						$params_more=explode(":",$moduleParams2[$i]);
+						if (count($params_more)>1)
+   		   					{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+							$Eintrag--;
+					   		}
+						else
+							{
+							//echo "Parameter 5 ist ".$params_more[0]."\n";
+							if  (strtoupper($params_more[0])=='FALSE')
+								{
+								$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
+								}
+							else
+								{
+								$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
+								}
+							}	
+						$i--;
+		   			case "4":
+						$params_more=explode(":",$moduleParams2[$i]);
+						if (count($params_more)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+							$Eintrag--;						
+							}
+						else
+					   		{
+							$parges[$Kommando][$Eintrag][]=(integer)$params_more[0];
+							$Eintrag--;								
+							}
+	   				case "3":
+						$params_three=explode(":",$moduleParams2[2]);
+						if (count($params_three)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+							$Eintrag--;						
+							}
+						else
+							{
+							if  (strtoupper($params_more[0])=='FALSE')
+								{
+								$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
+								}
+							else
+								{
+								$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
+								}						
+							}
+			   		case "2":
+		   				$params_two=explode(":",$moduleParams2[1]);
+						if (count($params_two)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+							$Eintrag--;							
+							}
+						else
+					   		{
+							$parges[$Kommando][$Eintrag][]=$params_two[0];
+							$Eintrag--;								
+					   		}
+		   			case "1":
+			   			$params_one=explode(":",$moduleParams2[0]);
+						if (count($params_one)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
+							$Eintrag--;							
+							}
+						else
+					  		{
+							$parges[$Kommando][$Eintrag][]="NAME";
+							$parges[$Kommando][$Eintrag][]=$params_one[0];
+							$Eintrag--;								
+							}
+			      		break;
+					default:
+						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+				   		break;
 					}
-				else
-				   {
-					$parges["DELAY"][]="DELAY";
-					$parges["DELAY"][]=(integer)$params_three[0];
+				} 
+			else
+				{	
+				/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten */
+				switch ($count)
+				   	{
+	   				case "6":
+		   			case "5":
+			   		case "4":
+						$i=3;
+						while ($i<count($moduleParams2))
+				   			{
+							$params_more=explode(":",$moduleParams2[$i]);
+							if (count($params_more)>1)
+      	   						{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+								$Eintrag--;
+						   		}
+							$i++;
+					   		}
+	   				case "3":
+						$params_three=explode(":",$moduleParams2[2]);
+						if (count($params_three)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+							$Eintrag--;						
+							}
+						else
+					   		{
+							$parges[$Kommando][$Eintrag][]="DELAY";
+							$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
+							$Eintrag--;								
+							}
+			   		case "2":
+			   			$params_two=explode(":",$moduleParams2[1]);
+						if (count($params_two)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+							$Eintrag--;							
+							}
+						else
+					   		{
+							$parges[$Kommando][$Eintrag][]="STATUS";
+							$parges[$Kommando][$Eintrag][]=$params_two[0];
+							$Eintrag--;								
+				   			}
+		   			case "1":
+			   			$params_one=explode(":",$moduleParams2[0]);
+						if (count($params_one)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
+							$Eintrag--;							
+							}
+						else
+					  		{
+							$parges[$Kommando][$Eintrag][]="NAME";
+							$parges[$Kommando][$Eintrag][]=$params_one[0];
+							$Eintrag--;								
+							}
+			      		break;
+					default:
+						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+				   		break;
 					}
-		   case "2":
-		   	$params_two=explode(":",$moduleParams2[1]);
-				if (count($params_two)>1)
-					{
-					$parges=self::parseParameter($params_two,$parges);
-					}
-				else
-				   {
-					$parges["STATUS"][]="STATUS";
-					$parges["STATUS"][]=$params_two[0];
-				   }
-	   	case "1":
-		   	$params_one=explode(":",$moduleParams2[0]);
-				if (count($params_one)>1)
-					{
-					$parges=self::parseParameter($params_one,$parges);
-					}
-				else
-				   {
-					$parges["NAME"][]="NAME";
-					$parges["NAME"][]=$params_one[0];
-					}
-		      break;
-			default:
-				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-			   break;
-			}
+				}
+			ksort($parges[$Kommando]);
+			}	
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */	
-		asort($parges);
 		return($parges);
 		}
 
@@ -461,9 +578,148 @@ class Autosteuerung
 		{
 		if (count($params)>1)
 			{
-			$result[strtoupper($params[0])]=$params;
+			$result[]=strtoupper($params[0]);
+			$result[]=$params[1];
 			}
 		return($result);
+		}
+
+	/***************************************
+	 *
+	 * hier wird der Befehl umgesetzt, benötigt IPSLight
+	 *
+	 *******************************************************/
+
+	function ExecuteCommand($result,$simulate=false)
+		{
+		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+		$prgCategoryId   = IPS_GetObjectIDByIdent('Programs', $baseId);
+		
+		$resultID=@IPS_GetVariableIDByName($result["NAME"],$switchCategoryId);
+		if ($resultID==false)
+	   		{
+			$resultID=@IPS_GetVariableIDByName($result["NAME"],$groupCategoryId);
+			if ($resultID==false)
+	   			{
+				$resultID=@IPS_GetVariableIDByName($result["NAME"],$prgCategoryId);
+				if ($resultID==false)
+		   			{
+					/* Name nicht bekannt */
+					$result["IPSLIGHT"]="None";
+		   			}
+		   		else /* Wert ist ein Programm */
+		   	   		{
+		  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Programm. ');
+		  			$command.="IPSLight_SetProgramNextByName(\"".$result["NAME"]."\");";
+					$result["COMMAND"]=$command;
+					$result["IPSLIGHT"]="Program";
+	  		   		if ($simulate==false)
+  		   		   		{
+	   	  	   			IPSLight_SetProgramNextByName($result["NAME"]);
+						}
+		   	   		}
+		   		}
+		   	else   /* Wert ist eine Gruppe */
+	   	   		{
+	  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist eine Gruppe. ');
+  	   			$command.="IPSLight_SetGroupByName(\"".$result["NAME"]."\", false);";
+				$result["COMMAND"]=$command;
+				$result["IPSLIGHT"]="Group";	
+				self::switchIPSLight($result,$simulate);			   	 	
+			   	}
+			}
+		else     /* Wert ist ein Schalter */
+		   	{
+  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Schalter. ');
+     		$command.="IPSLight_SetSwitchByName(\"".$result["NAME"]."\", false);";
+			$result["COMMAND"]=$command;
+			$result["IPSLIGHT"]="Switch";
+			self::switchIPSLight($result,$simulate);			
+		  	}   /* Ende Wert ist ein Schalter */
+
+		return ($result);
+		}
+
+
+	private function switchIPSLight($result,$simulate=false)
+		{	
+  		if ($simulate==false)
+  	   		{
+			if ($result["STATUS"]===true)
+		    	{
+   				if (isset($result["ON"])==true)
+   					{
+	   				if ($result["ON"]=="FALSE")
+   						{
+						if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],false);  }
+		   		  	   	if ($result["IPSLIGHT"]=="Switch") {	IPSLight_SetSwitchByName($result["NAME"],false); }						
+				   		}
+	   				if ($result["ON"]=="TRUE")
+			   			{
+			   	  		if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],true); }
+		   		  	   	if ($result["IPSLIGHT"]=="Switch") 
+							{	
+							IPSLight_SetSwitchByName($result["NAME"],true); 
+							if (isset($result["LEVEL"])==true)
+	 							{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+								$lightManager->SetValue($switchId, $result["LEVEL"]);
+								}
+							
+							}						
+			   	  		}
+				   	}
+				else
+					{
+		   			if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],true); }
+	   		  	   	if ($result["IPSLIGHT"]=="Switch") 		
+						{	
+						IPSLight_SetSwitchByName($result["NAME"],true); 
+						if (isset($result["LEVEL"])==true)
+ 							{
+							$lightManager = new IPSLight_Manager();
+							$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+							$lightManager->SetValue($switchId, $result["LEVEL"]);
+							}						
+						}						
+			   		}
+		   	  	}
+			else
+		  		{
+   				if (isset($result["OFF"])==true)
+   			   		{
+	   		   		if ($result["OFF"]=="FALSE")
+   			      		{
+		   	  	   		if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
+	   		  	   		if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }							
+		   	  	   		}
+	   		   		if ($result["OFF"]=="TRUE")
+			  	   		{
+		  		   		if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
+	   		  	   		if ($result["IPSLIGHT"]=="Switch") 	
+							{
+							IPSLight_SetSwitchByName($result["NAME"],true); 
+							if (isset($result["LEVEL"])==true)
+ 								{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+								$lightManager->SetValue($switchId, $result["LEVEL"]);
+								}								
+							}							
+		 	   			}
+		  	  		}
+		  		else
+		  	   		{
+		 	   		if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],false); }
+   		  	   		if ($result["IPSLIGHT"]=="Switch") 		{	IPSLight_SetSwitchByName($result["NAME"],false); }							
+			   		}
+				}
+			}
+		return($result);		
 		}
 
 
