@@ -172,6 +172,8 @@
 			{
 			case "Anwesenheitserkennung":
 				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence");
+				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence");
+				IPS_SetHidden($StatusAnwesendZuletztID,true);
 				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);

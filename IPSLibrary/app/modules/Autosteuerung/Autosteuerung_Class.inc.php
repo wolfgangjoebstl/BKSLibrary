@@ -240,7 +240,7 @@ class AutosteuerungOperator
 				foreach ($operation as $oid)
 					{
 					$result = $result || GetValueBoolean($oid);
-					echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
+					//echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
 					}
 				}
 			if ($type == "AND")
@@ -248,7 +248,7 @@ class AutosteuerungOperator
 				foreach ($operation as $oid)
 					{
 					$result = $result && GetValue($oid);
-					echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
+					//echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
 					}
 				
 				}
@@ -386,13 +386,13 @@ class Autosteuerung
 		 */
 		$parges=array();
 
-	   	$params2=$params[2];
+		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
 		foreach ($commands as $command)
 			{
 			$Kommando++;
-  			$moduleParams2 = explode(',', $command);
+			$moduleParams2 = explode(',', $command);
 			$count=count($moduleParams2);
 			$Eintrag=$count;
 			echo "Kommando : ".$Kommando." Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
