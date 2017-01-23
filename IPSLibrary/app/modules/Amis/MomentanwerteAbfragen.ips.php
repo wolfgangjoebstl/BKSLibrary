@@ -14,38 +14,42 @@
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 
-	/******************************************************
-	 *
-	 *			INIT
-	 *
-	 *************************************************************/
+/******************************************************
+ *
+ *			INIT
+ *
+ *************************************************************/
 
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
-	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-	$MeterConfig = get_MeterConfiguration();
-	//print_r($MeterConfig);
+IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+$MeterConfig = get_MeterConfiguration();
+//print_r($MeterConfig);
 
-	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			
-	foreach ($MeterConfig as $meter)
+/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+$TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+
+if (Getvalue($MeterReadID))
+	{		
+	foreach ($MeterConfig as $identifier => $meter)
 		{
-		echo"-------------------------------------------------------------\n";
-		echo "Create Category/Variable for : ".$meter["NAME"]." \n";
+		//echo"-------------------------------------------------------------\n";
+		//echo "Create Category/Variable for : ".$meter["NAME"]." \n";
 		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
-		   {
-			echo "  Create Variableset for AMIS :".$meter["NAME"]." \n";
+			{
+			$amismetername=$meter["NAME"];
+			//echo "  Create Variableset for AMIS :".$meter["NAME"]." \n";
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-
+				
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
+			
 			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
@@ -59,203 +63,198 @@
 			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 			foreach ($serialPortID as $num => $serialPort)
-			   {
-			   echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-			   if (IPS_GetName($serialPort) == "AMIS Serial Port")   { $com_Port = $serialPort; }
-			   if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
+				{
+				//echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+				if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+					{ 
+					echo "  Comport Serial aktiviert. \n";
+					$com_Port = $serialPort;
+					$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+					if (IPS_InstanceExists($regVarID) )
+						{
+						//echo "        Registervariable : ".$regVarID."\n";
+						$configPort[$regVarID]["Name"]=$amismetername;	
+						$configPort[$regVarID]["ID"]=$identifier;	
+						$configPort[$regVarID]["Port"]=$serialPort;																				 
+						}
+					//IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
+					$config = IPS_GetConfiguration($com_Port);
+					$remove = array("{", "}", '"');
+					$config = str_replace($remove, "", $config);
+					$Config = explode (',',$config);
+					$AllConfig=array();
+					foreach ($Config as $configItem)
+						{
+						$items=explode (':',$configItem);
+						$Allconfig[$items[0]]=$items[1];
+						}
+					//print_r($Allconfig);
+					if ($Allconfig["Open"]==false)
+						{
+						COMPort_SetOpen($com_Port, true); //false für aus
+						//IPS_ApplyChanges($com_Port);
+						if (!@IPS_ApplyChanges($com_Port))
+							{
+							IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
+							}
+						}
+					else
+						{
+						echo "    Port ist bereits offen.\n";
+						}
+					COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
+					}	
+				if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
+					{ 
+					echo "  Comport Bluetooth aktiviert. \n";
+					$com_Port = $serialPort; 
+					$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+					if (IPS_InstanceExists($regVarID) )
+						{
+						//echo "        Registervariable : ".$regVarID."\n";
+						$configPort[$regVarID]["Name"]=$amismetername;	
+						$configPort[$regVarID]["ID"]=$identifier;
+						$configPort[$regVarID]["Port"]=$serialPort;							
+						}
+					//IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
+					COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */																	
+					}
+			}  /* ende foreach */
+				
+			switch (Getvalue($TimeSlotReadID))
+				{
+				case "15":  /* Auto */
+				case "14":  /* Auto */
+				case "13":  /* Auto */
+				case "12":  /* Auto */
+					break;
+				case "11":  /* Auto */
+					if (isset($AmisReadMeterID)==true)
+						{
+						if (Getvalue($AmisReadMeterID))
+							{
+							Setvalue($SendTimeID,time());
+							COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
+
+							$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+							$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
+							fwrite($handlelog, $ausgabewert."\r\n");
+							fclose($handlelog);
+							}
+						}
+					break;
+				case "10":  /* Auto */
+				case "9":  /* Auto */
+					break;
+				case "8":  /* Auto */
+					if (isset($AmisReadMeterID)==true)
+						{
+						if (Getvalue($AmisReadMeterID))
+							{
+							Setvalue($SendTimeID,time());
+							COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
+
+							$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+							$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
+							fwrite($handlelog, $ausgabewert."\r\n");
+							fclose($handlelog);
+ 							}
+ 						}
+					break;
+				case "7":  /* Auto */
+					writeEnergyHomematic($MeterConfig);
+					break;
+				case "6":  /* Auto */
+				case "5":  /* Auto */
+				case "4":  /* Auto */
+				case "3":  /* Auto */
+				case "2":  /* Auto */
+					break;
+				case "1":
+					if (isset($AmisReadMeterID)==true)
+						{
+						if (Getvalue($AmisReadMeterID))
+							{
+							Setvalue($SendTimeID,time());
+							COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
+							IPS_Sleep(1550);
+							COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
+					
+							$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+							$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
+			 				fwrite($handlelog, $ausgabewert."\r\n");
+ 							fclose($handlelog);
+							}
+						}
+					break;
+
+				default:
+					Setvalue($TimeSlotReadID,1);
+					break;
+				}  /* ende switch */
+			} /* endeif AMIS */	
+		}  /* ende foreach */
+		
+	}  /* endeif */
+else
+	{
+	echo "MeterRead deaktiviert, keine Zählwerte definiert.\n";
+	}
+	
+if (Getvalue($TimeSlotReadID)==15)
+	{
+	Setvalue($TimeSlotReadID,1);
+	}
+else
+	{
+	Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);	
+	}			
+
+if ($_IPS['SENDER']=="Execute")
+	{
+	echo "********************************************CONFIG**************************************************************\n";
+
+	echo  "\nGenereller Meter Read eingeschaltet : ".GetvalueFormatted($MeterReadID)."\n\n";
+		
+	echo "Konfiguration für Zaehlerauslesung: \n\n";	
+	foreach ($MeterConfig as $meter)
+		{
+		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		echo "Category/Variable for : ".$meter["NAME"]." \n";
+		if ($meter["TYPE"]=="Amis")
+			{
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */	
+			echo "  AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($AmisReadMeterID)."\n";
+			
+			//Hier die COM-Port Instanz festlegen
+			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+			foreach ($serialPortID as $num => $serialPort)
+				{
+				if (IPS_GetName($serialPort) == "AMIS Serial Port")   { $com_Port = $serialPort; }
+				if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
 				}
 			if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
-			else { echo "\n  AMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
-
+			else { echo "  AMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
 			}
 		//print_r($meter);
 		}
 
 
-$AmisConfig = get_AmisConfiguration();
-$MeterConfig = get_MeterConfiguration();
-
-echo  "\nGenereller Meter Read eingeschaltet : ".GetvalueFormatted($MeterReadID)."\n";
-if (isset($AmisReadMeterID)==true)
-	{
-	echo "AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
-	}
-
-if (Getvalue($MeterReadID))
-	{
-	if (isset($AmisReadMeterID)==true)
-		{
-		if ($AmisConfig["Type"] == "Bluetooth")
-	   		{
-	      	echo "  Comport Bluetooth aktiviert. \n";
-   	   		//IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
-      		COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
-			}
- 		if ($AmisConfig["Type"] == "Serial")
-		   	{
-      		echo "  Comport Serial aktiviert. \n";
-	      	//IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
-   	   		$config = IPS_GetConfiguration($com_Port);
-      		$remove = array("{", "}", '"');
-			$config = str_replace($remove, "", $config);
-			$Config = explode (',',$config);
-			$AllConfig=array();
-			foreach ($Config as $configItem)
-			   {
-			   $items=explode (':',$configItem);
-		   		$Allconfig[$items[0]]=$items[1];
-			   }
-			//print_r($Allconfig);
-			if ($Allconfig["Open"]==false)
-			   	{
-				COMPort_SetOpen($com_Port, true); //false für aus
-				//IPS_ApplyChanges($com_Port);
-				if (!@IPS_ApplyChanges($com_Port))
-					{
-					IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
-					}
-				}
-			else
-     			{
-				echo "    Port ist bereits offen.\n";
-				}
-			COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
-			}
-		}
-
-   switch (Getvalue($TimeSlotReadID))
-		{
-		case "15":  /* Auto */
-		   Setvalue($TimeSlotReadID,1);
-  			break;
-		case "14":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "13":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "12":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "11":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-		   if (isset($AmisReadMeterID)==true)
-		      {
-			   if (Getvalue($AmisReadMeterID))
-			      {
-				   Setvalue($SendTimeID,time());
-				   COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F010(*.7.*.*)\x03$");    /* <SOH>R2<STX>F010(*.7.*.*)<ETX> */
-
-					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F010\n";
- 					fwrite($handlelog, $ausgabewert."\r\n");
- 					fclose($handlelog);
- 					}
- 				}
-			break;
-		case "10":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "9":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "8":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			if (isset($AmisReadMeterID)==true)
-			   {
-			   if (Getvalue($AmisReadMeterID))
-			      	{
-				   	Setvalue($SendTimeID,time());
-				   	COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F001()\x03\x17");    /* <SOH>R2<STX>F001()<ETX> */
-
-					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F001\n";
- 					fwrite($handlelog, $ausgabewert."\r\n");
- 					fclose($handlelog);
- 					}
- 				}
-			break;
-		case "7":  /* Auto */
-			writeEnergyHomematic($MeterConfig);
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "6":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "5":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "4":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "3":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "2":  /* Auto */
-		   Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			break;
-		case "1":
-			Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);
-			if (isset($AmisReadMeterID)==true)
-			   {
-			   if (Getvalue($AmisReadMeterID))
-			      	{
-				   Setvalue($SendTimeID,time());
-					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x06\x30\x30\x31\x0D\x0A");    /* ACK 001 <cr><lf> auf 300 baud bleiben */
-					IPS_Sleep(1550);
-					COMPort_SendText($com_Port ,"\x01\x52\x32\x02F009()\x03\x1F");    /* <SOH>R2<STX>F009()<ETX> checksumme*/
-			
-					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
-					$ausgabewert=date("d.m.y H:i:s").";"."Abfrage R2-F009\n";
-		 			fwrite($handlelog, $ausgabewert."\r\n");
- 					fclose($handlelog);
-					}
-				}
-			break;
-
-		default:
-		   Setvalue($TimeSlotReadID,1);
-			break;
-
-		}
-		
-	}
-else
-	{
-	echo "MeterRead deaktiviert, keine Zählwerte definiert.\n";
-	if ($AmisConfig["Type"] == "Serial")
-	   	{
-		echo "  Comport Serial deaktiviert. \n";
-		//COMPort_SetOpen($com_Port, false); //false für aus
-		//IPS_ApplyChanges($com_Port);
-		}
-		
-	if ($AmisConfig["Type"] == "Bluetooth")
-	   	{
-		echo "  Comport Bluetooth deaktiviert. \n";
-		}
-	}
-
-if ($_IPS['SENDER']=="Execute")
-   	{
-	echo "********************************************CONFIG**************************************************************\n";
-
-	//Hier die COM-Port Instanz festlegen
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-	echo "Alle Seriellen Ports auflisten:\n";
+	echo "\nAlle Seriellen Ports auflisten:\n";
 	foreach ($serialPortID as $num => $serialPort)
-	   	{
-	   	echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+		{
+		echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
 		}
 	//echo "Alle I/O Instanzen\n";
 	//$alleInstanzen = IPS_GetInstanceListByModuleType(1); // nur I/O Instanzen auflisten
