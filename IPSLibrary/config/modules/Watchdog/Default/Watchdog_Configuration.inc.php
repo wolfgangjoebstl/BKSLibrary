@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup DetectMovement
-	 * @ingroup DetectMovement
+	/**@defgroup IPSWatchdog
+	 * @ingroup IPSWatchdog
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File fÃ¼r IPSWatchdog
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          IPSWatchdog_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -31,11 +31,37 @@
 	 */
 
 
-	/* Beispiele zum EInstellen:
+/* Beispiele zum EInstellen:
 
-	*/
-
-
+	function Watchdog_Configuration() {
+		return array(
+		   "Software" => array(
+		   	"Watchdog"  =>  array (
+					"Directory"        		=> 'C:/IP-Symcon/',
+					"Autostart"             => 'Yes',
+					                  ),
+		   	"VMware"  =>  array (
+					"Directory"        		=> 'C:/Program Files (x86)/VMware/VMware Player/',
+					"DirFiles"        		=> 'c:/Scripts/VirtualMachines/Windows 7 IPS/',
+					"FileName"              => 'Windows 7 IPS.vmx',
+					"Autostart"             => 'Yes',
+					                  ),
+				"iTunes"  =>  array (
+					"Directory"        		=> 'C:/Program Files/iTunes/',
+					"Autostart"             => 'Yes',
+					"SoapIP"                => '10.0.0.20',
+					                  ),
+				"Firefox"  =>  array (
+					"Directory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
+					"Url"                   => 'http://10.0.0.20:82/#37538 ',
+					"Autostart"             => 'Yes',
+					                  ),
+					              ),
+			"RemoteShutDown"     => array(
+				"Server"  =>	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.0.48:86/api/',
+				                  ),
+							);
+	}
 
 	function Sprachsteuerung_Configuration() {
 		$eventConfiguration = array(
@@ -44,6 +70,26 @@
 
 		return $eventConfiguration;
 	}
+	
+	*/
+
+	function Watchdog_Configuration() {
+		return array(
+		   "Software" => array(
+		   	"Watchdog"  =>  array (
+					"Directory"        		=> 'C:/IP-Symcon/',
+					"Autostart"             => 'Yes',
+					                  ),
+				"Firefox"  =>  array (
+					"Directory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
+					"Url"                   => 'http://10.0.0.20:82/#37538',
+					"Autostart"             => 'Yes',
+					                  ),
+				       ),
+							);
+	}
+
+
 
 
 	 
