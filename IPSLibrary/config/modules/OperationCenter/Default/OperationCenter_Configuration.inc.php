@@ -21,7 +21,7 @@
 	 * @ingroup DetectMovement
 	 * @{
 	 *
-	 * Konfigurations File f�r DetectMovement
+	 * Konfigurations File für DetectMovement
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -266,7 +266,12 @@ function LogAlles_Manufacturers() {
 			"00-11-32"      => "Synology Incorporated",
 			"00-1a-22"      => "eQ3 Entwicklung GmbH",
 			"00-17-88"   	 => "Philips Lighting BV",
+			"00-22-fb"      => "Intel Corporate",
 			"00-e0-4c"   	 => "Realtek Semiconductor Corp",
+			"10-fe-ed"      => "TP-LINK TECHNOLOGIES CO LTD",
+			"34-36-3b"      => "Apple Inc",
+			"78-ca-39"      => "Apple Inc",
+			"90-b1-c1"      => "Dell Inc",
 			"90-84-0d"      => "Apple Inc",
 			"90-e6-ba"      => "AsusTek Compunter Inc",
 			"ac-cf-23"      => "Hi-flying electronics technology Co ltd",
@@ -276,6 +281,20 @@ function LogAlles_Manufacturers() {
 			
 			         );
 			     }	
+				  
+				  
+/* Wo ist die Dropbox für den Austausch der Scriptfiles udn Statusmeldungen */
+
+	function OperationCenter_SetUp()
+		{
+		$oc_setup = array(
+			"DropboxDirectory"         	=> 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts/',    /* Dont use Blanks or any other character not suitable for filenames */
+			"DropboxStatusDirectory"      => 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/Status/',    /* Dont use Blanks or any other character not suitable for filenames */
+			"FirefoxDirectory"        		=> 'C:/Program Files (x86)/Mozilla Firefox/',
+					);
+		return $oc_setup;
+		}
+					  
 
 	/** @}*/
 ?>
