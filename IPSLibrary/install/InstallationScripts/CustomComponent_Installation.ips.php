@@ -56,36 +56,6 @@
 	echo "\n";
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
-	/* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
-	
-	$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
-   	if(!IPS_InstanceExists($AdministratorID))
-		{
-     	echo "\nWebfront Configurator Administrator  erstellen !\n";
-	  	$AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
-		IPS_SetName($AdministratorID, "Administrator");
-		$config = IPS_GetConfiguration($AdministratorID);
-		echo " Konfig: ".$config."\n";
-
-  	 	IPS_ApplyChanges($AdministratorID);
-		echo "Webfront Configurator Administrator aktiviert. \n";
-		}
-
-  	$UserID = @IPS_GetInstanceIDByName("User", 0);
-   	if(!IPS_InstanceExists($UserID))
-		{
-     	echo "\nWebfront Configurator User  erstellen !\n";
-	  	$UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
-		IPS_SetName($UserID, "User");
-		$config = IPS_GetConfiguration($UserID);
-		echo "Konfig : ".$config."\n";
-
-  	 	IPS_ApplyChanges($UserID);
-		echo "Webfront Configurator User aktiviert. \n";
-		}
-
-	echo "Administrator ID : ".$AdministratorID." User ID : ".$UserID."\n";
-
 	/* Webfront GUID herausfinden */
 	
 	echo "\n";
@@ -96,12 +66,62 @@
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+		//echo "    ".IPS_GetConfiguration($instanz)."\n";
+		//$config=json_decode(IPS_GetConfiguration($instanz));
+		//$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+		//print_r($config);
+		
+		//$ItemList = WFC_GetItems($instanz);
+		//print_r($ItemList);
+		
 		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r($result);
 		}
-		
+	//print_r($WebfrontConfigID);
+	
+	/* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
+	if ( isset($WebfrontConfigID["Administrator"]) == false )
+	//$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
+	//if(!IPS_InstanceExists($AdministratorID))
+		{
+		echo "\nWebfront Configurator Administrator  erstellen !\n";
+		$AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+		IPS_SetName($AdministratorID, "Administrator");
+		$config = IPS_GetConfiguration($AdministratorID);
+		echo " Konfig: ".$config."\n";
+
+		IPS_ApplyChanges($AdministratorID);
+		echo "Webfront Configurator Administrator aktiviert. \n";
+		}
+	else
+		{
+		$AdministratorID = $WebfrontConfigID["Administrator"];
+		}		
+
+	if ( isset($WebfrontConfigID["User"]) == false )
+		//$UserID = @IPS_GetInstanceIDByName("User", 0);
+		//if(!IPS_InstanceExists($UserID))
+		{
+		echo "\nWebfront Configurator User  erstellen !\n";
+		$UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+		IPS_SetName($UserID, "User");
+		$config = IPS_GetConfiguration($UserID);
+		echo "Konfig : ".$config."\n";
+
+		IPS_ApplyChanges($UserID);
+		echo "Webfront Configurator User aktiviert. \n";
+		}
+	else
+		{
+		$UserID = $WebfrontConfigID["User"];
+		}	
+
+	echo "\n";
+	echo "Administrator ID : ".$AdministratorID." User ID : ".$UserID."\n";
+	echo "\n";
+			
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -177,7 +197,7 @@
 	 *
 	 * Trennung in Kategorien erfolgt durch - Zeichen nach Auswertung und Nachrichten
 	 */
-	echo "\nLinks für Webfront identifizieren :\n";
+	echo "\nLinks für Webfront Administrator und User identifizieren :\n";
 	$webfront_links=array();
 	$Category=IPS_GetChildrenIDs($CategoryIdData);
 	foreach ($Category as $CategoryId)
@@ -191,7 +211,7 @@
 	   		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
 	   		}
 	   	}
-	print_r($webfront_links);
+	//print_r($webfront_links);
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -209,6 +229,10 @@
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
+		//DeleteWFCItems($WFC10_ConfigId, "root");
+		WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
+		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 
 		echo "\nWebportal LocalAccess TabPane installieren in: ".$WFC10_Path." \n";
@@ -276,6 +300,9 @@
 		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
 		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
+		WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
+		WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
+		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 		echo "\nWebportal LocalAccess TabPane installieren in: ".$WFC10User_Path." \n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
