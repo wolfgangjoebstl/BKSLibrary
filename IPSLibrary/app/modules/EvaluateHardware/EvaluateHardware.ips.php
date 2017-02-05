@@ -119,6 +119,7 @@ if ($_IPS['SENDER']=="Execute")
 	//print_r($serienNummer);
 	foreach ($serienNummer as $ccu => $geraete)
  		{
+		echo "-------------------------------------------\n";
 	 	echo "  CCU mit Name :".$ccu."\n";
  		echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
 		foreach ($geraete as $name => $anzahl)
@@ -172,6 +173,9 @@ if ($_IPS['SENDER']=="Execute")
 			   case "HUMIDITY":
 					echo "Funk-Thermometer\n";
 					break;
+			   case "CONFIG_PENDING":
+					echo "IP Funk-Schaltaktor\n";
+					break;					
 				default:
 					echo "unknown\n";
 					print_r($registerNew);
@@ -204,6 +208,32 @@ if ($_IPS['SENDER']=="Execute")
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r(IPS_GetInstance($instanz));
+		}
+
+	$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
+	$HomInstanz=sizeof($ids);
+	if($HomInstanz == 0)
+	   {
+   	echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+	   }
+	else
+		{	
+		$includefile.='function HomematicInstanzen() { return array('."\n";
+		for ($i=0;$i < $HomInstanz; $i++)
+			{
+			$ccu_name=IPS_GetName($ids[$i]);
+			echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   \n";
+			$config[$i]=json_decode(IPS_GetConfiguration($ids[$i]));
+			//$config=IPS_GetConfigurationForm($ids[$i]);
+			//echo "    ".$config."\n";
+			//Print_r($config[$i]);
+			$config[$i]->Open=0;	
+			$configString=json_encode($config[$i]);
+			$includefile.='"'.$ccu_name.'" => array('."\n         ".'"CONFIG" => \''.$configString.'\', ';
+			$includefile.="\n             ".'	),'."\n";
+			//print_r(IPS_GetInstance($instanz));
+			}
+		$includefile.=');}'."\n\n";
 		}
 
 	/************************************
