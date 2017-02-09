@@ -7,6 +7,7 @@ function HomematicInstanzen() { return array(
          "CONFIG" => '{"Open":0,"Host":"localhost","Port":5544,"RFOpen":true,"RFPort":2001,"WROpen":false,"WRPort":2000,"IPOpen":false,"IPPort":2010,"IPAddress":"10.0.0.20"}', 
              	),
 );}
+
 function FHTList() { return array(
 "Schlafzimmer FHT80b" => array(
          "OID" => 30074, 
@@ -826,13 +827,13 @@ function HomematicList() { return array(
          "Name" => "EsstischEffektlicht:Status", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
-                "UNREACH" => array(
-                              "OID" => "27691", 
-                              "Name" => "UNREACH", 
-                              "Typ" => "2",), 
                 "RSSI_DEVICE" => array(
                               "OID" => "38167", 
                               "Name" => "RSSI_DEVICE", 
+                              "Typ" => "2",), 
+                "UNREACH" => array(
+                              "OID" => "27691", 
+                              "Name" => "UNREACH", 
                               "Typ" => "2",), 
                 "UPDATE_PENDING" => array(
                               "OID" => "41573", 
@@ -1534,6 +1535,10 @@ function HomematicList() { return array(
          "Name" => "Statusanzeige:Status", 
          "CCU" => "Homematic-CCU", 
          "COID" => array(
+                "RSSI_DEVICE" => array(
+                              "OID" => "33175", 
+                              "Name" => "RSSI_DEVICE", 
+                              "Typ" => "2",), 
                 "OPERATING_VOLTAGE" => array(
                               "OID" => "50568", 
                               "Name" => "OPERATING_VOLTAGE", 
@@ -1546,17 +1551,13 @@ function HomematicList() { return array(
                               "OID" => "32056", 
                               "Name" => "RSSI_PEER", 
                               "Typ" => "2",), 
-                "CONFIG_PENDING" => array(
-                              "OID" => "46566", 
-                              "Name" => "CONFIG_PENDING", 
-                              "Typ" => "2",), 
-                "RSSI_DEVICE" => array(
-                              "OID" => "33175", 
-                              "Name" => "RSSI_DEVICE", 
-                              "Typ" => "2",), 
                 "DUTY_CYCLE" => array(
                               "OID" => "54276", 
                               "Name" => "DUTY_CYCLE", 
+                              "Typ" => "2",), 
+                "CONFIG_PENDING" => array(
+                              "OID" => "46566", 
+                              "Name" => "CONFIG_PENDING", 
                               "Typ" => "2",), 
                 "UNREACH" => array(
                               "OID" => "12814", 
@@ -1703,6 +1704,39 @@ function HomematicList() { return array(
              	),
 
       	),
+"Statusanzeige:Energie" => array(
+         "OID" => 52272, 
+         "Adresse" => "0001D3C9961817:6", 
+         "Name" => "Statusanzeige:Energie", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "CURRENT" => array(
+                              "OID" => "38087", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "38232", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "50711", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "POWER" => array(
+                              "OID" => "22720", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "51461", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER_OVERFLOW" => array(
+                              "OID" => "17437", 
+                              "Name" => "ENERGY_COUNTER_OVERFLOW", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 "Arbeitszimmer-Netzwerk-Leistungswerte" => array(
          "OID" => 30642, 
          "Adresse" => "LEQ1346339:2", 
@@ -1836,6 +1870,27 @@ function HomematicList() { return array(
              	),
 
       	),
+"Statusanzeige:Schalter" => array(
+         "OID" => 25056, 
+         "Adresse" => "0001D3C9961817:3", 
+         "Name" => "Statusanzeige:Schalter", 
+         "CCU" => "Homematic-CCU", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "22772", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "29735", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "51851", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 "EsstischEffektlicht:Energie" => array(
          "OID" => 14996, 
          "Adresse" => "0001D3C996136E:6", 
@@ -1865,60 +1920,6 @@ function HomematicList() { return array(
                 "VOLTAGE" => array(
                               "OID" => "37392", 
                               "Name" => "VOLTAGE", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Statusanzeige:Schalter" => array(
-         "OID" => 25056, 
-         "Adresse" => "0001D3C9961817:3", 
-         "Name" => "Statusanzeige:Schalter", 
-         "CCU" => "Homematic-CCU", 
-         "COID" => array(
-                "STATE" => array(
-                              "OID" => "22772", 
-                              "Name" => "STATE", 
-                              "Typ" => "2",), 
-                "SECTION" => array(
-                              "OID" => "29735", 
-                              "Name" => "SECTION", 
-                              "Typ" => "2",), 
-                "PROCESS" => array(
-                              "OID" => "51851", 
-                              "Name" => "PROCESS", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
-"Statusanzeige:Energie" => array(
-         "OID" => 52272, 
-         "Adresse" => "0001D3C9961817:6", 
-         "Name" => "Statusanzeige:Energie", 
-         "CCU" => "Homematic-CCU", 
-         "COID" => array(
-                "CURRENT" => array(
-                              "OID" => "38087", 
-                              "Name" => "CURRENT", 
-                              "Typ" => "2",), 
-                "FREQUENCY" => array(
-                              "OID" => "50711", 
-                              "Name" => "FREQUENCY", 
-                              "Typ" => "2",), 
-                "ENERGY_COUNTER" => array(
-                              "OID" => "38232", 
-                              "Name" => "ENERGY_COUNTER", 
-                              "Typ" => "2",), 
-                "POWER" => array(
-                              "OID" => "22720", 
-                              "Name" => "POWER", 
-                              "Typ" => "2",), 
-                "VOLTAGE" => array(
-                              "OID" => "51461", 
-                              "Name" => "VOLTAGE", 
-                              "Typ" => "2",), 
-                "ENERGY_COUNTER_OVERFLOW" => array(
-                              "OID" => "17437", 
-                              "Name" => "ENERGY_COUNTER_OVERFLOW", 
                               "Typ" => "2",), 
              	),
 

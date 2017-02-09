@@ -21,13 +21,14 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
-	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+
 
 	class IPSComponentSwitch_Remote extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;
-	
+		private $installedmodules;
+			
 		/**
 		 * @public
 		 *
@@ -41,7 +42,19 @@
 			$this->supportsOnTime = $supportsOnTime;
 			$this->RemoteOID    = $var1;
 			echo "InstanceID gesucht : ".$this->instanceId."\n";
-			$this->remServer	  = RemoteAccessServerTable();
+			
+			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($installedmodules["RemoteAccess"]))
+				{
+				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				$this->remServer	  = RemoteAccessServerTable();
+				}
+			else
+				{								
+				$this->remServer	  = array();
+				}
 		}
 
 		/**

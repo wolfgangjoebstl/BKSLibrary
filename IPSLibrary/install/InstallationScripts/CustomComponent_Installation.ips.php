@@ -36,7 +36,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent');
-	echo "\nRemoteAccess Version : ".$ergebnis;
+	echo "\nCustomComponent Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -397,7 +397,7 @@
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "Ereignishandler für CustomComponents aktivieren, selbe Routine auch in RemoteAccess und DtectMovement.\n";
+	echo "Ereignishandler für CustomComponents aktivieren, selbe Routine auch in RemoteAccess und DetectMovement.\n";
 	echo "\n";
 	
 	/* nur die CustomComponent Funktion registrieren */

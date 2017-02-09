@@ -170,4 +170,56 @@
 		}
 
 
+	/**********************************************************************************************
+	 * sort Homematic Devices according to Instance Name, alphabetically
+	 *
+	 */
+	
+	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
+	//Auflisten
+	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
+	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
+	$serienNummer=array();
+	$CategoryNames=array();
+	foreach ($alleInstanzen as $instanz)
+		{
+		$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+		$HM_Adresse=IPS_GetProperty($instanz,'Address');
+		$result=explode(":",$HM_Adresse);
+		//print_r($result);
+		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad(IPS_GetProperty($instanz,'Protocol'),3)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+		if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
+	   	{
+		   $serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
+		   }
+		else
+			{
+	   	$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
+		   $serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
+		   }
+		$CategoryNames[IPS_GetName($instanz)]=$instanz;
+		}
+	//print_r($serienNummer);
+	ksort($CategoryNames);
+	print_r($CategoryNames);
+
+	$Hardware_ID    = CreateCategory('Hardware',   0, 0);
+	$Homematic_ID   = CreateCategory('Homematic',  $Hardware_ID, 0);
+
+	$count=0;
+	foreach ($CategoryNames as $name => $oid)
+		{
+	   IPS_SetPosition($oid,$count);
+	   if (IPS_HasChanges($oid))
+			{
+			$status=@IPS_ApplyChanges($oid);
+   		//echo "ID : ".$Test_ID." ".$status."\n";
+			}
+		$count++;
+	   }
+
+
+
+
+
 ?>
