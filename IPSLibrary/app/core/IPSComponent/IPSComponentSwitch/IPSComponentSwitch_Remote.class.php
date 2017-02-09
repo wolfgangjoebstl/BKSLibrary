@@ -46,7 +46,7 @@
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($installedmodules["RemoteAccess"]))
+			if (isset ($this->installedmodules["RemoteAccess"]))
 				{
 				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 				$this->remServer	  = RemoteAccessServerTable();

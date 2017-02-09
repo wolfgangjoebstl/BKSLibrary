@@ -45,5 +45,18 @@
 			);
 		}
 
+		
+		/* wenn FS20 Bewegungsmelder zugeordnet werden muessen, ist an den Datenfeldern oft nicht eindeutig zu erkennen um welches Gerät es sich handelt - hier Zusatzinformatioen zur Verfügung stellen   */
+
+	function RemoteAccess_TypeFS20()
+		{
+		return array(
+		/*		"Zentralzimmer"      => 	array(
+	                              			"OID" 	=> 50080,
+	                                       "Type"   => "Motion",
+																  )            */
+						);
+		}
+
 	/** @}*/
 ?>

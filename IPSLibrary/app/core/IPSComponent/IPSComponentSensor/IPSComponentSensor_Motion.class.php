@@ -43,7 +43,7 @@
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($installedmodules["RemoteAccess"]))
+			if (isset ($this->installedmodules["RemoteAccess"]))
 				{
 				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 				$this->remServer	  = RemoteAccessServerTable();
@@ -75,7 +75,8 @@
 			if ($this->RemoteOID != Null)
 			   {
 				$params= explode(';', $this->RemoteOID);
-				print_r($params);
+				//echo "HandleEvent: \n";
+				//print_r($params);  print_r($this->remServer);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);

@@ -1,13 +1,13 @@
 <?
 
-	/**@defgroup DetectMovement
+	/**@defgroup Guthabensteuerung
 	 * @ingroup modules_weather
 	 * @{
 	 *
-	 * Script um Herauszufinden ob wer zu Hause ist
+	 * Script um herauszufinden ob die Guthaben der Simkarten schon abgelaufen sind
 	 *
 	 *
-	 * @file          DetectMovement_Installation.ips.php
+	 * @file          Guthabensteuerung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 07.12.2014<br/>
@@ -185,7 +185,7 @@
 		IPS_SetParent($tim1ID, $GuthabensteuerungID);
 		IPS_SetName($tim1ID, "Aufruftimer");
 		IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+		IPS_SetEventCyclicTimeFrom($tim1ID,2,rand(1,59),0);  /* immer um 02:xx , nicht selnbe Zeit damit keien zugriffsverletzungen auf der Drei Homepage entstehen */
 		}
 	IPS_SetEventActive($tim1ID,true);
 
