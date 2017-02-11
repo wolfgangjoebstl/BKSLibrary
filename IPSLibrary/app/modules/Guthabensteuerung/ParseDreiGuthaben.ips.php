@@ -219,7 +219,7 @@ function parsetxtfile($verzeichnis, $nummer)
 
 	$handle = @fopen($verzeichnis."/report_dreiat_".$nummer.".txt", "r");
 	$result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
-	$result4g="";$result4v="";$result4f="";
+	$result4g="";$result4v="";$result4f="";  $result7="";
 	$entgelte=false;
 	unset($tarif);
 	$postpaid=false;
@@ -294,6 +294,10 @@ function parsetxtfile($verzeichnis, $nummer)
       	//if (preg_match('/MB/i',$buffer))
 	   		{
 				$result4g=trim(substr($buffer,$startdatenguthaben,200));
+				if (preg_match('/Datenmenge/i',$result4g))
+					{
+					$result4g=substr($result4g,10,40);
+					}
 	   		//echo "*********Datenmenge : ".$result4g."\n<br>";
 				}
 
@@ -340,7 +344,13 @@ function parsetxtfile($verzeichnis, $nummer)
 					$pos=$pos+6;
 					$result5=trim(substr($buffer,$pos,$Ende-$pos+3));
 					}
-				//echo "*********Geldguthaben : ".$result5." \n<br>";
+				if ($Ende === false)   // manchmal steht das Guthaben auch in der nächsten Zeile
+					{
+					$buffer = fgets($handle, 4096);
+					$Ende=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
+					$result5=trim(substr($buffer,$Ende-3,6));
+					//echo "*********Geldguthaben : ".$result5." \n<br>";
+					}
     			}
       	if ($entgelte==true)
 	   		{
@@ -437,6 +447,7 @@ function parsetxtfile($verzeichnis, $nummer)
   		   }
   		 else   /* prepaid tarif */
   		   {
+			//echo "Prepaid : ".$nummer."  ".$result7."\n";
   		 	if ($result6=="")
 				{
 		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Guthaben:".$result5." Euro";
@@ -445,6 +456,17 @@ function parsetxtfile($verzeichnis, $nummer)
 		   	{
 		   	$ergebnis=$nummer." ".str_pad("(".$result1.")",30)." ".$result6." bis ".$result7." Guthaben:".$result5." Euro";
 				}
+			if ($result7=="")  // Nutzungszeit abgelaufen
+				{
+				if ($result4g=="")
+					{
+					$ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Guthaben:".$result5." Euro";
+					}
+				else
+					{	
+		   		$ergebnis=$nummer." ".str_pad("(".$result1.")",30)."  Datenmenge : ".$result4g." Guthaben:".$result5." Euro";
+					}
+				}			
 			}
    	 if (!feof($handle))
 		 	{

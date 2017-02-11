@@ -18,14 +18,14 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');	
-	echo "\nIWDAliveFileSkript : Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
+	//echo "\nIWDAliveFileSkript : Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
 
 	if (isset ($installedModules["OperationCenter"]))
 	   {
-		echo "Logspeicher für OperationCenter mitnutzen.\n";
+		//echo "Logspeicher für OperationCenter mitnutzen.\n";
 		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
 		$CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 		$categoryId_NachrichtenOC    = CreateCategory('Nachrichtenverlauf',   $CategoryIdDataOC, 20);
@@ -79,7 +79,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		fwrite ($datei2, $inhalt_unix);
 		fclose($datei2);
 		$result_num=time()-strtotime($result);		
-		echo "Monitor Datei vorhanden, Wert ist : ".$result." (".strtotime($result).") ".$result_num." Sekunden seit dem letzten Mal vergangen\n";
+		//echo "Monitor Datei vorhanden, Wert ist : ".$result." (".strtotime($result).") ".$result_num." Sekunden seit dem letzten Mal vergangen\n";
 		}
 	if ($result_num > 60)
 	   {
