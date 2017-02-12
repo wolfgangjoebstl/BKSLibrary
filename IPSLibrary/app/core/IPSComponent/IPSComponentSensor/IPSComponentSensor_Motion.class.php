@@ -129,7 +129,7 @@
 	   
 	   function __construct($variable=null)
 		   {
-
+		   echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
 		   $this->variable=$variable;
 		   $result=IPS_GetObject($variable);
 			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
