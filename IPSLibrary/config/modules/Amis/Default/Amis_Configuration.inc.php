@@ -21,7 +21,7 @@
 	 * @ingroup ipstwilight
 	 * @{
 	 *
-	 * Konfigurations File f�r IPSTwilight
+	 * Konfigurations File für IPSTwilight
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -30,11 +30,43 @@
 	 *
 	 */
 
+	/*  Beispiel für Konfiguration:
+	*
+	
+	function get_MeterConfiguration()
+		{
+		return array(
+			"AMIS" => array(
+				"NAME"            => 'Arbeitszimmer',
+				"TYPE"            => 'Amis',
+				"ORDER"           => 'Sub',
+				"PORT" 				=> "Serial", 	// Bluetooth oder Serial auswählen
+				"COMPORT"			=>	"COM3",		// COM Port definieren, ist nicht immer Com Port 3	
+				"VariableName"    => 'Wirkenergie',     			ist eigentlich immer Wirkenergie
+													),
+			"HM-Wohnzimmer" => array(
+				"NAME"            => 'Wohnzimmer',
+				"TYPE"            => 'Homematic',
+				"ORDER"           => 'Sub',
+				"VariableName"    => 'Wirkenergie',
+				"OID"             => 31985,
+												),
+			"HM-Arbeitszimmer-Netzwerk" => array(
+				"NAME"            => 'Arbeitszimmer-Netzwerk',
+				"TYPE"            => 'Homematic',
+				"ORDER"           => 'Sub',
+				"VariableName"    => 'Wirkenergie',
+				"OID"             => 30642,
+											),
+					);
+		}
+	 *
+	 */
 
 	function get_AmisConfiguration()
 		{ 
 		return array(
-			"Type" => "Bluetooth", /* Bluetooth oder Serial ausw�hlen */
+			"Type" => "Bluetooth", /* Bluetooth oder Serial auswählen */
          "Adresse" => "34",         /* keine Funktion, nur damit noch ein Zeile steht */
 					); 
 		}
@@ -42,26 +74,6 @@
 	function get_MeterConfiguration()
 		{
 		return array(
-			"AMIS" => array(
-				"NAME"            => 'BKS01',                   /* eintragen, das ist die Kategorie unter der die Variablen gespeichert sind, nachher nicht mehr aendern */
-				"TYPE"            => 'Amis',
-				"ORDER"           => 'Main',
-				"VariableName"    => 'Default-Wirkenergie',     /* wenn es bereits eine Variablennamen gibt, hier eintragen */
-				"WirkenergieID"   => 52333,                     /* bei AMIS meist in einem anderen Verzeichnis, haendisch eintragen */
-				"WirkleistungID"  => 11777,
-				"Periodenwerte"   => 34315
-						),
-			"HM-Keller" => array(
-				"NAME"            => 'Keller',                  /* eintragen, das ist die Kategorie unter der die Variablen gespeichert sind, nachher nicht mehr aendern */
-				"TYPE"            => 'Homematic',               /* wird abgefragt, damit man weis wie zu behandeln ist */
-				"ORDER"           => 'Sub',
-				//"VariableName"    => 'Wirkenergie',             /* herausnehmen, braucht glaub ich keiner ... */
-				//"WirkenergieID"   => 46557,							/* spaeter eintragen, sobald installiert wurden, muss geloggt werden */
-				"WirkleistungID"  => 53240,                     /* spaeter eintragen, sobald installiert wurden */
-				"HM_EnergieID"    => 57928,                     /* eintragen, von hier kommen die Werte fuer die Berechnung */
-				"HM_LeistungID"   => 33654,							/* eintragen, von hier kommen die Werte fuer die Berechnung */
-				"Periodenwerte"   => 50795
-													),				
 					);					
 		}
 
