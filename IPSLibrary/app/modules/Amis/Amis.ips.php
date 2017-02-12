@@ -173,8 +173,13 @@ if ($_IPS['SENDER'] == "Execute")
 			echo "       ".$config."\n";		
 			}
 		}
-	echo"\n";
+	echo "\n";
 	print_r($configPort);
+	echo "----------------------\n";
+	//SetValue($AMISReceiveCharID,"");
+	echo GetValue($AMISReceiveCharID);
+	echo "----------------------\n";	
+	echo GetValue($AMISReceiveChar1ID);	
 	}
 
 /******************************************************************************************************************/

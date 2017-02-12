@@ -119,7 +119,13 @@
 	   private $variablename;
 		private $MoveAuswertungID;
 		private $configuration;
-
+		private $installedmodules;
+		/* zusaetzliche Variablen für DetectMovement Funktionen, Detect Movement ergründet Bewegungen im Nachhinein */
+		private $EreignisID;
+		private $GesamtID;
+		private $GesamtCountID;
+		private $variableLogID;
+		
 	   
 	   function __construct($variable=null)
 		   {
@@ -141,10 +147,10 @@
 
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedmodules=$moduleManager->GetInstalledModules();
+			$this->installedmodules=$moduleManager->GetInstalledModules();
 
 			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
-			if (isset ($installedmodules["DetectMovement"]))
+			if (isset ($this->installedmodules["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
 				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
@@ -277,85 +283,87 @@
 	         IPS_SetEventActive($EreignisID,true);
 				}
 			//print_r($this);
-			/* Achtung die folgenden Werte haben keine Begrenzung, sicherstellen dass String Variablen nicht zu gross werden. */
-			$EreignisVerlauf=GetValue($this->EreignisID);
-			$GesamtVerlauf=GetValue($this->GesamtID);
-			$GesamtZaehler=GetValue($this->GesamtCountID);
-			if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
-			if (IPS_GetName($this->variable)=="MOTION")
+			if (isset ($this->installedmodules["DetectMovement"]))
 				{
-				if (GetValue($this->variable))
+				/* Achtung die folgenden Werte haben keine Begrenzung, sicherstellen dass String Variablen nicht zu gross werden. */
+				$EreignisVerlauf=GetValue($this->EreignisID);
+				$GesamtVerlauf=GetValue($this->GesamtID);
+				$GesamtZaehler=GetValue($this->GesamtCountID);
+				if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
+				if (IPS_GetName($this->variable)=="MOTION")
 					{
-					$result="Bewegung";
-					//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
-					$Ereignis=time().";".STAT_Bewegung.";";
-					$GesamtZaehler+=1;
-					$EreignisVerlauf.=$Ereignis;
-					$GesamtVerlauf.=$Ereignis;
+					if (GetValue($this->variable))
+						{
+						$result="Bewegung";
+						//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
+						$Ereignis=time().";".STAT_Bewegung.";";
+						$GesamtZaehler+=1;
+						$EreignisVerlauf.=$Ereignis;
+						$GesamtVerlauf.=$Ereignis;
+						}
+					else
+						{
+						$result="Ruhe";
+						//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+						$Ereignis=time().";".STAT_WenigBewegung.";";
+						$GesamtZaehler-=1;
+						if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
+						//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+						$EreignisVerlauf.=$Ereignis;
+						$GesamtVerlauf.=$Ereignis;
+						}
 					}
 				else
 					{
-					$result="Ruhe";
-					//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
-					$Ereignis=time().";".STAT_WenigBewegung.";";
-					$GesamtZaehler-=1;
-					if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
-					//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+					$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
+					if (GetValue($this->variable))
+						{
+						$result="Offen";
+						}
+					else
+						{
+						$result="Geschlossen";
+						}
 					$EreignisVerlauf.=$Ereignis;
-					$GesamtVerlauf.=$Ereignis;
 					}
-				}
-			else
-				{
-				$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
-				if (GetValue($this->variable))
-					{
-					$result="Offen";
-					}
-				else
-					{
-					$result="Geschlossen";
-					}
-				$EreignisVerlauf.=$Ereignis;
-				}
-			echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->EreignisID)." \n";
-			SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
-			echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->GesamtID)." \n";
-			SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
-			SetValue($this->GesamtCountID,$GesamtZaehler);
+				echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->EreignisID)." \n";
+				SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
+				echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->GesamtID)." \n";
+				SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
+				SetValue($this->GesamtCountID,$GesamtZaehler);
 			
-			/* Routine in Log_Motion uebernehmen */
-			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-			IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   $DetectMovementHandler = new DetectMovementHandler();
-			//print_r($DetectMovementHandler->ListEvents("Motion"));
-			//print_r($DetectMovementHandler->ListEvents("Contact"));
+				/* Routine in Log_Motion uebernehmen */
+				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+				$DetectMovementHandler = new DetectMovementHandler();
+				//print_r($DetectMovementHandler->ListEvents("Motion"));
+				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-			$groups=$DetectMovementHandler->ListGroups();
-			foreach($groups as $group=>$name)
-			   {
-			   echo "\nDetectMovement Gruppe ".$group." behandeln.\n";
-				$config=$DetectMovementHandler->ListEvents($group);
-				$status=false;
-				foreach ($config as $oid=>$params)
+				$groups=$DetectMovementHandler->ListGroups();
+				foreach($groups as $group=>$name)
 					{
-					$status=$status || GetValue($oid);
-					echo "  OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					echo "\nDetectMovement Gruppe ".$group." behandeln.\n";
+					$config=$DetectMovementHandler->ListEvents($group);
+					$status=false;
+					foreach ($config as $oid=>$params)
+						{
+						$status=$status || GetValue($oid);
+						echo "  OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+						}
+					echo "  Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+					$log=new Motion_Logging($oid);
+					$class=$log->GetComponent($oid);
+					$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)),10, '~Motion', null,false);
+					SetValue($statusID,$status);
+					$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)),0, '', null);
+					echo "  EreignisID       : ".$ereignisID." (".IPS_GetName($ereignisID).")\n";
+					echo "  Ereignis         : ".$Ereignis."\n";
+					//echo "  Size             : ".strlen(GetValue($ereignisID))."\n";
+					$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
+					//echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
+					SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
 					}
-			   echo "  Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
-				$log=new Motion_Logging($oid);
-				$class=$log->GetComponent($oid);
-				$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)),10, '~Motion', null,false);
-				SetValue($statusID,$status);
-				$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent(intval($log->EreignisID)),0, '', null);
-				echo "  EreignisID       : ".$ereignisID." (".IPS_GetName($ereignisID).")\n";
-				echo "  Ereignis         : ".$Ereignis."\n";
-				//echo "  Size             : ".strlen(GetValue($ereignisID))."\n";
-				$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
-				//echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
-				SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
-			   }
-			
+				}
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Status ".$result);
 			}

@@ -136,7 +136,7 @@ if ($_IPS['SENDER'] == "RegisterVariable")
 		if ($cutter == true)
 			{ /* Es wird ein Cutter eingesetzt, d.h. die RegisterVariable liefert bereits vollstaendige Pakete */
 			fwrite($handle, strtr($ausgabewert.$content,$trans)."\r\n");
-			$conent=chr(02).$content.chr(03);	/* Die Zeichen vom Cutter wieder dazu bauen */
+			$content=chr(02).$content.chr(03);	/* Die Zeichen die der Cutter entfernt hat wieder dazu bauen */
 			}
 		$ReceiveChar=GetValue($AMISReceiveCharID);  /* Werte von frueherer Session als Ausgangswert uebernehmen */
 		for($i=0;$i<strlen($content);$i++)
