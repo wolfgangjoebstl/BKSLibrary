@@ -9,15 +9,15 @@
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
     */
+	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 
-			
 	class IPSComponentSensor_Motion extends IPSComponentSensor {
-
 
 		private $tempObject;
 		private $RemoteOID;
@@ -40,7 +40,6 @@
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
 			
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($this->installedmodules["RemoteAccess"]))
@@ -75,8 +74,6 @@
 			if ($this->RemoteOID != Null)
 			   {
 				$params= explode(';', $this->RemoteOID);
-				//echo "HandleEvent: \n";
-				//print_r($params);  print_r($this->remServer);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
@@ -88,7 +85,7 @@
 						   {
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
 							/* bei setValueBoolean muss sichergestellt sein dass gegenüberliegender Server auch auf Boolean formattiert ist. */
 							$rpc->SetValueBoolean($roid, (boolean)$value);
 							}
@@ -118,6 +115,7 @@
 	   private $variable;
 	   private $variablename;
 		private $MoveAuswertungID;
+		
 		private $configuration;
 		private $installedmodules;
 		/* zusaetzliche Variablen für DetectMovement Funktionen, Detect Movement ergründet Bewegungen im Nachhinein */
@@ -126,14 +124,14 @@
 		private $GesamtCountID;
 		private $variableLogID;
 		
-	   
-	   function __construct($variable=null)
-		   {
-		   echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
-		   $this->variable=$variable;
-		   $result=IPS_GetObject($variable);
+	
+		function __construct($variable=null)
+			{
+			echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
+			$this->variable=$variable;
+			$result=IPS_GetObject($variable);
 			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
 				{
 				$this->variablename=IPS_GetName((integer)$result["ParentID"]);
 				}
@@ -145,10 +143,53 @@
 			$this->configuration=get_IPSComponentLoggerConfig();
 
 
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			$name="Bewegung-Nachrichten";
+			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid==false)
+				{
+				$vid = IPS_CreateCategory();
+				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetName($vid, $name);
+				IPS_SetInfo($vid, "this category was created by script. ");
+				}
+			$name="Bewegung-Auswertung";
+			$MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($MoveAuswertungID==false)
+				{
+				$MoveAuswertungID = IPS_CreateCategory();
+				IPS_SetParent($MoveAuswertungID, $CategoryIdData);
+				IPS_SetName($MoveAuswertungID, $name);
+				IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
+				}
+			$this->MoveAuswertungID=$MoveAuswertungID;
+			if ($variable<>null)
+				{
+				/* lokale Spiegelregister aufsetzen */
+					echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
+				$variabletyp=IPS_GetVariable($variable);
+				if ($variabletyp["VariableProfile"]!="")
+					{  /* Formattierung vorhanden */
+					echo " mit Wert ".GetValueFormatted($variable)."\n";
+					IPSLogger_Dbg(__file__, 'CustomComponent Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
+					}
+				else
+					{
+					echo " mit Wert ".GetValue($variable)."\n";
+					IPSLogger_Dbg(__file__, 'CustomComponent Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValue($variable));
+					}				
+				$this->variableLogID=CreateVariable($this->variablename,0,$this->MoveAuswertungID, 10,'~Motion',null,null );
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
+				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			
 			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
@@ -199,53 +240,21 @@
 				$this->GesamtCountID=$erID;
 				echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
 		   	//print_r($this);
-				}
 
-			/* Spiegelregister und dynamische Anwesenheitsauswertung */
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			//echo "Datenverzeichnis:".$CategoryIdData."\n";
-			$name="Bewegung-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==false)
-			   {
-				$vid = IPS_CreateCategory();
-   	   	IPS_SetParent($vid, $CategoryIdData);
-      		IPS_SetName($vid, $name);
-	      	IPS_SetInfo($vid, "this category was created by script. ");
-	      	}
-			$name="Bewegung-Auswertung";
-			$MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($MoveAuswertungID==false)
-			   {
-				$MoveAuswertungID = IPS_CreateCategory();
-   	   	IPS_SetParent($MoveAuswertungID, $CategoryIdData);
-     			IPS_SetName($MoveAuswertungID, $name);
-      		IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
-      		}
-			$this->MoveAuswertungID=$MoveAuswertungID;
-			if ($variable<>null)
-			   {
-			   /* lokale Spiegelregister aufsetzen */
-            echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
-   	   	$variabletyp=IPS_GetVariable($variable);
-            if ($variabletyp["VariableProfile"]!="")
-			   	{  /* Formattierung vorhanden */
-					echo " mit Wert ".GetValueFormatted($variable)."\n";
-			   	IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
-					}
-				else
-				   {
-					echo " mit Wert ".GetValue($variable)."\n";
-		   		IPSLogger_Dbg(__file__, 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID." mit Wert ".GetValue($variable));
-				   }
 	   	  	$this->variableLogID=CreateVariable($this->variablename,0,$MoveAuswertungID, 10, '~Motion', null );  /* lege Typ Boolean an */
    	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-   	   	//IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
+   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Motion');
       		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				}
+		
+			   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+		   $directories=get_IPSComponentLoggerConfig();
+		   $directory=$directories["LogDirectories"]["HumidityLog"];
+		   mkdirtree($directory);
+		   $filename=$directory.$this->variablename."_Bewegung.csv";
+		   parent::__construct($filename,$vid);
 	   	}
 	   
 		function Motion_LogValue()
@@ -639,7 +648,9 @@
 		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
 		*************************************************************************************/
 
-		public function writeEvents($comp=true,$gesamt=false)
+	public function writeEvents($comp=true,$gesamt=false)
+		{
+		if (isset ($this->installedmodules["DetectMovement"]))
 			{
 			if ($gesamt)
 			   {
@@ -660,17 +671,17 @@
 			$EventArray = explode(";", $value);
 			echo "Write Eventliste von ".IPS_GetName($this->EreignisID)." : ".$value."\n";
 
-			 /* Umsetzung des kodierten Eventarrays in lesbaren Text */
-			 $event2="";
-			 $array_size = count($EventArray);
-		 	 for ($k=1; $k<($array_size); $k++ )
-			 	 {
-		 	   $event2=$event2.date("d.m H:i",(integer)$EventArray[$k-1])." : ";
-		  	   //echo "check : ".$EventArray[$k]."\n";
+			/* Umsetzung des kodierten Eventarrays in lesbaren Text */
+			$event2="";
+			$array_size = count($EventArray);
+		 	for ($k=1; $k<($array_size); $k++ )
+				{
+				$event2=$event2.date("d.m H:i",(integer)$EventArray[$k-1])." : ";
+				//echo "check : ".$EventArray[$k]."\n";
 				switch ($EventArray[$k])
-		     	   {
-     			   case STAT_KommtnachHause:
- 	   				$event2=$event2."Kommt nach Hause";
+					{
+					case STAT_KommtnachHause:
+						$event2=$event2."Kommt nach Hause";
 		 	   		break;
  	   			case STAT_Bewegung9:
  	   				$event2=$event2."Bewegung 9 Sensoren";
@@ -723,12 +734,16 @@
 					}
 				$k++;
       		$event2=$event2."\n";
-		 	 }
+				}
 			return ($event2);
 			}
-
-	   
-	   }
+		else
+			{
+			return ("");
+			}		
+		} /* ende function */
+		
+	} /* ende class */	
 
 	/** @}*/
 ?>

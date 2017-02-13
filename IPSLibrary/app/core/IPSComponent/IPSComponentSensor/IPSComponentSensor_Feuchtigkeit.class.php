@@ -17,9 +17,7 @@
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 
-
 	class IPSComponentSensor_Feuchtigkeit extends IPSComponentSensor {
-
 
 		private $tempObject;
 		private $RemoteOID;
@@ -37,11 +35,11 @@
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
+		   //echo "Build Humidity Sensor with ".$var1.".\n";						
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
 
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($this->installedmodules["RemoteAccess"]))
@@ -53,7 +51,6 @@
 				{								
 				$this->remServer	  = array();
 				}
-
 			}
 	
 		/**
@@ -66,32 +63,30 @@
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleSensor $module){
+		public function HandleEvent($variable, $value, IPSModuleSensor $module)
+			{
 			echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			
+	   	IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' mit Wert '.$value);
+						
 			$log=new Feuchtigkeit_Logging($variable);
 			$result=$log->Feuchtigkeit_LogValue();
 
 			if ($this->RemoteOID != Null)
 			   {
-				//print_r($this);
-				//print_r($module);
-				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
 				$params= explode(';', $this->RemoteOID);
-				print_r($params);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
-					echo "Wert :".$val." Anzahl ",count($para)." \n";
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
    	         if (count($para)==2)
       	         {
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 						   {
-							echo "Server : ".$Server."\n";
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							echo "Remote OID: ".$roid."\n";
+							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
+							
 							$rpc->SetValue($roid, $value);
 							}
 						}
@@ -121,50 +116,49 @@
 		//private $variableLogID;
 		private $HumidityAuswertungID;
 		
+		private $configuration;
+		private $installedmodules;		
+		
 	   function __construct($variable)
-		   {
-		   //echo "Construct Feuchtigkeit.\n";
-		   $this->variable=$variable;
-		   $result=IPS_GetObject($variable);
-		   $this->variablename=IPS_GetName((integer)$result["ParentID"]);
-		   
+			{
+			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
+			$this->variable=$variable;
+			$result=IPS_GetObject($variable);
+			$this->variablename=IPS_GetName((integer)$result["ParentID"]);
+		
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$result=$moduleManager->GetInstalledModules();
-
-			//if (isset ($result["DetectMovement"]))
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			$name="Feuchtigkeit-Nachrichten";
+			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid==false)
 				{
-				$moduleManager_DM = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
-				//echo "Datenverzeichnis:".$CategoryIdData."\n";
-				$name="Feuchtigkeit-Nachrichten";
-				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-				if ($vid==false)
-				   {
-					$vid = IPS_CreateCategory();
-   	   		IPS_SetParent($vid, $CategoryIdData);
-      			IPS_SetName($vid, $name);
-	      		IPS_SetInfo($vid, "this category was created by script. ");
-	      		}
-				$name="Feuchtigkeit-Auswertung";
-				$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-				if ($TempAuswertungID==false)
-				   {
-					$TempAuswertungID = IPS_CreateCategory();
-   	   		IPS_SetParent($TempAuswertungID, $CategoryIdData);
-      			IPS_SetName($TempAuswertungID, $name);
-	      		IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
-	      		}
-				$this->HumidityAuswertungID=$TempAuswertungID;
-				if ($variable<>null)
-				   {
-				   /* lokale Spiegelregister aufsetzen */
-	   	   	$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10,"",null,null );
-	   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	   	   	IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity');
-	      		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-					AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
-					IPS_ApplyChanges($archiveHandlerID);
-					}
+				$vid = IPS_CreateCategory();
+				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetName($vid, $name);
+				IPS_SetInfo($vid, "this category was created by script. ");
+				}
+			$name="Feuchtigkeit-Auswertung";
+			$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($TempAuswertungID==false)
+				{
+				$TempAuswertungID = IPS_CreateCategory();
+				IPS_SetParent($TempAuswertungID, $CategoryIdData);
+				IPS_SetName($TempAuswertungID, $name);
+				IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
+				}
+			$this->HumidityAuswertungID=$TempAuswertungID;
+			if ($variable<>null)
+				{
+				/* lokale Spiegelregister aufsetzen */
+				$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10,"",null,null );
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity');
+				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
 				}
 
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
