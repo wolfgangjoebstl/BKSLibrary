@@ -17,7 +17,7 @@ $configuration=startpage_configuration();
 $temperatur=temperatur();
 $innentemperatur=innentemperatur();
 $bilderverzeichnis=$configuration["Directories"]["Pictures"];
-$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
+$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
 
 $StartPageTypeID = CreateVariableByName($parentid, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 

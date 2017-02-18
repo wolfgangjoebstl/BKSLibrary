@@ -15,6 +15,7 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 
+	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -175,11 +176,18 @@
 				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
 				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);				
-				/* wird als Unterelemnt automatisch gelinked */
+				IPS_ApplyChanges($archiveHandlerID);
+				
+				$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin");				
+				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
+				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
+				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+
+												
+				/* wird als Unterelement automatisch gelinked */
 				//$webfront_links[$StatusAnwesendID]["NAME"]="StatusAnwesend";
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];

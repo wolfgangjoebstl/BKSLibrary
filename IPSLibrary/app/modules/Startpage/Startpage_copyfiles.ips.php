@@ -1,9 +1,9 @@
 <?
 
 /*
-	 * @defgroup Startpage
+	 * @defgroup Startpage Copy Files
 	 *
-	 * Script zur Ansteuerung der Startpage
+	 * Script zur Ansteuerung der Startpage, Kopiert die Bilddateien in das Webfront
 	 *
 	 *
 	 * @file          Startpage.ips.php
@@ -19,7 +19,8 @@
 
 	$configuration=startpage_configuration();
 	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
-	$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
+	$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
+	mkdirtree($picturedir);
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -44,19 +45,20 @@ $handle=opendir ($bilderverzeichnis);
 $i=0;
 while ( false !== ($datei = readdir ($handle)) )
 	{
-	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+	if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
 		{
 		$i++;
  		$file[$i]=$datei;
 		}
 	}
 closedir($handle);
+//print_r($file);
 
 $check=array();
 $handle=opendir ($picturedir);
 while ( false !== ($datei = readdir ($handle)) )
 	{
-	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+	if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($picturedir.$datei) == false)) 
 		{
 		$check[$datei]=true;
 		}
@@ -71,6 +73,7 @@ foreach ($file as $filename)
 		$check[$filename]=false;
 		//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
 		}
+	//echo "copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
 	copy($bilderverzeichnis.$filename,$picturedir.$filename);
 	}
 

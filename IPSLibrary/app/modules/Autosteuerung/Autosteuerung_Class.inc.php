@@ -276,6 +276,12 @@ class Autosteuerung
 	var $now=0;
 	var $timeStop=0;
 	var $timeStart=0;
+	
+	var $installedmodules;
+	var $CategoryIdData;
+	var $CategoryId_Ansteuerung;
+	var $CategoryId_Anwesenheit;
+	var $CategoryId_SchalterAnwesend;
 
 	public function __construct()
 		{
@@ -298,6 +304,18 @@ class Autosteuerung
 		$this->sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
 		$this->sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
 		echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
+
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager)) 
+			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+			$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+			}
+		$this->installedModules 				= $moduleManager->GetInstalledModules();
+		$this->CategoryIdData   				= $moduleManager->GetModuleCategoryID('data');
+		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
+		$this->CategoryId_Anwesenheit			= IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
+		$this->CategoryId_SchalterAnwesend	= IPS_GetObjectIDByName("SchalterAnwesend",$this->CategoryId_Anwesenheit);		
 		}
 
 	function isitdark()
@@ -583,6 +601,204 @@ class Autosteuerung
 			}
 		return($result);
 		}
+
+	/*
+	 * Auch das Evaluieren kann gemeinsam erfolgen, es gibt nur kleine Unterschiede zwischen den Befehlen 
+	 *
+	 ************************************/
+
+	function EvaluateCommand($befehl,$result=array())
+		{
+		echo "Befehl ".$befehl[0]." abarbeiten.\n";
+		
+			switch (strtoupper($befehl[0]))
+				{
+				case "OID":			/* muss noch implementiert werden , wie switch name nur statt IPSLight die OID */
+					$result["OID"]=$befehl[1];
+					break;
+				
+				case "NAME":		/* IPSLight identifier der verändert wird */
+					$SwitchName=$befehl[1];
+					$result["NAME"]=$SwitchName;
+					break;
+				
+				case "STATUS":    /* für die Kurzbefehle, wird normalerweise durch die Befehle On und OFF ersetzt */
+					if (strtoupper($befehl[1])=="TRUE") { $status=true;};
+					if (strtoupper($befehl[1])=="FALSE") { $status=false;};
+					if (strtoupper($befehl[1])=="TOGGLE")
+						{
+						if (strtoupper($params[0])=="ONUPDATE")
+							{
+							/* Bei OnUpdate herausfinden wie der Wert der Variable ist */
+							//print_r($result);
+							$lightName=$result["NAME"];
+							$switchId = $lightManager->GetSwitchIdByName($lightName);
+							$status=!$lightManager->GetValue($switchId);
+							}
+						else
+							{
+							/* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
+							$status=!$status;          
+							}
+						};
+					$result["STATUS"]=$status;	
+					break;
+					
+				case "ON":
+					$value_on=strtoupper($befehl[1]);
+					$i=2;
+					while ($i<count($befehl))
+						{
+						if (strtoupper($befehl[$i])=="MASK")
+							{
+							$mask_on=$befehl[$i++];
+							$result["ON_MASK"]=$mask_on;
+							}
+						$i++;
+						}
+					switch ($value_on)
+						{
+						case "TRUE":
+						case "FALSE":	
+							$result["ON"]=$value_on;
+							break;
+						case "TOGGLE":
+							/* Befehl noch nicht implementiert */	
+						default:
+							break;
+						}		
+					break;
+				
+				case "OFF":
+					$value_off=strtoupper($befehl[1]);
+					$i=2;
+					while ($i<count($befehl))
+						{
+						if (strtoupper($befehl[$i])=="MASK")
+							{
+							$mask_off=$befehl[$i++];
+							$result["OFF_MASK"]=$mask_off;
+							}
+						$i++;
+						}
+					switch ($value_off)
+						{
+						case "TRUE":
+						case "FALSE":	
+							$result["OFF"]=$value_off;
+							break;
+						case "TOGGLE":
+							/* Befehl noch nicht implementiert */	
+						default:
+							break;
+						}							
+					break;
+				
+				case "DELAY":
+					$delayValue=(integer)$befehl[1];
+					$result["DELAY"]=$delayValue;
+					break;
+				
+				case "ENVELOPE":
+					$envelValue=(integer)$befehl[1];
+					$result["ENVEL"]=$envelValue;
+					break;
+				
+				case "LEVEL":
+					$levelValue=(integer)$befehl[1];
+					$result["LEVEL"]=$levelValue;
+					break;
+				
+				case "SPEAK":
+					$speak=$befehl[1];
+					$result["SPEAK"]=$speak;
+					break;
+				
+				case "MONITOR":
+					$monitor=$befehl[1];
+					if ($monitor=="STATUS")
+						{
+						if ($status==true)
+							{
+							$result="ON";
+							$result["MONITOR"]=$monitor;
+							}
+						else
+							{
+							$result="OFF";
+							$result["MONITOR"]=$monitor;
+							}
+						}
+					else
+						{
+						$result["MONITOR"]=$monitor;
+						}
+					break;
+				
+				case "MUTE":
+					$mute=$befehl[1];
+					if ($mute=="STATUS")
+						{
+						if ($status==true)
+							{
+							$mute="ON";
+							$result["MONITOR"]=$mute;
+							}
+						else
+							{
+							$mute="OFF";
+							$result["MONITOR"]=$mute;
+							}
+						}
+					else
+						{
+						$result["MUTE"]=$mute;
+						}
+					break;
+				
+				case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
+					$cond=strtoupper($befehl[1]);
+					$result["COND"]=$cond;
+					if ($cond=="LIGHT")
+						{
+						/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+						if ($auto->isitdark())
+							{
+							unset($SwitchName);
+							unset($speak);
+							$switch=false;
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
+							}
+						}
+					elseif ($cond=="DARK")
+						{
+						/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+				  		if ($auto->isitlight())
+							{
+							unset($SwitchName);
+							unset($speak);
+							$switch=false;
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
+							}
+						}
+					else
+						{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+						$checkId = $lightManager->GetSwitchIdByName($cond);
+						$statusCheck=$lightManager->GetValue($checkId);
+						$result["SWITCH"]=$statusCheck;	
+						}			
+					break;
+				
+				default:
+					echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+		   		break;				
+				}  /* ende switch */
+
+		return ($result);
+		}	
+
 
 	/***************************************
 	 *

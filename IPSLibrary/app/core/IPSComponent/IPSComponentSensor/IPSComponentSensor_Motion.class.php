@@ -117,7 +117,6 @@
 		private $MoveAuswertungID;
 		
 		private $configuration;
-		private $installedmodules;
 		/* zusaetzliche Variablen für DetectMovement Funktionen, Detect Movement ergründet Bewegungen im Nachhinein */
 		private $EreignisID;
 		private $GesamtID;
@@ -149,13 +148,13 @@
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			$name="Bewegung-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==false)
+			$vid1=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid1==false)
 				{
-				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
-				IPS_SetName($vid, $name);
-				IPS_SetInfo($vid, "this category was created by script. ");
+				$vid1 = IPS_CreateCategory();
+				IPS_SetParent($vid1, $CategoryIdData);
+				IPS_SetName($vid1, $name);
+				IPS_SetInfo($vid1, "this category was created by script. ");
 				}
 			$name="Bewegung-Auswertung";
 			$MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
@@ -229,7 +228,6 @@
 					$erID=CreateVariable($variablename,3,$mdID, 10, '', null );
 					echo "  Ereignisspeicher aufsetzen        : ".$erID." \n";
 					$this->EreignisID=$erID;
-					parent::__construct($filename,$vid);
 					}
   	      	$variablename="Gesamt_Ereignisspeicher";
 	      	$erID=CreateVariable($variablename,3,$mdID, 0, '', null );
@@ -254,7 +252,7 @@
 		   $directory=$directories["LogDirectories"]["HumidityLog"];
 		   mkdirtree($directory);
 		   $filename=$directory.$this->variablename."_Bewegung.csv";
-		   parent::__construct($filename,$vid);
+		   parent::__construct($filename);
 	   	}
 	   
 		function Motion_LogValue()
@@ -263,15 +261,16 @@
 			$variabletyp=IPS_GetVariable($this->variable);
 			if ($variabletyp["VariableProfile"]!="")
 				{  /* Formattierung vorhanden */
+				$resultLog=GetValueFormatted($this->variable);
 				echo " mit formattiertem Wert : ".GetValueFormatted($this->variable)."\n";
 		   	IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
 				}
 			else
 			   {
+				$resultLog=GetValue($this->variable);				
 				echo " mit Wert : ".GetValue($this->variable)."\n";
 	   		IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValue($this->variable));
 			   }
-			//$resultf=GetValueFormatted($this->variable);
 			$result=GetValue($this->variable);
 			$delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
 			if ($result==true)
@@ -303,7 +302,7 @@
 					{
 					if (GetValue($this->variable))
 						{
-						$result="Bewegung";
+						$resultlog="Bewegung";
 						//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
 						$Ereignis=time().";".STAT_Bewegung.";";
 						$GesamtZaehler+=1;
@@ -312,7 +311,7 @@
 						}
 					else
 						{
-						$result="Ruhe";
+						$resultlog="Ruhe";
 						//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
 						$Ereignis=time().";".STAT_WenigBewegung.";";
 						$GesamtZaehler-=1;
@@ -327,11 +326,11 @@
 					$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
 					if (GetValue($this->variable))
 						{
-						$result="Offen";
+						$resultlog="Offen";
 						}
 					else
 						{
-						$result="Geschlossen";
+						$resultlog="Geschlossen";
 						}
 					$EreignisVerlauf.=$Ereignis;
 					}
@@ -372,9 +371,10 @@
 					//echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
 					SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
 					}
-				}
-			parent::LogMessage($result);
-			parent::LogNachrichten($this->variablename." mit Status ".$result);
+				} /* Ende Detect Motion */
+				
+			parent::LogMessage($resultlog);
+			parent::LogNachrichten($this->variablename." mit Status ".$resultlog);
 			}
 			
 		/**
