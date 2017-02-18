@@ -1,6 +1,6 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
+ //FÃ¼gen Sie hier Ihren Skriptquellcode ein
 
 
 /********************************************* CONFIG *******************************************************/
@@ -11,11 +11,13 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-//IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+//IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine VerÃ¤nderung einer Variablen trotzdem updaten */
 
+$configuration=startpage_configuration();
 $temperatur=temperatur();
 $innentemperatur=innentemperatur();
-$bilderverzeichnis=IPS_GetKernelDir()."webfront\\user\\pictures\\";
+$bilderverzeichnis=$configuration["Directories"]["Pictures"];
+$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
 
 $StartPageTypeID = CreateVariableByName($parentid, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -25,18 +27,27 @@ $vid = @IPS_GetVariableIDByName("SwitchScreen",$parentid);
 
 /******************************************* INIT ******************************************************/
 
+/* 
+ * Das Archiv fÃ¼r die Fotos ist das bilderverzeichnis, picturedir wird fÃ¼r die Darstellung aus dem Webfront verwendet
+ * da eine relative Adressierung auf den Server adressiert und eine absolute Adressierung auf den Client geht.
+ *
+ */
+
 $file=array();
-$handle=opendir ($bilderverzeichnis);
+$handle=opendir ($picturedir);
 //echo "Verzeichnisinhalt:<br>";
 $i=0;
-while ($datei = readdir ($handle))
+while ( false !== ($datei = readdir ($handle)) )
 	{
-	$i++;
- 	$file[$i]=$datei;
+	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+		{
+		$i++;
+ 		$file[$i]=$datei;
+		}
 	}
 closedir($handle);
 $maxcount=count($file);
-$showfile=rand(3,$maxcount-1);
+$showfile=rand(1,$maxcount-1);
 //echo $maxcount."  ".$showfile."\n";;
 //print_r($file);
 
@@ -105,7 +116,7 @@ $wert='<!DOCTYPE html >
 <head>
 
   <meta charset="UTF-8"/>
-  <title>Design über CSS pur - Beispiel</title>
+  <title>Design Ã¼ber CSS pur - Beispiel</title>
 
   <style type="text/css">
 
@@ -179,10 +190,10 @@ $wert.='
 			 </table>
      </td>
     <td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
-    <td><strg>'.number_format($temperatur, 1, ",", "" ).'°C</strg></td>
+    <td><strg>'.number_format($temperatur, 1, ",", "" ).'Â°C</strg></td>
   	 <td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle>
 	   <tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>
-		<tr> <td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr>
+		<tr> <td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'Â°C</innen> </td> </tr>
     </tablestyle> </table> </td>
   	</tr>
 </table>
@@ -205,37 +216,37 @@ $wert.='
 				  <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td>
 				</tr>
 				<tr>
-   			   <td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td>
-					<td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td>
+   			   <td><aussen>'.number_format($temperatur, 1, ",", "" ).'Â°C</aussen></td>
+					<td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'Â°C</innen> </td>
 				</tr>
 			   <tr id="temp">
 				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
+					  <tr> <td> <temperatur>'.number_format($todayTempMin, 1, ",", "" ).'Â°C</temperatur></td> </tr>
+  					  <tr> <td><temperatur>'.number_format($todayTempMax, 1, ",", "" ).'Â°C</temperatur></td> </tr>
   					  </table>
 				  </td>
 				  <td align="center"> <img src="'.$today.'" alt="Heute" > </td>
 				</tr>
 			   <tr id="temp">
 				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
+					  <tr> <td> <temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'Â°C</temperatur></td> </tr>
+  					  <tr> <td><temperatur>'.number_format($tomorrowTempMax, 1, ",", "" ).'Â°C</temperatur></td> </tr>
   					  </table>
 				  </td>
 				  <td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td>
 				</tr>
 			   <tr id="temp">
 				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
+					  <tr> <td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'Â°C</temperatur></td> </tr>
+  					  <tr> <td><temperatur>'.number_format($tomorrow1TempMax, 1, ",", "" ).'Â°C</temperatur></td> </tr>
   					  </table>
 				  </td>
 				  <td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td>
 				</tr>
 			   <tr id="temp">
 				  <td> <table>
-					  <tr> <td style="background-color:#efefef;right:50px;"> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
+					  <tr> <td style="background-color:#efefef;right:50px;"> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'Â°C</temperatur></td> </tr>
+  					  <tr> <td><temperatur>'.number_format($tomorrow2TempMax, 1, ",", "" ).'Â°C</temperatur></td> </tr>
   					  </table>
 				  <td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td>
 				</tr>

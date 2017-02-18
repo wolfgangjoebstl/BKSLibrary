@@ -104,9 +104,12 @@
 	IPS_SetVariableCustomProfile($vid, $pname); // Ziel-ID, P-Name
 
 	// Add Scripts, they have auto install
-	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
-	IPS_SetScriptTimer($scriptIdStartpage, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage', $CategoryIdApp);
+	IPS_SetScriptTimer($scriptIdStartpage, 8*60*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 	IPS_RunScript($scriptIdStartpage);
+	$scriptIdStartpageWrite   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
+	IPS_SetScriptTimer($scriptIdStartpageWrite, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+	IPS_RunScript($scriptIdStartpageWrite);
 
 	IPS_SetVariableCustomAction($vid, $scriptIdStartpage);
 	
