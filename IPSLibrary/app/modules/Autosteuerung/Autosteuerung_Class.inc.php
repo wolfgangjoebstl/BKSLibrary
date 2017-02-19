@@ -280,8 +280,8 @@ class Autosteuerung
 	var $installedmodules;
 	var $CategoryIdData;
 	var $CategoryId_Ansteuerung;
-	var $CategoryId_Anwesenheit;
-	var $CategoryId_SchalterAnwesend;
+	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
+	var $CategoryId_SchalterAnwesend, $CategoryId_SchalterAlarm;
 
 	public function __construct()
 		{
@@ -314,8 +314,25 @@ class Autosteuerung
 		$this->installedModules 				= $moduleManager->GetInstalledModules();
 		$this->CategoryIdData   				= $moduleManager->GetModuleCategoryID('data');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
-		$this->CategoryId_Anwesenheit			= IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
-		$this->CategoryId_SchalterAnwesend	= IPS_GetObjectIDByName("SchalterAnwesend",$this->CategoryId_Anwesenheit);		
+		$this->CategoryId_Anwesenheit			= @IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
+		if ($this->CategoryId_Anwesenheit === false)
+			{
+			$this->CategoryId_SchalterAnwesend	= false;
+			}
+		else
+			{	
+			$this->CategoryId_SchalterAnwesend	= IPS_GetObjectIDByName("SchalterAnwesend",$this->CategoryId_Anwesenheit);
+			}		
+		$this->CategoryId_Alarm			= @IPS_GetObjectIDByName("Alarmanlage",$this->CategoryId_Ansteuerung);
+		if ($this->CategoryId_Alarm === false)
+			{
+			$this->CategoryId_SchalterAlarm	= false;
+			}
+		else
+			{	
+			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
+			}		
+
 		}
 
 	function isitdark()
@@ -407,13 +424,14 @@ class Autosteuerung
 		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
+		echo "Gesamter Befehl : ".$params2."\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;
 			$moduleParams2 = explode(',', $command);
 			$count=count($moduleParams2);
 			$Eintrag=$count;
-			echo "Kommando : ".$Kommando." Insgesamt ".$count." Parameter erkannt in \"".$params2."\" \n";
+			echo "   Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
 
 			if (strtoupper($params[1])=="VENTILATOR") 
 				{ 
@@ -611,190 +629,178 @@ class Autosteuerung
 		{
 		echo "Befehl ".$befehl[0]." abarbeiten.\n";
 		
-			switch (strtoupper($befehl[0]))
-				{
-				case "OID":			/* muss noch implementiert werden , wie switch name nur statt IPSLight die OID */
-					$result["OID"]=$befehl[1];
-					break;
-				
-				case "NAME":		/* IPSLight identifier der verändert wird */
-					$SwitchName=$befehl[1];
-					$result["NAME"]=$SwitchName;
-					break;
-				
-				case "STATUS":    /* für die Kurzbefehle, wird normalerweise durch die Befehle On und OFF ersetzt */
-					if (strtoupper($befehl[1])=="TRUE") { $status=true;};
-					if (strtoupper($befehl[1])=="FALSE") { $status=false;};
-					if (strtoupper($befehl[1])=="TOGGLE")
+		switch (strtoupper($befehl[0]))
+			{
+			case "OID":			/* muss noch implementiert werden , wie switch name nur statt IPSLight die OID */
+				$result["OID"]=$befehl[1];
+				break;
+			case "NAME":		/* IPSLight identifier der verändert wird */
+				$SwitchName=$befehl[1];
+				$result["NAME"]=$SwitchName;
+				break;
+			case "STATUS":    /* für die Kurzbefehle, wird normalerweise durch die Befehle On und OFF ersetzt */
+				if (strtoupper($befehl[1])=="TRUE") { $status=true;};
+				if (strtoupper($befehl[1])=="FALSE") { $status=false;};
+				if (strtoupper($befehl[1])=="TOGGLE")
+					{
+					if (strtoupper($params[0])=="ONUPDATE")
 						{
-						if (strtoupper($params[0])=="ONUPDATE")
-							{
-							/* Bei OnUpdate herausfinden wie der Wert der Variable ist */
-							//print_r($result);
-							$lightName=$result["NAME"];
-							$switchId = $lightManager->GetSwitchIdByName($lightName);
-							$status=!$lightManager->GetValue($switchId);
-							}
-						else
-							{
-							/* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
-							$status=!$status;          
-							}
-						};
-					$result["STATUS"]=$status;	
-					break;
-					
-				case "ON":
-					$value_on=strtoupper($befehl[1]);
-					$i=2;
-					while ($i<count($befehl))
-						{
-						if (strtoupper($befehl[$i])=="MASK")
-							{
-							$mask_on=$befehl[$i++];
-							$result["ON_MASK"]=$mask_on;
-							}
-						$i++;
-						}
-					switch ($value_on)
-						{
-						case "TRUE":
-						case "FALSE":	
-							$result["ON"]=$value_on;
-							break;
-						case "TOGGLE":
-							/* Befehl noch nicht implementiert */	
-						default:
-							break;
-						}		
-					break;
-				
-				case "OFF":
-					$value_off=strtoupper($befehl[1]);
-					$i=2;
-					while ($i<count($befehl))
-						{
-						if (strtoupper($befehl[$i])=="MASK")
-							{
-							$mask_off=$befehl[$i++];
-							$result["OFF_MASK"]=$mask_off;
-							}
-						$i++;
-						}
-					switch ($value_off)
-						{
-						case "TRUE":
-						case "FALSE":	
-							$result["OFF"]=$value_off;
-							break;
-						case "TOGGLE":
-							/* Befehl noch nicht implementiert */	
-						default:
-							break;
-						}							
-					break;
-				
-				case "DELAY":
-					$delayValue=(integer)$befehl[1];
-					$result["DELAY"]=$delayValue;
-					break;
-				
-				case "ENVELOPE":
-					$envelValue=(integer)$befehl[1];
-					$result["ENVEL"]=$envelValue;
-					break;
-				
-				case "LEVEL":
-					$levelValue=(integer)$befehl[1];
-					$result["LEVEL"]=$levelValue;
-					break;
-				
-				case "SPEAK":
-					$speak=$befehl[1];
-					$result["SPEAK"]=$speak;
-					break;
-				
-				case "MONITOR":
-					$monitor=$befehl[1];
-					if ($monitor=="STATUS")
-						{
-						if ($status==true)
-							{
-							$result="ON";
-							$result["MONITOR"]=$monitor;
-							}
-						else
-							{
-							$result="OFF";
-							$result["MONITOR"]=$monitor;
-							}
+						/* Bei OnUpdate herausfinden wie der Wert der Variable ist */
+						//print_r($result);
+						$lightName=$result["NAME"];
+						$switchId = $lightManager->GetSwitchIdByName($lightName);
+						$status=!$lightManager->GetValue($switchId);
 						}
 					else
 						{
+						/* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
+						$status=!$status;          
+						}
+					};
+				$result["STATUS"]=$status;	
+				break;
+			case "ON":
+				$value_on=strtoupper($befehl[1]);
+				$i=2;
+				while ($i<count($befehl))
+					{
+					if (strtoupper($befehl[$i])=="MASK")
+						{
+						$mask_on=$befehl[$i++];
+						$result["ON_MASK"]=$mask_on;
+						}
+					$i++;
+					}
+				switch ($value_on)
+					{
+					case "TRUE":
+					case "FALSE":	
+						$result["ON"]=$value_on;
+						break;
+					case "TOGGLE":
+						/* Befehl noch nicht implementiert */	
+					default:
+						break;
+					}		
+				break;
+			case "OFF":
+				$value_off=strtoupper($befehl[1]);
+				$i=2;
+				while ($i<count($befehl))
+					{
+					if (strtoupper($befehl[$i])=="MASK")
+						{
+						$mask_off=$befehl[$i++];
+						$result["OFF_MASK"]=$mask_off;
+						}
+					$i++;
+					}
+				switch ($value_off)
+					{
+					case "TRUE":
+					case "FALSE":	
+						$result["OFF"]=$value_off;
+						break;
+					case "TOGGLE":
+						/* Befehl noch nicht implementiert */	
+					default:
+						break;
+					}							
+				break;
+			case "DELAY":
+				$delayValue=(integer)$befehl[1];
+				$result["DELAY"]=$delayValue;
+				break;
+			case "ENVELOPE":
+				$envelValue=(integer)$befehl[1];
+				$result["ENVEL"]=$envelValue;
+				break;
+			case "LEVEL":
+				$levelValue=(integer)$befehl[1];
+				$result["LEVEL"]=$levelValue;
+				break;
+			case "SPEAK":
+				$speak=$befehl[1];
+				$result["SPEAK"]=$speak;
+				break;
+			case "MONITOR":
+				$monitor=$befehl[1];
+				if ($monitor=="STATUS")
+					{
+					if ($status==true)
+						{
+						$result="ON";
 						$result["MONITOR"]=$monitor;
 						}
-					break;
-				
-				case "MUTE":
-					$mute=$befehl[1];
-					if ($mute=="STATUS")
+					else
 						{
-						if ($status==true)
-							{
-							$mute="ON";
-							$result["MONITOR"]=$mute;
-							}
-						else
-							{
-							$mute="OFF";
-							$result["MONITOR"]=$mute;
-							}
+						$result="OFF";
+						$result["MONITOR"]=$monitor;
+						}
+					}
+				else
+					{
+					$result["MONITOR"]=$monitor;
+					}
+				break;
+			case "MUTE":
+				$mute=$befehl[1];
+				if ($mute=="STATUS")
+					{
+					if ($status==true)
+						{
+						$mute="ON";
+						$result["MONITOR"]=$mute;
 						}
 					else
 						{
-						$result["MUTE"]=$mute;
+						$mute="OFF";
+						$result["MONITOR"]=$mute;
 						}
-					break;
-				
-				case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
-					$cond=strtoupper($befehl[1]);
-					$result["COND"]=$cond;
-					if ($cond=="LIGHT")
+					}
+				else
+					{
+					$result["MUTE"]=$mute;
+					}
+				break;
+			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
+				$cond=strtoupper($befehl[1]);
+				$result["COND"]=$cond;
+				if ($cond=="LIGHT")
+					{
+					/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+					if ($auto->isitdark())
 						{
-						/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-						if ($auto->isitdark())
-							{
-							unset($SwitchName);
-							unset($speak);
-							$switch=false;
-							$result["SWITCH"]=false;						
-							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
-							}
+						unset($SwitchName);
+						unset($speak);
+						$switch=false;
+						$result["SWITCH"]=false;						
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
 						}
-					elseif ($cond=="DARK")
+					}
+				elseif ($cond=="DARK")
+					{
+					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+					if ($auto->isitlight())
 						{
-						/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-				  		if ($auto->isitlight())
-							{
-							unset($SwitchName);
-							unset($speak);
-							$switch=false;
-							$result["SWITCH"]=false;
-							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
-							}
+						unset($SwitchName);
+						unset($speak);
+						$switch=false;
+						$result["SWITCH"]=false;
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
 						}
-					else
-						{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-						$checkId = $lightManager->GetSwitchIdByName($cond);
-						$statusCheck=$lightManager->GetValue($checkId);
-						$result["SWITCH"]=$statusCheck;	
-						}			
-					break;
-				
-				default:
-					echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-		   		break;				
-				}  /* ende switch */
+					}
+				else
+					{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+					$checkId = $lightManager->GetSwitchIdByName($cond);
+					$statusCheck=$lightManager->GetValue($checkId);
+					$result["SWITCH"]=$statusCheck;	
+					}			
+				break;
+			default:
+				echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+				break;				
+			}  /* ende switch */
 
 		return ($result);
 		}	
@@ -810,73 +816,163 @@ class Autosteuerung
 		{
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
 		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-		$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-		$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-		$prgCategoryId   = IPS_GetObjectIDByIdent('Programs', $baseId);
+		$switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
+		$groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
+		$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);
 		
-		$resultID=@IPS_GetVariableIDByName($result["NAME"],$switchCategoryId);
-		if ($resultID==false)
-	   		{
-			$resultID=@IPS_GetVariableIDByName($result["NAME"],$groupCategoryId);
-			if ($resultID==false)
-	   			{
-				$resultID=@IPS_GetVariableIDByName($result["NAME"],$prgCategoryId);
-				if ($resultID==false)
-		   			{
-					/* Name nicht bekannt */
-					$result["IPSLIGHT"]="None";
-		   			}
-		   		else /* Wert ist ein Programm */
-		   	   		{
-		  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Programm. ');
-		  			$command.="IPSLight_SetProgramNextByName(\"".$result["NAME"]."\");";
-					$result["COMMAND"]=$command;
-					$result["IPSLIGHT"]="Program";
-	  		   		if ($simulate==false)
-  		   		   		{
-	   	  	   			IPSLight_SetProgramNextByName($result["NAME"]);
-						}
-		   	   		}
-		   		}
-		   	else   /* Wert ist eine Gruppe */
-	   	   		{
-	  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist eine Gruppe. ');
-  	   			$command.="IPSLight_SetGroupByName(\"".$result["NAME"]."\", false);";
-				$result["COMMAND"]=$command;
-				$result["IPSLIGHT"]="Group";	
-				self::switchIPSLight($result,$simulate);			   	 	
-			   	}
+		if (isset($result["OID"]) == true)
+			{
+			$result["IPSLIGHT"]="None";
+			self::switchObject($result,$simulate);					
 			}
-		else     /* Wert ist ein Schalter */
-		   	{
-  			IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Schalter. ');
-     		$command.="IPSLight_SetSwitchByName(\"".$result["NAME"]."\", false);";
-			$result["COMMAND"]=$command;
-			$result["IPSLIGHT"]="Switch";
-			self::switchIPSLight($result,$simulate);			
-		  	}   /* Ende Wert ist ein Schalter */
-
+		else
+			{	/* wenn nicht die OID, dann ist der Name bekannt */
+			$resultID=@IPS_GetVariableIDByName($result["NAME"],$switchCategoryId);
+			if ($resultID==false)
+				{
+				$resultID=@IPS_GetVariableIDByName($result["NAME"],$groupCategoryId);
+				if ($resultID==false)
+					{
+					$resultID=@IPS_GetVariableIDByName($result["NAME"],$prgCategoryId);
+					if ($resultID==false)
+						{
+						/* Name nicht bekannt */
+						$result["IPSLIGHT"]="None";
+						}
+					else /* Wert ist ein Programm */
+						{
+						IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Programm. ');
+						$command.="IPSLight_SetProgramNextByName(\"".$result["NAME"]."\");";
+						$result["COMMAND"]=$command;
+						$result["IPSLIGHT"]="Program";
+						if ($simulate==false)
+							{
+							IPSLight_SetProgramNextByName($result["NAME"]);
+							}
+						}
+					}
+				else   /* Wert ist eine Gruppe */
+					{
+					IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist eine Gruppe. ');
+					$command.="IPSLight_SetGroupByName(\"".$result["NAME"]."\", false);";
+					$result["COMMAND"]=$command;
+					$result["IPSLIGHT"]="Group";	
+					self::switchObject($result,$simulate);			   	 	
+					}
+				}
+			else     /* Wert ist ein Schalter */
+				{
+				IPSLogger_Dbg(__file__, 'Wert '.$result["NAME"].' ist ein Schalter. ');
+				$command.="IPSLight_SetSwitchByName(\"".$result["NAME"]."\", false);";
+				$result["COMMAND"]=$command;
+				$result["IPSLIGHT"]="Switch";
+				self::switchObject($result,$simulate);			
+				}   /* Ende Wert ist ein Schalter */
+			}
 		return ($result);
 		}
 
+	private function switchObject($result,$simulate=false)
+		{	
+		if ($simulate==false)
+			{
+			if ($result["STATUS"]===true)
+				{
+				if (isset($result["ON"])==true)
+					{
+					if ($result["ON"]=="FALSE")
+						{
+						if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],false);  }
+						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }												
+						}
+					if ($result["ON"]=="TRUE")
+						{
+						if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],true); }
+						if ($result["IPSLIGHT"]=="Switch") 
+							{	
+							IPSLight_SetSwitchByName($result["NAME"],true); 
+							if (isset($result["LEVEL"])==true)
+	 							{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+								$lightManager->SetValue($switchId, $result["LEVEL"]);
+								}
+							}
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],true); }													
+						}
+					}
+				else
+					{
+					if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],true); }
+					if ($result["IPSLIGHT"]=="Switch") 		
+						{	
+						IPSLight_SetSwitchByName($result["NAME"],true); 
+						if (isset($result["LEVEL"])==true)
+ 							{
+							$lightManager = new IPSLight_Manager();
+							$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+							$lightManager->SetValue($switchId, $result["LEVEL"]);
+							}						
+						}
+					if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],true); }													
+					}
+				}
+			else
+				{
+				if (isset($result["OFF"])==true)
+					{
+					if ($result["OFF"]=="FALSE")
+						{
+						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
+						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }														
+						}
+					if ($result["OFF"]=="TRUE")
+						{
+						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
+						if ($result["IPSLIGHT"]=="Switch") 	
+							{
+							IPSLight_SetSwitchByName($result["NAME"],true); 
+							if (isset($result["LEVEL"])==true)
+ 								{
+								$lightManager = new IPSLight_Manager();
+								$switchId = $lightManager->GetSwitchIdByName($result["NAME"]."#Level");
+								$lightManager->SetValue($switchId, $result["LEVEL"]);
+								}								
+							}
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }															
+						}
+					}
+				else
+					{
+					if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],false); }
+					if ($result["IPSLIGHT"]=="Switch") 		{	IPSLight_SetSwitchByName($result["NAME"],false); }
+					if ($result["IPSLIGHT"]=="None") 		{	SetValue($result["OID"],false); }												
+					}
+				}
+			}
+		return($result);		
+		}
 
+	/* bereits obsolet, da nur für IPSLight funktioniert */
 	private function switchIPSLight($result,$simulate=false)
 		{	
-  		if ($simulate==false)
-  	   		{
+		if ($simulate==false)
+			{
 			if ($result["STATUS"]===true)
-		    	{
-   				if (isset($result["ON"])==true)
-   					{
-	   				if ($result["ON"]=="FALSE")
-   						{
+				{
+				if (isset($result["ON"])==true)
+					{
+					if ($result["ON"]=="FALSE")
+						{
 						if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],false);  }
-		   		  	   	if ($result["IPSLIGHT"]=="Switch") {	IPSLight_SetSwitchByName($result["NAME"],false); }						
-				   		}
-	   				if ($result["ON"]=="TRUE")
-			   			{
-			   	  		if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],true); }
-		   		  	   	if ($result["IPSLIGHT"]=="Switch") 
+						if ($result["IPSLIGHT"]=="Switch") {	IPSLight_SetSwitchByName($result["NAME"],false); }						
+						}
+					if ($result["ON"]=="TRUE")
+						{
+						if ($result["IPSLIGHT"]=="Group")  {	IPSLight_SetGroupByName($result["NAME"],true); }
+						if ($result["IPSLIGHT"]=="Switch") 
 							{	
 							IPSLight_SetSwitchByName($result["NAME"],true); 
 							if (isset($result["LEVEL"])==true)
@@ -887,12 +983,12 @@ class Autosteuerung
 								}
 							
 							}						
-			   	  		}
-				   	}
+						}
+					}
 				else
 					{
-		   			if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],true); }
-	   		  	   	if ($result["IPSLIGHT"]=="Switch") 		
+					if ($result["IPSLIGHT"]=="Group") 		{	IPSLight_SetGroupByName($result["NAME"],true); }
+					if ($result["IPSLIGHT"]=="Switch") 		
 						{	
 						IPSLight_SetSwitchByName($result["NAME"],true); 
 						if (isset($result["LEVEL"])==true)
@@ -902,21 +998,21 @@ class Autosteuerung
 							$lightManager->SetValue($switchId, $result["LEVEL"]);
 							}						
 						}						
-			   		}
-		   	  	}
+					}
+				}
 			else
-		  		{
-   				if (isset($result["OFF"])==true)
-   			   		{
-	   		   		if ($result["OFF"]=="FALSE")
-   			      		{
-		   	  	   		if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
-	   		  	   		if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }							
-		   	  	   		}
-	   		   		if ($result["OFF"]=="TRUE")
-			  	   		{
-		  		   		if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
-	   		  	   		if ($result["IPSLIGHT"]=="Switch") 	
+				{
+				if (isset($result["OFF"])==true)
+					{
+					if ($result["OFF"]=="FALSE")
+						{
+						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
+						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }							
+						}
+					if ($result["OFF"]=="TRUE")
+						{
+						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
+						if ($result["IPSLIGHT"]=="Switch") 	
 							{
 							IPSLight_SetSwitchByName($result["NAME"],true); 
 							if (isset($result["LEVEL"])==true)

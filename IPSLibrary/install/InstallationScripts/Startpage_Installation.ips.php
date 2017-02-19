@@ -111,7 +111,7 @@
 	IPS_SetScriptTimer($scriptIdStartpageWrite, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 	IPS_RunScript($scriptIdStartpageWrite);
 
-	IPS_SetVariableCustomAction($vid, $scriptIdStartpage);
+	IPS_SetVariableCustomAction($vid, $scriptIdStartpageWrite);
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation

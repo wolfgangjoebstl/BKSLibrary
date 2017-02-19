@@ -711,6 +711,7 @@ if ($_IPS['SENDER']=="Execute")
 function setEventTimer($name,$delay,$command)
 	{
 	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
+	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.$command);	
   	$now = time();
    $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
    if ($EreignisID === false)
@@ -748,20 +749,54 @@ function Anwesenheit($params,$status,$simulate=false)
 		
 		foreach ($Kommando as $befehl)
 			{
-			echo "Bearbeite Befehl ".$befehl[0]."\n";
+			//echo "Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
 				case "ALARM":
-					$command[$entry]["OID"]=$befehl[1];
+					if ($auto->CategoryId_SchalterAlarm !== false)
+						{
+						$command[$entry]["OID"]=$auto->CategoryId_SchalterAlarm;
+						//echo "Befehl ALARM : ".$auto->CategoryId_SchalterAlarm." \n";
+						}
+					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
+						{
+						$command[$entry]["STATUS"]=true;
+						}
+					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
+						{
+						$command[$entry]["STATUS"]=false;
+						}
 					break;
 				case "ANWESEND":
-					$command[$entry]["OID"]=$auto->CategoryId_SchalterAnwesend;
+					if ($auto->CategoryId_SchalterAnwesend !== false)
+						{
+						$command[$entry]["OID"]=$auto->CategoryId_SchalterAnwesend;
+						//echo "Befehl ANWESEND : ".$auto->CategoryId_SchalterAnwesend." \n";
+						}					
+					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
+						{
+						$command[$entry]["STATUS"]=true;
+						}
+					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
+						{
+						$command[$entry]["STATUS"]=false;
+						}
 					break;
 				default:
 					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry]);
 					break;
 				}	
 			} /* Ende foreach Befehl */
+		$result=$auto->ExecuteCommand($command[$entry]);
+		if (isset($result["DELAY"])==true)
+			{
+			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
+			print_r($result);
+			if ($simulate==false)
+				{
+				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+				}
+			}
 		$entry++;	
 		} /* Ende foreach Kommando */	
 	
@@ -1103,7 +1138,7 @@ function Status($params,$status,$simulate=false)
 				
 				default:
 					echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-		   		break;				
+					break;				
 				}  /* ende switch */
 			} /* ende foreach Befehl*/
 
@@ -1115,58 +1150,58 @@ function Status($params,$status,$simulate=false)
 				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
 				}
 			else
-	 			{
-		 		/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
-			  	IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
+				{
+				/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
+				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
 				}
 			
 			if (isset($result["LEVEL"])==true)
-			 	{
-		  		IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
+				{
+				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
 				}
 
 			$result=$auto->ExecuteCommand($result,$simulate);
 
 			/* Ein Delaywert ist definiert, den Eventtimer mit dem entsprechenden vorher eingesammelten Befehl starten */
-		   	if ($delayValue>0)
-   	   			{
-   				if ($simulate==false)
-   	   				{
-		      		setEventTimer($SwitchName,$delayValue,$result["COMMAND"]);
+			if ($delayValue>0)
+				{
+				if ($simulate==false)
+					{
+					setEventTimer($SwitchName,$delayValue,$result["COMMAND"]);
 					}
-	   			}
+				}
 			} // Ende isset Switchname
 
 		if (isset($monitor)==true)
-	   		{
-      		if (function_exists('monitorOnOff')==true)
-         		{
+			{
+			if (function_exists('monitorOnOff')==true)
+				{
 				monitorOnOff($result["MONITOR"]);
-         		}
-      		}
+				}
+			}
 
 		if (isset($result["OID"])==true)
-	   		{
-	   		/* Kein IPSLight Objekt sondern normales Objekt das gesetzt wird */
-	   
-	   		}
-	   
+			{
+			/* Kein IPSLight Objekt sondern normales Objekt das gesetzt wird */
+			}
+	
 		/* Sprachausgabe durchführen, immer letzter befehl, sonst ist die Reaktion zu langsam */
-  		if (($simulate==false) && (isset($mute)==false))
-  	   		{
+		if (($simulate==false) && (isset($mute)==false))
+			{
 			if (isset($speak)==true)
-		   		{
-		  		if ($speak_config["Parameter"][0]=="On") {
+				{
+				if ($speak_config["Parameter"][0]=="On") 
+					{
 					if ($speak != "Status")
 						{
 						tts_play(1,$speak,'',2);    // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2
 						}
 					}
-  	      		}
+				}
 			/* Debug Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
 			If ($params[0]=="OnUpdate")
 				{
-		  		if ($speak_config["Parameter"][1]=="Debug") {
+				if ($speak_config["Parameter"][1]=="Debug") {
 					tts_play(1,"Taster ".$speak."wurde gedrueckt.",'',2);
 					}
 				}
@@ -1181,7 +1216,7 @@ function Status($params,$status,$simulate=false)
 					}
 				else
 					{
-			  		if ($speak_config["Parameter"][1]=="Debug")  {
+					if ($speak_config["Parameter"][1]=="Debug")  {
 						tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
 						}
 					}
