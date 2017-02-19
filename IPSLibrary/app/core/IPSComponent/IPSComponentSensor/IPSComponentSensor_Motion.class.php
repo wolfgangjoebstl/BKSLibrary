@@ -302,7 +302,7 @@
 					{
 					if (GetValue($this->variable))
 						{
-						$resultlog="Bewegung";
+						$resultLog="Bewegung";
 						//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
 						$Ereignis=time().";".STAT_Bewegung.";";
 						$GesamtZaehler+=1;
@@ -311,7 +311,7 @@
 						}
 					else
 						{
-						$resultlog="Ruhe";
+						$resultLog="Ruhe";
 						//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
 						$Ereignis=time().";".STAT_WenigBewegung.";";
 						$GesamtZaehler-=1;
@@ -326,11 +326,11 @@
 					$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
 					if (GetValue($this->variable))
 						{
-						$resultlog="Offen";
+						$resultLog="Offen";
 						}
 					else
 						{
-						$resultlog="Geschlossen";
+						$resultLog="Geschlossen";
 						}
 					$EreignisVerlauf.=$Ereignis;
 					}
@@ -373,8 +373,8 @@
 					}
 				} /* Ende Detect Motion */
 				
-			parent::LogMessage($resultlog);
-			parent::LogNachrichten($this->variablename." mit Status ".$resultlog);
+			parent::LogMessage($resultLog);
+			parent::LogNachrichten($this->variablename." mit Status ".$resultLog);
 			}
 			
 		/**

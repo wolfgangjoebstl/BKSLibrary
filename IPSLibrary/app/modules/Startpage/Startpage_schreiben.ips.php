@@ -207,7 +207,7 @@ $wert.='
 <table border="0" cellspacing="10">
 <tr>
    <td>
-		<img src="user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
+		<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
    </td>
    <td>
 		<table border="0" bgcolor="#f1f1f1">
