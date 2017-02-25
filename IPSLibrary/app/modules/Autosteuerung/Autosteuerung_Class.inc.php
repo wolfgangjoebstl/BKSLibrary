@@ -285,6 +285,7 @@ class Autosteuerung
 	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
 	var $CategoryId_SchalterAnwesend, $CategoryId_SchalterAlarm;
 	var $lightManager;
+	var $switchCategoryId, $groupCategoryId , $prgCategoryId;
 
 	public function __construct()
 		{
@@ -335,7 +336,12 @@ class Autosteuerung
 			{	
 			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
 			}
-		$this->lightManager = new IPSLight_Manager();			
+		$this->lightManager = new IPSLight_Manager();
+		
+		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+		$this->switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
+		$this->groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
+		$this->prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);			
 
 		}
 
@@ -697,21 +703,30 @@ class Autosteuerung
 
 	function EvaluateCommand($befehl,$result=array(),$simulate=false)
 		{
-		echo "       Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
+		echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
 		
 		switch (strtoupper($befehl[0]))
 			{
 			case "SOURCE":
-				$result["SOURCE"]=$befehl[1];
+				$result["SOURCE"]=strtoupper($befehl[1]);
 				break;
 			case "OID":			/* wie switch name nur statt IPSLight die OID */
 				$result["OID"]=$befehl[1];
 				break;
 			case "NAME":		/* IPSLight identifier */
 				$result["NAME"]=$befehl[1];
-				$lightName=$result["NAME"];
-				$switchId = $this->lightManager->GetSwitchIdByName($lightName);
-				$result["VALUE"]=$this->lightManager->GetValue($switchId);
+				$resultID=@IPS_GetVariableIDByName($result["NAME"],$this->switchCategoryId);
+				if ($resultID === false) 
+					{
+					echo "      ".$result["NAME"]." ist kein IPSLight Switch.\n";
+					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
+					$result["VALUE"]=$this->lightManager->GetValue($switchId);					
+					}
+				else
+					{	
+					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"]);
+					$result["VALUE"]=$this->lightManager->GetValue($switchId);
+					}
 				break;
 			case "ON#COLOR":
 			case "ON#LEVEL":
@@ -900,11 +915,6 @@ class Autosteuerung
 	function ExecuteCommand($result,$simulate=false)
 		{
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
-		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-		$switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
-		$groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
-		$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);
-								
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 		
 		if ($simulate==false)
@@ -926,13 +936,13 @@ class Autosteuerung
 					{
 					$name=$result["NAME"];
 					}			
-				$resultID=@IPS_GetVariableIDByName($name,$switchCategoryId);
+				$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
 				if ($resultID==false)
 					{
-					$resultID=@IPS_GetVariableIDByName($name,$groupCategoryId);
+					$resultID=@IPS_GetVariableIDByName($name,$this->groupCategoryId);
 					if ($resultID==false)
 						{
-						$resultID=@IPS_GetVariableIDByName($name,$prgCategoryId);
+						$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
 						if ($resultID==false)
 							{
 							/* Name nicht bekannt */
@@ -983,13 +993,15 @@ class Autosteuerung
 		}
 
 	private function switchObject($result,$simulate=false)
-		{	
+		{
+		IPSLogger_Dbg(__file__, 'SwitchObject :  '.json_encode($result));	
 		if ($simulate==false)			/* Bei simulate nicht schalten */
 			{
 			if ($result["SWITCH"]===true)
 				{
 				if (isset($result["ON"])==true)
 					{
+					$result["ON"]=strtoupper($result["ON"]);
 					if ($result["ON"]=="FALSE")
 						{
 						if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],false);  }
@@ -1007,6 +1019,7 @@ class Autosteuerung
 					}
 				if (isset($result["OFF"])==true)
 					{
+					$result["OFF"]=strtoupper($result["OFF"]);					
 					if ($result["OFF"]=="FALSE")
 						{
 						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }

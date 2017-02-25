@@ -150,7 +150,7 @@ if ($_IPS['SENDER']=="Variable")
 		      break;
 			/*********************************************************************************************/
 		   case "Ventilator":
-		      Ventilator();
+		      Ventilator($params,$value);
 				break;
 			/*********************************************************************************************/
 		   case "Status":
@@ -402,6 +402,10 @@ if ($_IPS['SENDER']=="Execute")
 			case "Status":
 				$status=Status($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
 				break;
+			case "Ventilator":
+				print_r($entry);
+				$status=Ventilator($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				break;				
 			}
 		echo "Zusammengefasst :".json_encode($status)." \n";
 			
@@ -533,11 +537,11 @@ function Anwesenheit($params,$status,$simulate=false)
 						}
 					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
 						{
-						$command[$entry]["STATUS"]=true;
+						$command[$entry]["ON"]="true";
 						}
 					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
 						{
-						$command[$entry]["STATUS"]=false;
+						$command[$entry]["OFF"]="false";
 						}
 					break;
 				case "ANWESEND":
@@ -548,11 +552,11 @@ function Anwesenheit($params,$status,$simulate=false)
 						}					
 					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
 						{
-						$command[$entry]["STATUS"]=true;
+						$command[$entry]["ON"]="true";
 						}
 					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
 						{
-						$command[$entry]["STATUS"]=false;
+						$command[$entry]["OFF"]="false";
 						}
 					break;
 				default:
@@ -805,10 +809,13 @@ function Ventilator1()
 
 /*********************************************************************************************/
 
-function Ventilator()
+function Ventilator($params,$status,$simulate=false)
 	{
-	global $params,$categoryId_Autosteuerung,$speak_config;
+	global $categoryId_Autosteuerung,$speak_config;
 
+	IPSLogger_Dbg(__file__, 'Aufruf Routine Ventilator mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	echo 'Aufruf Routine Ventilator mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status."\n";
+	
 	$VentilatorsteuerungID = IPS_GetObjectIDByName("Ventilatorsteuerung",$categoryId_Autosteuerung);
 
   	$moduleParams2 = explode(',', $params[2]);
