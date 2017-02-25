@@ -386,6 +386,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "--------------------------------------------------\n";
 	echo "        EXECUTE\n";
 	echo "\nEingestellte Programme:\n\n";
+	$i=0;	// testwert um zu sehen wir die Programm reagieren
 	foreach ($configuration as $key=>$entry)
 		{
 		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
@@ -395,243 +396,15 @@ if ($_IPS['SENDER']=="Execute")
 		switch ($entry[1])
 			{
 			case "Anwesenheit":
-	         $status=Anwesenheit($entry,0,true);  // Simulation aktiv
-	         echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
-				print_r($status);
+				$status=Anwesenheit($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
 				break;
-			case "Switch":
-				$status=true;
-				$lightManager = new IPSLight_Manager();
-				$moduleParams2 = explode(",",$entry[2]);
-				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
-				print_r($moduleParams2);
-				/* wenn nur ein oder zwei Parameter, dann ignorieren */
-				$parges=array();
-				if (count($moduleParams2)>2)
-				   {
-				   /* Default Werte setzen */
-				   $notmask_on=0;
-					$mask_on=0xFFFFFF;
-				   $notmask_off=0;
-					$mask_off=0xFFFFFF;
-					$params_oid=explode(":",$moduleParams2[0]);
-					if (count($params_oid)>1)
-					   {
-						$parges[$params_oid[0]]=$params_oid;
-					   }
-					else
-					   {
-					   $lightManager = new IPSLight_Manager();
-						$switchOID = @$lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
-						if ($switchOID==false)
-						   {
-						   $switchOID=$moduleParams2[0];
-						   }
-					   }
-					$params_on=explode(":",$moduleParams2[1]);
-					echo "Param 2 1 ON: ".count($params_on)."\n";
-					print_r($params_on);
-					if (count($params_on)>1)
-					   {
-						$parges[$params_on[0]]=$params_on;
-					   }
-					else
-					   {
-					   $value_on=$moduleParams2[1];
-					   }
-					$params_off=explode(":",$moduleParams2[2]);
-					echo "Param 2 2 OFF: ".count($params_off)."\n";
-					print_r($params_off);
-					if (count($params_off)>1)
-					   {
-						$parges[$params_off[0]]=$params_off;
-					   }
-					else
-					   {
-					   $value_off=$moduleParams2[2];
-					   }
-					$i=3;
-					while ($i<count($moduleParams2))
-					   {
-						$params=explode(":",$moduleParams2[$i]);
-						if (count($params_off)>1)
-						   {
-							$parges[$params[0]]=$params;
-						   }
-						$i++;
-					   }
-					echo "Ein grosses Array mit allen Befehlen:\n";
-					print_r($parges);
-					foreach ($parges as $befehl)
-					   {
-					   print_r($befehl);
-						switch (strtoupper($befehl[0]))
-						   {
-						   case "OID":
-							   $switchOID=$befehl[1];
-								break;
-						   case "ON":
-						      $value_on=$befehl[1];
-						      $i=2;
-						      while ($i<count($befehl))
-						         {
-						         if (strtoupper($befehl[$i])=="MASK")
-						            {
-						            $mask_on=$befehl[$i++];
-						            }
-						         $i++;
-						         }
-								break;
-						   case "OFF":
-						      $value_off=$befehl[1];
-						      $i=2;
-						      while ($i<count($befehl))
-						         {
-						         if (strtoupper($befehl[$i])=="MASK")
-						            {
-						            $mask_off=$befehl[$i++];
-						            }
-						         $i++;
-						         }
-								break;
-							}
-						} /* ende foreach */
-						if ($status==true)
-							{
-						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_on) | ($value_on & $mask_on);
-							//$lightManager->SetRGB($switchOID, $new);
-							}
-						else
-					      {
-						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_off) | ($value_off & $mask_off);
-							//$lightManager->SetRGB($switchOID, $new);
-							}
-						printf("Ergebnis OID: %x ON: %x MASK: %x OFF: %x MASK: %x \n",$switchOID,$value_on,$mask_on,$value_off,$mask_off);
-					}
-				break;
-
-	      case "Status":
-	         $status=Status($entry,0,true);  // Simulation aktiv
-	         print_r($status);
-				break;
-
-	      case "StatusRGB":
-	         $status=StatusRGB($entry,0,true);  // Simulation aktiv
-	         print_r($status);
-
-/*
-	         echo "************************\n";
-	      	$status=true;
-			   $lightManager = new IPSLight_Manager();
-				$moduleParams2 = explode(",",$entry[2]);
-				echo "Anzahl Parameter in Param2: ".count($moduleParams2)."\n";
-				print_r($moduleParams2);
-				// wenn nur ein oder zwei Parameter, dann ignorieren
-				$parges=array();
-				if (count($moduleParams2)>2)
-				   {
-				   // Default Werte setzen
-				   $notmask_on=0;
-					$mask_on=0xFFFFFF;
-				   $notmask_off=0;
-					$mask_off=0xFFFFFF;
-					$params_oid=explode(":",$moduleParams2[0]);
-					if (count($params_oid)>1)
-					   {
-						$parges=parseParameter($params_oid,$parges);
-						}
-					else
-					   {
-					   $lightManager = new IPSLight_Manager();
-						$switchOID = @$lightManager->GetSwitchIdByName($moduleParams2[0].'#Color');
-						if ($switchOID==false)
-						   {
-						   $switchOID=$moduleParams2[0];
-						   }
-					   }
-					$params_on=explode(":",$moduleParams2[1]);
-					echo "Param 2 1 ON: ".count($params_on)."\n";
-					print_r($params_on);
-					if (count($params_on)>1)
-					   {
-						$parges=parseParameter($params_on,$parges);
-					   }
-					else
-					   {
-					   $value_on=$moduleParams2[1];
-					   }
-					$params_off=explode(":",$moduleParams2[2]);
-					echo "Param 2 2 OFF: ".count($params_off)."\n";
-					print_r($params_off);
-					if (count($params_off)>1)
-					   {
-						$parges=parseParameter($params_off,$parges);
-					   }
-					else
-					   {
-					   $value_off=$moduleParams2[2];
-					   }
-					$i=3;
-					while ($i<count($moduleParams2))
-					   {
-						$params=explode(":",$moduleParams2[$i]);
-						if (count($params)>1)
-         				{
-							$parges=parseParameter($params,$parges);
-						   }
-						$i++;
-					   }
-					echo "Ein grosses Array mit allen Befehlen:\n";
-					print_r($parges);
-					foreach ($parges as $befehl)
-					   {
-					   print_r($befehl);
-						switch (strtoupper($befehl[0]))
-						   {
-						   case "OID":
-							   $switchOID=$befehl[1];
-								break;
-						   case "ON":
-						      $value_on=$befehl[1];
-						      $i=2;
-						      while ($i<count($befehl))
-						         {
-						         if (strtoupper($befehl[$i])=="MASK")
-						            {
-						            $mask_on=$befehl[$i++];
-						            }
-						         $i++;
-						         }
-								break;
-						   case "OFF":
-						      $value_off=$befehl[1];
-						      $i=2;
-						      while ($i<count($befehl))
-						         {
-						         if (strtoupper($befehl[$i])=="MASK")
-						            {
-						            $mask_off=$befehl[$i++];
-						            }
-						         $i++;
-						         }
-								break;
-							}
-						} // ende foreach
-						if ($status==true)
-							{
-						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_on) | ($value_on & $mask_on);
-							//$lightManager->SetRGB($switchOID, $new);
-							}
-						else
-					      {
-						   //$new=((int)$lightManager->GetValue($switchOID) & $notmask_off) | ($value_off & $mask_off);
-							//$lightManager->SetRGB($switchOID, $new);
-							}
-						printf("Ergebnis OID: %x ON: %x MASK: %x OFF: %x MASK: %x \n",$switchOID,$value_on,$mask_on,$value_off,$mask_off);
-					}
-*/
+			case "Status":
+				$status=Status($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
 				break;
 			}
+		echo "Zusammengefasst :".json_encode($status)." \n";
+			
 		}
 	echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n";		
 
@@ -871,361 +644,39 @@ function Status($params,$status,$simulate=false)
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
-	/* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
-	 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
-	 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
-	 *
-	 * Parameter mit : enthalten Befehl:Parameter
-	 */
-	 
-
-/*   >>>>>>>>>>>>>>>   delete
-
-	$moduleParams2=Array();
-  	$moduleParams2 = explode(',', $params[2]);  
-
-	// in parges werden alle Parameter erfasst und abgespeichert. nur mehr Sonderbefehle werden hier abgeabrbeitet 
-	$parges=array();
-	switch (count($moduleParams2))
-	   {
-	   case "6":
-	   case "5":
-	   case "4":
-	   case "3":
-	   case "2":
-	   	$params_two=explode(":",$moduleParams2[1]);
-			if (count($params_two)>1)
-				{
-				}
-			else
-			   {
-				//$parges["STATUS"]=$params_two[0];
-				if (strtoupper($params_two[0])=="TRUE") { $status=true;};
-				if (strtoupper($params_two[0])=="FALSE") { $status=false;};
-				if (strtoupper($params_two[0])=="TOGGLE")
-					{
-					if (strtoupper($params[0])=="ONUPDATE")
-					   {
-					   // Bei OnUpdate herausfinden wie der Wert der Variable ist 
-				   		$params_one=explode(":",$moduleParams2[0]);
-						if (count($params_one)==1)
-						   {
-	      				$lightName=$params_one[0];
-							$lightManager = new IPSLight_Manager();
-							$switchId = $lightManager->GetSwitchIdByName($lightName);
-							$status=!$lightManager->GetValue($switchId);
-							}
-					   }
-					else
-					   {
-					   // bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen 
-						$status=!$status;          
-						}
-					};
-			   }
-	   case "1":
-	      break;
-		default:
-			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-		   break;
-		}
-*/		
-	
-	$parges=$auto->ParseCommand($params);
-	
-	if ($simulate==true) 
-		{
-		echo "***Simulationsergebnisse (parges):";
-		// wird eh schon oben ausgegeben
-		print_r($parges);
-		}
-	
+	$parges=$auto->ParseCommand($params,$status,$simulate);
+	$command=array(); $entry=1;	
+		
 	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
 
 	foreach ($parges as $Kommando)
 		{
-		$result=array();   /* Werte vom vorigen Befehl wieder loeschen */
-		$result["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
-		$result["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
-		$switch=true; $delayValue=0; $speak="Status"; $switchOID=0; // fuer Kompatibilitaetszwecke
-		
+		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=$status;	
+
 		foreach ($Kommando as $befehl)
 			{
-			//print_r($befehl);
-			/* im uebergeordneten Element steht ein Index und darunter der Befehl als Unterobjekt im array , 
-			 * funktiert auch schon für ; Befehl, damit können mehrere Befehle nacheinander abgearbeitet werden 
-			 */
+			//echo "Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
-				case "OID":			/* muss noch implementiert werden , wie switch name nur statt IPSLight die OID */
-					$switchOID=$befehl[1];
-					$result["OID"]=$SwitchOID;
-					break;
-				
-				case "NAME":		/* IPSLight identifier der verändert wird */
-					$SwitchName=$befehl[1];
-					$result["NAME"]=$SwitchName;
-					break;
-				
-				case "STATUS":    /* für die Kurzbefehle, wird normalerweise durch die Befehle On und OFF ersetzt */
-					if (strtoupper($befehl[1])=="TRUE") { $status=true;};
-					if (strtoupper($befehl[1])=="FALSE") { $status=false;};
-					if (strtoupper($befehl[1])=="TOGGLE")
-						{
-						if (strtoupper($params[0])=="ONUPDATE")
-							{
-							/* Bei OnUpdate herausfinden wie der Wert der Variable ist */
-							//print_r($result);
-							$lightName=$result["NAME"];
-							$switchId = $lightManager->GetSwitchIdByName($lightName);
-							$status=!$lightManager->GetValue($switchId);
-							}
-						else
-							{
-							/* bei OnChange nur invertieren, wenn OnUpdate bei einem Taster dann hat dieser Wert wenig zu sagen */
-							$status=!$status;          
-							}
-						};
-					$result["STATUS"]=$status;	
-					break;
-					
-				case "ON":
-					$value_on=strtoupper($befehl[1]);
-					$i=2;
-					while ($i<count($befehl))
-						{
-						if (strtoupper($befehl[$i])=="MASK")
-							{
-							$mask_on=$befehl[$i++];
-							$result["ON_MASK"]=$mask_on;
-							}
-						$i++;
-						}
-					switch ($value_on)
-						{
-						case "TRUE":
-						case "FALSE":	
-							$result["ON"]=$value_on;
-							break;
-						case "TOGGLE":
-							/* Befehl noch nicht implementiert */	
-						default:
-							break;
-						}		
-					break;
-				
-				case "OFF":
-					$value_off=strtoupper($befehl[1]);
-					$i=2;
-					while ($i<count($befehl))
-						{
-						if (strtoupper($befehl[$i])=="MASK")
-							{
-							$mask_off=$befehl[$i++];
-							$result["OFF_MASK"]=$mask_off;
-							}
-						$i++;
-						}
-					switch ($value_off)
-						{
-						case "TRUE":
-						case "FALSE":	
-							$result["OFF"]=$value_off;
-							break;
-						case "TOGGLE":
-							/* Befehl noch nicht implementiert */	
-						default:
-							break;
-						}							
-					break;
-				
-				case "DELAY":
-					$delayValue=(integer)$befehl[1];
-					$result["DELAY"]=$delayValue;
-					break;
-				
-				case "ENVELOPE":
-					$envelValue=(integer)$befehl[1];
-					$result["ENVEL"]=$envelValue;
-					break;
-				
-				case "LEVEL":
-					$levelValue=(integer)$befehl[1];
-					$result["LEVEL"]=$levelValue;
-					break;
-				
-				case "SPEAK":
-					$speak=$befehl[1];
-					$result["SPEAK"]=$speak;
-					break;
-				
-				case "MONITOR":
-					$monitor=$befehl[1];
-					if ($monitor=="STATUS")
-						{
-						if ($status==true)
-							{
-							$result="ON";
-							$result["MONITOR"]=$monitor;
-							}
-						else
-							{
-							$result="OFF";
-							$result["MONITOR"]=$monitor;
-							}
-						}
-					else
-						{
-						$result["MONITOR"]=$monitor;
-						}
-					break;
-				
-				case "MUTE":
-					$mute=$befehl[1];
-					if ($mute=="STATUS")
-						{
-						if ($status==true)
-							{
-							$mute="ON";
-							$result["MONITOR"]=$mute;
-							}
-						else
-							{
-							$mute="OFF";
-							$result["MONITOR"]=$mute;
-							}
-						}
-					else
-						{
-						$result["MUTE"]=$mute;
-						}
-					break;
-				
-				case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
-					$cond=strtoupper($befehl[1]);
-					$result["COND"]=$cond;
-					if ($cond=="LIGHT")
-						{
-						/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-						if ($auto->isitdark())
-							{
-							unset($SwitchName);
-							unset($speak);
-							$switch=false;
-							$result["SWITCH"]=false;						
-							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
-							}
-						}
-					elseif ($cond=="DARK")
-						{
-						/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-				  		if ($auto->isitlight())
-							{
-							unset($SwitchName);
-							unset($speak);
-							$switch=false;
-							$result["SWITCH"]=false;
-							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
-							}
-						}
-					else
-						{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-						$checkId = $lightManager->GetSwitchIdByName($cond);
-						$statusCheck=$lightManager->GetValue($checkId);
-						$result["SWITCH"]=$statusCheck;	
-						}			
-					break;
-				
 				default:
-					echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-					break;				
-				}  /* ende switch */
-			} /* ende foreach Befehl*/
-
-		if ( (isset($result["NAME"])==true) && ($result["SWITCH"]==true) )
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					break;
+				}	
+			} /* Ende foreach Befehl */
+		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+		if (isset($result["DELAY"])==true)
 			{
-			/* wenn ein Name definiert ist und keine if Anweisung das Schalten verhindert geht es hier los */ 
-			if ($result["STATUS"]===true)
+			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
+			print_r($result);
+			if ($simulate==false)
 				{
-				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und true und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
-				}
-			else
-				{
-				/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
-				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit '.$SwitchName.' und false und Delay '.$delayValue." Funktion : ".$params[0]." : ".$params[1]." : ".$params[2]);
-				}
-			
-			if (isset($result["LEVEL"])==true)
-				{
-				IPSLogger_Dbg(__file__, 'Status ist ausgewaehlt mit Level '.$levelValue);
-				}
-
-			$result=$auto->ExecuteCommand($result,$simulate);
-
-			/* Ein Delaywert ist definiert, den Eventtimer mit dem entsprechenden vorher eingesammelten Befehl starten */
-			if ($delayValue>0)
-				{
-				if ($simulate==false)
-					{
-					setEventTimer($SwitchName,$delayValue,$result["COMMAND"]);
-					}
-				}
-			} // Ende isset Switchname
-
-		if (isset($monitor)==true)
-			{
-			if (function_exists('monitorOnOff')==true)
-				{
-				monitorOnOff($result["MONITOR"]);
+				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
 				}
 			}
-
-		if (isset($result["OID"])==true)
-			{
-			/* Kein IPSLight Objekt sondern normales Objekt das gesetzt wird */
-			}
-	
-		/* Sprachausgabe durchführen, immer letzter befehl, sonst ist die Reaktion zu langsam */
-		if (($simulate==false) && (isset($mute)==false))
-			{
-			if (isset($speak)==true)
-				{
-				if ($speak_config["Parameter"][0]=="On") 
-					{
-					if ($speak != "Status")
-						{
-						tts_play(1,$speak,'',2);    // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2
-						}
-					}
-				}
-			/* Debug Sprachausgabe auch noch anschauen. wichtig, erst schnelle Reaktionszeit */
-			If ($params[0]=="OnUpdate")
-				{
-				if ($speak_config["Parameter"][1]=="Debug") {
-					tts_play(1,"Taster ".$speak."wurde gedrueckt.",'',2);
-					}
-				}
-			else
-				{
-				if ($status)
-					{
-					if ($speak_config["Parameter"][1]=="Debug")
-						{
-						tts_play(1,'Der Wert für '.$speak.' geht auf ein.','',2);
-						}
-					}
-				else
-					{
-					if ($speak_config["Parameter"][1]=="Debug")  {
-						tts_play(1,'Der Wert für '.$speak.' geht auf aus.','',2);
-						}
-					}
-				}
-			}
-		$ergebnis[]=$result;
-		
-		} /* Kommando fuer Kommando abarbeiten   */
-	return $ergebnis;
+		$entry++;			
+		} /* Ende foreach Kommando */
+	return($command);
 	}
 
 /*********************************************************************************************
@@ -1241,356 +692,50 @@ function statusRGB($params,$status,$simulate=false)
    /* bei einer Statusaenderung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe',),       														*/
-   /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,timer#dawn-23:45',),       			*/
-   /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on#true,off#false,cond#xxxxxx',),       				*/
+   /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on:true,off:false,timer:dawn-23:45',),       			*/
+   /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on:true,off:false,if:xxxxxx',),       				*/
 
+	IPSLogger_Dbg(__file__, 'Aufruf Routine StatusRGB mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
-	$result=array();  	/* in result wird die Zusammenfassung für die Simulation gegeben */
+	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+	$parges=$auto->ParseCommand($params);
+	$command=array(); $entry=1;	
 
-	/* in parges werden alle Parameter erfasst und abgespeichert */
-	$parges=array();
-	/* params[0] is OnUpdate oder OnChange und params[1] hat uns zu diesem Befehl geführt 		*/
-	/* in params[2] ist die Ausführung versteckt                                             	*/
-	$value=$status; 
-  	$moduleParams2 = explode(',', $params[2]);
-	switch (count($moduleParams2))
-	   {
-	   case "9":
-	   case "8":
-	   case "7":
-	   case "6":
-	   case "5":
-	   case "4":
-			$i=3;
-			while ($i<count($moduleParams2))
-			   {
-				$params_more=explode(":",$moduleParams2[$i]);
-				if (count($params)>1)
-         		{
-					$parges=parseParameter($params_more,$parges);
-				   }
-				$i++;
-			   }
-	   case "3":      /* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
-			$params_three=explode(":",$moduleParams2[2]);
-			if (count($params_three)>1)
-				{
-				$parges=parseParameter($params_three,$parges);
-				}
-			else
-			   {
-				$delayValue=(integer)$params_three[0];
-				$result["DELAY"]=$delayValue;
-				}
-	   case "2":         /* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
-	   	$params_two=explode(":",$moduleParams2[1]);
-			if (count($params_two)>1)
-				{
-				$parges=parseParameter($params_two,$parges);
-				}
-			else
-			   {
-				if (strtoupper($params_two[0])=="TRUE") { $value=true; };
-				if (strtoupper($params_two[0])=="FALSE") { $value=false; };
-				if (strtoupper($params_two[0])=="TOGGLE") { $status=!$status;};
-			   }
-	   case "1":         /* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
-	   	$params_one=explode(":",$moduleParams2[0]);
-			if (count($params_one)>1)
-				{
-				$parges=parseParameter($params_one,$parges);
-				}
-			else
-			   {
-	      	$SwitchName=$params_one[0];
-				$result["NAME"]=$SwitchName;
-				}
-	      break;
-		default:
-			echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-		   break;
-		}
-	if ($simulate==true) {
-		//print_r($parges);
-		}
-
-	/*-------------------------------------------------------------------------------*/
-	/* und danach abgearbeitet 																		*/
-	
-	$mask=0xFFFFFF;
-	$notmask=0;
-	
-	foreach ($parges as $befehl)
-	   {
-		switch (strtoupper($befehl[0]))
-		   {
-		   case "OID":
-			   $switchOID=$befehl[1];
-				$result["OID"]=$SwitchOID;
-				break;
-		   case "NAME":
-			   $SwitchName=$befehl[1];
-				$result["NAME"]=$SwitchName;
-				break;
-		   case "ON":
-		      $value_on=hexdec($befehl[1]);
-		      $i=2;
-		      while ($i<count($befehl))
-		         {
-		         if (strtoupper($befehl[$i])=="MASK")
-		            {
-		            $i++;
-		            $mask_on=hexdec($befehl[$i]);
-					   $notmask_on=~($mask_on)&0xFFFFFF;
-						$result["ON_MASK"]=$mask_on;
-				      }
-		         $i++;
-		         }
-				$result["ON"]=$value_on;
-				break;
-		   case "OFF":
-		      $value_off=hexdec($befehl[1]);
-		      $i=2;
-		      while ($i<count($befehl))
-		         {
-		         if (strtoupper($befehl[$i])=="MASK")
-		            {
-		            $i++;
-		            $mask_off=hexdec($befehl[$i]);
-					   $notmask_off=~($mask_off)&0xFFFFFF;
-						$result["OFF_MASK"]=$mask_off;
-					   }
-		         $i++;
-		         }
-				$result["OFF"]=$value_off;
-				break;
-		   case "DELAY":
-				$delayValue=(integer)$befehl[1];
-				$result["DELAY"]=$delayValue;
-				break;
-		   case "LEVEL":
-				$levelValue=(integer)$befehl[1];
-				$result["LEVEL"]=$levelValue;
-				break;
-		   case "SPEAK":
-				$speak=$befehl[1];
-				$result["SPEAK"]=$speak;
-				break;
-		   case "MUTE":
-				$mute=strtoupper($befehl[1]);
-				$result["MUTE"]=$mute;
-				break;
-		   case "IF":
-				$cond=strtoupper($befehl[1]);
-				$result["COND"]=$cond;
-				if ($cond=="LIGHT")
-				   {
-				   if ($auto->isitdark()) {unset($SwitchName);}
-				   }
-				if ($cond=="DARK")
-				   {
-				   if ($auto->isitlight()) {unset($SwitchName);}
-				   }
-				break;
-			}
-		} /* ende foreach */
-
-	/*-------------------------------------------------------------------------------*/
-	/* und schlussendlich ausgeführt 																		*/
-
-	if ( (isset($SwitchName)==true) && (isset($value_on)==false) && (isset($value_off)==false) )
+	if ($simulate==true) 
 		{
-  	   /* eigenwillige Technik. wenn als zweiter Parameter nicht on: oder off: definiert wird, sind keine RGB Werte im Spiel */
+		echo "***Simulationsergebnisse (parges):";
+		print_r($parges);
+		}
 
-		if ($value==true) { $valueChar="true"; } else { $valueChar="false"; }
-		/* ohne Switchname kann man nichts schalten */
-		if ($status===true)
+	foreach ($parges as $Kommando)
+		{
+		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
+
+		foreach ($Kommando as $befehl)
 			{
-			IPSLogger_Dbg(__file__, 'StatusRGB Input ist true und '.$SwitchName.' wird '.$valueChar);
-			}
-		else
-	 		{
-		 	/* ein Tastendruck ist immer false, hier ist nur die Aktualisierung interessant */
-		  	IPSLogger_Dbg(__file__, 'StatusRGB Input ist false und '.$SwitchName.' wird '.$valueChar);
-			}
-		if (isset($levelValue)==true)
-		 	{
-	  		IPSLogger_Dbg(__file__, 'StatusRGB ist ausgewaehlt mit Level '.$levelValue);
-			}
-
-	   $result["COMMAND"]=switchNameGroup($SwitchName,$value,$simulate);
-  	   }
-  	else
-  	   {
-		if (isset($SwitchName)==true)
-  		   {
-			/* mit Parameter on und/oder off */
-		   $lightManager = new IPSLight_Manager();
-			$switchOID = $lightManager->GetSwitchIdByName($SwitchName.'#Color');
-
-			if ($status==true)
-			   {
-			   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($value_on & $mask);
-		   	}
-			else
-			   {
-	   		$new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($value_off & $mask);
-				}
-			IPSLogger_Dbg(__file__, 'StatusRGB Input ist true und '.$SwitchName.' mit OID '.$switchOID.' geht auf Wert '.$new);
-   	  	if ($simulate==false)
-     		   {
-				$lightManager->SetRGB($switchOID, $new);
+			//echo "Bearbeite Befehl ".$befehl[0]."\n";
+			switch (strtoupper($befehl[0]))
+				{
+				default:
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry]);
+					break;
+				}	
+			} /* Ende foreach Befehl */
+		$result=$auto->ExecuteCommand($command[$entry]);
+		if (isset($result["DELAY"])==true)
+			{
+			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
+			print_r($result);
+			if ($simulate==false)
+				{
+				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
 				}
 			}
-		}
-/*
-
-		$params_on=explode(":",$moduleParams2[1]);
-		$params_off=explode(":",$moduleParams2[2]);
-
-  	//Farbe per RGB(Hex)-Wert setzen
-	$wert=count($params_on);
-	switch ($wert)
-		{
-	   case "1":
-			if ($status==true)
-			   {
-		     	if ($simulate==false)
-		     	   {
-				   $lightManager->SetRGB($switchOID, $moduleParams2[1]);
-				   }
-			   }
-			break;
-		case "2":
-		   if (strtoupper($params_on[0])=="ON")
-		      {
-			   if ($status==true)
-			      {
-			     	if ($simulate==false)
-			     	   {
-					   $lightManager->SetRGB($switchOID, $params_on[1]);
-					   }
-					}
-		     	}
-		  	if (strtoupper($params_on[0])=="OFF")
-			   {
-			 	if ($status==false)
-				   {
-			     	if ($simulate==false)
-			     	   {
-					   $lightManager->SetRGB($switchOID, $params_on[1]);
-						}
-				   }
-				}
-			break;
-		case "4":
-		  	if (strtoupper($params_on[2])=="MASK")
-			   {
-			   $mask=hexdec($params_on[3]);
-			   $notmask=~($mask)&0xFFFFFF;
-			   }
-			else
-			  	{
-				$mask=0xFFFFFF;
-				$notmask=0;
-				}
-			if (strtoupper($params_on[0])=="ON")
-			   {
-			  	if ($status==true)
-				   {
-				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
-			     	if ($simulate==false)
-			     	   {
-					  	$lightManager->SetRGB($switchOID, $new);
-						}
-					}
-				}
-			if (strtoupper($params_on[0])=="OFF")
-			   {
-			  	if ($status==false)
-				   {
-				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_on[1] & $mask);
-			     	if ($simulate==false)
-			     	   {
-					  	$lightManager->SetRGB($switchOID, $new);
-						}
-					}
-				}
-			break;
-		}
-	switch (count($params_off))
-	   {
-	   case "1":
-		   if ($status==false)
-		      {
-		     	if ($simulate==false)
-		     	   {
-				   $lightManager->SetRGB($switchOID, $moduleParams2[2]);
-					}
-			   }
-			break;
-		case "2":
-		   if (strtoupper($params_off[0])=="ON")
-		      {
-			   if ($status==true)
-			      {
-			     	if ($simulate==false)
-			     	   {
-					   $lightManager->SetRGB($switchOID, $params_off[1]);
-						}
-				   }
-		     	}
-		   if (strtoupper($params_off[0])=="OFF")
-		      {
-			   if ($status==false)
-			      {
-			     	if ($simulate==false)
-			     	   {
-					   $lightManager->SetRGB($switchOID, $params_off[1]);
-						}
-				   }
-		     	}
-			break;
-		case "4":
-		 	if (strtoupper($params_off[2])=="MASK")
-			   {
-			   $mask=hexdec($params_off[3]);
-			   $notmask=~($mask)&0xFFFFFF;
-			   }
-			else
-			   {
-			   $mask=0xFFFFFF;
-			   $notmask=0;
-			   }
-			if (strtoupper($params_off[0])=="ON")
-			   {
-			  	if ($status==true)
-				   {
-				   $new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
-			     	if ($simulate==false)
-			     	   {
-						$lightManager->SetRGB($switchOID, $new);
-						}
-					}
-				}
-			if (strtoupper($params_on[0])=="OFF")
-			   {
-			  	if ($status==false)
-					{
-					$new=((int)$lightManager->GetValue($switchOID) & $notmask) | ($params_off[1] & $mask);
-			     	if ($simulate==false)
-			     	   {
-						$lightManager->SetRGB($switchOID, $new);
-						}
-					}
-				}
-			break;
-		}
+		$entry++;			
+		} /* Ende foreach Kommando */
 		
-		}
-*/
-		
-	return $result;
+	return $command;
 	}
 
 /*********************************************************************************************/
