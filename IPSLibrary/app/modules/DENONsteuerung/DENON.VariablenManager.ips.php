@@ -468,7 +468,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 
 function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 	{
-
+	echo "DENON_SetVarProfile aufgerufen.\n";
 	switch ($item)
 		{
 		case "Power":
@@ -1563,7 +1563,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 
 		//default: wenn keine Bedingung erfüllt ist
 		default:
-		// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
+		  echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
 
 	}
 

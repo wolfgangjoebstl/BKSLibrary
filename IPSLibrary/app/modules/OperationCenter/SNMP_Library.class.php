@@ -198,8 +198,9 @@ class SNMP_OperationCenter
 			{
       	$oid = ltrim($obj->OID,".");
          $exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
-         if($this->debug) echo "Execute SNMP-Query: ". $this->binary, "$exec_param\n";
+         if($this->debug) echo "Execute SNMP-Query: ". $this->binary, " ".$exec_param."\n";
          $obj->value = trim(IPS_Execute($this->binary, $exec_param, false, true));
+			print_r($obj->value);
          //$obj->change = 0;
          if($this->debug) echo "Result of ". $obj->desc .": ". $obj->value ."\n";
 

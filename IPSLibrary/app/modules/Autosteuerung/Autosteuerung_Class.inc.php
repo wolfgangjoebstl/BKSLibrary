@@ -553,6 +553,138 @@ class Autosteuerung
 						break;
 					}
 				} 
+			elseif (strtoupper($params[1])=="ANWESENHEIT")
+				{	
+				/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
+				 *
+				 * "Schaltername"
+				 * "Schaltername,true"   "Schaltername,false"
+				 * "Schaltername,true,20"
+				 * "name:Schaltername,On:true,Off:false,Delay:20"
+				 *
+				 */
+				switch ($count)
+					{
+					case "10":
+					case "9":
+					case "8":
+					case "7":						
+					case "6":
+					case "5":
+					case "4":
+						$i=3;
+						while ($i<count($moduleParams2))
+							{
+							$params_more=explode(":",$moduleParams2[$i]);
+							if (count($params_more)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+								$Eintrag--;
+								}
+							$i++;
+							}
+					case "3":
+						$params_three=explode(":",$moduleParams2[2]);
+						if (count($params_three)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+							$Eintrag--;						
+							}
+						else
+							{
+							/* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
+							$parges[$Kommando][$Eintrag][]="DELAY";
+							$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
+							$Eintrag--;								
+							}
+					case "2":
+						$params_two=explode(":",$moduleParams2[1]);
+						if (count($params_two)>1)
+							{
+							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+							$Eintrag--;							
+							}
+						else
+							{
+							/* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
+							if ($status==false)
+								{
+								$parges[$Kommando][$Eintrag][]="OFF";
+								$parges[$Kommando][$Eintrag][]=$params_two[0];
+								}
+							else	
+								{
+								$parges[$Kommando][$Eintrag][]="ON";
+								$parges[$Kommando][$Eintrag][]=$params_two[0];
+								}
+							$switch=true;	
+							$Eintrag--;								
+							}
+					case "1":
+						$params_one=explode(":",$moduleParams2[0]);
+						if (count($params_one)>1)
+							{
+							$result=self::parseParameter($params_one);
+							//print_r($result);
+							if ($result[0]=="ALARM")
+								{
+								echo "Alarm.\n";
+								if ($this->CategoryId_SchalterAlarm !== false)
+									{
+									$parges[$Kommando][$Eintrag][]="OID";
+									$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAlarm;
+									if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
+										{
+										$parges[$Kommando][$count+1][]="ON";
+										$parges[$Kommando][$count+1][]="TRUE";
+										}
+									if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
+										{
+										$parges[$Kommando][$count+1][]="OFF";
+										$parges[$Kommando][$count+1][]="FALSE";
+										}
+									}
+								}	
+							elseif ($result[0]=="ANWESEND")
+								{
+								echo "Anwesend.\n";								
+								if ($this->CategoryId_SchalterAnwesend !== false)
+									{
+									$parges[$Kommando][$Eintrag][]="OID";
+									$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAnwesend;
+									if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
+										{
+										$parges[$Kommando][$count+1][]="ON";
+										$parges[$Kommando][$count+1][]="TRUE";
+										}
+									if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
+										{
+										$parges[$Kommando][$count+1][]="OFF";
+										$parges[$Kommando][$count+1][]="FALSE";
+										}
+									}
+								}
+							else
+								{		
+								$parges[$Kommando][$Eintrag]=$result;
+								}
+							//echo "Anwesend   ".$this->CategoryId_SchalterAnwesend."   Alarm : ".$this->CategoryId_SchalterAlarm."\n"; 	
+							//print_r($parges[$Kommando]);	
+							$Eintrag--;							
+							}
+						else
+							{
+							/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
+							$parges[$Kommando][$Eintrag][]="NAME";
+							$parges[$Kommando][$Eintrag][]=$params_one[0];
+							$Eintrag--;								
+							}
+						break;
+					default:
+						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+						break;
+					}
+				}	
 			else
 				{	
 				/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
@@ -650,7 +782,6 @@ class Autosteuerung
 				if ($command[0]=="ON#LEVEL") 		{ $switch=true; }
 				if ($command[0]=="OFF#LEVEL") 	{ $switch=true; }
 				}								
-			echo "\n";					
 			if ($switch == false )
 				{
 				$count++;
@@ -673,8 +804,8 @@ class Autosteuerung
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
 		if ($simulate==true) 
 			{
-			//echo "***Simulationsergebnisse (parges):";
-			print_r($parges);
+			echo "            Ergebnisse ParseCommand : ".json_encode($parges)."\n";
+			//print_r($parges);
 			}			
 		return($parges);
 		}
@@ -703,7 +834,7 @@ class Autosteuerung
 
 	function EvaluateCommand($befehl,$result=array(),$simulate=false)
 		{
-		echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
+		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
 		
 		switch (strtoupper($befehl[0]))
 			{
@@ -766,7 +897,7 @@ class Autosteuerung
 						default:
 							/* befehl nicht bekannt, wahrscheinlich eine Hex Zahl */
 							$value=hexdec($befehl[1]);
-							echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
+							//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 							$result["ON"]="TRUE";
 							$result["VALUE_ON"]=$value;
 							break;
@@ -811,7 +942,7 @@ class Autosteuerung
 						default:
 							/* Befehl nicht bekannt, wahrscheinlich eine Hex Zahl */
 							$value=hexdec($befehl[1]);
-							echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
+							//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 							$result["OFF"]="TRUE";
 							$result["VALUE_OFF"]=$value;					
 							break;
@@ -914,9 +1045,9 @@ class Autosteuerung
 
 	function ExecuteCommand($result,$simulate=false)
 		{
-		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
+		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
-		
+
 		if ($simulate==false)
 			{
 			if (isset($result["OID"]) == true)
@@ -976,7 +1107,13 @@ class Autosteuerung
 						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
 						$result["IPSLIGHT"]=$result["NAME_EXT"];						
 						$result["OID"] = $this->lightManager->GetSwitchIdByName($name);					
-						self::switchObject($result,$simulate);
+						$value=GetValue($result["OID"]);
+						if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
+						if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
+						if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
+						$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
+						$result["COMMAND"]=$command;
+						self::switchObject($result,$simulate);											
 						}
 					else
 						{	 				
@@ -988,6 +1125,10 @@ class Autosteuerung
 						}			
 					}   /* Ende Wert ist ein Schalter */
 				}
+			}	
+		else
+			{
+			echo "ExecuteCommand Simulation.\n"; 
 			}	
 		return ($result);
 		}
@@ -1037,6 +1178,10 @@ class Autosteuerung
 					}
 				}
 			}
+		else
+			{
+			echo "Simulation aktiviert, erhaltener Befehl war : ".json_encode($result)."\n";
+			}	
 		return($result);		
 		}
 

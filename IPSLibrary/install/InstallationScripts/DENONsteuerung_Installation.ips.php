@@ -44,8 +44,6 @@ $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/mas
 if (!isset($moduleManager))
 	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('DENONsteuerung',$repository);
 	}
 
@@ -53,28 +51,23 @@ $moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 $moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 $moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-echo "\nKernelversion : ".IPS_GetKernelVersion();
+echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
 $ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-echo "\nIPS Version : ".$ergebnis;
+echo "IPS Version : ".$ergebnis."\n";
 $ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-echo " ".$ergebnis;
+echo " ".$ergebnis."\n";
 $ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-echo "\nIPSModulManager Version : ".$ergebnis;
+echo "IPSModulManager Version : ".$ergebnis."\n";
 $ergebnis=$moduleManager->VersionHandler()->GetVersion('DENONsteuerung');
-echo "\nDENONsteuerung Version : ".$ergebnis;
+echo "DENONsteuerung Version : ".$ergebnis."\n";
 
 $installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules;
 
 IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+echo "ini File einlesen nach Konfigurationen für das Webfront.\n";
 $RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 $WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -91,6 +84,8 @@ $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 
 $Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+
+echo "Variablen vorbereiten.\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -406,8 +401,7 @@ foreach ($configuration as $Denon => $config)
 
 		/***************************************************************************************/
 
-		echo "\n\nWebportal Installation abgeschlossen.\n";
-		echo "Jetzt sicherstellen das Configfile uebernommen wird.\n";
+		echo "\n\nWebportal Installation abgeschlossen.  Jetzt sicherstellen das Configfile uebernommen wird:  \n";
   		$id=$config['NAME'];
 		$item="AuswahlFunktion";
 		$vtype = 1;

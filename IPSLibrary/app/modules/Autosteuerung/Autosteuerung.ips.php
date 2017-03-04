@@ -26,22 +26,13 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager)) {
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
 	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 }
 
-$sprachsteuerung=false;
 $installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
+if ( isset($installedModules["Sprachsteuerung"]) === true )
 	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	if ($name=="Sprachsteuerung")
-		{
-		$sprachsteuerung=true;
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
-		}
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
 	}
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -119,11 +110,14 @@ if ($_IPS['SENDER']=="Variable")
 	/* eine Variablenaenderung ist aufgetreten */
 	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
-	//$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
-	if (array_key_exists($variableID, $configuration)) {
+	$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	if (array_key_exists($variableID, $configuration)) 
+		{
 		/* es gibt einen Eintrag fuer das Event */
 
 		$params=$configuration[$variableID];
+		$log_Autosteuerung->LogMessage('  erkannter Befehl dafür'.json_encode($params));
+
 		$wert=$params[1];
 		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
   		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
@@ -160,7 +154,8 @@ if ($_IPS['SENDER']=="Variable")
 				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				Status($params,$value);
+				$status=Status($params,$value);
+				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
@@ -217,11 +212,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 		//Anwesenheitssimulation aktiv, bedeutet ein (1) oder auto (2), bei auto wird bei Anwesenheit nicht simuliert
 		echo "\nAnwesenheitssimulation eingeschaltet. \n";
 		IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
+		$log_Autosteuerung->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
 		//print_r($scenes);					
 		}
 	else
 		{
 		IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion nicht aktiv.');
+		$log_Autosteuerung->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion NICHT aktiviert.');
 		}
 
 	foreach($scenes as $scene)
@@ -245,6 +242,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						if (isset($scene["EVENT_IPSLIGHT"]))
 							{
 							echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+							$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, für IPSLight Switch '.$scene["EVENT_IPSLIGHT"].' . '.json_encode($scene));
 							IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
 							}
 						else
@@ -252,6 +250,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 							if (isset($scene["EVENT_IPSLIGHT_GRP"]))
 								{
 								echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+								$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, für IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"].' .'.json_encode($scene));
 								IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
 								}
 							}
@@ -274,11 +273,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 							}
 						if (isset($scene["EVENT_IPSLIGHT"]))
 							{
-							IPS_SetEventScript($EreignisID, "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
+							IPS_SetEventScript($EreignisID, 'include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");IPSLight_SetSwitchByName(".'.$scene["EVENT_IPSLIGHT"].'", false);$log_Autosteuerung->LogMessage("Befehl Timer AWS für IPSLight Schalter ".'.$scene["EVENT_IPSLIGHT"].'" wurde abgeschlossen.");');
 							}
 						else
 							{
-							IPS_SetEventScript($EreignisID,"include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
+							IPS_SetEventScript($EreignisID,'include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");IPSLight_SetGroupByName(".'.$scene["EVENT_IPSLIGHT_GRP"].'", false);$log_Autosteuerung->LogMessage("Befehl Timer AWS für IPSLight Schalter ".'.$scene["EVENT_IPSLIGHT_GRP"].'" wurde abgeschlossen.");');
 							}
 						}  /* ende switch */
 					}	/*ende AWS einbgeschaltet */
@@ -299,6 +298,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						if (isset($scene["EVENT_IPSLIGHT"]))
 							{
 							echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]." ausschalten, es ist Ende AWS\n";
+							$log_Autosteuerung->LogMessage('Befehl Timer AWS wurde ausgeschaltet für IPSLight Switch '.$scene["EVENT_IPSLIGHT"].' .');
 							IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], false);
 							}
 						else
@@ -306,6 +306,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 							if (isset($scene["EVENT_IPSLIGHT_GRP"]))
 								{
 								echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]." ausschalten, es ist Ende AWS\n";
+								$log_Autosteuerung->LogMessage('Befehl Timer AWS wurde ausgeschaltet für IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"].' .');								
 								IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
 								}
 							}
@@ -320,6 +321,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				 * Typ normale Timersteuerung
 				 *
 				 */
+				$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");"; 
 					$switch = $auto->timeright($scene);
 					$now = time();
 					if ($switch)
@@ -327,6 +329,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						if (isset($scene["EVENT_IPSLIGHT"]))
 							{
 							echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+							$log_Autosteuerung->LogMessage('Befehl Timer für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde ausgeführt.');
 							IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
 							}
 						else
@@ -334,6 +337,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 							if (isset($scene["EVENT_IPSLIGHT_GRP"]))
 								{
 								echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+								$log_Autosteuerung->LogMessage('Befehl Timer für IPSLight Gruppe '.$scene["EVENT_IPSLIGHT_GRP"].' wurde ausgeführt.');
 								IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
 								}
 							}
@@ -356,11 +360,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 							}
 						if (isset($scene["EVENT_IPSLIGHT"]))
 							{
-							IPS_SetEventScript($EreignisID, "include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetSwitchByName(\"".$scene["EVENT_IPSLIGHT"]."\", false);");
+							IPS_SetEventScript($EreignisID, $command.'IPSLight_SetSwitchByName("'.$scene["EVENT_IPSLIGHT"].'", false);$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter ".'.$scene["EVENT_IPSLIGHT"].'" wurde abgeschlossen.");');
 							}
 						else
 							{
-							IPS_SetEventScript($EreignisID,"include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");\n"."IPSLight_SetGroupByName(\"".$scene["EVENT_IPSLIGHT_GRP"]."\", false);");
+							IPS_SetEventScript($EreignisID,$command.'IPSLight_SetGroupByName("'.$scene["EVENT_IPSLIGHT_GRP"].'", false);$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter ".'.$scene["EVENT_IPSLIGHT_GRP"].'" wurde abgeschlossen.");');
 							}
 						}  /* ende switch */
 					
@@ -400,12 +404,58 @@ if ($_IPS['SENDER']=="Execute")
 				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
 				break;
 			case "Status":
+			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
+			   /* array($params[0], $params[1], $params[2],),                     													*/
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
+				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
+			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
 				$status=Status($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
 				break;
 			case "Ventilator":
-				print_r($entry);
+				//print_r($entry);
 				$status=Ventilator($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
-				break;				
+				break;	
+			case "iTunes":
+				$status=iTunesSteuerung($entry,$i++,true);
+				break;
+			/*********************************************************************************************/
+			case "GutenMorgenWecker":
+				$status=GutenMorgenWecker($entry,$i++,true);
+		      break;
+			/*********************************************************************************************/
+		   case "Ventilator1":
+				$status=Ventilator1($entry,$i++,true);
+		      break;
+			/*********************************************************************************************/
+		   case "Parameter":
+				$status=Parameter($entry,$i++,true);
+		      break;
+			/*********************************************************************************************/
+		   case "StatusRGB":
+		      echo "Fehler, Funktion nicht mehr unterstützt.\n";
+				$status=array();
+				break;
+			/*********************************************************************************************/
+		   case "Switch":
+				$status=SwitchFunction($entry,$i++,true);
+		      break;
+			/*********************************************************************************************/
+		   case "Custom":
+		      /* Aufrufen von kundenspezifischen Funktionen */
+				$status=array();
+		      break;
+			/*********************************************************************************************/
+		   case "par1":
+		   case "dummy":
+		   case "Dummy":
+		   case "DUMMY":
+				$status=array();			
+		      break;
+		   default:
+				$status=array();			
+				echo "Aufruf Funktion eval(".json_encode($entry[1]).")\n";
+				break;
 			}
 		echo "Zusammengefasst :".json_encode($status)." \n";
 			
@@ -473,8 +523,6 @@ if ($_IPS['SENDER']=="Execute")
 		}
 
 	echo "----------------------------------------------\n";
-	echo $inst_modules."\n\n";
-	echo "----------------------------------------------\n";
 	echo "Category App           ID:".$CategoryIdApp."\n";
 	echo "Category Data          ID:".$CategoryIdData."\n";
 	echo "Category Script        ID:".$scriptId."\n";
@@ -524,47 +572,19 @@ function Anwesenheit($params,$status,$simulate=false)
 		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
 		$switch=true; $delayValue=0; $speak="Status"; $switchOID=0; // fuer Kompatibilitaetszwecke
 		
+		IPSLogger_Dbg(__file__,"Aufruf mit ***** ".json_encode($Kommando));
 		foreach ($Kommando as $befehl)
 			{
 			//echo "Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
-				case "ALARM":
-					if ($auto->CategoryId_SchalterAlarm !== false)
-						{
-						$command[$entry]["OID"]=$auto->CategoryId_SchalterAlarm;
-						//echo "Befehl ALARM : ".$auto->CategoryId_SchalterAlarm." \n";
-						}
-					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
-						{
-						$command[$entry]["ON"]="true";
-						}
-					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
-						{
-						$command[$entry]["OFF"]="false";
-						}
-					break;
-				case "ANWESEND":
-					if ($auto->CategoryId_SchalterAnwesend !== false)
-						{
-						$command[$entry]["OID"]=$auto->CategoryId_SchalterAnwesend;
-						//echo "Befehl ANWESEND : ".$auto->CategoryId_SchalterAnwesend." \n";
-						}					
-					if ( (strtoupper($befehl[1]) == "ON") || (strtoupper($befehl[1]) == "TRUE") )
-						{
-						$command[$entry]["ON"]="true";
-						}
-					if ( (strtoupper($befehl[1]) == "OFF") || (strtoupper($befehl[1]) == "FALSE") )
-						{
-						$command[$entry]["OFF"]="false";
-						}
-					break;
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry]);
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					IPSLogger_Dbg(__file__,"COMMAND: ".$befehl[0]." ".json_encode($command[$entry]));
 					break;
 				}	
 			} /* Ende foreach Befehl */
-		$result=$auto->ExecuteCommand($command[$entry]);
+		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		if (isset($result["DELAY"])==true)
 			{
 			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
@@ -576,18 +596,6 @@ function Anwesenheit($params,$status,$simulate=false)
 			}
 		$entry++;	
 		} /* Ende foreach Kommando */	
-	
-   /* Funktion um Anwesenheitssimulation ein und auszuschalten */
-	If (GetValue($AnwesenheitssimulationID)>0)
-	   {
-	   //Script alle 5 Minuten ausführen
-		IPS_SetScriptTimer($_IPS['SELF'], 5*60);
-		}
-	else
-	   {
-	   //Script nicht mehr automatisch ausführen
-		IPS_SetScriptTimer($_IPS['SELF'], 0);
-	   }
 	
 	return($command);	
 	}
@@ -722,11 +730,11 @@ function statusRGB($params,$status,$simulate=false)
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry]);
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					break;
 				}	
 			} /* Ende foreach Befehl */
-		$result=$auto->ExecuteCommand($command[$entry]);
+		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		if (isset($result["DELAY"])==true)
 			{
 			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			

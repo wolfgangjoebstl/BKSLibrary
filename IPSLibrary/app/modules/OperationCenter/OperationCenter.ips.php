@@ -584,7 +584,7 @@ if ($_IPS['SENDER']=="Execute")
 				$host          = $router["IPADRESSE"];
 				$community     = "public";                                                                         // SNMP Community
 				$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-				$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+				$debug         = false;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
 				$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
@@ -593,7 +593,7 @@ if ($_IPS['SENDER']=="Execute")
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
 				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
 				$result=$snmp->update(true);           /* mit Parameter true erfolgt kein Logging, also Spontanabfrage */
-				print_r($result);
+				//print_r($result);
 				
       		/*		if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
          				{
