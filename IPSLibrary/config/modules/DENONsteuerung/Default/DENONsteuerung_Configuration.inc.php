@@ -21,7 +21,7 @@
 	 * @ingroup ipstwilight
 	 * @{
 	 *
-	 * Konfigurations File f�r IPSTwilight
+	 * Konfigurations File für IPSTwilight
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -30,7 +30,95 @@
 	 *
 	 */
 
+	 /* wenn neue Denon Receiver hinzukommen muss der DENONSteuerung_Install erneut ausgeführt werden */
 
+	function Denon_Configuration() {
+		$eventConfiguration = array(
+             	'Wohnzimmer'  =>  array(            // gleicher Name wie in der naechsten Tabelle notwendig
+                	'NAME'               => 'Wohnzimmer',
+                  'IPADRESSE'          => '10.0.0.115',
+                	'NAME'               => 'Denon-Wohnzimmer',
+                  'INSTANZ'          	=> 'DENON1',
+                  'TYPE'               => 'Denon',
+                    ),
+               'Arbeitszimmer'   =>  array(        // gleicher Name wie in der naechsten Tabelle notwendig
+                	'NAME'               => 'Arbeitszimmer',
+                  'IPADRESSE'          => '10.0.0.23',
+                	'NAME'               => 'Denon-Arbeitszimmer',
+                  'INSTANZ'          	=> 'DENON2',
+                  'TYPE'               => 'Denon',
+                    ),
+       /*      'Netplayer'  =>  array(     // gleicher Name wie in der naechsten Tabelle notwendig
+                	'NAME'               => 'RemoteNetPlayer',
+                  'IPADRESSE'          => 'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
+                  'INSTANZ'          	=> 'DENON1',
+                  'TYPE'               => 'Netplayer',
+                    ),  */
+
+			);
+		return $eventConfiguration;
+	}
+
+/* Wenn ein Webfront konfiguriert wird muss es auch im ini file freigeschaltet sein */
+/*
+ * Arbeitszimmer: Tuner und
+ *
+ *	soll eine Tabelle darstellen die die Variablen definiert die angezeigt werden. handelt es sich um ein Profil wird ein array angelegt
+ *	mit der entsprechenden Zuordnung
+ *
+ *	derzeit Hardcoded im Sourcecode vom Variablen und Command Manager
+ *
+ */
+
+	function Denon_WebfrontConfig() {
+		$WebConfiguration = array(
+			'Wohnzimmer'  =>  array(         // gleicher Name wie in der vorigen Tabelle notwendig
+				'DATA'   => array(            /* Auswahlfunktion sollte für alle Darstellungen göeich sein, aber unterschiedlich pro Denon Receiver */
+					'AuswahlFunktion'   =>  array(
+							'PC'              => 'DVD',
+							'TUNER'           => 'TUNER',
+							'XBOX'            => 'CBL/SAT',
+										),
+									),
+			'Visualization.WebFront.User.DENON'   =>  array(
+                  'NAME'               => 'User',
+               	'Power'              => 'Power',
+                    ),
+
+			'Visualization.WebFront.Administrator.Audio'   =>  array(
+                  'NAME'               => 'Audio',
+                	'Power'              => 'Power',
+                    ),
+			'Visualization.WebFront.Administrator.DENON'   =>  array(
+                  'NAME'               => 'Administrator',
+                	'*'              => '*',
+                    ),
+				),
+			'Arbeitszimmer'  =>  array(         // gleicher Name wie in der vorigen Tabelle notwendig
+				'DATA'   => array(            /* Auswahlfunktion sollte für alle Darstellungen göeich sein, aber unterschiedlich pro Denon Receiver */
+					'AuswahlFunktion'   =>  array(
+							'PC'              => 'DVD',
+							'TUNER'           => 'TUNER',
+							'XBOX'           => 'CBL/SAT',
+      			              ),
+      			         ),
+             'Visualization.WebFront.User.DENON'   =>  array(
+                  'NAME'               => 'User',
+               	'Power'              => 'Power',
+                    ),
+
+            'Visualization.WebFront.Administrator.Audio'   =>  array(
+                  'NAME'               => 'Audio',
+                	'Power'              => 'Power',
+                    ),
+            'Visualization.WebFront.Administrator.DENON'   =>  array(
+                  'NAME'               => 'Administrator',
+                	'*'              => '*',
+                    ),
+				),
+			);
+		return $WebConfiguration;
+	}
 
 
 	 

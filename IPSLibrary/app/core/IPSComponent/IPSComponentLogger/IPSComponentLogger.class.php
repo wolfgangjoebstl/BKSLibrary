@@ -129,8 +129,15 @@ class Logging
 		//var_dump($this);
 		if (!file_exists($this->log_File))
 			{
-			//echo "Create new file\n";
-      	$handle3=fopen($this->log_File, "a");
+			$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
+			if (!file_exists($FilePath)) 
+				{
+				if (!mkdir($FilePath, 0755, true)) {
+					throw new Exception('Create Directory '.$destinationFilePath.' failed!');
+					}
+				}			
+			//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
+			$handle3=fopen($this->log_File, "a");
 		   fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
 	   	fclose($handle3);
 			}

@@ -64,7 +64,7 @@ if (isset($NachrichtenScriptID))
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
 	/* logging in einem File und in einem String am Webfront */
-	$log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
+	$log_Denon=new Logging("C:\Scripts\Denon\Log_Denon.csv",$NachrichtenInputID);
 	}
 else break;
 

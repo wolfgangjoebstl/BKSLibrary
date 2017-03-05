@@ -90,26 +90,8 @@ echo "Variablen vorbereiten.\n";
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-DENONsteuerung',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	/* werden automatisch angelegt
-	$zeile1 = CreateVariable("Nachricht_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
-	$zeile2 = CreateVariable("Nachricht_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
-	$zeile3 = CreateVariable("Nachricht_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
-	$zeile4 = CreateVariable("Nachricht_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
-	$zeile5 = CreateVariable("Nachricht_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
-	$zeile6 = CreateVariable("Nachricht_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
-	$zeile7 = CreateVariable("Nachricht_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
-	$zeile8 = CreateVariable("Nachricht_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
-	$zeile9 = CreateVariable("Nachricht_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
-	$zeile10 = CreateVariable("Nachricht_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
-	$zeile11 = CreateVariable("Nachricht_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
-	$zeile12 = CreateVariable("Nachricht_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
-	$zeile13 = CreateVariable("Nachricht_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
-	$zeile14 = CreateVariable("Nachricht_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
-	$zeile15 = CreateVariable("Nachricht_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
-	$zeile16 = CreateVariable("Nachricht_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
-	*/
+$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-DENONsteuerung',   $CategoryIdData, 20);
+$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 
 $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdApp);
 $DENON_ActionScript_ID = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
@@ -150,7 +132,7 @@ foreach ($configuration as $Denon => $config)
 			}
 		else
 			{
-	   	echo "DENON Client Socket bereits vorhanden (ID: $DENON_CS_ID) -> Konfiguration upgedated\n";
+	   	echo "\"".$config['INSTANZ']." Client Socket\" bereits vorhanden (ID: $DENON_CS_ID) -> Konfiguration upgedated\n";
    		//IPS_DeleteInstance($DENON_CS_ID);
 	   	//$DENON_CS_ID = IPS_CreateInstance("{3CFF0FD9-E306-41DB-9B5A-9D06D38576C3}");
 	   	//IPS_SetName($DENON_CS_ID, "DENON Client Socket");
@@ -171,17 +153,17 @@ foreach ($configuration as $Denon => $config)
 	   	IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
 			Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
 			IPS_ApplyChanges($DENON_Cu_ID);
-			echo $config['INSTANZ']." Cutter angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verknüpft\n";
+			echo "\"".$config['INSTANZ']." Cutter\" angelegt und mit \"".$config['INSTANZ']." Client Socket\" #".$DENON_CS_ID." verknüpft\n";
 			}
 		else
 			{
-			echo $config['INSTANZ']." Cutter #".$DENON_Cu_ID." ist bereits angelegt und mit ".$config['INSTANZ']." Client Socket #".$DENON_CS_ID." verknüpft\n";
+			echo "\"".$config['INSTANZ']." Cutter\" #".$DENON_Cu_ID." ist bereits angelegt und mit \"".$config['INSTANZ']." Client Socket\" #".$DENON_CS_ID." verknüpft.\n";
 		   $DENON_Cu_ID = @IPS_GetInstanceIDByName($config['INSTANZ']." Cutter", 0);
 		   IPS_DisconnectInstance($DENON_Cu_ID);
    		IPS_ConnectInstance($DENON_Cu_ID, $DENON_CS_ID);
 		   Cutter_SetRightCutChar($DENON_Cu_ID, Chr(0x0D));
 			IPS_ApplyChanges($DENON_Cu_ID);
-	   	echo "DENON Cutter (#$DENON_Cu_ID) bereits vorhanden, neu konfiguriert \n";
+	   	echo "\"".$config['INSTANZ']." Cutter\" (#$DENON_Cu_ID) bereits vorhanden, neu konfiguriert \n";
 			}
 
 		// Cutter "DENON Register Variable" anlegen wenn nicht vorhanden und mit "DENON Cutter" verbinden
@@ -195,17 +177,17 @@ foreach ($configuration as $Denon => $config)
 		   IPS_ConnectInstance($DENON_RegVar_ID, $DENON_Cu_ID);
 
 			IPS_ApplyChanges($DENON_RegVar_ID);
-			echo $config['INSTANZ']." Register Variable angelegt und mit ".$config['INSTANZ']." Cutter #$DENON_Cu_ID verknüpft\n";
+			echo "\"".$config['INSTANZ']." Register Variable\" angelegt und mit ".$config['INSTANZ']." Cutter #$DENON_Cu_ID verknüpft\n";
 			}
 		else
 			{
-	   	echo $config['INSTANZ']." Register Variable bereits vorhanden (ID: $DENON_RegVar_ID)\n";
+	   	echo "\"".$config['INSTANZ']." Register Variable\" bereits vorhanden (ID: $DENON_RegVar_ID)\n";
 			}
 		$scriptId_DENONCommandManager = IPS_GetScriptIDByName('DENON.CommandManager', $CategoryIdApp);
 		echo "\nScript ID DENON Command Manager für Register Variable :".$scriptId_DENONCommandManager."\n";
 		RegVar_SetRXObjectID($DENON_RegVar_ID , $scriptId_DENONCommandManager);
 		IPS_ApplyChanges($DENON_RegVar_ID);
-		echo "DENON Register Variable  mit Script DENON.CommandManager #".$scriptId_DENONCommandManager." verknüpft\n";
+		echo "\"".$config['INSTANZ']." Register Variable\"  mit Script DENON.CommandManager #".$scriptId_DENONCommandManager." verknüpft\n";
 
 		// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden
 		$DENON_DisplayRefresh_ID = IPS_GetScriptIDByName("DENON.DisplayRefresh", $CategoryIdApp);
@@ -341,6 +323,8 @@ foreach ($configuration as $Denon => $config)
 			echo "\nWebportal Mobile installieren: \n";
 			$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
 
+			/* Webfront haendisch aufbauen, nicht so viele Linsk anlegen */
+
 			// Kategorie "DENON Webfront" anlegen wenn nicht vorhanden
 			$DENON_WFE_ID = @IPS_GetCategoryIDByName($config['NAME'], $categoryId_WebFront);
 			if ($DENON_WFE_ID == false)
@@ -371,6 +355,8 @@ foreach ($configuration as $Denon => $config)
 			echo "\nWebportal Retro installieren: \n";
 			$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
 
+			/* Webfront haendisch aufbauen, nicht so viele Linsk anlegen */
+			
 			$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 			$DENON_Steuerung_ID = @IPS_GetInstanceIDByName("Steuerung", $DENON_ID);
 
@@ -409,13 +395,14 @@ foreach ($configuration as $Denon => $config)
    	$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
 	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
 		$itemID = @IPS_GetVariableIDByName($item, $VAR_Parent_ID);
+
+		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
+		DenonSetValue($item, $value, $vtype, $id, $Audio_Path);
+		
 		$ProfileName = "DENON.".$item."_".$id;
 		echo "Variablenprofil neu anlegen für ".$item." mit Profilname ".$ProfileName." mit Item ID ".$itemID." \n";
    	@IPS_DeleteVariableProfile($ProfileName);
 		DENON_SetVarProfile($item, $itemID, $vtype, $id);
-
-		echo "Shortcut anlegen für ".$id.".".$item." in ".$Audio_Path." \n";
-		DenonSetValue($item, $value, $vtype, $id, $Audio_Path);
 
 		}  /* install nur für Type Denon machen, nicht für netplayer */
    }  /* ende foreach Denon Device */

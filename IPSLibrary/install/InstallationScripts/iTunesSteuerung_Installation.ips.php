@@ -23,8 +23,6 @@ $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/mas
 if (!isset($moduleManager))
 	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('iTunesSteuerung',$repository);
 	}
 
@@ -39,8 +37,8 @@ $ergebnis=$moduleManager->VersionHandler()->GetModuleState();
 echo " ".$ergebnis;
 $ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 echo "\nIPSModulManager Version : ".$ergebnis;
-$ergebnis=$moduleManager->VersionHandler()->GetVersion('DENONsteuerung');
-echo "\nDENONsteuerung Version : ".$ergebnis;
+$ergebnis=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
+echo "\niTunesSteuerung Version : ".$ergebnis;
 
 $installedModules = $moduleManager->GetInstalledModules();
 $inst_modules="\nInstallierte Module:\n";
@@ -49,6 +47,14 @@ foreach ($installedModules as $name=>$modules)
 	$inst_modules.=str_pad($name,30)." ".$modules."\n";
 	}
 echo $inst_modules;
+
+echo "Variablen vorbereiten.\n";
+
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-iTunesSteuerung',   $CategoryIdData, 20);
+$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+
 
 IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
