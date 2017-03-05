@@ -1056,14 +1056,14 @@ class Autosteuerung
 				$result["IPSLIGHT"]="None";
 				self::switchObject($result,$simulate);					
 				}
-			else
+			elseif ( isset($result["NAME"])==true )
 				{	/* wenn nicht die OID, dann ist der Name bekannt */
-				if (isset($result["NAME_EXT"])==true) 
+				if ( isset($result["NAME_EXT"])==true ) 
 					{ 
 					if ($result["NAME_EXT"]=="#COLOR") { $name=$result["NAME"]."#Color"; }
 					if ($result["NAME_EXT"]=="#LEVEL") { $name=$result["NAME"]."#Level"; }
 					}
-				else
+				else 
 					{
 					$name=$result["NAME"];
 					}			
@@ -1124,8 +1124,15 @@ class Autosteuerung
 						self::switchObject($result,$simulate);
 						}			
 					}   /* Ende Wert ist ein Schalter */
+				} /* Ende entweder NAME oder OID ist gesetzt */
+			else
+				{
 				}
-			}	
+			if (isset($result["SPEAK"]) == true)
+				{				
+	  			tts_play(1,$result["SPEAK"],'',2);
+				}
+			}	/* Ende keine Simulation */
 		else
 			{
 			echo "ExecuteCommand Simulation.\n"; 

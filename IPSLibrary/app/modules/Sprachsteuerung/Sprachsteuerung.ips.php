@@ -111,13 +111,31 @@ if ($_IPS['SENDER']=="Execute")
 	{
 	/* von der Konsole aus gestartet */
 
+	echo "Alle \"Text To Speech\" Instanzen.\n";
+	//$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+	$TextToSpeach = IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}");
+	foreach ($TextToSpeach as $TextToSpeachID)
+		{
+		echo "   ".$TextToSpeachID." ".IPS_GetName($TextToSpeachID)."\n";
+		echo "         ".IPS_GetConfiguration($TextToSpeachID)."\n"; 	
+		}
+
+	echo "Alle \"Media Player\" Instanzen.\n";
+	$MediaPlayer = IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
+	foreach ($MediaPlayer as $MediaPlayerID)
+		{
+		echo "   ".$MediaPlayerID." ".IPS_GetName($MediaPlayerID)."\n";
+		echo "         ".IPS_GetConfiguration($MediaPlayerID)."\n"; 
+		}
+
 	$SprachConfig=Sprachsteuerung_Configuration();
-	//print_r($SprachConfig);
 	echo $SprachConfig["Engine".$SprachConfig["Language"]]."\n";
 	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 
 	IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
 	IPS_ApplyChanges($TextToSpeachID);
+	
+	tts_play(1,'Hallo Claudia ich liebe dich so sehr','',2);
 	}
 
 /*********************************************************************************************/
