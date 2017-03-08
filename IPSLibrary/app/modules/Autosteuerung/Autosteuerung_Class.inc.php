@@ -4,7 +4,7 @@
  *
  * Autosteuerung Handler
  *
- * alle Routinen die mit der Erstellung und Verwaltung der Events der Autostuerung zu tun haben
+ * alle Routinen die mit der Erstellung und Verwaltung der Events der Autosteuerung zu tun haben
  *
  **************************************************************************************************************/
 
@@ -1045,7 +1045,7 @@ class Autosteuerung
 
 	function ExecuteCommand($result,$simulate=false)
 		{
-		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");";
+		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 
 		if ($simulate==false)
@@ -1082,7 +1082,7 @@ class Autosteuerung
 						else /* Wert ist ein Programm */
 							{
 							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
-							$command.="IPSLight_SetProgramNextByName(\"".$name."\");";
+							$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
 							$result["COMMAND"]=$command;
 							$result["IPSLIGHT"]="Program";
 							if ($simulate==false)
@@ -1094,7 +1094,7 @@ class Autosteuerung
 					else   /* Wert ist eine Gruppe */
 						{
 						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
-						$command.="IPSLight_SetGroupByName(\"".$name."\", false);";
+						$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
 						$result["COMMAND"]=$command;
 						$result["IPSLIGHT"]="Group";	
 						self::switchObject($result,$simulate);			   	 	
@@ -1118,7 +1118,7 @@ class Autosteuerung
 					else
 						{	 				
 						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
-						$command.="IPSLight_SetSwitchByName(\"".$name."\", false);";
+						$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
 						$result["COMMAND"]=$command;
 						$result["IPSLIGHT"]="Switch";
 						self::switchObject($result,$simulate);

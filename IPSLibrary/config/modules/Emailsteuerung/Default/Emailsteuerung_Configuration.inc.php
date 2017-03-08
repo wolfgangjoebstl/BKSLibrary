@@ -21,7 +21,7 @@
 	 * @ingroup DetectMovement
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File fÃ¼r DetectMovement
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -33,15 +33,48 @@
 
 	/* Beispiele zum EInstellen:
 
+	function Smtp_Configuration() {
+		$eventConfiguration = array(
+				"Password" 				=> "cloudg06",
+				"Recipient" 			=> "wolfgangjoebstl@gmail.com",
+				"SenderAddress"		=> "claudiaundwolfganggemeinsam@gmail.com",
+				"Username"				=> "claudiaundwolfganggemeinsam@gmail.com",
+				"SenderName"			=> "LBG02",
+				"UseAuthentication"	=> true,
+				"Port"   				=> "465",
+				"Host"   				=> "smtp.gmail.com",
+				"UseSSL" 				=> true,
+			);
+		return $eventConfiguration;
+	}
+
+	function Imap_Configuration() {
+		$eventConfiguration = array(
+				"CacheInterval"      => "300",
+				"Password"	      	=> "cloudg06",
+				"CacheSize"      		=> "10",
+				"Username"      		=> "claudiaundwolfganggemeinsam@gmail.com",
+				"UseAuthentication"  => true,
+				"Port"      			=> "993",
+				"Host"      			=> "imap.googlemail.com",
+				"UseSSL"      			=> true,
+			);
+		return $eventConfiguration;
+	}
+
 	*/
 
 
 
-	function Emailsteuerung_Configuration() {
+	function Smtp_Configuration() {
 		$eventConfiguration = array(
-
 			);
+		return $eventConfiguration;
+	}
 
+	function Imap_Configuration() {
+		$eventConfiguration = array(
+			);
 		return $eventConfiguration;
 	}
 

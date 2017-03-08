@@ -42,6 +42,8 @@ $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Pro
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
 
+$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
+
 $NachrichtenID = $object_data->osearch("Nachricht");
 $NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
@@ -50,20 +52,23 @@ if (isset($NachrichtenScriptID))
 	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
-	echo "Nachrichten Script     ID:".$NachrichtenScriptID."\n";
-	echo "Nachrichten Input      ID: ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
 	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
 	}
 else break;
 
+$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+	
 /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
 /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
-
 $name="Ansteuerung";
 $categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
-$AnwesenheitssimulationID = IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
+$AnwesenheitssimulationID = @IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
+if ($AnwesenheitssimulationID === false)
+	{
+	$AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );
+	}
 $AnwesenheitserkennungID = IPS_GetObjectIDByName("Anwesenheitserkennung",$categoryId_Autosteuerung);
 $StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitserkennungID);
 $StatusAnwesendZuletztID=IPS_GetObjectIDByName("StatusAnwesendZuletzt",$AnwesenheitserkennungID);
@@ -225,6 +230,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 		{
 		if (isset($scene["TYPE"]))
 			{
+			
+			$statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
+			AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			$counterID = CreateVariable($scene["NAME"]."_Counter", 1, $AnwesenheitssimulationID, 0, "",null,null,""  );
 			if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
 				{
 				/*****************************************************
@@ -241,63 +252,59 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$now = time();
 					if ($switch)
 			 			{
-						if (isset($scene["EVENT_IPSLIGHT"]))
+						$counter=GetValue($counterID);
+						if ($counter == 0)
 							{
-							$text='IPSLight Switch '.$scene["EVENT_IPSLIGHT"];
-							echo "    ".$text."\n";
-							$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' einschalten. '.json_encode($scene));
-							IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
-							}
-						else
-							{
-							if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+							SetValue($statusID,true);
+							if (isset($scene["EVENT_IPSLIGHT"]))
 								{
-								$text='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"];
+								$text='IPSLight Switch '.$scene["EVENT_IPSLIGHT"];
 								echo "    ".$text."\n";
-								$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' einschalten.'.json_encode($scene));
-								IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+								$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' einschalten. '.json_encode($scene));
+								IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+								$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetSwitchByName("'.$scene["EVENT_IPSLIGHT"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde abgeschlossen.");';
 								}
-							}
-						echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
-						$EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
-						if ($EreignisID === false)
-							{ //Event nicht gefunden > neu anlegen
-							$EreignisID = IPS_CreateEvent(1);
-							IPS_SetName($EreignisID,$scene["NAME"]."_EVENT");
-							IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-							}
-						IPS_SetEventActive($EreignisID,true);
-						IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-						IPS_SetEventCyclicDateBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
-						if ($scene["EVENT_CHANCE"]==100)
-							{
-							echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
-							IPS_SetEventCyclicTimeBounds($EreignisID,$auto->timeStop,0);
-							$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->timeStop)));
-							}
+							else
+								{
+								if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+									{
+									$text='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"];
+									echo "    ".$text."\n";
+									$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' einschalten.'.json_encode($scene));
+									IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+									$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetGroupByName("'.$scene["EVENT_IPSLIGHT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT_GRP"].' wurde abgeschlossen.");';
+									}
+								}
+							if ($scene["EVENT_CHANCE"]==100)
+								{
+								echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
+								setEventTimer($scene["NAME"],$auto->timeStop-$auto->now,$command);
+								$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->timeStop)));
+								}
+							else
+								{
+								SetValue($counterID,$scene["EVENT_DURATION"]);
+								setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60,$command);
+								$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->now+$scene["EVENT_DURATION"]*60)));
+								}
+							} /* Ende Counter abgelaufen */	
 						else
 							{
-							IPS_SetEventCyclicTimeBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
-							$log_Autosteuerung->LogMessage('Befehl Timer AWS aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->now+$scene["EVENT_DURATION"]*60)));
-							}	
-						if (isset($scene["EVENT_IPSLIGHT"]))
-							{
-							IPS_SetEventScript($EreignisID, 'include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\ ");'."\n".'IPSLight_SetSwitchByName(".'.$scene["EVENT_IPSLIGHT"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde abgeschlossen.");');
-							}
-						else
-							{
-							IPS_SetEventScript($EreignisID,'include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");'."\n".'IPSLight_SetGroupByName(".'.$scene["EVENT_IPSLIGHT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT_GRP"].' wurde abgeschlossen.");');
-							}
+							/* counter um 5 Minuten reduzieren */
+							if ($counter>4)	{ $counter-=5; }
+							if ($counter<5) {$counter=0;}
+							SetValue($counterID,$counter);
+							}			
 						}  /* ende switch */
-					}	/*ende AWS einbgeschaltet */
+					}	/*ende AWS eingeschaltet */
 				else
 					{
-					
 					/* wenn die Anwesenheitssimulation ausgeschaltet wird, etwas unternehmen */
 					
 					/* nur bei Änderung des Status etwas unternehmen */
 					if (GetValue($StatusAnwesendZuletztID)==true)
 						{	
+						SetValue($statusID,false);
 						$EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
 						if ($EreignisID != false)
 							{
@@ -334,61 +341,42 @@ if ($_IPS['SENDER']=="TimerEvent")
 				 * Auch wenn das Event eigentlich nur am Anfang und am Ende durchlaufen werden muesste, wird alle 5 Minuten geprüft und gesetzt !
 				 *
 				 */
-				$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");"; 
-					$switch = $auto->timeright($scene);
-					$now = time();
-					if ($switch)
-			 			{
-						if (isset($scene["EVENT_IPSLIGHT"]))
+				$switch = $auto->timeright($scene);
+				$now = time();
+				if ($switch)
+		 			{
+					SetValue($statusID,true);
+					if (isset($scene["EVENT_IPSLIGHT"]))
+						{
+						$text='IPSLight Switch '.$scene["EVENT_IPSLIGHT"];							
+						echo "    ".$text."\n";
+						$log_Autosteuerung->LogMessage('Befehl Timer für '.$text.' wurde ausgeführt.'.json_encode($scene));
+						IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+						$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetSwitchByName("'.$scene["EVENT_IPSLIGHT"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde abgeschlossen.");';
+						}
+					else
+						{
+						if (isset($scene["EVENT_IPSLIGHT_GRP"]))
 							{
-							$text='IPSLight Switch '.$scene["EVENT_IPSLIGHT"];							
+							$text='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"];
 							echo "    ".$text."\n";
-							$log_Autosteuerung->LogMessage('Befehl Timer für '.$text.' wurde ausgeführt.'.json_encode($scene));
-							IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+							$log_Autosteuerung->LogMessage('Befehl Timer für  '.$text.' wurde ausgeführt.'.json_encode($scene));
+							IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+							$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetGroupByName("'.$scene["EVENT_IPSLIGHT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT_GRP"].' wurde abgeschlossen.");';
 							}
-						else
-							{
-							if (isset($scene["EVENT_IPSLIGHT_GRP"]))
-								{
-								$text='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"];
-								echo "    ".$text."\n";
-								$log_Autosteuerung->LogMessage('Befehl Timer für  '.$text.' wurde ausgeführt.'.json_encode($scene));
-								IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
-								}
-							}
-						echo "Jetzt wird der Timer gesetzt : ".$scene["NAME"]."_EVENT"."\n";
-						$EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
-						if ($EreignisID === false)
-							{ //Event nicht gefunden > neu anlegen
-							$EreignisID = IPS_CreateEvent(1);
-							IPS_SetName($EreignisID,$scene["NAME"]."_EVENT");
-							IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-							}
-						IPS_SetEventActive($EreignisID,true);
-						IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);  /* EreignisID, 0 Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-						IPS_SetEventCyclicDateBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
-						if ($scene["EVENT_CHANCE"]==100)
-							{
-							echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
-							IPS_SetEventCyclicTimeBounds($EreignisID,$auto->timeStop,0);
-							$log_Autosteuerung->LogMessage('Befehl Timer aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->timeStop)));							
-							}
-						else
-							{
-							IPS_SetEventCyclicTimeBounds($EreignisID,$auto->now+$scene["EVENT_DURATION"]*60,0);
-							$log_Autosteuerung->LogMessage('Befehl Timer aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->now+$scene["EVENT_DURATION"]*60)));
-							}	
-
-						if (isset($scene["EVENT_IPSLIGHT"]))
-							{
-							IPS_SetEventScript($EreignisID, $command."\n".'IPSLight_SetSwitchByName("'.$scene["EVENT_IPSLIGHT"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde abgeschlossen.");');
-							}
-						else
-							{
-							IPS_SetEventScript($EreignisID,$command."\n".'IPSLight_SetGroupByName("'.$scene["EVENT_IPSLIGHT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter '.$scene["EVENT_IPSLIGHT_GRP"].' wurde abgeschlossen.");');
-							}
-						}  /* ende switch */
-					
+						}
+					if ($scene["EVENT_CHANCE"]==100)
+						{
+						echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
+						setEventTimer($scene["NAME"],$auto->timeStop-$auto->now,$command);
+						$log_Autosteuerung->LogMessage('Befehl Timer aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->timeStop)));							
+						}
+					else
+						{
+						setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60,$command);
+						$log_Autosteuerung->LogMessage('Befehl Timer aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->now+$scene["EVENT_DURATION"]*60)));
+						}	
+					}  /* ende switch */
 				}	/* ende ifelse AWS */		
 			}   /* ende isset Type */		
 		} /* end of foreach */
@@ -557,7 +545,7 @@ if ($_IPS['SENDER']=="Execute")
 function setEventTimer($name,$delay,$command)
 	{
 	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
-	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.$command);	
+	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
   	$now = time();
    $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
    if ($EreignisID === false)
@@ -956,48 +944,11 @@ function parseParameter($params,$result=array())
 
 function test()
 	{
-	global $AnwesenheitssimulationID;
+	global $AnwesenheitssimulationID,$NachrichtenScriptID,$NachrichtenInputID;
 
-	echo "Anwesenheitsimulation ID : ".$AnwesenheitssimulationID." \n";
-	}
-
-
-/*********************************************************************************************/
-
-function switchNameGroup($SwitchName,$status,$simulate=false)
-	{
-	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-	$switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-	$groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-	
-	$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php\");";
-
-	$resultID=@IPS_GetVariableIDByName($SwitchName,$switchCategoryId);
-	if ($resultID==false)
-   	{
-		$result=@IPS_GetVariableIDByName($SwitchName,$groupCategoryId);
-		if ($resultID==false)
-   		{
-			/* Name nicht bekannt */
-	   	}
-	   else   /* Wert ist eine Gruppe */
-   	   {
-   		$command.="IPSLight_SetGroupByName(\"".$SwitchName."\", false);";
-	   	if ($simulate==false)
-	   	   {
-	   	   IPSLight_SetGroupByName($SwitchName,$status);
-   	  		}
-   	  	}
-		}
-	else     /* Wert ist ein Schalter */
-	   {
-  		$command.="IPSLight_SetSwitchByName(\"".$SwitchName."\", false);";
-  		if ($simulate==false)
- 		   {
-	  	   IPSLight_SetSwitchByName($SwitchName,$status);
-			}
-		}
-	return $command;
+	echo "Anwesenheitsimulation  ID : ".$AnwesenheitssimulationID." \n";
+	echo "Nachrichten Script     ID : ".$NachrichtenScriptID."\n";
+	echo "Nachrichten Input      ID : ".$NachrichtenInputID."\n";
 	}
 
 /*********************************************************************************************/

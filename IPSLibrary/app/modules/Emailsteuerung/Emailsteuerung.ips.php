@@ -22,47 +22,27 @@ ini_set('max_execution_time', 500);
 $startexec=microtime(true);
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) {
+if (!isset($moduleManager)) 
+	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('Emailsteuerung',$repository);
-}
+	}
 
 $installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 $scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Emailsteuerung'));
-echo "Category App ID:".$CategoryIdApp."\n";
-echo "Category Script ID:".$scriptId."\n";
 
-	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
-	$ScriptExecTimeID=CreateVariableByName($CategoryIdData,"ScriptExecTime",1);
+$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+$ScriptExecTimeID=CreateVariableByName($CategoryIdData,"ScriptExecTime",1);
 	
-	$device=IPS_GetName(0);
+$device=IPS_GetName(0);
 
-	echo "\nAlle SMTP Clients:\n";
-	$smtp_clients=IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
-	foreach ($smtp_clients as $smtp_client)
-		{
-		echo "  Smtp Client ID: ".$smtp_client."  -> ".IPS_GetName($smtp_client)."\n";
-		}
-	
-	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
-	echo "\nSend Email ID: ".$SendEmailID."\n";
+$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
 
-	//$result=IPS_GetModule("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
-	$result=IPS_GetConfiguration($SendEmailID);
-	print_r($result);
-	
+
 	/******************************************************
 
 				INIT, Timer, sollte eigentlich in der Install Routine sein
@@ -97,12 +77,28 @@ if ($_IPS['SENDER']=="Execute")
 	//$starttime=$endtime-60*60*24*9;
 	//$starttime=$endtime-60*2;
 	//$werte = AC_GetLoggedValues($archive_handler, 24129, $starttime, $endtime, 0);
+	
+	echo "Category App ID:".$CategoryIdApp."\n";
+	echo "Category Script ID:".$scriptId."\n";
 
+	echo "\nSend Email ID: ".$SendEmailID."\n";
+	$result=IPS_GetConfiguration($SendEmailID);
+	echo $result."\n";
+
+	echo "\nAlle SMTP Clients:\n";
+	$smtp_clients=IPS_GetInstanceListByModuleID("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}");
+	foreach ($smtp_clients as $smtp_client)
+		{
+		echo "  Smtp Client ID: ".$smtp_client."  -> ".IPS_GetName($smtp_client)."\n";
+		}
+	echo "\n";
+	
 	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
 	SetValue($ScriptExecTimeID,0); /* timer ausschalten, wenn gerade laeuft */
 
 	if (isset($installedModules['OperationCenter']))
 		{
+		echo "\n";
 		echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -126,6 +122,7 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		else
 		   {
+			echo "Email wird mit aktuellen Werten gesendet.\n";
 			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
 			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
 			}
@@ -137,6 +134,7 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		else
 		   {
+			echo "Email wird mit historischen Werten gesendet.\n";			
 			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang:\n".$emailText,$filename);
 			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
 			}
