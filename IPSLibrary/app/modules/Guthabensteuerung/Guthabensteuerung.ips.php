@@ -50,25 +50,34 @@ if ($tim2ID==false)
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Guthabensteuerung');
 $ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$parentid1);
 
-	$GuthabenConfig = get_GuthabenConfiguration();
-	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
-
-	$phone=array();
-	$i=1;
-	foreach ($GuthabenConfig as $TelNummer)
-		{
-		//echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
-		if (isset($TelNummer["STATUS"])==true)
+$GuthabenConfig = get_GuthabenConfiguration();
+$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
+	
+$phone=array();
+$i=1;
+foreach ($GuthabenConfig as $TelNummer)
+	{
+	//echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
+	if (isset($TelNummer["STATUS"])==true)
+	   {
+		if ($TelNummer["STATUS"]=="Active")
 		   {
-			if ($TelNummer["STATUS"]=="Active")
-			   {
-				$phone[$i++]=$TelNummer["NUMMER"];
-				}
+			$phone[$i++]=$TelNummer["NUMMER"];
 			}
-		else	$phone[$i++]=$TelNummer["NUMMER"];
 		}
-	$maxcount=$i;
+	else	$phone[$i++]=$TelNummer["NUMMER"];
+	}
+$maxcount=$i;
 
+if ( isset($GuthabenAllgConfig["FireFoxDirectory"]) == true )
+	{
+	$firefox=$GuthabenAllgConfig["FireFoxDirectory"];
+	}
+else
+	{
+	$firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
+	}		
+	
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 /******************************************************
@@ -81,24 +90,25 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
 	switch ($_IPS['EVENT'])
-	   {
-	   case $tim1ID:
-	   	IPS_SetEventActive($tim2ID,true);
-	      break;
-	   case $tim2ID:
+	   	{
+	   	case $tim1ID:
+	   		IPS_SetEventActive($tim2ID,true);
+	      	break;
+	   	case $tim2ID:
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
-		   //IPS_SetScriptTimer($_IPS['SELF'], 150);
-		   if (GetValue($ScriptCounterID) < $maxcount)
+		   	//IPS_SetScriptTimer($_IPS['SELF'], 150);
+		   	if (GetValue($ScriptCounterID) < $maxcount)
 				{
-			   IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, 1);
-  	   		}
+				// keine Anführungszeichen verwenden
+				IPS_ExecuteEX($firefox."/firefox.exe", "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, -1);		
+  	   			}
 			else
 				{
 				IPS_RunScript($ParseGuthabenID);
-		      SetValue($ScriptCounterID,0);
-      		//IPS_SetScriptTimer($_IPS['SELF'], 0);
-		      IPS_SetEventActive($tim2ID,false);
+		      	SetValue($ScriptCounterID,0);
+      			//IPS_SetScriptTimer($_IPS['SELF'], 0);
+		      	IPS_SetEventActive($tim2ID,false);
 				}
 			break;
 		default:
@@ -115,21 +125,22 @@ if ($_IPS['SENDER']=="TimerEvent")
 if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
 	{
 	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
-	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
+	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n";
+	echo "Verzeichnis für Mozilla exe :".$firefox."\n\n";
 	
 	//print_r($phone);
 
 	echo "Stand ScriptCounter :".GetValue($ScriptCounterID)." von max ".$maxcount."\n";
-   SetValue($ScriptCounterID,0);
+   	SetValue($ScriptCounterID,0);
 
 	//IPS_SetScriptTimer($_IPS['SELF'], 1);
 	IPS_SetEventActive($tim2ID,true);
-   echo "Exectimer gestartet, Auslesung beginnt ....\n";
-   echo "Timer täglich ID:".$tim1ID." und alle 150 Sekunden ID: ".$tim2ID."\n";
-   //echo ADR_Programs."Mozilla Firefox/firefox.exe";
+   	echo "Exectimer gestartet, Auslesung beginnt ....\n";
+   	echo "Timer täglich ID:".$tim1ID." und alle 150 Sekunden ID: ".$tim2ID."\n";
+   	//echo ADR_Programs."Mozilla Firefox/firefox.exe";
    
 	echo "\n\nGuthabensteuerung laeuft nun, da sie haendisch mit Aufruf dieses Scripts ausgelöst wurde.\n";
-   //IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
+   	//IPS_SetEventActive($tim2ID,true); /* siehe weiter oben ...*/
 	}
 
 /******************************************************

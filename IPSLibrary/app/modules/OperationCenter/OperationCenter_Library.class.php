@@ -26,7 +26,7 @@ class OperationCenter
 	var $log_OperationCenter  	= array();
 	var $mactable             	= array();
 	var $oc_Configuration     	= array();
-	var $oc_Setup			     	= array();
+	var $oc_Setup			    = array();
 	var $AllHostnames         	= array();
 	var $installedModules     	= array();
 	
@@ -36,37 +36,38 @@ class OperationCenter
 	 * Initialisierung des OperationCenter Objektes
 	 *
 	 */
-	public function __construct($subnet="10.255.255.255")
+	public function __construct($subnet='10.255.255.255')
+		{
+
+		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+
+		$this->subnet=$subnet;
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager))
 			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
-			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-
-			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-			if (!isset($moduleManager))
-				{
-				IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-				//echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
-				$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-				}
-		   $this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
-		   $this->installedModules = $moduleManager->GetInstalledModules();
-		   $this->subnet=$subnet;
+			//echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
+			$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+			}
+	   	$this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
+	   	$this->installedModules = $moduleManager->GetInstalledModules();
 
    		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
    		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
    		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
    		$this->categoryId_SysInfo  	= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
-			
-         $this->mactable=$this->create_macipTable($subnet);
-         $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
-			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
-			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$this->oc_Configuration = OperationCenter_Configuration();
-			$this->oc_Setup = OperationCenter_SetUp();
-			$this->AllHostnames = LogAlles_Hostnames();
-			}
+		
+		//echo "Subnet ".$this->subnet."   ".$subnet."\n";		
+        $this->mactable=$this->create_macipTable($this->subnet);
+        $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
+		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+		$this->oc_Configuration = OperationCenter_Configuration();
+		$this->oc_Setup = OperationCenter_SetUp();
+		$this->AllHostnames = LogAlles_Hostnames();
+		}
 
 	/**
 	 * @public
@@ -351,48 +352,52 @@ class OperationCenter
 	function create_macipTable($subnet,$printHostnames=false)
 		{
 		$subnetok=substr($subnet,0,strpos($subnet,"255"));
+		//echo "Finde in ".$subnet." den ersten 255er :".strpos($subnet,"255")."\n";
 		$ergebnis=""; $print_table="";
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
 		unset($catch);
 		exec('arp -a',$catch);
 		foreach($catch as $line)
-   		{
-   		if (strlen($line)>0)
+   			{
+   			if (strlen($line)>0)
 				{
-			   $result=trim($line);
-	   		$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
-		   	$result=trim(substr($result,strpos($result," "),100));
-	   		$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
-		   	$result=trim(substr($result,strpos($result," "),100));
+			   	$result=trim($line);
+	   			$result1=substr($result,0,strpos($result," ")); /* zuerst IP Adresse */
+		   		$result=trim(substr($result,strpos($result," "),100));
+	   			$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
+		   		$result=trim(substr($result,strpos($result," "),100));
 				if ($result1=="10.0.255.255") { break; }
-				//echo "*** ".$line." Result:  ".$result1." SubnetOk: ".$subnetok." SubNet: ".$subnet."\n";
-				if (strpos($result1,$subnetok)===false)
-				   {
-			   	}
-				else
-				   {
-			   	//echo $line."\n";
-					if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
-						{
-						$ergebnis.=$result1.";".$result2;
-						$print_table.=$line;
-						$found=false;
-						foreach ($ipadressen as $ip)
-						   {
-					   	if ($result2==$ip["Mac_Adresse"])
-		   			   	{
-								$ergebnis.=";".$ip["Hostname"].",";
-								$print_table.=" ".$ip["Hostname"]."\n";
-								$found=true;
+				echo "*** ".$line." Result:  ".$result1." SubnetOk: ".$subnetok." SubNet: ".$subnet." ".strlen($result1)."\n";
+				if ( (strlen($result1)>0) && ((strlen($subnetok)>0) ) )
+					{
+					if (strpos($result1,$subnetok)===false)
+					   	{
+				   		}
+					else
+					   	{
+			   			//echo $line."\n";
+						if (is_numeric(substr($result1,-1)))   /* letzter Wert in der IP Adresse wirklich eine Zahl */
+							{
+							$ergebnis.=$result1.";".$result2;
+							$print_table.=$line;
+							$found=false;
+							foreach ($ipadressen as $ip)
+							   	{
+						   		if ($result2==$ip["Mac_Adresse"])
+		   				   			{
+									$ergebnis.=";".$ip["Hostname"].",";
+									$print_table.=" ".$ip["Hostname"]."\n";
+									$found=true;
+									}
+								}
+							if ($found==false)
+								{
+								$ergebnis.=";none,";
+								$print_table.=" \n";
 								}
 							}
-						if ($found==false)
-							{
-							$ergebnis.=";none,";
-							$print_table.=" \n";
-							}
 						}
-					}
+					} // nur wenn Auswertung ueberhaupt Sinn macht
 				}
 		  }
 		$ergebnis_array=explode(",",$ergebnis);

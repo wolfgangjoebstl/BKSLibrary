@@ -231,8 +231,8 @@
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		//DeleteWFCItems($WFC10_ConfigId, "root");
-		WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
-		WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 
@@ -301,8 +301,8 @@
 		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
 		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
-		WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
-		WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
+		@WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
 		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 		echo "\nWebportal LocalAccess TabPane installieren in: ".$WFC10User_Path." \n";

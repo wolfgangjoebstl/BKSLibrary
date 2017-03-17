@@ -18,6 +18,7 @@ IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::m
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
 /******************************************************
 
@@ -657,7 +658,7 @@ if ($_IPS['SENDER']=="Execute")
    	Sys Ping the Devices
 	**********************************************************/
 
-	SysPingAllDevices($OperationCenter,$log_OperationCenter);
+	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
 
 	echo "============================================================================================================\n";
 
@@ -677,20 +678,20 @@ if ($_IPS['SENDER']=="Execute")
    	CopyScripts
 	**********************************************************/
 
-	$OperationCenter->CopyScripts();
+	//$OperationCenter->CopyScripts();
 
 	/********************************************************
    	Move Logs
 	**********************************************************/
 
-	$OperationCenter->MoveLogs();
+	//$OperationCenter->MoveLogs();
 
 	/************************************************************************************
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
   	einmal als aktuelle Werte und einmal als historische Werte
 	*************************************************************************************/
 
-	$OperationCenter->FileStatus();
+	//$OperationCenter->FileStatus();
 
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
