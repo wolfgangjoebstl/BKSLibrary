@@ -367,7 +367,7 @@ class OperationCenter
 	   			$result2=substr($result,0,strpos($result," ")); /* danach MAC Adresse */
 		   		$result=trim(substr($result,strpos($result," "),100));
 				if ($result1=="10.0.255.255") { break; }
-				echo "*** ".$line." Result:  ".$result1." SubnetOk: ".$subnetok." SubNet: ".$subnet." ".strlen($result1)."\n";
+				//echo "*** ".$line." Result:  ".$result1." SubnetOk: ".$subnetok." SubNet: ".$subnet." ".strlen($result1)."\n";
 				if ( (strlen($result1)>0) && ((strlen($subnetok)>0) ) )
 					{
 					if (strpos($result1,$subnetok)===false)

@@ -103,49 +103,52 @@ echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\
 if (isset($AmisReadMeterID)==true)
 	{
 	echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
-	}
-echo   "Genereller Meter Read eingeschaltet : ".GetValueFormatted($MeterReadID)."\n";
-echo "\nAMIS Meter Read eingeschaltet       : ".GetValueFormatted($MeterReadID)." auf Com-Port : ".$com_Port."\n";
-
-if (Getvalue($MeterReadID))
-	{
-	if ($AmisConfig["Type"] == "Bluetooth")
-	   {
-      echo "Comport Bluetooth aktiviert. \n";
-      COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
-		}
-
-	if ($AmisConfig["Type"] == "Serial")
-	   {
-      $config = IPS_GetConfiguration($com_Port);
-      echo "Comport Serial aktiviert. Konfiguration: ".$config." \n";
-		$stdobj = json_decode($config);
-		$ergebnis=json_encode($stdobj);
-		echo "      ede/encode zum Vergleich ".$ergebnis."\n";
-		print_r($stdobj);	
-		echo "Comport Status : ".$stdobj->Open."\n";
-      $remove = array("{", "}", '"');
-		$config = str_replace($remove, "", $config);
-		$Config = explode (',',$config);
-		$AllConfig=array();
-		foreach ($Config as $configItem)
-		   {
-		   $items=explode (':',$configItem);
-		   $Allconfig[$items[0]]=$items[1];
-		   }
-		print_r($Allconfig);
-		if ($Allconfig["Open"]==false) 
-		   {
-			COMPort_SetOpen($com_Port, true); //false für aus
-			IPS_ApplyChanges($com_Port);
+	if (Getvalue($MeterReadID))
+		{
+		if ($AmisConfig["Type"] == "Bluetooth")
+	   		{
+      		echo "Comport Bluetooth aktiviert. \n";
+      		COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 			}
-		else
-     		{
-			echo "Port ist offen.\n";
+
+		if ($AmisConfig["Type"] == "Serial")
+	   		{
+      		$config = IPS_GetConfiguration($com_Port);
+      		echo "Comport Serial aktiviert. Konfiguration: ".$config." \n";
+			$stdobj = json_decode($config);
+			$ergebnis=json_encode($stdobj);
+			echo "      ede/encode zum Vergleich ".$ergebnis."\n";
+			print_r($stdobj);	
+			echo "Comport Status : ".$stdobj->Open."\n";
+	 		$remove = array("{", "}", '"');
+			$config = str_replace($remove, "", $config);
+			$Config = explode (',',$config);
+			$AllConfig=array();
+			foreach ($Config as $configItem)
+		   		{
+		   		$items=explode (':',$configItem);
+				$Allconfig[$items[0]]=$items[1];
+		   		}
+			print_r($Allconfig);
+			if ($Allconfig["Open"]==false) 
+		   		{
+				COMPort_SetOpen($com_Port, true); //false für aus
+				IPS_ApplyChanges($com_Port);
+				}
+			else
+     			{
+				echo "Port ist offen.\n";
+				}
+			COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
 			}
-		COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
-		}
+		}	
 	}
+else
+	{	
+	echo "AMIS Meter Read ausgeschaltet.\n";
+	}
+
+
 	
 
 if ($_IPS['SENDER'] == "Execute")
@@ -175,11 +178,14 @@ if ($_IPS['SENDER'] == "Execute")
 		}
 	echo "\n";
 	print_r($configPort);
-	echo "----------------------\n";
-	//SetValue($AMISReceiveCharID,"");
-	echo GetValue($AMISReceiveCharID);
-	echo "----------------------\n";	
-	echo GetValue($AMISReceiveChar1ID);	
+	if (isset($AmisReadMeterID)==true)
+		{	
+		echo "----------------------\n";
+		//SetValue($AMISReceiveCharID,"");
+		echo GetValue($AMISReceiveCharID);
+		echo "----------------------\n";	
+		echo GetValue($AMISReceiveChar1ID);
+		}	
 	}
 
 /******************************************************************************************************************/
