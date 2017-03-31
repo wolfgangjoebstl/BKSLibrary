@@ -762,7 +762,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   	} /* Ende foreach */
 	      break;
 	      
-	   case $tim2ID:
+		case $tim2ID:
 			//IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam und Logdateien zusammenraeumen:");
 			/********************************************************
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
@@ -799,22 +799,22 @@ if ($_IPS['SENDER']=="TimerEvent")
   				   	SetValue($WebCam_MotionID,false);
 					   }
 					}
-				if ($count>0)
-					{
-					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
-					}
-				else
-				   {
-				   $countlog=$OperationCenter->MoveLogs();
-				   if ($countlog>0)
-						{
-			   		IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
-				   	}
-				   }
 				} /* Ende isset */
-	      break;
+			if ($count>0)
+				{
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
+				}
+			else
+				{
+				$countlog=$OperationCenter->MoveLogs();
+				if ($countlog>0)
+					{
+					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+					}
+				}
+			break;
 	      
-	   case $tim3ID:
+		case $tim3ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
 			/******************************************************************************************

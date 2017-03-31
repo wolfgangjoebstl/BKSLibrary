@@ -71,7 +71,7 @@ $maxcount=$i;
 
 if ( isset($GuthabenAllgConfig["FireFoxDirectory"]) == true )
 	{
-	$firefox=$GuthabenAllgConfig["FireFoxDirectory"];
+	$firefox=$GuthabenAllgConfig["FireFoxDirectory"]."firefox.exe";
 	}
 else
 	{
@@ -90,29 +90,29 @@ if ($_IPS['SENDER']=="TimerEvent")
 	{
 	//IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']);
 	switch ($_IPS['EVENT'])
-	   	{
-	   	case $tim1ID:
-	   		IPS_SetEventActive($tim2ID,true);
-	      	break;
-	   	case $tim2ID:
+		{
+		case $tim1ID:
+			IPS_SetEventActive($tim2ID,true);
+			break;
+		case $tim2ID:
 			//IPSLogger_Dbg(__file__, "TimerExecEvent from :".$_IPS['EVENT']." ScriptcountID:".GetValue($ScriptCounterID)." von ".$maxcount);
 			SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
-		   	//IPS_SetScriptTimer($_IPS['SELF'], 150);
-		   	if (GetValue($ScriptCounterID) < $maxcount)
+			//IPS_SetScriptTimer($_IPS['SELF'], 150);
+			if (GetValue($ScriptCounterID) < $maxcount)
 				{
 				// keine Anführungszeichen verwenden
-				IPS_ExecuteEX($firefox."/firefox.exe", "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, -1);		
-  	   			}
+				IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, -1);		
+				}
 			else
 				{
 				IPS_RunScript($ParseGuthabenID);
-		      	SetValue($ScriptCounterID,0);
-      			//IPS_SetScriptTimer($_IPS['SELF'], 0);
-		      	IPS_SetEventActive($tim2ID,false);
+				SetValue($ScriptCounterID,0);
+				//IPS_SetScriptTimer($_IPS['SELF'], 0);
+				IPS_SetEventActive($tim2ID,false);
 				}
 			break;
 		default:
-		   break;
+			break;
 		}
 	}
 
@@ -186,6 +186,21 @@ if ($_IPS['SENDER']=="Execute")
 		//$ergebnis.=$ergebnis1."\n";
 		}
 
+	SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
+	//IPS_SetScriptTimer($_IPS['SELF'], 150);
+	if (GetValue($ScriptCounterID) < $maxcount)
+		{
+		// keine Anführungszeichen verwenden
+		echo "Aufruf von :".$firefox." imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim"."\n";
+		IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phone[GetValue($ScriptCounterID)].".iim", false, false, -1);		
+		}
+	else
+		{
+		IPS_RunScript($ParseGuthabenID);
+		SetValue($ScriptCounterID,0);
+		//IPS_SetScriptTimer($_IPS['SELF'], 0);
+		IPS_SetEventActive($tim2ID,false);
+		}
 	}
 
 
