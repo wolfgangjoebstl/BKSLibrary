@@ -68,6 +68,193 @@ class OperationCenter
 		$this->oc_Setup = OperationCenter_SetUp();
 		$this->AllHostnames = LogAlles_Hostnames();
 		}
+/****************************************************************************************************************/
+
+	/**
+	 * @public
+	 *
+	 * what is my IP Adresse liefert eigene IP Adresse
+	 *
+	 * verwendet zwei unterschiedliche Methoden. 
+	 *		address1 sucht nach Punkten mit kleiner 4 Zeichen Abstand, Ergebniss werden als Array ausgegeben pos und IP
+	 *		address2 sucht nach einem Keywort. Ausgabe als String.
+	 *
+	 * Variante1 ist mehr generisch
+	 *
+	 */
+	 
+	function whatismyIPaddress1()
+		{
+		$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
+		//$url="http://www.whatismyip.com/";  //gesperrt
+		//$url="http://whatismyip.org/"; // java script
+		//$url="http://www.myipaddress.com/show-my-ip-address/"; // check auf computerzugriffe
+		//$url="http://www.ip-adress.com/"; //gesperrt
+
+		/* ab und zu gibt es auch bei der whatismyipaddress url timeouts, 30sek maximum timeout */
+		/* d.h. Timeout: Server wird nicht erreicht
+			Zustand false: kein Internet
+		*/
+	
+		/* gets the data from a URL */
+	
+		//$result=file_get_contents($url);
+		$result1=get_data($url);
+
+		/* letzte Alternative ist die Webcam selbst */
+
+		echo "\n";
+		if ($result1==false)
+			{
+			echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
+			return (false);
+			}
+		else	
+		   	{
+			//$pos_start=strpos($result,"whatismyipaddress.com/ip")+25;
+			$result=strip_tags($result1);
+			//echo $result;
+			//echo "Suche Punkte:\n";
+			$result2=$result;
+			$pos=0; $i=0;
+			$posP=array();
+			while (strpos($result2,".")!==false)
+				{
+				$pos1=strpos($result2,".");
+				$result2=substr($result2,$pos1+1);
+				$pos+=$pos1+1; 
+				//echo ":".$pos."(".substr($result,$pos-1,5).")";
+				if ($pos1<4)  // zwei Punkte knapp beieinander
+					{
+					if (is_numeric(substr($result,$pos-$pos1-1,$pos1)) ) // das Ergebnis zwischen den Punkten ist numerisch, hurrah
+						{
+						//echo "    ".substr($result,$pos-$pos1-1,$pos1)." ist numerisch. zwei Punkte mit Abstand kleiner 4 gefunden. Wir sind auf Pos ".$pos."\n";
+						// Was ist vor dem Punkt, auch eine Zahl ?
+						$digits=0;
+						//echo "|".substr($result,($pos-$pos1-5),16)."|";
+						if ( is_numeric(substr($result,($pos-$pos1-3),1)) ) { $digits=1; }
+						if ( is_numeric(substr($result,($pos-$pos1-4),1)) ) { $digits=2; }
+						if ( is_numeric(substr($result,($pos-$pos1-5),1)) ) { $digits=3; }
+						$posIP=$pos-($digits+$pos1+3);
+						$result3=extractIPaddress(trim(substr($result,$posIP,20)));
+						//echo "   Evaluate  ".($result3)."  Erste Zahl hat ".$digits." Stellen.\n";
+						if (filter_var($result3, FILTER_VALIDATE_IP))
+							{
+							$posP[$i]["Pos"]=$posIP;
+							$posP[$i++]["IP"]=$result3; 
+							//echo "   IP Adresse gefunden:    ".trim(substr($result,$posIP,20))."\n";
+							}
+						} 
+					}
+				}
+			//echo "\n";	
+			return ($posP);
+	   		}
+		}
+
+	function whatismyIPaddress2()
+		{
+		$url="http://whatismyipaddress.com/";  
+		$result=get_data($url);
+		if ($result==false)
+			{
+			echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
+			return (false);
+			}
+		else	
+		   	{
+			$result=strip_tags($result);
+			$pos_start=strpos($result,"Your IPv4 Address Is:")+21;		
+			$subresult=trim(substr($result,$pos_start,40));
+			//$pos_length=strpos($subresult,"\"");
+			//$pos_length=strpos($subresult,chr(10));
+			//echo "Startpos: ".$pos_start." Length: ".$pos_length." \n".$subresult."\n";
+			//$subresult=substr($subresult,0,$pos_length);
+	   		//echo "Whatismyipaddress liefert : ".$subresult."\n";
+			return ($subresult);
+			}
+		}	
+
+	/**
+	 * @public
+	 *
+	 * ownIPaddress liefert eigene IP Adresse
+	 *
+	 * Output ist ein array mit allen gefundenen IP Adressen und deren Ports
+	 *
+	 */
+	 
+	function ownIPaddress()
+		{
+	   
+		/********************************************************
+	   	Eigene Ip Adresse immer ermitteln
+		**********************************************************/
+
+		echo "\nIPConfig Befehl liefert ...\n";
+		$ipall=""; $hostname="unknown"; $lookforgateway=false;
+		exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
+		//exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden, allerdings fehlt dann der Hostname */
+
+		$ipports=array();
+
+		foreach($catch as $line)
+   			{
+			if (strlen($line)>2)
+				{
+				//echo "  | ".$line."\n<br>";
+				if (substr($line,0,1)!=" ")
+					{
+					//echo "-------------------> Ueberschrift \n";
+					$portname=substr($line,0,strpos($line,":"));
+					}
+   				if(preg_match('/IPv4-Adresse/i',$line))
+	   				{
+					//echo "Ausgabe catch :".$line."\n<br>";
+   	   				list($t,$ip) = explode(':',$line);
+	      			$result = extractIPaddress($ip);
+    	  			$ipports[$result]["Name"]=$portname;
+	    	     	$ipall=$ipall." ".$result;
+	        	 	$lookforgateway=true;
+		      		/* if(ip2long($ip > 0))
+				   		{
+	      		   		$ipports[]=$ip;
+    	     			$ipall=$ipall." ".$ip;
+			         	$status2=true;
+						$pos=strpos($ipall,"(");  // bevorzugt eliminieren
+						$ipall=trim(substr($ipall,0,$pos));
+   	   	   				}  */
+		      		}
+		      	if ($lookforgateway==true)
+					{
+					if(preg_match('/Standardgateway/i',$line))
+	   					{
+						//echo "Ausgabe catch :".$line."\n<br>";
+	   		   			list($t,$gw) = explode(':',$line);
+    	  				$gw = extractIPaddress($gw);
+      					$ipports[$result]["Gateway"]=$gw;
+	        	 		$lookforgateway=false;
+						}
+					}
+   				if(preg_match('/Hostname/i',$line))
+	   				{
+	   				list($t,$hostname) = explode(':',$line);
+	      			$hostname = trim($hostname);
+					}
+				}  /* ende strlen */
+		  	}
+		if ($ipall == "") {$ipall="unknown";}
+
+		echo "\n";
+		echo "Hostname ist          : ".$hostname."\n";
+		echo "Eigene IP Adresse ist : ".$ipall."\n";
+		echo "\n";
+
+		//print_r($ipports);
+		return ($ipports);
+		}
+
+/****************************************************************************************************************/
 
 	/**
 	 * @public
@@ -240,6 +427,8 @@ class OperationCenter
 			return ($RemoteServer);
 		}
 
+/****************************************************************************************************************/
+
 	/**
 	 * @public
 	 *
@@ -304,6 +493,8 @@ class OperationCenter
 		return $results;
 		}	
 
+/****************************************************************************************************************/
+
 	/**
 	 * @public
 	 *
@@ -342,6 +533,7 @@ class OperationCenter
 		   }
 		}
 
+/****************************************************************************************************************/
 
 	/**
 	 * @public
@@ -468,6 +660,8 @@ class OperationCenter
 		echo "\n\n";
 		return ($ergebnis);
 	   }
+
+/****************************************************************************************************************/
 
 	/**
 	 * schreibt die gestrigen Download/Upload und Total Werte von einem MR3430 Router
@@ -1328,149 +1522,14 @@ class OperationCenter
 
 		}
 		
-	}  /* ende class */
-
-/****************************************************************************************************************/
-
-function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
-	{
-	$count=100;
-	//echo "<ol>";
-
-	// Test, ob ein Verzeichnis angegeben wurde
-	if ( is_dir ( $verzeichnis ))
-		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-        	/* einlesen der Verzeichnisses
-			nur count mal Eintraege
-        	*/
-        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-					$count-=1;
-					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-            	if (is_dir($verzeichnis.$unterverzeichnis))
-            		{
-            		}
-            	else
-						{
-            		mkdir($verzeichnis.$unterverzeichnis);
-            		}
-            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-            	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-		  		   SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
-         		}
-      	  	} /* Ende while */
-	     	closedir($handle);
-   		} /* end if dir */
-		}/* ende if isdir */
-	else
-	   {
-	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-		}
-	return(100-$count);
-	}
+	}  /* ende class OperationCenter*/
 
 
-
-/*********************************************************************************************/
-
-function get_data($url) {
-	$ch = curl_init($url);
-	$timeout = 5;
-	curl_setopt($ch, CURLOPT_URL, $url);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
-	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)"); // who am i
-
-	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
-        CURLOPT_ENCODING       => "",       // handle all encodings
-        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
-        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
-        CURLOPT_TIMEOUT        => 120,      // timeout on response
-        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
-        CURLOPT_POST => 1,
-        CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
-
-	$data = curl_exec($ch);
-
-	/* Curl Debug Funktionen */
-	/*
-	echo "Channel :".$ch."\n";
-  	$err     = curl_errno( $ch );
-   $errmsg  = curl_error( $ch );
-   $header  = curl_getinfo( $ch );
-
-	echo "Fehler ".$err." von ";
-	print_r($errmsg);
-	echo "\n";
-	echo "Header ";
-	print_r($header);
-	echo "\n";
-	*/
-
-	curl_close($ch);
-
-	return $data;
-}
-
-/*********************************************************************************************/
-
-function extractIPaddress($ip)
-	{
-		$parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
-		$first_num = -1;
-		$num_loc = 0;
-		foreach ($parts AS $a_char)
-			{
-			if (is_numeric($a_char))
-				{
-				$first_num = $num_loc;
-				break;
-				}
-			$num_loc++;
-			}
-		if ($first_num == -1) {return "unknown";}
-
-		/* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
-		$result=substr($ip,$first_num,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_1=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_2=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$pos=strpos($result,".");
-		$result_3=substr($result,0,$pos);
-		$result=substr($result,$pos+1,20);
-		//echo "Result :".$result."\n";
-		$parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
-		$last_num = -1;
-		$num_loc = 0;
-		foreach ($parts AS $a_char)
-			{
-			if (is_numeric($a_char))
-				{
-				$last_num = $num_loc;
-				}
-			$num_loc++;
-			}
-		$result=substr($result,0,$last_num+1);
-		//echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
-		return($result_1.".".$result_2.".".$result_3.".".$result);
-	}
-
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ *  Eigene Klasse für parsefile
+ *
+ ***************************************************************************************************/
 
 
 class parsefile
@@ -1622,10 +1681,156 @@ class parsefile
 	   return str_replace(',','',$number);
 	   }
 
-	} /* Ende class */
+	} /* Ende class parsefile*/
+
+
+/***************************************************************************************************************
+ *
+ *  Allgemeine Funktionen
+ *
+ *
+ *
+ *****************************************************************************************************************/
+
+function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
+	{
+	$count=100;
+	//echo "<ol>";
+
+	// Test, ob ein Verzeichnis angegeben wurde
+	if ( is_dir ( $verzeichnis ))
+		{
+    	// öffnen des Verzeichnisses
+    	if ( $handle = opendir($verzeichnis) )
+    		{
+        	/* einlesen der Verzeichnisses
+			nur count mal Eintraege
+        	*/
+        	while ((($file = readdir($handle)) !== false) and ($count > 0))
+        		{
+				$dateityp=filetype( $verzeichnis.$file );
+            if ($dateityp == "file")
+            	{
+					$count-=1;
+					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+            	if (is_dir($verzeichnis.$unterverzeichnis))
+            		{
+            		}
+            	else
+						{
+            		mkdir($verzeichnis.$unterverzeichnis);
+            		}
+            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+            	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+		  		   SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
+         		}
+      	  	} /* Ende while */
+	     	closedir($handle);
+   		} /* end if dir */
+		}/* ende if isdir */
+	else
+	   {
+	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		}
+	return(100-$count);
+	}
+
 
 
 /*********************************************************************************************/
+
+function get_data($url) {
+	$ch = curl_init($url);
+	$timeout = 5;
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);           // return web page
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
+	curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
+   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)"); // who am i
+
+	/*   CURLOPT_FOLLOWLOCATION => true,     // follow redirects
+        CURLOPT_ENCODING       => "",       // handle all encodings
+        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
+        CURLOPT_TIMEOUT        => 120,      // timeout on response
+        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+        CURLOPT_POST => 1,
+        CURLOPT_POSTFIELDS => "LOOKUPADDRESS=".$argument1,  */
+
+	$data = curl_exec($ch);
+
+	/* Curl Debug Funktionen */
+	/*
+	echo "Channel :".$ch."\n";
+  	$err     = curl_errno( $ch );
+   $errmsg  = curl_error( $ch );
+   $header  = curl_getinfo( $ch );
+
+	echo "Fehler ".$err." von ";
+	print_r($errmsg);
+	echo "\n";
+	echo "Header ";
+	print_r($header);
+	echo "\n";
+	*/
+
+	curl_close($ch);
+
+	return $data;
+}
+
+/*********************************************************************************************/
+
+function extractIPaddress($ip)
+	{
+		$parts = str_split($ip);   /* String in lauter einzelne Zeichen zerlegen */
+		$first_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$first_num = $num_loc;
+				break;
+				}
+			$num_loc++;
+			}
+		if ($first_num == -1) {return "unknown";}
+
+		/* IP adresse Stelle fuer Stelle dekodieren, Anhaltspunkt ist der Punkt */
+		$result=substr($ip,$first_num,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_1=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_2=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$pos=strpos($result,".");
+		$result_3=substr($result,0,$pos);
+		$result=substr($result,$pos+1,20);
+		//echo "Result :".$result."\n";
+		$parts = str_split($result);   /* String in lauter einzelne Zeichen zerlegen */
+		$last_num = -1;
+		$num_loc = 0;
+		foreach ($parts AS $a_char)
+			{
+			if (is_numeric($a_char))
+				{
+				$last_num = $num_loc;
+				}
+			$num_loc++;
+			}
+		$result=substr($result,0,$last_num+1);
+		//echo "-------------------------> externe IP Adresse in Einzelteilen:  ".$result_1.".".$result_2.".".$result_3.".".$result."\n";
+		return($result_1.".".$result_2.".".$result_3.".".$result);
+	}
+
+/**************************************************************/
 
 
 function dirToArray($dir)

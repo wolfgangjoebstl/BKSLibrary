@@ -166,33 +166,33 @@
 	$OperationCenterConfig = OperationCenter_Configuration();
 	//print_r($OperationCenterConfig);
 	foreach ($OperationCenterConfig['ROUTER'] as $router)
-	   {
-	   echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+		{
+		echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 		//print_r($router);
 		if ($router['TYP']=='MR3420')
-		   {
-		   echo "    iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
+			{
+			echo "    iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
 			$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
-      	fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
-	      fwrite($handle2,'TAB T=1'."\n");
-	      fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+      		fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
+	    	fwrite($handle2,'TAB T=1'."\n");
+	      	fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
 			fwrite($handle2,'SET !ENCRYPTION NO'."\n");
      		fwrite($handle2,'ONLOGIN USER=admin PASSWORD=cloudg06'."\n");
-	      fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
-   	   fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
-      	fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
-	      fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>Statistics'."\n");
-   	   fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
-      	fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
-	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
-	      fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
-	      fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
-   	   //fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
-   	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
-   	   fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
-   	   fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Status'."\n");
-   	   fwrite($handle2,'SAVEAS TYPE=CPL FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."_Statistics\n");
-      	fwrite($handle2,'TAB CLOSE'."\n");
+	      	fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
+   	   		fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+      		fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
+	      	fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>Statistics'."\n");
+   	   		fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+      		fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
+	      	fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
+	      	fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+	      	fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
+   	   		//fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
+   	   		fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+   	   		fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+   	   		fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Status'."\n");
+   	   		fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."_Statistics\n");
+      		fwrite($handle2,'TAB CLOSE'."\n");
 			fclose($handle2);
 
 			//SetValue($ScriptCounterID,1);

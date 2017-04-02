@@ -36,38 +36,16 @@ $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/mas
 if (!isset($moduleManager))
 	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
 	}
 
 $installedModules = $moduleManager->GetInstalledModules();
-$inst_modules="\nInstallierte Module:\n";
-foreach ($installedModules as $name=>$modules)
-	{
-	$inst_modules.=str_pad($name,30)." ".$modules."\n";
-	}
-echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 
-echo "Category Data ID   : ".$CategoryIdData."\n";
-echo "Category App ID    : ".$CategoryIdApp."\n";
-echo "Category Script ID : ".$scriptId."\n\n";
-
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
-
-echo "Folgende Module werden von OperationCenter bearbeitet:\n";
-if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
-if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
-if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
-if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
-if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
-if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
-if (isset ($installedModules["IPSWeatherForcastAT"])){ 	echo "  Modul IPSWeatherForcastAT ist installiert.\n"; } else { echo "Modul IPSWeatherForcastAT ist NICHT installiert.\n";}
-echo "\n";
 
 	/******************************************************
 
@@ -130,17 +108,6 @@ $tim7ID = @IPS_GetEventIDByName("FileStatus", $scriptId);
 $tim8ID = @IPS_GetEventIDByName("SystemInfo", $scriptId);
 $tim9ID = @IPS_GetEventIDByName("Reserved", $scriptId);
 
-echo "Timer Installation : \n";
-echo "  Timer RouterAufruftimer OID : ".$tim1ID."\n";
-echo "  Timer MoveCamFiles OID      : ".$tim2ID."\n";
-echo "  Timer RouterExectimer OID   : ".$tim3ID."\n";
-echo "  Timer SysPingTimer OID      : ".$tim4ID."\n";
-echo "  Timer CyclicUpdate OID      : ".$tim5ID."\n";
-echo "  Timer CopyScriptsTimer OID  : ".$tim6ID."\n";
-echo "  Timer FileStatus OID        : ".$tim7ID."\n";
-echo "  Timer SystemInfo OID        : ".$tim8ID."\n";
-echo "  Timer Reserved OID          : ".$tim9ID."\n";
-
 /*********************************************************************************************/
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -197,6 +164,38 @@ if ($_IPS['SENDER']=="Execute")
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
+	$inst_modules="\nInstallierte Module:\n";
+	foreach ($installedModules as $name=>$modules)
+		{
+		$inst_modules.=str_pad($name,30)." ".$modules."\n";
+		}
+	echo $inst_modules."\n\n";
+
+	echo "Category Data ID   : ".$CategoryIdData."\n";
+	echo "Category App ID    : ".$CategoryIdApp."\n";
+	echo "Category Script ID : ".$scriptId."\n\n";
+
+	echo "Folgende Module werden von OperationCenter bearbeitet:\n";
+	if (isset ($installedModules["IPSLight"])) { 			echo "  Modul IPSLight ist installiert.\n"; } else { echo "Modul IPSLight ist NICHT installiert.\n"; }
+	if (isset ($installedModules["IPSPowerControl"])) { 	echo "  Modul IPSPowerControl ist installiert.\n"; } else { echo "Modul IPSPowerControl ist NICHT installiert.\n";}
+	if (isset ($installedModules["IPSCam"])) { 				echo "  Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+	if (isset ($installedModules["RemoteAccess"])) { 		echo "  Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; }
+	if (isset ($installedModules["LedAnsteuerung"])) { 	echo "  Modul LedAnsteuerung ist installiert.\n"; } else { echo "Modul LedAnsteuerung ist NICHT installiert.\n";}
+	if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung ist installiert.\n"; } else { echo "Modul DENONsteuerung ist NICHT installiert.\n";}
+	if (isset ($installedModules["IPSWeatherForcastAT"])){ 	echo "  Modul IPSWeatherForcastAT ist installiert.\n"; } else { echo "Modul IPSWeatherForcastAT ist NICHT installiert.\n";}
+	echo "\n";
+
+	echo "Timer Installation : \n";
+	echo "  Timer RouterAufruftimer OID : ".$tim1ID."\n";
+	echo "  Timer MoveCamFiles OID      : ".$tim2ID."\n";
+	echo "  Timer RouterExectimer OID   : ".$tim3ID."\n";
+	echo "  Timer SysPingTimer OID      : ".$tim4ID."\n";
+	echo "  Timer CyclicUpdate OID      : ".$tim5ID."\n";
+	echo "  Timer CopyScriptsTimer OID  : ".$tim6ID."\n";
+	echo "  Timer FileStatus OID        : ".$tim7ID."\n";
+	echo "  Timer SystemInfo OID        : ".$tim8ID."\n";
+	echo "  Timer Reserved OID          : ".$tim9ID."\n";
+	
 	/********************************************************
    	Erreichbarkeit Hardware
 	**********************************************************/
@@ -206,115 +205,23 @@ if ($_IPS['SENDER']=="Execute")
 	/********************************************************
    	Externe Ip Adresse immer ermitteln
 	**********************************************************/
-	echo "\nExterne IP Adresse ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-
-	$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
-	//$url="http://www.whatismyip.com/";  //gesperrt
-	//$url="http://whatismyip.org/"; // java script
-	//$url="http://www.myipaddress.com/show-my-ip-address/"; // check auf computerzugriffe
-	//$url="http://www.ip-adress.com/"; //gesperrt
-
-	/* ab und zu gibt es auch bei der whatismyipaddress url timeouts, 30sek maximum timeout */
-	/* d.h. Timeout: Server wird nicht erreicht
-			Zustand false: kein Internet
-	*/
-
-
-	//curl  ifconfig.co
 	
-	/* gets the data from a URL */
-
-	//$result=file_get_contents($url);
-	$result=get_data($url);
-
-	//echo $result;
-
-	/* letzte Alternative ist die Webcam selbst */
-
-	echo "\n";
-	if ($result==false)
+	echo "\nExterne IP Adresse ermitteln.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	$result=$OperationCenter->whatismyIPaddress1()[0];
+	if ($result["IP"]==false)
 		{
 		echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
 		}
 	else
-	   {
-		$pos_start=strpos($result,"whatismyipaddress.com/ip")+25;
-		$subresult=substr($result,$pos_start,20);
-		$pos_length=strpos($subresult,"\"");
-		$subresult=substr($subresult,0,$pos_length);
-	   echo "Whatismyipaddress liefert : ".$subresult."\n";
-	   }
+		{
+	   	echo "Whatismyipaddress liefert : \"".$result["IP"]."\"\n";
+	   	}
 	   
-	   
-	   
-	/********************************************************
-   	Eigene Ip Adresse immer ermitteln
-	**********************************************************/
-
-	echo "\nIPConfig Befehl liefert ...\n";
-	$ipall=""; $hostname="unknown"; $lookforgateway=false;
-	//exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
-	exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
-
-	$ipports=array();
-
-	foreach($catch as $line)
-   	{
-		if (strlen($line)>2)
-		   {
-			echo "  | ".$line."\n<br>";
-			if (substr($line,0,1)!=" ")
-				{
-				//echo "-------------------> Ueberschrift \n";
-				$portname=substr($line,0,strpos($line,":"));
-				}
-   		if(preg_match('/IPv4-Adresse/i',$line))
-	   		{
-				//echo "Ausgabe catch :".$line."\n<br>";
-   	   	list($t,$ip) = explode(':',$line);
-      		$result = extractIPaddress($ip);
-      		$ipports[$result]["Name"]=$portname;
-	         $ipall=$ipall." ".$result;
-	         $lookforgateway=true;
-		      /* if(ip2long($ip > 0))
-				   {
-      		   $ipports[]=$ip;
-         		$ipall=$ipall." ".$ip;
-		         $status2=true;
-					$pos=strpos($ipall,"(");  // bevorzugt eliminieren
-					$ipall=trim(substr($ipall,0,$pos));
-   	   	   }  */
-	      	}
-	      if ($lookforgateway==true)
-				{
-				if(preg_match('/Standardgateway/i',$line))
-	   			{
-					//echo "Ausgabe catch :".$line."\n<br>";
-   		   	list($t,$gw) = explode(':',$line);
-      			$gw = extractIPaddress($gw);
-      			$ipports[$result]["Gateway"]=$gw;
-	         	$lookforgateway=false;
-					}
-				}
-   		if(preg_match('/Hostname/i',$line))
-	   		{
-	   		list($t,$hostname) = explode(':',$line);
-	      	$hostname = trim($hostname);
-				}
-			}  /* ende strlen */
-	  	}
-		if ($ipall == "") {$ipall="unknown";}
-
-		echo "\n";
-		echo "Hostname ist          : ".$hostname."\n";
-		echo "Eigene IP Adresse ist : ".$ipall."\n";
-		echo "\n";
-
-		foreach ($ipports as $ip => $data)
-			{
-			//echo "IP Adresse ".$ip." und im Longformat : ".ip2long($ip)."\n";
-			printf("Port \"%s\" hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
-			}
+	$result=$OperationCenter->ownIPaddress();
+	foreach ($result as $ip => $data)
+		{
+		printf("Port \"%s\" hat IP Adresse %s und Gateway %s Ip Adresse im Longformat : %u\n", $data["Name"],$ip,$data["Gateway"],ip2long($ip));
+		}
 
 	/********************************************************
    	die Webcam anschauen und den FTP Folder zusammenräumen
@@ -517,13 +424,13 @@ if ($_IPS['SENDER']=="Execute")
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
 		curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
 		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-	   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
-   	curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
-	   curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
+	   	curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
+   		curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
+	   	curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
 		//curl_setopt($ch, CURLOPT_REFERER, $url);  /* wichtig damit TP-Link weiss wo er die Daten hinschicken soll, Autoreferer funktioniert aber besser, siehe oben */
-	   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
-   	curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
-	   curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
+	   	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
+   		curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
+	   	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
 
 		/*
         CURLOPT_POST => 1,
@@ -535,8 +442,8 @@ if ($_IPS['SENDER']=="Execute")
 
 		echo "Channel :".$ch."\n";
 	  	$err     = curl_errno( $ch );
-   	$errmsg  = curl_error( $ch );
-	   $header  = curl_getinfo( $ch );
+   		$errmsg  = curl_error( $ch );
+	   	$header  = curl_getinfo( $ch );
 
 		echo "Fehler ".$err." von ";
 		print_r($errmsg);
@@ -556,45 +463,45 @@ if ($_IPS['SENDER']=="Execute")
 	**********************************************************/
 
    	foreach ($OperationCenterConfig['ROUTER'] as $router)
-		   {
-			//print_r($router);
+		{
+		//print_r($router);
 			
-			/********************************************************
-   			Auswertung Router MR3420 mit imacro
-			**********************************************************/
+		/********************************************************
+   		Auswertung Router MR3420 mit imacro
+		**********************************************************/
 
-		   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
-			if ($router['TYP']=='MR3420')
-			   {
-				//$OperationCenter->write_routerdata_MR3420($router);   // keine logging Einträge machen
+		echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+		if ($router['TYP']=='MR3420')
+			{
+			//$OperationCenter->write_routerdata_MR3420($router);   // keine logging Einträge machen
+			}
+		if ($router['TYP']=='MBRN3000')
+			{
+			$RouterResult=$OperationCenter->write_routerdata_MBRN3000($router,true);   // keine logging Einträge machen, debug=false
+			print_r($RouterResult);
+			}
+		if ($router['TYP']=='RT1900ac')
+			{
+			$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+			if ($router_categoryId==false)
+				{
+				$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+				IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+				IPS_SetParent($router_categoryId,$CategoryIdData);
 				}
-			if ($router['TYP']=='MBRN3000')
-			   {
-				$RouterResult=$OperationCenter->write_routerdata_MBRN3000($router,true);   // keine logging Einträge machen, debug=false
-				print_r($RouterResult);
-				}
-			if ($router['TYP']=='RT1900ac')
-			   {
-				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
-				if ($router_categoryId==false)
-				   {
-					$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-					IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
-					IPS_SetParent($router_categoryId,$CategoryIdData);
-					}
-				$host          = $router["IPADRESSE"];
-				$community     = "public";                                                                         // SNMP Community
-				$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-				$debug         = false;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-				$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
-				$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-				$result=$snmp->update(true);           /* mit Parameter true erfolgt kein Logging, also Spontanabfrage */
-				//print_r($result);
+			$host          = $router["IPADRESSE"];
+			$community     = "public";                                                                         // SNMP Community
+			$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+			$debug         = false;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+			$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
+			$result=$snmp->update(true);           /* mit Parameter true erfolgt kein Logging, also Spontanabfrage */
+			//print_r($result);
 				
       		/*		if (($ByteID=@IPS_GetVariableIDByName("MBytes_".$ipadresse['IPAdresse'],$router_categoryId))==false)
          				{
@@ -604,7 +511,7 @@ if ($_IPS['SENDER']=="Execute")
 							AC_SetAggregationType($archiveHandlerID,$ByteID,0);
 							IPS_ApplyChanges($archiveHandlerID);
 							}  */
-				}
+			}
 	   	}
 
 		//$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
@@ -826,37 +733,36 @@ if ($_IPS['SENDER']=="TimerEvent")
 			
 			$counter=GetValue($ScriptCounterID);
 			switch ($counter)
-			   {
+				{
 				case 3:
-				   /* reserviert für Nachbearbeitung */
-		      	SetValue($ScriptCounterID,0);
-			      IPS_SetEventActive($tim3ID,false);
-		      	break;
-			   case 2:
+					/* reserviert für Nachbearbeitung */
+		      		SetValue($ScriptCounterID,0);
+			      	IPS_SetEventActive($tim3ID,false);
+		      		break;
+				case 2:
 					/* Router Auswertung */
-			   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-		   			{
+			   		foreach ($OperationCenterConfig['ROUTER'] as $router)
+		   				{
 						/********************************************************
    						Auswertung Router MR3420 mit imacro
 						**********************************************************/
-					   echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+					   	echo "Ergebnisse vom Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 						if ($router['TYP']=='MR3420')
-						   {
+							{
 							$OperationCenter->write_routerdata_MR3420($router);
 							}
 						/* die anderen Router werden direkt abgefragt, keine nachgelagerte Auswertung notwendig */
-				   	}
-
+				   		}
 					SetValue($ScriptCounterID,$counter+1);
-		      	break;
-			   case 1:
+		      		break;
+				case 1:
 					/* Zeit gewinnen */
-			      SetValue($ScriptCounterID,$counter+1);
+			      	SetValue($ScriptCounterID,$counter+1);
 					break;
-			   case 0:
-				default:
-				   break;
-			   }
+			   	case 0:
+			 	default:
+				   	break;
+			   	}
 			break;
 			
 	   case $tim4ID:
