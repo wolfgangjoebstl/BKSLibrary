@@ -228,28 +228,28 @@ if ($_IPS['SENDER']=="Execute")
 	echo  "Aktueller Timeslot der 15x 1 Minuten Intervalle : ".GetValue($TimeSlotReadID)."\n\n"; 
 		
 	echo "Konfiguration für Zaehlerauslesung: \n\n";	
-	foreach ($MeterConfig as $meter)
+	foreach ($MeterConfig as $identifier => $meter)
 		{
 		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".$meter["TYPE"]."\n";
 		if ($meter["TYPE"]=="Amis")
 			{
+			$AmisID = CreateVariableByName($ID, "AMIS", 3);			
 			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */	
 			echo "  AMIS Meter Read eingeschaltet       : ".GetvalueFormatted($AmisReadMeterID)."\n";
-			
+	
 			//Hier die COM-Port Instanz festlegen
 			$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 			foreach ($serialPortID as $num => $serialPort)
 				{
-				if (IPS_GetName($serialPort) == "AMIS Serial Port")   { $com_Port = $serialPort; }
-				if (IPS_GetName($serialPort) == "AMIS Bluetooth COM") { $com_Port = $serialPort; }
+				if (IPS_GetName($serialPort) == $identifier." Serial Port")   { $com_Port = $serialPort; }
+				if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") { $com_Port = $serialPort; }
 				}
 			if (isset($com_Port) === false) { echo "  Kein AMIS Zähler Serial Port definiert\n"; break; }
-			else { echo "  AMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; }
+			else { echo "  AMIS Zähler Port auf OID ".$com_Port." definiert.\n"; }
 			}
 		//print_r($meter);
 		}
-
 
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 	echo "\nAlle Seriellen Ports auflisten:\n";
