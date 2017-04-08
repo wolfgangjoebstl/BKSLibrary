@@ -37,7 +37,7 @@ $MeterConfig = get_MeterConfiguration();
 $MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 $TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-if ($_IPS['SENDER']=="Timer")
+if ($_IPS['SENDER']=="TimerEvent")
 	{
 	if (Getvalue($MeterReadID))
 		{		
