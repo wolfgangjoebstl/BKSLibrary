@@ -24,6 +24,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 
 $trans = array(chr(13) => "", chr(10) => "");	/* für Log_Cutter Log File damit lesbar bleibt */
 $cutter=true;	/* wenn der IPS interne Cutter für die Erkennung von 02 (STX) und 03 (ETX) aktiviert ist, spart logging traffic auf den echo Ports */ 
+$amisAvailable=false;		/* wird true gesetzt wenn ein AMIS Zähler in der Config vorkommt */
 
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
@@ -44,10 +45,11 @@ foreach ($MeterConfig as $identifier => $meter)
 	//echo"-------------------------------------------------------------\n";
 	//echo "Create Variableset for :".$meter["NAME"]." (".$identifier.") \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$configPort=array();
 	if ($meter["TYPE"]=="Amis")
 		{
 		$amismetername=$meter["NAME"];
-
+		$amisAvailable=true;
 		//echo "Amis Zähler, verfügbare Ports:\n";			
 		
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
@@ -93,6 +95,28 @@ foreach ($MeterConfig as $identifier => $meter)
 					}					
 				}				
 			}
+		$listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
+		foreach ($listCutter as $num => $CutterID)
+			{
+			if (IPS_GetName($CutterID) == $identifier." Cutter")
+				{ 
+				//echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
+				$result=IPS_getConfiguration($CutterID);
+				//echo "        ".$result."\n";
+				$childrenIDs=IPS_GetInstanceChildrenIDs($CutterID);
+				//print_r($childrenIDs);
+				$parentID=IPS_GetInstanceParentID($CutterID);
+				//echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
+				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
+				if (IPS_InstanceExists($regVarID) )
+					{
+					//echo "        Registervariable : ".$regVarID."\n";
+					$configPort[$regVarID]["Name"]=$amismetername;	
+					$configPort[$regVarID]["ID"]=$identifier;
+					$configPort[$regVarID]["Port"]=$CutterID;							
+					}					
+				}
+			}			
 		if (isset($com_Port) === true) 
 			{ 
 			//echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; 
@@ -111,11 +135,11 @@ foreach ($MeterConfig as $identifier => $meter)
 	
 /******************************************************
 
-				EXECUTE
+				REGISTER VARIABLE
 
 *************************************************************/
 
-if ($_IPS['SENDER'] == "RegisterVariable")
+if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	{
 	$content = $_IPS['VALUE'];
 	$sender=$_IPS['INSTANCE'];   /* damit kann festgestellt werden von wo der Datensatz kommt */	 
@@ -224,38 +248,71 @@ if ($_IPS['SENDER'] == "RegisterVariable")
 		IPSLogger_Dbg(__file__, 'AMISCutter: Unbekannte Adresse von AMIS Receive Char : '.$sender.'.'); 
 		}
 	}
+
+/******************************************************
+
+				EXECUTE
+
+*************************************************************/
 	 
 if ($_IPS['SENDER'] == "Execute")
 	{
-	$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	echo "\n==================================================================\n";
 	echo "Amis Execute aufgerufen:\n\n";
-	print_r($configPort);
-	foreach ($configPort as $config)
-		{	
-		$amismetername=$config["Name"];
-	 	$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */		
-		echo "AMIS Root OID:".$ID."  ".$amismetername."\n";
-		$AmisID = CreateVariableByName($ID, "AMIS", 3);
-		echo "  Alle mit der AMIS Zählerauswertung notwendige Register hier gespeichert :".$AmisID."\n";
-	   	$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-   		echo "  Und dort stehen die eigentlichen aus dem AMIS Zähler ausgelesenen Register :".$zaehlerid."\n";
-   		echo "\n";
+	$listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
+	foreach ($listCutter as $num => $CutterID)
+		{
+		echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
+		$result=IPS_getConfiguration($CutterID);
+		echo "        ".$result."\n";
+		$childrenIDs=IPS_GetInstanceChildrenIDs($CutterID);
+		print_r($childrenIDs);
+		$parentID=IPS_GetInstanceParentID($CutterID);
+		echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
+		}
+	echo "\n";		
+	$listRegisterVars=IPS_GetInstanceListByModuleID('{F3855B3C-7CD6-47CA-97AB-E66D346C037F}');
+	foreach ($listRegisterVars as $num => $RegisterID)
+		{
+		echo "      Register Variable ".$num." mit OID ".$RegisterID." und Bezeichnung ".IPS_GetName($RegisterID)."\n";
+		$result=IPS_getConfiguration($RegisterID);
+		echo "        ".$result."\n";
+		$childrenIDs=IPS_GetInstanceChildrenIDs($RegisterID);
+		print_r($childrenIDs);
+		$parentID=IPS_GetInstanceParentID($RegisterID);
+		echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
+		}	
 
-		$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);	   
-		echo "   Testweise letztes Ergebnis auswerten.\n";
-		$content=GetValue($AMISReceiveID);
-   		echo $content."\n";
-		echo "     Fehlerregister : ".Auswerten($content,'F.F(',')')."\n";
-		echo "     Wirkenergie : ".Auswerten($content,'1.8.0(','*kWh)')."kWh \n";
-		$letzterWertID = CreateVariableByName($AmisID, "Letzter Wert", 1);
-		echo "     Zuletzt berechnet/ausgelesen : ".date("d.m.y H:i:s",GetValue($letzterWertID))."\n";
+	if ($amisAvailable==true)
+		{
+		$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		//print_r($configPort);
+		foreach ($configPort as $config)
+			{	
+			$amismetername=$config["Name"];
+		 	$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			echo "------------------------------------------\n";		
+			echo "AMIS Root OID:".$ID."  ".$amismetername."\n";
+			$AmisID = CreateVariableByName($ID, "AMIS", 3);
+			echo "  Alle mit der AMIS Zählerauswertung notwendige Register hier gespeichert :".$AmisID."\n";
+		   	$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+   			echo "  Und dort stehen die eigentlichen aus dem AMIS Zähler ausgelesenen Register :".$zaehlerid."\n";
+	   		echo "\n";
 
-		$wirkenergie_ID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-		echo "Wirkenergie : ".GetValue($wirkenergie_ID)." kWh\n";
+			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);	   
+			echo "   Testweise letztes Ergebnis auswerten (AMIS Receive/".$AMISReceiveID."):\n";
+			$content=GetValue($AMISReceiveID);
+	   		echo $content."\n";
+			echo "     Fehlerregister : ".Auswerten($content,'F.F(',')')."\n";
+			echo "     Wirkenergie : ".Auswerten($content,'1.8.0(','*kWh)')."kWh \n";
+			$letzterWertID = CreateVariableByName($AmisID, "Letzter Wert", 1);
+			echo "     Zuletzt berechnet/ausgelesen : ".date("d.m.y H:i:s",GetValue($letzterWertID))."\n";
+
+			$wirkenergie_ID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+			echo "Wirkenergie : ".GetValue($wirkenergie_ID)." kWh\n";
+			}
 		}
 	}
-
 
 	 
 /******************************************************************************************************************/

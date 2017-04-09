@@ -20,6 +20,7 @@
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 /******************************************************
  *
@@ -36,6 +37,14 @@ $MeterConfig = get_MeterConfiguration();
 /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 $MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 $TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+$amis=new Amis();
+
+/******************************************************
+ *
+ *			TIMER
+ *
+ *************************************************************/
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
@@ -173,7 +182,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						}
 					break;
 				case "7":  /* Auto */
-					writeEnergyHomematic($meter);
+					$amis->writeEnergyHomematic($meter);
 					break;
 				case "6":  /* Auto */
 				case "5":  /* Auto */
@@ -219,6 +228,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 		Setvalue($TimeSlotReadID,Getvalue($TimeSlotReadID)+1);	
 		}			
 	} // Ende if timer
+	
+/******************************************************
+ *
+ *			EXECUTE
+ *
+ *************************************************************/	
 	
 if ($_IPS['SENDER']=="Execute")
 	{
@@ -275,136 +290,9 @@ if ($_IPS['SENDER']=="Execute")
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
 	echo "\n********************************************VALUES**************************************************************\n\n";
-	$homematic=writeEnergyHomematics($MeterConfig);  // alle Homematic schreiben
+	$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic schreiben
 	}
 
-
-/************************************************************************************************************************
- *
- * Alle Homematic Energiesensoren auslesen
- *
- * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
- *
- *****************************************************************************************************************************/
-
-function writeEnergyHomematics($MConfig)
-	{
-	$homematic=false;
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-	$archiveHandlerID = $archiveHandlerID[0];
-	foreach ($MConfig as $meter)
-		{
-		if ($meter["TYPE"]=="Homematic")
-	   	{
-	   	$homematic=true;
-	   	echo "Werte von : ".$meter["NAME"]."\n";
-	   		      
-	      $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	      $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	      if ( isset($meter["OID"]) == true )
-				{
-				$OID  = $meter["OID"];
-				$cids = IPS_GetChildrenIDs($OID);
-			   foreach($cids as $cid)
-			    	{
-			      $o = IPS_GetObject($cid);
-			      if($o['ObjectIdent'] != "")
-			         {
-			         if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-			         if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-			        	}
-			    	}
-		      echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
-				}
-			else
-				{
-				$HMenergieID  = $meter["HM_EnergieID"];
-				$HMleistungID = $meter["HM_LeistungID"];
-				}
-	      $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-	      $leistung=GetValue($HMleistungID);
-	      $energievorschub=$energie-GetValue($Homematic_WirkergieID);
-	      if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
-	         {
-	         $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
-				$energievorschub=$energie;
-	         SetValue($OffsetID,$offset);
-	         }
-			SetValue($Homematic_WirkergieID,$energie);
-			$energie_neu=GetValue($EnergieID)+$energievorschub;
-			SetValue($EnergieID,$energie_neu);
-			SetValue($LeistungID,$energievorschub*4);
-	      echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-	      echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-	      echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
-			}
-		}
-	return ($homematic);
-	}
-
-function writeEnergyHomematic($meter)
-	{
-	$homematic=false;
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-	$archiveHandlerID = $archiveHandlerID[0];
-	if ($meter["TYPE"]=="Homematic")
-	   	{
-	   	$homematic=true;
-	   	echo "Werte von : ".$meter["NAME"]."\n";
-	   		      
-	    $ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	    $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-
-	    if ( isset($meter["OID"]) == true )
-			{
-			$OID  = $meter["OID"];
-			$cids = IPS_GetChildrenIDs($OID);
-			foreach($cids as $cid)
-			   	{
-			    $o = IPS_GetObject($cid);
-			    if($o['ObjectIdent'] != "")
-			        {
-			        if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-			        if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-			       	}
-			   	}
-		    echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
-			}
-		else
-			{
-			$HMenergieID  = $meter["HM_EnergieID"];
-			$HMleistungID = $meter["HM_LeistungID"];
-			}
-	    $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-	    $leistung=GetValue($HMleistungID);
-	    $energievorschub=$energie-GetValue($Homematic_WirkergieID);
-	    if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
-	        {
-	        $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
-			$energievorschub=$energie;
-	        SetValue($OffsetID,$offset);
-	        }
-		SetValue($Homematic_WirkergieID,$energie);
-		$energie_neu=GetValue($EnergieID)+$energievorschub;
-		SetValue($EnergieID,$energie_neu);
-		SetValue($LeistungID,$energievorschub*4);
-	    echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-	    echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-	    echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
-		}
-	return ($homematic);
-	}
 
 	
 ?>
