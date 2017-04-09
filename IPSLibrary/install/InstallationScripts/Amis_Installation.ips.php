@@ -49,7 +49,7 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-	/* Webfront GUID herausfinden */
+	/*********************** Webfront GUID herausfinden **************************/
 	
 	echo "\n\n";
 	$WebfrontConfigID=array();
@@ -256,7 +256,7 @@
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
 
-	      	etValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+			SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["NAME"]="Wirkleistung";

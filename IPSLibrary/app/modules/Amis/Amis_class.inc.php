@@ -53,23 +53,30 @@
 			foreach ($MConfig as $meter)
 				{
 				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-	   				{
-			   		$homematicAvailable=true;
-		   			echo "Werte von : ".$meter["NAME"]."\n";
+					{
+					$homematicAvailable=true;
+					echo "Werte von : ".$meter["NAME"]."\n";
 	   		      
 					$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-	      			$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      			$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	      			$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-	      			if ( isset($meter["OID"]) == true )
+					if ( isset($meter["OID"]) == true )
 						{
 						$OID  = $meter["OID"];
 						$cids = IPS_GetChildrenIDs($OID);
-			   			foreach($cids as $cid)
-			    			{
+						if (sizeof($cids) == 0) 
+							{
+							$OID = IPS_GetParent($OID);
+							$cids = IPS_GetChildrenIDs($OID);
+							}
+						echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
+						//print_r($cids);
+						foreach($cids as $cid)
+							{
 			      			$o = IPS_GetObject($cid);
 			      			if($o['ObjectIdent'] != "")
 			         			{
@@ -110,53 +117,58 @@
 			$homematicAvailable=false;
 
 			if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-	   			{
-	   			$homematicAvailable=true;
-	   			echo "Werte von : ".$meter["NAME"]."\n";
-	   		      
-	    		$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				{
+				$homematicAvailable=true;
+				echo "Werte von : ".$meter["NAME"]."\n";
+			      
+				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-	    		$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    		$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    		$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    		$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-	    		if ( isset($meter["OID"]) == true )
+				if ( isset($meter["OID"]) == true )
 					{
 					$OID  = $meter["OID"];
 					$cids = IPS_GetChildrenIDs($OID);
+					if (sizeof($cids) == 0)		/* vielleicht schon das Energy Register angegeben, mal eine Eben höher schauen */ 
+						{
+						$OID = IPS_GetParent($OID);
+						$cids = IPS_GetChildrenIDs($OID);
+						}					
 					foreach($cids as $cid)
-			   			{
-			   	 		$o = IPS_GetObject($cid);
-			    		if($o['ObjectIdent'] != "")
-			        		{
-			       		 	if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-			        		if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-			       			}
-			   			}
-		    		echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+						{
+						$o = IPS_GetObject($cid);
+						if($o['ObjectIdent'] != "")
+							{
+						 	if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
+							if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
+							}
+						}
+					echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
 					}
 				else
 					{
 					$HMenergieID  = $meter["HM_EnergieID"];
 					$HMleistungID = $meter["HM_LeistungID"];
 					}
-	    		$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-	    		$leistung=GetValue($HMleistungID);
-	    		$energievorschub=$energie-GetValue($Homematic_WirkergieID);
-	    		if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
-	        		{
-	        		$offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+				$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+				$leistung=GetValue($HMleistungID);
+				$energievorschub=$energie-GetValue($Homematic_WirkergieID);
+				if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+					{
+					$offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
 					$energievorschub=$energie;
-	        		SetValue($OffsetID,$offset);
-	        		}
+					SetValue($OffsetID,$offset);
+					}
 				SetValue($Homematic_WirkergieID,$energie);
 				$energie_neu=GetValue($EnergieID)+$energievorschub;
 				SetValue($EnergieID,$energie_neu);
 				SetValue($LeistungID,$energievorschub*4);
-	    		echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-	    		echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-	    		echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
+				echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
+				echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
+				echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
 				}
 			return ($homematicAvailable);
 			}
