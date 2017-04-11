@@ -1411,26 +1411,26 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
       $alleMotionWerte="";
 		if (isset($installedModules["DetectMovement"])==true)
-		   {
-		   IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
-		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+			{
+			IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+			IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
+			$log=new Motion_Logging();
 		   
-		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
+			$cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 		   
-		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+			$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
 			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
 			foreach ($Homematic as $Key)
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
 				if ( (isset($Key["COID"]["MOTION"])==true) )
-		   		{
-		   		/* alle Bewegungsmelder */
-
-			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-					$log=new Motion_Logging($oid);
+					{
+					/* alle Bewegungsmelder */
+					$oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log->Set_LogValue($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
 				}
@@ -1441,33 +1441,31 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
 				if ( (isset($Key["COID"]["MOTION"])==true) )
-		   		{
-		   		/* alle Bewegungsmelder */
-
-			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-					$log=new Motion_Logging($oid);
+					{
+					/* alle Bewegungsmelder */
+					$oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$log->Set_LogValue($oid);
 					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
 				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
 				if ((isset($Key["COID"]["StatusVariable"])==true))
-			   	{
-		   		foreach ($TypeFS20 as $Type)
-		   		   {
-		   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-			   	      {
-	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-			  	      	$variabletyp=IPS_GetVariable($oid);
-			  	      	IPS_SetName($oid,"MOTION");
-							$log=new Motion_Logging($oid);
+					{
+					foreach ($TypeFS20 as $Type)
+						{
+						if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+							{
+							$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+							$variabletyp=IPS_GetVariable($oid);
+							IPS_SetName($oid,"MOTION");
+							$log->Set_LogValue($oid);
 							$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
-		   		      }
-		   	   	}
+							}
+						}
 					}
 				}
-
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
-		  	echo ">>DetectMovement historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-		   }
+			echo ">>DetectMovement historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+			}
 		/******************************************************************************************/
 
 		if (isset($installedModules["Gartensteuerung"])==true)

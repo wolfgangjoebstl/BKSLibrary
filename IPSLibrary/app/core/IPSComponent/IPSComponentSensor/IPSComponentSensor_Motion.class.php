@@ -123,7 +123,13 @@
 		private $GesamtCountID;
 		private $variableLogID;
 		
-	
+		/**********************************************************************
+		 * 
+		 * Construct un dgleichzeitig eine Variable zum Motion Logging hinzufügen. Es geht nur eine Variable gleichzeitig
+		 * es werden alle notwendigen Variablen erstmalig angelegt, bei Set_logValue werden keine Variablen angelegt, nur die Register gesetzt
+		 *
+		 *************************************************************************/
+		 	
 		function __construct($variable=null)
 			{
 			echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
@@ -146,7 +152,7 @@
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			echo "  Kategorien im Datenverzeichnis : ".$CategoryIdData." (".IPS_GetName($CategoryIdData).").\n";
 			$name="Bewegung-Nachrichten";
 			$vid1=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid1==false)
@@ -169,7 +175,7 @@
 			if ($variable<>null)
 				{
 				/* lokale Spiegelregister aufsetzen */
-					echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
+				echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$MoveAuswertungID;
 				$variabletyp=IPS_GetVariable($variable);
 				if ($variabletyp["VariableProfile"]!="")
 					{  /* Formattierung vorhanden */
@@ -253,6 +259,56 @@
 		   mkdirtree($directory);
 		   $filename=$directory.$this->variablename."_Bewegung.csv";
 		   parent::__construct($filename);
+	   	}
+
+		/**********************************************************************
+		 * 
+		 * Eine Variable zum Motion Logging hinzufügen. Es geht nur eine Variable gleichzeitig
+		 *
+		 *************************************************************************/
+
+		function Set_LogValue($variable)
+			{
+			if ($variable<>null)
+				{
+				echo "Add Variable ID : ".$variable." (".IPS_GetName($variable).") für IPSComponentSensor Motion Logging.\n";
+				$this->variable=$variable;
+				$result=IPS_GetObject($variable);
+				$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+				if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+					{
+					$this->variablename=IPS_GetName((integer)$result["ParentID"]);
+					}
+				else
+					{
+					$this->variablename=IPS_GetName($variable);
+					}
+				/* lokale Spiegelregister aufsetzen */
+				echo 'DetectMovement Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$this->MoveAuswertungID;
+				$variabletyp=IPS_GetVariable($variable);
+				if ($variabletyp["VariableProfile"]!="")
+					{  /* Formattierung vorhanden */
+					echo " mit Wert ".GetValueFormatted($variable)."\n";
+					IPSLogger_Dbg(__file__, 'CustomComponent Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$this->MoveAuswertungID." mit Wert ".GetValueFormatted($variable));
+					}
+				else
+					{
+					echo " mit Wert ".GetValue($variable)."\n";
+					IPSLogger_Dbg(__file__, 'CustomComponent Construct: Variable erstellen, Basis ist '.$variable.' Parent '.$this->variablename.' in '.$this->MoveAuswertungID." mit Wert ".GetValue($variable));
+					}				
+				$this->variableLogID=CreateVariable($this->variablename,0,$this->MoveAuswertungID, 10,'~Motion',null,null );
+				}
+			
+			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
+			if (isset ($this->installedmodules["DetectMovement"]))
+				{
+				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
+				echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
+				$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
+				$erID=CreateVariable($variablename,3,$mdID, 10, '', null );
+				echo "  Ereignisspeicher aufsetzen        : ".$erID." \n";
+				$this->EreignisID=$erID;
+				}
 	   	}
 	   
 		function Motion_LogValue()

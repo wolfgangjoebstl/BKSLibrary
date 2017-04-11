@@ -20,12 +20,14 @@
     */
 
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
-	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
 	class IPSComponentSwitch_Monitor extends IPSComponentSwitch {
 
 		private $instanceId;
 		private $supportsOnTime;
+		private $installedmodules;
+		private $remServer;
+		
 	
 		/**
 		 * @public
@@ -35,10 +37,23 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
-		public function __construct($var1=0, $instanceId=0, $supportsOnTime=true) {
+		public function __construct($var1=0, $instanceId=0, $supportsOnTime=true) 
+			{
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->supportsOnTime = $supportsOnTime;
-		}
+			
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($this->installedmodules["RemoteAccess"]))
+				{
+				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				$this->remServer	  = RemoteAccessServerTable();
+				}
+			else
+				{								
+				$this->remServer	  = array();
+				}			
+			}
 
 		/**
 		 * @public
@@ -54,6 +69,9 @@
 			{
 			echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			$module->SyncState($value, $this);
+			
+			/* hier erfolgt noch keien Übertragung auf den remote Server */
+						
 			}
 
 		/**
