@@ -23,6 +23,7 @@
 		private $RemoteOID;
 		private $tempValue;
 		private $installedmodules;
+		private $remServer;
 
 		/**
 		 * @public
