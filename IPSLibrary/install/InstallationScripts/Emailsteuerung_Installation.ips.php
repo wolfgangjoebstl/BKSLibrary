@@ -77,19 +77,37 @@
 	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
 	$SmtpConfig = Smtp_Configuration();
 
-   if(!IPS_InstanceExists($SendEmailID))
-      {
-      $SendEmailID = IPS_CreateInstance("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"); // SMTP anlegen
-	   IPS_SetName($SendEmailID, "SendEmail");
+	if(!IPS_InstanceExists($SendEmailID))
+		{
+		$SendEmailID = IPS_CreateInstance("{375EAF21-35EF-4BC4-83B3-C780FD8BD88A}"); // SMTP anlegen
+		IPS_SetName($SendEmailID, "SendEmail");
 		IPS_SetParent($SendEmailID,$CategoryIdData);
 		foreach ($SmtpConfig as $key => $value)
-		   {
-		   echo "Property ".$key." ".$value."\n";
+			{
+			echo "Property ".$key." ".$value."\n";
 			IPS_SetProperty($SendEmailID,$key,$value);
 			}
 		IPS_ApplyChanges($SendEmailID);
 		}
-
+	else	
+		{
+		$changes=false;
+		foreach ($SmtpConfig as $key => $value)
+			{
+			$oldvalue=IPS_GetProperty($SendEmailID,$key);
+			if ($value != $oldvalue)
+				{
+				echo "Property ".$key." Set ".$value." Get ".$oldvalue."\n";
+				IPS_SetProperty($SendEmailID,$key,$value);
+				$changes=true;				
+				}
+			if ($changes == true)
+				{
+				IPS_ApplyChanges($SendEmailID);
+				}		
+			}
+		//IPS_ApplyChanges($SendEmailID);		
+		}
 	$SmtpID=$SendEmailID;
 	echo "Sendemail Daten:\n";
 	echo "  Password           :".IPS_GetProperty($SmtpID,"Password")."\n";

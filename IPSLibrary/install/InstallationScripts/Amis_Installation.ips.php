@@ -20,6 +20,9 @@
 
 *************************************************************/
 
+$cutter=true;
+
+
 	/******************** Defaultprogrammteil ********************/
 	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -150,24 +153,24 @@
 			/* Variable ID selbst bestimmen */
 			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			IPS_SetVariableCustomProfile($variableID,'~Electricity');
-	    	AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
 			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
 			IPS_ApplyChanges($archiveHandlerID);
 			
-	    	$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-  	    	IPS_SetVariableCustomProfile($LeistungID,'~Power');
-	    	AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
 			
-	    	$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	    	IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+			$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      
-	    	SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";			
-		  	}
+			}
 		if ($meter["TYPE"]=="Amis")
 			{
 			$scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
@@ -190,21 +193,21 @@
 					COMPort_SetParity($SerialComPortID, 'None');
 					COMPort_SetOpen($SerialComPortID, true);			  /* macht Fehlermeldung, wenn Port nicht offen */
 			 		IPS_ApplyChanges($SerialComPortID);
-     				echo "Comport Bluetooth aktiviert. \n";
+					echo "Comport Bluetooth aktiviert. \n";
 					$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
 					}
 				//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";
-	    	  	SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+				SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 				}
 			if ($meter["PORT"] == "Serial")
 				{
 				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Serial Port", 0);
 		
-	 			if(!IPS_InstanceExists($SerialComPortID))
-		 			{
-		    		echo "\nAMIS Serial Port mit Namen \"".$identifier." Serial Port\"erstellen !";
+				if(!IPS_InstanceExists($SerialComPortID))
+					{
+					echo "\nAMIS Serial Port mit Namen \"".$identifier." Serial Port\"erstellen !";
 					$SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
-	   				IPS_SetName($SerialComPortID, $identifier." Serial Port");
+					IPS_SetName($SerialComPortID, $identifier." Serial Port");
 					COMPort_SetPort($SerialComPortID, $meter["COMPORT"]); // ComNummer welche dem PC-Interface zugewiesen ist!
 					COMPort_SetBaudRate($SerialComPortID, '300');
 					COMPort_SetDataBits($SerialComPortID, '7');
@@ -218,6 +221,21 @@
 				IPS_SetProperty($SerialComPortID, 'Open', true);   //false für aus
 				IPS_ApplyChanges($SerialComPortID);
 				SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
+				}
+			
+			if ($cutter == true)
+				{
+				$CutterID = @IPS_GetInstanceIDByName($identifier." Cutter", 0);
+				if(!IPS_InstanceExists($CutterID))
+					{
+					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\"erstellen !\n";
+					$CutterID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
+					IPS_SetName($CutterID, $identifier." Cutter");
+					}
+				else
+					{
+					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
+					}					
 				}
 			
 			$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
