@@ -423,7 +423,8 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 			case "Ventilator":
 				//print_r($entry);
-				$status=Ventilator($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				$i++;
+				$status=Ventilator($entry,GetValue(10565),true);  // Simulation aktiv, Testwert ist +1
 				break;	
 			case "iTunes":
 				$status=iTunesSteuerung($entry,$i++,true);
@@ -834,24 +835,37 @@ function Ventilator($params,$status,$simulate=false)
 	echo 'Aufruf Routine Ventilator mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status."\n";
 	
 	$VentilatorsteuerungID = IPS_GetObjectIDByName("Ventilatorsteuerung",$categoryId_Autosteuerung);
-
   	$moduleParams2 = explode(',', $params[2]);
+
+	echo "Es wird ".$moduleParams2[0]." geschaltet und der Status von ".$VentilatorsteuerungID." ist ".getValueFormatted($VentilatorsteuerungID).".\n";
 	if (GetValue($VentilatorsteuerungID)==0)
-	   {
+	   	{
   		IPSLight_SetSwitchByName($moduleParams2[0],false);
-	   }
+	   	}
 	if (GetValue($VentilatorsteuerungID)==1)
-	   {
+	   	{
   		IPSLight_SetSwitchByName($moduleParams2[0],true);
-	   }
+	   	}
 	if (GetValue($VentilatorsteuerungID)==2)
-	   {
-      /* wenn Parameter ueberschritten etwas tun */
-   	$temperatur=GetValue($_IPS['VARIABLE']);
-   	if ($speak_config["Parameter"][1]=="Debug")
-  		   {
+	   	{
+      	/* wenn Parameter ueberschritten etwas tun */
+   		//$temperatur=GetValue($_IPS['VARIABLE']);
+		$temperatur=$status;
+
+		$TemperaturID = IPS_GetObjectIDByName("Temperatur",$VentilatorsteuerungID);	
+		$TemperaturZuletztID = 	IPS_GetObjectIDByName("TemperaturZuletzt",$VentilatorsteuerungID);
+		if (abs($temperatur - GetValue($TemperaturZuletztID)) > 0.9) 
+			{
+			SetValue($TemperaturZuletztID,$temperatur);
+ 			tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
+			}
+		SetValue($TemperaturID,$temperatur);
+
+   		if ($speak_config["Parameter"][1]=="Debug")
+  		   	{
   			tts_play(1,'Temperatur im Wohnzimmer '.floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.",'',2);
   			}
+
      	//print_r($moduleParams2);
      	if ($moduleParams2[2]=="true") {$switch_ein=true;} else {$switch_ein=false; }
   	  	if ($moduleParams2[4]=="true") {$switch_aus=true;} else {$switch_aus=false; }
@@ -859,23 +873,23 @@ function Ventilator($params,$status,$simulate=false)
 		$switchID=$lightManager->GetSwitchIdByName($moduleParams2[0]);
 		$status=$lightManager->GetValue($switchID);
      	if ($temperatur>$moduleParams2[1])
-  	  	   {
+  	  	   	{
 			if ($status==false)
-			   {
+			   	{
 	     		IPSLight_SetSwitchByName($moduleParams2[0],$switch_ein);
 		     	if ($speak_config["Parameter"][1]=="Debug")
-	   	   	{
+	   	   			{
 	     			tts_play(1,"Ventilator ein.",'',2);
 		  			}
 		  		}
 	  		}
 	  	if ($temperatur<$moduleParams2[3])
-	  	   {
+	  	   	{
 			if ($status==true)
-			   {
+			   	{
 		     	IPSLight_SetSwitchByName($moduleParams2[0],$switch_aus);
-	   	  	if ($speak_config["Parameter"][1]=="Debug")
-	  	   		{
+	   	  		if ($speak_config["Parameter"][1]=="Debug")
+	  	   			{
 	  				tts_play(1,"Ventilator aus.",'',2);
 	  				}
 	  			}

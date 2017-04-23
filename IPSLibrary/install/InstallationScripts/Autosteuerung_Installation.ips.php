@@ -18,12 +18,11 @@
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -71,8 +70,8 @@
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	if ($WFC10_Enabled==true)
-	   {
-      $WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+	   	{
+      	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
 		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
 		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
 		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
@@ -118,50 +117,50 @@
 	$pname="AusEinAuto";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   //Var-Profil erstellen
+	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   echo "Profil ".$pname." erstellt;\n";
+	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil ".$pname." erstellt;\n";
 		}
 	$pname="AusEin";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   //Var-Profil erstellen
+	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-	   echo "Profil ".$pname." erstellt;\n";
+	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil ".$pname." erstellt;\n";
 		}
 	$pname="AusEin-Boolean";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   //Var-Profil erstellen
+	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-	   echo "Profil ".$pname." erstellt;\n";
+	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil ".$pname." erstellt;\n";
 		}
 		
 	$pname="NeinJa";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   //Var-Profil erstellen
+	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-	   IPS_SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   IPS_SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   echo "Profil ".$pname." erstellt;\n";
+	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil ".$pname." erstellt;\n";
 		}
 
 	$eventType='OnChange';
@@ -179,8 +178,8 @@
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $AutoSetSwitch)
 		{
-	   // CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-	   $AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	   	// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	   	$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "-------------------------------------------------------\n";
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."\n";
 		switch (strtoupper($AutoSetSwitch["NAME"]))
@@ -207,7 +206,7 @@
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
 				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];				
-			   break;
+			   	break;
 			case "ALARMANLAGE":
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
 				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence");
@@ -230,11 +229,12 @@
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
 				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];				
-			   break;										
-			case "GutenMorgenWecker":
-			   $WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "","",null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-   			$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
-   			if ($Wochenplan_ID === false)
+			   	break;										
+			case "GUTENMORGENWECKER":
+				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
+			   	$WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "","",null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+   				$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
+   				if ($Wochenplan_ID === false)
 					{
 					$Wochenplan_ID = IPS_CreateEvent(2);                  //Wochenplan Ereignis
 					IPS_SetEventScheduleGroup($Wochenplan_ID, 0, 1); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
@@ -250,49 +250,55 @@
 			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "");
 
 					IPS_SetParent($Wochenplan_ID, $AutosteuerungID);         //Ereignis zuordnen
-               IPS_SetName($Wochenplan_ID,"Beleuchtung");
+               		IPS_SetName($Wochenplan_ID,"Beleuchtung");
 					IPS_SetEventActive($Wochenplan_ID, true);
 					}
-   			$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
+   				$Wochenplan_ID = @IPS_GetEventIDByName("Beleuchtung", $AutosteuerungID);
 				//Montag
 	  				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 0 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 1 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 0/*s*/, 1 /*Aktion*/);
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 1 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 0/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 2 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 0/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 3 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Dienstag
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 3 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Dienstag
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 3 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 1/*s*/, 0 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 4 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 1/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 5 /*Schaltpunkt*/, 9/*H*/, 1/*M*/, 1/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 6 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Mittwoch
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 6 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Mittwoch
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 6 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 2/*s*/, 0 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 7 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 2/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 8 /*Schaltpunkt*/, 9/*H*/, 2/*M*/, 2/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 9 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Donnerstag
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 9 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Donnerstag
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 9 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 10 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 3/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 11 /*Schaltpunkt*/, 9/*H*/, 3/*M*/, 3/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 12 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Freitag
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 12 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Freitag
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 11 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
 					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 12 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 4/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 13 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 4/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 14 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Samstag
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 14 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Samstag
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 13 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 14 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 5/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 15 /*Schaltpunkt*/, 10/*H*/, 0/*M*/, 5/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 16 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
-   			//Sonntag
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 16 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   				//Sonntag
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 15 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
 					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 16 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 6/*s*/, 1 /*Aktion*/);
     				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 17 /*Schaltpunkt*/, 12/*H*/, 0/*M*/, 6/*s*/, 2 /*Aktion*/);
-   				IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 18 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+   					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 18 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 
 				$EventInfos = IPS_GetEvent($Wochenplan_ID);
 				//print_r($EventInfos);
-			   break;
+			   	break;
+			case "VENTILATORSTEUERUNG":	
+				echo "   Variablen für Ventilatorsteuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')		
+			   	$TemperaturID = CreateVariable("Temperatur", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
+			   	$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
+				break;												
 			default:
 				break;
 			}
