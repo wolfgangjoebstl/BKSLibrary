@@ -278,60 +278,52 @@ else
 	}
 
 	function LogAlles_Temperatur() {
-		return array(
-			"AZ-T"    => array(	"OID_Sensor"         => 38610,           /* OID Position vom Sensor im AZ */
-  			              	  		//"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
-  			              	  		"OID_Max"            => 53022,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 32252,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Innen",
-			              ),
-			"KZ-T"    => array(	"OID_Sensor"         => 13063,           /* OID Position vom Sensor im BZ */
-										//"OID_TempWert"    	=> 36041,           /* OID vom Spiegelregister */
-  			              	  		"OID_Max"            => 59160,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 52129,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"WZ-T"    => array(	"OID_Sensor"         => 41873,           /* OID Position vom Sensor im SZ */
-  			              	  		//"OID_TempWert"    	=> 42862,           /* OID vom Spiegelregister */
-  			              	  		"OID_Max"            => 34073,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 24331,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Innen",
-			              ),
-			//"AUSSEN-T" => array(	"OID_Sensor"         => 42413,           /* OID Position vom Sensor AUSSEN*/
-  			//              	  		"OID_Max"            => 38935,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			//              	  		"OID_Min"            => 17481,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			//              	  		"Type"               => "Aussen",
-			//              ),
-			"AUSSE2-T" => array( "OID_Sensor"         => 32563,           /* OID Position vom Sensor AUSSE2 beim Wintergarten Kellerfenster */
-  			              	  		"OID_Max"            => 22884,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 15265,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Aussen",
-			              ),
-			"WETTER-T" => array( "OID_Sensor"         => 31094,           /* OID Position vom Sensor der Wetterstation*/
-  			              	  		"OID_Max"            => 54386,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 30234,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Aussen",
-			              ),
-			"KELLER-T" => array(	"OID_Sensor"         => 48182,           /* OID Position vom Sensor Keller*/
-  			              	  		"OID_Max"            => 28619,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 19040,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"WINGAR-T" => array(	"OID_Sensor"         => 29970,           /* OID Position vom Sensor Wintergarten*/
-  			              	  		"OID_Max"            => 21658,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 55650,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"KELLAG-T" => array(	"OID_Sensor"         => 58776,           /* OID Position vom Sensor Wintergarten*/
-  			              	  		"OID_Max"            => 48777,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"OID_Min"            => 17535,      	  /* Wert wird nur einmal um Mitternacht geschrieben */
-  			              	  		"Type"               => "Andere",
-			              ),
-			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
-			                     "OID_TempWert_Innen"    	=> 56688,
-			                     "OID_TempTagesWert_Aussen" => 13320,   /* Tageswerte sind immer der letzte Tag */
-			                     "OID_TempTagesWert_Innen"  => 35271,
-			              ),
+		return array(       
+//			"AZ-T"    => array(	"OID_Sensor"         => 38610,           
+//  			              	  		"OID_Max"            => 53022
+//				              	  		"OID_Min"            => 32252 
+//  			              	  		"Type"               => "Innen",
+//			              ),
+//			"KZ-T"    => array(	"OID_Sensor"         => 13063,           
+//	 			              	  		"OID_Max"            => 59160  
+//  			              	  		"OID_Min"            => 52129
+//  			              	  		"Type"               => "Andere",
+//			              ),
+//			"WZ-T"    => array(	"OID_Sensor"         => 41873,       
+//  			              	  		"OID_Max"            => 34073 
+//  			              	  		"OID_Min"            => 24331 
+//  			              	  		"Type"               => "Innen",
+//			              ),
+//			"AUSSE2-T" => array( "OID_Sensor"         => 32563,           
+//  			              	  		"OID_Max"            => 22884 
+//  			              	  		"OID_Min"            => 15265 
+//  			              	  		"Type"               => "Aussen",
+//			              ),
+//			"WETTER-T" => array( "OID_Sensor"         => 31094,           
+//  			              	  		"OID_Max"            => 54386 
+//  			              	  		"OID_Min"            => 30234 
+//  			              	  		"Type"               => "Aussen",
+//			              ),
+//			"KELLER-T" => array(	"OID_Sensor"         => 48182,           
+//  			              	  		"OID_Max"            => 28619 
+//  			              	  		"OID_Min"            => 19040 
+//  			              	  		"Type"               => "Andere",
+//			              ),
+//			"WINGAR-T" => array(	"OID_Sensor"         => 29970, 
+//  			              	  		"OID_Max"            => 21658 
+//  			              	  		"OID_Min"            => 55650 
+//  			              	  		"Type"               => "Andere",
+//			              ),
+//			"KELLAG-T" => array(	"OID_Sensor"         => 58776,          
+//  			              	  		"OID_Max"            => 48777 
+//  			              	  		"OID_Min"            => 17535 
+//  			              	  		"Type"               => "Andere",
+//			              ),
+//			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416 
+//			                     "OID_TempWert_Innen"    	=> 56688 
+//			                     "OID_TempTagesWert_Aussen" => 13320 
+//			                     "OID_TempTagesWert_Innen"  => 35271 
+//			              ), 
 						);
 	}
 
