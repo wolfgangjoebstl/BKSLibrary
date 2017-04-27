@@ -121,14 +121,29 @@ $cutter=true;
 	echo "\n";
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	
+	$scriptIdAmis   = IPS_GetScriptIDByName('Amis', $CategoryIdApp);
+	
+	/******************* Profile Definition **********************/
 
-
+	$pname="AusEin-Boolean";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
+		
 	/******************* Variable Definition **********************/
-
-	$parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 	
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-	$MeterReadID = CreateVariableByName($parentid1, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
+	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "AusEin-Boolean",$scriptIdAmis,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */	
 
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
@@ -147,7 +162,7 @@ $cutter=true;
 		{
 		echo"\n-------------------------------------------------------------\n";
 		echo "Create Variableset for : ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
-		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Homematic")
 			{
 			/* Variable ID selbst bestimmen */
@@ -231,23 +246,41 @@ $cutter=true;
 					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\"erstellen !\n";
 					$CutterID = IPS_CreateInstance("{AC6C6E74-C797-40B3-BA82-F135D941D1A2}"); // Cutter anlegen
 					IPS_SetName($CutterID, $identifier." Cutter");
+					IPS_SetProperty($CutterID,"LeftCutChar",chr(02));
+					IPS_SetProperty($CutterID,"RightCutChar",chr(03));
+					IPS_ConnectInstance($CutterID, $SerialComPortID);										
+					IPS_ApplyChanges($CutterID);					
 					}
 				else
 					{
 					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
-					}					
+					$config=IPS_GetConfiguration($CutterID);
+					echo "    ".$config."\n";					
+					}
+				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
+				if(!IPS_InstanceExists($regVarID))
+				 	{
+					$regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
+					IPS_SetName($regVarID, "AMIS RegisterVariable");
+					IPS_SetParent($regVarID, $CutterID);
+	 				RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
+					IPS_ConnectInstance($regVarID, $CutterID);
+					IPS_ApplyChanges($regVarID);
+	   			}										
 				}
-			
-			$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
-			if(!IPS_InstanceExists($regVarID))
-			 	{
-				$regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
-				IPS_SetName($regVarID, "AMIS RegisterVariable");
-				IPS_SetParent($regVarID, $SerialComPortID);
-	 			RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
-				IPS_ConnectInstance($regVarID, $SerialComPortID);
-				IPS_ApplyChanges($regVarID);
-	   		}
+			else
+				{
+				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$SerialComPortID);
+				if(!IPS_InstanceExists($regVarID))
+				 	{
+					$regVarID = IPS_CreateInstance("{F3855B3C-7CD6-47CA-97AB-E66D346C037F}"); // Registervariable anlegen
+					IPS_SetName($regVarID, "AMIS RegisterVariable");
+					IPS_SetParent($regVarID, $SerialComPortID);
+					RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
+					IPS_ConnectInstance($regVarID, $SerialComPortID);
+					IPS_ApplyChanges($regVarID);
+					}				
+				}								
 
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
 			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -445,6 +478,7 @@ $cutter=true;
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
+			CreateLinkByDestination("Read Meter", $MeterReadID,    $categoryIdLeft,  0);
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
 				//if left

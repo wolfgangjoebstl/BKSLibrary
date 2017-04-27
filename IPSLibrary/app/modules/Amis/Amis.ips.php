@@ -17,22 +17,32 @@
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-/******************************************************
+if ($_IPS['SENDER']=="WebFront")
+	{
+	/* vom Webfront aus gestartet */
+
+	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+
+	}
+else
+	{	
+
+	/******************************************************
 
 				INIT
 
-*************************************************************/
+	*************************************************************/
 
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-$MeterConfig = get_MeterConfiguration();
-//print_r($MeterConfig);
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+	$MeterConfig = get_MeterConfiguration();
+	//print_r($MeterConfig);
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -67,6 +77,8 @@ $MeterConfig = get_MeterConfiguration();
 			foreach ($serialPortID as $num => $serialPort)
 			   {
 			   echo "Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+
+				/********* COM Port ******************/				
 			   if (IPS_GetName($serialPort) == $identifier." Serial Port") 
 					{ 
 					$com_Port = $serialPort;
@@ -76,7 +88,36 @@ $MeterConfig = get_MeterConfiguration();
 						echo "     Registervariable : ".$regVarID."\n";
 						$configPort[$regVarID]=$amismetername;							 
 						}
-					}	
+					$config = IPS_GetConfiguration($com_Port);
+					echo "Comport Serial aktiviert. Konfiguration: ".$config." \n";
+					$stdobj = json_decode($config);
+					$ergebnis=json_encode($stdobj);
+					echo "      ede/encode zum Vergleich ".$ergebnis."\n";
+					print_r($stdobj);	
+					echo "Comport Status : ".$stdobj->Open."\n";
+					$remove = array("{", "}", '"');
+					$config = str_replace($remove, "", $config);
+					$Config = explode (',',$config);
+					$AllConfig=array();
+					foreach ($Config as $configItem)
+						{
+						$items=explode (':',$configItem);
+						$Allconfig[$items[0]]=$items[1];
+						}
+					print_r($Allconfig);
+					if ($Allconfig["Open"]==false) 
+						{
+						COMPort_SetOpen($com_Port, true); //false für aus
+						IPS_ApplyChanges($com_Port);
+						}
+					else
+						{
+						echo "Port ist offen.\n";
+						}
+					COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
+					}
+					
+				/********* Bluetooth ******************/			
 			   if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
 					{ 
 					$com_Port = $serialPort; 
@@ -85,7 +126,9 @@ $MeterConfig = get_MeterConfiguration();
 	   				{
 						echo "     Registervariable : ".$regVarID."\n";
 						$configPort[$regVarID]=$amismetername;	 
-						}					
+						}
+					echo "Comport Bluetooth aktiviert. \n";
+					COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */											
 					}
 				}
 			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }
@@ -96,59 +139,19 @@ $MeterConfig = get_MeterConfiguration();
 		}
 
 
-$AmisConfig = get_AmisConfiguration();
-$MeterConfig = get_MeterConfiguration();
+	$MeterConfig = get_MeterConfiguration();
 
-echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
-if (isset($AmisReadMeterID)==true)
-	{
-	echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
-	if (Getvalue($MeterReadID))
+	echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
+	if (isset($AmisReadMeterID)==true)
 		{
-		if ($AmisConfig["Type"] == "Bluetooth")
-	   		{
-      		echo "Comport Bluetooth aktiviert. \n";
-      		COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
-			}
+		echo "AMIS Meter Read eingeschaltet:".GetvalueFormatted($AmisReadMeterID)." auf Com-Port : ".$com_Port."\n";
+		}
+	else
+		{	
+		echo "AMIS Meter Read ausgeschaltet.\n";
+		}
 
-		if ($AmisConfig["Type"] == "Serial")
-	   		{
-      		$config = IPS_GetConfiguration($com_Port);
-      		echo "Comport Serial aktiviert. Konfiguration: ".$config." \n";
-			$stdobj = json_decode($config);
-			$ergebnis=json_encode($stdobj);
-			echo "      ede/encode zum Vergleich ".$ergebnis."\n";
-			print_r($stdobj);	
-			echo "Comport Status : ".$stdobj->Open."\n";
-	 		$remove = array("{", "}", '"');
-			$config = str_replace($remove, "", $config);
-			$Config = explode (',',$config);
-			$AllConfig=array();
-			foreach ($Config as $configItem)
-		   		{
-		   		$items=explode (':',$configItem);
-				$Allconfig[$items[0]]=$items[1];
-		   		}
-			print_r($Allconfig);
-			if ($Allconfig["Open"]==false) 
-		   		{
-				COMPort_SetOpen($com_Port, true); //false für aus
-				IPS_ApplyChanges($com_Port);
-				}
-			else
-     			{
-				echo "Port ist offen.\n";
-				}
-			COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
-			}
-		}	
-	}
-else
-	{	
-	echo "AMIS Meter Read ausgeschaltet.\n";
-	}
-
-
+	} // ende else Webfront Aufruf
 	
 
 if ($_IPS['SENDER'] == "Execute")
@@ -161,6 +164,7 @@ if ($_IPS['SENDER'] == "Execute")
 	*************************************************************/
 
 	//Hier die COM-Port Instanz
+	echo "\n--------Execute aufgerufen -------------------------\n";
 	echo "\nUebersicht serielle Ports:\n";
 	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
 	foreach ($serialPortID as $num => $serialPort)
@@ -174,6 +178,8 @@ if ($_IPS['SENDER'] == "Execute")
 			echo "     Registervariable : ".$regVarID."\n";	
 			$config = IPS_GetConfiguration($regVarID);
 			echo "       ".$config."\n";		
+			
+			COMPort_SendText($serialPort ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
 			}
 		}
 	echo "\n";
@@ -187,7 +193,7 @@ if ($_IPS['SENDER'] == "Execute")
 		echo GetValue($AMISReceiveChar1ID);
 		}	
 	}
-
+	
 /******************************************************************************************************************/
 
 function anfragezahlernr($varname,$anfang,$ende,$content){

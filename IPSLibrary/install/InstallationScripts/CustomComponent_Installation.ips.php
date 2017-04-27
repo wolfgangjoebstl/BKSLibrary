@@ -94,6 +94,7 @@
 		echo " Konfig: ".$config."\n";
 
 		IPS_ApplyChanges($AdministratorID);
+		$WebfrontConfigID["Administrator"]=$AdministratorID;
 		echo "Webfront Configurator Administrator aktiviert. \n";
 		}
 	else
@@ -112,6 +113,7 @@
 		echo "Konfig : ".$config."\n";
 
 		IPS_ApplyChanges($UserID);
+		$WebfrontConfigID["User"]=$UserID;
 		echo "Webfront Configurator User aktiviert. \n";
 		}
 	else
