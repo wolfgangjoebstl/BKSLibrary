@@ -16,6 +16,8 @@
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 if ($_IPS['SENDER']=="WebFront")
 	{
@@ -32,7 +34,9 @@ else
 				INIT
 
 	*************************************************************/
-
+	
+	$amis=new Amis();
+	
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -166,22 +170,23 @@ if ($_IPS['SENDER'] == "Execute")
 	//Hier die COM-Port Instanz
 	echo "\n--------Execute aufgerufen -------------------------\n";
 	echo "\nUebersicht serielle Ports:\n";
-	$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-	foreach ($serialPortID as $num => $serialPort)
-   		{
-   		echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-		$config = IPS_GetConfiguration($serialPort);
-		echo "    ".$config."\n";
-		$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-		if (IPS_InstanceExists($regVarID) )
-	   		{
-			echo "     Registervariable : ".$regVarID."\n";	
-			$config = IPS_GetConfiguration($regVarID);
-			echo "       ".$config."\n";		
-			
-			COMPort_SendText($serialPort ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
+	foreach ($MeterConfig as $identifier => $meter)
+		{	
+		$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+		foreach ($serialPortID as $num => $serialPort)
+			{
+			if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+				{ 			
+				echo "  Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+				$config = IPS_GetConfiguration($serialPort);
+				echo "    ".$config."\n";
+				
+				/* Standard Verrechnungsdatensatz kurz Abfrage, da kommen einige Daten zurück  */
+				$amis->sendReadCommandAmis($meter,$identifier,"F001");
+				}
 			}
-		}
+		}	
+	
 	echo "\n";
 	print_r($configPort);
 	if (isset($AmisReadMeterID)==true)

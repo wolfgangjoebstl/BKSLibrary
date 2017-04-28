@@ -1878,7 +1878,7 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 	$disp_vorigertag="";
 	$neuwert=0;
 
-	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
 	$increment=(integer)$increment_var;
 	//echo "Increment :".$increment."\n";
 	$gepldauer=($endtime-$starttime)/24/60/60;
@@ -1892,104 +1892,104 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 			Nicht mer als 10.000 Werte ...
 		*/
 		//print_r($werte);
-   	$anzahl=count($werte);
-   	//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+		$anzahl=count($werte);
+		//echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
 
 		if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
 
 		if ($initial)
-			   {
-			   /* allererster Durchlauf */
-				$ersterwert=$werte['0']['Value'];
-		   	$ersterzeit=$werte['0']['TimeStamp'];
-		   	}
+			{
+			/* allererster Durchlauf */
+			$ersterwert=$werte['0']['Value'];
+			$ersterzeit=$werte['0']['TimeStamp'];
+			}
 
 		if ($anzahl<10000)
-		   	{
-	   		/* letzter Durchlauf */
-		   	$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-			   $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
-				//echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
-				//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
-				}
+			{
+			/* letzter Durchlauf */
+			$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+			$letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+			//echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
+			//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
+			}
 
 		$initial=true;
 
 		foreach($werte as $wert)
+			{
+			if ($initial)
 				{
-				if ($initial)
+				//print_r($wert);
+				$initial=false;
+				//echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+				}
+
+			$zeit=$wert['TimeStamp'];
+			$tag=date("d.m.Y", $zeit);
+			$aktwert=(float)$wert['Value'];
+
+			if ($tag!=$vorigertag)
+				{ /* neuer Tag */
+				$altwert=$neuwert;
+				$neuwert=$aktwert;
+				switch ($increment)
 					{
-					//print_r($wert);
-					$initial=false;
-					//echo "   Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+					case 1:
+						$ergebnis=$aktwert;
+						break;
+					case 2:
+						if ($altwert<$neuwert)
+							{
+							$ergebnis+=($neuwert-$altwert);
+							}
+						else
+							{
+							//$ergebnis+=($altwert-$neuwert);
+							//$ergebnis=$aktwert;
+							}
+						break;
+					case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+						$ergebnis+=$aktwert;
+						break;
+					default:
 					}
-
-				$zeit=$wert['TimeStamp'];
-				$tag=date("d.m.Y", $zeit);
-				$aktwert=(float)$wert['Value'];
-
-				if ($tag!=$vorigertag)
-			   	{ /* neuer Tag */
-			   	$altwert=$neuwert;
-			   	$neuwert=$aktwert;
-			   	switch ($increment)
-			   		{
-			   		case 1:
-							$ergebnis=$aktwert;
-			   		   break;
-			   		case 2:
-						   if ($altwert<$neuwert)
-						      {
-								$ergebnis+=($neuwert-$altwert);
-								}
-							else
-							   {
-								//$ergebnis+=($altwert-$neuwert);
-								//$ergebnis=$aktwert;
-								}
-							break;
-						case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-							$ergebnis+=$aktwert;
-	                  break;
-	               default:
-	               }
-				   $vorigertag=$tag;
-				   }
-				else
-				   {
-				   /* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
-			   	switch ($increment)
-			   		{
-			   		case 1:
-			   		case 2:
-							break;
-						case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
-							$ergebnis+=$aktwert;
-	                  break;
-	               default:
-	               }
-				   }
-
-				if ($display==true)
+				$vorigertag=$tag;
+				}
+			else
+				{
+				/* neu eingeführt, Bei Statuswert muessen alle Werte agreggiert werden */
+				switch ($increment)
 					{
-			   	/* jeden Eintrag ausgeben */
-			   	//print_r($wert);
-			   	if ($gepldauer>100)
-			   	   {
-						if ($tag!=$disp_vorigertag)
-						   {
-   						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-   						$disp_vorigertag=$tag;
-   						}
-			   	   }
-			   	else
-			   	   {
+					case 1:
+					case 2:
+						break;
+					case 0:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+						$ergebnis+=$aktwert;
+						break;
+				default:
+					}
+				}
+
+			if ($display==true)
+				{
+				/* jeden Eintrag ausgeben */
+				//print_r($wert);
+				if ($gepldauer>100)
+					{
+					if ($tag!=$disp_vorigertag)
+						{
 						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+						$disp_vorigertag=$tag;
 						}
 					}
-				$zaehler+=1;
+				else
+					{
+					echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+					}
 				}
-				$endtime=$zeit;
+			$zaehler+=1;
+			}
+		$endtime=$zeit;
 		} while (count($werte)==10000);
 
 	$dauer=($ersterzeit-$letzterzeit)/24/60/60;

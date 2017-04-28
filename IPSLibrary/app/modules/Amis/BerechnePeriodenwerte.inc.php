@@ -44,46 +44,47 @@ foreach ($MeterConfig as $meter)
 	echo"-------------------------------------------------------------\n";
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-   	/* ID von Wirkenergie bestimmen */
+	/* ID von Wirkenergie bestimmen */
 	if ($meter["TYPE"]=="Amis")
 		{
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
-		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-		$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+		$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+		//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+		//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 		}
 	if ($meter["TYPE"]=="Homematic")
-	  	{
-	   	$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	  	}
+		{
+		$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		}
 
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
-   	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
 	$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
-   	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
+	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
 	IPS_SetPosition($letzterTagID, 100);
 	$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
-  	IPS_SetPosition($letzte7TageID, 110);
+	IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
+	IPS_SetPosition($letzte7TageID, 110);
 	$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
-  	IPS_SetPosition($letzte30TageID, 120);
+	IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
+	IPS_SetPosition($letzte30TageID, 120);
 	$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
-  	IPS_SetPosition($letzte360TageID, 130);
+	IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
+	IPS_SetPosition($letzte360TageID, 130);
   	
 	$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
-   	IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
-  	IPS_SetPosition($letzterTagEurID, 200);
+	IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
+	IPS_SetPosition($letzterTagEurID, 200);
 	$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
-  	IPS_SetPosition($letzte7TageEurID, 210);
+	IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
+	IPS_SetPosition($letzte7TageEurID, 210);
 	$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
-  	IPS_SetPosition($letzte30TageEurID, 220);
+	IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
+	IPS_SetPosition($letzte30TageEurID, 220);
 	$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
-   	IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
-  	IPS_SetPosition($letzte360TageEurID, 230);
+	IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
+	IPS_SetPosition($letzte360TageEurID, 230);
   	
 	$vorwert=0;
 	$zaehler=0;

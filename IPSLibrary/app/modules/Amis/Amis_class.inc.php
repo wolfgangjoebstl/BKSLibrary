@@ -54,6 +54,7 @@
 				{
 				$amisAvailable=true;
 	 			echo "Werte von : ".$meter["NAME"]."\n";
+				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */				
 				$AmisID = CreateVariableByName($ID, "AMIS", 3);
 				$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */				
 				$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -122,7 +123,7 @@
 				
 				if (Getvalue($AmisReadMeterID))
 					{
-					$handlelog=fopen("C:\Scripts\Log_AMIS.csv","a");
+					$handlelog=fopen("C:\Scripts\Log_Cutter_AMIS.csv","a");
 					Setvalue($SendTimeID,time());
 					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
 					IPS_Sleep(1550);
