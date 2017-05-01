@@ -1273,7 +1273,7 @@ class OperationCenter
 
 
 	/*
-	 *  Die oft umfangreichen Logfiles in einem Ordner pro tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *  Die oft umfangreichen Logfiles in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann.
 	 *
 	 */
@@ -1683,6 +1683,89 @@ class parsefile
 
 	} /* Ende class parsefile*/
 
+/********************************************************************************************
+ *
+ *  Eigene Klasse für Timer
+ *
+ ***************************************************************************************************/
+
+class TimerHandling
+	{
+
+	private $ScriptsUsed = array();
+	
+	public function __construct()
+		{
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+		$app_oid=$moduleManager->GetModuleCategoryID()."\n";
+		$oid_children=IPS_GetChildrenIDs($app_oid);
+		$result=array();
+		//echo "  Alle Skript Files :\n";
+		foreach($oid_children as $oid)
+			{
+			$result[IPS_GetName($oid)]=$oid;
+			//echo "      OID : ".$oid." Name : ".IPS_GetName($oid)."\n";
+			}
+		$this->ScriptsUsed=$result;
+		}
+		
+	public function listScriptsUsed()
+		{
+		return ($this->ScriptsUsed);
+		}		
+
+	/***************************************************************************************/
+
+	/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen */
+
+	function CreateTimerOC($name,$stunde,$minute)
+		{
+		/* EventHandler Config regelmaessig bearbeiten */
+			
+		$timID=@IPS_GetEventIDByName($name, $this->ScriptsUsed["OperationCenter"]);
+		if ($timID==false)
+			{
+			$timID = IPS_CreateEvent(1);
+			IPS_SetParent($timID, $this->ScriptsUsed["OperationCenter"]);
+			IPS_SetName($timID, $name);
+			IPS_SetEventCyclic($timID,0,0,0,0,0,0);
+			IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
+			IPS_SetEventActive($timID,true);
+			echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			}
+		else
+			{
+			echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
+			IPS_SetEventActive($timID,true);
+			}
+		return($timID);
+		}
+
+	function CreateTimerSync($name,$sekunden)
+		{
+		$timID = @IPS_GetEventIDByName($name, $this->ScriptsUsed["OperationCenter"]);
+		if ($timID==false)
+			{
+			$timID = IPS_CreateEvent(1);
+			IPS_SetParent($timID, $this->ScriptsUsed["OperationCenter"]);
+			IPS_SetName($timID, $name);
+			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      /* alle 150 sec */
+			//IPS_SetEventActive($tim2ID,true);
+			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
+			echo "   Timer Event ".$name." neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+			}
+		else
+			{
+			echo "   Timer Event ".$name." bereits angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
+			//IPS_SetEventActive($tim2ID,true);
+			}
+		return($timID);
+		}		
+	
+	} /* Ende class timer */
+	
 
 /***************************************************************************************************************
  *

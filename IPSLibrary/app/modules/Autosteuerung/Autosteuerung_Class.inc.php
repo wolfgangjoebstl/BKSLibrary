@@ -762,9 +762,17 @@ class Autosteuerung
 						else
 							{
 							/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
-							$parges[$Kommando][$Eintrag][]="NAME";
-							$parges[$Kommando][$Eintrag][]=$params_one[0];
-							$Eintrag--;								
+							if ( strlen($params_one[0]) > 0 )
+								{
+								$parges[$Kommando][$Eintrag][]="NAME";
+								$parges[$Kommando][$Eintrag][]=$params_one[0];
+								$Eintrag--;
+								}
+							else
+								{
+								echo "                >>>Länge Name ist ".strlen($params_one[0])." Kommando ".$Kommando." wird nicht angelegt.\n";
+								//print_r($parges);
+								}																		
 							}
 						break;
 					default:
@@ -772,35 +780,38 @@ class Autosteuerung
 						break;
 					}
 				}
-			foreach ($parges[$Kommando] as $command)
+			if ( isset ($parges[$Kommando]) )
 				{
-				//echo $command[0]."   ";
-				if ($command[0]=="ON") 				{ $switch=true; }	
-				if ($command[0]=="OFF") 			{ $switch=true; }
-				if ($command[0]=="ON#COLOR") 		{ $switch=true; }
-				if ($command[0]=="OFF#COLOR") 	{ $switch=true; }
-				if ($command[0]=="ON#LEVEL") 		{ $switch=true; }
-				if ($command[0]=="OFF#LEVEL") 	{ $switch=true; }
-				}								
-			if ($switch == false )
-				{
-				$count++;
-				if ($status==false)
+				foreach ($parges[$Kommando] as $command)
 					{
-					$parges[$Kommando][$count][]="OFF";
-					$parges[$Kommando][$count][]="false";	// wird im nächsten Schritt umgewandelt, hier wird eine Eingabe simuliert
-					}
-				else	
+					//echo $command[0]."   ";
+					if ($command[0]=="ON") 				{ $switch=true; }	
+					if ($command[0]=="OFF") 			{ $switch=true; }
+					if ($command[0]=="ON#COLOR") 		{ $switch=true; }
+					if ($command[0]=="OFF#COLOR") 	{ $switch=true; }
+					if ($command[0]=="ON#LEVEL") 		{ $switch=true; }
+					if ($command[0]=="OFF#LEVEL") 	{ $switch=true; }
+					}								
+				if ($switch == false )
 					{
-					$parges[$Kommando][$count][]="ON";
-					$parges[$Kommando][$count][]="true";	// wird im nächsten Schritt umgewandelt, hier wird eine Eingabe simuliert
-					}
-				}				
-			$parges[$Kommando][0][]="SOURCE";		/* Die Quelle des Befehls dokumentieren */
-			$parges[$Kommando][0][]=$params[0];		/* OnUpdate oder OnChange  */
-			$parges[$Kommando][0][]=$status;			/* der aktuelle Wert des auslösenden Objektes, default false */
-			ksort($parges[$Kommando]);
-			}	
+					$count++;
+					if ($status==false)
+						{
+						$parges[$Kommando][$count][]="OFF";
+						$parges[$Kommando][$count][]="false";	// wird im nächsten Schritt umgewandelt, hier wird eine Eingabe simuliert
+						}
+					else	
+						{
+						$parges[$Kommando][$count][]="ON";
+						$parges[$Kommando][$count][]="true";	// wird im nächsten Schritt umgewandelt, hier wird eine Eingabe simuliert
+						}
+					}				
+				$parges[$Kommando][0][]="SOURCE";		/* Die Quelle des Befehls dokumentieren */
+				$parges[$Kommando][0][]=$params[0];		/* OnUpdate oder OnChange  */
+				$parges[$Kommando][0][]=$status;			/* der aktuelle Wert des auslösenden Objektes, default false */
+				ksort($parges[$Kommando]);
+				}
+			}		/* foreach alle Strichpunkt Befehle durchgehen. Leere befgehle werden uebersprungen */
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
 		if ($simulate==true) 
 			{
@@ -1024,11 +1035,42 @@ class Autosteuerung
 					}
 				else
 					{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-					$checkId = $this->lightManager->GetSwitchIdByName($cond);
+					$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
 					$statusCheck=$this->lightManager->GetValue($checkId);
-					$result["SWITCH"]=$statusCheck;	
+					$result["SWITCH"]=$statusCheck;
+					echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
 					}			
 				break;
+			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
+				$cond=strtoupper($befehl[1]);
+				$result["COND"]=$cond;
+				if ($cond=="LIGHT")
+					{
+					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+					if (self::isitlight())
+						{
+						$result["SWITCH"]=false;						
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht dunkel ');
+						}
+					}
+				elseif ($cond=="DARK")
+					{
+					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+					if (self::isitdark())
+						{
+						$result["SWITCH"]=false;
+						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht hell ');
+						}
+					}
+				else
+					{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+					$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
+					$statusCheck=$this->lightManager->GetValue($checkId);
+					$result["SWITCH"]=!$statusCheck;
+					echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+					}			
+				break;
+
 			default:
 				echo "Function EvaluateCommand, Befehl unbekannt: ".$befehl[0]." ".$befehl[1]."   \n";
 				break;				
@@ -1039,12 +1081,7 @@ class Autosteuerung
 
 	/***************************************
 	 *
-	 * hier wird der Befehl umgesetzt, benötigt IPSLight
-	 *
-	 * schreibt automatisch IPSLight Gruppe, Programm und Switch bzw. Wert von Switch
-	 * danach Sprachausgabe
-	 *
-	 * Befehl wird immer dann ausgeführt wenn das entsprechende Array Element gesetzt ist
+	 * hier wird der Befehl umgesetzt, benötigt IPSLight, Schalten ist eine eigen Funktion - erfolgt abhängig von if Auswertung
 	 *
 	 *******************************************************/
 
@@ -1134,8 +1171,11 @@ class Autosteuerung
 				{
 				}
 			if (isset($result["SPEAK"]) == true)
-				{				
-	  			tts_play(1,$result["SPEAK"],'',2);
+				{
+				if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
+					{								
+					tts_play(1,$result["SPEAK"],'',2);
+					}
 				}
 			}	/* Ende keine Simulation */
 		else
@@ -1145,6 +1185,12 @@ class Autosteuerung
 		return ($result);
 		}
 
+	/***************************************
+	 *
+	 * hier wird geschaltet - abhängig von IF Befehlsauswertung
+	 *
+	 *******************************************************/
+	 
 	private function switchObject($result,$simulate=false)
 		{
 		IPSLogger_Dbg(__file__, 'SwitchObject :  '.json_encode($result));	

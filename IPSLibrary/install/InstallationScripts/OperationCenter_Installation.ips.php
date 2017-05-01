@@ -81,44 +81,9 @@
 
 	echo "Timer programmieren :\n";
 	
-	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptIdOperationCenter);
-	if ($tim2ID==false)
-		{
-		$tim2ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim2ID, $scriptIdOperationCenter);
-		IPS_SetName($tim2ID, "MoveCamFiles");
-		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,150);      /* alle 150 sec */
-  		//IPS_SetEventActive($tim2ID,true);
-		IPS_SetEventCyclicTimeFrom($tim2ID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
-	   echo "   Timer Event MoveCamFiles neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
-		}
-	else
-	   {
-	   echo "   Timer Event MoveCamFiles bereits angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
-		IPS_SetEventCyclicTimeFrom($tim2ID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
-  		//IPS_SetEventActive($tim2ID,true);
-  		}
-
-	$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptIdOperationCenter);
-	if ($tim3ID==false)
-		{
-		$tim3ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim3ID, $scriptIdOperationCenter);
-		IPS_SetName($tim3ID, "RouterExectimer");
-		IPS_SetEventCyclic($tim3ID,0,1,0,0,1,150);      /* alle 150 sec */
-		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);
-		/* diesen Timer nicht aktivieren, er wird vom RouterAufrufTimer aktiviert und deaktiviert */
-	   echo "   Timer Event RouterExectimer neu angelegt. Timer 150 sec ist nicht aktiviert.\n";
-		}
-	else
-	   {
-	   echo "   Timer Event RouterExectimer bereits angelegt. Timer 150 sec ist nicht aktiviert.\n";
-		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);
-  		}
-
-	/* Eventuell Router regelmaessig auslesen */
-   $tim1ID=CreateTimerOC("RouterAufruftimer",00,20);	
-
+	$timer = new TimerHandling();
+	//print_r($timer->listScriptsUsed());
+	
 	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptIdOperationCenter);
 	if ($tim4ID==false)
 		{
@@ -152,10 +117,18 @@
   		IPS_SetEventActive($tim5ID,true);
   		}
 
-   $tim6ID=CreateTimerOC("CopyScriptsTimer",02,20);	
-   $tim7ID=CreateTimerOC("FileStatus",03,50);
-   $tim8ID=CreateTimerOC("SystemInfo",02,30);
-   $tim9ID=CreateTimerOC("Reserved",02,40);	
+	
+	$tim1ID=$timer->CreateTimerOC("RouterAufruftimer",00,20);				/* Eventuell Router regelmaessig auslesen */	
+	$tim10ID=$timer->CreateTimerOC("Maintenance",01,20);						/* Starte Maintanenance Funktionen */	
+	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files */	
+	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
+	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
+		
+   $tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
+   $tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
+   $tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
+	
+   $tim9ID=$timer->CreateTimerOC("Reserved",02,40);	
   		
 	/******************************************************
 
@@ -403,43 +376,6 @@
 
 		}
 
-/***************************************************************************************/
-
-/* automatisch Timer kreieren, damit nicht immer alle Befehle kopiert werden müssen */
-
-function CreateTimerOC($name,$stunde,$minute)
-	{
-	/* EventHandler Config regelmaessig bearbeiten */
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-	$app_oid=$moduleManager->GetModuleCategoryID()."\n";
-	$oid_children=IPS_GetChildrenIDs($app_oid);
-	$result=array();
-	//echo "  Alle Skript Files :\n";
-	foreach($oid_children as $oid)
-		{
-		$result[IPS_GetName($oid)]=$oid;
-		//echo "      OID : ".$oid." Name : ".IPS_GetName($oid)."\n";
-		}
-			
-	$timID=@IPS_GetEventIDByName($name, $result["OperationCenter"]);
-	if ($timID==false)
-		{
-		$timID = IPS_CreateEvent(1);
-		IPS_SetParent($timID, $result["OperationCenter"]);
-		IPS_SetName($timID, $name);
-		IPS_SetEventCyclic($timID,0,0,0,0,0,0);
-		IPS_SetEventCyclicTimeFrom($timID,$stunde,$minute,0);  /* immer um ss:xx */
-  		IPS_SetEventActive($timID,true);
-	   echo "   Timer Event ".$name." neu angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
-		}
-	else
-	   {
-	   echo "   Timer Event ".$name." bereits angelegt. Timer um ".$stunde.":".$minute." ist aktiviert.\n";
-  		IPS_SetEventActive($timID,true);
-  		}
-	return($timID);
-	}
 
 
 

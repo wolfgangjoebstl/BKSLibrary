@@ -670,15 +670,15 @@ function Status($params,$status,$simulate=false)
 	$command=array(); $entry=1;	
 		
 	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
-
-	foreach ($parges as $Kommando)
+	//print_r($parges);
+	foreach ($parges as $kom => $Kommando)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
 
-		foreach ($Kommando as $befehl)
+		foreach ($Kommando as $num => $befehl)
 			{
-			//echo "Bearbeite Befehl ".$befehl[0]."\n";
+			echo $kom."|".$num." : Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
 				default:
@@ -687,6 +687,7 @@ function Status($params,$status,$simulate=false)
 				}	
 			} /* Ende foreach Befehl */
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+		//print_r($command[$entry]);	
 		if (isset($result["DELAY"])==true)
 			{
 			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			

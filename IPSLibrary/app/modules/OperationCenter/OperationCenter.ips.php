@@ -99,14 +99,16 @@ else
 	if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
 	}
 
-$tim1ID = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
-$tim3ID = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
-$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
-$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
-$tim6ID = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
-$tim7ID = @IPS_GetEventIDByName("FileStatus", $scriptId);
-$tim8ID = @IPS_GetEventIDByName("SystemInfo", $scriptId);
-$tim9ID = @IPS_GetEventIDByName("Reserved", $scriptId);
+$tim1ID  = @IPS_GetEventIDByName("RouterAufruftimer", $scriptId);
+$tim3ID  = @IPS_GetEventIDByName("RouterExectimer", $scriptId);
+$tim4ID  = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
+$tim5ID  = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
+$tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
+$tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
+$tim8ID  = @IPS_GetEventIDByName("SystemInfo", $scriptId);
+$tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
+$tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintanenance Funktionen */	
+$tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintanenance Funktion: Move Log Files */	
 
 /*********************************************************************************************/
 
@@ -615,33 +617,45 @@ if ($_IPS['SENDER']=="Variable")
 
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ * Timer Aufrufe gestaffelt
+ *
+ * 1 Router auslesen starten
+ * Webcam Files und wenn noch Zeit logfiles zusammenräumen
+ * Router auswerten
+ * Update der Routinen
+ * Scripts auf Droppbox kopieren
+ * Sysping alle geräte
+ * File Status kopieren
+ *
+ **********************************************************************************************/
 
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
 	switch ($_IPS['EVENT'])
-	   {
-	   case $tim1ID:        /* einmal am Tag */
+		{
+		case $tim1ID:        /* einmal am Tag Router auslesen*/
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Router Auswertung");
 			/********************************************************
-		   Einmal am Tag: nun den Datenverbrauch über den router auslesen
+			Einmal am Tag: nun den Datenverbrauch über den router auslesen
 			**********************************************************/
-	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-			   {
-			   echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+			foreach ($OperationCenterConfig['ROUTER'] as $router)
+				{
+				echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 				//print_r($router);
 				if ($router['TYP']=='MR3420')
-				   {
+					{
 					/* und gleich ausprobieren */
-		   		IPS_ExecuteEX($OperationCenterSetup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
-		   		//IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+					IPS_ExecuteEX($OperationCenterSetup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+					//IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
 					SetValue($ScriptCounterID,1);
 					IPS_SetEventActive($tim3ID,true);
 					IPSLogger_Dbg(__file__, "Router MR3420 Auswertung gestartet.");
-		   		}
+					}
 				if ($router['TYP']=='RT1900ac')
-				   {
+					{
 					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
 					if ($router_categoryId==false)
 					   {
@@ -666,11 +680,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 				   {
 					$OperationCenter->write_routerdata_MBRN3000($router);
 				   }
-		   	} /* Ende foreach */
-	      break;
-	      
+				} /* Ende foreach */
+			break;
+		
 		case $tim2ID:
-			//IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam und Logdateien zusammenraeumen:");
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam FTP Dateien zusammenraeumen:");
 			/********************************************************
 		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
 			**********************************************************/
@@ -711,16 +725,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				{
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam zusammengeraeumt, ".$count." Fotos verschoben.");
 				}
-			else
-				{
-				$countlog=$OperationCenter->MoveLogs();
-				if ($countlog>0)
-					{
-					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
-					}
-				}
 			break;
-	      
 		case $tim3ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Routerdaten empfangen, auswerten. ScriptcountID:".GetValue($ScriptCounterID));
 
@@ -814,9 +819,47 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$OperationCenter->SystemInfo();
 			break;		
 		case $tim9ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reserviert");
+			/************************************************************************************
+ 			 *
+			 * System Information von sysinfo auauswerten
+	   	 * Timer einmal am Tag um 00:50
+	   	 *
+			 *************************************************************************************/		
 			break;		
-		default:
-
+		case $tim10ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");
+			/************************************************************************************
+ 			 *
+			 * Maintenance Modi
+	   	 * Timer einmal am Tag um 00:50
+	   	 *
+			 *************************************************************************************/	
+			IPS_SetEventActive($tim11ID,true);	
+			break;		
+		case $tim11ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance Intervall, Logdateien zusammenräumen");
+			/************************************************************************************
+ 			 *
+			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig
+	   	 * 
+	   	 *
+			 *************************************************************************************/	
+			$countlog=$OperationCenter->MoveLogs();
+			if ($countlog == 100)
+				{
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben. Es gibt noch mehr.");				
+				}
+			elseif ($countlog>0)
+				{
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+				}
+			else
+				{
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");				
+				IPS_SetEventActive($tim11ID,false);
+				}		
+			break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 		   break;
