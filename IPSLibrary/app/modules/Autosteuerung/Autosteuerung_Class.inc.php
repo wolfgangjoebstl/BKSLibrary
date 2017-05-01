@@ -1041,6 +1041,11 @@ class Autosteuerung
 	 *
 	 * hier wird der Befehl umgesetzt, benötigt IPSLight
 	 *
+	 * schreibt automatisch IPSLight Gruppe, Programm und Switch bzw. Wert von Switch
+	 * danach Sprachausgabe
+	 *
+	 * Befehl wird immer dann ausgeführt wenn das entsprechende Array Element gesetzt ist
+	 *
 	 *******************************************************/
 
 	function ExecuteCommand($result,$simulate=false)
