@@ -47,17 +47,41 @@ function LocalAccess_GetConfiguration()
 						);
 	}
 
-
-function RemoteAccess_TypeFS20()
+function RemoteAccess_GetServerConfig()
 	{
 		return array(
-				/*"Zentralzimmer"      => 	array(
-	                              			"OID" 	=> 50080,
-	                                       "Type"   => "Motion",
-																  ) */
+				"LBG-VIS"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"LBG70"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@hupo35.ddns-instar.de:88/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"KBG47"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:3777/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"KBG-VIS"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@hupo35.ddns-instar.de:3877/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"BKS01"              => 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@sina73.ddns-instar.com:82/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"BKS-VIS"              => 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@sina73.ddns-instar.com:88/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
 						);
 	}
-
-
+	
 	/** @}*/
 ?>
