@@ -59,7 +59,10 @@ foreach ($MeterConfig as $meter)
 
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
 	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
-
+	if ( isset($meter["costKWh"]) )
+		{
+		SetValue($KostenID,$meter["costKWh"]);
+		}
 	$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
 	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
 	IPS_SetPosition($letzterTagID, 100);
@@ -121,10 +124,12 @@ foreach ($MeterConfig as $meter)
 
 if ($_IPS['SENDER'] == "Execute")
 	{
-	echo"-------------------------------------------------------------\n";
+	echo "-------------------------------------------------------------\n";
+	echo "        EXECUTE\n";
+	echo "-------------------------------------------------------------\n";
+
 	echo "Plausi-Check von Logged Variablen.\n";
 
-	$zaehler=0;
 	$initial=true;
 	$ergebnis=0;
 	$vorigertag="";
@@ -160,6 +165,7 @@ if ($_IPS['SENDER'] == "Execute")
 			}
 		
 		$vorwert=0;
+		$zaehler=0;
 		//$variableID=44113;
 
 		echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
@@ -178,17 +184,21 @@ if ($_IPS['SENDER'] == "Execute")
 				Nicht mer als 10.000 Werte ...
 			*/
 			//print_r($werte);
-   			$anzahl=count($werte);
-	   		echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte \n";
+			$anzahl=count($werte);
+			echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
 
-			if (($anzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
+			if (($anzahl == 0) & ($zaehler == 0)) 
+				{
+				echo " Keine Werte archiviert. \n";
+				break;
+				}   // hartes Ende der Schleife wenn keine Werte vorhanden
 
 			if ($initial)
-			   {
-			   /* allererster Durchlauf */
+				{
+				/* allererster Durchlauf */
 				$ersterwert=$werte['0']['Value'];
-		   		$ersterzeit=$werte['0']['TimeStamp'];
-		   		}
+				$ersterzeit=$werte['0']['TimeStamp'];
+				}
 
 			if ($anzahl<10000)
 		   		{
@@ -220,7 +230,7 @@ if ($_IPS['SENDER'] == "Execute")
 			   		{
 						AC_DeleteVariableData($archiveHandlerID, $variableID, $zeit, $zeit);
 						}
-					echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+					echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 				   }
 				else
 				   {
@@ -259,7 +269,7 @@ if ($_IPS['SENDER'] == "Execute")
 			   	/* jeden Eintrag ausgeben */
 			   	//print_r($wert);
 			   	   {
-						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe: " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 						}
 					}
 				$zaehler+=1;

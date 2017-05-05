@@ -1290,8 +1290,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				if ($meter["TYPE"]=="Amis")
 				   {
 					$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
-					$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-					$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+					//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+					//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+					$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
 			   	}
 				if ($meter["TYPE"]=="Homematic")
 			   	{
@@ -1344,7 +1345,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					$laufend+=1;
 					//echo $ergebnis_tabelle."\n";
 					}
-				$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n".$ergebnis_datum."\n".$ergebnis_tabelle1."\n".$ergebnis_tabelle2."\n\n";
+				//$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n".$ergebnis_datum."\n".$ergebnis_tabelle1."\n".$ergebnis_tabelle2."\n\n";
+				$ergebnistab_energie.="Stromverbrauch der letzten Tage von ".$meter["NAME"]." :\n\n";
+				$ergebnistab_energie.="Energiewert aktuell ".$zeile["Energie"][1]."\n\n";
+				$ergebnistab_energie.=$ergebnis_datum."\n".$ergebnis_tabelle2."\n\n";
 
 				/* Kategorie Periodenwerte selbst suchen */
 				$PeriodenwerteID = CreateVariableByName($meterdataID, "Periodenwerte", 3);
