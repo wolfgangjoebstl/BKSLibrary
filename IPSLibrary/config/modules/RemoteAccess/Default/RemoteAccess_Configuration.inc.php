@@ -50,8 +50,18 @@ function LocalAccess_GetConfiguration()
 function RemoteAccess_GetServerConfig()
 	{
 		return array(
+				"LBG70-2Virt"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:Cloudg06@hupo35.ddns-instar.de:3876/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),
+				"LBG70-2"        		=> 	array(
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@hupo35.ddns-instar.de:3875/api/',
+							"STATUS"			=>		'Active',
+							"LOGGING"		=>		'Disabled',
+														),		
 				"LBG-VIS"        		=> 	array(
-							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:Cloudg06@hupo35.ddns-instar.de:86/api/',
 							"STATUS"			=>		'Active',
 							"LOGGING"		=>		'Disabled',
 														),
@@ -61,7 +71,7 @@ function RemoteAccess_GetServerConfig()
 							"LOGGING"		=>		'Disabled',
 														),
 				"KBG47"        		=> 	array(
-							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:3777/api/',
+							"ADRESSE"   	=> 	'http://wolfgangjoebstl@yahoo.com:Cloudg06@hupo35.ddns-instar.de:3777/api/',
 							"STATUS"			=>		'Active',
 							"LOGGING"		=>		'Disabled',
 														),
