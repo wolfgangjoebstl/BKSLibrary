@@ -1060,7 +1060,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 
 		if (isset($installedModules["OperationCenter"])==true)
-		   {
+			{
 			$ergebnisOperationCenter.="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
 
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -1081,22 +1081,22 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$OperationCenterConfig = OperationCenter_Configuration();
 
 			$ergebnisOperationCenter.="\nAktuelles Datenvolumen für die verwendeten Router : \n";
-	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-			   {
-			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
+			foreach ($OperationCenterConfig['ROUTER'] as $router)
+				{
+				$ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
 				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
 				if ($router['TYP']=='MBRN3000')
-				   {
+					{
 					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MBRN3000($router,true),2)." Mbyte \n";
-				   }
+					}
 				elseif ($router['TYP']=='MR3420')
-				   {
+					{
 					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MR3420($router),2)." Mbyte \n";
 					}
 				elseif ($router['TYP']=='RT1900ac')
-				   {
+					{
 					$ergebnisOperationCenter.="\n";
 					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_RT1900($router,true),2)." Mbyte \n";
 					}
@@ -1106,6 +1106,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 			$ergebnisOperationCenter.="\n";
+			
+			$ergebnisOperationCenter.=$OperationCenter->writeSysPingResults();
+			
 		  	echo ">>OperationCenter. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
@@ -2197,7 +2200,7 @@ function RemoteAccessServerTable()
 				foreach ($remServer as $Name => $Server)
 					{
 					$UrlAddress=$Server["ADRESSE"];
-					if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
 						{				
 						$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
 						$RemoteServer[$Name]["Url"]=$UrlAddress;
@@ -2219,7 +2222,7 @@ function RemoteAccessServerTable()
 				foreach ($remServer as $Name => $Server)
 					{
 					$UrlAddress=$Server["ADRESSE"];
-					if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
 						{				
 						$RemoteServer[$Name]["Url"]=$UrlAddress;
 						$RemoteServer[$Name]["Name"]=$Name;
@@ -2244,7 +2247,7 @@ function RemoteAccess_GetConfigurationNew()
 	foreach ($remServer as $Name => $Server)
 		{
 		$UrlAddress=$Server["ADRESSE"];
-		if ( ($Server["STATUS"]=="Active") and ($Server["LOGGING"]=="Active") )
+		if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
 			{				
 			$RemoteServer[$Name]=$UrlAddress;
 			}

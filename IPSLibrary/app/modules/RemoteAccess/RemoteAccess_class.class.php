@@ -40,7 +40,7 @@ class RemoteAccess
 		 *		"BKS-VIS"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.20:88/api/',
 		 *		"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
 		 */
-		$this->remServer=RemoteAccess_GetConfigurationNew();
+		$this->remServer=RemoteAccess_GetConfigurationNew();	/* es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben */
 		}
 		
 	/**

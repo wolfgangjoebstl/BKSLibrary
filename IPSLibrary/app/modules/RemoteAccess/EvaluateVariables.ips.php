@@ -19,11 +19,15 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 $startexec=microtime(true);
 
 IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-
 IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
-$remServer=ROID_List();
+echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
 $status=RemoteAccessServerTable();
+print_r($status);
+
+echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+$remServer=ROID_List();
+print_r($remServer);
 
 $struktur=array();$guthID=array();
 foreach ($remServer as $Name => $Server)
@@ -34,10 +38,11 @@ foreach ($remServer as $Name => $Server)
 		$rpc = new JSONRPC($Server["Adresse"]);
 		$guthID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Guthaben");
 		$children=$rpc->IPS_GetChildrenIDs($guthID[$Name]);
+		$struktur[$Name]=array();
 		foreach ($children as $oid)
-	   	{
-	   	$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-	   	}		
+			{
+			$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
+			}		
 		}
 	}	
 echo "Struktur Server :\n";
@@ -82,7 +87,7 @@ if (isset ($installedModules["Guthabensteuerung"]))
 		$parameter="";
 		foreach ($remServer as $Name => $Server)
 			{
-			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+			echo "   Guthabensteuerung: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 			if ( $status[$Name]["Status"] == true )
 				{			
 				$rpc = new JSONRPC($Server["Adresse"]);
@@ -107,12 +112,16 @@ set_time_limit(180);
 if (isset ($installedModules["OperationCenter"]))
   	{
   	/* nur wenn OperationCenter installiert ist ausführen */
-	echo "Router Datenverbrauch Struktur auf Remote Servern aufbauen:\n";
-
+	echo "\nRouter Datenverbrauch Struktur auf Remote Servern aufbauen:\n";
+	$OperationCenterID=array();
 	foreach ($remServer as $Name => $Server)
 		{
-		$rpc = new JSONRPC($Server["Adresse"]);
-		$OperationCenterID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "OperationCenter");
+		echo "   OperationCenter: Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+		if ( $status[$Name]["Status"] == true )
+			{					
+			$rpc = new JSONRPC($Server["Adresse"]);
+			$OperationCenterID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "OperationCenter");
+			}
 		}
 
 	/* RPC braucht elendslang in der Verarbeitung, bis hierher 10 Sekunden !!!! */

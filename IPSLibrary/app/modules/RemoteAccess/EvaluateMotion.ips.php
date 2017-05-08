@@ -9,6 +9,7 @@
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		/* für Definiotion RemoteAccess_TypeFS20 wenn benötigt */
 
  /******************************************************
   *
@@ -54,17 +55,17 @@ if (isset ($installedModules["DENONsteuerung"])) { 	echo "  Modul DENONsteuerung
 if (isset ($installedModules["DetectMovement"])) { 	echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
 echo "\n";
 
-if (isset ($installedModules["DetectMovement"]))
-	{
-	IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-	IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-	}
-	
  /******************************************************
   *
   *  			INSTALLATION
   *
   *************************************************************/
+
+	if (isset ($installedModules["DetectMovement"]))
+		{
+		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+		}
 
 	echo "Update Konfiguration und register Events\n";
 

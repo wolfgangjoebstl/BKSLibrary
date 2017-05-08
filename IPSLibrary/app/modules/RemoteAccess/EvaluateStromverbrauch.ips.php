@@ -37,9 +37,10 @@ $modules=$moduleManager->GetInstalledModules();
 $status=RemoteAccessServerTable();
 	
 if (isset ($modules["Amis"]))
-  	{
-  	/* nur wenn AMIS installiert ist ausführen */
+	{
+	/* nur wenn AMIS installiert ist ausführen */
 	echo "Amis Stromverbrauch Struktur auf Remote Servern aufbauen:\n";
+	$stromID=Array();
 	//print_r($status);
 	//print_r($remServer);
 	foreach ($remServer as $Name => $Server)

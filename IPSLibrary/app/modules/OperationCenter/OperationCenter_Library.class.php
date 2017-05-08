@@ -12,7 +12,21 @@
 
 
 
-/****************************************************************************************************************/
+/***************************************************************************************************************
+ *
+ * Routinen für
+ *
+ * Herausfinden der eigenen externen und lokalen IP Adresse
+ * sys device ping IP Adresse von LED Modul oder DENON Receiver
+ * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+ * Erreichbarkeit der Remote Server zum Loggen
+ * systeminfo auslesen und slokal die relevanten Daten speichern
+ * Verwalten einer MAC-IP Tabelle
+ * schreibt die gestrigen Download/Upload und Total Werte von einem MR3430 Router
+ *
+ *
+ *
+ ****************************************************************************************************************/
 
 class OperationCenter
 	{
@@ -50,17 +64,17 @@ class OperationCenter
 			//echo 'ModuleManager Variable not set --> Create "default" ModuleManager'."\n";
 			$moduleManager = new IPSModuleManager('OperationCenter',$repository);
 			}
-	   	$this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
-	   	$this->installedModules = $moduleManager->GetInstalledModules();
+		$this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
+		$this->installedModules = $moduleManager->GetInstalledModules();
 
-   		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
-   		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
-   		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
-   		$this->categoryId_SysInfo  	= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
+		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
+		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
+		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
+		$this->categoryId_SysInfo  	= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
 		
 		//echo "Subnet ".$this->subnet."   ".$subnet."\n";		
-        $this->mactable=$this->create_macipTable($this->subnet);
-        $categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
+		$this->mactable=$this->create_macipTable($this->subnet);
+		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -426,8 +440,237 @@ class OperationCenter
 			}
 			return ($RemoteServer);
 		}
+		
+	/*****************************************************************************
+	 *
+	 * Die Ergebnisse des Server Pingsals String ausgeben
+	 *
+	 *******************************************************************************/	
+		
+	function writeServerPingResults()
+		{
 
-/****************************************************************************************************************/
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+		$result="Status der Remote Access Server (Name, Configuration, Logging und Status); Modul RenoteAccess ist installiert:\n\n";
+
+		foreach ($remServer as $Name => $Server)
+			{
+			$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			if ( GetValue($ServerStatusID)==true )
+				{
+				$result .= str_pad($Name,30).str_pad($Server["STATUS"],15).str_pad($Server["LOGGING"],15)."erreichbar\n";
+				}
+			else
+				{
+				$result .= str_pad($Name,30).str_pad($Server["STATUS"],15).str_pad($Server["LOGGING"],15)."abwesend\n";
+				}
+
+			}
+		return($result);	
+		}
+
+/**************************************************************************************************************/
+
+	function SysPingAllDevices($log_OperationCenter)
+		{
+		echo "Sysping All Devices. Subnet : ".$this->subnet."\n";
+
+		$OperationCenterConfig = $this->oc_Configuration;
+		//print_r($OperationCenterConfig);
+		
+		$SysPingStatusID = CreateVariableByName($this->categoryId_SysPing, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableCustomProfile($SysPingStatusID,"~UnixTimestamp");
+		SetValue($SysPingStatusID,time());
+
+		/************************************************************************************
+		 * Erreichbarkeit IPCams
+		 *************************************************************************************/
+		 
+		if (isset ($this->installedModules["IPSCam"]))
+			{
+			$mactable=$this->get_macipTable($subnet);
+			//print_r($mactable);
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+				{
+				$CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				if (isset($mactable[$cam_config['MAC']]))
+					{
+					echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+					$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+					if ($status)
+						{
+						echo "Kamera wird erreicht   !\n";
+						if (GetValue($CamStatusID)==false)
+							{  /* Statusänderung */
+							$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+							$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
+							SetValue($CamStatusID,true);
+						 	}
+						}
+					else
+						{
+						echo "Kamera wird NICHT erreicht   !\n";
+						if (GetValue($CamStatusID)==true)
+							{  /* Statusänderung */
+							$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+							$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
+							SetValue($CamStatusID,false);
+							}
+						}
+					}
+				else  /* mac adresse nicht bekannt */
+					{
+					echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
+					}
+				} /* Ende foreach */
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit LED Ansteuerungs WLAN Geräte
+		 *************************************************************************************/
+		if (isset ($this->installedModules["LedAnsteuerung"]))
+			{
+			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
+			$device_config=LedAnsteuerung_Config();
+			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
+			$this->device_ping($device_config, $device, $identifier);
+			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit Denon Receiver
+		 *************************************************************************************/
+		if (isset ($this->installedModules["DENONsteuerung"]))
+			{
+			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+			$device_config=Denon_Configuration();
+			$deviceConfig=array();
+			foreach ($device_config as $name => $config)
+				{
+				if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
+				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
+				}
+			$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+			$this->device_ping($deviceConfig, $device, $identifier);
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit Router
+		 *************************************************************************************/
+		$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+		$this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+
+		/************************************************************************************
+		 * Überprüfen ob Wunderground noch funktioniert.
+		 *************************************************************************************/
+		if (isset ($this->installedModules["IPSWeatherForcastAT"]))
+			{
+			echo "\nWunderground API überprüfen.\n";
+			IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+			IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
+			IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
+			$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
+			IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
+			$urlContent = @Sys_GetURLContent($urlWunderground);
+			$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+			if ($urlContent===false)
+				{
+				echo "Wunderground Key ist defekt oder überlastet.\n";
+				if (GetValue($ServerStatusID)==true)
+					{  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
+					SetValue($ServerStatusID,false);
+					}
+				}
+			else
+				{
+				echo "  -> APP ist okay !.\n";
+				if (GetValue($ServerStatusID)==false)
+					{  /* Statusänderung */
+					$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+					$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
+					SetValue($ServerStatusID,true);
+					}
+				}
+			$api = @simplexml_load_string($urlContent);
+			//print_r($api);
+			}
+
+		/********************************************************
+			Sys Uptime lokaler Server ermitteln
+		**********************************************************/
+
+		echo "\nSind die LocalAccess Server erreichbar ....\n";
+
+		$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$this->CategoryIdData);
+		if ($Access_categoryId==false)
+			{
+			$Access_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($Access_categoryId, "AccessServer"); // Kategorie benennen
+			IPS_SetParent($Access_categoryId,$this->CategoryIdData);
+			}
+		$IPS_UpTimeID = CreateVariableByName($Access_categoryId, IPS_GetName(0)."_IPS_UpTime", 1);
+		IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
+		SetValue($IPS_UpTimeID,IPS_GetKernelStartTime());
+		echo "   Server : ".IPS_GetName(0)." zuletzt rebootet am: ".date("d.m H:i:s",GetValue($IPS_UpTimeID)).".\n";
+
+		/********************************************************
+		Die entfernten logserver auf Erreichbarkeit prüfen
+		**********************************************************/
+
+		if (isset ($this->installedModules["RemoteAccess"]))
+			{
+			echo "\nSind die RemoteAccess Server erreichbar ....\n";
+			$result=$this->server_ping();
+			}
+
+		}
+
+/**************************************************************************************************************/
+
+	function writeSysPingResults()
+		{
+		$result="";
+
+		$OperationCenterConfig = $this->oc_Configuration;
+		//print_r($OperationCenterConfig);
+		
+		/************************************************************************************
+		 * Erreichbarkeit IPCams
+		 *************************************************************************************/
+		 
+		if (isset ($this->installedModules["IPSCam"]))
+			{
+			$mactable=$this->get_macipTable($subnet);
+			//print_r($mactable);
+			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+				{
+				$CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				if ( GetValue($$CamStatusID)==true )
+					{
+					$result .= str_pad($cam_name,30)."erreichbar\n";
+					}
+				else
+					{
+					$result .= str_pad($cam_name,30)."abwesend\n";
+					}
+				} /* Ende foreach */
+			}
+
+		/************************************************************************************
+		 * Erreichbarkeit Remote Access Server
+		 *************************************************************************************/
+		
+		if (isset ($this->installedModules["RemoteAccess"]))
+			{		
+			$result .= $this->writeServerPingResults();
+			}
+		return($result);
+		}
+
+/**************************************************************************************************************/
 
 	/**
 	 * @public
@@ -2146,172 +2389,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 /*********************************************************************************************/
 
 
-/**************************************************************************************************************/
 
-function SysPingAllDevices($OperationCenter,$log_OperationCenter)
-	{
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager))
-		{
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-		}
-	$installedModules = $moduleManager->GetInstalledModules();
-	$CategoryIdData   = $moduleManager->GetModuleCategoryID('data');
-
-	echo "Sysping All Devices. Subnet : ".$OperationCenter->subnet."\n";
-	$subnet=$OperationCenter->subnet;
-	$OperationCenterConfig = $OperationCenter->oc_Configuration;
-	//print_r($OperationCenterConfig);
-
-	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
-	$SysPingStatusID = CreateVariableByName($categoryId_SysPing, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
-	IPS_SetVariableCustomProfile($SysPingStatusID,"~UnixTimestamp");
-	SetValue($SysPingStatusID,time());
-
-	/************************************************************************************
-  	 * Erreichbarkeit IPCams
-	 *************************************************************************************/
-	if (isset ($installedModules["IPSCam"]))
-		{
-		$mactable=$OperationCenter->get_macipTable($subnet);
-		//print_r($mactable);
-		foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-			{
-			$CamStatusID = CreateVariableByName($categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			if (isset($mactable[$cam_config['MAC']]))
-			   {
-				echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-				$status=Sys_Ping($mactable[$cam_config['MAC']],1000);
-				if ($status)
-					{
-					echo "Kamera wird erreicht   !\n";
-					if (GetValue($CamStatusID)==false)
-					   {  /* Statusänderung */
-						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
-						SetValue($CamStatusID,true);
-				   	}
-					}
-				else
-					{
-					echo "Kamera wird NICHT erreicht   !\n";
-					if (GetValue($CamStatusID)==true)
-					   {  /* Statusänderung */
-						$log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-						$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
-						SetValue($CamStatusID,false);
-					   }
-					}
-				}
-			else  /* mac adresse nicht bekannt */
-			   {
-			   echo "Sys_ping Kamera : ".$cam_name." mit Mac Adresse ".$cam_config['MAC']." nicht bekannt.\n";
-			   }
-			} /* Ende foreach */
-		}
-
-	/************************************************************************************
-  	 * Erreichbarkeit LED Ansteuerungs WLAN Geräte
-	 *************************************************************************************/
-	if (isset ($installedModules["LedAnsteuerung"]))
-		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
-		$device_config=LedAnsteuerung_Config();
-		$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-		$OperationCenter->device_ping($device_config, $device, $identifier);
-		$OperationCenter->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
-		}
-
-	/************************************************************************************
-  	 * Erreichbarkeit Denon Receiver
-	 *************************************************************************************/
-	if (isset ($installedModules["DENONsteuerung"]))
-		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
-		$device_config=Denon_Configuration();
-		$deviceConfig=array();
-		foreach ($device_config as $name => $config)
-		   {
-		   if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
-		   if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
-			}
-		$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-		$OperationCenter->device_ping($deviceConfig, $device, $identifier);
-		}
-
-	/************************************************************************************
-  	 * Erreichbarkeit Router
-	 *************************************************************************************/
-	$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-	$OperationCenter->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
-
-	/************************************************************************************
-  	 * Überprüfen ob Wunderground noch funktioniert.
-	 *************************************************************************************/
-	if (isset ($installedModules["IPSWeatherForcastAT"]))
-	   {
-	   echo "\nWunderground API überprüfen.\n";
-		IPSUtils_Include ("IPSWeatherForcastAT_Constants.inc.php",     "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-		IPSUtils_Include ("IPSWeatherForcastAT_Configuration.inc.php", "IPSLibrary::config::modules::Weather::IPSWeatherForcastAT");
-		IPSUtils_Include ("IPSWeatherForcastAT_Utils.inc.php",         "IPSLibrary::app::modules::Weather::IPSWeatherForcastAT");
-		$urlWunderground      = 'http://api.wunderground.com/api/'.IPSWEATHERFAT_WUNDERGROUND_KEY.'/forecast/lang:DL/q/'.IPSWEATHERFAT_WUNDERGROUND_COUNTRY.'/'.IPSWEATHERFAT_WUNDERGROUND_TOWN.'.xml';
-		IPSLogger_Trc(__file__, 'Load Weather Data from Wunderground, URL='.$urlWunderground);
-		$urlContent = @Sys_GetURLContent($urlWunderground);
-		$ServerStatusID = CreateVariableByName($categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-		if ($urlContent===false)
-			{
-			echo "Wunderground Key ist defekt oder überlastet.\n";
-			if (GetValue($ServerStatusID)==true)
-			   {  /* Statusänderung */
-				$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
-				$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf NICHT erreichbar');
-				SetValue($ServerStatusID,false);
-		   	}
-			}
-		else
-		   {
-		   echo "  -> APP ist okay !.\n";
-			if (GetValue($ServerStatusID)==false)
-			   {  /* Statusänderung */
-				$log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
-				$log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_Wunderground auf Erreichbar');
-				SetValue($ServerStatusID,true);
-		   	}
-		   }
-		$api = @simplexml_load_string($urlContent);
-		//print_r($api);
-		}
-
-	/********************************************************
-   	Sys Uptime lokaler Server ermitteln
-	**********************************************************/
-
-	echo "\nSind die LocalAccess Server erreichbar ....\n";
-
-	$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
-	if ($Access_categoryId==false)
-		{
-		$Access_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-		IPS_SetName($Access_categoryId, "AccessServer"); // Kategorie benennen
-		IPS_SetParent($Access_categoryId,$CategoryIdData);
-		}
-	$IPS_UpTimeID = CreateVariableByName($Access_categoryId, IPS_GetName(0)."_IPS_UpTime", 1);
-	IPS_SetVariableCustomProfile($IPS_UpTimeID,"~UnixTimestamp");
-	SetValue($IPS_UpTimeID,IPS_GetKernelStartTime());
-	echo "   Server : ".IPS_GetName(0)." zuletzt rebootet am: ".date("d.m H:i:s",GetValue($IPS_UpTimeID)).".\n";
-
-	/********************************************************
-   	Die entfernten logserver auf Erreichbarkeit prüfen
-	**********************************************************/
-
-	if (isset ($installedModules["RemoteAccess"]))
-		{
-		echo "\nSind die RemoteAccess Server erreichbar ....\n";
-		$result=$OperationCenter->server_ping();
-		}
-
-	}
 
 /****************************************************/
 

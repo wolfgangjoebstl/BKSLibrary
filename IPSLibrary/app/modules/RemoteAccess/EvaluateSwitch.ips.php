@@ -38,8 +38,13 @@ $donotregister=false; $i=0; $maxi=600;
 	/******************************************** Schalter  *****************************************/
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
-	$remServer=ROID_List();
-	$status=RemoteAccessServerTable();
+echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+$status=RemoteAccessServerTable();
+print_r($status);
+
+echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+$remServer=ROID_List();
+print_r($remServer);
 	
 	$struktur=array();
 	foreach ($remServer as $Name => $Server)
@@ -50,6 +55,7 @@ $donotregister=false; $i=0; $maxi=600;
 			$id=(integer)$Server["Schalter"];
 			$rpc = new JSONRPC($Server["Adresse"]);	
 			$children=$rpc->IPS_GetChildrenIDs($id);
+			$struktur[$Name]=array();			
 			foreach ($children as $oid)
 				{
 				$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);

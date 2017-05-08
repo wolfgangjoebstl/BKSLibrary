@@ -15,9 +15,6 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
-IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 500);
 $startexec=microtime(true);
@@ -53,6 +50,18 @@ $startexec=microtime(true);
 	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "   Modul Amis ist NICHT installiert.\n"; }
 	echo "\n";
 
+ /******************************************************
+  *
+  *  			INSTALLATION
+  *
+  *************************************************************/
+
+	if (isset ($installedModules["DetectMovement"]))
+		{
+		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+		}
+		
 	$remote=new RemoteAccess();
 	if (isset ($installedModules["Guthabensteuerung"])) { $remote->add_Guthabensteuerung(); }
 	if (isset ($installedModules["Amis"]))	{ $remote->add_Amis(); }

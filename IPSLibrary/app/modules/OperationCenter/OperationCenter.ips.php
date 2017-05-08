@@ -770,16 +770,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 			   	}
 			break;
 			
-	   case $tim4ID:
+		case $tim4ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
 			/********************************************************
-	   	 *
+			 *
 			 * Alle 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable
 			 *
 			 **********************************************************/
-         SysPingAllDevices($OperationCenter,$log_OperationCenter);
+			$OperationCenter->SysPingAllDevices($log_OperationCenter);
 			break;
-	   case $tim5ID:
+		case $tim5ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CyclicUpdate");
 			/************************************************************************************
 	   	 *
@@ -788,7 +788,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			CyclicUpdate();
 			break;
-	   case $tim6ID:
+		case $tim6ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
 			/************************************************************************************
 	   	 *
@@ -798,7 +798,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *************************************************************************************/
 			$OperationCenter->CopyScripts();
 			break;
-	   case $tim7ID:
+		case $tim7ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
  			 *
