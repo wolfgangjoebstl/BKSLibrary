@@ -640,15 +640,14 @@ class OperationCenter
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
 		 *************************************************************************************/
+		$result .= "Erreichbarkeit der IPCams:\n\n";
 		 
 		if (isset ($this->installedModules["IPSCam"]))
 			{
-			$mactable=$this->get_macipTable($subnet);
-			//print_r($mactable);
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
 				$CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-				if ( GetValue($$CamStatusID)==true )
+				if ( GetValue($CamStatusID)==true )
 					{
 					$result .= str_pad($cam_name,30)."erreichbar\n";
 					}
@@ -658,6 +657,7 @@ class OperationCenter
 					}
 				} /* Ende foreach */
 			}
+		$result .= "\n";
 
 		/************************************************************************************
 		 * Erreichbarkeit Remote Access Server
