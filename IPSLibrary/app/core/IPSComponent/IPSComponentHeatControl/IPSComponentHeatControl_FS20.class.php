@@ -18,7 +18,7 @@
 
 	IPSUtils_Include ('IPSComponentHeatControl.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');
 
-	class IPSComponentHeatControl_Homematic extends IPSComponentHeatControl {
+	class IPSComponentHeatControl_FS20 extends IPSComponentHeatControl {
 
 		private $instanceId;
 		private $reverseControl;
@@ -27,7 +27,9 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentShutter_Homematic Objektes
+		 * Initialisierung eines IPSComponentheatControl_FS20 Objektes
+		 *
+		 * Derzeit Aufruf ohne Parameter
 		 *
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
@@ -36,6 +38,19 @@
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->reverseControl = $reverseControl;
 			$this->rpcADR = $rpcADR;
+			
+			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($this->installedmodules["RemoteAccess"]))
+				{
+				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				$this->remServer	  = RemoteAccessServerTable();
+				}
+			else
+				{								
+				$this->remServer	  = array();
+				}
 		}
 
 		/**
@@ -48,7 +63,7 @@
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleShutter $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleShutter $module){
+		public function HandleEvent($variable, $value, IPSModuleHeatControl $module){
 		   if ($this->reverseControl) {
 				$module->SyncPosition(($value*100), $this);
 			} else {

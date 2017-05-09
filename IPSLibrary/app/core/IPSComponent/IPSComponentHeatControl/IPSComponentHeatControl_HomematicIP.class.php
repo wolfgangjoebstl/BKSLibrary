@@ -18,7 +18,7 @@
 
 	IPSUtils_Include ('IPSComponentHeatControl.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');
 
-	class IPSComponentHeatControl_Homematic extends IPSComponentHeatControl {
+	class IPSComponentHeatControl_HomematicIP extends IPSComponentHeatControl {
 
 		private $instanceId;
 		private $reverseControl;

@@ -4,7 +4,7 @@
 	 *
  	 *
 	 * @file          IPSComponentheatControl.class.php
-	 * @author        Wolfgang Jöbstl und Andreas Brauneis
+	 * @author        Wolfgang JÃ¶bstl und Andreas Brauneis
 	 *
 	 *
 	 */
@@ -71,8 +71,8 @@
 				$NachrichtenInputID=$object3->osearch("Input");
 				$this->log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
 				}
-			//$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.");
-			//$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.");
+			//$this->log_Denon->LogMessage("Script wurde Ã¼ber IPSLight aufgerufen.");
+			//$this->log_Denon->LogNachrichten("Script wurde Ã¼ber IPSLight aufgerufen.");
 
 			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 			$configuration=Denon_Configuration();
@@ -95,18 +95,18 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleRGB $module){
+		public function HandleEvent($variable, $value, IPSModuleHeatControl $module){
 		}
 
 		/**
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -120,14 +120,14 @@
 		 *
 		 * Zustand Setzen 
 		 *
-		 * @param boolean $power RGB Gerät On/Off
+		 * @param boolean $power RGB GerÃ¤t On/Off
 		 * @param integer $color RGB Farben (Hex Codierung)
 		 * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
 		 */
 		public function SetState($power, $level) {
 			//echo "Hurrah hier angekommen mit Parameter : ".$power."  ".$level."\n";
-			$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.".$power." ".$level);
-			$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
+			$this->log_Denon->LogMessage("Script wurde Ã¼ber IPSLight aufgerufen.".$power." ".$level);
+			$this->log_Denon->LogNachrichten("Script wurde Ã¼ber IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
 			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
 			$volumeID=IPS_GetObjectIDByName("MasterVolume",$this->DataCatID);
 			$MainZoneID=IPS_GetObjectIDByName("MainZonePower",$this->DataCatID);
