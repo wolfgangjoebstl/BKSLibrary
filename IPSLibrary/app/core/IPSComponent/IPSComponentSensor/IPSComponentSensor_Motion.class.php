@@ -73,10 +73,13 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-		   	IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.' mit Wert '.$value);
+			IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.'('.IPS_GetName($variable).') mit Wert '.$value);
 
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();
+			
+			print_r($this->RemoteOID);
+			print_r($this->remServer);
 			
 			if ($this->RemoteOID != Null)
 				{
@@ -85,8 +88,8 @@
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-            		if (count($para)==2)
-               			{
+					if (count($para)==2)
+						{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 							{
@@ -466,6 +469,10 @@
 
 		public function GetComponent() {
 			return ($this);
+			}
+
+		public function GetEreignisID() {
+			return ($this->EreignisID);
 			}
 
 		/*************************************************************************************

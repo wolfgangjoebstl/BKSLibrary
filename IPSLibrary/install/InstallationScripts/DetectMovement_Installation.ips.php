@@ -316,7 +316,7 @@
 			$log=new Motion_Logging($oid);
 			//print_r($log);
 			$class=$log->GetComponent($oid);
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->EreignisID)));
+			$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($log->GetEreignisID() )));
   	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
      		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
 			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */

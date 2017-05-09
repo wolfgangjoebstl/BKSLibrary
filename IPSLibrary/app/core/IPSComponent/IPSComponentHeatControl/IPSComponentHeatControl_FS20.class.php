@@ -27,53 +27,6 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentheatControl_FS20 Objektes
-		 *
-		 * Derzeit Aufruf ohne Parameter
-		 *
-		 * @param integer $instanceId InstanceId des Homematic Devices
-		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
-		 */
-		public function __construct($instanceId, $rpcADR="", $reverseControl=false) {
-			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
-			$this->reverseControl = $reverseControl;
-			$this->rpcADR = $rpcADR;
-			
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($this->installedmodules["RemoteAccess"]))
-				{
-				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-				$this->remServer	  = RemoteAccessServerTable();
-				}
-			else
-				{								
-				$this->remServer	  = array();
-				}
-		}
-
-		/**
-		 * @public
-		 *
-		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
-		 * an das entsprechende Module zu leiten.
-		 *
-		 * @param integer $variable ID der auslösenden Variable
-		 * @param string $value Wert der Variable
-		 * @param IPSModuleShutter $module Module Object an das das aufgetretene Event weitergeleitet werden soll
-		 */
-		public function HandleEvent($variable, $value, IPSModuleHeatControl $module){
-		   if ($this->reverseControl) {
-				$module->SyncPosition(($value*100), $this);
-			} else {
-				$module->SyncPosition(100-($value*100), $this);
-			}
-		}
-
-		/**
-		 * @public
-		 *
 		 * Funktion liefert String IPSComponent Constructor String.
 		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.

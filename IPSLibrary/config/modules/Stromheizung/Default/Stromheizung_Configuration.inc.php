@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup DetectMovement
-	 * @ingroup DetectMovement
+	/**@defgroup Stromheizung
+	 * @ingroup Stromheizung
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File fÃ¼r Stromheizung
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          Stromheizung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -32,6 +32,15 @@
 
 
 
+	function StromheizungHandler_GetEventConfiguration() {
+		$eventStromheizungConfiguration = array(
+
+
+
+			);
+
+		return $eventStromheizungConfiguration;
+	}
 
 	 
 	 
