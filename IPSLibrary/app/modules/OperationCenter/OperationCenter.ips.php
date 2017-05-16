@@ -622,12 +622,14 @@ if ($_IPS['SENDER']=="Variable")
  * Timer Aufrufe gestaffelt
  *
  * 1 Router auslesen starten
- * Webcam Files und wenn noch Zeit logfiles zusammenräumen
- * Router auswerten
- * Update der Routinen
- * Scripts auf Droppbox kopieren
- * Sysping alle geräte
- * File Status kopieren
+ * 2 Webcam Files zusammenräumen
+ * 3 Router auswerten, wird von 1 gestartet
+ * 4 Sysping alle geräte, alle 60 Minuten
+ * 5 automatisches Update der App Routinen, immer am 12. des Monats
+ * 6 Scripts auf Dropbox kopieren
+ * 7 File Status kopieren
+ * 8 System Info auslesen und speichern
+ * logfiles zusammenräumen 
  *
  **********************************************************************************************/
 
@@ -812,7 +814,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
  			 *
-			 * System Information von sysinfo auauswerten
+			 * System Information von sysinfo auswerten
 	   	 * Timer einmal am Tag um 00:50
 	   	 *
 			 *************************************************************************************/
@@ -822,7 +824,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reserviert");
 			/************************************************************************************
  			 *
-			 * System Information von sysinfo auauswerten
+			 * frei
 	   	 * Timer einmal am Tag um 00:50
 	   	 *
 			 *************************************************************************************/		

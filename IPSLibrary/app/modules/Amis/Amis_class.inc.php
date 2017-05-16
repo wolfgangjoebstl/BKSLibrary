@@ -286,7 +286,55 @@
 			return ($homematicAvailable);
 			}
 
-		/* AMIS Register ausgeben */
+		/************************************************************************************************************************
+ 		 *
+ 		 * Alle Energiewerte die als Register definiert sind auslesen, ignoriert andere Typen
+ 		 *
+ 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+		 *
+		 *****************************************************************************************************************************/
+		 
+		function writeEnergyRegister($meter)		/* nur einen Wert aus der Config ausgeben */
+			{
+			$registerAvailable=false;
+
+			if (strtoupper($meter["TYPE"])=="REGISTER")
+				{
+				$registerAvailable=true;
+				echo "Werte von : ".$meter["NAME"]."\n";
+			      
+				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+				if ( isset($meter["OID"]) == true )
+					{
+					$HMenergieID = $meter["OID"];
+					echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : nicht bekannt\n";
+					}
+				else
+					{
+					//$HMenergieID  = $meter["HM_EnergieID"];
+					//$HMleistungID = $meter["HM_LeistungID"];
+					}
+				$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+				$leistung=($energie-GetValue($EnergieID))*4;
+
+				SetValue($EnergieID,$energie);
+				SetValue($LeistungID,$leistung);
+				echo "  Werte aus dem Register : ".$energie." kWh  ".GetValue($HMenergieID)." W\n";
+				}
+			return ($registerAvailable);
+			}
+
+		/************************************************************************************************************************
+ 		 *
+ 		 * Alle AMIS Energiesensoren auslesen, ignoriert andere Typen
+ 		 *
+ 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+		 *
+		 *****************************************************************************************************************************/		
 
 		function writeEnergyAmis($meter)
 			{

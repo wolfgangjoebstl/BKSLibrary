@@ -81,6 +81,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 				case "6":  /* Auto */
 				case "5":  /* Auto */
 				case "4":  /* Auto */
+					$amis->writeEnergyRegister($meter);
+					break;					
 				case "3":  /* Auto */
 				case "2":  /* Auto */
 					break;

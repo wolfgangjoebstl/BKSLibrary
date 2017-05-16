@@ -45,14 +45,18 @@ foreach ($MeterConfig as $meter)
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	/* ID von Wirkenergie bestimmen */
-	if ($meter["TYPE"]=="Amis")
+	if (strtoupper($meter["TYPE"])=="AMIS")
 		{
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
 		$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
 		//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 		//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 		}
-	if ($meter["TYPE"]=="Homematic")
+	if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+		{
+		$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		}
+	if (strtoupper($meter["TYPE"])=="REGISTER")
 		{
 		$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		}

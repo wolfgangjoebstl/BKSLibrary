@@ -157,13 +157,16 @@ $cutter=true;
 	 *  umgesetzt auf [AMIS,Homematic, HomematicIP etc] 
 	 */
 	$webfront_links=array();
-	
+	$pos=100;
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		echo"\n-------------------------------------------------------------\n";
 		echo "Create Variableset for : ".$meter["TYPE"]." ".$meter["NAME"]." mit ID : ".$identifier." \n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		if ($meter["TYPE"]=="Homematic")
+		IPS_SetPosition($ID,$pos);
+		$pos +=100;
+		
+		if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 			{
 			/* Variable ID selbst bestimmen */
 			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -186,7 +189,30 @@ $cutter=true;
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";			
 			}
-		if ($meter["TYPE"]=="Amis")
+		if (strtoupper($meter["TYPE"])=="REGISTER")
+			{
+			/* Variable ID selbst bestimmen */
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($variableID,'~Electricity');
+			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+			IPS_ApplyChanges($archiveHandlerID);
+			
+			//$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+	      
+			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+			
+			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";			
+			}			
+		if (strtoupper($meter["TYPE"])=="AMIS")
 			{
 			$scriptIdAMIS   = IPS_GetScriptIDByName('AmisCutter', $CategoryIdApp);
 			echo "\nScript ID für Register Variable :".$scriptIdAMIS."\n";

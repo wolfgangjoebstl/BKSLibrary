@@ -6,6 +6,12 @@
  *
  * alle Routinen die mit der Erstellung und Verwaltung der Events der Autosteuerung zu tun haben
  *
+ * Unterschiedliche Klassen angelegt:
+ *
+ * AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
+ * AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung)
+ * Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
+ *
  **************************************************************************************************************/
 
 class AutosteuerungHandler 
@@ -307,7 +313,6 @@ class Autosteuerung
 		*/
 		$this->sunrise = date_sunrise($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
 		$this->sunset = date_sunset($timestamp, SUNFUNCS_RET_TIMESTAMP, $latitude, $longitude, 90+50/60, date("O")/100);
-		echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
 
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager)) 
@@ -342,8 +347,57 @@ class Autosteuerung
 		$this->switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
 		$this->groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
 		$this->prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);			
-
 		}
+
+	/* welche AutosteuerungsFunktionen sind aktiviert */
+
+	function getFunctions($function="All")
+		{
+		$children=array();
+		$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
+		foreach ($childrenIDs as $ID)
+			{
+			$children[IPS_GetName($ID)]["OID"]=$ID;
+			$children[IPS_GetName($ID)]["VALUE"]=GetValue($ID);
+			$children[IPS_GetName($ID)]["VALUE_F"]=GetValueFormatted($ID);
+			switch (IPS_GetName($ID))
+				{
+				case "GutenMorgenWecker":
+					$weckerID=IPS_GetVariableIDByName("Wecker",$ID);
+					//echo "Wecker OID : ".$weckerID."\n";
+					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($weckerID);					
+					break;
+				case "Anwesenheitserkennung":
+					$anwesendID=IPS_GetVariableIDByName("SchalterAnwesend",$ID);
+					//echo "SchalterAnwesend OID : ".$anwesendID."\n";
+					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($anwesendID);					
+					break;					
+				case "Alarmanlage":
+					$alarmID=IPS_GetVariableIDByName("SchalterAlarmanlage",$ID);
+					//echo "SchalterAlarmanlage OID : ".$alarmID."\n";
+					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($alarmID);					
+					break;					
+				default:
+					break;	
+				}
+			}
+		if ($function == "All") { return ($children); }
+		else
+			{  
+			if ( isset($children[$function]) == false ) { $children[$function]["VALUE"]=false; } 
+			return($children[$function]);
+			}
+		}	
+
+	/**************************************************
+	 *
+	 * Befehle für die Zeitperiodenerkennung
+	 *
+	 * dark/light abhängig vom Daylight
+	 * 
+	 * geplant Anwesend/Alarm von Erkennung und Awake/Sleep vom Gutenmorgenwecker
+	 *
+	 *****************************************************************/
 
 	function isitdark()
 		{
@@ -366,12 +420,90 @@ class Autosteuerung
 			return(true);
 			}
 		else
-		   {
+		   	{
 			return(false);
 			}
 		}
 
+	function isitsleep()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
+			{
+			if ($functions["GutenMorgenWecker"]["STATUS"] == 0) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (false);	/* default awake */	
+			}	
+		}
 
+	function isitwakeup()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
+			{
+			if ($functions["GutenMorgenWecker"]["STATUS"] == 1) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (false);	/* default awake */	
+			}	
+		}
+
+	function isitawake()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
+			{
+			if ($functions["GutenMorgenWecker"]["STATUS"] == 2) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (true);	/* default awake */	
+			}		
+		}
+
+	function isithome()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["Anwesenheitserkennung"]["STATUS"]) )
+			{
+			if ($functions["Anwesenheitserkennung"]["STATUS"] == 1) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (true);	/* default away */	
+			}		
+		}
+
+	function isitalarm()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["Alarmanlage"]["STATUS"]) )
+			{
+			if ($functions["Alarmanlage"]["STATUS"] == 1) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (true);	/* default away */	
+			}		
+		}
+
+	function getDaylight()
+		{
+		$result["Sunrise"]=$this->sunrise;
+		$result["Sunset"]=$this->sunset;
+		//echo "Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset)." \n";
+		$result["Text"]="Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset);
+		return $result;
+		}
+		
 	function timeright($scene)
 		{
 		echo "Szene ".$scene["NAME"]."\n";
@@ -404,8 +536,9 @@ class Autosteuerung
 	/***************************************
 	 *
 	 * hier wird der Befehl in die Einzelbefehle zerlegt, und Kurzbefehle in die Langform gebracht
+	 * unterschiedliche Bearbeitung für Ventilator, Anwesenheit und alle anderen
 	 *
-	 * Es gibt folgende befehle die extrahiert werden:
+	 * Es gibt folgende Befehle die extrahiert werden:
 	 *  NAME, SPEAK, OFF, ON, oFF_MASK, ON_MASK, COND, DELAY
 	 *
 	 * Kurzbefehle:
@@ -415,13 +548,20 @@ class Autosteuerung
 	 *
 	 * Es folgen der Reihe nach die Befehle, möglichst für alle verscheidenen Varianten
 	 *      EvaluateCommand()
-	 *      ExecuteCommand()
+	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
+	 *......Abarbeitung von Delay Befehl
 	 *
 	 *******************************************************/
 
 	function ParseCommand($params,$status=false,$simulate=false)
 		{
-		/* Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
+		/************************** 
+		 *
+		 * keine Befehlsevaluierung, nur Festlegung des Rahmengerüsts und Vereinheitlichung der Abkürzer
+		 * 
+		 * Abkürzer unterschiedlich behandeln für: Ventilator, Anwesenheit und alle anderen 
+		 * 
+		 * Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
 		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
 		 *          [0] name:Stiegenlicht [1] speak:Stiegenlicht
 		 *
@@ -429,7 +569,20 @@ class Autosteuerung
 		 * vorbereiten für ; Befehl, damit können mehrere Befehle nacheinander abgearbeitet werden
 		 *
 		 * im uebergeordneten Element steht der Befehl der aber als Unterobjekt im array wiederholt wird, 
-		 * 
+		 *
+		 * Beispiele:   			
+		 *   als String    		"OnUpdate","Status","WohnzimmerKugellampe,toggle"
+		 *  nach parse:       	["SOURCE","OnUpdate",0],["NAME","WohnzimmerKugellampe"],["OFF","toggle"]
+		 *  nach evaluate:		SWITCH":true,"STATUS":0,"SOURCE":"ONUPDATE","NAME":"WohnzimmerKugellampe","VALUE":false,"OFF":"TRUE"
+		 *
+		 *  als String		 		"OnUpdate","Status","if:WohnzimmerKugellampe,speak:Lampe ein;ifnot:WohnzimmerKugellampe,speak:Lampe aus"
+		 *  nach parse:			1:["SOURCE","OnUpdate",1],["IF","WohnzimmerKugellampe"],["SPEAK","Wohnzimmer Kugel Lampe ein"],["ON","true"]2:[....]  
+		 *   nach evaluate: 		1: {"SWITCH":false,"STATUS":1,"SOURCE":"ONUPDATE","COND":"WOHNZIMMERKUGELLAMPE","SPEAK":"Lampe ein","ON":"TRUE"},
+		 *								2: {"SWITCH":true ,"STATUS":1,"SOURCE":"ONUPDATE","COND":"WOHNZIMMERKUGELLAMPE","SPEAK":"Lampe aus","ON":"TRUE"}}
+		 *
+		 *  als String
+		 *
+		 *
 		 */
 		$parges=array();
 
@@ -815,7 +968,7 @@ class Autosteuerung
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
 		if ($simulate==true) 
 			{
-			echo "            Ergebnisse ParseCommand : ".json_encode($parges)."\n";
+			echo "Ergebnisse ParseCommand : ".json_encode($parges)."\n";
 			//print_r($parges);
 			}			
 		return($parges);
@@ -838,8 +991,47 @@ class Autosteuerung
 		return($result);
 		}
 
-	/*
+	/* 
+	 * Wert nicht bekannt, true, false und toggle wurden bereits ausselektiert, entweder ein farbezeichnung oder eine Zahl, 
+	 * abhängig ob Level oder Color angegeben wurde handelt es sich wahrscheinlich um eine hex beziehungsweise dez Zahl 
+	 *
+	 */
+
+	private function parseValue($input,$result=array())
+		{
+		if ( $result["NAME_EXT"] == "#COLOR" )
+			{
+			$result=self::getColor($input);
+			if ($result==false)
+				{
+				/* Color ist eine Hex Zahl */
+				$value=hexdec($input);
+				}
+			else
+				{
+				$value=($result["red"]*128+$result["green"])*128+$result["blue"];
+				}	
+			//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
+			}
+		else
+			{
+			$value=(integer)$input;
+			}	
+		return($value);
+		}
+
+	/*********************************************************************************************************
+	 *
 	 * Auch das Evaluieren kann gemeinsam erfolgen, es gibt nur kleine Unterschiede zwischen den Befehlen 
+	 *
+	 * beim Evaluieren wird auch der Wert bevor er geändert wird als VALUE, VALUE#LEVEL, VALUE#COLOR erfasst
+	 *
+	 * SOURCE, OID, NAME, ON#COLOR, ON, OFF, ON#LEVEL, OFF#COLOR, OFF#LEVEL, DELAY
+	 *
+	 * ON#LEVEL:50			zB Dimmer auf 50 stellen
+	 * DELAY:Sekunden		nach Sekunden wird das entsprechende IPS-Light Objekt ausgeschaltet, oder der DIM#LEVEL erreicht
+	 * DIM#LEVEL:0			DIM Zielwert, der in der Zeit von Delay erreicht wird, ON#LEVEL bestimmt den Ausgangswert
+	 * 
 	 *
 	 ************************************/
 
@@ -873,6 +1065,20 @@ class Autosteuerung
 			case "ON#COLOR":
 			case "ON#LEVEL":
 				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));
+				$name_ext="#".ucfirst(strtolower(strtoupper(substr($befehl[0],strpos($befehl[0],"#")+1,10))));
+				$resultID=@IPS_GetVariableIDByName($result["NAME"].$name_ext,$this->switchCategoryId);
+				if ($resultID === false) 
+					{
+					echo "      ".$result["NAME"].$name_ext." ist kein IPSLight Switch.\n";
+					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
+				
+					}
+				else
+					{	
+					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"].$name_ext);
+					$result["VALUE".$result["NAME_EXT"]]=$this->lightManager->GetValue($switchId);
+					//echo "   Befehl ON#LEVEL, Wert OID von ".$result["NAME"].$name_ext." : ".$resultID." mit Wert bisher : ".$result["VALUE".$result["NAME_EXT"]]." \n";	
+					}						
 			case "ON":
 				if ( ($result["STATUS"] !== false) || ($result["SOURCE"] == "ONUPDATE") )   
 					{
@@ -906,11 +1112,8 @@ class Autosteuerung
 								}
 							break;
 						default:
-							/* befehl nicht bekannt, wahrscheinlich eine Hex Zahl */
-							$value=hexdec($befehl[1]);
-							//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 							$result["ON"]="TRUE";
-							$result["VALUE_ON"]=$value;
+							$result["VALUE_ON"]=self::parseValue($befehl[1],$result);
 							break;
 						}		
 					}
@@ -952,10 +1155,8 @@ class Autosteuerung
 							break;
 						default:
 							/* Befehl nicht bekannt, wahrscheinlich eine Hex Zahl */
-							$value=hexdec($befehl[1]);
-							//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 							$result["OFF"]="TRUE";
-							$result["VALUE_OFF"]=$value;					
+							$result["VALUE_OFF"]=self::parseValue($befehl[1],$result);					
 							break;
 						}
 					}								
@@ -963,6 +1164,14 @@ class Autosteuerung
 			case "DELAY":
 				$result["DELAY"]=(integer)$befehl[1];
 				break;
+			case "DIM":
+			case "DIM#LEVEL":			
+				$result["DIM"]=(integer)$befehl[1];
+				$result["DIM#LEVEL"]=$result["DIM"];
+				break;				
+			case "DIM#TIME":			
+				$result["DIM#TIME"]=(integer)$befehl[1];
+				break;				
 			case "ENVELOPE":
 				$result["ENVEL"]=(integer)$befehl[1];
 				break;
@@ -1015,62 +1224,143 @@ class Autosteuerung
 			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
 				$cond=strtoupper($befehl[1]);
 				$result["COND"]=$cond;
-				if ($cond=="LIGHT")
+				switch ($cond)
 					{
-					/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-					if (self::isitdark())
-						{
-						$result["SWITCH"]=false;						
-						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
-						}
-					}
-				elseif ($cond=="DARK")
-					{
-					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-					if (self::isitlight())
-						{
-						$result["SWITCH"]=false;
-						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
-						}
-					}
-				else
-					{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-					$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
-					$statusCheck=$this->lightManager->GetValue($checkId);
-					$result["SWITCH"]=$statusCheck;
-					echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+					case "LIGHT":
+						/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+						if (self::isitdark())
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
+							}
+						break;
+					case "DARK":
+						/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+						if (self::isitlight())
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
+							}
+						break;	
+					case "SLEEP":
+						/* nur Schalten wenn wir nicht schlafen */
+						if ( self::isitwakeup() || self::isitawake() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
+							}
+						break;
+					case "AWAKE":
+						/* nur Schalten wenn wir nicht munter sind */
+						if ( self::isitwakeup() || self::isitsleep() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
+							}
+						break;
+					case "WAKEUP":
+						/* nur Schalten wenn wir nicht im aufwachen sind */
+						if ( self::isitawake() || self::isitsleep() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
+							}
+						break;
+					case "HOME":
+						/* nur Schalten wenn wir zuhause sind */
+						if ( self::isithome() == false )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
+							}
+						break;
+					case "ALARM":
+						/* nur Schalten wenn Alarmanlage aktiv */
+						if ( self::isitalarm() == false )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
+							}
+						break;
+
+					default:
+					  	/* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+						$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
+						$statusCheck=$this->lightManager->GetValue($checkId);
+						$result["SWITCH"]=$statusCheck;
+						echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";
+						break;	
 					}			
 				break;
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
 				$cond=strtoupper($befehl[1]);
 				$result["COND"]=$cond;
-				if ($cond=="LIGHT")
+				switch ($cond)
 					{
-					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-					if (self::isitlight())
-						{
-						$result["SWITCH"]=false;						
-						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht dunkel ');
-						}
-					}
-				elseif ($cond=="DARK")
-					{
-					/* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-					if (self::isitdark())
-						{
-						$result["SWITCH"]=false;
-						IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht hell ');
-						}
-					}
-				else
-					{  /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-					$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
-					$statusCheck=$this->lightManager->GetValue($checkId);
-					$result["SWITCH"]=!$statusCheck;
-					echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+					case "LIGHT":				
+						/* Nicht Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+						if ( self::isitlight( ))
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht dunkel ');
+							}
+						break;	
+					case "DARK":							
+						/* Nicht Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
+						if ( self::isitdark() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht hell ');
+							}
+						break;
+					case "SLEEP":
+						/* Nicht Schalten wenn wir schlafen */
+						if ( self::isitsleep() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
+							}
+						break;
+					case "AWAKE":
+						/* Nicht Schalten wenn wir munter sind */
+						if ( self::isitawake() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
+							}
+						break;
+					case "WAKEUP":
+						/* Nicht Schalten wenn wir im aufwachen sind */
+						if ( self::isitwakeup() )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
+							}
+						break;
+					case "HOME":
+						/* Nicht Schalten wenn wir zuhause sind */
+						if ( self::isithome() == true )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
+							}
+						break;
+					case "ALARM":
+						/* Nicht Schalten wenn Alarmanlage aktiv */
+						if ( self::isitalarm() == true )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
+							}						
+					default:
+					  	/* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+						$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
+						$statusCheck=$this->lightManager->GetValue($checkId);
+						$result["SWITCH"]=!$statusCheck;
+						echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+						break;
 					}			
 				break;
-
 			default:
 				echo "Function EvaluateCommand, Befehl unbekannt: ".$befehl[0]." ".$befehl[1]."   \n";
 				break;				
@@ -1081,7 +1371,17 @@ class Autosteuerung
 
 	/***************************************
 	 *
-	 * hier wird der Befehl umgesetzt, benötigt IPSLight, Schalten ist eine eigen Funktion - erfolgt abhängig von if Auswertung
+	 * hier wird der Befehl umgesetzt:
+	 *    benötigt IPSLight, Schalten ist eine eigene Funktion - erfolgt abhängig von if Auswertung
+	 *    geht aber auch mit einem OID Wert
+	 *
+	 * IPSLight funktioniert auch für Gruppen und Programme, bei Switch ist auch Level und Color möglich 
+	 * Die Unterscheidung Switch, Group oder program wird automatisch getroffen
+	 *
+	 * Als Ergebnis dieser Auswertung wird ein zusaetzlicher Parameter IPSLIGHT ermittelt:  None, Program, Group,  
+	 *
+	 * Value für Wert nach Delay ist hier falsch !!!! wird nicht übergeben sondern geraten
+	 * false, Next oder Value ???? ist nicht richtig
 	 *
 	 *******************************************************/
 
@@ -1090,104 +1390,115 @@ class Autosteuerung
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 
-		if ($simulate==false)
+		if (isset($result["OID"]) == true)
 			{
-			if (isset($result["OID"]) == true)
-				{
-				IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
-				$result["IPSLIGHT"]="None";
-				self::switchObject($result,$simulate);					
+			IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
+			$result["IPSLIGHT"]="None";
+			$command.="SetValue(".$result["OID"].",false);";
+			$result["COMMAND"]=$command;
+			self::switchObject($result,$simulate);					
+			}
+		elseif ( isset($result["NAME"])==true )
+			{	/* wenn nicht die OID, dann ist der Name bekannt */
+			if ( isset($result["NAME_EXT"])==true ) 
+				{ 
+				if ($result["NAME_EXT"]=="#COLOR") { $name=$result["NAME"]."#Color"; }
+				if ($result["NAME_EXT"]=="#LEVEL") { $name=$result["NAME"]."#Level"; }
 				}
-			elseif ( isset($result["NAME"])==true )
-				{	/* wenn nicht die OID, dann ist der Name bekannt */
-				if ( isset($result["NAME_EXT"])==true ) 
-					{ 
-					if ($result["NAME_EXT"]=="#COLOR") { $name=$result["NAME"]."#Color"; }
-					if ($result["NAME_EXT"]=="#LEVEL") { $name=$result["NAME"]."#Level"; }
-					}
-				else 
-					{
-					$name=$result["NAME"];
-					}			
-				$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
+			else 
+				{
+				$name=$result["NAME"];
+				}			
+			$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
+			if ($resultID==false)
+				{
+				$resultID=@IPS_GetVariableIDByName($name,$this->groupCategoryId);
 				if ($resultID==false)
 					{
-					$resultID=@IPS_GetVariableIDByName($name,$this->groupCategoryId);
+					$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
 					if ($resultID==false)
 						{
-						$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
-						if ($resultID==false)
-							{
-							/* Name nicht bekannt */
-							$result["IPSLIGHT"]="None";
-							}
-						else /* Wert ist ein Programm */
-							{
-							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
-							$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
-							$result["COMMAND"]=$command;
-							$result["IPSLIGHT"]="Program";
-							if ($simulate==false)
-								{
-								IPSLight_SetProgramNextByName($name);
-								}
-							}
+						/* Name nicht bekannt */
+						$result["IPSLIGHT"]="None";
 						}
-					else   /* Wert ist eine Gruppe */
+					else /* Wert ist ein Programm */
 						{
-						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
-						$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
+						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
+						$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
 						$result["COMMAND"]=$command;
-						$result["IPSLIGHT"]="Group";	
-						self::switchObject($result,$simulate);			   	 	
+						$result["IPSLIGHT"]="Program";
+						if ($simulate==false)
+							{
+							IPSLight_SetProgramNextByName($name);
+							}
 						}
 					}
-				else     /* Wert ist ein Schalter oder Wert eines Schalters */
+				else   /* Wert ist eine Gruppe */
 					{
-					if (isset($result["NAME_EXT"])==true)
-						{
-						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
-						$result["IPSLIGHT"]=$result["NAME_EXT"];						
-						$result["OID"] = $this->lightManager->GetSwitchIdByName($name);					
-						$value=GetValue($result["OID"]);
-						if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
-						if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
-						if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
-						$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
-						$result["COMMAND"]=$command;
-						self::switchObject($result,$simulate);											
-						}
-					else
-						{	 				
-						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
-						$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
-						$result["COMMAND"]=$command;
-						$result["IPSLIGHT"]="Switch";
-						self::switchObject($result,$simulate);
-						}			
-					}   /* Ende Wert ist ein Schalter */
-				} /* Ende entweder NAME oder OID ist gesetzt */
-			else
-				{
-				}
-			if (isset($result["SPEAK"]) == true)
-				{
-				if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
-					{								
-					tts_play(1,$result["SPEAK"],'',2);
+					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
+					$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
+					$result["COMMAND"]=$command;
+					$result["IPSLIGHT"]="Group";	
+					self::switchObject($result,$simulate);			   	 	
 					}
 				}
-			}	/* Ende keine Simulation */
+			else     /* Wert ist ein Schalter oder Wert eines Schalters */
+				{
+				if (isset($result["NAME_EXT"])==true)
+					{
+					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
+					$result["IPSLIGHT"]=$result["NAME_EXT"];						
+					$result["OID"] = $this->lightManager->GetSwitchIdByName($name);					
+					$value=GetValue($result["OID"]);
+					if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
+					if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
+					if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
+					$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
+					$result["COMMAND"]=$command;
+					self::switchObject($result,$simulate);	
+					//echo "**** Aufruf Switch Ergebnis command \"".$result["IPSLIGHT"]."\"   ".str_replace("\n","",$command)."\n";										
+					}
+				else
+					{	 				
+					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
+					$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
+					$result["COMMAND"]=$command;
+					$result["IPSLIGHT"]="Switch";
+					self::switchObject($result,$simulate);
+					}			
+				}   /* Ende Wert ist ein Schalter */
+			} /* Ende entweder NAME oder OID ist gesetzt */
 		else
 			{
-			echo "ExecuteCommand Simulation.\n"; 
-			}	
+			}
+
+		if (isset($result["SPEAK"]) == true)
+			{
+			if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
+				{
+				if ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) )
+					{
+					echo "Es wird gesprochen : ".$result["SPEAK"]."\n";
+					if ($simulate==false)
+						{													
+						tts_play(1,$result["SPEAK"],'',2);
+						}
+					}	
+				}
+			}
 		return ($result);
 		}
 
 	/***************************************
 	 *
-	 * hier wird geschaltet - abhängig von IF Befehlsauswertung
+	 * hier wird geschaltet 
+	 *
+	 * abhängig von IF Befehlsauswertung, also nur wenn SWITCH true ist
+	 *
+	 * Wenn ON oder OFF gesetzt ist:
+	 *   ON/OFF auf false: Switch, Group oder Value auf false setzen
+	 *   ON/OFF auf true:  Switch, Group oder Value auf true setzen
+	 *
 	 *
 	 *******************************************************/
 	 
@@ -1238,7 +1549,7 @@ class Autosteuerung
 			}
 		else
 			{
-			echo "Simulation aktiviert, erhaltener Befehl war : ".json_encode($result)."\n";
+			echo "Simulation aktiviert, erhaltener Befehl für switchObject war : ".json_encode($result)."\n";
 			}	
 		return($result);		
 		}
@@ -1323,8 +1634,160 @@ class Autosteuerung
 		return($result);		
 		}
 
+	function GetColor($Colorname) 
+		{
+		$Colorname=strtolower($Colorname);
+		$Colors  =  ARRAY( 
+ 
+//  Colors  as  they  are  defined  in  HTML  3.2 
+            "black"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0x00), 
+            "maroon"=>array( "red"=>0x80,  "green"=>0x00,  "blue"=>0x00), 
+            "green"=>array( "red"=>0x00,  "green"=>0x80,  "blue"=>0x00), 
+            "olive"=>array( "red"=>0x80,  "green"=>0x80,  "blue"=>0x00), 
+            "navy"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0x80), 
+            "purple"=>array( "red"=>0x80,  "green"=>0x00,  "blue"=>0x80), 
+            "teal"=>array( "red"=>0x00,  "green"=>0x80,  "blue"=>0x80), 
+            "gray"=>array( "red"=>0x80,  "green"=>0x80,  "blue"=>0x80), 
+            "silver"=>array( "red"=>0xC0,  "green"=>0xC0,  "blue"=>0xC0), 
+            "red"=>array( "red"=>0xFF,  "green"=>0x00,  "blue"=>0x00), 
+            "lime"=>array( "red"=>0x00,  "green"=>0xFF,  "blue"=>0x00), 
+            "yellow"=>array( "red"=>0xFF,  "green"=>0xFF,  "blue"=>0x00), 
+            "blue"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0xFF), 
+            "fuchsia"=>array( "red"=>0xFF,  "green"=>0x00,  "blue"=>0xFF), 
+            "aqua"=>array( "red"=>0x00,  "green"=>0xFF,  "blue"=>0xFF), 
+            "white"=>array( "red"=>0xFF,  "green"=>0xFF,  "blue"=>0xFF), 
+ 
+//  Additional  colors  as  they  are  used  by  Netscape  and  IE 
+            "aliceblue"=>array( "red"=>0xF0,  "green"=>0xF8,  "blue"=>0xFF), 
+            "antiquewhite"=>array( "red"=>0xFA,  "green"=>0xEB,  "blue"=>0xD7), 
+            "aquamarine"=>array( "red"=>0x7F,  "green"=>0xFF,  "blue"=>0xD4), 
+            "azure"=>array( "red"=>0xF0,  "green"=>0xFF,  "blue"=>0xFF), 
+            "beige"=>array( "red"=>0xF5,  "green"=>0xF5,  "blue"=>0xDC), 
+            "blueviolet"=>array( "red"=>0x8A,  "green"=>0x2B,  "blue"=>0xE2), 
+            "brown"=>array( "red"=>0xA5,  "green"=>0x2A,  "blue"=>0x2A), 
+            "burlywood"=>array( "red"=>0xDE,  "green"=>0xB8,  "blue"=>0x87), 
+            "cadetblue"=>array( "red"=>0x5F,  "green"=>0x9E,  "blue"=>0xA0), 
+            "chartreuse"=>array( "red"=>0x7F,  "green"=>0xFF,  "blue"=>0x00), 
+            "chocolate"=>array( "red"=>0xD2,  "green"=>0x69,  "blue"=>0x1E), 
+            "coral"=>array( "red"=>0xFF,  "green"=>0x7F,  "blue"=>0x50), 
+            "cornflowerblue"=>array( "red"=>0x64,  "green"=>0x95,  "blue"=>0xED), 
+            "cornsilk"=>array( "red"=>0xFF,  "green"=>0xF8,  "blue"=>0xDC), 
+            "crimson"=>array( "red"=>0xDC,  "green"=>0x14,  "blue"=>0x3C), 
+            "darkblue"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0x8B), 
+            "darkcyan"=>array( "red"=>0x00,  "green"=>0x8B,  "blue"=>0x8B), 
+            "darkgoldenrod"=>array( "red"=>0xB8,  "green"=>0x86,  "blue"=>0x0B), 
+            "darkgray"=>array( "red"=>0xA9,  "green"=>0xA9,  "blue"=>0xA9), 
+            "darkgreen"=>array( "red"=>0x00,  "green"=>0x64,  "blue"=>0x00), 
+            "darkkhaki"=>array( "red"=>0xBD,  "green"=>0xB7,  "blue"=>0x6B), 
+            "darkmagenta"=>array( "red"=>0x8B,  "green"=>0x00,  "blue"=>0x8B), 
+            "darkolivegreen"=>array( "red"=>0x55,  "green"=>0x6B,  "blue"=>0x2F), 
+            "darkorange"=>array( "red"=>0xFF,  "green"=>0x8C,  "blue"=>0x00), 
+            "darkorchid"=>array( "red"=>0x99,  "green"=>0x32,  "blue"=>0xCC), 
+            "darkred"=>array( "red"=>0x8B,  "green"=>0x00,  "blue"=>0x00), 
+            "darksalmon"=>array( "red"=>0xE9,  "green"=>0x96,  "blue"=>0x7A), 
+            "darkseagreen"=>array( "red"=>0x8F,  "green"=>0xBC,  "blue"=>0x8F), 
+            "darkslateblue"=>array( "red"=>0x48,  "green"=>0x3D,  "blue"=>0x8B), 
+            "darkslategray"=>array( "red"=>0x2F,  "green"=>0x4F,  "blue"=>0x4F), 
+            "darkturquoise"=>array( "red"=>0x00,  "green"=>0xCE,  "blue"=>0xD1), 
+            "darkviolet"=>array( "red"=>0x94,  "green"=>0x00,  "blue"=>0xD3), 
+            "deeppink"=>array( "red"=>0xFF,  "green"=>0x14,  "blue"=>0x93), 
+            "deepskyblue"=>array( "red"=>0x00,  "green"=>0xBF,  "blue"=>0xFF), 
+            "dimgray"=>array( "red"=>0x69,  "green"=>0x69,  "blue"=>0x69), 
+            "dodgerblue"=>array( "red"=>0x1E,  "green"=>0x90,  "blue"=>0xFF), 
+            "firebrick"=>array( "red"=>0xB2,  "green"=>0x22,  "blue"=>0x22), 
+            "floralwhite"=>array( "red"=>0xFF,  "green"=>0xFA,  "blue"=>0xF0), 
+            "forestgreen"=>array( "red"=>0x22,  "green"=>0x8B,  "blue"=>0x22), 
+            "gainsboro"=>array( "red"=>0xDC,  "green"=>0xDC,  "blue"=>0xDC), 
+            "ghostwhite"=>array( "red"=>0xF8,  "green"=>0xF8,  "blue"=>0xFF), 
+            "gold"=>array( "red"=>0xFF,  "green"=>0xD7,  "blue"=>0x00), 
+            "goldenrod"=>array( "red"=>0xDA,  "green"=>0xA5,  "blue"=>0x20), 
+            "greenyellow"=>array( "red"=>0xAD,  "green"=>0xFF,  "blue"=>0x2F), 
+            "honeydew"=>array( "red"=>0xF0,  "green"=>0xFF,  "blue"=>0xF0), 
+            "hotpink"=>array( "red"=>0xFF,  "green"=>0x69,  "blue"=>0xB4), 
+            "indianred"=>array( "red"=>0xCD,  "green"=>0x5C,  "blue"=>0x5C), 
+            "indigo"=>array( "red"=>0x4B,  "green"=>0x00,  "blue"=>0x82), 
+            "ivory"=>array( "red"=>0xFF,  "green"=>0xFF,  "blue"=>0xF0), 
+            "khaki"=>array( "red"=>0xF0,  "green"=>0xE6,  "blue"=>0x8C), 
+            "lavender"=>array( "red"=>0xE6,  "green"=>0xE6,  "blue"=>0xFA), 
+            "lavenderblush"=>array( "red"=>0xFF,  "green"=>0xF0,  "blue"=>0xF5), 
+            "lawngreen"=>array( "red"=>0x7C,  "green"=>0xFC,  "blue"=>0x00), 
+            "lemonchiffon"=>array( "red"=>0xFF,  "green"=>0xFA,  "blue"=>0xCD), 
+            "lightblue"=>array( "red"=>0xAD,  "green"=>0xD8,  "blue"=>0xE6), 
+            "lightcoral"=>array( "red"=>0xF0,  "green"=>0x80,  "blue"=>0x80), 
+            "lightcyan"=>array( "red"=>0xE0,  "green"=>0xFF,  "blue"=>0xFF), 
+            "lightgoldenrodyellow"=>array( "red"=>0xFA,  "green"=>0xFA,  "blue"=>0xD2), 
+            "lightgreen"=>array( "red"=>0x90,  "green"=>0xEE,  "blue"=>0x90), 
+            "lightgrey"=>array( "red"=>0xD3,  "green"=>0xD3,  "blue"=>0xD3), 
+            "lightpink"=>array( "red"=>0xFF,  "green"=>0xB6,  "blue"=>0xC1), 
+            "lightsalmon"=>array( "red"=>0xFF,  "green"=>0xA0,  "blue"=>0x7A), 
+            "lightseagreen"=>array( "red"=>0x20,  "green"=>0xB2,  "blue"=>0xAA), 
+            "lightskyblue"=>array( "red"=>0x87,  "green"=>0xCE,  "blue"=>0xFA), 
+            "lightslategray"=>array( "red"=>0x77,  "green"=>0x88,  "blue"=>0x99), 
+            "lightsteelblue"=>array( "red"=>0xB0,  "green"=>0xC4,  "blue"=>0xDE), 
+            "lightyellow"=>array( "red"=>0xFF,  "green"=>0xFF,  "blue"=>0xE0), 
+            "limegreen"=>array( "red"=>0x32,  "green"=>0xCD,  "blue"=>0x32), 
+            "linen"=>array( "red"=>0xFA,  "green"=>0xF0,  "blue"=>0xE6), 
+            "mediumaquamarine"=>array( "red"=>0x66,  "green"=>0xCD,  "blue"=>0xAA), 
+            "mediumblue"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0xCD), 
+            "mediumorchid"=>array( "red"=>0xBA,  "green"=>0x55,  "blue"=>0xD3), 
+            "mediumpurple"=>array( "red"=>0x93,  "green"=>0x70,  "blue"=>0xD0), 
+            "mediumseagreen"=>array( "red"=>0x3C,  "green"=>0xB3,  "blue"=>0x71), 
+            "mediumslateblue"=>array( "red"=>0x7B,  "green"=>0x68,  "blue"=>0xEE), 
+            "mediumspringgreen"=>array( "red"=>0x00,  "green"=>0xFA,  "blue"=>0x9A), 
+            "mediumturquoise"=>array( "red"=>0x48,  "green"=>0xD1,  "blue"=>0xCC), 
+            "mediumvioletred"=>array( "red"=>0xC7,  "green"=>0x15,  "blue"=>0x85), 
+            "midnightblue"=>array( "red"=>0x19,  "green"=>0x19,  "blue"=>0x70), 
+            "mintcream"=>array( "red"=>0xF5,  "green"=>0xFF,  "blue"=>0xFA), 
+            "mistyrose"=>array( "red"=>0xFF,  "green"=>0xE4,  "blue"=>0xE1), 
+            "moccasin"=>array( "red"=>0xFF,  "green"=>0xE4,  "blue"=>0xB5), 
+            "navajowhite"=>array( "red"=>0xFF,  "green"=>0xDE,  "blue"=>0xAD), 
+            "oldlace"=>array( "red"=>0xFD,  "green"=>0xF5,  "blue"=>0xE6), 
+            "olivedrab"=>array( "red"=>0x6B,  "green"=>0x8E,  "blue"=>0x23), 
+            "orange"=>array( "red"=>0xFF,  "green"=>0xA5,  "blue"=>0x00), 
+            "orangered"=>array( "red"=>0xFF,  "green"=>0x45,  "blue"=>0x00), 
+            "orchid"=>array( "red"=>0xDA,  "green"=>0x70,  "blue"=>0xD6), 
+            "palegoldenrod"=>array( "red"=>0xEE,  "green"=>0xE8,  "blue"=>0xAA), 
+            "palegreen"=>array( "red"=>0x98,  "green"=>0xFB,  "blue"=>0x98), 
+            "paleturquoise"=>array( "red"=>0xAF,  "green"=>0xEE,  "blue"=>0xEE), 
+            "palevioletred"=>array( "red"=>0xDB,  "green"=>0x70,  "blue"=>0x93), 
+            "papayawhip"=>array( "red"=>0xFF,  "green"=>0xEF,  "blue"=>0xD5), 
+            "peachpuff"=>array( "red"=>0xFF,  "green"=>0xDA,  "blue"=>0xB9), 
+            "peru"=>array( "red"=>0xCD,  "green"=>0x85,  "blue"=>0x3F), 
+            "pink"=>array( "red"=>0xFF,  "green"=>0xC0,  "blue"=>0xCB), 
+            "plum"=>array( "red"=>0xDD,  "green"=>0xA0,  "blue"=>0xDD), 
+            "powderblue"=>array( "red"=>0xB0,  "green"=>0xE0,  "blue"=>0xE6), 
+            "rosybrown"=>array( "red"=>0xBC,  "green"=>0x8F,  "blue"=>0x8F), 
+            "royalblue"=>array( "red"=>0x41,  "green"=>0x69,  "blue"=>0xE1), 
+            "saddlebrown"=>array( "red"=>0x8B,  "green"=>0x45,  "blue"=>0x13), 
+            "salmon"=>array( "red"=>0xFA,  "green"=>0x80,  "blue"=>0x72), 
+            "sandybrown"=>array( "red"=>0xF4,  "green"=>0xA4,  "blue"=>0x60), 
+            "seagreen"=>array( "red"=>0x2E,  "green"=>0x8B,  "blue"=>0x57), 
+            "seashell"=>array( "red"=>0xFF,  "green"=>0xF5,  "blue"=>0xEE), 
+            "sienna"=>array( "red"=>0xA0,  "green"=>0x52,  "blue"=>0x2D), 
+            "skyblue"=>array( "red"=>0x87,  "green"=>0xCE,  "blue"=>0xEB), 
+            "slateblue"=>array( "red"=>0x6A,  "green"=>0x5A,  "blue"=>0xCD), 
+            "slategray"=>array( "red"=>0x70,  "green"=>0x80,  "blue"=>0x90), 
+            "snow"=>array( "red"=>0xFF,  "green"=>0xFA,  "blue"=>0xFA), 
+            "springgreen"=>array( "red"=>0x00,  "green"=>0xFF,  "blue"=>0x7F), 
+            "steelblue"=>array( "red"=>0x46,  "green"=>0x82,  "blue"=>0xB4), 
+            "tan"=>array( "red"=>0xD2,  "green"=>0xB4,  "blue"=>0x8C), 
+            "thistle"=>array( "red"=>0xD8,  "green"=>0xBF,  "blue"=>0xD8), 
+            "tomato"=>array( "red"=>0xFF,  "green"=>0x63,  "blue"=>0x47), 
+            "turquoise"=>array( "red"=>0x40,  "green"=>0xE0,  "blue"=>0xD0), 
+            "violet"=>array( "red"=>0xEE,  "green"=>0x82,  "blue"=>0xEE), 
+            "wheat"=>array( "red"=>0xF5,  "green"=>0xDE,  "blue"=>0xB3), 
+            "whitesmoke"=>array( "red"=>0xF5,  "green"=>0xF5,  "blue"=>0xF5), 
+            "yellowgreen"=>array( "red"=>0x9A,  "green"=>0xCD,  "blue"=>0x32)); 
+ 
+        //  GetColor  returns  an  associative  array  with  the  red,  green  and  blue 
+        //  values  of  the  desired  color 
+ 
+		if ( isset( $Colors[$Colorname] ) == true ) {	return (  $Colors[$Colorname]); }
+		else { return(false); } 
+		}	
+	
 
-	}
-		
+	} // Ende Klasse
+									
 
 ?>

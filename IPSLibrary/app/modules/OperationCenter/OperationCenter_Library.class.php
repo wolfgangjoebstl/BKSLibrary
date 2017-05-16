@@ -685,12 +685,15 @@ class OperationCenter
 		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$ExternalIP			= CreateVariableByName($this->categoryId_SysInfo, "ExternalIP", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$UptimeID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_UpTime", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$VersionID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_Version", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		
 		$result=array();	/* fuer Zwischenberechnungen */
 		$results=array();
 		$results2=array();
 	
-	$PrintSI="";
+		$PrintSI="";
 		$PrintLines="";		
 		
 		exec('systeminfo',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden */
@@ -721,18 +724,30 @@ class OperationCenter
 					$results2[$VarName].=" ".trim($line);
 					}
 				}  /* ende strlen */
-	  		}
-			echo "Ausgabe direkt:\n".$PrintLines."\n";		
+			}
+		echo "Ausgabe direkt:\n".$PrintLines."\n";		
 
-			print_r($results);
-			print_r($results2);
-			echo $PrintSI;
+		//print_r($results);
+		//print_r($results2);
+		//echo $PrintSI;
+		
+		$IPAdresse=$this->whatismyIPaddress2();
+		$results["ExterneIP"]=$IPAdresse;
+
+		$ServerUptime=date("D d.m.Y H:i:s",IPS_GetKernelStartTime());
+		$results["IPS_UpTime"]=$ServerUptime;
+
+		$ServerVersion=IPS_GetKernelVersion();
+		$results["IPS_Version"]=$ServerVersion;
 		
 		SetValue($HostnameID,$results["Hostname"]);
 		SetValue($SystemNameID,$results["Betriebssystemname"]);
 		SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
 		SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
-		
+		SetValue($ExternalIP,$IPAdresse);
+		SetValue($UptimeID,$ServerUptime);
+		SetValue($VersionID,$ServerVersion);
+						
 		return $results;
 		}	
 

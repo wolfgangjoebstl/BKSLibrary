@@ -564,6 +564,29 @@ function setEventTimer($name,$delay,$command)
    IPS_SetEventScript($EreignisID,$command);
 	}
 
+/*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                */
+
+function setDimTimer($name,$delay,$command)
+	{
+	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
+	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
+  	$now = time();
+   $EreignisID = @IPS_GetEventIDByName($name."_EVENT_DIM", IPS_GetParent($_IPS['SELF']));
+   if ($EreignisID === false)
+		{ //Event nicht gefunden > neu anlegen
+      $EreignisID = IPS_CreateEvent(1);
+      IPS_SetName($EreignisID,$name."_EVENT_DIM");
+      IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+     	}
+   IPS_SetEventActive($EreignisID,true);
+   IPS_SetEventCyclic($EreignisID, 0, 0, 0, 0, 1, $delay);
+	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 1 Sekuendlich Anzahl Sekunden */
+	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+	/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+   IPS_SetEventScript($EreignisID,$command);
+	}
+
+
 /*********************************************************************************************/
 
 function Anwesenheit($params,$status,$simulate=false)
@@ -675,10 +698,10 @@ function Status($params,$status,$simulate=false)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
-
+	
 		foreach ($Kommando as $num => $befehl)
 			{
-			echo $kom."|".$num." : Bearbeite Befehl ".$befehl[0]."\n";
+			//echo $kom."|".$num." : Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
 				default:
@@ -688,10 +711,39 @@ function Status($params,$status,$simulate=false)
 			} /* Ende foreach Befehl */
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		//print_r($command[$entry]);	
+
+		/* Timer wird einmail aufgerufen udm nach Ablauf wieder den vorigen Zustand herzustellen.
+		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
+		 * 
+		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
+		 *
+		 ***************************************************************/					
+
+		if (isset($result["DIM"])==true)
+			{
+			echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
+			$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
+			$time=(integer)($result["DIM#TIME"]/10);
+			$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
+			
+			$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
+			$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
+			$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
+			$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
+			$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
+			$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
+			echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+			echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
+			/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
+			if ($simulate==false)
+				{
+				setDimTimer($result["NAME"],$time,$befehl);
+				}
+			}
 		if (isset($result["DELAY"])==true)
 			{
-			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
-			print_r($result);
+			echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+			//print_r($result);
 			if ($simulate==false)
 				{
 				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
