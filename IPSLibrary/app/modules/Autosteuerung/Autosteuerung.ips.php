@@ -712,43 +712,49 @@ function Status($params,$status,$simulate=false)
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		//print_r($command[$entry]);	
 
-		/* Timer wird einmail aufgerufen udm nach Ablauf wieder den vorigen Zustand herzustellen.
+		/********************
+		 *
+		 * Timer wird einmail aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
 		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
 		 * 
 		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
 		 *
+		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
+		 *
 		 ***************************************************************/					
-
-		if (isset($result["DIM"])==true)
+		if ($result["SWITCH"]===true)
 			{
-			echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
-			$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
-			$time=(integer)($result["DIM#TIME"]/10);
-			$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
+			if (isset($result["DIM"])==true)
+				{
+				echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
+				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
+				$time=(integer)($result["DIM#TIME"]/10);
+				$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
 			
-			$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-			$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
-			$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
-			$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
-			$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-			$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
-			echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-			echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-			/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
-			if ($simulate==false)
-				{
-				setDimTimer($result["NAME"],$time,$befehl);
+				$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
+				$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
+				$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
+				$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
+				$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
+				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
+				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
+				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
+				if ($simulate==false)
+					{
+					setDimTimer($result["NAME"],$time,$befehl);
+					}
 				}
-			}
-		if (isset($result["DELAY"])==true)
-			{
-			echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-			//print_r($result);
-			if ($simulate==false)
+			if (isset($result["DELAY"])==true)
 				{
-				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+				echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+				//print_r($result);
+				if ($simulate==false)
+					{
+					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+					}
 				}
-			}
+			}	
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);
