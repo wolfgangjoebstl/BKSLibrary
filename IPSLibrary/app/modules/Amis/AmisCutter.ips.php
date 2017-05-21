@@ -40,21 +40,21 @@ IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Am
 $MeterConfig = get_MeterConfiguration();
 //print_r($MeterConfig);
 
+$configPort=array();
 foreach ($MeterConfig as $identifier => $meter)
 	{
-	//echo"-------------------------------------------------------------\n";
-	//echo "Create Variableset for :".$meter["NAME"]." (".$identifier.") \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$configPort=array();
 	if ($meter["TYPE"]=="Amis")
 		{
+		//echo"-------------------------------------------------------------\n";
+		//echo "Create AMIS Variableset for :".$meter["NAME"]." (".$identifier.") \n";
 		$amismetername=$meter["NAME"];
 		$amisAvailable=true;
 		//echo "Amis Zähler, verfügbare Ports:\n";			
 		
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
 		$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 			
 		// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
@@ -74,9 +74,9 @@ foreach ($MeterConfig as $identifier => $meter)
 				{ 
 				$com_Port = $serialPort;
 				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-				if (IPS_InstanceExists($regVarID) )
+				if (IPS_InstanceExists($regVarID) && ($cutter==false) )
 					{
-					//echo "        Registervariable : ".$regVarID."\n";
+					//echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
 					$configPort[$regVarID]["Name"]=$amismetername;	
 					$configPort[$regVarID]["ID"]=$identifier;	
 					$configPort[$regVarID]["Port"]=$serialPort;																				 
@@ -86,9 +86,9 @@ foreach ($MeterConfig as $identifier => $meter)
 				{ 
 				$com_Port = $serialPort; 
 				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-				if (IPS_InstanceExists($regVarID) )
+				if (IPS_InstanceExists($regVarID) && ($cutter==false) )
 					{
-					//echo "        Registervariable : ".$regVarID."\n";
+					echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
 					$configPort[$regVarID]["Name"]=$amismetername;	
 					$configPort[$regVarID]["ID"]=$identifier;
 					$configPort[$regVarID]["Port"]=$serialPort;							
@@ -108,7 +108,7 @@ foreach ($MeterConfig as $identifier => $meter)
 				$parentID=IPS_GetInstanceParentID($CutterID);
 				//echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
 				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
-				if (IPS_InstanceExists($regVarID) )
+				if (IPS_InstanceExists($regVarID) && ($cutter==true))
 					{
 					//echo "        Registervariable : ".$regVarID."\n";
 					$configPort[$regVarID]["Name"]=$amismetername;	
@@ -150,6 +150,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 		$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
 		$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+		$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */		
 		$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);			/* aktuell empfangener Befehl */
 		$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);     /* Zuletzt empfangener Befehl */
 		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
@@ -201,7 +202,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	 					/* Routine funktioniert nur wenn der ganze Verrechnungsdatensatz ausgelesen wird
 		 					Dauer ca. 60 Sekunden
 	 					*/
-
+						SetValue($ReceiveTime,time());
 						anfrage('Fehlerregister','F.F(',')',$content,3,'',$arhid,$zaehlerid);
 						anfrage('Wirkleistung','1.7.0(','*kW)',$content,2,'~Power',$arhid,$zaehlerid);
 						anfrage('Strom L1','31.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
@@ -286,7 +287,8 @@ if ($_IPS['SENDER'] == "Execute")
 	if ($amisAvailable==true)
 		{
 		$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		//print_r($configPort);
+		echo "\nAmis Available, Auswertung über Registervariable erfolgt.Ausgabe Variable von configPort, als zentrales Steuerungselement:\n";
+		print_r($configPort);
 		foreach ($configPort as $config)
 			{	
 			$amismetername=$config["Name"];

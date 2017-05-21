@@ -88,10 +88,18 @@
 	 ************************************************************************************************/
 
 	$remote=new RemoteAccess();
-	if (isset ($installedModules["Guthabensteuerung"])) { $remote->add_Guthabensteuerung(); }
-	if (isset ($installedModules["Amis"]))	{ $remote->add_Amis(); }
-	echo "Ende Variablen zum include file honzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
-	$remote->add_RemoteServer();
+	if (isset ($installedModules["Guthabensteuerung"])) 
+		{ 
+		$remote->add_Guthabensteuerung(); 
+		echo "Ende Guthabensteuerung Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
+		}
+	if (isset ($installedModules["Amis"]))	
+		{ 
+		$remote->add_Amis(); 
+		echo "Ende AMIS Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
+		}
+	$status=$remote->server_ping();
+	$remote->add_RemoteServer($status);
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
 	$remote->write_includeFile();
 	echo "Ende Evaluierung : ".(microtime(true)-$startexec)." Sekunden \n";

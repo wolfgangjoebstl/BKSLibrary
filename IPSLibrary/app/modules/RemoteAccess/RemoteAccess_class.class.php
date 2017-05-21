@@ -52,7 +52,7 @@ class RemoteAccess
 	public function add_Guthabensteuerung()
 		{
 		$this->includefile.='function GuthabensteuerungList() { return array('."\n";
-      $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 		echo "\nGuthabensteuerung Data auf :".$parentid."\n";
 		$result=IPS_GetChildrenIDs($parentid);
 		$count_phone=100;
@@ -62,7 +62,7 @@ class RemoteAccess
 		   $children=IPS_HasChildren($variableID);
 		   echo "  Variable ".IPS_GetName($variableID)."  ".$children;
 		   if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
-		      {
+				{
 				if ($children)
 				   {
 				   $this->add_variable($variableID,$this->includefile,$count_phone);
@@ -96,7 +96,7 @@ class RemoteAccess
 		$MeterConfig = get_MeterConfiguration();
 
 		$this->includefile.="\n".'function AmisStromverbrauchList() { return array('."\n";
-      $amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 		echo "\nAmis Stromverbrauch Data auf :".$amisdataID."\n";
 
 		$count_phone=100;
@@ -104,8 +104,8 @@ class RemoteAccess
 		foreach ($MeterConfig as $meter)
 			{
 			echo "  Meter :".$meter["NAME"]."\n";
-      	$meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-  	      /* ID von Wirkenergie bestimmen */
+			$meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			/* ID von Wirkenergie bestimmen */
 			if ($meter["TYPE"]=="Amis")
 			   {
 				$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
@@ -120,17 +120,123 @@ class RemoteAccess
 				$this->add_variablewithname($StromL1ID,$meter["NAME"]."_StromL1",$this->includefile,$count_phone);
 				$this->add_variablewithname($StromL2ID,$meter["NAME"]."_StromL2",$this->includefile,$count_phone);
 				$this->add_variablewithname($StromL3ID,$meter["NAME"]."_StromL3",$this->includefile,$count_phone);
-		   	}
+				}
 			if ($meter["TYPE"]=="Homematic")
-		   	{
+				{
 				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $meterdataID);
 				$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $meterdataID);
 				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
 				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
-		   	}
-		   }
+				}
+			}
 		$this->includefile.="\n      ".');}'."\n";
 		}
+
+	/**
+	 * @public
+	 *
+	 * sys ping IP Adresse von bekannten IP Symcon Servern
+	 *
+	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
+	 *
+	 */
+	function server_ping()
+		{
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+		$RemoteServer=array();
+		//print_r($remServer);
+		$method="IPS_GetName"; $params=array();
+
+		foreach ($remServer as $Name => $Server)
+			{
+			//print_r($Server);
+			$UrlAddress=$Server["ADRESSE"];
+			if ($Server["STATUS"]=="Active")
+				{
+				$RemoteServer[$Name]["Name"]=$UrlAddress;
+				$rpc = new JSONRPC($UrlAddress);
+				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
+				$data = @parse_url($UrlAddress);
+				if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
+					throw new Exception("Invalid URL");
+				$url = $data['scheme']."://".$data['host'];
+				if(isset($data['port'])) $url .= ":".$data['port'];
+				if(isset($data['path'])) $url .= $data['path'];
+				if(isset($data['user']))
+					{
+					$username = $data['user'];
+					}
+				else
+					{
+					$username = "";
+					}
+				if(isset($data['pass']))
+				   {
+					$password = $data['pass'];
+					}
+				else
+					{
+					$password = "";
+					}
+				if (!is_scalar($method)) {
+						throw new Exception('Method name has no scalar value');
+					}
+				if (!is_array($params)) {
+						throw new Exception('Params must be given as array');
+					}
+				$id = round(fmod(microtime(true)*1000, 10000));
+				$params = array_values($params);
+				$strencode = function(&$item, $key) {
+				if ( is_string($item) )
+						$item = utf8_encode($item);
+					else if ( is_array($item) )
+						array_walk_recursive($item, $strencode);
+					};
+				array_walk_recursive($params, $strencode);
+				$request = Array(
+									"jsonrpc" => "2.0",
+									"method" => $method,
+									"params" => $params,
+									"id" => $id
+								);
+				$request = json_encode($request);
+				$header = "Content-type: application/json"."\r\n";
+				if(($username != "") || ($password != "")) {
+					$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+					}
+				$options = Array(
+						"http" => array (
+						"method"  => 'POST',
+						"header"  => $header,
+						"content" => $request
+										)
+							);
+				$context  = stream_context_create($options);
+
+				$response = @file_get_contents($url, false, $context);
+				if ($response===false)
+				   {
+					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					$RemoteServer[$Name]["Status"]=false;
+					}
+				else
+				   	{
+				   	$ServerName=$rpc->IPS_GetName(0);
+				   	$ServerUptime=$rpc->IPS_GetKernelStartTime();
+  				   	$ServerVersion=$rpc->IPS_GetKernelVersion();
+					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
+					$RemoteServer[$Name]["Status"]=true;
+					}
+			   }
+			else
+				{
+				echo "   Server : ".$url." mit Name: ".$Name." nicht auf active konfiguriert.\n";
+				}	
+			}
+			return ($RemoteServer);
+		}
+
 
 	/**
 	 * @public
@@ -141,63 +247,75 @@ class RemoteAccess
 	 *
 	 * und eventuell auch angelegt
 	 *
+	 * wenn eine status Information mitgeliefert wird (aus sys_ping) werden die nicht erreichbaren Server nicht behandelt, vermeidet Fehler bei Installation
+	 *
 	 */
-	public function add_RemoteServer()
+	public function add_RemoteServer($available=Array())
 		{
 		$this->includefile.="\n".'function ROID_List() { return array('."\n";
+		print_r($available);
 		foreach ($this->remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server);
-			$this->includefile.='"'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
+			$read=true;
+			if ( isset($available[$Name]["Status"]) ) 
+				{
+				if (available[$Name]["Status"] == false ) { $read=false; }
+				}
+			if ($read == true )
+				{	
+				echo "Server : ".$Name." mit Adresse : ".$Server."bearbeiten.  \n ";
+				$rpc = new JSONRPC($Server);
+				$this->includefile.='"'.$Name.'" => array('."\n         ".'"Adresse" => "'.$Server.'", ';
 
-			$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
-			$visname=IPS_GetName(0);
-			echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
-			$this->includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
+				$visrootID=RPC_CreateCategoryByName($rpc, 0,"Visualization");
+				$visname=IPS_GetName(0);
+				echo "Server : ".$Name."  ".$Server." OID = ".$visrootID." fuer Server ".$visname." \n";
+				$this->includefile.="\n         ".'"VisRootID" => "'.$visrootID.'", ';
 
-			$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
-			$this->includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
+				$wfID=RPC_CreateCategoryByName($rpc, $visrootID, "WebFront");
+				$this->includefile.="\n         ".'"WebFront" => "'.$wfID.'", ';
 
-			$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
-			$this->includefile.="\n         ".'"Administrator" => "'.$webID.'", ';
+				$webID=RPC_CreateCategoryByName($rpc, $wfID, "Administrator");
+				$this->includefile.="\n         ".'"Administrator" => "'.$webID.'", ';
 
-			$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
-			$this->includefile.="\n         ".'"RemoteAccess" => "'.$raID.'", ';
+				$raID=RPC_CreateCategoryByName($rpc, $webID, "RemoteAccess");
+				$this->includefile.="\n         ".'"RemoteAccess" => "'.$raID.'", ';
 
-			$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
-			$this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
+				$servID=RPC_CreateCategoryByName($rpc, $raID,$visname);
+				$this->includefile.="\n         ".'"ServerName" => "'.$servID.'", ';
 
-			$this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
-			$this->includefile.="\n         ".'"Temperatur" => "'.$this->listofOIDs["Temp"][$Name].'", ';
+				$this->listofOIDs["Temp"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Temperatur");
+				$this->includefile.="\n         ".'"Temperatur" => "'.$this->listofOIDs["Temp"][$Name].'", ';
 
-			$this->listofOIDs["Switch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
-			$this->includefile.="\n         ".'"Schalter" => "'.$this->listofOIDs["Switch"][$Name].'", ';
+				$this->listofOIDs["Switch"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Schalter");
+				$this->includefile.="\n         ".'"Schalter" => "'.$this->listofOIDs["Switch"][$Name].'", ';
 
-			$this->listofOIDs["Contact"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Kontakte");
-			$this->includefile.="\n         ".'"Kontakte" => "'.$this->listofOIDs["Contact"][$Name].'", ';
+				$this->listofOIDs["Contact"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Kontakte");
+				$this->includefile.="\n         ".'"Kontakte" => "'.$this->listofOIDs["Contact"][$Name].'", ';
 
-			$this->listofOIDs["Button"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Taster");
-			$this->includefile.="\n         ".'"Taster" => "'.$this->listofOIDs["Button"][$Name].'", ';
+				$this->listofOIDs["Button"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Taster");
+				$this->includefile.="\n         ".'"Taster" => "'.$this->listofOIDs["Button"][$Name].'", ';
 
-			$this->listofOIDs["Motion"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
-			$this->includefile.="\n         ".'"Bewegung" => "'.$this->listofOIDs["Motion"][$Name].'", ';
+				$this->listofOIDs["Motion"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
+				$this->includefile.="\n         ".'"Bewegung" => "'.$this->listofOIDs["Motion"][$Name].'", ';
+	
+				$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
+				$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
 
-			$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
-			$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
+				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
+				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
 
-			$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
-			$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
+				echo "  Remote VIS-ID                    ".$visrootID,"\n";
+				echo "  Remote WebFront-ID               ".$wfID,"\n";
+				echo "  Remote Administrator-ID          ".$webID,"\n";
+				echo "  RemoteAccess-ID                  ".$raID,"\n";
+				echo "  RemoteServer-ID                  ".$servID,"\n";
 
-			echo "  Remote VIS-ID                    ".$visrootID,"\n";
-			echo "  Remote WebFront-ID               ".$wfID,"\n";
-			echo "  Remote Administrator-ID          ".$webID,"\n";
-			echo "  RemoteAccess-ID                  ".$raID,"\n";
-			echo "  RemoteServer-ID                  ".$servID,"\n";
-
-			$RPCHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
-			$RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
-			$this->includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
-			$this->includefile.="\n             ".'	),'."\n";
+				$RPCHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
+				$RPCarchiveHandlerID[$Name] = $RPCHandlerID[0];
+				$this->includefile.="\n         ".'"ArchiveHandler" => "'.$RPCarchiveHandlerID[$Name].'", ';
+				$this->includefile.="\n             ".'	),'."\n";
+				}
 			}
 		$this->includefile.="      ".');}'."\n";
 		}

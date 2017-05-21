@@ -127,12 +127,27 @@ else
 					$com_Port = $serialPort; 
 					$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
 					if (IPS_InstanceExists($regVarID) )
-	   				{
+	   					{
 						echo "     Registervariable : ".$regVarID."\n";
 						$configPort[$regVarID]=$amismetername;	 
 						}
-					echo "Comport Bluetooth aktiviert. \n";
-					COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */											
+					$status=IPS_GetProperty($com_Port,"Open");
+					if ($status==true)
+						{
+						$status=@COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
+						if ($status==true)
+							{
+							echo "Comport Bluetooth aktiviert. \n";
+							}
+						else	
+							{
+							echo "Comport Bluetooth aktiv. Fehler beim Senden von Text. \n";
+							}
+						}
+					else
+						{
+						echo "Comport Bluetooth nicht aktiviert. \n";						
+						}	
 					}
 				}
 			if (isset($com_Port) === false) { echo "Kein AMIS Zähler Serial Port definiert\n"; break; }

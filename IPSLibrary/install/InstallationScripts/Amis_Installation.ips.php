@@ -26,7 +26,9 @@ $cutter=true;
 	/******************** Defaultprogrammteil ********************/
 	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-
+	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');	
+	IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -38,15 +40,15 @@ $cutter=true;
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
+	echo "\nIPS aktuelle Kernelversion : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
+	echo "\nMinimal erforderliche IPS Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Amis');       /*   <--- change here */
-	echo "\nAmis Version : ".$ergebnis;    										/*   <--- change here */
+	echo "\nAmis Modul Version : ".$ergebnis;    										/*   <--- change here */
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -148,9 +150,10 @@ $cutter=true;
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
-	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 	$MeterConfig = get_MeterConfiguration();
 	//print_r($MeterConfig);
+
+	$Amis = new Amis();
 	
 	/* Links für Webfront identifizieren 
 	 *  Struktur [Tab] [Left, Right] [LINKID] ["NAME"]="Name"
@@ -219,49 +222,36 @@ $cutter=true;
 
 			if ($meter["PORT"] == "Bluetooth")
 				{
-				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
-
-				if(!IPS_InstanceExists($SerialComPortID))
-					{
-					echo "\nAMIS Bluetooth Port mit Namen \"".$identifier." Bluetooth COM\" erstellen !";
-					$SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
-					IPS_SetName($SerialComPortID, $identifier." Bluetooth COM");
-
-					COMPort_SetPort($SerialComPortID, $meter["COMPORT"]); // ComNummer welche dem PC-Interface zugewiesen ist!
-					COMPort_SetBaudRate($SerialComPortID, '115200');
-					COMPort_SetDataBits($SerialComPortID, '8');
-					COMPort_SetStopBits($SerialComPortID, '1');
-					COMPort_SetParity($SerialComPortID, 'None');
-					COMPort_SetOpen($SerialComPortID, true);			  /* macht Fehlermeldung, wenn Port nicht offen */
-			 		IPS_ApplyChanges($SerialComPortID);
-					echo "Comport Bluetooth aktiviert. \n";
+				$PortConfig=array($meter["COMPORT"],"115200","8","1","None");
+				$result=$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);
+				if ( $result == false) 
+					{ 
+					$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);     // noch einmal probieren
+					echo " Noch einmal probiert.\n";
+					}	
+				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
+				else 
+					{	
 					$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
+					//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";
+					SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 					}
-				//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";
-				SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 				}
 			if ($meter["PORT"] == "Serial")
 				{
-				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Serial Port", 0);
-		
-				if(!IPS_InstanceExists($SerialComPortID))
-					{
-					echo "\nAMIS Serial Port mit Namen \"".$identifier." Serial Port\"erstellen !";
-					$SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
-					IPS_SetName($SerialComPortID, $identifier." Serial Port");
-					COMPort_SetPort($SerialComPortID, $meter["COMPORT"]); // ComNummer welche dem PC-Interface zugewiesen ist!
-					COMPort_SetBaudRate($SerialComPortID, '300');
-					COMPort_SetDataBits($SerialComPortID, '7');
-		 			COMPort_SetStopBits($SerialComPortID, '1');
-	  	 			COMPort_SetParity($SerialComPortID, 'Even');
-			  		COMPort_SetOpen($SerialComPortID, true);
-		  	 		IPS_ApplyChanges($SerialComPortID);
-  					echo "Comport Serial aktiviert. \n";
-				 	$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Serial Port", 0);
+				$PortConfig=array($meter["COMPORT"],"300","7","1","Even");
+				$result=$Amis->configurePort($identifier." Serial Port",$PortConfig);
+				if ( $result == false) 
+					{ 
+					$result = $Amis->configurePort($identifier." Serial Port",$PortConfig);     // noch einmal probieren
+					echo " Noch einmal probiert.\n";
+					}	
+				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
+				else 
+					{	
+					$SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
+					SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
 					}
-				IPS_SetProperty($SerialComPortID, 'Open', true);   //false für aus
-				IPS_ApplyChanges($SerialComPortID);
-				SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
 				}
 			
 			if ($cutter == true)
@@ -280,6 +270,7 @@ $cutter=true;
 				else
 					{
 					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
+					IPS_ConnectInstance($CutterID, $SerialComPortID);						
 					$config=IPS_GetConfiguration($CutterID);
 					echo "    ".$config."\n";					
 					}
@@ -292,7 +283,12 @@ $cutter=true;
 	 				RegVar_SetRXObjectID($regVarID, $scriptIdAMIS);
 					IPS_ConnectInstance($regVarID, $CutterID);
 					IPS_ApplyChanges($regVarID);
-	   			}										
+	   				}	
+				else
+					{
+					echo "\nAMIS RegisterVariable mit Namen \"".$regVarID."\" existiert bereits !\n";
+					IPS_ConnectInstance($regVarID, $CutterID);				
+					}														
 				}
 			else
 				{
@@ -310,10 +306,15 @@ $cutter=true;
 
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
 			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+
+			$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+  	      	IPS_SetVariableCustomProfile($ReceiveTimeID,'~UnixTimestamp');
 			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */	
-								// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
+  	      	IPS_SetVariableCustomProfile($SendTimeID,'~UnixTimestamp');					
+
+			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
 			$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
 			$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
 			
@@ -342,7 +343,7 @@ $cutter=true;
 		print_r($meter);
 
 		$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
-	   $KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
+	   	$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
 		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
    		IPS_SetVariableCustomProfile($letzterTagID,'kWh');
@@ -379,7 +380,7 @@ $cutter=true;
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+ 		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 
 		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite

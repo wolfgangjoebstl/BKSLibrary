@@ -24,10 +24,11 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 *************************************************************/
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) {
+if (!isset($moduleManager)) 
+	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-}
+	}
 
 $installedModules = $moduleManager->GetInstalledModules();
 if ( isset($installedModules["Sprachsteuerung"]) === true )
@@ -93,6 +94,7 @@ if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
 
+	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	}
 
 /*********************************************************************************************/
@@ -205,9 +207,18 @@ if ($_IPS['SENDER']=="Variable")
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
-	/* Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun */
-	/* lassen sich aber nicht in der event gesteuerten Parametrierung einstellen */
-
+	/********************************
+	 * Wird alle 5 Minuten aufgerufen, da kann man die zeitgesteuerten Dinge hineintun
+	 *
+	 * lassen sich aber nicht in der event gesteuerten Parametrierung einstellen
+	 *
+	 * Anwesenheitssimulation (TYPE=AWS):
+	 * abhängig vom Schalter in Autosteuerung, entweder immer (1) oder nur wenn niemand anwesend ist (2)
+	 *
+	 *
+	 * Szenensteuerung: 
+	 *
+	 ****************************************************************/
 	
 	$StatusAnwesend=$operate->Anwesend();		
 	SetValue($StatusAnwesendID,$StatusAnwesend );
@@ -491,21 +502,25 @@ if ($_IPS['SENDER']=="Execute")
 				echo "  Timer Szene : ".$scene["NAME"]."\n";
 				}
 			}	
-		$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-		if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$auto->sunset);}
-		if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$auto->sunrise);}
-		//print_r($actualTime);
-		$actualTimeStart = explode(":",$actualTime[0]);
-		$actualTimeStartHour = $actualTimeStart[0];
-		$actualTimeStartMinute = $actualTimeStart[1];
-		$actualTimeStop = explode(":",$actualTime[1]);
-		$actualTimeStopHour = $actualTimeStop[0];
-		$actualTimeStopMinute = $actualTimeStop[1];
-		echo "    Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-       	$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-       	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
-      	$now = time();
-      	//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
+		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
+		$actualTimes = $auto->switchingTimes($scene);
+		//echo "Evaluierte Schaltzeiten:\n";	
+		//print_r($actualTimes);
+		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
+			{
+			echo "Schaltzeit ".$sindex."\n";
+			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
+			$actualTimeStartHour = $actualTimeStart[0];
+			$actualTimeStartMinute = $actualTimeStart[1];
+			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
+			$actualTimeStopHour = $actualTimeStop[0];
+			$actualTimeStopMinute = $actualTimeStop[1];
+			echo "    Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+       		$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+	       	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+			}
+   	  	$now = time();
+      		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
       	if (isset($scene["EVENT_IPSLIGHT"]))
       	   	{
       		echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";

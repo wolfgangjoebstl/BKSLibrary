@@ -32,10 +32,71 @@
 			{
 			$this->parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-
-
-
 			}
+
+
+		/*  
+		 * Seriellen port programmieren, mit kleinen Problemen bei open port und apply changes 
+		 *
+		 * identifier  Name des seriellen Ports, zum selber suchen
+		 *
+		 * 
+		 */
+						
+		function configurePort($identifier,$config)
+			{
+			//Print_r($config);
+			$SerialComPortID = @IPS_GetInstanceIDByName($identifier, 0);
+			if(!IPS_InstanceExists($SerialComPortID))
+				{
+				echo "\nAMIS Serial Port mit Namen \"".$identifier."\" erstellen !";
+				$SerialComPortID = IPS_CreateInstance("{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}"); // Comport anlegen
+				IPS_SetName($SerialComPortID, $identifier);
+
+				IPS_SetProperty($SerialComPortID, "Port", $config[0]); // ComNummer welche dem PC-Interface zugewiesen ist!
+				IPS_SetProperty($SerialComPortID, "BaudRate", $config[1]);
+				IPS_SetProperty($SerialComPortID, "DataBits", $config[2]);
+				IPS_SetProperty($SerialComPortID, "StopBits", $config[3]);
+				IPS_SetProperty($SerialComPortID, "Parity", $config[4]);
+				sleep(2);
+				IPS_SetProperty($SerialComPortID, "Open", true);			  /* macht Fehlermeldung, wenn Port nicht offen */
+		 		$result=@IPS_ApplyChanges($SerialComPortID);
+				echo "    Comport ist nun aktiviert. \n";
+				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
+				}
+			else
+				{
+				$port=strtoupper($config[0]);
+				if (IPS_GetProperty($SerialComPortID, 'Port') == $port)
+					{
+					echo "Com Port vorhanden und richtig programmiert .\n";
+					}
+				else	
+					{
+					echo "Com Port falsch programmiert. Ist : ".IPS_GetProperty($SerialComPortID, 'Port')." sollte sein : ".$port."\n";
+					IPS_SetProperty($SerialComPortID, 'Port', $port);   //false für aus
+					}
+				$status=IPS_GetProperty($SerialComPortID, 'Open');
+				if ($status==false)  /* nur wenn Port geschlossen ist aufmachen, sollte ein paar sinnlose Fehlermeldungen eliminieren */
+					{
+					echo "Comport is closed. Open now.\n";
+					IPS_SetProperty($SerialComPortID, 'Open', true);   //false für aus
+					}					
+				$result=@IPS_ApplyChanges($SerialComPortID);
+				if ($result==false)
+					{
+					IPS_DeleteInstance($SerialComPortID);
+					echo "Fehler, Instanz geloescht, Installation noch einmal aufrufen. \n";
+					}	
+				else
+					{
+					$result=IPS_GetConfiguration($SerialComPortID);
+					echo $result;
+					}
+				}
+			return ($result);			
+			}
+
 
 		/************************************************************************************************************************
  		 *

@@ -58,12 +58,16 @@ echo "Category App ID            : ".$CategoryIdApp."\n";
 
 	foreach ($GuthabenConfig as $TelNummer)
 		{
-		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+		//print_r($TelNummer);
+		if ( strtoupper($TelNummer["STATUS"]) == "ACTIVE" )
+			{ 
+			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
-		$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
-		$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
-		SetValue($phone1ID,$ergebnis1);
-		$ergebnis.=$ergebnis1."\n";
+			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+			$ergebnis1=parsetxtfile($GuthabenAllgConfig["DownloadDirectory"],$TelNummer["NUMMER"]);
+			SetValue($phone1ID,$ergebnis1);
+			$ergebnis.=$ergebnis1."\n";
+			}
 		}
 
 /******************************************************
@@ -76,7 +80,7 @@ if ($_IPS['SENDER']=="Execute")
 	   {
 		echo "Execute, Script wird ausgeführt:\n\n";
 		echo $ergebnis;
-	   $ergebnis1="";
+	   	$ergebnis1="";
 		foreach ($GuthabenConfig as $TelNummer)
 			{
 			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');

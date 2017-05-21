@@ -503,34 +503,54 @@ class Autosteuerung
 		$result["Text"]="Sonnenauf/untergang ".date("H:i",$this->sunrise)." ".date("H:i",$this->sunset);
 		return $result;
 		}
+
+	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll */
+
+	function switchingTimes($scene)
+		{
+		$switchingTimes = explode(",",$scene["ACTIVE_FROM_TO"]);
+		$actualTimes=array(); $sindex=0;
+		foreach ($switchingTimes as $switchingTime)
+			{
+			$actualTimes[$sindex] = explode("-",$switchingTime);
+			if ($actualTimes[$sindex][0]=="sunset") {$actualTimes[$sindex][0]=date("H:i",$this->sunset);}
+			if ($actualTimes[$sindex][0]=="sunrise") {$actualTimes[$sindex][0]=date("H:i",$this->sunrise);}		
+			if ($actualTimes[$sindex][1]=="sunset") {$actualTimes[$sindex][1]=date("H:i",$this->sunset);}
+			if ($actualTimes[$sindex][1]=="sunrise") {$actualTimes[$sindex][1]=date("H:i",$this->sunrise);}				
+			$sindex++;	
+			}
+		return($actualTimes);
+		}
 		
 	function timeright($scene)
 		{
 		echo "Szene ".$scene["NAME"]."\n";
-       	$actualTime = explode("-",$scene["ACTIVE_FROM_TO"]);
-       	if ($actualTime[0]=="sunset") {$actualTime[0]=date("H:i",$this->sunset);}
-       	if ($actualTime[1]=="sunrise") {$actualTime[1]=date("H:i",$this->sunrise);}
-       	//print_r($actualTime);
-       	$actualTimeStart = explode(":",$actualTime[0]);
+       	$actualTimes = self::switchingTimes($scene);
+       	//print_r($actualTimes);
+		$timeright=false;
+		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
+			{		
+       		$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
         	$actualTimeStartHour = $actualTimeStart[0];
         	$actualTimeStartMinute = $actualTimeStart[1];
-        	$actualTimeStop = explode(":",$actualTime[1]);
+        	$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
         	$actualTimeStopHour = $actualTimeStop[0];
         	$actualTimeStopMinute = $actualTimeStop[1];
 			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
         	$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
         	$this->timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
-      	$this->now = time();
+      		$this->now = time();
 
-       	if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
+	       	if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
 				{
-          	$minutesRange = ($this->timeStop-$this->timeStart)/60;
-          	$actionTriggerMinutes = 5;
-            $rndVal = rand(1,100);
+    	      	$minutesRange = ($this->timeStop-$this->timeStart)/60;
+        	  	$actionTriggerMinutes = 5;
+            	$rndVal = rand(1,100);
 				echo "Zufallszahl:".$rndVal."\n";
-				return (($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100));
+				if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) { $timeright=true; }
 				}
-			else return (false);	
+			}	
+		return ($timeright);	
 		}	
 
 	/***************************************

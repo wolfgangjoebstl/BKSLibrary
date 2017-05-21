@@ -186,6 +186,8 @@ if ($_IPS['SENDER']=="Execute")
 		//$ergebnis.=$ergebnis1."\n";
 		}
 
+	echo "\n-----------------------------------------------------\n";
+	echo "Aufruf von iMacro oder Parseguthaben wenn Abfragen bereits abgeschlossen.\n";
 	SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);
 	//IPS_SetScriptTimer($_IPS['SELF'], 150);
 	if (GetValue($ScriptCounterID) < $maxcount)

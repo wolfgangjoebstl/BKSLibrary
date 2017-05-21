@@ -23,6 +23,7 @@
 		private $RemoteOID;
 		private $tempValue;
 		private $installedmodules;
+		private $remServer;
 		
 		/**
 		 * @public
@@ -53,6 +54,12 @@
 				}
 			}
 	
+	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}
+																			
 		/**
 		 * @public
 		 *
@@ -66,7 +73,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   	IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' mit Wert '.$value);
+			IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' mit Wert '.$value);
 						
 			$log=new Feuchtigkeit_Logging($variable);
 			$result=$log->Feuchtigkeit_LogValue();
@@ -78,8 +85,8 @@
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-   	         if (count($para)==2)
-      	         {
+					if (count($para)==2)
+      					{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 						   {
