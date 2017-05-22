@@ -48,6 +48,7 @@ $startexec=microtime(true);
 	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "   Modul Guthabensteuerung ist NICHT installiert.\n"; }
 	//if (isset ($installedModules["Gartensteuerung"])) { 	echo "  Modul Gartensteuerung ist installiert.\n"; } else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
 	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "   Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["OperationCenter"])) { 				echo "  Modul OperationCenter ist installiert.\n"; } else { echo "   Modul OperationCenter ist NICHT installiert.\n"; }
 	echo "\n";
 
  /******************************************************
@@ -61,13 +62,33 @@ $startexec=microtime(true);
 		IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 		}
-		
+
+	/************************************************************************************************
+	 *
+	 * Create Include file
+	 *
+	 ************************************************************************************************/
+
 	$remote=new RemoteAccess();
-	if (isset ($installedModules["Guthabensteuerung"])) { $remote->add_Guthabensteuerung(); }
-	if (isset ($installedModules["Amis"]))	{ $remote->add_Amis(); }
-	echo "Ende Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
-	$remote->add_RemoteServer();
+	if (isset ($installedModules["Guthabensteuerung"])) 
+		{ 
+		$remote->add_Guthabensteuerung(); 
+		echo "Ende Guthabensteuerung Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
+		}
+	if (isset ($installedModules["Amis"]))	
+		{ 
+		$remote->add_Amis(); 
+		echo "Ende AMIS Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
+		}
+	if (isset ($installedModules["OperationCenter"]))	
+		{ 		
+		$remote->add_SysInfo();
+		echo "Ende OperationCenter Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";		
+		}		
+	$status=$remote->server_ping();
+	$remote->add_RemoteServer($status);
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
+	
 	$remote->write_includeFile();
 	echo "Ende Evaluierung : ".(microtime(true)-$startexec)." Sekunden \n";
 

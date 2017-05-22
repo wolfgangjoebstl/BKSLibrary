@@ -98,6 +98,7 @@
 		$remote->add_Amis(); 
 		echo "Ende AMIS Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
 		}
+	$remote->add_SysInfo();		
 	$status=$remote->server_ping();
 	$remote->add_RemoteServer($status);
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";

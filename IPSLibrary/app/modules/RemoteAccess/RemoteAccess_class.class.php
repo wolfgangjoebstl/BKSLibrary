@@ -42,6 +42,11 @@ class RemoteAccess
 		 */
 		$this->remServer=RemoteAccess_GetConfigurationNew();	/* es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben */
 		}
+
+	public function getRemoteServer()
+		{
+		return($this->remServer);
+		}
 		
 	/**
 	 * @public
@@ -131,6 +136,40 @@ class RemoteAccess
 			}
 		$this->includefile.="\n      ".');}'."\n";
 		}
+
+		
+	/**
+	 * @public
+	 *
+	 * zum Include File werden die Variablen der SysInfo hinzugefügt
+	 *
+	 */
+	public function add_SysInfo()
+		{
+		$count=200;
+		$this->includefile.="\n".'function SysInfoList() { return array('."\n";
+		$OCdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.OperationCenter.SystemInfo');
+		echo "\nOperationCenter Data auf :".$OCdataID."\n";		
+		
+		$HostnameID   		= IPS_GetObjectIDByName("Hostname",$OCdataID);
+		$SystemNameID		= IPS_GetObjectIDByName("Betriebssystemname",$OCdataID);	
+		$SystemVersionID	= IPS_GetObjectIDByName("Betriebssystemversion",$OCdataID);	
+		$HotfixID			= IPS_GetObjectIDByName("Hotfix",$OCdataID);
+		$ExternalIP			= IPS_GetObjectIDByName("ExternalIP",$OCdataID);
+		$UptimeID			= IPS_GetObjectIDByName("IPS_UpTime",$OCdataID);
+		$VersionID			= IPS_GetObjectIDByName("IPS_Version",$OCdataID);	
+		
+		$this->add_variablewithname($HostnameID,"Hostname",$this->includefile,$count);		// param 3 und 4 werden als Referenz uebergeben
+		$this->add_variablewithname($SystemNameID,"Betriebssystemname",$this->includefile,$count);
+		$this->add_variablewithname($SystemVersionID,"Betriebssystemversion",$this->includefile,$count);
+		$this->add_variablewithname($HotfixID,"Hotfix",$this->includefile,$count);
+		$this->add_variablewithname($ExternalIP,"ExternalIP",$this->includefile,$count);
+		$this->add_variablewithname($UptimeID,"IPS_UpTime",$this->includefile,$count);
+		$this->add_variablewithname($VersionID,"IPS_Version",$this->includefile,$count);
+		
+		$this->includefile.="\n      ".');}'."\n";
+		}
+
 
 	/**
 	 * @public
@@ -259,7 +298,7 @@ class RemoteAccess
 			$read=true;
 			if ( isset($available[$Name]["Status"]) ) 
 				{
-				if (available[$Name]["Status"] == false ) { $read=false; }
+				if ($available[$Name]["Status"] == false ) { $read=false; }
 				}
 			if ($read == true )
 				{	
@@ -302,6 +341,9 @@ class RemoteAccess
 				$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
 				$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
 
+				$this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
+				$this->includefile.="\n         ".'"SysInfo" => "'.$this->listofOIDs["SysInfo"][$Name].'", ';
+				
 				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
 				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
 
@@ -337,6 +379,17 @@ class RemoteAccess
     		}
 		}
 
+	public function read_includeFile()
+		{
+		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables.inc.php';
+		$file=file_get_contents($filename);
+		if (!$file)
+			{
+        	throw new Exception('Read File '.$filename.' failed!');
+    		}
+		return($file);	
+		}
+		
 	/**
 	 * @public
 	 *
@@ -466,43 +519,49 @@ class RemoteAccess
 	 */
 	public function write_classresult()
 		{
-		echo "\nOID          ";
+		echo "\nOID          :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($Name,10);
 			}
 			
-		echo "\nTemperature  ";
+		echo "\nTemperature  :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Temp"][$Name],10);
 			}
-		echo "\nSwitch       ";
+		echo "\nSwitch       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Switch"][$Name],10);
 			}
-		echo "\nKontakt      ";
+		echo "\nKontakt      :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Contact"][$Name],10);
 			}
-		echo "\nTaster      ";
+		echo "\nTaster      :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Button"][$Name],10);
 			}
-		echo "\nBewegung     ";
+		echo "\nBewegung     :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Motion"][$Name],10);
 			}
-		echo "\nFeuchtigkeit ";
+		echo "\nFeuchtigkeit :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Humidity"][$Name],10);
 			}
-		echo "\nAndere       ";
+		echo "\nSysInfo     :";
+		
+		foreach ($this->remServer as $Name => $Server)
+			{
+			echo str_pad($this->listofOIDs["SysInfo"][$Name],10);
+			}
+		echo "\nAndere       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
 			echo str_pad($this->listofOIDs["Other"][$Name],10);
@@ -540,6 +599,12 @@ class RemoteAccess
 		}
 
 	}  /* Ende class */
+	
+/*****************************************************************************
+ *
+ *
+ *	
+ **********************************************************************************/	
 	
 class IPSMessageHandlerExtended extends IPSMessageHandler 
 	{

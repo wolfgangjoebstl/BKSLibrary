@@ -38,7 +38,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)
 		{
-		echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]." \n";
+		echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."\n";
 		}
 	
 	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));

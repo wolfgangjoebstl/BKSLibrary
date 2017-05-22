@@ -38,10 +38,10 @@ $status=RemoteAccessServerTable();
 		{
 		/* alle Regensensoren ausgeben */
 		if (isset($Key["COID"]["RAIN_COUNTER"])==true)
-		   {
-		   echo "Regensensor gefunden:\n";
-		   $oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
-      	$variabletyp=IPS_GetVariable($oid);
+			{
+			echo "Regensensor gefunden:\n";
+			$oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
+      		$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
 				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
