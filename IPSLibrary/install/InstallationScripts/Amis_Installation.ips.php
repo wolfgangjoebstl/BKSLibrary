@@ -270,7 +270,11 @@ $cutter=true;
 				else
 					{
 					echo "\nAMIS Cutter mit Namen \"".$identifier." Cutter\" existiert bereits !\n";
-					IPS_ConnectInstance($CutterID, $SerialComPortID);						
+					if ($SerialComPortID>0)
+						{
+						@IPS_DisconnectInstance($CutterID);
+						IPS_ConnectInstance($CutterID, $SerialComPortID);
+						}					
 					$config=IPS_GetConfiguration($CutterID);
 					echo "    ".$config."\n";					
 					}
@@ -287,6 +291,7 @@ $cutter=true;
 				else
 					{
 					echo "\nAMIS RegisterVariable mit Namen \"".$regVarID."\" existiert bereits !\n";
+					@IPS_DisconnectInstance($regVarID);					
 					IPS_ConnectInstance($regVarID, $CutterID);				
 					}														
 				}

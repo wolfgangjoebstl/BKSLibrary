@@ -443,7 +443,7 @@ class OperationCenter
 		
 	/*****************************************************************************
 	 *
-	 * Die Ergebnisse des Server Pingsals String ausgeben
+	 * Die Ergebnisse des Server Pings als String ausgeben
 	 *
 	 *******************************************************************************/	
 		

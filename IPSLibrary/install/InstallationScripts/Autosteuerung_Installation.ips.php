@@ -289,14 +289,20 @@
 					IPS_SetEventScheduleGroup($Wochenplan_ID, 5, 32); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
 					IPS_SetEventScheduleGroup($Wochenplan_ID, 6, 64); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
 
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetVariable(".(string)$WeckerID.",0)");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetVariable(".(string)$WeckerID.",1)");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetVariable(".(string)$WeckerID.",2)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2)");
 
 					IPS_SetParent($Wochenplan_ID, $AutosteuerungID);         //Ereignis zuordnen
 					IPS_SetName($Wochenplan_ID,"Wecker");
 					IPS_SetEventActive($Wochenplan_ID, true);
 					}
+				else
+					{
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2)");
+					}		
 
 				//Montag
 					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 0 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
