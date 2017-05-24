@@ -29,6 +29,15 @@
 	 *
 	 */
 
+	function startpage_configuration()
+		{
+		return array(
+			"Directories"    => array (
+				"Pictures"		=> 'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/pictures/',    /* Dont use Blanks or any other character not suitable for filenames */
+									),
+		
+						);
+		}		
 
 	function temperatur()
 		{ return GetValue(21416); }

@@ -90,27 +90,37 @@ function StartPageWrite($PageType)
 	
 	global $temperatur, $innentemperatur, $file, $showfile;
 
-$todayID = @IPS_GetObjectIDByName("Program",0);
-$todayID = @IPS_GetObjectIDByName("IPSLibrary",$todayID);
-$todayID = @IPS_GetObjectIDByName("data",$todayID);
-$todayID = @IPS_GetObjectIDByName("modules",$todayID);
-$todayID = @IPS_GetObjectIDByName("Weather",$todayID);
-$todayID = @IPS_GetObjectIDByName("IPSWeatherForcastAT",$todayID);
-$today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-$tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+	$noweather=false;
+	$todayID = @IPS_GetObjectIDByName("Program",0);
+	$todayID = @IPS_GetObjectIDByName("IPSLibrary",$todayID);
+	$todayID = @IPS_GetObjectIDByName("data",$todayID);
+	$todayID = @IPS_GetObjectIDByName("modules",$todayID);
+	$todayID = @IPS_GetObjectIDByName("Weather",$todayID);
+	$todayID = @IPS_GetObjectIDByName("IPSWeatherForcastAT",$todayID);
+	if ($todayID == false)
+		{
+		echo "weatherforecast nicht installiert.\n";
+		$noweather=true;
+		}
+	else
+		{
+		$today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+		$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+		$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+		$tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+		$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+		$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+		$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+		$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+		$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+		$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+		$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+		$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+		}
 
+	/* html file schreiben, Anfang für alle gleich --- HEADER */
 
-$wert='<!DOCTYPE html >
+	$wert='<!DOCTYPE html >
 <html lang="de">
 
 <head>
@@ -169,9 +179,26 @@ $wert='<!DOCTYPE html >
 </head>
 <body>
 ';
-if ($PageType==2)
-{
-$wert.='
+
+
+	if ( $noweather==true )
+		{
+			$wert.='
+<table border="0" cellspacing="10">
+<tr>
+   <td>
+		<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
+   </td>
+</tr>
+</table>
+
+';
+		}
+	else
+		{	
+		if ($PageType==2)
+			{
+			$wert.='
 
 <table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">
 
@@ -199,10 +226,10 @@ $wert.='
 </table>
 
 ';
-}
-else
-{
-$wert.='
+			}
+		else
+			{
+			$wert.='
 
 <table border="0" cellspacing="10">
 <tr>
@@ -262,8 +289,9 @@ $wert.='
 </html>
 ';
 
-return $wert;
+		}
+	return $wert;
 
-}
+	}
 
 ?>
