@@ -25,7 +25,8 @@ class RemoteAccess
 	private $remServer=array();
 	private $profilname=array("Temperatur","Humidity","Switch","Button","Contact","Motion");
 	private $listofOIDs=array();
-
+	private $listofROIDs=array();
+	
 	/**
 	 * @public
 	 *
@@ -397,25 +398,33 @@ class RemoteAccess
 	 *
 	 *
 	 */
-	public function rpc_showProfiles()
+	public function rpc_showProfiles($available=Array())
 		{
 		foreach ($this->remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server);
-			echo "Server : ".$Name."   \n";
-
-			foreach ($this->profilname as $pname)
-			   {
-				if ($rpc->IPS_VariableProfileExists($pname) == false)
-					{
-					echo "  Profil ".$pname." existiert nicht \n";
-					}
-				else
-				   {
-					echo "  Profil ".$pname." existiert. \n";
-				   }
+			$read=true;
+			if ( isset($available[$Name]["Status"]) ) 
+				{
+				if ($available[$Name]["Status"] == false ) { $read=false; }
 				}
-			}
+			if ($read == true )
+				{				
+				$rpc = new JSONRPC($Server);
+				echo "Server : ".$Name."   \n";
+
+				foreach ($this->profilname as $pname)
+				   {
+					if ($rpc->IPS_VariableProfileExists($pname) == false)
+						{
+						echo "  Profil ".$pname." existiert nicht \n";
+						}
+					else
+						{	
+						echo "  Profil ".$pname." existiert. \n";
+						}
+					}
+				}
+			}	
 		}
 
 	/**
@@ -425,24 +434,32 @@ class RemoteAccess
 	 *
 	 *
 	 */
-	public function rpc_deleteProfiles()
+	public function rpc_deleteProfiles($available=Array())
 		{
 		foreach ($this->remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server);
-			echo "Server : ".$Name."   \n";
+			$read=true;
+			if ( isset($available[$Name]["Status"]) ) 
+				{
+				if ($available[$Name]["Status"] == false ) { $read=false; }
+				}
+			if ($read == true )
+				{				
+				$rpc = new JSONRPC($Server);
+				echo "Server : ".$Name."   \n";
 
-			foreach ($this->profilname as $pname)
-			   {
-				if ($rpc->IPS_VariableProfileExists($pname) == false)
+				foreach ($this->profilname as $pname)
 					{
-					echo "  Profil ".$pname." existiert nicht \n";
-					}
-				else
-				   {
-					echo "  Profil ".$pname." existiert, wird gelöscht. \n";
-					$rpc->IPS_DeleteVariableProfile($pname);
-				   }
+					if ($rpc->IPS_VariableProfileExists($pname) == false)
+						{
+						echo "  Profil ".$pname." existiert nicht \n";
+						}
+					else
+						{
+						echo "  Profil ".$pname." existiert, wird gelöscht. \n";
+						$rpc->IPS_DeleteVariableProfile($pname);
+				   		}
+					}	
 				}
 			}
 		}
@@ -454,58 +471,66 @@ class RemoteAccess
 	 *
 	 *
 	 */
-	public function rpc_createProfiles()
+	public function rpc_createProfiles($available=Array())
 		{
 		foreach ($this->remServer as $Name => $Server)
 			{
-			$rpc = new JSONRPC($Server);
-			echo "Server : ".$Name."   \n";
+			$read=true;
+			if ( isset($available[$Name]["Status"]) ) 
+				{
+				if ($available[$Name]["Status"] == false ) { $read=false; }
+				}
+			if ($read == true )
+				{				
+				$rpc = new JSONRPC($Server);
+				echo "Server : ".$Name."   \n";
 
-			foreach ($this->profilname as $pname)
-			   {
-				if ($rpc->IPS_VariableProfileExists($pname) == false)
+				foreach ($this->profilname as $pname)
 					{
-					echo "  Profil ".$pname." existiert nicht \n";
-					switch ($pname)
-					   {
-					   case "Temperatur":
-					 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					  		$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-					  		$rpc->IPS_SetVariableProfileText($pname,'',' °C');
-					  		break;
-						case "Humidity";
-					 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					  		$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-					  		$rpc->IPS_SetVariableProfileText($pname,'',' %');
-					  		break;
-						case "Switch";
-					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-					  		break;
-						case "Contact";
-					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
-					  		break;
-						case "Button";
-					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
-					  		break;
-						case "Motion";
-					 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-					 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
-					  		break;
-					   default:
-					      break;
+					if ($rpc->IPS_VariableProfileExists($pname) == false)
+						{
+						echo "  Profil ".$pname." existiert nicht \n";
+						switch ($pname)
+							{
+							case "Temperatur":
+						 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					  			$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+					  			$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+						  		break;
+							case "Humidity";
+						 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+						  		$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+						  		$rpc->IPS_SetVariableProfileText($pname,'',' %');
+						  		break;
+							case "Switch";
+					 			$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+						  		break;
+							case "Contact";
+						 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
+					 			$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
+					  			break;
+							case "Button";
+						 		$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
+						  		break;
+							case "Motion";
+					 			$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					 			$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+						 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
+						  		break;
+							default:
+						      break;
+							}
+						}
+					else
+						{
+						echo "  Profil ".$pname." existiert. \n";
 						}
 					}
-				else
-				   {
-					echo "  Profil ".$pname." existiert. \n";
-				   }
 				}
 			}
 		}
@@ -517,57 +542,308 @@ class RemoteAccess
 	 *
 	 *
 	 */
-	public function write_classresult()
+	public function write_classresult($available=Array())
 		{
 		echo "\nOID          :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($Name,10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($Name,10); } }
 			}
 			
 		echo "\nTemperature  :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Temp"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Temp"][$Name],10); } }
 			}
+			
 		echo "\nSwitch       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Switch"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Switch"][$Name],10); } }
 			}
+			
 		echo "\nKontakt      :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Contact"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Contact"][$Name],10); } }
 			}
+			
 		echo "\nTaster      :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Button"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Button"][$Name],10); } }
 			}
+			
 		echo "\nBewegung     :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Motion"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Motion"][$Name],10); } }
 			}
+			
 		echo "\nFeuchtigkeit :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Humidity"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Humidity"][$Name],10); } }
 			}
+			
 		echo "\nSysInfo     :";
-		
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["SysInfo"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["SysInfo"][$Name],10); } }
 			}
+			
 		echo "\nAndere       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
-			echo str_pad($this->listofOIDs["Other"][$Name],10);
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Other"][$Name],10); } }
 			}
 		echo "\n\n";
 		}
+
+
+	/**
+	 * @public
+	 *
+	 * alle ermittelten ROIDs aus dem includefile speichern und ausgeben
+	 *
+	 *
+	 */
+	public function get_listofROIDs()
+		{
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		$this->listofROIDs=ROID_List();
+		return ($this->listofROIDs);
+		}
+
+	/**
+	 * @public
+	 *
+	 * alle OIDs der bei addRemoteServer ermittelten Ergebnisse ausgeben
+	 *
+	 *
+	 */
+	public function get_listofOIDs()
+		{
+		return ($this->listofOIDs);
+		}
+
+
+function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
+	{
+
+	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+
+	$result="";
+	$size=sizeof($struktur);
+	if ($size==0)
+		{
+		$children=$rpc->IPS_GetChildrenIDs($id);
+		foreach ($children as $oid)
+		   	{
+		   	$struktur[$oid]=$rpc->IPS_GetName($oid);
+	   		}		
+		echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+		//echo "Struktur :\n";
+		//print_r($struktur);
+		}
+	foreach ($struktur as $oid => $oname)
+	   	{
+	   	if ($name==$oname) {$result=$name;$vid=$oid;}
+		//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
+	   	}
+	if ($result=="")
+	   	{
+	   	echo "Variable ".$name." auf Server neu erzeugen.\n";
+	   	$vid = $rpc->IPS_CreateVariable($type);
+		$rpc->IPS_SetParent($vid, $id);
+      	$rpc->IPS_SetName($vid, $name);
+      	$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+      	}
+    echo "Fertig mit ".$vid."\n";
+    return $vid;
+	}
+
+	/******************************************************************/
+
+	function RPC_CreateCategoryByName($rpc, $id, $name)
+		{
+
+		/* erzeugt eine Category am Remote Server */
+
+		$result="";
+		$struktur=$rpc->IPS_GetChildrenIDs($id);
+		foreach ($struktur as $category)
+		   {
+		   $oname=$rpc->IPS_GetName($category);
+		   //echo str_pad($oname,20)." ".$category."\n";
+		   if ($name==$oname) {$result=$name;$vid=$category;}
+		   }
+		if ($result=="")
+		   {
+	      $vid = $rpc->IPS_CreateCategory();
+    	  $rpc->IPS_SetParent($vid, $id);
+	      $rpc->IPS_SetName($vid, $name);
+    	  $rpc->IPS_SetInfo($vid, "this category was created by script. ");
+	      }
+    	return $vid;
+		}
+
+	/*****************************************************************
+	 *
+	 * Übergabe ist die Homematic Struktur und das Keyword, derzeit HUMIDY oder TEMPERATURE
+	 *
+	 *
+	 **********************************************************************/
+
+	function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
+		{
+		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		$remServer=ROID_List();
+		if ($startexec==0) {$startexec=microtime(true);}
+		foreach ($remServer as $Name => $Server)
+			{
+			echo "Bearbeite Server ".$Name."\n";
+			print_r($Server);
+			}
+		foreach ($Homematic as $Key)
+			{
+			/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
+			if (isset($Key["COID"][$keyword])==true)
+	   			{
+	      		$oid=(integer)$Key["COID"][$keyword]["OID"];
+      			$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+					{
+					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+					}
+				else
+					{
+					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+					}
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					//echo "Bearbeite Server ".$Name."\n";
+					//print_r($Server);
+					$rpc = new JSONRPC($Server["Adresse"]);
+					if ($keyword=="TEMPERATURE")
+			      		{
+						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
+						}
+					else
+			      		{
+						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 1);
+						}
+   					$rpc->IPS_SetVariableCustomProfile($result,$profile);
+					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+					$parameter.=$Name.":".$result.";";
+					}
+			   $messageHandler = new IPSMessageHandler();
+			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+			   echo "RegisterEvent ".$oid." mit \"OnChange\",\"IPSComponentSensor_Temperatur,".$parameter." IPSModuleSensor_Temperatur,1,2,3\"\n";
+			   if ($keyword=="TEMPERATURE")
+			   		{
+					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
+					}
+				else
+			    	{
+					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
+					}
+				}
+			}
+		}
+
+/*****************************************************************
+ *
+ * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+ * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
+ *
+ *****************************************************************************/
+
+function RemoteAccessServerTable()
+	{
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$result=$moduleManager->GetInstalledModules();
+			if (isset ($result["OperationCenter"]))
+				{
+				$moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
+				$CategoryIdData   = $moduleManager_DM->GetModuleCategoryID('data');
+				$Access_categoryId=@IPS_GetObjectIDByName("AccessServer",$CategoryIdData);
+				$RemoteServer=array();
+	        	//$remServer=RemoteAccess_GetConfiguration();
+				//foreach ($remServer as $Name => $UrlAddress)
+				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+				foreach ($remServer as $Name => $Server)
+					{
+					$UrlAddress=$Server["ADRESSE"];
+					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+						{				
+						$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+						$RemoteServer[$Name]["Url"]=$UrlAddress;
+						$RemoteServer[$Name]["Name"]=$Name;
+						if (GetValue($IPS_UpTimeID)==0)
+							{
+							$RemoteServer[$Name]["Status"]=false;
+							}
+						else
+							{
+							$RemoteServer[$Name]["Status"]=true;
+							}
+						}
+					}
+				}
+			else
+				{
+				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+				foreach ($remServer as $Name => $Server)
+					{
+					$UrlAddress=$Server["ADRESSE"];
+					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+						{				
+						$RemoteServer[$Name]["Url"]=$UrlAddress;
+						$RemoteServer[$Name]["Name"]=$Name;
+						$RemoteServer[$Name]["Status"]=true;
+						}
+					}	
+			   }
+	return($RemoteServer);
+	}
+
+	/*****************************************************************
+ 	 *
+	 * wandelt die Liste der remoteAccess_GetServerConfig  in das alte Format der tabelle RemoteAccess_GetConfiguration um
+	 * Neuer Name , damit alte Funktionen keine Fehlermeldung liefern 
+	 *
+	 *****************************************************************************/
+ 
+	function RemoteAccess_GetConfigurationNew()
+		{
+		$RemoteServer=array();
+		$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
+		foreach ($remServer as $Name => $Server)
+			{
+			$UrlAddress=$Server["ADRESSE"];
+			if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+				{				
+				$RemoteServer[$Name]=$UrlAddress;
+				}
+			}	
+		return($RemoteServer);
+		}
+
+
 
 	/******************************************************************/
 

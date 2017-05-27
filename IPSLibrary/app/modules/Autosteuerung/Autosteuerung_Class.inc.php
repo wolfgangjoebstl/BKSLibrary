@@ -1019,21 +1019,26 @@ class Autosteuerung
 
 	private function parseValue($input,$result=array())
 		{
-		if ( $result["NAME_EXT"] == "#COLOR" )
+		$extcolor=false;
+		if (isset ($result["NAME_EXT"]) == true)
 			{
-			$result=self::getColor($input);
-			if ($result==false)
+			if ( $result["NAME_EXT"] == "#COLOR" )
 				{
-				/* Color ist eine Hex Zahl */
-				$value=hexdec($input);
+				$extcolor=true;
+				$result=self::getColor($input);
+				if ($result==false)
+					{
+					/* Color ist eine Hex Zahl */
+					$value=hexdec($input);
+					}
+				else
+					{
+					$value=($result["red"]*128+$result["green"])*128+$result["blue"];
+					}	
+				//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 				}
-			else
-				{
-				$value=($result["red"]*128+$result["green"])*128+$result["blue"];
-				}	
-			//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
-			}
-		else
+			}	
+		if ($extcolor == false)
 			{
 			$value=(integer)$input;
 			}	
@@ -1046,13 +1051,31 @@ class Autosteuerung
 	 *
 	 * beim Evaluieren wird auch der Wert bevor er geändert wird als VALUE, VALUE#LEVEL, VALUE#COLOR erfasst
 	 *
-	 * SOURCE, OID, NAME, ON#COLOR, ON, OFF, ON#LEVEL, OFF#COLOR, OFF#LEVEL, DELAY
+	 * SOURCE, OID, NAME, ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF, DELAY, DIM, DIM#LEVEL, DIM#TIME, 
+	 * ENVELOPE, LEVEL, SPEAK, MONITOR, MUTE, IF, IFNOT
 	 *
+	 * IF: oder IFNOT:<parameter>     DARK, LIGHT, SLEEP, WAKEUP, AWAKE, ON, OFF oder einen Variablenwert 
+	 *			DARK,LIGHT sind vom Sonneauf/unteragng abhängig
+	 *			SLEEP, WAKEUP, AWAKE sind vom GutenMorgenWecker abhängig
+	 *             Auswertung Befehl beeinflusst Parameter result.switch, der das Schalten und Sprechen aktiviert oder deaktiviert
+	 *
+	 * Befehl ON und OFF haben ähnliche Funktion, aber es ist keine IF Funktion sondern entscheidet wie die Variable geschaltet werden soll
+	 *   Schaltbefehl Ausführung nur wenn bei "OnChange" die Triggervariable den Status true (ON) oder false (OFF) hat, speak funktioniert weiterhin.
+	 *   ON:true, nur ausführen wenn Trigger Variable den Status true hat (nicht zu verwechseln mit der zu schaltenden Variable !!!) oder OnUpdate als Triggerfunktion
+	 *            setzt result[ON] auf in diesem Fall true, es gibt auch false oder toggle
+	 * 
 	 * ON#LEVEL:50			zB Dimmer auf 50 stellen
 	 * DELAY:Sekunden		nach Sekunden wird das entsprechende IPS-Light Objekt ausgeschaltet, oder der DIM#LEVEL erreicht
 	 * DIM#LEVEL:0			DIM Zielwert, der in der Zeit von Delay erreicht wird, ON#LEVEL bestimmt den Ausgangswert
 	 * 
 	 *
+	 *
+	 * Es werden der Reihe nach die folgenden Befehle abgearbeitet
+	 *		ParseCommand()
+	 *		setzen von STATUS (Wert vom Trigger) und SWITCH (true) auf Defaultwerte
+	 *      EvaluateCommand()
+	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
+	 *......Abarbeitung von Delay Befehl
 	 ************************************/
 
 	function EvaluateCommand($befehl,$result=array(),$simulate=false)
@@ -1246,6 +1269,22 @@ class Autosteuerung
 				$result["COND"]=$cond;
 				switch ($cond)
 					{
+					case "ON":
+						/* nur Schalten wenn Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
+						if ($result["STATUS"] == false)
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
+							}
+						break;	
+					case "OFF":
+						/* nur Schalten wenn Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
+						if ($result["STATUS"] !== false)
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
+							}
+						break;										
 					case "LIGHT":
 						/* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
 						if (self::isitdark())
@@ -1317,6 +1356,22 @@ class Autosteuerung
 				$result["COND"]=$cond;
 				switch ($cond)
 					{
+					case "ON":
+						/* nur Schalten wenn Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
+						if ($result["STATUS"] !== false)
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
+							}
+						break;	
+					case "OFF":
+						/* nur Schalten wenn Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
+						if ($result["STATUS"] == false)
+							{
+							$result["SWITCH"]=false;						
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
+							}
+						break;					
 					case "LIGHT":				
 						/* Nicht Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
 						if ( self::isitlight( ))

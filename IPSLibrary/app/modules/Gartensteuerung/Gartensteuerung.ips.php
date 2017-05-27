@@ -146,6 +146,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 
  if ($_IPS['SENDER']=="Execute")
 	{
+	echo "=======EXECUTE====================================================\n";
+	echo "\n";
 	echo "Nachrichten Script      ID : ".$NachrichtenScriptID."\n";
 	echo "Nachrichten Log Input   ID : ".$NachrichtenInputID."\n";
 	echo "Gartensteuerung Script  ID : ".$GartensteuerungScriptID."\n";
@@ -167,9 +169,9 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
 
 	$Server=RemoteAccess_Address();
-	echo "Server : ".$Server."\n\n";
 	If ($Server=="")
 	   {
+		echo "Regen und Temperaturdaten : \n\n";		
 		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
 		$variableTempName = IPS_GetName($variableTempID);
@@ -179,6 +181,7 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 		}
 	else
 		{
+		echo "Regen und Temperaturdaten vom Server : ".$Server."\n\n";
 		$rpc = new JSONRPC($Server);
 		$archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
    	$tempwerte = $rpc->AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
@@ -302,39 +305,41 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 	If($resultEvent["EventActive"]){echo "Timer zum tatsächlichen Giessen aktiv.\n";};
 	
 	/* Beginnzeit Timer für morgen ausrechnen */
-			$dawnID = @IPS_GetObjectIDByName("Program",0);
-			$dawnID = @IPS_GetObjectIDByName("IPSLibrary",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("data",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("modules",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("Weather",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("IPSTwilight",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("Values",$dawnID);
-			//$dawnID = @IPS_GetObjectIDByName("SunriseEndLimited",$dawnID);
-			$dawnID = @IPS_GetObjectIDByName("SunriseEnd",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("Program",0);
+	$dawnID = @IPS_GetObjectIDByName("IPSLibrary",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("data",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("modules",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("Weather",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("IPSTwilight",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("Values",$dawnID);
+	//$dawnID = @IPS_GetObjectIDByName("SunriseEndLimited",$dawnID);
+	$dawnID = @IPS_GetObjectIDByName("SunriseEnd",$dawnID);
 
-			if ($dawnID == true)
-				{
-				$dawn=GetValue($dawnID);
-				$pos=strrpos($dawn,":");
-				if ($pos==false) break;
-				$hour=(integer)substr($dawn,0,$pos);
-				$minute=(integer)substr($dawn,$pos+1,10);
-				$startminuten=$hour*60+$minute-90;
-				$calcminuten=$startminuten-5;
-				}
-			else     /* keine Dämmerungszeit verfügbar */
-				{
-				$startminuten=16*60;
-				$calcminuten=$startminuten-5;
-				}
-			IPS_SetEventCyclicTimeFrom($timerDawnID,(floor($startminuten/60)),($startminuten%60),0);
-			IPS_SetEventCyclicTimeFrom($calcgiesstimeID,(floor($calcminuten/60)),($calcminuten%60),0);
+	if ($dawnID == true)
+		{
+		$dawn=GetValue($dawnID);
+		$pos=strrpos($dawn,":");
+		if ($pos==false) { $dawn="16:00";$pos=strrpos($dawn,":");}
+		$hour=(integer)substr($dawn,0,$pos);
+		$minute=(integer)substr($dawn,$pos+1,10);
+		echo "Sonnenuntergang morgen : ".$dawn."   ".$hour.":".$minute."\n";
+		$startminuten=$hour*60+$minute-90;
+		$calcminuten=$startminuten-5;
+		}
+	else     /* keine Dämmerungszeit verfügbar */
+		{
+		$startminuten=16*60;
+		$calcminuten=$startminuten-5;
+		}
+	echo "Ausgabe Minuten : ".$startminuten."  ".(floor($startminuten/60))." ".($startminuten%60)."  ".$calcminuten."\n";	
+	IPS_SetEventCyclicTimeFrom($timerDawnID,(floor($startminuten/60)),($startminuten%60),0);
+	IPS_SetEventCyclicTimeFrom($calcgiesstimeID,(floor($calcminuten/60)),($calcminuten%60),0);
 
-			$zeitdauergiessen=(GetValue($GiessTimeID)+1)*$GartensteuerungConfiguration["KREISE"];
-			$endeminuten=$startminuten+$zeitdauergiessen;
-			$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60))." für die Dauer von ".
-			    $zeitdauergiessen." Minuten bis ".(floor($endeminuten/60)).":".sprintf("%2d",($endeminuten%60))." .";
-			$log_Giessanlage->message($textausgabe);
+	$zeitdauergiessen=(GetValue($GiessTimeID)+1)*$GartensteuerungConfiguration["KREISE"];
+	$endeminuten=$startminuten+$zeitdauergiessen;
+	$textausgabe="Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60))." für die Dauer von ".
+	$zeitdauergiessen." Minuten bis ".(floor($endeminuten/60)).":".sprintf("%2d",($endeminuten%60))." .";
+	$log_Giessanlage->message($textausgabe);
 	echo $textausgabe."\n";
 
 	}
@@ -409,7 +414,16 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 		}
 	}
 
-/*************************************************************/
+/************************************************************
+ *
+ * Timer Aufruf
+ *
+ * calcgiesstime, giesstimer, timerdawn und alloff
+ *
+ * giesstimer wird abwechselnd abhängig von giesscount einmal mit pausetime (1 min) oder Giesstime (10,20min) initialisiert und am Ende nach einem Durchlauf wieder deaktiviert
+ *
+ *
+ ****************************************************************/
 
 
 if($_IPS['SENDER'] == "TimerEvent")
@@ -418,7 +432,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 	$TEventName = $_IPS['EVENT'];
    Switch ($TEventName)
 		{
-		case $giesstimerID: /* Alle 10 Minuten für Monitor Ein/Aus */
+		case $giesstimerID: /* Alle 10 oder 20 Minuten für Monitor Ein/Aus */
 			/* Alle giesdauer Minuten für Monitor Ein/Aus
             Beregner auf der Birkenseite
             (4) Beregner beim Brunnen 1 und 2
@@ -480,8 +494,8 @@ if($_IPS['SENDER'] == "TimerEvent")
             	   $GiessCount+=1;
 				   	}
 		      	}  /* if nicht ende */
-		      } /* if nicht 0 */
-		     	SetValue($GiessCountID,$GiessCount);
+				} /* if nicht 0 */
+			SetValue($GiessCountID,$GiessCount);
 			break;
 
 		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den nächsten Wert übernehmen  */

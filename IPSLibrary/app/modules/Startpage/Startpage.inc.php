@@ -17,19 +17,12 @@
 
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 
-	$configuration=startpage_configuration();
-	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
-	$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
-
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 		$moduleManager = new IPSModuleManager('Startpage',$repository);
-	}
-
-
-
-
+		}
 
 /***************************************************************************************************
  *
@@ -38,57 +31,64 @@
  *
  *******************************/
 
-
-$file=array();
-$handle=opendir ($bilderverzeichnis);
-$i=0;
-while ( false !== ($datei = readdir ($handle)) )
-	{
-	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+	$configuration=startpage_configuration();
+	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
+	$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
+	
+	$file=array();
+	$handle=opendir ($bilderverzeichnis);
+	$i=0;
+	while ( false !== ($datei = readdir ($handle)) )
 		{
-		$i++;
- 		$file[$i]=$datei;
+		if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+			{
+			$i++;
+ 			$file[$i]=$datei;
+			}
 		}
-	}
-closedir($handle);
+	closedir($handle);
 
-$check=array();
-$handle=opendir ($picturedir);
-while ( false !== ($datei = readdir ($handle)) )
-	{
-	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+	$check=array();
+	$handle=opendir ($picturedir);
+	while ( false !== ($datei = readdir ($handle)) )
 		{
-		$check[$datei]=true;
+		if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+			{
+			$check[$datei]=true;
+			}
 		}
-	}
-closedir($handle);
+	closedir($handle);
 
 
-foreach ($file as $filename)
-	{
-	if ( isset($check[$filename]) == true )
+	foreach ($file as $filename)
 		{
-		$check[$filename]=false;
-		//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+		if ( isset($check[$filename]) == true )
+			{
+			$check[$filename]=false;
+			//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+			}
+		if ( is_file($bilderverzeichnis.$filename)==true )
+			{	
+			echo "copy from ".$bilderverzeichnis.$filename." to ".$picturedir.$filename."\n";	
+			copy($bilderverzeichnis.$filename,$picturedir.$filename);
+			}
 		}
-	copy($bilderverzeichnis.$filename,$picturedir.$filename);
-	}
 
-echo "Verzeichnis für Anzeige auf Startpage:\n";	
-$i=0;
-foreach ($check as $filename => $delete)
-	{
-	if ($delete == true)
+	echo "Verzeichnis für Anzeige auf Startpage:\n";	
+	$i=0;
+	foreach ($check as $filename => $delete)
 		{
-		echo "Datei ".$filename." wird gelöscht.\n";
-		}
-	else
-		{
-		echo "   ".$filename."\n";
-		$i++;		
+		if ($delete == true)
+			{
+			echo "Datei ".$filename." wird gelöscht.\n";
+			}
+		else
+			{
+			echo "   ".$filename."\n";
+			$i++;		
+			}	
 		}	
-	}	
-echo "insgesamt ".$i." Dateien.\n";
+	echo "insgesamt ".$i." Dateien.\n";
 
 /**************************************************************************************************************************
  *

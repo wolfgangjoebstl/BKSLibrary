@@ -143,7 +143,7 @@ function evaluate_trace($CategoryIdData)
 	{
 	$categoryId_Route    = CreateCategory('TraceRouteVerlauf',   $CategoryIdData, 20);
 	for ($i=1; $i<=20;$i++)
-	   {
+		{
 		$input = CreateVariable("RoutePoint".$i,3,$categoryId_Route, $i*5, "",null,null,""  );  /* Name Type ParentID Position */
 		SetValue($input,"");
 		}
@@ -157,26 +157,26 @@ function evaluate_trace($CategoryIdData)
 	$googleroute=array();
 
 	foreach($catch as $line)
-   	{
+		{
 		$trace=(integer)substr($line,0,3);
 		if ($trace>0)
-		   {
+			{
 			/* Eine Zeile mit einer Zahl in den ersten drei Buchstaben */
 			/* entweder gibt es hier eine IP Adresse oder auch einen Namen und eine IP Adresse in eckicgen Klammern */
 			if (strpos($line,'[')==false)
-			   {
-			   /* kein Domainname */
+				{
+				/* kein Domainname */
 				$result = extractIPaddress(substr($line,32));
 				//echo $trace."***".$result."***".$line."\n";
-      	   $googleroute[$trace]["IP"]=$result;
-      	   }
-      	else
-      	   {
+      	   		$googleroute[$trace]["IP"]=$result;
+      	   		}
+      		else
+      	   		{
 				$result = extractIPaddress(substr($line,strpos($line,'[')));
-      	   $googleroute[$trace]["IP"]=$result;
-      	   $domain=substr($line,32,strpos($line,'[')-32);
-      	   $googleroute[$trace]["NAME"]=$domain;
-      	   }
+      	   		$googleroute[$trace]["IP"]=$result;
+      	   		$domain=substr($line,32,strpos($line,'[')-32);
+      	   		$googleroute[$trace]["NAME"]=$domain;
+      	   		}
 			}  /* ende trace */
 	  	}
 		//print_r($googleroute);
@@ -198,36 +198,35 @@ function evaluate_trace($CategoryIdData)
 		$i=1;
 		$categoryId_Route    = CreateCategory('TraceRouteVerlauf',   $CategoryIdData, 20);
 		foreach ($googleroute as $trace=>$ip)
-		   {
-		   $traceID=CreateVariableByName($categoryId_Route,"RoutePoint".$i,3);
-		   $i++;
-		   if (isset($ip["NAME"]))
-		      {
-			   echo "Station : ".$trace." mit ".$ip["IP"]." und ".$ip["NAME"]."\n";
-			   SetValue($traceID,$ip["IP"]." und ".$ip["NAME"]);
-			   }
+			{
+			$traceID=CreateVariableByName($categoryId_Route,"RoutePoint".$i,3);
+			$i++;
+			if (isset($ip["NAME"]))
+		   		{
+				echo "Station : ".$trace." mit ".$ip["IP"]." und ".$ip["NAME"]."\n";
+				SetValue($traceID,$ip["IP"]." und ".$ip["NAME"]);
+				}
 			else
-			   {
-			   if ($ip["IP"] != "unknown")
-			      {
+				{
+				if ($ip["IP"] != "unknown")
+			   		{
 					$url="http://iplocationtools.com/".$ip["IP"].".html";
 					$result=get_data($url);
 					$result=substr($result,strpos($result,$ip["IP"]),180);
 					$result=substr($result,0,strpos($result,"The area code"));
-				   echo "Station : ".$trace." mit ".$ip["IP"]." und ".$result."\n";
-				   SetValue($traceID,$ip["IP"]." und ".$result);
-			      }
-			   else
-			      {
-				   SetValue($traceID,"Unknown");
-			      }
-			   }
-		   }
+					echo "Station : ".$trace." mit ".$ip["IP"]." und ".$result."\n";
+					SetValue($traceID,$ip["IP"]." und ".$result);
+			    	}
+				else
+			   		{
+					$unknown="Unknown";
+					echo "  Counter ".$i."  ".$traceID."\n";
+				   	SetValue($traceID,$unknown);
+			   		}   
+				}
+			}
 
 		return($googleroute);
-
-	
-	
 	}
 
 

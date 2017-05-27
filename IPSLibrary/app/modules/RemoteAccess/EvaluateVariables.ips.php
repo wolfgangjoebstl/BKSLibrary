@@ -2,7 +2,12 @@
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
- * Guthabenvariablen am Remote Server anlegen
+ * Guthabensteuerung installiert: 
+ *     Guthabenvariablen am Remote Server anlegen
+ *
+ * OperationCenter installiert:
+ *     SysInfo Variablen anlegen
+ *     Routerdaten ebenfalls anlegen
  *
  */
 
@@ -23,11 +28,11 @@ IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleMa
 // Scriptlaufzeit erfassen, kann sehr viel länger sein da remote Server kontaktiert werden müssen
 $startexec=microtime(true);
 
-echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
 $status=RemoteAccessServerTable();
 print_r($status);
 
-echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n<br>";
 $remServer=ROID_List();
 print_r($remServer);
 
@@ -99,8 +104,8 @@ if (isset ($installedModules["Guthabensteuerung"]))
 				$parameter.=$Name.":".$result.";";
 				}
 			}
-	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 		}
 	}
@@ -160,23 +165,23 @@ if (isset ($installedModules["OperationCenter"]))
 	IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 	$OperationCenterConfig = OperationCenter_Configuration();
   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-	   {
-	   echo "   Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+		{
+		echo "Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$OperationCenterDataId);
 		if ($router_categoryId != false)
-		   {
-		   setup_variable("Download",$router['NAME'],$OperationCenterID);
-		   setup_variable("Upload",$router['NAME'],$OperationCenterID);
-  		   setup_variable("Total",$router['NAME'],$OperationCenterID);
+			{
+			setup_variable("Download",$router['NAME'],$OperationCenterID);
+			setup_variable("Upload",$router['NAME'],$OperationCenterID);
+  			setup_variable("Total",$router['NAME'],$OperationCenterID);
 			}
-   	}
+   		}
 	}
 
 /*******************************************************************/
 
 function setup_variable($name, $router, $rpc_catID)
 	{
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	$remServer=ROID_List();
 
 	$OperationCenterDataId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules'));
@@ -184,22 +189,23 @@ function setup_variable($name, $router, $rpc_catID)
 	$router_OID=@IPS_GetObjectIDByName($name,$router_categoryId);
 	echo "   folgende Ergebnisse für ".$router." in OID : ".$OperationCenterDataId." Cat-OID : ".	$router_categoryId."  Data OID : ".$router_OID."\n";
 	if (($router_categoryId != false) && ($router_OID != false))
-   	{
+		{
 	  	/* nur wenn bereits zumindest das Datenfeld angelegt wurde weitermachen */
 	  	$router_name=$router."_".$name;
     	$variabletyp=IPS_GetVariable($router_OID);
     	//print_r($variabletyp);
 		if (($variabletyp["VariableCustomProfile"]!="") || ($variabletyp["VariableProfile"]!=""))
-		   {
-			echo "    ".str_pad($router_name,30)." = ".GetValueFormatted($router_OID)."   (".date("d.m H:i",IPS_GetVariable($router_OID)["VariableChanged"]).")       \n";
+			{
+			echo "       ".str_pad($router_name,30)." = ".GetValueFormatted($router_OID)."   (".date("d.m H:i",IPS_GetVariable($router_OID)["VariableChanged"]).")       \n";
 			}
 		else
-		   {
-			echo "    ".str_pad($router_name,30)." = ".GetValue($router_OID)."   (".date("d.m H:i",IPS_GetVariable($router_OID)["VariableChanged"]).")       \n";
+			{
+			echo "       ".str_pad($router_name,30)." = ".GetValue($router_OID)."   (".date("d.m H:i",IPS_GetVariable($router_OID)["VariableChanged"]).")       \n";
 			}
 		$parameter="";
 		foreach ($remServer as $Name => $Server)
 			{
+			echo "Server : ".$Name."  Url : ".$Server["Adresse"]."\n";
 			$rpc = new JSONRPC($Server["Adresse"]);
 			$result=RPC_CreateVariableByName($rpc, $rpc_catID[$Name], $router_name, 2);
 			//$rpc->IPS_SetVariableCustomProfile($result,"Temperatur");
@@ -208,12 +214,10 @@ function setup_variable($name, $router, $rpc_catID)
 			//$rpc->IPS_ApplyChanges($RPCarchiveHandlerID);
 			$parameter.=$Name.":".$result.";";
 			}
-	   $messageHandler = new IPSMessageHandler();
-	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($router_OID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		$messageHandler = new IPSMessageHandler();
+		$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		$messageHandler->CreateEvent($router_OID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 		$messageHandler->RegisterEvent($router_OID,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-
-
 		}
 	}
 

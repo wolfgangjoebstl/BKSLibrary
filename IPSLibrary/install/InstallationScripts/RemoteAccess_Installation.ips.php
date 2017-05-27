@@ -111,11 +111,13 @@
 	 *
 	 ************************************************************************************************/
 
-	$remote->rpc_deleteProfiles();
-	$remote->rpc_showProfiles();
-	$remote->rpc_createProfiles();
+	$remote->rpc_deleteProfiles($status);
+	$remote->rpc_showProfiles($status);
+	$remote->rpc_createProfiles($status);
 
-	$remote->write_classresult();
+	$remote->write_classresult($status);
+
+	echo "Ende Profilerstellung : ".(microtime(true)-$startexec)." Sekunden \n";
 	
 	/************************************************************************************************
 	 *

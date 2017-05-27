@@ -29,21 +29,33 @@
 	 *
 	 */
 
+
 	function startpage_configuration()
 		{
 		return array(
 			"Directories"    => array (
-				"Pictures"		=> 'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/pictures/',    /* Dont use Blanks or any other character not suitable for filenames */
+				"Pictures"		=> 'C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/',    /* Dont use Blanks or any other character not suitable for filenames */
+				"Scripts"		=> 'C:/Scripts/process/',
 									),
-		
+			"Display"    => array (
+				"Weathertable"	=> 'Active', 
+									),		
 						);
-		}		
+		}			
 
 	function temperatur()
-		{ return GetValue(21416); }
+		{ 
+		//$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
+		//return $rpc->GetValue(21416);
+		return GetValue(21416); 
+		}
 
 	function innentemperatur()
-		{ return GetValue(56688); }
+		{ 
+		//$rpc = new JSONRPC("http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/");
+		//return $rpc->GetValue(56688);
+		return GetValue(56688); 
+		}
 
 
 

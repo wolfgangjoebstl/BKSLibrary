@@ -100,10 +100,10 @@
 
 
    // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $GiessAnlageID = CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessCountID=CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID = CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID=CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+   $GiessAnlageID 		= CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID			= CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID			= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
@@ -130,7 +130,7 @@
 	//echo ".....".$includefile."\n";
 
 	if ($RemoteVis_Enabled==false)
-	   { /* keine Remote Visualisierung, daher inc File für andere schreiben */
+	   { /* keine Remote Visualisierung, daher inc File fÃ¼r andere schreiben */
 		$filename=IPS_GetKernelDir()."scripts\IPSLibrary/app/modules/Gartensteuerung/Gartensteuerung.inc.php";
 		if (!file_put_contents($filename, $includefile)) {
       	  throw new Exception('Create File '.$filename.' failed!');
@@ -148,9 +148,11 @@
 	echo "\nScriptID #2    : ".$scriptIdNachrichtenverlauf;
 	echo "\n";
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront Installation
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
@@ -198,6 +200,7 @@
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
 		}
 
+/************************************************************************************************/
 
 function CreateVariable3($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	{

@@ -74,7 +74,7 @@ $showfile=rand(1,$maxcount-1);
 		case "1":  /* Full Screen ein */
 		case "0":  /* Full Screen aus */
 
-			IPS_ExecuteEX("c:/Scripts/nircmd.exe", "sendkeypress F11", false, false, 1);
+			IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
 
 			break;
 		}
@@ -83,12 +83,26 @@ $showfile=rand(1,$maxcount-1);
 SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 
 
+
+ if ($_IPS['SENDER']=="Execute")
+	{
+	echo "Execute aufgerufen:\n";
+	echo "\nKonfigurationseinstellungen:\n";
+	print_r($configuration);
+
+	IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);	
+	
+	$noweather=true;
+	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=false; } }
+	if ($noweather == false) { echo "Keine Anzeige der rechten Wettertabelle in der Startpage.\n"; }
+	}
+
 /**************************************** FUNCTIONS *********************************************************/
 
 function StartPageWrite($PageType)
 	{
 	
-	global $temperatur, $innentemperatur, $file, $showfile;
+	global $temperatur, $innentemperatur, $file, $showfile, $configuration;
 
 	$noweather=false;
 	$todayID = @IPS_GetObjectIDByName("Program",0);
@@ -117,6 +131,9 @@ function StartPageWrite($PageType)
 		$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
 		$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
 		}
+		
+	/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
+	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=true; } }
 
 	/* html file schreiben, Anfang für alle gleich --- HEADER */
 

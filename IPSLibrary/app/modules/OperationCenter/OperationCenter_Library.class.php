@@ -489,7 +489,7 @@ class OperationCenter
 		 
 		if (isset ($this->installedModules["IPSCam"]))
 			{
-			$mactable=$this->get_macipTable($subnet);
+			$mactable=$this->get_macipTable($this->subnet);
 			//print_r($mactable);
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
