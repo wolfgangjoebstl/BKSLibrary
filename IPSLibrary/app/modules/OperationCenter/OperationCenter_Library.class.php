@@ -1591,7 +1591,7 @@ class OperationCenter
 
 	/****************************************************/
 	/*
-	 * kopiert die Scriptfiles auf ein Dropboxverzeichnis um di eFiles sicherheitshalber auch immer zur Verfügung zu haben
+	 * kopiert die Scriptfiles auf ein Dropboxverzeichnis um die Files sicherheitshalber auch immer zur Verfügung zu haben
 	 * auch wenn Github nicht mehr geht
 
 	 */
@@ -1599,6 +1599,7 @@ class OperationCenter
 	function CopyScripts()
 		{
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
+		echo "CopyScripts, relevante Configuration mit Dropbox Verzeichnissen:\n";
 		print_r($this->oc_Setup);
 		$DIR_copyscriptsdropbox = $this->oc_Setup['DropboxDirectory'].IPS_GetName(0).'/';
 
@@ -1615,48 +1616,57 @@ class OperationCenter
 		echo "Alle Scriptfiles werden vom IP Symcon Scriptverzeichnis auf ".$DIR_copyscriptsdropbox." kopiert und in einen Dropbox lesbaren Filenamen umbenannt.\n";
 		echo "\n";
 
-		foreach ($alleSkripte as &$value)
+		foreach ($alleSkripte as $value)
 			{
-			$filename=IPS_GetScriptFile($value);
+			/*
+			 *  Script Files auf die Dropbox kopieren 
+			 */
+			$filename=IPS_GetScriptFile($value);	/* von hier wird kopiert -> source */
 			$name=IPS_GetName($value);
 			$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
 			$name=strtr($name, $trans);
-			$destination=$name."-".$value.".php";
-
+			$destination=$name."-".$value.".php";		/* name der als Ziel Filename verwendet wird */
+			//echo "-Copy File: ".IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
+			copy(IPS_GetKernelDir().'scripts/'.$filename,$DIR_copyscriptsdropbox.$destination);
+			
+			/* 
+			 * Includefile mit allen Filenamen und dem Pfad herstellen 
+			 */
+			$value1=$value;
+			$check="no ";
 			/* herausfinden ob ein Dateiname nur eine Nummer ist, dann vollstaendigen Namen und Struktur geben */
+			$zahl=array();
 			if (preg_match('/\d+/',$filename,$zahl)==1)
 				{
 				if ($zahl[0]==$value)
-			   	{
-				   $dir="";
-			   	while (($parent=IPS_GetParent($value))!=0)
-			      	{
-				      $Struktur=IPS_GetObject($parent);
+					{
+					$dir="";
+					while (($parent=IPS_GetParent($value1))!=0)
+						{
+						$Struktur=IPS_GetObject($parent);
 						if ($Struktur["ObjectType"]==0) {$dir=IPS_GetName($parent).'/'.$dir;}
-						$value=$parent;
+						$value1=$parent;
 						}
 					$destname=$dir.$name.".ips.php";
 					$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
 					$destname=strtr($destname, $trans);
+					$check="yes";
 					}
+				else {  $destname=$filename;  	}	
 				}
 			else
-			   {
-	   		$destname=$filename;
-		   	}
-			//echo "-Copy File: ".IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
-			copy(IPS_GetKernelDir().'scripts/'.$filename,$DIR_copyscriptsdropbox.$destination);
-
+			   {  $destname=$filename;  	}
+			echo $check." ".$count.": OID: ".$value." Verzeichnis ".$filename."   ".$destname."\n";
 			$includefile.='\''.$destname.'\','."\n";
 			$count+=1;
-	   	}
-		unset($value);
+			}
 
 		$includefile.=');'."\n".'?>';
 
 		echo "\n";
 		echo "-------------------------------------------------------------\n\n";
 		echo "Insgesamt ".$count." Scripts kopiert.\n";
+		return ($includefile);
 		}
 
 	/*
