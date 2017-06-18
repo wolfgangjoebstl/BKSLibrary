@@ -50,7 +50,7 @@
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules."\n";
+	echo "\n".$inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -63,19 +63,23 @@
  ********************************/
 
 	echo "\n";
+	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	echo "Default WFC10_ConfigId fuer IPS_light, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	foreach ($alleInstanzen as $instanz)
 		{
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
 		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r($result);
 		}
-
+	echo "\n";
+	
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -92,9 +96,9 @@
 		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
 		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
 		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
-		echo "WF10 \n";
+		echo "WF10 Administrator\n";
 		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
 		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
 		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
 		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
@@ -109,13 +113,30 @@
 	echo "\n";
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+	$WFC10User_ConfigId       = $WebfrontConfigID["User"];
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		echo "WF10 User \n";
+		echo "  Path          : ".$WFC10User_Path."\n";
+		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+		}		
 
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+	if ($Mobile_Enabled==true)
+		{	
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile \n";
+		echo "  Path          : ".$Mobile_Path."\n";		
+		}
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+	if ($Retro_Enabled==true)
+		{	
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		echo "  Path          : ".$Retro_Path."\n";		
+		}	
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -398,23 +419,32 @@
 	IPS_SetEventActive($tim1ID,true);
 		
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront Installation
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	print_r($webfront_links);
+	//print_r($webfront_links);
 	
 	if ($WFC10_Enabled)
 		{
-		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
 		
-		$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
+		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "====================================================================================\n";		
+		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		
+		//DeleteWFCItems($WFC10_ConfigId, "root");
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
-		/* jetzt ein eigenes TabPane schaffen */
-		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
+		/*************************************/
+
+		/* Neue Tab für untergeordnete Anzeigen wie eben Autosteuerung und andere schaffen */
+		echo "\nWebportal Administrator.Autosteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		EmptyCategory($categoryId_WebFrontAdministrator);
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
@@ -422,6 +452,9 @@
 		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+		
+		/*************************************/
+		
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
 		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
 		DeleteWFCItems($WFC10_ConfigId, $tabItem);
@@ -430,7 +463,7 @@
 		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
-
+																																								
 		// Left Panel
 		foreach ($webfront_links as $OID => $webfront_link)
 		   {
@@ -450,20 +483,71 @@
 	if ($WFC10User_Enabled)
 		{
 		echo "\nWebportal User installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
+		$categoryId_UserWebFront         = CreateCategoryPath($WFC10User_Path);
 		}
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+		$categoryId_MobileWebFront         = CreateCategoryPath($Mobile_Path);
 		}
 
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		$categoryId_RetroWebFront         = CreateCategoryPath($Retro_Path);
 		}
+
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront Installation für IPS Light wenn User konfiguriert
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+	$moduleManagerLight = new IPSModuleManager('IPSLight');
+
+	$moduleManagerLight->VersionHandler()->CheckModuleVersion('IPS','2.50');
+	$moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.2');
+	$moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
+	$moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSComponent','2.50.1');
+	$moduleManagerLight->VersionHandler()->CheckModuleVersion('IPSMessageHandler','2.50.1');
+
+	IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");
+	IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");
+	IPSUtils_Include ("IPSLight_Configuration.inc.php",  "IPSLibrary::config::modules::IPSLight");
+
+	$WFC10User_Enabled    		= $moduleManagerLight->GetConfigValue('Enabled', 'WFC10User');
+	$WFC10User_ConfigId       	= $WebfrontConfigID["User"];
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_Path    	 	= $moduleManagerLight->GetConfigValue('Path', 'WFC10User');
+		$WFC10User_Enabled        	= $moduleManagerLight->GetConfigValue('Enabled', 'WFC10');
+		$WFC10User_ConfigId       	= $moduleManagerLight->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+		$WFC10User_Path           	= $moduleManagerLight->GetConfigValue('Path', 'WFC10');
+		$WFC10User_TabPaneItem    	= $moduleManagerLight->GetConfigValue('TabPaneItem', 'WFC10');
+		$WFC10User_TabPaneParent  	= $moduleManagerLight->GetConfigValue('TabPaneParent', 'WFC10');
+		$WFC10User_TabPaneName    	= $moduleManagerLight->GetConfigValue('TabPaneName', 'WFC10');
+		$WFC10User_TabPaneIcon    	= $moduleManagerLight->GetConfigValue('TabPaneIcon', 'WFC10');
+		$WFC10User_TabPaneOrder   	= $moduleManagerLight->GetConfigValueInt('TabPaneOrder', 'WFC10');		
+		echo "WF10 User \n";
+		echo "  Path          : ".$WFC10User_Path."\n";
+		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
+		//echo "  TabItem       : ".$WFC10User_TabItem."\n";
+		//echo "  TabName       : ".$WFC10User_TabName."\n";
+		//echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
+		//echo "  TabOrder      : ".$WFC10User_TabOrder."\n";		
+		}	
+
+
+
+
 
 /***************************************************************************************/
 

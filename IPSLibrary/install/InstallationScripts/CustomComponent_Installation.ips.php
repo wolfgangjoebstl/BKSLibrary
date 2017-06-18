@@ -16,7 +16,6 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
 
-	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -58,8 +57,8 @@
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
 	/* Webfront GUID herausfinden */
-	
-	echo "\n";
+ 	read_wfc();	
+
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	foreach ($alleInstanzen as $instanz)
@@ -67,18 +66,12 @@
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-		//echo "    ".IPS_GetConfiguration($instanz)."\n";
-		//$config=json_decode(IPS_GetConfiguration($instanz));
-		//$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
-		//print_r($config);
-		
-		//$ItemList = WFC_GetItems($instanz);
-		//print_r($ItemList);
-		
-		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r($result);
+		if (false)
+			{
+			$config=json_decode(IPS_GetConfiguration($instanz));
+			$configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+			print_r($configItems);	
+			}	
 		}
 	//print_r($WebfrontConfigID);
 	
@@ -143,7 +136,7 @@
 		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
 		echo "WF10 Administrator\n";
 		echo "  Path          : ".$WFC10_Path."\n";
-		echo "  ConfigID      : ".$WFC10_ConfigId."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";
 		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
 		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
 		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
@@ -173,7 +166,7 @@
 		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
 		echo "WF10 User \n";
 		echo "  Path          : ".$WFC10User_Path."\n";
-		echo "  ConfigID      : ".$WFC10User_ConfigId."\n";
+		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
 		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
 		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
 		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
@@ -189,17 +182,28 @@
 	if ($Mobile_Enabled==true)
 	   	{
 		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile \n";
+		echo "  Path          : ".$Mobile_Path."\n";
 		}
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	if ($Retro_Enabled==true)
 	   	{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		echo "  Path          : ".$Retro_Path."\n";		
 		}
+	
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront Variablen für Darstellung evaluieren
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 		
 	/* Links für Webfront identifizieren, alle Verzeichnisse in CustomComponents Data /core/IPSComponent Verzeichnis 
 	 *
 	 * Trennung in Kategorien erfolgt durch - Zeichen nach Auswertung und Nachrichten
 	 */
+	 
 	echo "\nLinks für Webfront Administrator und User identifizieren :\n";
 	$webfront_links=array();
 	$Category=IPS_GetChildrenIDs($CategoryIdData);
@@ -214,39 +218,42 @@
 	   		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
 	   		}
 	   	}
-	//print_r($webfront_links);
+	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
+	 *
+	 */
+	print_r($webfront_links);
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
-
-
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront Installation
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
 	if ($WFC10_Enabled)
 		{
-		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
 
-		$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
+		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   0, IPS_GetName(0).'-Admin', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		//DeleteWFCItems($WFC10_ConfigId, "root");
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
-		
-		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
 
-		echo "\nWebportal LocalAccess TabPane installieren in: ".$WFC10_Path." \n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$WFC10_TabPaneItem." ".$WFC10_TabPaneParent." ".$WFC10_TabPaneOrder." ".$WFC10_TabPaneIcon."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTP", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTP",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
+		/*************************************/
+		
+		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
+		echo "\nWebportal Administrator.LocalAccess TabPane Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
-		//EmptyCategory($categoryId_WebFrontAdministrator);
 		
 		foreach ($webfront_links as $Name => $webfront_group)
 		   {
@@ -273,6 +280,9 @@
 				{
 				foreach ($webfront_link as $OID => $link)
 					{
+					/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+			 		 * Auswertung kommt nach links und Nachrichten nach rechts
+			 		 */					
 					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
 					if ($Group=="Auswertung")
 				 		{
@@ -290,18 +300,21 @@
 		}
 	else
 	   {
-	   /* Admin not enabled, alles loeschen */
-		DeleteWFCItems($WFC10_ConfigId, "HouseTP");
+	   /* Admin not enabled, alles loeschen 
+	    * leider weiss niemand so genau wo diese Werte gespeichert sind. Schuss ins Blaue mit Fehlermeldung, da Variablen gar nicht definiert sind
+		*/
+	   DeleteWFCItems($WFC10_ConfigId, "HouseTP");
+	   EmptyCategory($categoryId_WebFrontAdministrator);		
 	   }
 
 	if ($WFC10User_Enabled)
 		{
 		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
 
-		$categoryId_WebFront=CreateCategoryPath("Visualization.WebFront.User");
+		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
 		echo "====================================================================================\n";
-		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_WebFront." ".IPS_GetName($categoryId_WebFront)."\n";
-		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_WebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
+		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		@WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
@@ -313,9 +326,11 @@
 		CreateWFCItemTabPane   ($WFC10User_ConfigId, "HouseTP", $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, "", "HouseRemote");     /* macht das Haeuschen in die oberste Leiste */
 		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, "HouseTP",  20, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);      /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
-		$categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
-		//EmptyCategory($categoryId_WebFrontAdministrator);
+		/*************************************/
 
+		$categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
+		IPS_SetHidden($categoryId_WebFrontUser,true);
+		
 		foreach ($webfront_links as $Name => $webfront_group)
 		   {
 			$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontUser, 10);
@@ -328,7 +343,7 @@
 			echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10User_TabPaneItem."\n";
 
 			CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem, $WFC10User_TabPaneItem, 0, $Name, "");
-			CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, false /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 			foreach ($webfront_group as $Group => $webfront_link)
 				 {
@@ -346,21 +361,24 @@
 		}
 	else
 	   {
-	   /* User not enabled, alles loeschen */
-		DeleteWFCItems($WFC10User_ConfigId, "HouseTP");
+	   /* User not enabled, alles loeschen 
+	    * leider weiss niemand so genau wo diese Werte gespeichert sind. Schuss ins Blaue mit Fehlermeldung, da Variablen gar nicht definiert isnd
+		*/
+	   DeleteWFCItems($WFC10User_ConfigId, "HouseTP");
+	   EmptyCategory($categoryId_WebFrontUser);
 	   }
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
+		$categoryId_MobileWebFront         = CreateCategoryPath($Mobile_Path);
+		IPS_SetHidden($categoryId_MobileWebFront,true);	
+			
 		foreach ($webfront_links as $Name => $webfront_group)
 		   {
-			$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFront, 10);
+			$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_MobileWebFront, 10);
 			EmptyCategory($categoryId_WebFrontTab);
 			echo "Kategorien erstellt, Main für ".$Name." : ".$categoryId_WebFrontTab."\n";
-
-			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 			foreach ($webfront_group as $Group => $webfront_link)
 				 {
@@ -384,7 +402,7 @@
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
+		$categoryId_RetroWebFront         = CreateCategoryPath($Retro_Path);
 		}
 	else
 	   {
@@ -728,6 +746,11 @@
 			}  /* Ende isset Feuchtigkeitswert */
 		} /* Ende foreach */
 
+	/****************************************************************************************************************
+	 *
+	 *                                      Functions
+	 *
+	 ****************************************************************************************************************/
 
 
 ?>

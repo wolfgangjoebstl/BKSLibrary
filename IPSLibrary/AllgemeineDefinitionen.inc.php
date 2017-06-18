@@ -2638,6 +2638,167 @@ function checkProcess($processStart)
 	return($processStart);
 	}
 
+/************************************************************************************/
+
+function write_wfc($input,$indent)
+	{
+	if (sizeof($input) > 0)
+		{
+		foreach ($input as $index => $entry)
+			{
+			if ( $index != "." )
+				{
+				echo $indent.$entry["."]."\n";
+				write_wfc($entry,$indent."   ");
+				}
+			}
+		}	
+	}
+
+/************************************************************************************/
+
+function search_wfc($input,$search,$tree)
+	{
+	$result="";
+	if (sizeof($input) > 0)
+		{
+		foreach ($input as $index => $entry)
+			{
+			if ( $index != "." )
+				{
+				//echo $tree.".".$index."\n";
+				if ($entry["."] == $search) 
+					{ 
+					//echo "search_wfc: ".$search." gefunden in Tree : ".$tree.".\n"; 
+					return($tree.".");
+					}
+				else 
+					{	
+					$result=search_wfc($entry,$search,$tree.".".$index);
+					if ( $result != "") { return($result); }
+					}
+				}
+			}
+		}
+	else 
+		{
+		//echo "Search Array Size ".sizeof($input)."\n";
+		}
+	return($result);						
+	}
+
+function read_wfc()
+	{
+	//echo "\n";
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		//echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+		If (true)	/* Debug der aktuellen detaillierten Einträge */
+			{
+			//echo "    ".IPS_GetConfiguration($instanz)."\n";
+			$config=json_decode(IPS_GetConfiguration($instanz));
+			$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+			//print_r($config);
+		
+			$ItemList = WFC_GetItems($instanz);
+			$wfc_tree=array();
+			foreach ($ItemList as $entry)
+				{
+				if ($entry["ParentID"] != "")
+					{
+					//echo "WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
+					$result = search_wfc($wfc_tree,$entry["ParentID"],"");
+					//echo "search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
+					if ($result == "")
+						{
+						$wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
+						$wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
+						$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+						//echo "-> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+						}
+					else
+						{
+						$tree=explode(".",substr($result,1,strlen($result)-2));
+						if ($tree) 
+							{
+						 	//print_r($tree); 
+							if ($tree[0]=="")
+								{
+								$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+								//echo "-> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
+								}
+							else	
+								{
+								//echo "Tiefe : ".sizeof($tree)." \n";
+								switch (sizeof($tree))
+									{
+									case 1:
+										$wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+										//echo "-> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+										break;
+									case 2:
+										$wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+										//echo "-> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+										break;
+									case 3:
+										$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+										//echo "-> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+										break;
+									case 4:
+										$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+										//echo "-> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+										break;
+									default:
+										echo "Fehler, groessere Tiefe als programmiert.\n";																		
+									}
+								}								
+							}	
+						}						
+					/* Routine sucht nach ParentID Eintrag, schreibt Struktur mit unter der dieser Eintrag gefunden wurde */
+					/*$found="";
+					foreach ($wfc_tree as $key => $wfc_entry)
+						{
+						$skey=$wfc_entry["."]; 
+						echo $skey." ".sizeof($wfc_entry)." : ";
+						foreach ($wfc_entry as $index => $result)
+							{
+							if ($result["."] == $entry["ParentID"]) 
+								{ 
+								$found=$result["."]; 
+								$fkey=$skey; 
+								echo "-> ".$fkey."/".$found." found.\n";break;
+								}
+							}
+						}
+					if ($found != "")
+						{	
+						//print_r($wfc_tree);
+						echo "Create : ".$fkey."/".$entry["ParentID"]."/".$entry["ID"]."\n";
+						$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]=array();
+						$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+						}
+					*/
+					}
+				else
+					{
+					//echo "WFC Eintrag:    ".$entry["ID"]." (Eintrag)\n";
+					}
+				}
+			echo "\n================ WFC Tree ".IPS_GetName($instanz)."=====\n";	
+			//print_r($wfc_tree);
+			write_wfc($wfc_tree,"");	
+			//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+			/* alle Instanzen dargestellt */
+			//echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+			//print_r($result);
+			}
+		}
+	}
+		
 /******************************************************************
 
 Moudule und Klassendefinitionen

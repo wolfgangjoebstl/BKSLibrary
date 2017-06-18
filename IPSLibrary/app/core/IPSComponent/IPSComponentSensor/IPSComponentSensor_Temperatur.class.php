@@ -53,6 +53,13 @@
 				}
 			}
 	
+	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}
+			
+					
 		/**
 		 * @public
 		 *
@@ -66,7 +73,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   	IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+	   		IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			$log=new Temperature_Logging($variable);
 			$result=$log->Temperature_LogValue();
@@ -78,11 +85,11 @@
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            if (count($para)==2)
-   	            {
+	            	if (count($para)==2)
+   	            		{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
-						   {
+						   	{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
@@ -92,7 +99,7 @@
 						}
 					}
 				}
-		}
+			}
 
 		/**
 		 * @public

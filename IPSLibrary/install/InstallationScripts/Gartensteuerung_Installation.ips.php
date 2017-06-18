@@ -12,15 +12,17 @@
 	 * @version
 	 *  Version 2.50.44, 07.08.2014<br/>
 	 **/
-	 
-	//$repository = 'https://10.0.1.6/user/repository/';
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
+		 
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -40,19 +42,81 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+	/* Webfront GUID herausfinden */
+	echo "\n";
+ 	//read_wfc();
+	
+	echo "\n=============================================\n";
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+		}
+
+	/* 
+	 *  neue Webfronts werden nicht mehr angelegt, wir gehen davon aus dass Administrator und User bereits bestehen 
+	 *  zusaetzliche Webfront Variablen werden nicht ausgewertet. 
+	 */
+	echo "\n";
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-
+	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];	
+	if ($WFC10_Enabled==true)
+		{
+      	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
+		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
+		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
+		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
+		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
+		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
+		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
+		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
+		echo "WF10 Administrator\n";
+		echo "  Path          : ".$WFC10_Path."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
+		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
+		echo "  TabItem       : ".$WFC10_TabItem."\n";
+		echo "  TabName       : ".$WFC10_TabName."\n";
+		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
+		echo "  TabOrder      : ".$WFC10_TabOrder."\n";		
+		}
+		
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+	$WFC10User_ConfigId       = $WebfrontConfigID["User"];
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		echo "WF10 User \n";
+		echo "  Path          : ".$WFC10User_Path."\n";
+		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+		}		
 
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+	if ($Mobile_Enabled==true)
+		{	
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile \n";
+		echo "  Path          : ".$Mobile_Path."\n";		
+		}
 	
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+	if ($Retro_Enabled==true)
+		{	
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		echo "  Path          : ".$Retro_Path."\n";		
+		}	
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -72,38 +136,43 @@
 	$categoryid  = IPSUtil_ObjectIDByPath('Program._include');
 	CreateScript($scriptName, $file, $categoryid);
 	*/
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Variablen für Modul anlegen
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
-	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung', $CategoryIdData, 10);
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Garten',   $CategoryIdData, 20);
+	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
+	$categoryId_Nachrichten    = CreateCategory('Gartensteuerung-Nachrichten',   $CategoryIdData, 20);
 	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdNachrichtenverlauf   = IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 
-   $includefile="<?";
-   //$includefile="";
-   $includefile.="\n".'function ParamList() {
+   	$includefile="<?";
+	/*  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht */
+	$includefile.="\n".'function ParamList() {
 		return array('."\n";
 	$name="GiessAnlage";
 	
 	$pname="GiessAnlagenProfil";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   //Var-Profil erstellen
+	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   IPS_SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   //IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   echo "Profil erstellt;\n";
+	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil erstellt;\n";
 		}
 
-
-   // CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   $GiessAnlageID 		= CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessCountID			= CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+   	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+   	$GiessAnlageID 		= CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID			= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
@@ -150,33 +219,101 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
+	 * WebFront Variablen für Darstellung evaluieren
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	 
+	/* Links für Webfront identifizieren, alle Verzeichnisse in CustomComponents Data /core/IPSComponent Verzeichnis 
+	 *
+	 * Trennung in Kategorien erfolgt durch - Zeichen nach Auswertung und Nachrichten
+	 */
+	 
+	echo "\nLinks für Webfront Administrator und User identifizieren :\n";
+	$webfront_links=array();
+	$Category=IPS_GetChildrenIDs($CategoryIdData);
+	foreach ($Category as $CategoryId)
+		{
+		echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		$Params = explode("-",IPS_GetName($CategoryId)); 
+		$SubCategory=IPS_GetChildrenIDs($CategoryId);
+		foreach ($SubCategory as $SubCategoryId)
+	   		{
+			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
+	   		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+	   		}
+	   	}
+	//print_r($webfront_links);
+	
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
 	 * WebFront Installation
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	 
 	if ($WFC10_Enabled)
 		{
-		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryId_WebFront,  10);
-		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryId_WebFront,  20);
-		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryId_WebFront,  30);
-		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryId_WebFront,  40);
-		CreateLinkByDestination('Nachricht_Zeile01', $zeile1,    $categoryId_WebFront,  110);
-		CreateLinkByDestination('Nachricht_Zeile02', $zeile2,    $categoryId_WebFront,  120);
-		CreateLinkByDestination('Nachricht_Zeile03', $zeile3,    $categoryId_WebFront,  130);
-		CreateLinkByDestination('Nachricht_Zeile04', $zeile4,    $categoryId_WebFront,  140);
-		CreateLinkByDestination('Nachricht_Zeile05', $zeile5,    $categoryId_WebFront,  150);
-		CreateLinkByDestination('Nachricht_Zeile06', $zeile6,    $categoryId_WebFront,  160);
-		CreateLinkByDestination('Nachricht_Zeile07', $zeile7,    $categoryId_WebFront,  170);
-		CreateLinkByDestination('Nachricht_Zeile08', $zeile8,    $categoryId_WebFront,  180);
-		CreateLinkByDestination('Nachricht_Zeile09', $zeile9,    $categoryId_WebFront,  190);
-		CreateLinkByDestination('Nachricht_Zeile10', $zeile10,    $categoryId_WebFront,  200);
-		CreateLinkByDestination('Nachricht_Zeile11', $zeile11,    $categoryId_WebFront,  210);
-		CreateLinkByDestination('Nachricht_Zeile12', $zeile12,    $categoryId_WebFront,  220);
-		CreateLinkByDestination('Nachricht_Zeile13', $zeile13,    $categoryId_WebFront,  230);
-		CreateLinkByDestination('Nachricht_Zeile14', $zeile14,    $categoryId_WebFront,  240);
-		CreateLinkByDestination('Nachricht_Zeile15', $zeile15,    $categoryId_WebFront,  250);
-		CreateLinkByDestination('Nachricht_Zeile16', $zeile16,    $categoryId_WebFront,  260);
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
+
+		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "====================================================================================\n";
+		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+
+		//DeleteWFCItems($WFC10_ConfigId, "root");
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
+						
+		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		//echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$WFC10_TabPaneItem." ".$WFC10_TabPaneParent." ".$WFC10_TabPaneOrder." ".$WFC10_TabPaneIcon."\n";
+		//CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTP", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
+		//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTP",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
+
+		/*************************************/
+
+		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
+		echo "\nWebportal Administrator.Gartensteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
+		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+		EmptyCategory($categoryId_WebFrontAdministrator);
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
+		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+		/* in der normalen Viz Darstellung verstecken */
+		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+
+		/*************************************/
+
+		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
+		echo "Webfront ".$WFC10_ConfigId." löscht TabItem :".$tabItem."\n";
+		//DeleteWFCItems($WFC10_ConfigId, $tabItem);
+		
+		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon); /* Autosteuerung Haeuschen */
+		
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryIdLeft,  10);
+		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryIdLeft,  20);
+		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  30);
+		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryIdLeft,  40);
+		CreateLinkByDestination('Nachricht_Zeile01', $zeile1,    $categoryIdRight,  110);
+		CreateLinkByDestination('Nachricht_Zeile02', $zeile2,    $categoryIdRight,  120);
+		CreateLinkByDestination('Nachricht_Zeile03', $zeile3,    $categoryIdRight,  130);
+		CreateLinkByDestination('Nachricht_Zeile04', $zeile4,    $categoryIdRight,  140);
+		CreateLinkByDestination('Nachricht_Zeile05', $zeile5,    $categoryIdRight,  150);
+		CreateLinkByDestination('Nachricht_Zeile06', $zeile6,    $categoryIdRight,  160);
+		CreateLinkByDestination('Nachricht_Zeile07', $zeile7,    $categoryIdRight,  170);
+		CreateLinkByDestination('Nachricht_Zeile08', $zeile8,    $categoryIdRight,  180);
+		CreateLinkByDestination('Nachricht_Zeile09', $zeile9,    $categoryIdRight,  190);
+		CreateLinkByDestination('Nachricht_Zeile10', $zeile10,    $categoryIdRight,  200);
+		CreateLinkByDestination('Nachricht_Zeile11', $zeile11,    $categoryIdRight,  210);
+		CreateLinkByDestination('Nachricht_Zeile12', $zeile12,    $categoryIdRight,  220);
+		CreateLinkByDestination('Nachricht_Zeile13', $zeile13,    $categoryIdRight,  230);
+		CreateLinkByDestination('Nachricht_Zeile14', $zeile14,    $categoryIdRight,  240);
+		CreateLinkByDestination('Nachricht_Zeile15', $zeile15,    $categoryIdRight,  250);
+		CreateLinkByDestination('Nachricht_Zeile16', $zeile16,    $categoryIdRight,  260);
 		}
 		
 	if ($WFC10User_Enabled)
