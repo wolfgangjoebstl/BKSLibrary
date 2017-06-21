@@ -30,6 +30,55 @@
 	 *
 	 */
 
+	function getGartensteuerungConfiguration()
+	   {
+		$Configuration = array(
+			"KREISE" => 6,
+			"TEMPERATUR-MITTEL" => 19,    /* Wenn Aussentemperatur im Mittel ueber diesen Wert UND Niederschlag kleiner REGN48H dann Giessen */
+			"TEMPERATUR-MAX" => 28,			/* wenn es in den letzten  10 Tage weniger als REGEN10T geregnet hat ODER die Maiximaltemperatur den Wert TEMPERATUR-MAX ueberschreitet doppelt so lange giessen */
+			"REGEN48H" => 3,              /* Wenn Aussentemperatur im Mittel ueber TEMPERATUR-MITTEL UND Niederschlag kleiner diesen Wert dann Giessen */
+			"REGEN10T" => 20,             /* wenn es in den letzten  10 Tage weniger als REGEN10T geregnet hat ODER die Maximaltemperatur den Wert TEMPERATUR-MAX ueberschreitet doppelt so lange giessen */
+			"DEBUG" => false,
+			"PAUSE" => 2,					/* Pause zwischen den Beregnungszyklen, um dem Gardena Umschalter Zeit zur Entspannung zu geben */
+			"KREIS1" => "Kreis1:Einfahrt",
+			"KREIS2" => "Kreis2:Nord",
+			"KREIS3" => "Kreis3:Sued",
+			"KREIS4" => "Kreis4:Ost",
+			"KREIS5" => "Kreis5:Brunnen",
+			"KREIS6" => "Kreis6:West"
+			);
+		return $Configuration;
+		}
+
+	function set_gartenpumpe($value)
+	   {
+		$gartenpumpeID=37228 /*[Hardware\Homematic\Gartenpumpe]*/;
+		$Server=RemoteAccess_Address();
+		//echo "Server : ".$Server."\n\n";
+		If ($Server=="")
+		   {
+			$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",$value);
+			}
+		else
+			{
+			$rpc = new JSONRPC($Server);
+			$failure=$rpc->HM_WriteValueBoolean($gartenpumpeID,"STATE",$value);
+			}
+		return $failure;
+	   }
+
+	function get_raincounterID()
+	   /* Regenzaehler mit Vorwerten je nach RemoteAccess_Adress lokal oder Remote*/
+		{ return 20417 /*[Hardware\Homematic\Wetterstation\RAIN_COUNTER]*/; }
+
+	function get_aussentempID()
+	   /* Aussentemperatur mit Vorwerten je nach RemoteAccess_Adress lokal oder Remote */
+		{ return 41941 /*[Program\IPSLibrary\data\core\IPSComponent\Temperatur-Auswertung\Gesamtauswertung_Temp_Aussen]*/; }
+
+	function RemoteAccess_Address()
+	   /* Liest Werte von einem entfernten Gerät ein, empty wenn nicht */
+		//{ return 'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/';	}
+		{ return "";	}
 
 
 

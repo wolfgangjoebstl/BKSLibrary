@@ -139,21 +139,10 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Variablen für Modul anlegen
+	 * Variablen Profile für Modul anlegen
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
-	
-	$categoryId_Gartensteuerung  = CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
-	$categoryId_Nachrichten    = CreateCategory('Gartensteuerung-Nachrichten',   $CategoryIdData, 20);
-	$scriptIdGartensteuerung   = IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
-	$scriptIdNachrichtenverlauf   = IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 
-   	$includefile="<?";
-	/*  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht */
-	$includefile.="\n".'function ParamList() {
-		return array('."\n";
-	$name="GiessAnlage";
-	
 	$pname="GiessAnlagenProfil";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
@@ -165,15 +154,53 @@
   	   	IPS_SetVariableProfileAssociation($pname, 1, "EinmalEin", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
   	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil erstellt;\n";
+	   	echo "Profil Giessanlagen erstellt;\n";
 		}
 
-   	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   	$GiessAnlageID 		= CreateVariable3($name, 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Gartensteuerung, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Gartensteuerung, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
-	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$pname="GiessKreisProfil";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   	//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   	IPS_SetVariableProfileValues($pname, 1, 6, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 1, "1", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 2, "2", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 3, "3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+	   	IPS_SetVariableProfileAssociation($pname, 4, "4", "", 0xF6E3CE); //P-Name, Value, Assotiation, Icon, Color=orange
+  	   	IPS_SetVariableProfileAssociation($pname, 5, "5", "", 0x2EFE64); //P-Name, Value, Assotiation, Icon, Color=grassgruen
+  	   	IPS_SetVariableProfileAssociation($pname, 6, "6", "", 0xB40486); //P-Name, Value, Assotiation, Icon, Color=violett		
+	   	echo "Profil GiessKreis erstellt;\n";
+		}
 
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Variablen für Modul anlegen
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	
+	$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
+	$categoryId_Nachrichten    		= CreateCategory('Gartensteuerung-Nachrichten',   $CategoryIdData, 20);
+	$categoryId_Register    		= CreateCategory('Gartensteuerung-Register',   $CategoryIdData, 200);
+	
+	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
+	$scriptIdNachrichtenverlauf   	= IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
+
+   	$includefile="<?";
+	/*  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht */
+	$includefile.="\n".'function ParamList() {
+		return array('."\n";
+		
+   	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+   	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdGartensteuerung,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10, "GiessKreisProfil",$scriptIdGartensteuerung,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKreisInfoID	= CreateVariable3("GiessKreisInfo",3,$categoryId_Gartensteuerung,  40, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+	$GiessCountID		= CreateVariable3("GiessCount",1,$categoryId_Register, 10, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessPauseID 		= CreateVariable3("GiessPause",1,$categoryId_Register, 20, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Register, 200, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
 	$input = CreateVariable3("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -208,8 +235,8 @@
 		}
 		
 	// Add Scripts, they have auto install
-	IPS_RunScript($scriptIdGartensteuerung);
-	IPS_RunScript($scriptIdNachrichtenverlauf);
+	//IPS_RunScript($scriptIdGartensteuerung);
+	//IPS_RunScript($scriptIdNachrichtenverlauf);
 	
 	echo "\nData Kategorie : ".$CategoryIdData;
 	echo "\nApp  Kategorie : ".$CategoryIdApp;
@@ -243,6 +270,48 @@
 	   		}
 	   	}
 	//print_r($webfront_links);
+
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Timer Installation
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+
+	$eid1 = @IPS_GetEventIDByName("Timer1", $scriptIdGartensteuerung);
+	if ($eid1==false)
+		{
+		$eid1 = IPS_CreateEvent(1);
+		IPS_SetParent($eid1, $scriptIdGartensteuerung);
+		IPS_SetName($eid1, "Timer1");
+		IPS_SetEventCyclic($eid1, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 10 /* Alle 10 Minuten */);
+		}
+
+	$eid2 = @IPS_GetEventIDByName("Timer2", $scriptIdGartensteuerung);
+	if ($eid2==false)
+		{
+		$eid2 = IPS_CreateEvent(1);
+		IPS_SetParent($eid2, $scriptIdGartensteuerung);
+		IPS_SetName($eid2, "Timer2");
+		IPS_SetEventCyclicTimeFrom($eid2,22,0,0);  /* immer um 22:00 */
+		}
+	
+	$eid3 = @IPS_GetEventIDByName("Timer3", $scriptIdGartensteuerung);
+	if ($eid3==false)
+		{
+		$eid3 = IPS_CreateEvent(1);
+		IPS_SetParent($eid3, $scriptIdGartensteuerung);
+		IPS_SetName($eid3, "Timer3");
+		}
+
+	$eid4 = @IPS_GetEventIDByName("Timer4", $scriptIdGartensteuerung);
+	if ($eid4==false)
+		{
+		$eid4 = IPS_CreateEvent(1);
+		IPS_SetParent($eid4, $scriptIdGartensteuerung);
+		IPS_SetName($eid4, "Timer4");
+		}
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -295,9 +364,14 @@
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryIdLeft,  10);
-		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryIdLeft,  20);
-		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  30);
+		CreateLinkByDestination('GiessKreis', $GiessKreisID, $categoryIdLeft,  20);
 		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryIdLeft,  40);
+		CreateLinkByDestination("GiessKreisInfo", $GiessKreisInfoID,    $categoryIdLeft,  50);
+				
+		CreateLinkByDestination('GiessCount', $GiessCountID,    $categoryIdLeft,  120);
+		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  130);
+		CreateLinkByDestination("GiessPause", $GiessPauseID ,    $categoryIdLeft,  140);
+		
 		CreateLinkByDestination('Nachricht_Zeile01', $zeile1,    $categoryIdRight,  110);
 		CreateLinkByDestination('Nachricht_Zeile02', $zeile2,    $categoryIdRight,  120);
 		CreateLinkByDestination('Nachricht_Zeile03', $zeile3,    $categoryIdRight,  130);
