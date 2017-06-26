@@ -13,6 +13,8 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
+
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
@@ -32,6 +34,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
 		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		}
+
+	$config=Watchdog_Configuration();
+	if (isset($config["Timing"]["IgnoreError"])) { $timeout = $config["Timing"]["IgnoreError"]; } else {$timeout = 60; }
 
 	//Hier wird der Dateiname der Alive-Datei festgelegt.
 	// Er ist standardmäßig auf "alive.ips" gesetzt und muss, falls geändert, im
@@ -81,7 +86,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		$result_num=time()-strtotime($result);		
 		//echo "Monitor Datei vorhanden, Wert ist : ".$result." (".strtotime($result).") ".$result_num." Sekunden seit dem letzten Mal vergangen\n";
 		}
-	if ($result_num > 60)
+	if ($result_num > $timeout)
 	   {
 		echo "Ergebnis \"".$result."\" ".$result_num." Sekunden\n";
     	if (isset ($installedModules["OperationCenter"]))
