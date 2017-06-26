@@ -202,7 +202,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	 					/* Routine funktioniert nur wenn der ganze Verrechnungsdatensatz ausgelesen wird
 		 					Dauer ca. 60 Sekunden
 	 					*/
-						SetValue($ReceiveTime,time());
+						SetValue($ReceiveTimeID,time());
 						anfrage('Fehlerregister','F.F(',')',$content,3,'',$arhid,$zaehlerid);
 						anfrage('Wirkleistung','1.7.0(','*kW)',$content,2,'~Power',$arhid,$zaehlerid);
 						anfrage('Strom L1','31.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);

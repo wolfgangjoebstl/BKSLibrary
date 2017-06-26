@@ -28,6 +28,7 @@
 		private $instanceId;
 		private $supportsOnTime;
 		private $installedmodules;
+		private $remoteOID;		
 			
 		/**
 		 * @public
@@ -40,7 +41,7 @@
 		public function __construct($var1, $instanceId=0, $supportsOnTime=true) {
 			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			$this->supportsOnTime = $supportsOnTime;
-			$this->RemoteOID    = $var1;
+			$this->remoteOID    = $var1;
 			echo "InstanceID gesucht : ".$this->instanceId."\n";
 			
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");

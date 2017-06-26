@@ -1275,7 +1275,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		$ergebnistab_energie="";
 		if (isset($installedModules["Amis"])==true)
-		   {
+			{
 			/* nur machen wenn AMIS installiert */
 		
 			$ergebnistab_energie="";
@@ -1287,21 +1287,23 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$MeterConfig = get_MeterConfiguration();
 			foreach ($MeterConfig as $meter)
 				{
-	         $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	         $meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-   	      /* ID von Wirkenergie bestimmen */
-				if ($meter["TYPE"]=="Amis")
-				   {
-					$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
-					//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-					//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-					$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
-			   	}
-				if ($meter["TYPE"]=="Homematic")
-			   	{
-				   $variableID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			   	}
-
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				$meterdataID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				/* ID von Wirkenergie bestimmen */
+				switch ( strtoupper($meter["TYPE"]) )
+					{	
+					case "AMIS":
+						$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
+						//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+						//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+						$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+						break;
+					case "HOMEMATIC":
+					case "REGISTER":	
+					default:
+						$variableID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+						break;
+					}	
 				/* Energiewerte der ketzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
 				$jetzt=time();
 				$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
