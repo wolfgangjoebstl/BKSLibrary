@@ -15,17 +15,21 @@
 */
 
 IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+
+$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+$configuration=startpage_configuration();
 
 if (isset($_IPS['Monitor']))
 	{
    if ($_IPS['Monitor']=="on")
 		{
-		IPS_ExecuteEX("c:/Scripts/nircmd.exe", "sendkeypress F11", false, false, 1);
+		IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
 		tts_play(1,'Monitor ein','',2);
 		}
    if ($_IPS['Monitor']=="off")
 		{
-		IPS_ExecuteEX("c:/Scripts/nircmd.exe", "monitor off", false, false, 1);
+		IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "monitor off", false, false, 1);
 		tts_play(1,'Monitor aus','',2);
 		}
    }

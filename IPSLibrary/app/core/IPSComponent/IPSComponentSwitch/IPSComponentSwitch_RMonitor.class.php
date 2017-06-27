@@ -38,8 +38,8 @@
 	*
 	*	IPSComponentSwitch
 	*	IPSComponentSwitch_RHomematic.class.php			local Homematic schreiben mit remote logging
-	*	IPSComponentSwitch_XHomematic.class.php			Remote Homatic schreiben mit rOID und Server adresse
-	*	IPSComponentSwitch_RFS20.class.php"
+	*	IPSComponentSwitch_XHomematic.class.php			Remote Homematic schreiben mit rOID und Server adresse
+	*	IPSComponentSwitch_RFS20.class.php 				Remote FS20 schreiben mit rOID und Server adresse
 	*	IPSComponentSwitch_XValue.class.php"
 	*	IPSComponentSwitch_Value.class.php"
 	*	IPSComponentSwitch_Remote.class.php"			local Homematic schreiben mit remote logging, aber alte Implementierung
@@ -61,7 +61,12 @@
     *
     */
 
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 
 	class IPSComponentSwitch_RMonitor extends IPSComponentSwitch {
 
@@ -85,9 +90,11 @@
 			{
 			//echo "Remote Monitor bearbeiten. Aufruf mit ".$var1." und ".$instanceId."\n";
 			//$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);  remote Adresse keine Instanz
-			$this->remoteOID     = $var1;
+			$this->remoteOID     = (integer)$var1;
 			$this->remoteAdr     = $instanceId;
 			$this->supportsOnTime = $supportsOnTime;
+			
+			/* für remote Logging die verfügbaren Remote Server einlesen */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($this->installedmodules["RemoteAccess"]))
@@ -100,6 +107,11 @@
 				$this->remServer	  = array();
 				}
 		}
+
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}
 
 		/**
 		 * @public
@@ -140,20 +152,23 @@
 		 */
 		public function SetState($value, $onTime=false)
 			{
+			//echo "Server ".$this->remoteAdr." ansprechen und Skript ".$this->remoteOID." aufrufen.\n";
 			$rpc = new JSONRPC($this->remoteAdr);
 			if ($value==true)
-			   {
-			   /* Monitor einschalten */
+				{
+			   	/* Monitor einschalten */
+				//echo "Monitor ausschalten.\n";
 				$monitor=array("Monitor" => "on");
 				$rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
 			   }
 			else
-			   {
-			   /* Monitor ausschalten */
+				{
+			   	/* Monitor ausschalten */
+			   	//echo "Monitor ausschalten.\n";
 				$monitor=array("Monitor" => "off");
 				$rpc->IPS_RunScriptEx($this->remoteOID,$monitor);
-			   }
-		}
+			   	}
+			}
 
 		/**
 		 * @public
