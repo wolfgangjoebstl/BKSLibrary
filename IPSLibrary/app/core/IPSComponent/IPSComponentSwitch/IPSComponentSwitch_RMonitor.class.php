@@ -1,4 +1,22 @@
 <?
+
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	 
 	/**@addtogroup ipscomponent
 	 * @{
 	 *
@@ -36,13 +54,14 @@
 	*	IPSComponentShutter
 	*	IPSComponentShutter_XHomematic.class.php"
 	*
-	*	IPSComponentSwitch
-	*	IPSComponentSwitch_RHomematic.class.php			local Homematic schreiben mit remote logging
+	*	IPSComponentSwitch:
+	*   -------------------
+	*	IPSComponentSwitch_RHomematic.class.php			local Homematic schreiben mit remote logging => obsolete, ersetzt durch Switch_Remote
 	*	IPSComponentSwitch_XHomematic.class.php			Remote Homematic schreiben mit rOID und Server adresse
 	*	IPSComponentSwitch_RFS20.class.php 				Remote FS20 schreiben mit rOID und Server adresse
 	*	IPSComponentSwitch_XValue.class.php"
 	*	IPSComponentSwitch_Value.class.php"
-	*	IPSComponentSwitch_Remote.class.php"			local Homematic schreiben mit remote logging, aber alte Implementierung
+	*	IPSComponentSwitch_Remote.class.php"			local nichts schreiben aber remote logging des Schaltzustandes, aber alte Implementierung, homematic noch loeschen
 	*	IPSComponentSwitch_Monitor.class.php			switch Monitor locally
 	*	IPSComponentSwitch_RMonitor.class.php"			switch Monitor remote mit rOID und Server adresse
 	*

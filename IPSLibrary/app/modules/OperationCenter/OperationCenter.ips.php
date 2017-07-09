@@ -677,6 +677,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
 					$snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+					IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
 					}
 				if ($router['TYP']=='MBRN3000')
 				   {

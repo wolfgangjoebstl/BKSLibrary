@@ -1472,7 +1472,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if (isset($installedModules["Gartensteuerung"])==true)
 		   {
 			$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
-			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Nachrichtenverlauf-Garten');
+			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Gartensteuerung-Nachrichten');
 			$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
 			$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
 			$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);

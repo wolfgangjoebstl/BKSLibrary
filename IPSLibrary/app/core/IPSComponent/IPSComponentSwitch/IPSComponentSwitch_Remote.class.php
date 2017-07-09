@@ -1,48 +1,62 @@
 <?
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	
 	/**@addtogroup ipscomponent
 	 * @{
 	 *
  	 *
-	 * @file          IPSComponentSwitch_Homematic.class.php
-	 * @author        Andreas Brauneis
+	 * @file          IPSComponentSwitch_Remote.class.php
+	 * @author        Wolfgang Jöbstl inspiriert durch Andreas Brauneis
 	 *
 	 *
 	 */
 
-   /**
-    * @class IPSComponentSwitch_Homematic
-    *
-    * Definiert ein IPSComponentSwitch_Homematic Object, das ein IPSComponentSwitch Object für Homematic implementiert.
-    *
-    * @author Andreas Brauneis
-    * @version
-    * Version 2.50.1, 31.01.2012<br/>
-    */
+	/******************************
+	 *
+	 * Für jede Variable die gelogged wird erfolgt ein Eintrag ins config File IPSMessageHandler_Configuration
+	 * Es wird ein Event erzeugt dass bei Änderung der Variable HandleEvent mit VariableID udn Wert aufruft.
+	 *
+	 *
+	 ****************************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('IPSComponentSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
-
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
 	class IPSComponentSwitch_Remote extends IPSComponentSwitch {
 
-		private $instanceId;
-		private $supportsOnTime;
 		private $installedmodules;
-		private $remoteOID;		
+		private $remoteOID;	
+
+		private $remServer;			
 			
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentSwitch_Homematic Objektes
+		 * Initialisierung eines IPSComponentSwitch_Remote Objektes
 		 *
-		 * @param integer $instanceId InstanceId des Homematic Devices
-		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
+		 * @param $var1   OID der STATE Variable des Schalters
 		 */
-		public function __construct($var1, $instanceId=0, $supportsOnTime=true) {
-			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
-			$this->supportsOnTime = $supportsOnTime;
+		public function __construct($var1=Null) 
+			{
 			$this->remoteOID    = $var1;
-			echo "InstanceID gesucht : ".$this->instanceId."\n";
+			//echo "IPSComponentSensor_Remote: Construct Switch with ".$var1.".\n";			
 			
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -58,6 +72,17 @@
 				}
 		}
 
+
+		/*
+		 * aktueller Status der remote logging server
+		 */	
+	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}
+
+
 		/**
 		 * @public
 		 *
@@ -70,31 +95,35 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
 			{
-			//$module->SyncState($value, $this);
-			echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			//print_r($this);
-			//print_r($module);
-			//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-			$params= explode(';', $this->RemoteOID);
-			print_r($params);
-			foreach ($params as $val)
-				{
-				$para= explode(':', $val);
-				echo "Wert :".$val." Anzahl ",count($para)." \n";
-            if (count($para)==2)
-               {
-					$Server=$this->remServer[$para[0]]["Url"];
-					if ($this->remServer[$para[0]]["Status"]==true)
-					   {
-						echo "Server : ".$Server."\n";
-						$rpc = new JSONRPC($Server);
-						$roid=(integer)$para[1];
-						echo "Remote OID: ".$roid."\n";
-						$rpc->SetValue($roid, $value);
+			//echo "Switch Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+	   		IPSLogger_Dbg(__file__, 'HandleEvent: Switch Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			
+			$log=new Switch_Logging($variable);
+			$result=$log->Switch_LogValue();
+			
+			if ($this->remoteOID != Null)
+			   {
+				$params= explode(';', $this->remoteOID);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+	            	if (count($para)==2)
+   	            		{
+						$Server=$this->remServer[$para[0]]["Url"];
+						if ($this->remServer[$para[0]]["Status"]==true)
+						   	{
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
+							
+							$rpc->SetValue($roid, $value);
+							}
 						}
 					}
 				}
 			}
+
 
 		/**
 		 * @public
@@ -118,10 +147,6 @@
 		 * @param integer $onTime Zeit in Sekunden nach der der Aktor automatisch ausschalten soll
 		 */
 		public function SetState($value, $onTime=false) {
-			if ($onTime!==false and $value and $this->supportsOnTime===true) 
-				HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
-			
-			HM_WriteValueBoolean($this->instanceId, "STATE", $value);
 		}
 
 		/**
@@ -136,6 +161,112 @@
 		}
 
 	}
+
+	/********************************* 
+	 *
+	 * Klasse überträgt die Werte an einen remote Server und schreibt lokal in einem Log register mit
+	 *
+	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
+	 *
+	 * xxx_Auswertung und xxxx_Nachrichten
+	 *
+	 * in Auswertung wird eine lokale Kopie aller Register angelegt und archiviert. 
+	 * in Nachrichten wird jede Änderung als Nachricht mitgeschrieben 
+	 *
+	 **************************/
+
+	class Switch_Logging extends Logging
+		{
+		private $variable;
+		private $variablename;
+		private $variableLogID;
+
+		private $SwitchAuswertungID;
+
+		private $configuration;
+		private $installedmodules;
+				
+		function __construct($variable)
+			{
+			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
+			$this->variable=$variable;
+			$result=IPS_GetObject($variable);
+			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
+		
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			$name="Switch-Nachrichten";
+			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid==false)
+				{
+				$vid = IPS_CreateCategory();
+				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetName($vid, $name);
+	    		IPS_SetInfo($vid, "this category was created by script IPSComponentSwitch_Remote. ");
+	    		}
+			$name="Switch-Auswertung";
+			$SwitchAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($SwitchAuswertungID==false)
+				{
+				$SwitchAuswertungID = IPS_CreateCategory();
+				IPS_SetParent($SwitchAuswertungID, $CategoryIdData);
+				IPS_SetName($SwitchAuswertungID, $name);
+				IPS_SetInfo($SwitchAuswertungID, "this category was created by script IPSComponentSwitch_Remote. ");
+	    		}
+			$this->SwitchAuswertungID=$SwitchAuswertungID;
+			if ($variable<>null)
+				{
+				/* lokale Spiegelregister aufsetzen */
+				echo "Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$SwitchAuswertungID." ".IPS_GetName($SwitchAuswertungID)." anlegen.\n";
+				$this->variableLogID=CreateVariable($this->variablename,0,$SwitchAuswertungID, 10, "", null, null );  /* 0 Boolean, 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				IPS_SetVariableCustomProfile($this->variableLogID,'~Switch');
+				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+
+			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
+			$directories=get_IPSComponentLoggerConfig();
+			if (isset($directories["LogDirectories"]["SwitchLog"]))
+		   		 { $directory=$directories["LogDirectories"]["SwitchLog"]; }
+			else {$directory="C:/Scripts/Switch/"; }	
+			mkdirtree($directory);
+			$filename=$directory.$this->variablename."_Switch.csv";
+			parent::__construct($filename,$vid);
+			}
+
+		function Switch_LogValue()
+			{
+			$result=GetValueFormatted($this->variable);
+			SetValue($this->variableLogID,GetValue($this->variable));
+			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValueFormatted($this->variable)."\n";
+			parent::LogMessage($result);
+			parent::LogNachrichten($this->variablename." mit Wert ".$result);
+			}
+
+		public function GetComponent() {
+			return ($this);
+			}
+			
+		/*************************************************************************************
+		Ausgabe des Eventspeichers in lesbarer Form
+		erster Parameter true: macht zweimal evaluate
+		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
+		*************************************************************************************/
+
+		public function writeEvents($comp=true,$gesamt=false)
+			{
+
+			}
+			
+	   }
+
+
+
 
 	/** @}*/
 ?>

@@ -1,5 +1,21 @@
 <?
-
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	 
    /**
     * @class IPSComponentSensor_Temperatur
     *
@@ -15,7 +31,6 @@
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
-	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 
 	class IPSComponentSensor_Temperatur extends IPSComponentSensor {
 
@@ -23,7 +38,9 @@
 		private $RemoteOID;
 		private $tempValue;
 		private $installedmodules;
-		
+
+		private $remServer;
+				
 		/**
 		 * @public
 		 *
@@ -35,11 +52,12 @@
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
-		   //echo "Build Temperature Sensor with ".$var1.".\n";			
+			//echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ".$var1.".\n";			
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
 			
+			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($this->installedmodules["RemoteAccess"]))
@@ -52,7 +70,10 @@
 				$this->remServer	  = array();
 				}
 			}
-	
+
+		/*
+		 * aktueller Status der remote logging server
+		 */	
 	
 		public function remoteServerAvailable()
 			{
@@ -116,17 +137,28 @@
 
 	}
 
+	/********************************* 
+	 *
+	 * Klasse überträgt die Werte an einen remote Server und schreibt lokal in einem Log register mit
+	 *
+	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
+	 *
+	 * xxx_Auswertung und xxxx_Nachrichten
+	 *
+	 **************************/
+
 	class Temperature_Logging extends Logging
-	   {
-	   private $variable;
-	   private $variablename;
-		//private $variableLogID;
+		{
+		private $variable;
+		private $variablename;
+		private $variableLogID;
+		
 		private $TempAuswertungID;
 
 		private $configuration;
 		private $installedmodules;
 				
-	   function __construct($variable)
+		function __construct($variable)
 			{
 			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
@@ -143,39 +175,41 @@
 			if ($vid==false)
 				{
 				$vid = IPS_CreateCategory();
-   			IPS_SetParent($vid, $CategoryIdData);
-   			IPS_SetName($vid, $name);
-	    		IPS_SetInfo($vid, "this category was created by script. ");
+				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetName($vid, $name);
+	    		IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Temperatur. ");
 	    		}
 			$name="Temperatur-Auswertung";
 			$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($TempAuswertungID==false)
 				{
 				$TempAuswertungID = IPS_CreateCategory();
-   			IPS_SetParent($TempAuswertungID, $CategoryIdData);
-   			IPS_SetName($TempAuswertungID, $name);
-	   		IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
+				IPS_SetParent($TempAuswertungID, $CategoryIdData);
+				IPS_SetName($TempAuswertungID, $name);
+				IPS_SetInfo($TempAuswertungID, "this category was created by script IPSComponentSensor_Temperatur. ");
 	    		}
 			$this->TempAuswertungID=$TempAuswertungID;
 			if ($variable<>null)
 				{
 				/* lokale Spiegelregister aufsetzen */
 				echo "Lokales Spiegelregister als Float auf ".$this->variablename." ".$TempAuswertungID." ".IPS_GetName($TempAuswertungID)." anlegen.\n";
-	   		$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10, "", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
-	   		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	   		IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
-	   		AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
+				$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10, "", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
+				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				}
 
-		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
-		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["LogDirectories"]["TemperatureLog"];
-	   	mkdirtree($directory);
-		   $filename=$directory.$this->variablename."_Temperature.csv";
-		   parent::__construct($filename,$vid);
-	   	}
+			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
+			$directories=get_IPSComponentLoggerConfig();
+			if (isset($directories["LogDirectories"]["TemperatureLog"]))
+		   		 { $directory=$directories["LogDirectories"]["TemperatureLog"]; }
+			else {$directory="C:/Scripts/Temperature/"; }	
+			mkdirtree($directory);
+			$filename=$directory.$this->variablename."_Temperature.csv";
+			parent::__construct($filename,$vid);
+			}
 
 		function Temperature_LogValue()
 			{
@@ -188,14 +222,14 @@
 				/* Detect Movement kann auch Temperaturen agreggieren */
 				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   	$DetectTemperatureHandler = new DetectTemperatureHandler();
+				$DetectTemperatureHandler = new DetectTemperatureHandler();
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
 				$groups=$DetectTemperatureHandler->ListGroups();
 				foreach($groups as $group=>$name)
-				   {
-				   echo "Gruppe ".$group." behandeln.\n";
+					{
+					echo "Gruppe ".$group." behandeln.\n";
 					$config=$DetectTemperatureHandler->ListEvents($group);
 					$status=(float)0;
 					$count=0;
@@ -206,14 +240,14 @@
 						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
-				   echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+					echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
 					$log=new Temperature_Logging($oid);
 					$class=$log->GetComponent($oid);
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
 					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
 					SetValue($statusID,$status);
-			   	}
+			   		}
 				}
 			
 			parent::LogMessage($result);

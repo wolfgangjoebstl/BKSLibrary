@@ -15,17 +15,17 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 2000);    /* sollte man am Ende wieder zurückstellen, gilt global */
-set_time_limit(120);
-$startexec=microtime(true);
-$donotregister=false; $i=0; $maxi=600;
+	// max. Scriptlaufzeit definieren
+	ini_set('max_execution_time', 2000);    /* sollte man am Ende wieder zurückstellen, gilt global */
+	set_time_limit(120);
+	$startexec=microtime(true);
+	$donotregister=false; $i=0; $maxi=600;
 
 	/***************** INSTALLATION **************/
 
 	echo "Update Konfiguration und register Events\n";
 
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
@@ -38,13 +38,13 @@ $donotregister=false; $i=0; $maxi=600;
 	/******************************************** Schalter  *****************************************/
 
 	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
-echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
-$status=RemoteAccessServerTable();
-print_r($status);
+	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+	$status=RemoteAccessServerTable();
+	print_r($status);
 
-echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
-$remServer=ROID_List();
-print_r($remServer);
+	echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+	$remServer=ROID_List();
+	print_r($remServer);
 	
 	$struktur=array();
 	foreach ($remServer as $Name => $Server)
