@@ -17,7 +17,9 @@
  * Routinen für
  *
  * Herausfinden der eigenen externen und lokalen IP Adresse
- *   whatismyIPaddress1   whatismyIPaddress1   ownIPaddress
+ *   whatismyIPaddress1   verwendet http://whatismyipaddress.com/
+ *   whatismyIPaddress2
+ *   ownIPaddress
  *
  * sys device ping IP Adresse von LED Modul oder DENON Receiver
  * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
@@ -136,13 +138,14 @@ class OperationCenter
 			}
 		else	
 		   	{
-			//$pos_start=strpos($result,"whatismyipaddress.com/ip")+25;
-			$result=strip_tags($result1);
-			//echo $result;
-			//echo "Suche Punkte:\n";
-			$result2=$result;
-			$pos=0; $i=0;
+			$i=0;
 			$posP=array();
+
+			//echo "Variante wenn IPv4 Adresse als Tag im html steht :\n";			
+			$pos_start=strpos($result1,"whatismyipaddress.com/ip")+25;
+			//echo "Suche Punkte:\n";
+			$result2=$result1; $result=$result1;
+			$pos=0; 
 			while (strpos($result2,".")!==false)
 				{
 				$pos1=strpos($result2,".");
@@ -165,9 +168,69 @@ class OperationCenter
 						//echo "   Evaluate  ".($result3)."  Erste Zahl hat ".$digits." Stellen.\n";
 						if (filter_var($result3, FILTER_VALIDATE_IP))
 							{
-							$posP[$i]["Pos"]=$posIP;
-							$posP[$i++]["IP"]=$result3; 
-							//echo "   IP Adresse gefunden:    ".trim(substr($result,$posIP,20))."\n";
+							$found=false;
+							if ($i>0)
+								{
+								if ($posP[$i-1]["IP"]==$result3)
+									{
+									//echo "IP Adresse schon einmal gefunden, nicht noch einmal speichern.\n";
+									$found=true;
+									}
+								}
+							if ($found == false)
+								{		
+								$posP[$i]["Pos"]=$posIP;
+								$posP[$i++]["IP"]=$result3; 
+								// "   IP Adresse gefunden   (Pos: ".$posIP.") :    ".trim(substr($result,$posIP,20))."\n";
+								}
+							}
+						} 
+					}
+				}
+			
+			
+			//echo "Variante wenn IPv4 Adresse als normaler Text im html steht :\n";			
+			$result=strip_tags($result1);
+			$result2=$result;
+			$pos=0; 
+			
+			while (strpos($result2,".")!==false)
+				{
+				$pos1=strpos($result2,".");
+				$result2=substr($result2,$pos1+1);
+				$pos+=$pos1+1; 
+				//echo ":".$pos."(".substr($result,$pos-1,5).")";
+				if ($pos1<4)  // zwei Punkte knapp beieinander
+					{
+					if (is_numeric(substr($result,$pos-$pos1-1,$pos1)) ) // das Ergebnis zwischen den Punkten ist numerisch, hurrah
+						{
+						//echo "    ".substr($result,$pos-$pos1-1,$pos1)." ist numerisch. zwei Punkte mit Abstand kleiner 4 gefunden. Wir sind auf Pos ".$pos."\n";
+						// Was ist vor dem Punkt, auch eine Zahl ?
+						$digits=0;
+						//echo "|".substr($result,($pos-$pos1-5),16)."|";
+						if ( is_numeric(substr($result,($pos-$pos1-3),1)) ) { $digits=1; }
+						if ( is_numeric(substr($result,($pos-$pos1-4),1)) ) { $digits=2; }
+						if ( is_numeric(substr($result,($pos-$pos1-5),1)) ) { $digits=3; }
+						$posIP=$pos-($digits+$pos1+3);
+						$result3=extractIPaddress(trim(substr($result,$posIP,20)));
+						//echo "   Evaluate  ".($result3)."  Erste Zahl hat ".$digits." Stellen.\n";
+						if (filter_var($result3, FILTER_VALIDATE_IP))
+							{
+							$found=false;
+							if ($i>0)
+								{
+								if ($posP[$i-1]["IP"]==$result3)
+									{
+									//echo "IP Adresse schon einmal gefunden, nicht noch einmal speichern.\n";
+									$found=true;
+									}
+								}
+							if ($found == false)
+								{		
+								$posP[$i]["Pos"]=$posIP;
+								$posP[$i++]["IP"]=$result3; 
+								// "   IP Adresse gefunden   (Pos: ".$posIP.") :    ".trim(substr($result,$posIP,20))."\n";
+								}
 							}
 						} 
 					}
@@ -196,7 +259,19 @@ class OperationCenter
 			//echo "Startpos: ".$pos_start." Length: ".$pos_length." \n".$subresult."\n";
 			//$subresult=substr($subresult,0,$pos_length);
 	   		//echo "Whatismyipaddress liefert : ".$subresult."\n";
-			return ($subresult);
+			if (filter_var($subresult, FILTER_VALIDATE_IP))
+				{		
+				//echo "Ausgabe ".$subresult."\n";	
+				return ($subresult);
+				}
+			else
+				{
+				$result=self::whatismyIPaddress1();
+				//echo "Ausgabe der Alternativwerte.\n";
+				//print_r($result);
+				if ( isset($result[0]["IP"]) ) { return ($result[0]["IP"]); }
+				else { return ("unknown"); }
+				}	
 			}
 		}	
 
@@ -1720,10 +1795,10 @@ class OperationCenter
 
 	function HardwareStatus()
 		{
+		$result=array();
 		if (isset($this->installedModules["RemoteReadWrite"])==true)
 			{
 			IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-			$result=array();
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();

@@ -1,9 +1,7 @@
 <?
 
- //Fügen Sie hier ihren Skriptquellcode ein
-
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
-   IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+   	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
 /******************************************************************************************/   
 /*                                                                                        */   
@@ -442,8 +440,8 @@ function send_status($aktuell, $startexec=0)
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
 		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
 		//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
-   	IPS_RunScript($updatePeriodenwerteID);
-   	echo ">>AMIS Update Periodenwerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+		IPS_RunScript($updatePeriodenwerteID);
+		echo ">>AMIS Update Periodenwerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
 
 	/* Alle werte aus denen eine Ausgabe folgt initialisieren */
@@ -823,7 +821,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 
 	if ($aktuell) /* aktuelle Werte */
-	   {
+		{
 		$alleTempWerte="";
 		$alleHumidityWerte="";
 		$alleMotionWerte="";
@@ -835,9 +833,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		Allgemeiner Teil, Auswertung für aktuelle Werte
 		
 		******************************************************************************************/
-		if (isset($installedModules["RemoteReadWrite"])==true)
-		   {
-		   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+		if ( (isset($installedModules["RemoteReadWrite"])==true) || (isset($installedModules["EvaluateHardware"])==true) )
+			{
+			if (isset($installedModules["EvaluateHardware"])==true) 
+				{
+				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+				}
+			else IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
@@ -851,8 +853,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle Homematic Feuchtigkeitswerte ausgeben */
 				if (isset($Key["COID"]["HUMIDITY"])==true)
-	   			{
-	      		$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+					{
+	      			$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
 					$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
@@ -862,17 +864,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
 				if ( (isset($Key["COID"]["MOTION"])==true) )
-			   	{
-		   		/* alle Bewegungsmelder, aber die Helligkeitswerte, um herauszufinden ob bei einem der Melder die Batterie leer ist */
+					{
+					/* alle Bewegungsmelder, aber die Helligkeitswerte, um herauszufinden ob bei einem der Melder die Batterie leer ist */
 
-			      $oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
-   	   		$variabletyp=IPS_GetVariable($oid);
+					$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
+   					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
-				   	{
+						{
 						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					else
-					   {
+						{
 						$alleHelligkeitsWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
@@ -884,17 +886,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle Homematic Bewegungsmelder ausgeben */
 				if ( (isset($Key["COID"]["MOTION"])==true) )
-			   	{
-		   		/* alle Bewegungsmelder */
+					{
+					/* alle Bewegungsmelder */
 
-			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-   	   		$variabletyp=IPS_GetVariable($oid);
+					$oid=(integer)$Key["COID"]["MOTION"]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
-				   	{
+						{
 						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					else
-					   {
+						{
 						$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
@@ -913,40 +915,40 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					{
 					/* FS20 alle Bewegungsmelder ausgeben */
 					if ( (isset($Key["COID"]["MOTION"])==true) )
-				   	{
-		   			/* alle Bewegungsmelder */
+				   		{
+		   				/* alle Bewegungsmelder */
 
-				      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-   		   		$variabletyp=IPS_GetVariable($oid);
+				      	$oid=(integer)$Key["COID"]["MOTION"]["OID"];
+   		   				$variabletyp=IPS_GetVariable($oid);
 						if ($variabletyp["VariableProfile"]!="")
-					   	{
+					   		{
 							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 							}
 						else
-						   {
+						   	{
 							$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 							}
 						}
 					/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei in Remote Access verknüpfen */
 					if ((isset($Key["COID"]["StatusVariable"])==true))
-				   	{
-		   			foreach ($TypeFS20 as $Type)
-		   			   {
-		   	   		if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-			   	   	   {
-   	   					$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-				  	      	$variabletyp=IPS_GetVariable($oid);
-			  		      	IPS_SetName($oid,"MOTION");
+						{
+						foreach ($TypeFS20 as $Type)
+		   					{
+							if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+								{
+   								$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+								$variabletyp=IPS_GetVariable($oid);
+								IPS_SetName($oid,"MOTION");
 								if ($variabletyp["VariableProfile"]!="")
-								   {
+									{
 									$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 									}
 								else
-								   {
+									{
 									$alleMotionWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 									}
-			   	   	   }
-				   	   }
+								}
+							}
 						}
 					}
 				}
@@ -956,17 +958,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle Homematic Energiesensoren ausgeben */
 				if ( (isset($Key["COID"]["VOLTAGE"])==true) )
-			   	{
-		   		/* alle Energiesensoren */
+					{
+					/* alle Energiesensoren */
 
-			      $oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
-   	   		$variabletyp=IPS_GetVariable($oid);
+					$oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
-				   	{
+						{
 						$alleStromWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					else
-					   {
+						{
 						$alleStromWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
@@ -977,17 +979,17 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				{
 				/* Alle Homematic Energiesensoren ausgeben */
 				if ( (isset($Key["COID"]["RAIN_COUNTER"])==true) )
-			   	{
-		   		/* alle Regenwerte */
+					{
+					/* alle Regenwerte */
 
-			      $oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
-   	   		$variabletyp=IPS_GetVariable($oid);
+					$oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
-				   	{
+						{
 						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					else
-					   {
+						{
 						$ergebnisRegen.=str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
 					}
@@ -1404,17 +1406,23 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		/************** Werte der Custom Components ****************************************************************************/
 
 		if (isset($installedModules["CustomComponents"])==true)
-		   {
+		   	{
 
 			}
 
 		/************** Detect Movement Motion Detect ****************************************************************************/
 
-      $alleMotionWerte="";
-		if (isset($installedModules["DetectMovement"])==true)
+      	$alleMotionWerte="";
+		print_r($installedModules);
+		if ( (isset($installedModules["DetectMovement"])==true) && ( (isset($installedModules["RemoteReadWrite"])==true) || (isset($installedModules["EvaluateHardware"])==true) ) )
 			{
+			echo "=====================Detect Movement Motion Detect \n";
 			IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
-			IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+			if (isset($installedModules["EvaluateHardware"])==true) 
+				{
+				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+				}
+			elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
@@ -1436,7 +1444,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 			echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
-			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+			if (isset($installedModules["RemoteAccess"])==true) IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 			$TypeFS20=RemoteAccess_TypeFS20();
 			foreach ($FS20 as $Key)
 				{
@@ -2357,7 +2365,11 @@ function HomematicFehlermeldungen()
 function ReadTemperaturWerte()
 	{
 	
-   IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	if (isset($installedModules["EvaluateHardware"])==true) 
+		{
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		}
+	elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	
 	$alleTempWerte="";
 		$Homematic = HomematicList();

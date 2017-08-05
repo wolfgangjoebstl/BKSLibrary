@@ -481,7 +481,9 @@ function getHomematicType($instanz)
 	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
 	define ('HM_TYPE_SWITCH',					'Switch'); */
 	$type=""; echo "       ";
-	switch ($homematic[0])
+	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+		{
+		switch ($homematic[0])
 				{
 				case "ERROR":
 					echo "Funk-Tür-/Fensterkontakt\n";
@@ -554,7 +556,7 @@ function getHomematicType($instanz)
 					print_r($homematic);
 					break;
 				}
-		
+		}		
 
 	return ($type);
 	}

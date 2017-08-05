@@ -42,7 +42,6 @@
 	if (!isset($moduleManager)) 
 		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-        //echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('CustomComponent',$repository);
 		}
 
@@ -50,15 +49,11 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
+	echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent');
-	echo "\nCustomComponent Version : ".$ergebnis;
+	echo "IPSModulManager Version : ".$ergebnis."\n";
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
+	echo "CustomComponent Version : ".$ergebnis."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -66,13 +61,18 @@
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	echo $inst_modules."\n";
 
-	$moduleManagerTwilight = new IPSModuleManager('IPSTwilight');
-	$WFC10Twilight_Path    	 		= $moduleManagerTwilight->GetConfigValue('Path', 'WFC10');
-	$categoryId_Twilight_Path                = CreateCategoryPath($WFC10Twilight_Path);
-	IPS_SetHidden($categoryId_Twilight_Path, true); /* in der normalen Viz Darstellung verstecken */	
-	echo "Twilight Vizualisation Path : ".$WFC10Twilight_Path." versteckt.\n";
+	/* zusammenräumen */
+
+	if (isset ($installedModules["IPSTwilight"]))
+		{
+		$moduleManagerTwilight = new IPSModuleManager('IPSTwilight');
+		$WFC10Twilight_Path    	 		= $moduleManagerTwilight->GetConfigValue('Path', 'WFC10');
+		$categoryId_Twilight_Path                = CreateCategoryPath($WFC10Twilight_Path);
+		IPS_SetHidden($categoryId_Twilight_Path, true); /* in der normalen Viz Darstellung verstecken */	
+		echo "Twilight Vizualisation Path : ".$WFC10Twilight_Path." versteckt.\n";
+		}
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -93,6 +93,7 @@
 	/* Webfront GUID herausfinden */
  	read_wfc();	
 
+	echo "\n";
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	foreach ($alleInstanzen as $instanz)
@@ -100,6 +101,10 @@
 		$result=IPS_GetInstance($instanz);
 		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
 		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+		$config=json_decode(IPS_GetConfiguration($instanz));
+		echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
+		echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
+		echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
 		if (false)
 			{
 			$config=json_decode(IPS_GetConfiguration($instanz));
@@ -119,7 +124,8 @@
 		IPS_SetName($AdministratorID, "Administrator");
 		$config = IPS_GetConfiguration($AdministratorID);
 		echo " Konfig: ".$config."\n";
-
+		IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
+		IPS_ApplyChanges($AdministratorID);	
 		IPS_ApplyChanges($AdministratorID);
 		$WebfrontConfigID["Administrator"]=$AdministratorID;
 		echo "Webfront Configurator Administrator aktiviert : ".$AdministratorID." \n";
@@ -128,6 +134,9 @@
 		{
 		$AdministratorID = $WebfrontConfigID["Administrator"];
 		echo "Webfront Configurator Administrator bereits vorhanden : ".$AdministratorID." \n";
+		/* kein Mobile Access für Administratoren */
+		IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
+		IPS_ApplyChanges($AdministratorID);			
 
 		}		
 
@@ -140,7 +149,8 @@
 		IPS_SetName($UserID, "User");
 		$config = IPS_GetConfiguration($UserID);
 		echo "Konfig : ".$config."\n";
-
+		$categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
+		IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
 		IPS_ApplyChanges($UserID);
 		$WebfrontConfigID["User"]=$UserID;
 		echo "Webfront Configurator User aktiviert : ".$UserID." \n";
@@ -149,9 +159,43 @@
 		{
 		$UserID = $WebfrontConfigID["User"];
 		echo "Webfront Configurator User bereits vorhanden : ".$UserID." \n";
+		$categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
+		//$config = IPS_GetConfiguration($UserID);
+		//echo "Konfig : ".$config."\n";
+		IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
+		IPS_ApplyChanges($UserID);			
 		}	
 
 	echo "\n";
+
+	/* check nach weiteren Webfront Konfiguratoren */
+
+	echo "Security and Configuration check.\n";
+	foreach ($WebfrontConfigID as $Key=>$Item)
+		{
+		$config=json_decode(IPS_GetConfiguration($Item));
+		switch ($Key)
+			{
+			case "User":	
+				if ($config->MobileID < 0) 
+					{
+					echo "  ".$Key.": Mobile Access for User not set (".$config->MobileID.").   --> setzen\n";
+					}
+			case "Administrator":
+				if ($config->Password == "") 
+					{
+					echo "  ".$Key.": Remote Access Webfront Password not set.   --> setzen\n";
+					}
+				else	
+					{
+					//echo "  ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
+					}					
+				break;
+			default:
+				echo "    Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
+			}
+		}	
+
 
 /*******************************
  *
@@ -434,7 +478,7 @@
 		{
 		echo "\nWebportal Mobile installieren: \n";
 		$categoryId_MobileWebFront         = CreateCategoryPath($Mobile_Path);
-		IPS_SetHidden($categoryId_MobileWebFront,true);	
+		IPS_SetHidden($categoryId_MobileWebFront,false);	/* mus dargestellt werden, sonst keine Anzeige am Mobiltelefon */	
 			
 		foreach ($webfront_links as $Name => $webfront_group)
 		   {

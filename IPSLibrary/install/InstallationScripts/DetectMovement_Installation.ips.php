@@ -78,7 +78,7 @@
 
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
 	if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
-	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
+	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "Modul RemoteAccess ist installiert.\n";
@@ -87,7 +87,6 @@
 	else
 		{
 		echo "Modul RemoteAccess ist NICHT installiert.\n";
-		break;
 		}
 	if (isset ($installedModules["IPSCam"])) { 				echo "Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
 	if (isset ($installedModules["OperationCenter"])) { 	echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }

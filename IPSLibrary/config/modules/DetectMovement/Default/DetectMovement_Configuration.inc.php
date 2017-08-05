@@ -21,7 +21,7 @@
 	 * @ingroup DetectMovement
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File fÃ¼r DetectMovement
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -31,11 +31,44 @@
 	 */
 	 
 	/*
-			54389 => array('Contact','Bewegung','',),
-			22915 => array('Contact','Alarm','',),
-			21581 => array('Motion','Bewegung','',),
-			22695 => array('Temperatur','Temperatur_Aussen','',),   
-			51998 => array('Feuchtigkeit','Feuchtigkeit_Aussen','',),
+			dd => array('Contact','Bewegung','',),
+			dd => array('Contact','Alarm','',),
+			dd => array('Motion','Bewegung','',),
+			dd => array('Temperatur','Temperatur_Aussen','',),   
+			dd => array('Feuchtigkeit','Feuchtigkeit_Aussen','',),
+			
+			
+	function IPSDetectMovementHandler_GetEventConfiguration() {
+		$eventMoveConfiguration = array(
+			aa => array('Motion','Alarm','',),   
+			bb => array('Motion','Alarm','',),   
+			cc => array('Motion','Bewegung','',),   
+			dd => array('Motion','Bewegung','',),   
+			ee => array('Contact','Alarm','',),   
+			);
+
+		return $eventMoveConfiguration;
+	}
+
+	function IPSDetectTemperatureHandler_GetEventConfiguration() {
+		$eventTempConfiguration = array(
+			ss => array('Temperatur','Temp_Wintergarten','par3',),   
+			ss => array('Temperatur','Temp_Keller','par3',),   
+			);
+
+		return $eventTempConfiguration;
+	}
+
+
+	function IPSDetectHumidityHandler_GetEventConfiguration() {
+		$eventHumidityConfiguration = array(
+			hh => array('Feuchtigkeit','Feuchtigkeit_Wintergarten','par3',), 
+			hh => array('Feuchtigkeit','Feuchtigkeit_Keller','par3',),  
+			);
+
+		return $eventHumidityConfiguration;
+	}			
+			
 	*/
 	 
 
@@ -55,7 +88,13 @@
 		return $eventTempConfiguration;
 	}
 
+	function IPSDetectHumidityHandler_GetEventConfiguration() {
+		$eventHumidityConfiguration = array(
 
+			);
+
+		return $eventHumidityConfiguration;
+	}
 
 	 
 	 

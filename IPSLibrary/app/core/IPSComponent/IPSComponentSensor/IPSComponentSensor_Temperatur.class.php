@@ -179,6 +179,7 @@
 				IPS_SetName($vid, $name);
 	    		IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Temperatur. ");
 	    		}
+			/* Create Category to store the Temperature-Spiegelregister */	
 			$name="Temperatur-Auswertung";
 			$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($TempAuswertungID==false)
@@ -191,11 +192,11 @@
 			$this->TempAuswertungID=$TempAuswertungID;
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister aufsetzen */
-				echo "Lokales Spiegelregister als Float auf ".$this->variablename." ".$TempAuswertungID." ".IPS_GetName($TempAuswertungID)." anlegen.\n";
-				$this->variableLogID=CreateVariable($this->variablename,2,$TempAuswertungID, 10, "", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
+				/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird der Name des Parent genommen */
+				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->TempAuswertungID." ".IPS_GetName($this->TempAuswertungID)." anlegen.\n";
+				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
+				$this->variableLogID=CreateVariable($this->variablename,2,$this->TempAuswertungID, 10, "~Temperature", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				IPS_SetVariableCustomProfile($this->variableLogID,'~Temperature');
 				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
@@ -237,14 +238,13 @@
 						{
 						$status+=GetValue($oid);
 						$count++;
-						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
 					echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
-					$log=new Temperature_Logging($oid);
-					$class=$log->GetComponent($oid);
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID);
+					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
 					SetValue($statusID,$status);
 			   		}

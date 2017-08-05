@@ -282,19 +282,19 @@
 			$variableIdPeriod    = IPS_GetObjectIDByIdent(IPSRP_VAR_PERIODCOUNT, $this->categoryIdCommon);
 			$variableIdChartHTML = IPS_GetObjectIDByIdent(IPSRP_VAR_CHARTHTML,  $this->categoryIdCommon);
 
-			$periodList = array (IPSRP_PERIOD_HOUR       => 'Stunde',
-										IPSRP_PERIOD_DAY          => 'Tag',
-			                     IPSRP_PERIOD_WEEK         => 'Woche',
-			                     IPSRP_PERIOD_MONTH        => 'Monat',
-			                     IPSRP_PERIOD_YEAR         => 'Jahr');
+			$periodList = array (	IPSRP_PERIOD_HOUR      		=> 'Stunde',
+									IPSRP_PERIOD_DAY          	=> 'Tag',
+			                     	IPSRP_PERIOD_WEEK         	=> 'Woche',
+			                     	IPSRP_PERIOD_MONTH        	=> 'Monat',
+			                     	IPSRP_PERIOD_YEAR         	=> 'Jahr');
 
-			$valueTypeList = array (IPSRP_TYPE_KWH         => 'kWh',
-			                        IPSRP_TYPE_EURO        => 'Euro',
-			                        IPSRP_TYPE_WATT        => 'Watt',
-			                        IPSRP_TYPE_STACK       => 'Details',
-			                        IPSRP_TYPE_STACK2      => 'Total',
-			                        IPSRP_TYPE_OFF         => 'Off',
-			                        IPSRP_TYPE_PIE         => 'Pie');
+			$valueTypeList = array (IPSRP_TYPE_KWH         		=> 'kWh',
+			                        IPSRP_TYPE_EURO        		=> 'Euro',
+			                        IPSRP_TYPE_WATT        		=> 'Watt',
+			                        IPSRP_TYPE_STACK       		=> 'Details',
+			                        IPSRP_TYPE_STACK2      		=> 'Total',
+			                        IPSRP_TYPE_OFF         		=> 'Off',
+			                        IPSRP_TYPE_PIE         		=> 'Pie');
 
 			if (!array_key_exists(GetValue($variableIdChartType), $valueTypeList)) {
 				SetValue($variableIdChartType, IPSRP_TYPE_KWH);
@@ -330,11 +330,11 @@
 			//$CfgDaten['HighChart']['Height'] = 'Auto'; 		// in px
 
 			switch (GetValue($variableIdPeriod)) {
-				case IPSRP_PERIOD_HOUR:	 $aggType = 0;	break;
-				case IPSRP_PERIOD_DAY:   $aggType = 0; break;
-				case IPSRP_PERIOD_WEEK:  $aggType = 1; break;
-				case IPSRP_PERIOD_MONTH: $aggType = 1; break;
-				case IPSRP_PERIOD_YEAR:  $aggType = 3; break;
+				case IPSRP_PERIOD_HOUR:	 $aggType = -1; break;	// es werden alle Werte bearbeitet
+				case IPSRP_PERIOD_DAY:   $aggType = -1; break;   // es werden alle Werte bearbeitet
+				case IPSRP_PERIOD_WEEK:  $aggType = 0; break;   // es wird vorher stündlich aggregiert 
+				case IPSRP_PERIOD_MONTH: $aggType = 1; break;	
+				case IPSRP_PERIOD_YEAR:  $aggType = 1; break;	// es wird vorher täglich aggregiert
 				default:
 				   trigger_error('Unknown Period '.GetValue($variableIdPeriod));
 			}
@@ -361,7 +361,7 @@
 					$serie['ReplaceValues'] = false;
 					$serie['step']          = false;
 					$serie['shadow']        = true;
-					$serie['AggType']       = $aggType;
+					if ($aggType>=0) $serie['AggType'] = $aggType;		// für kleine Bereiche nicht angeben, dann geht es automatisch und es werden alle Werte dargestellt
 					$serie['AggValue']      = 'Avg';
 					$serie['yAxis']         = 0;
 					$serie['zIndex']        = 110;
