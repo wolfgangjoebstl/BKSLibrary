@@ -41,10 +41,22 @@ if ($_IPS['SENDER']=="Execute")
 	foreach ($alleInstanzen as $instanz)
 		{
 		$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+		switch (IPS_GetProperty($instanz,'Protocol'))
+			{
+			case 0:
+				$protocol="Funk";
+				break;
+			case 2:
+				$protocol="IP";
+				break;
+			default:
+				$protocol="Wired";
+				break;
+			}
 		$HM_Adresse=IPS_GetProperty($instanz,'Address');
 		$result=explode(":",$HM_Adresse);
 		//print_r($result);
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad(IPS_GetProperty($instanz,'Protocol'),3)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
 		if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
 			{
 			$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
@@ -130,80 +142,91 @@ if ($_IPS['SENDER']=="Execute")
 			$register=explode(" ",trim($anzahl["Values"]));
 			sort($register);
 			$registerNew=array();
-			echo "     ".str_pad($anzahl["Name"],40)."  ".$name."  ".$anzahl["Anzahl"]."  ";
-			$oldvalue="";
-			foreach ($register as $index => $value)
-				{
-				//echo "    ".$value."  ".$oldvalue."\n";
-				if ($value!=$oldvalue) {$registerNew[]=$value;}
-				$oldvalue=$value;
-				}
-			//print_r($registerNew);
-			/* Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
-			sort($registerNew);
-			switch ($registerNew[0])
-				{
-				case "ERROR":
-					echo "Funk-Tür-/Fensterkontakt\n";
-					break;
-				case "INSTALL_TEST":
-					if ($registerNew[1]=="PRESS_CONT")
-						{
-						echo "Taster 6fach\n";
-						}
-					else
-						{
-						echo "Funk-Display-Wandtaster\n";
-						}
-					break;
-				case "ACTUAL_HUMIDITY":
-					echo "Funk-Wandthermostat\n";
-					break;
-				case "ACTUAL_TEMPERATURE":
-					echo "Funk-Heizkörperthermostat\n";
-					break;
-				case "BRIGHTNESS":
-					echo "Funk-Bewegungsmelder\n";
-					break;
-				case "INHIBIT":
-					echo "Funk-Schaltaktor 1-fach\n";
-					break;
-				case "DIRECTION":
-					echo "Funk-Rolladanseteuerung\n";
-					break;
-				case "BOOT":
-					echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-					break;
-				case "HUMIDITY":
-					echo "Funk-Thermometer\n";
-					break;
-				case "CONFIG_PENDING":
-					switch ($registerNew[1])
-						{
-						case "DIRECTION":
-							echo "Funkaktor Dimmer\n";
-							break;
-						case "DUTYCYCLE":
-							echo "IP Funk-Schaltaktor\n";
-							break;
-						case "DEVICE_IN_BOOTLOADER":
-						case "INSTALL_TEST":
-							echo "Funk-Taster\n";
-							break;
-						case "CURRENT":
-							echo "IP Funk-Schaltaktor Energiemessgeraet\n";
-							break;
-						default:	
-							echo "unknown\n";
-							print_r($registerNew);	
-							break;
-						}					
-					break;					
-				default:
-					echo "unknown\n";
-					print_r($registerNew);
-					break;
-				}
+			echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+			if (sizeof($register)>1)
+				{ /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
+				$oldvalue="";
+				foreach ($register as $index => $value)
+					{
+					//echo "    ".$value."  ".$oldvalue."\n";
+					if ($value!=$oldvalue) {$registerNew[]=$value;}
+					$oldvalue=$value;
+					}
+				//print_r($registerNew);
+				/* dann Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
+				sort($registerNew);
+				switch ($registerNew[0])
+					{
+					case "ERROR":
+						echo "Funk-Tür-/Fensterkontakt\n";
+						break;
+					case "INSTALL_TEST":
+						if ($registerNew[1]=="PRESS_CONT")
+							{
+							echo "Taster 6fach\n";
+							}
+						else
+							{
+							echo "Funk-Display-Wandtaster\n";
+							}
+						break;
+					case "ACTUAL_HUMIDITY":
+						echo "Funk-Wandthermostat\n";
+						break;
+					case "ACTUAL_TEMPERATURE":
+						echo "Funk-Heizkörperthermostat\n";
+						break;
+					case "BRIGHTNESS":
+						echo "Funk-Bewegungsmelder\n";
+						break;
+					case "INHIBIT":
+						echo "Funk-Schaltaktor 1-fach\n";
+						break;
+					case "DIRECTION":
+						echo "Funk-Rolladenansteuerung\n";
+						print_r($registerNew);	
+						break;
+					case "BOOT":
+						echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+						break;
+					case "HUMIDITY":
+						echo "Funk-Thermometer\n";
+						break;
+					case "CONFIG_PENDING":		/* modernes Register, alles gleich am Anfang */
+						switch ($registerNew[1])
+							{
+							case "DIRECTION":
+								echo "Funkaktor Dimmer\n";
+								break;
+							case "DUTYCYCLE":
+								echo "IP Funk-Schaltaktor\n";
+								break;
+							case "DUTY_CYCLE":
+								echo "IP Funk-Stellmotor\n";
+								break;								
+							case "DEVICE_IN_BOOTLOADER":
+							case "INSTALL_TEST":
+								echo "Funk-Taster\n";
+								break;
+							case "CURRENT":
+								echo "IP Funk-Schaltaktor Energiemessgeraet\n";
+								break;
+							default:	
+								echo "unknown\n";
+								print_r($registerNew);	
+								break;
+							}					
+						break;					
+					default:
+						echo "unknown\n";
+						print_r($registerNew);
+						break;
+					} /* ende switch */
+				} /* ende size too small */
+			else
+				{	
+				echo "not installed\n";
+				}	
 			}
 
 		}
@@ -235,6 +258,12 @@ if ($_IPS['SENDER']=="Execute")
 		//print_r(IPS_GetInstance($instanz));
 		}
 
+	/************************************
+	 *
+	 *  Homematic Sockets auflisten, nur wenn vorhanden
+	 *
+	 ******************************************/
+
 	$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
 	$HomInstanz=sizeof($ids);
 	if($HomInstanz == 0)
@@ -249,10 +278,11 @@ if ($_IPS['SENDER']=="Execute")
 			$ccu_name=IPS_GetName($ids[$i]);
 			echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   \n";
 			$config[$i]=json_decode(IPS_GetConfiguration($ids[$i]));
+			Print_r($config[$i]);
+			
 			//$config=IPS_GetConfigurationForm($ids[$i]);
-			//echo "    ".$config."\n";
-			//Print_r($config[$i]);
-			$config[$i]->Open=0;	
+			//echo "    ".$config[$i]."\n";		
+			$config[$i]->Open=0;			/* warum wird true nicht richtig abgebildet und muss für set auf 0 geaendert werden ? */
 			$configString=json_encode($config[$i]);
 			$includefile.='"'.$ccu_name.'" => array('."\n         ".'"CONFIG" => \''.$configString.'\', ';
 			$includefile.="\n             ".'	),'."\n";
@@ -338,8 +368,11 @@ if ($_IPS['SENDER']=="Execute")
 		echo str_pad(IPS_GetName($instanz),45)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
 		//echo IPS_GetName($instanz)." ".$instanz." \n";
 		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+		$includefile.="\n         ".'"HomeCode" => "'.IPS_GetProperty($instanz,'HomeCode').'", ';
 		$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
+		$includefile.="\n         ".'"SubAdresse" => "'.IPS_GetProperty($instanz,'SubAddress').'", ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+		$includefile.="\n         ".'"CONFIG" => "'.IPS_GetConfiguration($instanz).'", ';		
 		$includefile.="\n         ".'"COID" => array(';
 
 		$cids = IPS_GetChildrenIDs($instanz);
@@ -379,10 +412,22 @@ if ($_IPS['SENDER']=="Execute")
 	foreach ($alleInstanzen as $instanz)
 		{
 		$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+		switch (IPS_GetProperty($instanz,'Protocol'))
+			{
+			case 0:
+				$protocol="Funk";
+				break;
+			case 2:
+				$protocol="IP";
+				break;
+			default:
+				$protocol="Wired";
+				break;
+			}
 		$HM_Adresse=IPS_GetProperty($instanz,'Address');
 		$result=explode(":",$HM_Adresse);
 		//print_r($result);
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad(IPS_GetProperty($instanz,'Protocol'),3)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
 		if ($result[1]<>"0")
 			{  /* ignore status channel with field RSSI levels and other informations */
 			if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
@@ -398,9 +443,11 @@ if ($_IPS['SENDER']=="Execute")
 			$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 			$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 			$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
+			$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
+			$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
 			$includefile.="\n         ".'"COID" => array(';
 		
-			$type=getHomematicType($instanz);
+			$type=getHomematicType($instanz);	/* gibt als echo auch den Typ aus */
 			$result=explode(":",IPS_GetProperty($instanz,'Address'));
 			if ($type<>"") 
 				{
@@ -426,6 +473,10 @@ if ($_IPS['SENDER']=="Execute")
 			$includefile.="\n             ".'	),';
 			$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 			}
+		else
+			{
+			echo "     Statusvariable, wird nicht im Includefile geführt.\n";
+			}	
 		}
 
 	/*$includefile.=');'."\n".'?>';*/
@@ -446,6 +497,12 @@ if ($_IPS['SENDER']=="Execute")
 
 /********************************************************************************************************************/
 
+
+/* durchsucht alle Homematic Instanzen
+ * nach Adresse:Port
+ * wenn adresse:port uebereinstimmt die Instanz ID zurückgeben, sonst 0
+ */
+
 function GetInstanceIDFromHMID($sid)
 	{
     $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
@@ -462,6 +519,11 @@ function GetInstanceIDFromHMID($sid)
 	}
 
 /********************************************************************************************************************/
+
+/* anhand einer Homatic Instanz ID ermitteln 
+ * um welchen Typ von Homematic Geraet es sich handeln koennte,
+ * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
+ */
 
 function getHomematicType($instanz)
 	{
@@ -556,8 +618,19 @@ function getHomematicType($instanz)
 					print_r($homematic);
 					break;
 				}
-		}		
+		}
+	else
+		{
+		echo "   noch nicht angelegt.\n";
+		}			
 
 	return ($type);
 	}
+
+function getHomematicDeviceType($instanz)
+	{
+
+
+	}
+
 ?>

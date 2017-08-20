@@ -8,6 +8,33 @@ function HomematicInstanzen() { return array(
 function FHTList() { return array(
 );}
 function FS20List() { return array(
+"FS20 Device" => array(
+         "OID" => 58934, 
+         "Homecode" => "11111111", 
+         "Adresse" => "11", 
+         "SubAdresse" => "11", 
+         "Name" => "FS20 Device", 
+         "CONFIG" => "{"EnableReceive":true,"EnableTimer":true,"HomeCode":"11111111","SubAddress":"11","Address":"11","Mapping":"[]"}", 
+         "COID" => array(
+                "StatusVariable" => array(
+                              "OID" => "12583", 
+                              "Name" => "Status", 
+                              "Typ" => "2",), 
+                "IntensityVariable" => array(
+                              "OID" => "44342", 
+                              "Name" => "Intensität", 
+                              "Typ" => "2",), 
+                "TimerVariable" => array(
+                              "OID" => "33108", 
+                              "Name" => "Timer", 
+                              "Typ" => "2",), 
+                "DataVariable" => array(
+                              "OID" => "10344", 
+                              "Name" => "Daten", 
+                              "Typ" => "2",), 
+             	),
+
+      	),
 );}
 function HomematicList() { return array(
 "Badezimmer-Taster-3" => array(
@@ -15,6 +42,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:3", 
          "Name" => "Badezimmer-Taster-3", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "41894", 
@@ -43,6 +72,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0501511:1", 
          "Name" => "Wohnzimmertuere Kontakt", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "40108", 
@@ -67,6 +98,8 @@ function HomematicList() { return array(
          "Adresse" => "GEQ0127585:1", 
          "Name" => "Arbeitszimmer Bewegung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "19177", 
@@ -91,6 +124,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0591638:1", 
          "Name" => "Gaestezimmer-Messwerte", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "HUMIDITY" => array(
                               "OID" => "45504", 
@@ -107,6 +142,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0145674:1", 
          "Name" => "Wohnzimmer-Kugellampe", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "39344", 
@@ -127,6 +164,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:5", 
          "Name" => "Wohnzimmer-Taster-5", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_SHORT" => array(
                               "OID" => "41747", 
@@ -155,6 +194,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0627606:4", 
          "Name" => "ArbeitszimmerLampe4", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "10874", 
@@ -175,6 +216,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:1", 
          "Name" => "Wohnzimmer-Taster-1", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "30753", 
@@ -203,6 +246,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0068698:1", 
          "Name" => "Eingangstürenmelder", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "46702", 
@@ -227,6 +272,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ0806357:4", 
          "Name" => "Gaestezimmer-Stellmotor", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PARTY_STOP_YEAR" => array(
                               "OID" => "19259", 
@@ -299,6 +346,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C9961817:6", 
          "Name" => "Statusanzeige:Energie", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "FREQUENCY" => array(
                               "OID" => "52208", 
@@ -331,6 +380,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0627606:2", 
          "Name" => "ArbeitszimmerComputer2", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "28137", 
@@ -351,6 +402,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0064942:1", 
          "Name" => "Vorzimmer Bewegung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "ERROR" => array(
                               "OID" => "41931", 
@@ -375,6 +428,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0004086:1", 
          "Name" => "Arbeitszimmer-Taster-Aus", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
              	),
       	),
@@ -383,6 +438,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:4", 
          "Name" => "Badezimmer-Taster-4", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "27062", 
@@ -411,6 +468,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:2", 
          "Name" => "Badezimmer-Taster-2", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "20254", 
@@ -439,6 +498,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0591638:2", 
          "Name" => "Gaestezimmer-Heizung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PARTY_START_YEAR" => array(
                               "OID" => "30230", 
@@ -519,6 +580,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:4", 
          "Name" => "Wohnzimmer-Taster-4", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "12358", 
@@ -547,6 +610,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:1", 
          "Name" => "Badezimmer-Taster-1", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "11126", 
@@ -575,6 +640,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1292430:1", 
          "Name" => "Wohnzimmer Bewegung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "32572", 
@@ -599,6 +666,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C98DD615:6", 
          "Name" => "WohnzimmerEffektlicht:Energie", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "CURRENT" => array(
                               "OID" => "18670", 
@@ -631,6 +700,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0267840:1", 
          "Name" => "Aussen-Westseite", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "TEMPERATURE" => array(
                               "OID" => "29237", 
@@ -647,6 +718,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0538372:1", 
          "Name" => "Wohnzimmer-Mediencenter", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "58837", 
@@ -667,6 +740,8 @@ function HomematicList() { return array(
          "Adresse" => "NEQ0046162:1", 
          "Name" => "Zentralzimmer Bewegung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "BRIGHTNESS" => array(
                               "OID" => "34596", 
@@ -691,6 +766,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0066960:1", 
          "Name" => "Homematic Dummy Schalter", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "17815", 
@@ -711,6 +788,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0627606:1", 
          "Name" => "ArbeitszimmerSchalter1", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "31626", 
@@ -731,6 +810,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0295555:1", 
          "Name" => "Kueche-Schalter-Ledlicht", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "35144", 
@@ -751,6 +832,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C996136E:3", 
          "Name" => "EsstischEffektlicht:Schalter", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PROCESS" => array(
                               "OID" => "19663", 
@@ -771,6 +854,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:6", 
          "Name" => "Wohnzimmer-Taster-6", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "33191", 
@@ -799,6 +884,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0538004:1", 
          "Name" => "Kueche Bewegung", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "ERROR" => array(
                               "OID" => "22748", 
@@ -823,6 +910,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:5", 
          "Name" => "Badezimmer-Taster-5", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "25863", 
@@ -851,6 +940,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0100238:4", 
          "Name" => "Urlaubs-Schalter-Entriegeln", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
              	),
       	),
@@ -859,6 +950,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:3", 
          "Name" => "Wohnzimmer-Taster-3", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "29607", 
@@ -887,6 +980,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0100238:2", 
          "Name" => "Abwesenheits-Schalter-Entriegeln", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "28983", 
@@ -915,6 +1010,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0501629:1", 
          "Name" => "Kuechenfenster Kontakt", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "24612", 
@@ -939,6 +1036,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1060012:1", 
          "Name" => "Arbeitszimmerfenster-Kontakt", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "16465", 
@@ -963,6 +1062,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0538372:2", 
          "Name" => "Wohnzimmer-Mediencenter-Leistungswerte", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "POWER" => array(
                               "OID" => "56096", 
@@ -995,6 +1096,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1059882:2", 
          "Name" => "Wohnzimmer-Taster-2", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "11370", 
@@ -1023,6 +1126,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C98DD615:3", 
          "Name" => "WohnzimmerEffektlicht:Schalter", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PROCESS" => array(
                               "OID" => "36068", 
@@ -1043,6 +1148,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ0627606:3", 
          "Name" => "ArbeitszimmerFestplatten3", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "32089", 
@@ -1063,6 +1170,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0100238:3", 
          "Name" => "Urlaubs-Schalter-Verriegeln", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
              	),
       	),
@@ -1071,6 +1180,8 @@ function HomematicList() { return array(
          "Adresse" => "JEQ0004086:2", 
          "Name" => "Arbeitszimmer-Taster-An", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
              	),
       	),
@@ -1079,6 +1190,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ0192030:1", 
          "Name" => "Wohnzimmer-ResetWebCam", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "23843", 
@@ -1099,6 +1212,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0206685:1", 
          "Name" => "Aussen-Ostseite", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "TEMPERATURE" => array(
                               "OID" => "49273", 
@@ -1115,6 +1230,8 @@ function HomematicList() { return array(
          "Adresse" => "MEQ1084617:6", 
          "Name" => "Badezimmer-Taster-6", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "19143", 
@@ -1143,6 +1260,8 @@ function HomematicList() { return array(
          "Adresse" => "LEQ1346339:2", 
          "Name" => "Arbeitszimmer-Netzwerk-Leistungswerte", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "ENERGY_COUNTER" => array(
                               "OID" => "31474", 
@@ -1175,6 +1294,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C98DD615:4", 
          "Name" => "IPSchalter:4", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "55544", 
@@ -1195,6 +1316,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C98DD615:5", 
          "Name" => "IPSchalter:5", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "10401", 
@@ -1215,6 +1338,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C98DD615:2", 
          "Name" => "IPSchalter:2", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "58813", 
@@ -1235,6 +1360,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C996136E:6", 
          "Name" => "EsstischEffektlicht:Energie", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "VOLTAGE" => array(
                               "OID" => "47687", 
@@ -1267,6 +1394,8 @@ function HomematicList() { return array(
          "Adresse" => "0001D3C9961817:3", 
          "Name" => "Statusanzeige:Schalter", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "SECTION" => array(
                               "OID" => "34241", 
@@ -1287,6 +1416,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0100238:1", 
          "Name" => "Abwesenheits-Schalter-Verriegeln", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "10547", 
@@ -1310,11 +1441,13 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"Wohnzimmer-Stellmotor" => array(
+"EsstischEffektlich:4" => array(
          "OID" => 58969, 
          "Adresse" => "0001D3C996136E:4", 
-         "Name" => "Wohnzimmer-Stellmotor", 
+         "Name" => "EsstischEffektlich:4", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "SECTION" => array(
                               "OID" => "29110", 
@@ -1335,6 +1468,8 @@ function HomematicList() { return array(
          "Adresse" => "IEQ0039436:1", 
          "Name" => "Schlafzimmer Dimmer Deckenlampe", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "LEVEL" => array(
                               "OID" => "33096", 
@@ -1366,11 +1501,13 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"Wohnzimmer-Stellmotor:2" => array(
+"EsstischEffektlicht:2" => array(
          "OID" => 25688, 
          "Adresse" => "0001D3C996136E:2", 
-         "Name" => "Wohnzimmer-Stellmotor:2", 
+         "Name" => "EsstischEffektlicht:2", 
          "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "28270", 
