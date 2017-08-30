@@ -39,6 +39,13 @@
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 		$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
 		}
+
+/******************************************************
+
+				Variablen initialisieren
+				
+*************************************************************/
+
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');	
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
@@ -48,6 +55,8 @@
 	$GiessCountID		= @IPS_GetVariableIDByName("GiessCount",$categoryId_Register);
 	$GiessCountOffsetID	= @IPS_GetVariableIDByName("GiessCountOffset",$categoryId_Register);
 	$GiessAnlageID		= @IPS_GetVariableIDByName("GiessAnlage",$categoryId_Gartensteuerung);
+	$GiessKreisID		= @IPS_GetVariableIDByName("GiessKreis",$categoryId_Gartensteuerung);
+	$GiessKreisInfoID	= @IPS_GetVariableIDByName("GiessKreisInfo",$categoryId_Gartensteuerung);
 	$GiessTimeID	= @IPS_GetVariableIDByName("GiessTime", $categoryId_Gartensteuerung); 
 	$GiessPauseID 	= @IPS_GetVariableIDByName("GiessPause",$categoryId_Register);
 
@@ -74,79 +83,84 @@
 	/* vom Webfront aus gestartet */
 	$samebutton=false;
 	$variableID=$_IPS['VARIABLE'];
-	if ($variableID == $GiessAnlageID) 
-		{ 
-		//echo "Giessanlage Betriebsart Umschaltung bearbeiten."; 
-		$value=$_IPS['VALUE'];
-		if (GetValue($variableID)==$value)
-			{ /* die selbe Taste nocheinmal gedrückt */
-			$samebutton=true;
-	   		}
-		else
-			{  /* andere Taste als vorher */
-			SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
-			SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
-			}
-		switch ($_IPS['VALUE'])
-			{
-			case "2":  /* Auto */
-			case "-1":  /* Auto */
-    	  		IPS_SetEventActive($giesstimerID,false);
-    	  		IPS_SetEventActive($UpdateTimerID,false);
-      			IPS_SetEventActive($timerDawnID,true);
- 				$log_Giessanlage->message("Gartengiessanlage auf Auto gesetzt");
-	 			$failure=set_gartenpumpe(false);
-				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-				/* Vorgeschichte egal, nur bei einmal ein wichtig */
-				SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
-				break;
-
-			case "1":  /* Einmal Ein */
-				/* damit auch wenn noch kein Wetter zum Giessen, gegossen werden kann, Giesszeit manuell setzen */
-				SetValue($GiessTimeID,10);
-    	  		IPS_SetEventActive($UpdateTimerID,true);				
-				IPS_SetEventCyclicTimeBounds($UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
-				if ($samebutton==true)
-				   	{ /* gleiche Taste heisst weiter */
-					IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
-					IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
-      				IPS_SetEventActive($giesstimerID,true);
-      				IPS_SetEventActive($timerDawnID,false);
-		      		SetValue($GiessCountID,GetValue($GiessCountID)+1);
- 					$log_Giessanlage->message("Gartengiessanlage Weiter geschaltet");
- 					$failure=set_gartenpumpe(false);
-					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-			   		}
-				else
-				   	{ /* oder wenn zum ersten mal, Aufruf der Giessfunktion, mit Pause beginnen */
-					IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
-					IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
-      				IPS_SetEventActive($giesstimerID,true);
-	      			IPS_SetEventActive($timerDawnID,false);
-		      		SetValue($GiessCountID,1);
-	 				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt.");
- 					$failure=set_gartenpumpe(false);
-					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-					}
-				break;
-
-			case "0":  /* Aus */
-    	  		IPS_SetEventActive($giesstimerID,false);
-      			IPS_SetEventActive($timerDawnID,false);
-    	  		IPS_SetEventActive($UpdateTimerID,false);				
-	      		SetValue($GiessCountID,0);
- 				$log_Giessanlage->message("Gartengiessanlage auf Aus gesetzt");
- 				$failure=set_gartenpumpe(false);
-				//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
-				/* Vorgeschichte egal, nur bei einmal ein wichtig */
-				SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
-				break;
-			}
-		}
-	else
+	switch ($variableID)
 		{
-		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);		
-		}	
+		case $GiessAnlageID: 
+			//echo "Giessanlage Betriebsart Umschaltung bearbeiten."; 
+			$value=$_IPS['VALUE'];
+			if (GetValue($variableID)==$value)
+				{ /* die selbe Taste nocheinmal gedrückt */
+				$samebutton=true;
+		   		}
+			else
+				{  /* andere Taste als vorher */
+				SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
+				SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+				}
+			switch ($_IPS['VALUE'])
+				{
+				case "2":  /* Auto */
+				case "-1":  /* Auto */
+    	  			IPS_SetEventActive($giesstimerID,false);
+	    	  		IPS_SetEventActive($UpdateTimerID,false);
+    	  			IPS_SetEventActive($timerDawnID,true);
+ 					$log_Giessanlage->message("Gartengiessanlage auf Auto gesetzt");
+	 				$failure=set_gartenpumpe(false);
+					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+					/* Vorgeschichte egal, nur bei einmal ein wichtig */
+					SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
+					break;
+				case "1":  /* Einmal Ein */
+					/* damit auch wenn noch kein Wetter zum Giessen, gegossen werden kann, Giesszeit manuell setzen */
+					SetValue($GiessTimeID,10);
+    	  			IPS_SetEventActive($UpdateTimerID,true);				
+					IPS_SetEventCyclicTimeBounds($UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
+					if ($samebutton==true)
+					   	{ /* gleiche Taste heisst weiter */
+						IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
+						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
+      					IPS_SetEventActive($giesstimerID,true);
+      					IPS_SetEventActive($timerDawnID,false);
+			      		SetValue($GiessCountID,GetValue($GiessCountID)+1);
+ 						$log_Giessanlage->message("Gartengiessanlage Weiter geschaltet");
+ 						$failure=set_gartenpumpe(false);
+						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+			   			}
+					else
+					   	{ /* oder wenn zum ersten mal, Aufruf der Giessfunktion, mit Pause beginnen */
+						IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
+						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
+      					IPS_SetEventActive($giesstimerID,true);
+	      				IPS_SetEventActive($timerDawnID,false);
+			      		SetValue($GiessCountID,1);
+		 				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt.");
+ 						$failure=set_gartenpumpe(false);
+						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+						}
+					break;
+				case "0":  /* Aus */
+    		  		IPS_SetEventActive($giesstimerID,false);
+      				IPS_SetEventActive($timerDawnID,false);
+    	  			IPS_SetEventActive($UpdateTimerID,false);				
+		      		SetValue($GiessCountID,0);
+ 					$log_Giessanlage->message("Gartengiessanlage auf Aus gesetzt");
+ 					$failure=set_gartenpumpe(false);
+					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
+					/* Vorgeschichte egal, nur bei einmal ein wichtig */
+					SetValue($GiessAnlagePrevID,GetValue($GiessAnlageID));
+					break;
+				default:
+					break;	
+				} /* ende switch value */
+			break;
+		case $GiessKreisID:
+			SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);				
+			SetValue($GiessKreisInfoID,$GartensteuerungConfiguration["KREIS".(string)GetValue($GiessKreisID)]);
+			break;
+		default:
+			SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);		
+			break;
+		}  /* ende switch variable ID */		 
 	}
 
 ?>

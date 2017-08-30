@@ -907,9 +907,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			  *
 			  *******************************************************************************/
 
-			if (isset($installedModules["RemoteAccess"])==true)
+			//if (isset($installedModules["RemoteAccess"])==true)
 				{
-				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				//IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				IPSUtils_Include ("IPSComponentLogger_Configuration.inc.php","IPSLibrary::config::core::IPSComponent");				
 				$TypeFS20=RemoteAccess_TypeFS20();
 				foreach ($FS20 as $Key)
 					{
