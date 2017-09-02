@@ -866,8 +866,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				if ( (isset($Key["COID"]["MOTION"])==true) )
 					{
 					/* alle Bewegungsmelder, aber die Helligkeitswerte, um herauszufinden ob bei einem der Melder die Batterie leer ist */
-
-					$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
+					if ( isset($Key["COID"]["BRIGHTNESS"]["OID"]) ) {$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"]; }
+					else { $oid=(integer)$Key["COID"]["ILLUMINATION"]["OID"]; }
    					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
 						{

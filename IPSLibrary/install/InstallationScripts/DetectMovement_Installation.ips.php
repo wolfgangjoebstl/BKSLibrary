@@ -125,6 +125,16 @@
 	if (function_exists('HomematicList'))
 	   {
 		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
+		if (isset ($installedModules["RemoteAccess"]))
+			{
+			echo "!!! Achtung, rufen sie für Install die entsprechende remote Access Routine auf .... \n";
+			}
+		else
+			{
+			echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
+			}
+		echo "\n";	
+		
 		$Homematic = HomematicList();
 		$keyword="MOTION";
 		foreach ($Homematic as $Key)
@@ -165,7 +175,7 @@
 				else
 				   {
 				   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
+					//echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
 			   	$messageHandler = new IPSMessageHandler();
 				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */

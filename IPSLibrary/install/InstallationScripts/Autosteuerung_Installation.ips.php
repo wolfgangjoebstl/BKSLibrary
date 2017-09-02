@@ -261,8 +261,8 @@
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $AutoSetSwitch)
 		{
-	   	// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-	   	$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "-------------------------------------------------------\n";
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."\n";
 		switch (strtoupper($AutoSetSwitch["NAME"]))
@@ -288,7 +288,9 @@
 				//$webfront_links[$StatusAnwesendID]["NAME"]="StatusAnwesend";
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
-				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];				
+				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];	
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
+			
 			   	break;
 			case "ALARMANLAGE":
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
@@ -306,25 +308,24 @@
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 
-												
-				/* wird als Unterelement automatisch gelinked */
-				//$webfront_links[$StatusAnwesendID]["NAME"]="StatusAnwesend";
-				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
-				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
-				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];				
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 			   	break;										
 			case "GUTENMORGENWECKER":
 				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";		
 	   			// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')					
-				$WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "SchlafenAufwachenMunter","",null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+				$WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "SchlafenAufwachenMunter",null,"",""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 				$register->registerAutoEvent($WeckerID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$WeckerID,true);
 				AC_SetAggregationType($archiveHandlerID,$WeckerID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 								
-				$Wochenplan_ID = @IPS_GetEventIDByName("Wecker", $AutosteuerungID);
+				$Wochenplan_ID = @IPS_GetEventIDByName("WeckerKalender", $WeckerID);
  				if ($Wochenplan_ID === false)
 					{
+					/* Wochenplan muss entweder ueber einer Variable oder über einem Script angeordnet sein.
+					 *   wenn über Varioable, dann gibt es ACtive Scripts im Action Table zum Eintragen 
+					 *   wenn über einem Script muss IPS_Target ausgewertet werden. -> flexibler ...
+					 */
 					$Wochenplan_ID = IPS_CreateEvent(2);                  //Wochenplan Ereignis
 					IPS_SetEventScheduleGroup($Wochenplan_ID, 0, 1); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
 					IPS_SetEventScheduleGroup($Wochenplan_ID, 1, 2); //Mo - So (1 + 2 + 4 + 8 + 16+ 32 + 64)
@@ -338,63 +339,83 @@
 			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1)");
 			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2)");
 
-					IPS_SetParent($Wochenplan_ID, $AutosteuerungID);         //Ereignis zuordnen
-					IPS_SetName($Wochenplan_ID,"Wecker");
+					IPS_SetParent($Wochenplan_ID, $WeckerID);         //Ereignis zuordnen
+					IPS_SetName($Wochenplan_ID,"WeckerKalender");
 					IPS_SetEventActive($Wochenplan_ID, true);
 					}
 				else
 					{
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0)");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1)");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2)");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0);");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1);");
+			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2);");
 					}		
-
+				if (false)
+					{
+					$i=0;
 				//Montag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 0 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 1 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 0/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 2 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 0/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, 3 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, $i++ /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 0/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, $i++ /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 0/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, $i++ /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Dienstag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 3 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 1/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 4 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 1/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 5 /*Schaltpunkt*/, 9/*H*/, 1/*M*/, 1/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, 6 /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 1/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, $i++ /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 1/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, $i++ /*Schaltpunkt*/, 9/*H*/, 1/*M*/, 1/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 1 /*Gruppe*/, $i++ /*Schaltpunkt*/, 22/*H*/, 20/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Mittwoch
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 6 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 2/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 7 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 2/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 8 /*Schaltpunkt*/, 9/*H*/, 2/*M*/, 2/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, 9 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 2/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, $i++ /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 2/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, $i++ /*Schaltpunkt*/, 9/*H*/, 2/*M*/, 2/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, $i++ /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Donnerstag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 9 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 10 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 3/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 11 /*Schaltpunkt*/, 9/*H*/, 3/*M*/, 3/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, 12 /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, $i++ /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 3/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, $i++ /*Schaltpunkt*/, 9/*H*/, 3/*M*/, 3/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 3 /*Gruppe*/, $i++ /*Schaltpunkt*/, 22/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Freitag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 11 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 12 /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 4/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 13 /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 4/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, 14 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, $i++ /*Schaltpunkt*/, 5/*H*/, 30/*M*/, 4/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, $i++ /*Schaltpunkt*/, 9/*H*/, 0/*M*/, 4/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 4 /*Gruppe*/, $i++ /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Samstag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 13 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 14 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 5/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 15 /*Schaltpunkt*/, 10/*H*/, 0/*M*/, 5/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, 16 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, $i++ /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 5/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, $i++ /*Schaltpunkt*/, 10/*H*/, 0/*M*/, 5/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 5 /*Gruppe*/, $i++ /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
 				//Sonntag
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 15 /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 16 /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 6/*s*/, 1 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 17 /*Schaltpunkt*/, 12/*H*/, 0/*M*/, 6/*s*/, 2 /*Aktion*/);
-					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, 18 /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
-
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 3/*s*/, 0 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, $i++ /*Schaltpunkt*/, 8/*H*/, 30/*M*/, 6/*s*/, 1 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, $i++ /*Schaltpunkt*/, 12/*H*/, 0/*M*/, 6/*s*/, 2 /*Aktion*/);
+					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 6 /*Gruppe*/, $i++ /*Schaltpunkt*/, 23/*H*/, 30/*M*/, 0/*s*/, 0 /*Aktion*/);
+					}
+					
+				if (false)		/* for test purposes only */
+					{
+					for ($i = 0; $i < 20; $i++) 
+						{
+						IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, $i*3 /*Schaltpunkt*/, 18/*H*/, $i*3/*M*/, 2/*s*/, 0 /*Aktion*/);	
+						IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, ($i*3)+1 /*Schaltpunkt*/, 18/*H*/, ($i*3)+1/*M*/, 2/*s*/, 1 /*Aktion*/);
+						IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 2 /*Gruppe*/, ($i*3)+2 /*Schaltpunkt*/, 18/*H*/, ($i*3)+2/*M*/, 2/*s*/, 2 /*Aktion*/);					
+						}
+					}	
+						
+				CreateLinkByDestination("WeckerKalender", $Wochenplan_ID, $AutosteuerungID,  10);
 				$EventInfos = IPS_GetEvent($Wochenplan_ID);
 				//print_r($EventInfos);
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 				break;
 			case "VENTILATORSTEUERUNG":	
 				echo "   Variablen für Ventilatorsteuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')		
 				$TemperaturID = CreateVariable("Temperatur", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
-				break;												
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
+				break;
+			case "ANWESENHEITSSIMULATION":
+				$webfront_links[$AutosteuerungID]["TAB"]="Anwesenheit";
+				break;	
 			default:
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 				break;
 			}
 		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
@@ -449,11 +470,17 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	//print_r($webfront_links);
+	print_r($webfront_links);
 	
 	if ($WFC10_Enabled)
 		{
-		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben 
+		 *
+		 * typische Struktur, festgelegt im ini File:
+		 *
+		 * roottp/AutoTPA (Autosteuerung)/AutoTPADetails und /AutoTPADetails2
+		 *
+		 */
 		
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";		
@@ -461,7 +488,6 @@
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 		
-		//DeleteWFCItems($WFC10_ConfigId, "root");
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
@@ -476,6 +502,12 @@
 		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+
+		/* Erweiterung für mehr Automatisiserung */
+		$categoryIdTab2  = CreateCategory('Tab2',  $categoryId_WebFrontAdministrator, 100);
+		$categoryId2Left  = CreateCategory('Left',  $categoryIdTab2, 10);
+		$categoryId2Right = CreateCategory('Right', $categoryIdTab2, 20);
+
 		
 		/*************************************/
 		
@@ -491,21 +523,45 @@
 			}	
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+		/* Erweiterung bauen, unter erstem Tab nur die wichtigsten Elemente anzeigen */
+		
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."2",   	  $WFC10_TabPaneItem,    $WFC10_TabOrder+100,     "Anwesenheit",     "LockClosed", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'2_Left',   $tabItem."2",   10, '', '', $categoryId2Left   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'2_Right',  $tabItem."2",   20, '', '', $categoryId2Right  /*BaseId*/, 'false' /*BarBottomVisible*/);
+
 																																								
-		// Left Panel
+		// Tab1 Left Panel
 		foreach ($webfront_links as $OID => $webfront_link)
 		   {
 		   if ($webfront_link["ADMINISTRATOR"]==true)
 				{
-				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
+				if ($webfront_link["TAB"]=="Autosteuerung")
+					{
+					echo "Administrator CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdLeft."\n";
+					CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
+					}
 				}
 			}
 
-		// Right Panel
-		CreateLinkByDestination("Nachrichtenverlauf", $input,    $categoryIdRight,  20);
+		// Tab2 Right Panel
+		CreateLinkByDestination("Nachrichtenverlauf", $input,    $categoryId2Right,  20);
+
+		// Tab2 Left Panel
+		foreach ($webfront_links as $OID => $webfront_link)
+		   {
+		   if ($webfront_link["ADMINISTRATOR"]==true)
+				{
+				if ($webfront_link["TAB"]!="Autosteuerung")
+					{
+					CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId2Left,  10);
+					}
+				}
+			}
+
 
 		ReloadAllWebFronts();
 
@@ -519,7 +575,13 @@
 
 	if ($WFC10User_Enabled)
 		{
-		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen 
+		 *
+		 * typische Struktur, festgelegt im ini File:
+		 *
+		 * roottp/AutoTPU (Autosteuerung)/AutoTPUDetails
+		 *
+		 */
 
 		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
 		echo "====================================================================================\n";
@@ -553,16 +615,22 @@
 			}	
 		echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$WFC10User_TabPaneItem." in ".$WFC10User_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
-		CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem,               $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon);
+		
+		/* wenn nur ein Tab benötigt wird, ohne Teilung */
+		CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon, $categoryId_WebFrontUser /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-		$categoryId_WebFrontTab = $categoryId_WebFrontUser;
-		CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		if (false)
+			{
+			CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem,               $WFC10User_TabPaneItem,    $WFC10User_TabOrder,     $WFC10User_TabName,     $WFC10User_TabIcon);
+			$categoryId_WebFrontTab = $categoryId_WebFrontUser;
+			CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			}
 
 		foreach ($webfront_links as $OID => $webfront_link)
 		   {
 		   if ($webfront_link["USER"]==true)
 				{
-				echo "CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryId_WebFrontUser."\n";
+				echo "User CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryId_WebFrontUser."\n";
 				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId_WebFrontUser,  10);
 				}
 			}

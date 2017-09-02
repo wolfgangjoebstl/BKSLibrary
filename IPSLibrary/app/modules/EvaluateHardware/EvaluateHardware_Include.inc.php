@@ -8,33 +8,6 @@ function HomematicInstanzen() { return array(
 function FHTList() { return array(
 );}
 function FS20List() { return array(
-"FS20 Device" => array(
-         "OID" => 58934, 
-         "Homecode" => "11111111", 
-         "Adresse" => "11", 
-         "SubAdresse" => "11", 
-         "Name" => "FS20 Device", 
-         "CONFIG" => "{"EnableReceive":true,"EnableTimer":true,"HomeCode":"11111111","SubAddress":"11","Address":"11","Mapping":"[]"}", 
-         "COID" => array(
-                "StatusVariable" => array(
-                              "OID" => "12583", 
-                              "Name" => "Status", 
-                              "Typ" => "2",), 
-                "IntensityVariable" => array(
-                              "OID" => "44342", 
-                              "Name" => "Intensität", 
-                              "Typ" => "2",), 
-                "TimerVariable" => array(
-                              "OID" => "33108", 
-                              "Name" => "Timer", 
-                              "Typ" => "2",), 
-                "DataVariable" => array(
-                              "OID" => "10344", 
-                              "Name" => "Daten", 
-                              "Typ" => "2",), 
-             	),
-
-      	),
 );}
 function HomematicList() { return array(
 "Badezimmer-Taster-3" => array(
@@ -1520,6 +1493,84 @@ function HomematicList() { return array(
                 "PROCESS" => array(
                               "OID" => "23175", 
                               "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"SchlafzimmerBewegung:Werte" => array(
+         "OID" => 58936, 
+         "Adresse" => "0009156993C3CA:1", 
+         "Name" => "SchlafzimmerBewegung:Werte", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "COID" => array(
+                "MOTION" => array(
+                              "OID" => "52020", 
+                              "Name" => "MOTION", 
+                              "Typ" => "2",), 
+                "ILLUMINATION" => array(
+                              "OID" => "28175", 
+                              "Name" => "ILLUMINATION", 
+                              "Typ" => "2",), 
+                "MOTION_DETECTION_ACTIVE" => array(
+                              "OID" => "56453", 
+                              "Name" => "MOTION_DETECTION_ACTIVE", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"GaestezimmerTischlampe:Schalter" => array(
+         "OID" => 28807, 
+         "Adresse" => "0001D3C9961367:3", 
+         "Name" => "GaestezimmerTischlampe:Schalter", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "49705", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "50333", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "52898", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"GaestezimmerTischlampe:Energie" => array(
+         "OID" => 20006, 
+         "Adresse" => "0001D3C9961367:6", 
+         "Name" => "GaestezimmerTischlampe:Energie", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "COID" => array(
+                "VOLTAGE" => array(
+                              "OID" => "32314", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "21770", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "32733", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER_OVERFLOW" => array(
+                              "OID" => "43964", 
+                              "Name" => "ENERGY_COUNTER_OVERFLOW", 
+                              "Typ" => "2",), 
+                "POWER" => array(
+                              "OID" => "38523", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "29863", 
+                              "Name" => "CURRENT", 
                               "Typ" => "2",), 
              	),
       	),
