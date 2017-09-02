@@ -117,16 +117,16 @@
 	}
 
 	class Feuchtigkeit_Logging extends Logging
-	   {
-	   private $variable;
-	   private $variablename;
-		//private $variableLogID;
+		{
+		private $variable;
+		private $variablename;
+		public $variableLogID;		/* ID der entsprechenden lokalen Spiegelvariable */
 		private $HumidityAuswertungID;
 		
 		private $configuration;
 		private $installedmodules;		
 		
-	   function __construct($variable)
+		function __construct($variable)
 			{
 			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;

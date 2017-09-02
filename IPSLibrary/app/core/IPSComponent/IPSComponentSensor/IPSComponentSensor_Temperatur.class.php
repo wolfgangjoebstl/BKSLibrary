@@ -151,7 +151,7 @@
 		{
 		private $variable;
 		private $variablename;
-		private $variableLogID;
+		public $variableLogID;			/* ID der entsprechenden lokalen Spiegelvariable */
 		
 		private $TempAuswertungID;
 
