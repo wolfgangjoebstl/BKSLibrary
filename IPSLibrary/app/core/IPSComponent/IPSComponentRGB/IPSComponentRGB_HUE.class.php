@@ -26,7 +26,7 @@
 
     class IPSComponentRGB_HUE extends IPSComponentRGB {
 
-		private $bridgeOID;
+		private $bridgeOID, $lampOID;
 			
         private $bridgeIP;
         private $lampNr;
@@ -57,12 +57,15 @@
 		 * @param string $modelID Philips Modelnummer der Lampe
 		 *
          */
-        public function __construct($bridgeOID, $hueKey, $lampNr, $modelID) {
-           
-			$this->bridgeIP = $bridgeIP;
+        public function __construct($bridgeOID, $lampOID) 
+			{
+			$this->bridgeOID = $bridgeOID;
+			$this->lampOID = $lampOID;
+
+			/* $this->bridgeIP = $bridgeIP;
             $this->hueKey   = $hueKey;
             $this->lampNr   = $lampNr;
-			$this->modelID	= $modelID;
+			$this->modelID	= $modelID; */
         }
 
         /**
@@ -71,7 +74,7 @@
          * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
          * an das entsprechende Module zu leiten.
          *
-         * @param integer $variable ID der auslösenden Variable
+         * @param integer $variable ID der auslÃ¶senden Variable
          * @param string $value Wert der Variable
          * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
          */
@@ -82,13 +85,14 @@
          * @public
          *
          * Funktion liefert String IPSComponent Constructor String.
-         * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+         * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
          * wieder neu zu erzeugen.
          *
          * @return string Parameter String des IPSComponent Object
          */
         public function GetComponentParams() {
-            return get_class($this).','.$this->bridgeIP.','.$this->hueKey.','.$this->lampNr.','.$this->modelID;
+            //return get_class($this).','.$this->bridgeIP.','.$this->hueKey.','.$this->lampNr.','.$this->modelID;
+			return get_class($this).','.$this->bridgeOID.','.$this->lampOID;
         }
 
         /**
@@ -147,7 +151,7 @@
          *
          * @brief Zustand Setzen 
          *
-         * @param boolean $power RGB Gerät On/Off
+         * @param boolean $power RGB GerÃ¤t On/Off
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
          */
@@ -176,7 +180,10 @@
 			$request = 'PUT';	 //Type of Request
             
 			//Send command to Hue lamp
-			$this->hue_SendLampCommand($type, $request, $cmd);
+			//$this->hue_SendLampCommand($type, $request, $cmd);
+			HUE_SetValue($this->lampOID, "STATE",$power);
+			HUE_SetValue($this->lampOID, "COLOR",$color);
+			HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
         }
 		
 		/**
