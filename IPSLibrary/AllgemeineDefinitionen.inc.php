@@ -553,29 +553,29 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 	{
 
 	if ($aktuell)   /* aktuelle Werte */
-	   {
-	   $aktheizleistung="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
-	   }
+		{
+		$aktheizleistung="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
+		}
 	else              /* die vom Vortag */
-	   {
+		{
 		$aktheizleistung="";
 		}
 
-   IPS_RunScript(48267);
-   IPS_RunScript(13352);
-   IPS_RunScript(32860);
-   IPS_RunScript(45023);
-   IPS_RunScript(41653);
+	IPS_RunScript(48267);
+	IPS_RunScript(13352);
+	IPS_RunScript(32860);
+	IPS_RunScript(45023);
+	IPS_RunScript(41653);
   	echo ">>Vorwertberechnung. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 
 	if (!$aktuell)       /* die Werte vom Vortag */
-	   {
+		{
 		$ergebnis_tagesenergie="Heizungsenergiewerte Vortag: \n\n";
 		$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
-   	foreach ($arr as $identifier=>$station)
+		foreach ($arr as $identifier=>$station)
 			{
 			$EnergieTagFinalID=$station["OID_Tageswert"];
-	   	$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($EnergieTagFinalID), 2, ",", "" )."kWh ";
+			$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($EnergieTagFinalID), 2, ",", "" )."kWh ";
 			}
 		$ergebnis_tagesenergie.="\n\n";
 		$ergebnis_tagesenergie.=   "1/7/30/360 : ".number_format(GetValue(35510), 0, ",", "" )."/"
@@ -584,20 +584,20 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 											    .number_format(GetValue(30229), 0, ",", "" )." kWh\n";
 		}
 	else        /* aktuelle Werte */
-	   {
+		{
 		$ergebnis_tagesenergie="Heizungsnergiewerte Aktuell: \n\n";
-   	$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
+		$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
 
 		$energieGesTagID = CreateVariableByName(53458,"Summe_EnergieTag", 2);
-   	foreach ($arr as $identifier=>$station)
+		foreach ($arr as $identifier=>$station)
 			{
 			if ($identifier=="TOTAL")
 				{
-   			$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieGesTagID), 2, ",", "" )."kWh \n";
+   				$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieGesTagID), 2, ",", "" )."kWh \n";
 				break;
 				}
 			$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
-   		$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
+			$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
 			}
   		echo ">>Heizungswerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
@@ -672,7 +672,7 @@ if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
 	//echo"Keller:".GetValue(1);
 
 	$ergebnisTemperatur="\nAktuelle Temperaturwerte :\n\n";
-   $arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
+	$arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
 
 	foreach ($arr as $identifier=>$station)
 		{
@@ -995,6 +995,22 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 						}
 					}
 				}
+			if (isset($installedModules["Gartensteuerung"])==true)
+				{
+				echo "Die Regenwerte der letzten 10 Tage ausgeben.\n";
+				$ergebnisRegen.="\nIn den letzten 10 Tagen hat es zu folgenden Zeitpunkten geregnet:\n";
+				/* wenn die Gartensteuerung installiert ist, gibt es einen Regensensor der die aktuellen Regenmengen der letzten 10 Tage erfassen kann */
+				IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
+				$gartensteuerung = new Gartensteuerung();
+				foreach ($gartensteuerung->regenStatistik as $regeneintrag)
+					{
+					$ergebnisRegen.="  Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"]).
+					   	"  Regenende ".date("d.m H:i",$regeneintrag["Ende"]).
+		   				" mit insgesamt ".number_format($regeneintrag["Regen"], 1, ",", "").
+		   				" mm Regen. Max pro Stunde ca. ".number_format($regeneintrag["Max"], 1, ",", "")."mm/Std.\n";
+					}				
+				}
+				
 
 		  	echo ">>RemoteReadWrite. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
@@ -1002,7 +1018,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		/******************************************************************************************/
 
 		if (isset($installedModules["Amis"])==true)
-		   {
+			{
 			$alleStromWerte.="\n\nAktuelle Stromverbrauchswerte direkt aus den gelesenen Registern:\n\n";
 
 			$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
