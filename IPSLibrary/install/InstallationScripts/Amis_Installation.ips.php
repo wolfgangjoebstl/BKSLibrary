@@ -221,19 +221,105 @@ $cutter=true;
 		echo "Profil ".$pname." erstellt;\n";
 		}
 		
+	$pname="Zaehlt";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+
+		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  		IPS_SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+	   
+	$pname="kWh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kWh');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Wh";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Wh');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="kW";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','kW');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+
+	$pname="Euro";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+ 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+  		IPS_SetVariableProfileText($pname,'','Euro');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+	   {
+	   //print_r(IPS_GetVariableProfile($pname));
+	   }
+		
+		
 	/******************* Variable Definition **********************/
 	
-	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
-	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "AusEin-Boolean",$scriptIdAmis,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */	
-
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
 	$MeterConfig = get_MeterConfiguration();
+	
+	$MeterReadDefault=true;
+	if ( function_exists("get_AmisConfiguration") )
+		{
+		$MeterStatusConfig=get_AmisConfiguration();
+		if ( isset($MeterStatusConfig["Status"]) )
+			{
+			if ( Strtoupper($MeterStatusConfig["Status"]) != "ACTIVE" ) 	$MeterReadDefault=false;
+			}
+		}
 	//print_r($MeterConfig);
-
+	
+	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
+	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "Zaehlt",$scriptIdAmis,$MeterReadDefault,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */		
+	SetValue($MeterReadID,$MeterReadDefault);
+	
 	$Amis = new Amis();
 	
 	/* Links für Webfront identifizieren 
@@ -307,14 +393,14 @@ $cutter=true;
 				$result=$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);
 				if ( $result == false) 
 					{ 
-					$Amis->configurePort($identifier." Bluetooth COM",$PortConfig);     // noch einmal probieren
+					$result = $Amis->configurePort($identifier." Bluetooth COM",$PortConfig);     // noch einmal probieren
 					echo " Noch einmal probiert.\n";
 					}	
+				$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
+				//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";				
 				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
 				else 
 					{	
-					$SerialComPortID = @IPS_GetInstanceIDByName($identifier." Bluetooth COM", 0);
-					//echo "\nCom Port : ".$com_Port." PortID: ".$SerialComPortID."\n";
 					SPRT_SendText($SerialComPortID ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */
 					}
 				}
@@ -327,10 +413,10 @@ $cutter=true;
 					$result = $Amis->configurePort($identifier." Serial Port",$PortConfig);     // noch einmal probieren
 					echo " Noch einmal probiert.\n";
 					}	
+				$SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
 				if ($result == false) { echo "*****************Abbruch, Fehler bei Open Port.\n\n"; }
 				else 
 					{	
-					$SerialComPortID = IPS_GetInstanceIDByName($identifier." Serial Port", 0);
 					SPRT_SetDTR($SerialComPortID, true);   /* Wichtig sonst wird der Lesekopf nicht versorgt */
 					}
 				}
@@ -391,7 +477,7 @@ $cutter=true;
 				}								
 
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
 			//$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 
@@ -421,7 +507,11 @@ $cutter=true;
 			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
 
 			SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
-			
+			if ( isset($meter["STATUS"]) )
+				{
+				if (strtoupper($meter["STATUS"]) != "ACTIVE" ) SetValue($AmisReadMeterID,false);
+				}			
+						
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$wirkenergie1_ID]["NAME"]="Wirkenergie";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$aktuelleLeistungID]["NAME"]="Wirkleistung";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$zaehlerid]["NAME"]="Zaehlervariablen";						
@@ -459,85 +549,6 @@ $cutter=true;
 	  	
    	}  // ende foreach
 	
-	
-	/******************* Profile Definition **********************/
-
-	$pname="Zaehlt";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-
-		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 0, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  		IPS_SetVariableProfileAssociation($pname, 1, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-	if (isset($AmisReadMeterID)==true) { IPS_SetVariableCustomProfile($AmisReadMeterID,'Zaehlt'); }
-	IPS_SetVariableCustomProfile($MeterReadID,'Zaehlt');
-
-	$pname="kWh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kWh');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Wh";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Wh');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="kW";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','kW');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
-	$pname="Euro";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
- 		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-  		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-  		IPS_SetVariableProfileText($pname,'','Euro');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-	   {
-	   //print_r(IPS_GetVariableProfile($pname));
-	   }
-
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
@@ -592,6 +603,7 @@ $cutter=true;
 				{
 				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  Gruppe ".$Name." TabItem : ".$tabItem." nicht mehr vorhanden.\n";
 				}				
+			IPS_ApplyChanges($WFC10_ConfigId);
 			echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
 			//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,    0,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -667,7 +679,8 @@ $cutter=true;
 			else
 				{
 				echo "Webfront ".$WFC10User_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  Gruppe ".$Name." TabItem : ".$tabItem." nicht mehr vorhanden.\n";
-				}				
+				}	
+			IPS_ApplyChanges($WFC10User_ConfigId);							
 			echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10User_TabPaneItem."\n";
 			CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem, $WFC10User_TabPaneItem, 0, $Name, "");
 			CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem.'_Group',   $tabItem,   10, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);

@@ -119,71 +119,69 @@
 				$AmisID = CreateVariableByName($ID, "AMIS", 3);
 				$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */				
 				$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				
-				//Hier die COM-Port Instanz festlegen
-				$serialPortIDs = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-				foreach ($serialPortIDs as $num => $serialPort)
-					{
-					//echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-					if (IPS_GetName($serialPort) == $identifier." Serial Port") 
-						{ 
-						echo "  Comport Serial aktiviert. \n";
-						$com_Port = $serialPort;
-						$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-						if (IPS_InstanceExists($regVarID) )
-							{
-							//echo "        Registervariable : ".$regVarID."\n";
-							$configPort[$regVarID]["Name"]=$meter["NAME"];	
-							$configPort[$regVarID]["ID"]=$identifier;	
-							$configPort[$regVarID]["Port"]=$serialPort;																				 
-							}
-						//IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
-						$config = IPS_GetConfiguration($com_Port);
-						$remove = array("{", "}", '"');
-						$config = str_replace($remove, "", $config);
-						$Config = explode (',',$config);
-						$AllConfig=array();
-						foreach ($Config as $configItem)
-							{
-							$items=explode (':',$configItem);
-							$Allconfig[$items[0]]=$items[1];
-							}
-						//print_r($Allconfig);
-						if ($Allconfig["Open"]==false)
-							{
-							COMPort_SetOpen($com_Port, true); //false für aus
-							//IPS_ApplyChanges($com_Port);
-							if (!@IPS_ApplyChanges($com_Port))
-								{
-								IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
-								}
-							}
-						else
-							{
-							echo "    Port ist bereits offen.\n";
-							}
-						COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
-						}	
-					if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
-						{ 
-						echo "  Comport Bluetooth aktiviert. \n";
-						$com_Port = $serialPort; 
-						$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-						if (IPS_InstanceExists($regVarID) )
-							{
-							//echo "        Registervariable : ".$regVarID."\n";
-							$configPort[$regVarID]["Name"]=$amismetername;	
-							$configPort[$regVarID]["ID"]=$identifier;
-							$configPort[$regVarID]["Port"]=$serialPort;							
-							}
-						//IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
-						COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */																	
-						}
-					}  /* ende foreach */				
-				
-				
 				if (Getvalue($AmisReadMeterID))
-					{
+					{				
+					//Hier die COM-Port Instanz festlegen
+					$serialPortIDs = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+					foreach ($serialPortIDs as $num => $serialPort)
+						{
+						//echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+						if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+							{ 
+							echo "  Comport Serial aktiviert. \n";
+							$com_Port = $serialPort;
+							$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+							if (IPS_InstanceExists($regVarID) )
+								{
+								//echo "        Registervariable : ".$regVarID."\n";
+								$configPort[$regVarID]["Name"]=$meter["NAME"];	
+								$configPort[$regVarID]["ID"]=$identifier;	
+								$configPort[$regVarID]["Port"]=$serialPort;																				 
+								}
+							//IPSLogger_Dbg(__file__, "Modul AMIS Momemntanwerte abfragen. Comport ".$com_Port." Serial aktiviert.");
+							$config = IPS_GetConfiguration($com_Port);
+							$remove = array("{", "}", '"');
+							$config = str_replace($remove, "", $config);
+							$Config = explode (',',$config);
+							$AllConfig=array();
+							foreach ($Config as $configItem)
+								{
+								$items=explode (':',$configItem);
+								$Allconfig[$items[0]]=$items[1];
+								}
+							//print_r($Allconfig);
+							if ($Allconfig["Open"]==false)
+								{
+								COMPort_SetOpen($com_Port, true); //false für aus
+								//IPS_ApplyChanges($com_Port);
+								if (!@IPS_ApplyChanges($com_Port))
+									{
+									IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Comport ".$com_Port." Serial Fehler bei Apply Changes: ".$config);
+									}
+								}
+							else
+								{
+								echo "    Port ist bereits offen.\n";
+								}
+							COMPort_SetDTR($com_Port , true); /* Wichtig sonst wird der Lesekopf nicht versorgt */
+							}	
+						if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
+							{ 
+							echo "  Comport Bluetooth aktiviert. \n";
+							$com_Port = $serialPort; 
+							$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+							if (IPS_InstanceExists($regVarID) )
+								{
+								//echo "        Registervariable : ".$regVarID."\n";
+								$configPort[$regVarID]["Name"]=$amismetername;	
+								$configPort[$regVarID]["ID"]=$identifier;
+								$configPort[$regVarID]["Port"]=$serialPort;							
+								}
+							//IPSLogger_Dbg(__file__, "Modul AMIS Momentanwerte abfragen. Bluetooth Comport Serial aktiviert.");
+							COMPort_SendText($com_Port ,"\xFF0");   /* Vogts Bluetooth Tastkopf auf 300 Baud umschalten */																	
+							}
+						}  /* ende foreach */				
+
 					$handlelog=fopen("C:\Scripts\Log_Cutter_AMIS.csv","a");
 					Setvalue($SendTimeID,time());
 					COMPort_SendText($com_Port ,"\x2F\x3F\x21\x0D\x0A");   /* /?! <cr><lf> */
