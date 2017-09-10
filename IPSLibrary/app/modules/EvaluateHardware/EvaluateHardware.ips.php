@@ -372,7 +372,7 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 		$includefile.="\n         ".'"SubAdresse" => "'.IPS_GetProperty($instanz,'SubAddress').'", ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
-		$includefile.="\n         ".'"CONFIG" => "'.IPS_GetConfiguration($instanz).'", ';		
+		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 		$includefile.="\n         ".'"COID" => array(';
 
 		$cids = IPS_GetChildrenIDs($instanz);
