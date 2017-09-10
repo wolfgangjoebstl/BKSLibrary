@@ -31,6 +31,12 @@ IPS_SetEventActive($tim1ID,true);
 
 if ($_IPS['SENDER']=="Execute")
 	{
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
+	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+	print_r($installedModules);
+	
 	echo "\nVon der Konsole aus gestartet.\n";
 
 	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
@@ -67,6 +73,8 @@ if ($_IPS['SENDER']=="Execute")
 			$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
 			}
 		$serienNummer[$HM_CCU_Name][$result[0]]["Name"]=IPS_GetName($instanz);
+		$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
+		$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);		
 		$cids = IPS_GetChildrenIDs($instanz);
 		foreach($cids as $cid)
 			{
@@ -129,7 +137,7 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		}
 	echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
-	//print_r($serienNummer);
+	print_r($serienNummer);
 	foreach ($serienNummer as $ccu => $geraete)
  		{
 		echo "-------------------------------------------\n";
@@ -231,7 +239,33 @@ if ($_IPS['SENDER']=="Execute")
 
 		}
 
-	}
+	/* IPS Light analysieren */
+	if ( isset($installedModules["IPSLight"]) )
+		{
+		echo "IPSLight ist installiert. Configuration auslesen.\n";
+		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
+		IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");		
+		IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");		
+		IPSUtils_Include ("IPSLight_Configuration.inc.php",  "IPSLibrary::config::modules::IPSLight");
+		$IPSLightObjects=IPSLight_GetLightConfiguration();
+		foreach ($IPSLightObjects as $name => $object)
+			{
+			$components=explode(",",$object[IPSLIGHT_COMPONENT]);
+			echo "  ".$name."  ".$object[IPSLIGHT_TYPE]."   ".$components[0]."    ";
+			switch (strtoupper($components[0]))
+				{
+				case "IPSCOMPONENTSWITCH_HOMEMATIC":
+					echo $components[1]."   ".IPS_GetName($components[1]);
+					break;
+				default:
+					break;
+				}
+			echo "\n";	
+			}
+		}
+	echo "\n==================================================================\n";
+	echo "es geht weiter mit der Timer Routine\n";
+	} /* ende if execute */
 //else
 
 /******************************************************

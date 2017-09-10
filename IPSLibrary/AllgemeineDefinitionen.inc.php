@@ -1,7 +1,7 @@
 <?
 
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
-   	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
 /******************************************************************************************/   
 /*                                                                                        */   
@@ -231,8 +231,9 @@ $sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion z
 	define("DIR_copyscriptsdropbox","C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts-LBG/");
 	define("ADR_Router","10.0.0.1");
 
-	}
-else
+	} /* ende besondere Konfig für LBG70 */
+	
+if (IPS_GetName(0)=="BKS01")
 	{
 	
 /******************************************************************************************/
@@ -357,7 +358,11 @@ else
 	/* verzeichnisse */
 	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
 	define("ADR_Router","10.0.0.1");
-	}
+	} /* ende besondere Konfig für BKS01 */
+
+/* obige Konfigurationen kann man langsam loeschen, da obsolet, beide Server wurden durch neuere Versionen ersetzt */
+
+
 
 //$Router_Adresse = "http://admin:cloudg06##@www.routerlogin.com/";
 $Router_Adresse = "http://admin:cloudg06##@".ADR_Router."/";
