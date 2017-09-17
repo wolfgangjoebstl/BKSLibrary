@@ -268,7 +268,7 @@ class RemoteAccess
 										)
 								);
 							$context  = stream_context_create($options);
-							$url = urlencode($url);							
+							$urlen = urlencode($url);							
 							$response = @file_get_contents($url, false, $context);							
 							}
 						}
@@ -279,10 +279,10 @@ class RemoteAccess
 					$RemoteServer[$Name]["Status"]=false;
 					}
 				else
-				   	{
-				   	$ServerName=$rpc->IPS_GetName(0);
-				   	$ServerUptime=$rpc->IPS_GetKernelStartTime();
-  				   	$ServerVersion=$rpc->IPS_GetKernelVersion();
+					{
+					$ServerName=$rpc->IPS_GetName(0);
+					$ServerUptime=$rpc->IPS_GetKernelStartTime();
+					$ServerVersion=$rpc->IPS_GetKernelVersion();
 					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 					$RemoteServer[$Name]["Status"]=true;
 					}
@@ -311,7 +311,7 @@ class RemoteAccess
 	public function add_RemoteServer($available=Array())
 		{
 		$this->includefile.="\n".'function ROID_List() { return array('."\n";
-		print_r($available);
+		//print_r($available);
 		foreach ($this->remServer as $Name => $Server)
 			{
 			$read=true;

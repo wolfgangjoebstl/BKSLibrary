@@ -95,6 +95,8 @@
 	$tim6ID=CreateTimerRA("EvaluateSwitch",45);
 	$tim7ID=CreateTimerRA("EvaluateButton",50);
 	$tim8ID=CreateTimerRA("EvaluateVariables",55);
+	
+	$tim9ID=CreateTimerRA("RemoteAccess",05);		/* erzeugt die ROID_Liste */
 
 	/************************************************************************************************
 	 *
@@ -230,7 +232,7 @@ function CreateTimerRA($name,$minute)
 		IPS_SetEventCyclic($timID,0,0,0,0,0,0);
 		IPS_SetEventCyclicTimeFrom($timID,5,$minute,0);  /* immer um 05:xx */
   		IPS_SetEventActive($timID,true);
-	   echo "   Timer Event ".$name." neu angelegt. Timer um 05:20 ist aktiviert.\n";
+	   echo "   Timer Event ".$name." neu angelegt. Timer um 05:".$minute." ist aktiviert.\n";
 		}
 	else
 	   {
