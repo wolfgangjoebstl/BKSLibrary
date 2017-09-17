@@ -80,12 +80,13 @@ echo "\n";
    	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 	$Homematic = HomematicList();
 	$FHT = FHTList();
 	$FS20= FS20List();
-
+	$FS20EX= FS20EXList();
+	
 	/******************************************* Kontakte ***********************************************/
 
 	/*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
@@ -117,27 +118,26 @@ echo "\n";
 
 	echo "******* Alle Homematic Taster ausgeben.\n";
 	
-	$keyword="MOTION";
 	foreach ($Homematic as $Key)
 		{
 		set_time_limit(1200);		
 		if ( (isset($Key["COID"]["INSTALL_TEST"])==true) and (isset($Key["COID"]["PRESS_SHORT"])==true) )
-	   		{
-	   		/* alle Kontakte */
+			{
+			/* alle Kontakte */
 
-	      	$oid=(integer)$Key["COID"]["PRESS_SHORT"]["OID"];
-	      	$variabletyp=IPS_GetVariable($oid);
+			$oid=(integer)$Key["COID"]["PRESS_SHORT"]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
-			   	{
+				{
 				echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
 				}
 			else
-			   	{
+				{
 				echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
 				}
 			$parameter="";
 			if ($donotregister==false)
-			   	{
+				{
 				$i++; if ($i>$maxi) { $donotregister=true; }
 				foreach ($remServer as $Name => $Server)
 					{
@@ -145,22 +145,67 @@ echo "\n";
 						{						
 						$rpc = new JSONRPC($Server["Adresse"]);
 						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
-	   					$rpc->IPS_SetVariableCustomProfile($result,"Button");
+						$rpc->IPS_SetVariableCustomProfile($result,"Button");
 						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 						$parameter.=$Name.":".$result.";";
 						}
 					}
-			   	$messageHandler = new IPSMessageHandler();
-			   	$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   		//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-			   	$messageHandler->CreateEvent($oid,"OnUpdate");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnUpdate");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnUpdate",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
 				}
 			}
 		}
 
-
+	echo "******* Alle FS20EX Taster ausgeben.\n";
+	
+	foreach ($FS20EX as $Key)
+		{
+		set_time_limit(1200);		
+		if ( (isset($Key["DeviceList"])==true) )
+			{
+			/* alle Kontakte */
+			foreach ($Key["COID"] as $entry)
+				{
+				$oid=(integer)$entry["OID"];
+				$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+					{
+					echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
+					}
+				else
+					{
+					echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
+					}
+				$parameter="";
+				if ($donotregister==false)
+					{
+					$i++; if ($i>$maxi) { $donotregister=true; }
+					foreach ($remServer as $Name => $Server)
+						{
+						if ( $status[$Name]["Status"] == true )
+							{						
+							$rpc = new JSONRPC($Server["Adresse"]);
+							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
+							$rpc->IPS_SetVariableCustomProfile($result,"Button");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							}
+						}
+					$messageHandler = new IPSMessageHandler();
+					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+					//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+					$messageHandler->CreateEvent($oid,"OnUpdate");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+					$messageHandler->RegisterEvent($oid,"OnUpdate",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+					}
+				}	
+			}
+		}
 
 ?>

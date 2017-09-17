@@ -356,13 +356,10 @@ if (IPS_GetName(0)=="BKS01")
 
 	/* verzeichnisse */
 	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
-
 	} /* ende besondere Konfig für BKS01 */
 
 /* obige Konfigurationen kann man langsam loeschen, da obsolet, beide Server wurden durch neuere Versionen ersetzt */
 
-
-$iTunes_Verzeichnis="c:/Program Files/iTunes/iTunes.exe";
 
 /****************************************************************************************************/
 
@@ -2153,7 +2150,7 @@ function RPC_CreateCategoryByName($rpc, $id, $name)
 function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 	{
 
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	$remServer=ROID_List();
 	if ($startexec==0) {$startexec=microtime(true);}
 	foreach ($Homematic as $Key)

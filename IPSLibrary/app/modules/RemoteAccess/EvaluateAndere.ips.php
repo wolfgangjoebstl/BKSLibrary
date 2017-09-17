@@ -3,7 +3,7 @@
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
  * 	hier für den Regensensor und die Temperaturwerte der FHT Heizungssteuerungen/zentralen
- *    Basis ist das File EvaluateVariables.inc.php
+ *    Basis ist das File EvaluateVariables_ROID.inc.php
  *
  */
 
@@ -27,7 +27,7 @@ $startexec=microtime(true);
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	
-IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 $remServer=ROID_List();
 
 $status=RemoteAccessServerTable();

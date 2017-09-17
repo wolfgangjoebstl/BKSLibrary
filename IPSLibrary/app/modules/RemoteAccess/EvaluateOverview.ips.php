@@ -25,7 +25,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
-	IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
 	$Homematic = HomematicList();
@@ -38,7 +38,14 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)
 		{
-		echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."\n";
+		if (IPS_ObjectExists($oid))
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."\n";
+			}
+		else
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+			}
 		}
 	
 	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
@@ -46,9 +53,9 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	echo "Zusätzliche Checks bei der Eventbearbeitung:\n";
 	echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
 	echo"\n";
-   $children=IPS_GetChildrenIDs($scriptId);
-   $i=0;
-   //print_r($children);
+	$children=IPS_GetChildrenIDs($scriptId);
+	$i=0;
+	//print_r($children);
 	foreach ($children as $childrenID)
 		{
 		$name=IPS_GetName($childrenID);
@@ -72,23 +79,23 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 			//else
 			   {
 			   if (isset($eventlist[$eventID_str]))
-			      {
+					{
 					$parent=@IPS_GetParent($eventID);
 					if ($parent===false)
-						{
-						echo "Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Wird als ".$name." gelöscht.\n";
+			   			{		
+						echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)."Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Wird als ".$name." gelöscht.\n";
 						$messageHandler->UnRegisterEvent($eventID);
 						IPS_DeleteEvent($childrenID);
 						}
 					else
 						{	
-  			   		echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName($parent),36)."  ".$eventlist[$eventID_str][1]."\n";
-  			   		//print_r($eventlist[$eventID_str]);
+  						echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName($parent),36)."  ".$eventlist[$eventID_str][1]."\n";
+  						//print_r($eventlist[$eventID_str]);
 						}
-			      }
+			      	}
 			   else
-			      {
-			   	echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration().\n";
+			      	{
+					echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." ".$eventID."            ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration().\n";
 					}
 				}
 			}

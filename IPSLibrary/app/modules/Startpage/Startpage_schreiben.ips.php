@@ -90,11 +90,14 @@ SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 	echo "\nKonfigurationseinstellungen:\n";
 	print_r($configuration);
 
+	echo "Switch on Monitor, look for :".$configuration["Directories"]["Scripts"].'nircmd.exe'."\n"; 
 	IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);	
 	
 	$noweather=true;
 	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=false; } }
 	if ($noweather == false) { echo "Keine Anzeige der rechten Wettertabelle in der Startpage.\n"; }
+	
+	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
 	}
 
 /**************************************** FUNCTIONS *********************************************************/
@@ -102,7 +105,7 @@ SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 function StartPageWrite($PageType)
 	{
 	
-	global $temperatur, $innentemperatur, $file, $showfile, $configuration;
+	global $temperatur, $innentemperatur, $file, $showfile, $configuration, $maxcount;
 
 	$noweather=false;
 	$todayID = @IPS_GetObjectIDByName("Program",0);
@@ -200,16 +203,24 @@ function StartPageWrite($PageType)
 
 	if ( $noweather==true )
 		{
-			$wert.='
+		$wert.='
 <table border="0" cellspacing="10">
 <tr>
    <td>
+   		';
+   		if ($maxcount >0)
+   			{
+			$wert.='   
 		<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
+		
+			';
+			}		
+		$wert.='		
    </td>
 </tr>
 </table>
 
-';
+		';
 		}
 	else
 		{	

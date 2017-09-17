@@ -64,29 +64,29 @@ class RemoteAccess
 		$count_phone=100;
 		$count_var=500;
 		foreach ($result as $variableID)
-		   {
-		   $children=IPS_HasChildren($variableID);
-		   echo "  Variable ".IPS_GetName($variableID)."  ".$children;
-		   if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
+			{
+			$children=IPS_HasChildren($variableID);
+			echo "  Variable ".IPS_GetName($variableID)."  ".$children;
+			if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
 				{
 				if ($children)
-				   {
-				   $this->add_variable($variableID,$this->includefile,$count_phone);
-				   $volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
-				   $this->add_variable($volumeID,$his->includefile,$count_phone);
-				   echo"  VolumeID :".$volumeID;
-			      }
-			   else
-			      {
-				   $this->add_variable($variableID,$includefile,$count_var);
+					{
+					$this->add_variable($variableID,$this->includefile,$count_phone);
+					$volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
+					$this->add_variable($volumeID,$his->includefile,$count_phone);
+					echo"  VolumeID :".$volumeID;
+			    	}
+		   		else
+					{
+					$this->add_variable($variableID,$includefile,$count_var);
 					}
 				echo "\n";
 				}
 			else
-			   {
-			   echo " keine Variable";
-			   }
-		   }
+				{
+				echo " keine Variable";
+				}
+			}
 		$this->includefile.="\n      ".');}'."\n";
 		}
 		
@@ -199,64 +199,82 @@ class RemoteAccess
 				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
 				$data = @parse_url($UrlAddress);
 				if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
-					throw new Exception("Invalid URL");
-				$url = $data['scheme']."://".$data['host'];
-				if(isset($data['port'])) $url .= ":".$data['port'];
-				if(isset($data['path'])) $url .= $data['path'];
-				if(isset($data['user']))
 					{
-					$username = $data['user'];
+					echo "Invalid URL.\n";
+					$response=false;
 					}
 				else
-					{
-					$username = "";
-					}
-				if(isset($data['pass']))
-				   {
-					$password = $data['pass'];
-					}
-				else
-					{
-					$password = "";
-					}
-				if (!is_scalar($method)) {
-						throw new Exception('Method name has no scalar value');
-					}
-				if (!is_array($params)) {
-						throw new Exception('Params must be given as array');
-					}
-				$id = round(fmod(microtime(true)*1000, 10000));
-				$params = array_values($params);
-				$strencode = function(&$item, $key) {
-				if ( is_string($item) )
-						$item = utf8_encode($item);
-					else if ( is_array($item) )
-						array_walk_recursive($item, $strencode);
-					};
-				array_walk_recursive($params, $strencode);
-				$request = Array(
+					{	
+					$url = $data['scheme']."://".$data['host'];
+					if(isset($data['port'])) $url .= ":".$data['port'];
+					if(isset($data['path'])) $url .= $data['path'];
+					if(isset($data['user']))
+						{
+						$username = $data['user'];
+						}
+					else
+						{
+						$username = "";
+						}
+					if(isset($data['pass']))
+					   {
+						$password = $data['pass'];
+						}
+					else
+						{
+						$password = "";
+						}
+					if (!is_scalar($method)) 
+						{
+						echo "Method name has no scalar value-\n";
+						$response=false;
+						}
+					else
+						{	
+						if (!is_array($params)) 
+							{
+							echo "Params must be given as array.\n";
+							$response=false;							
+							}
+						else
+							{	
+							$id = round(fmod(microtime(true)*1000, 10000));
+							$params = array_values($params);
+							$strencode = function(&$item, $key) 
+								{
+								if ( is_string($item) )
+									$item = utf8_encode($item);
+									else if ( is_array($item) )
+										array_walk_recursive($item, $strencode);
+								};
+							array_walk_recursive($params, $strencode);
+							$request = Array(
 									"jsonrpc" => "2.0",
 									"method" => $method,
 									"params" => $params,
 									"id" => $id
 								);
-				$request = json_encode($request);
-				$header = "Content-type: application/json"."\r\n";
-				if(($username != "") || ($password != "")) {
-					$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
-					}
-				$options = Array(
-						"http" => array (
-						"method"  => 'POST',
-						"header"  => $header,
-						"content" => $request
+							$request = json_encode($request);
+							$header = "Content-type: application/json"."\r\n";
+							if(($username != "") || ($password != "")) 
+								{
+								$header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+								}
+							$options = Array(
+								"http" => array (
+								"method"  => 'POST',
+								"header"  => $header,
+								"content" => $request
 										)
-							);
-				$context  = stream_context_create($options);
-
-				$response = @file_get_contents($url, false, $context);
+								);
+							$context  = stream_context_create($options);
+							$url = urlencode($url);							
+							$response = @file_get_contents($url, false, $context);							
+							}
+						}
+					}		
 				if ($response===false)
-				   {
+					{
 					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
 					$RemoteServer[$Name]["Status"]=false;
 					}
@@ -268,7 +286,7 @@ class RemoteAccess
 					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 					$RemoteServer[$Name]["Status"]=true;
 					}
-			   }
+				}
 			else
 				{
 				echo "   Server : ".$url." mit Name: ".$Name." nicht auf active konfiguriert.\n";
@@ -373,7 +391,7 @@ class RemoteAccess
 	public function write_includeFile()
 		{
 		$this->includefile.="\n".'?>';
-		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables.inc.php';
+		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables_ROID.inc.php';
 		if (!file_put_contents($filename, $this->includefile))
 			{
         	throw new Exception('Create File '.$filename.' failed!');
@@ -382,7 +400,7 @@ class RemoteAccess
 
 	public function read_includeFile()
 		{
-		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables.inc.php';
+		$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\RemoteAccess\EvaluateVariables_ROID.inc.php';
 		$file=file_get_contents($filename);
 		if (!$file)
 			{
@@ -619,7 +637,7 @@ class RemoteAccess
 	 */
 	public function get_listofROIDs()
 		{
-		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$this->listofROIDs=ROID_List();
 		return ($this->listofROIDs);
 		}
@@ -706,7 +724,7 @@ function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
 
 	function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
 		{
-		IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		if ($startexec==0) {$startexec=microtime(true);}
 		foreach ($remServer as $Name => $Server)

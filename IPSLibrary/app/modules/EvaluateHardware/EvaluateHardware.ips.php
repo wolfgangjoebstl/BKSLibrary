@@ -377,13 +377,41 @@ if ($_IPS['SENDER']=="Execute")
 	$guid = "{56800073-A809-4513-9618-1C593EE1240C}";
 	//Auflisten
 	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-
+	$includefile.='function FS20EXList() { return array('."\n";
+	
 	echo "\nFS20EX Geräte: ".sizeof($alleInstanzen)."\n\n";
 	foreach ($alleInstanzen as $instanz)
 		{
+		//$FS20EXconfig=IPS_GetConfiguration($instanz);
+		//print_r($FS20EXconfig);
 		echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
-		//echo IPS_GetName($instanz)." ".$instanz." \n";
+
+		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+		$includefile.="\n         ".'"HomeCode" => \''.IPS_GetProperty($instanz,'HomeCode').'\', ';
+		$includefile.="\n         ".'"DeviceList" => \''.IPS_GetProperty($instanz,'DeviceList').'\', ';
+		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
+		$includefile.="\n         ".'"COID" => array(';
+
+		$cids = IPS_GetChildrenIDs($instanz);
+		//print_r($cids);
+		foreach($cids as $cid)
+			{
+			$o = IPS_GetObject($cid);
+			//echo "\nCID :".$cid;
+			//print_r($o);
+			if($o['ObjectIdent'] != "")
+				{
+				$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
+				$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
+				$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
+				$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
+	        	}
+			}
+		$includefile.="\n             ".'	),'."\n";
+		$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 		}
+	$includefile.=');}'."\n";
 
 	/************************************
 	 *
