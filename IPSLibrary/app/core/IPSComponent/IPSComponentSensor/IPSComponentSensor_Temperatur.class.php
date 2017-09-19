@@ -46,6 +46,8 @@
 		 *
 		 * Initialisierung eines IPSModuleSensor_IPStemp Objektes
 		 *
+		 * legt die Remote Server an, an die wenn RemoteAccess Modul installiert ist reported werden muss
+		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung

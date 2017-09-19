@@ -157,53 +157,63 @@ echo "\n";
 				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				$messageHandler->CreateEvent($oid,"OnUpdate");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnUpdate",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
+				
+				/* Kein Detect Movement, Taster sind keine Kontakte */
+				
 				}
 			}
 		}
 
 	echo "******* Alle FS20EX Taster ausgeben.\n";
-	
 	foreach ($FS20EX as $Key)
 		{
-		set_time_limit(1200);		
-		if ( (isset($Key["DeviceList"])==true) )
+		if ( (isset($Key["COID"])==true) and (isset($Key["DeviceList"])==true) )
 			{
-			/* alle Kontakte */
-			foreach ($Key["COID"] as $entry)
+			/* alle Taster */
+			echo str_pad($Key["Name"],30)."\n";
+			foreach ($Key["COID"] as $Entry)
 				{
-				$oid=(integer)$entry["OID"];
+				//print_r($Entry);
+				$oid=(integer)$Entry["OID"];
 				$variabletyp=IPS_GetVariable($oid);
+				$SubName=$Entry["Name"];
+				if ( strpos($SubName,"rät ") != false) { $SubName = "Status"; }
+				if ( strpos($SubName,"räte") != false) { $SubName = "Wert"; }
+				$VarName=$Key["Name"]."-".$SubName;
 				if ($variabletyp["VariableProfile"]!="")
 					{
-					echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
+					echo "    ".str_pad($VarName,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",$variabletyp["VariableChanged"]).")  ".$variabletyp["VariableType"]."\n";
 					}
 				else
 					{
-					echo "  ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")                                    Exectime: ".exectime($startexec)."\n";
+					echo "    ".str_pad($VarName,30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",$variabletyp["VariableChanged"]).")  ".$variabletyp["VariableType"]."\n";
 					}
 				$parameter="";
-				if ($donotregister==false)
+				foreach ($remServer as $Name => $Server)
 					{
-					$i++; if ($i>$maxi) { $donotregister=true; }
-					foreach ($remServer as $Name => $Server)
+					echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+					if ( $status[$Name]["Status"] == true )
 						{
-						if ( $status[$Name]["Status"] == true )
-							{						
-							$rpc = new JSONRPC($Server["Adresse"]);
-							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
-							$rpc->IPS_SetVariableCustomProfile($result,"Button");
+						$rpc = new JSONRPC($Server["Adresse"]);
+						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $VarName, $variabletyp["VariableType"]);
+						if ( $variabletyp["VariableType"] == 0) /* Boolean, loggen, Rest zur Vollstaendigkeit */
+							{
+							$rpc->IPS_SetVariableCustomProfile($result,"Contact");
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-							$parameter.=$Name.":".$result.";";
 							}
+						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+						$parameter.=$Name.":".$result.";";
 						}
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-					$messageHandler->CreateEvent($oid,"OnUpdate");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-					$messageHandler->RegisterEvent($oid,"OnUpdate",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-					}
+					}	
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Motion');
+
+				/* Kein Detect Movement, Taster sind keine Kontakte */
+
 				}	
 			}
 		}

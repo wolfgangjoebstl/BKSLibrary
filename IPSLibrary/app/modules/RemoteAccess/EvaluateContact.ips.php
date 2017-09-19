@@ -75,6 +75,7 @@ echo "\n";
 	$Homematic = HomematicList();
 	$FHT = FHTList();
 	$FS20= FS20List();
+	$FS20EX= FS20EXList();
 
 	/******************************************* Kontakte ***********************************************/
 
@@ -86,11 +87,11 @@ echo "\n";
 	foreach ($Homematic as $Key)
 		{
 		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-	   	{
-	   	/* alle Kontakte */
+			{
+			/* alle Kontakte */
 
-	      $oid=(integer)$Key["COID"]["STATE"]["OID"];
-      	$variabletyp=IPS_GetVariable($oid);
+			$oid=(integer)$Key["COID"]["STATE"]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
@@ -119,12 +120,74 @@ echo "\n";
 		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-			//echo "Detect Movement anlegen.\n";
-		   $DetectMovementHandler = new DetectMovementHandler();
-			$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
+			if (isset ($installedModules["DetectMovement"]))
+				{
+				//echo "Detect Movement anlegen.\n";			
+				$DetectMovementHandler = new DetectMovementHandler();
+				$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
+				}
 			}
 		}
 
+if (false)
+	{	
+	echo "******* Alle FS20EX Kontakte ausgeben.\n";
+	foreach ($FS20EX as $Key)
+		{
+		if ( (isset($Key["COID"])==true) and (isset($Key["DeviceList"])==true) )
+			{
+			/* alle Kontakte */
+			echo str_pad($Key["Name"],30)."\n";
+			foreach ($Key["COID"] as $Entry)
+				{
+				//print_r($Entry);
+				$oid=(integer)$Entry["OID"];
+				$variabletyp=IPS_GetVariable($oid);
+				$SubName=$Entry["Name"];
+				if ( strpos($SubName,"rät ") != false) { $SubName = "Status"; }
+				if ( strpos($SubName,"räte") != false) { $SubName = "Wert"; }
+				$VarName=$Key["Name"]."-".$SubName;
+				if ($variabletyp["VariableProfile"]!="")
+					{
+					echo "    ".str_pad($VarName,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",$variabletyp["VariableChanged"]).")  ".$variabletyp["VariableType"]."\n";
+					}
+				else
+					{
+					echo "    ".str_pad($VarName,30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",$variabletyp["VariableChanged"]).")  ".$variabletyp["VariableType"]."\n";
+					}
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+					if ( $status[$Name]["Status"] == true )
+						{
+						$rpc = new JSONRPC($Server["Adresse"]);
+						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Kontakte"], $VarName, $variabletyp["VariableType"]);
+						if ( $variabletyp["VariableType"] == 0) /* Boolean, loggen, Rest zur Vollstaendigkeit */
+							{
+							$rpc->IPS_SetVariableCustomProfile($result,"Contact");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							}
+						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+						$parameter.=$Name.":".$result.";";
+						}
+					}	
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 
-
+				if (isset ($installedModules["DetectMovement"]))
+					{
+					//echo "Detect Movement anlegen.\n";
+					$DetectMovementHandler = new DetectMovementHandler();
+					$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
+					}
+				}	
+			}
+		}
+	}
+	
 ?>

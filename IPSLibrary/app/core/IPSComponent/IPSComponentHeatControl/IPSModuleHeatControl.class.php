@@ -17,16 +17,28 @@
 	 *
 	 */
 
+	IPSUtils_Include ('IPSModule.class.php', 'IPSLibrary::app::core::IPSComponent');
+	
 	abstract class IPSModuleHeatControl extends IPSLibraryModule {
 
 		/**
 		 * @public
 		 *
-		 * Ermöglicht die Synchronisation des aktuellen Zustands 
+		 * Ermöglicht die Synchronisation von Sensorwerten mit Modulen
 		 *
-		 * @param boolean $state aktueller Status des Gerätes
+		 * @param string $value Sensorwert
+		 * @param IPSComponentSensor $component Sensor Komponente
 		 */
-		abstract public function SyncState($state, IPSComponentHeatControl $componentToSync);
+		abstract public function SyncButton($value, IPSComponentHeatControl $component);
+
+		/**
+		 * @public
+		 *
+		 * Ermöglicht das Verarbeiten eines Taster Signals
+		 *
+		 */
+		abstract public function ExecuteButton();
+
 
 	}
 

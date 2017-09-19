@@ -17,7 +17,7 @@
 	 *
 	 */
 
-	IPSUtils_Include ('IPSModuleSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+	IPSUtils_Include ('IPSModuleHeatControl.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');
 
 	class IPSModuleHeatControl_All extends IPSModuleHeatControl {
 
@@ -32,10 +32,12 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $movementId Movement Command
 		 */
-		public function __construct() {
+		public function __construct($var1=null,$var2=null,$var3=null)
+			{
+			echo "construct IPSModuleHeatControl_All with parameter ".$var1."  ".$var2."  ".$var3."\n";
 			//$this->instanceId = IPSUtil_ObjectIDByPath($instanceId);
 			//$this->movementId = $movementId;
-		}
+			}
 	
 	
 		/**
