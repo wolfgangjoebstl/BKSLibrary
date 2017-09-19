@@ -61,6 +61,7 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		$HM_Adresse=IPS_GetProperty($instanz,'Address');
 		$result=explode(":",$HM_Adresse);
+		$sizeResult=sizeof($result);
 		//print_r($result);
 		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
 		if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
@@ -73,8 +74,12 @@ if ($_IPS['SENDER']=="Execute")
 			$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
 			}
 		$serienNummer[$HM_CCU_Name][$result[0]]["Name"]=IPS_GetName($instanz);
-		$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
-		$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);		
+		if ($sizeResult>1)
+			{
+			$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
+			$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);
+			}
+		else { echo "Fehler mit ".$result[0]."\n"; }			
 		$cids = IPS_GetChildrenIDs($instanz);
 		foreach($cids as $cid)
 			{
@@ -488,57 +493,61 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		$HM_Adresse=IPS_GetProperty($instanz,'Address');
 		$result=explode(":",$HM_Adresse);
+		$sizeResult=sizeof($result);
 		//print_r($result);
 		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
-		if ($result[1]<>"0")
-			{  /* ignore status channel with field RSSI levels and other informations */
-			if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
-		   		{
-				$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
+		if ($sizeResult > 1)
+			{
+			if ($result[1]<>"0")
+				{  /* ignore status channel with field RSSI levels and other informations */
+				if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
+					{
+					$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
+					}
+				else
+					{
+					$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
+					$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
+					}
+				$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+				$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
+				$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
+				$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
+				$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
+				$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
+				$includefile.="\n         ".'"COID" => array(';
+		
+				$type=getHomematicType($instanz);	/* gibt als echo auch den Typ aus */
+				$result=explode(":",IPS_GetProperty($instanz,'Address'));
+				if ($type<>"") 
+					{
+					$includehomematic.='             '.str_pad(('"'.IPS_GetName($instanz).'"'),40).' => array("'.$result[0].'",'.$result[1].',HM_PROTOCOL_BIDCOSRF,'.$type.'),'."\n";
+					}	
+	
+				$cids = IPS_GetChildrenIDs($instanz);
+				//print_r($cids);
+				foreach($cids as $cid)
+					{
+					$o = IPS_GetObject($cid);
+					//echo "\nCID :".$cid;
+					//print_r($o);
+					if($o['ObjectIdent'] != "")
+						{
+						$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
+						$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
+						$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
+						$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
+						$serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
+						}
+					}
+				$includefile.="\n             ".'	),';
+				$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
 				}
 			else
 				{
-				$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
-				$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
+				echo "     Statusvariable, wird nicht im Includefile geführt.\n";
 				}
-			$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
-			$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
-			$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
-			$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
-			$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
-			$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
-			$includefile.="\n         ".'"COID" => array(';
-		
-			$type=getHomematicType($instanz);	/* gibt als echo auch den Typ aus */
-			$result=explode(":",IPS_GetProperty($instanz,'Address'));
-			if ($type<>"") 
-				{
-				$includehomematic.='             '.str_pad(('"'.IPS_GetName($instanz).'"'),40).' => array("'.$result[0].'",'.$result[1].',HM_PROTOCOL_BIDCOSRF,'.$type.'),'."\n";
-				}	
-	
-			$cids = IPS_GetChildrenIDs($instanz);
-			//print_r($cids);
-			foreach($cids as $cid)
-				{
-				$o = IPS_GetObject($cid);
-				//echo "\nCID :".$cid;
-				//print_r($o);
-				if($o['ObjectIdent'] != "")
-					{
-					$includefile.="\n                ".'"'.$o['ObjectIdent'].'" => array(';
-					$includefile.="\n                              ".'"OID" => "'.$o['ObjectID'].'", ';
-					$includefile.="\n                              ".'"Name" => "'.$o['ObjectName'].'", ';
-					$includefile.="\n                              ".'"Typ" => "'.$o['ObjectType'].'",), ';
-					$serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
-					}
-		    	}
-			$includefile.="\n             ".'	),';
-			$includefile.="\n      ".'	),'."\n";	//print_r(IPS_GetInstance($instanz));
-			}
-		else
-			{
-			echo "     Statusvariable, wird nicht im Includefile geführt.\n";
-			}	
+			}		
 		}
 
 	/*$includefile.=');'."\n".'?>';*/

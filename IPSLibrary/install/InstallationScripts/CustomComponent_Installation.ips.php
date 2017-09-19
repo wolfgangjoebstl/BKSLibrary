@@ -735,86 +735,15 @@
 
 	if (function_exists('HomematicList'))
 		{
-		$Homematic = HomematicList();
-		$keyword="TEMPERATURE";
-		foreach ($Homematic as $Key)
-			{
-			/* alle Temperaturwerte ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
-				{
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-	   				{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
-			   		}
-
-				}  /* Ende isset Homatic Temperatur */
-			} /* Ende foreach */
-		} /* ende function exists */	
+		installComponent(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+		} 
 
 
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
 	if (function_exists('FHTList'))
 		{
-		$FHT = FHTList();
-		$keyword="TemeratureVar";
-
-		foreach ($FHT as $Key)
-			{
-			/* alle Temperaturwerte der Heizungssteuerungen ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
-  				{
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-				   {
-				   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-				   $messageHandler = new IPSMessageHandler();
-				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-				   /* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
-				   }
-
-				}  /* Ende isset Heizungssteuerung */
-			} /* Ende foreach */
-		} /* ende function exists */	
+		installComponent(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+		} 	
 
 	/****************************************************************************************************************
 	 *
@@ -831,43 +760,8 @@
 
 	if (function_exists('HomematicList'))
 		{
-		$Homematic = HomematicList();
-		$keyword="HUMIDITY";
-		foreach ($Homematic as $Key)
-			{
-			/* alle Feuchtigkeitswerte ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
-				{
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-	     		$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
-				   	}
-				}  /* Ende isset Feuchtigkeitswert */
-			} /* Ende foreach */
-		} /* ende function exists */			
+		installComponent(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
+		} 			
 		
 	/****************************************************************************************************************
 	 *
@@ -883,87 +777,13 @@
 	echo "Homematic Heat Control Actuator werden registriert.\n";
 	
 	if (function_exists('HomematicList'))
-		{			
-		$Elements = HomematicList();
-		$keyword="VALVE_STATE";
-		foreach ($Elements as $Key)
-			{
-			/* alle Stellmotoren ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
-				{		
-				//echo "********** ".$Key["Name"]."\n";
-				//print_r($Key);
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-		     	$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					echo "  Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-					echo "  Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl,1,2,3');
-				   	}			
-				}
-			} /* Ende foreach */
-		} /* ende function exists */			
+		{
+		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl,1,2,3');					
+		} 			
 		
 	if (function_exists('FHTList'))
 		{
-		$Elements = FHTList();
-		$keyword="PositionVar";
-		foreach ($Elements as $Key)
-			{
-			/* alle Stellmotoren ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
-				{		
-				//echo "********** ".$Key["Name"]."\n";
-				//print_r($Key);
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-		     	$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					echo "  Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-					echo "  Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_FS20','IPSModuleHeatControl,1,2,3');
-				   	}			
-				}
-			} /* Ende foreach */		
-		
-						
+		installComponent(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20,1,2,3','IPSModuleHeatControl,1,2,3');
 		}
 
 	echo "***********************************************************************************************\n";
@@ -973,6 +793,46 @@
 	 *                                      Functions
 	 *
 	 ****************************************************************************************************************/
+
+	function installComponent($Elements,$keyword,$InitComponent, $InitModule)
+		{
+		foreach ($Elements as $Key)
+			{
+			/* alle Stellmotoren ausgeben */
+			if (isset($Key["COID"][$keyword])==true)
+				{		
+				//echo "********** ".$Key["Name"]."\n";
+				//print_r($Key);
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+				$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+					{
+					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					}
+				else
+					{
+					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					}
+				if (isset ($installedModules["RemoteAccess"]))
+					{
+					echo "  Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+					echo "  Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+					}
+				else
+					{
+					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+					$messageHandler = new IPSMessageHandler();
+					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent,$InitModule);
+					}			
+				}
+			} /* Ende foreach */		
+		}
+
 
 
 ?>

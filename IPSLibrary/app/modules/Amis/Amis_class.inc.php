@@ -377,7 +377,8 @@
 					//$HMenergieID  = $meter["HM_EnergieID"];
 					//$HMleistungID = $meter["HM_LeistungID"];
 					}
-				$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+				//$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+				$energie=GetValue($HMenergieID); /* Homematic Wert ist in kWh, nicht umrechnen */
 				$leistung=($energie-GetValue($EnergieID))*4;
 
 				SetValue($EnergieID,$energie);

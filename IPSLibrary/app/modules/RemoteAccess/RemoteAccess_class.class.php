@@ -356,6 +356,9 @@ class RemoteAccess
 
 				$this->listofOIDs["Motion"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Bewegungsmelder");
 				$this->includefile.="\n         ".'"Bewegung" => "'.$this->listofOIDs["Motion"][$Name].'", ';
+
+				$this->listofOIDs["HeatControl"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatControl");
+				$this->includefile.="\n         ".'"HeatControl" => "'.$this->listofOIDs["HeatControl"][$Name].'", ';
 	
 				$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
 				$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
@@ -654,41 +657,47 @@ class RemoteAccess
 		return ($this->listofOIDs);
 		}
 
-
-function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
-	{
-
-	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
-
-	$result="";
-	$size=sizeof($struktur);
-	if ($size==0)
+	/**
+	 * @public
+	 *
+	 * von der ursprünglichen function uebernommen, vereinheitlichung des Anlegens von Remote Variablen
+	 *
+	 *
+	 */
+	function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
 		{
-		$children=$rpc->IPS_GetChildrenIDs($id);
-		foreach ($children as $oid)
-		   	{
-		   	$struktur[$oid]=$rpc->IPS_GetName($oid);
-	   		}		
-		echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
-		//echo "Struktur :\n";
-		//print_r($struktur);
-		}
-	foreach ($struktur as $oid => $oname)
-	   	{
-	   	if ($name==$oname) {$result=$name;$vid=$oid;}
-		//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
-	   	}
-	if ($result=="")
-	   	{
-	   	echo "Variable ".$name." auf Server neu erzeugen.\n";
-	   	$vid = $rpc->IPS_CreateVariable($type);
-		$rpc->IPS_SetParent($vid, $id);
+
+		/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
+
+		$result="";
+		$size=sizeof($struktur);
+		if ($size==0)
+			{
+			$children=$rpc->IPS_GetChildrenIDs($id);
+			foreach ($children as $oid)
+				{
+				$struktur[$oid]=$rpc->IPS_GetName($oid);
+				}		
+			echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+			//echo "Struktur :\n";
+			//print_r($struktur);
+			}
+		foreach ($struktur as $oid => $oname)
+			{
+			if ($name==$oname) {$result=$name;$vid=$oid;}
+			//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
+			}
+		if ($result=="")
+			{
+			echo "Variable ".$name." auf Server neu erzeugen.\n";
+			$vid = $rpc->IPS_CreateVariable($type);
+			$rpc->IPS_SetParent($vid, $id);
       	$rpc->IPS_SetName($vid, $name);
       	$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
       	}
-    echo "Fertig mit ".$vid."\n";
-    return $vid;
-	}
+		echo "Fertig mit ".$vid."\n";
+		return $vid;
+		}
 
 	/******************************************************************/
 

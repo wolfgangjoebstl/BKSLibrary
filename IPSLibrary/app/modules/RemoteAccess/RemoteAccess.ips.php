@@ -22,7 +22,7 @@
  *
  * es wird die Struktur am remote Server aufgebaut
  *
- * zusaetzlich wird ein evaluate.inc erstellt, damit Variablen auf den Remote Servern schneller adressierbar sind
+ * zusaetzlich wird ein Evaluate_ROID.inc erstellt, damit Variablen auf den Remote Servern schneller adressierbar sind
  *    mit function GuthabensteuerungList(), function AmisStromverbrauchList() und function ROID_List()
  *
  * function ROID_List() beinhaltet die Liste der VIS Server
@@ -103,11 +103,11 @@ $startexec=microtime(true);
 		$remote->add_SysInfo();
 		echo "Ende OperationCenter Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";		
 		}		
-	$status=$remote->server_ping();
-	$remote->add_RemoteServer($status);
+	$status=$remote->server_ping();		/* speichert die aktuelle Erreichbarkeit jedes einzelnen Servers in der Liste */
+	$remote->add_RemoteServer($status);	/* mit new wurde ein include File angelegt, in dieses wird die Liste der erreichbaren Remote Logging Server eingetragen, ROID_List() */
 	echo "Ende Remote Server installieren : ".(microtime(true)-$startexec)." Sekunden \n";
 	
-	$remote->write_includeFile();
+	$remote->write_includeFile();			/* und am Ende das include File geschrieben */
 	echo "Ende Evaluierung : ".(microtime(true)-$startexec)." Sekunden \n";
 
 	//$remote->rpc_showProfiles();
