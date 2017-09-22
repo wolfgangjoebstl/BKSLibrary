@@ -68,10 +68,52 @@
 			$pos1 = strpos($fileContent, $this->Get_Configtype().' = array(');
 			$pos2 = strpos($fileContent, 'return '.$this->Get_Configtype().';');
 
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+			if ($pos1 === false or $pos2 === false) 
+				{
+				echo "================================================\n";
+				echo "Function for heat control not inserted in config file. Insert now.\n";
+				$comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
+				for ($i=0;$i<strlen($fileContent);$i++)
+					{
+					switch ($fileContent[$i])
+						{
+						/* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
+						case '/':
+							if ( ($comment==2) && ($star==1) ) $comment=0;
+							elseif ($comment==1) $comment=3;
+							else $comment=1;
+							$star=0;
+						case '*':
+							if ($comment==1) $comment=2;
+							$star=1;	
+							break;
+						case '}':
+						if ($comment <2 ) $posn=$i;	
+						case chr(10):
+						case chr(13):
+							if ($comment==3) $comment=0;		
+						default:
+							$star=0;
+							break;
+						}		
+					}
+				// $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
+				
+				if ( $posn === false )
+					{
+					throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
+					}
+				//echo $fileContent."\n  Position last } : ".$posn."   ".substr($fileContent, $posn,5)."\n";	
+				$configString="\n	 function IPS".get_class($this)."_GetEventConfiguration() {\n                          ".$configString."\n".'		return '.$this->Get_Configtype().";\n	}\n";
+				$fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
+				//echo $fileContentNew;	
+				//echo "\n\n class name : ".get_class($this)."\n";						
+				//throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
+				}
+			else
+				{	
+				$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+				}
 			file_put_contents($fileNameFull, $fileContentNew);
 			$this->Set_EventConfigurationAuto($configuration);
 			}
@@ -107,7 +149,7 @@
 				{
 				switch ($type)
 					{
-				   case 'Motion':
+					case 'Motion':
 					case 'Contact':
 						if ($type==$params[0])
 						   {
@@ -116,14 +158,14 @@
 					   break;
 					default:
 					   if ($type!="")
-					      {
+							{
 							if ($type==$params[1])
 							   {
 								$result[$variableId]=$params[1];
 							   }
-					      }
+					   		}
 					   else
-					      {
+					   		{
 							$result[$variableId]=$params[0];
 							}
 					   break;
@@ -146,7 +188,7 @@
 				{
 				switch ($type)
 					{
-				   case 'Motion':
+				   	case 'Motion':
 					case 'Contact':
 						if (($type==$params[0]) && ($params[1] != ""))
 						   {
@@ -155,7 +197,7 @@
 					   break;
 					default:
 					   if ($params[1] != "")
-					      {
+					   		{
 							$result[$params[1]]="available";
 							}
 					   break;
@@ -167,10 +209,10 @@
 		/**
 		 * @public
 		 *
-		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
+		 * Erzeugt ein Event fÃ¼r eine Ã¼bergebene Variable, das den IPSMessageHandler beim AuslÃ¶sen
 		 * aufruft.
 		 *
-		 * @param integer $variableId ID der auslösenden Variable
+		 * @param integer $variableId ID der auslÃ¶senden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
 		 */
 		public function CreateEvent($variableId, $eventType)
@@ -180,6 +222,9 @@
 			
 			switch ($eventType)
 				{
+				case 'HeatControl':
+					$triggerType = 3;
+					break;
 				case 'Temperatur':
 					$triggerType = 3;
 					break;
@@ -208,13 +253,13 @@
 		 * @public
 		 *
 		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
-		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
+		 * fÃ¼r die Ã¼bergebene Variable an und registriert die dazugehÃ¶rigen Parameter im MessageHandler
 		 * Konfigurations File.
 		 *
-		 * @param integer $variableId ID der auslösenden Variable
+		 * @param integer $variableId ID der auslÃ¶senden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
-		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
+		 * @param string $componentParams Parameter fÃ¼r verlinkte Hardware Komponente (Klasse+Parameter)
+		 * @param string $moduleParams Parameter fÃ¼r verlinktes Module (Klasse+Parameter)
 		 */
 		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
@@ -226,7 +271,7 @@
 				if (array_key_exists($variableId, $configurationAuto))
 					{
 					//echo "Eintrag in Datenbank besteht.\n";
-				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+					//echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
 					$moduleParamsNew = explode(',', $moduleParams);
 					//print_r($moduleParamsNew);
 					$moduleClassNew  = $moduleParamsNew[0];
@@ -276,7 +321,7 @@
 	class DetectHumidityHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie fÃ¼r alle Instanzen gleich ist */
 		private static $configtype;
 
 		/**
@@ -287,16 +332,16 @@
 		 */
 		public function __construct()
 			{
-         self::$configtype = '$eventHumidityConfiguration';
+			self::$configtype = '$eventHumidityConfiguration';
 			}
 
 
 		function Get_Configtype()
-		   {
+			{
 			return self::$configtype;
-		   }
+			}
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* obige variable in dieser Class kapseln, dannn ist sie static fÃ¼r diese Class */
 
 		function Get_EventConfigurationAuto()
 			{
@@ -314,7 +359,7 @@
 		 */
 		function Set_EventConfigurationAuto($configuration)
 			{
-		   self::$eventConfigurationAuto = $configuration;
+			self::$eventConfigurationAuto = $configuration;
 			}
 
 
@@ -325,7 +370,7 @@
 	class DetectMovementHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie fÃ¼r alle Instanzen gleich ist */
 		private static $configtype;
 
 		/**
@@ -336,16 +381,16 @@
 		 */
 		public function __construct()
 			{
-         self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
+        	self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
 			}
 
 
 		function Get_Configtype()
-		   {
+			{
 			return self::$configtype;
-		   }
+			}
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* obige variable in dieser Class kapseln, dannn ist sie static fÃ¼r diese Class */
 
 		function Get_EventConfigurationAuto()
 			{
@@ -363,7 +408,7 @@
 		 */
 		function Set_EventConfigurationAuto($configuration)
 			{
-		   self::$eventConfigurationAuto = $configuration;
+		   	self::$eventConfigurationAuto = $configuration;
 			}
 
 
@@ -374,7 +419,7 @@
 	class DetectTemperatureHandler extends DetectHandler
 		{
 
-		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie fÃ¼r alle Instanzen gleich ist */
 		private static $configtype;
 
 		/**
@@ -385,22 +430,25 @@
 		 */
 		public function __construct()
 			{
-         self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
+			self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
 			}
 
 
 		function Get_Configtype()
-		   {
+			{
 			return self::$configtype;
-		   }
+			}
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* obige variable in dieser Class kapseln, dannn ist sie static fÃ¼r diese Class */
 
 		function Get_EventConfigurationAuto()
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();       /* <-------- change here */
+				if ( function_exists('IPSDetectTemperatureHandler_GetEventConfiguration') )
+					{
+					self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();       /* <-------- change here */
+					}
 				}
 			return self::$eventConfigurationAuto;
 			}
@@ -412,849 +460,67 @@
 		 */
 		function Set_EventConfigurationAuto($configuration)
 			{
-		   self::$eventConfigurationAuto = $configuration;
+		   	self::$eventConfigurationAuto = $configuration;
 			}
 
 
 		}
 		
-/******************************************************************************************************************/
-
-
-/*    DELETE FROM HERE   for backup and library reasons only    */
-
 
 
 /******************************************************************************************************************/
 
-	class DetectMovementHandler1 {
+	class DetectHeatControlHandler extends DetectHandler
+		{
 
-		private static $eventConfigurationAuto = array();
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie fÃ¼r alle Instanzen gleich ist */
+		private static $configtype;
 
 		/**
 		 * @public
 		 *
-		 * Initialisierung des IPSLight_Manager Objektes
+		 * Initialisierung des DetectHumidityHandler Objektes
 		 *
 		 */
-		public function __construct() {
-
-		}
-
-		/**
-		 * @private
-		 *
-		 * Liefert die aktuelle Auto Event Konfiguration
-		 *
-		 * @return string[] Event Konfiguration
-		 */
-		private static function Get_EventConfigurationAuto() {
-			if (self::$eventConfigurationAuto == null) {
-				self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();            /* <-------- change here */
+		public function __construct()
+			{
+        	self::$configtype = '$eventHeatConfiguration';                                          /* <-------- change here */
 			}
+
+
+		function Get_Configtype()
+			{
+			return self::$configtype;
+			}
+
+		/* obige variable in dieser Class kapseln, dannn ist sie static fÃ¼r diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				if ( function_exists('IPSDetectHeatControlHandler_GetEventConfiguration') )
+					{
+					self::$eventConfigurationAuto = IPSDetectHeatControlHandler_GetEventConfiguration();       /* <-------- change here */
+					}
+				else
+					{
+					self::$eventConfigurationAuto = array();					
+					}	
+				}
 			return self::$eventConfigurationAuto;
-		}
+			}
 
 		/**
-		 * @private
 		 *
 		 * Setzen der aktuellen Event Konfiguration
 		 *
-		 * @param string[] $configuration Neue Event Konfiguration
 		 */
-		private static function Set_EventConfigurationAuto($configuration) {
-		   self::$eventConfigurationAuto = $configuration;
+		function Set_EventConfigurationAuto($configuration)
+			{
+			self::$eventConfigurationAuto = $configuration;
+			}
 		}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function CreateEvents()
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-
-			foreach ($configuration as $variableId=>$params)
-				{
-				self::CreateEvent($variableId, $params[0]);
-				}
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function PrintEvents($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':                                                       /* <-------- change here */
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$variableId]=$params[1];
-							}
-					   break;
-					default:
-					   if ($type!="")
-					      {
-							if ($type==$params[1])
-							   {
-								$result[$variableId]=$params[1];
-							   }
-					      }
-					   else
-					      {
-							$result[$variableId]=$params[0];
-							}
-					   break;
-					}
-				}
-			foreach ($result as $variableID => $type)
-			   {
-			   //echo "Variable ID : ".$variableID." Typ : ".$type."  ".IPS_GetName($variableID)."  ".IPS_GetName(IPS_GetParent($variableID))."\n";
-			   }
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListEvents($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':                         /* <-------- change here */
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$variableId]=$params[1];
-							}
-					   break;
-					default:
-					   if ($type!="")
-					      {
-							if ($type==$params[1])
-							   {
-								$result[$variableId]=$params[1];
-							   }
-					      }
-					   else
-					      {
-							$result[$variableId]=$params[0];
-							}
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListGroups($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':                      /* <-------- change here */
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$params[1]]="available";
-							}
-					   break;
-					default:
-						$result[$params[1]]="available";
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
-		 * aufruft.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 */
-		public static function CreateEvent($variableId, $eventType)
-			{
-			switch ($eventType)
-				{
-				case 'Motion':                      /* <-------- change here */
-					$triggerType = 1;
-					break;
-				case 'Contact':
-					$triggerType = 0;
-					break;
-				case 'par0':
-				case 'par1':
-				case 'par2':
-				   break;
-				default:
-					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
-				}
-			IPSLogger_Dbg (__file__, 'Created IPSDetectMoveHandler Event for Variable='.$variableId);            /* <-------- change here */
-			}
-
-
-		/**
-		 * @private
-		 *
-		 * Speichert die aktuelle Event Konfiguration
-		 *
-		 * @param string[] $configuration Konfigurations Array
-		 */
-		private static function StoreEventConfiguration($configuration) {
-
-			// Build Configuration String
-			$configString = '$eventMoveConfiguration = array(';         /* <-------- change here */
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
-			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			if (!file_exists($fileNameFull)) {
-				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
-			}
-			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventMoveConfiguration = array(');    /* <-------- change here */
-			$pos2 = strpos($fileContent, 'return $eventMoveConfiguration;');     /* <-------- change here */
-
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			file_put_contents($fileNameFull, $fileContentNew);
-			self::Set_EventConfigurationAuto($configuration);
-		}
-
-		/**
-		 * @public
-		 *
-		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
-		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
-		 * Konfigurations File.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
-		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
-		 */
-		public static function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
-			{
-			$configurationAuto = self::Get_EventConfigurationAuto();
-			//print_r($configurationAuto);
-			//echo "Register Event with VariableID:".$variableId."\n";
-			// Search Configuration
-			$found = false;
-				if (array_key_exists($variableId, $configurationAuto))
-					{
-					//echo "Eintrag in Datenbank besteht.\n";
-				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-					$moduleParamsNew = explode(',', $moduleParams);
-					//print_r($moduleParamsNew);
-					$moduleClassNew  = $moduleParamsNew[0];
-
-					$params = $configurationAuto[$variableId];
-					//print_r($params);
-					for ($i=0; $i<count($params); $i=$i+3)
-						{
-						$moduleParamsCfg = $params[$i+2];
-						$moduleParamsCfg = explode(',', $moduleParamsCfg);
-						$moduleClassCfg  = $moduleParamsCfg[0];
-						// Found Variable and Module --> Update Configuration
-						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-						/*if ($moduleClassCfg=$moduleClassNew)
-							{
-							$found = true;
-							$configurationAuto[$variableId][$i]   = $eventType;
-							$configurationAuto[$variableId][$i+1] = $componentParams;
-							$configurationAuto[$variableId][$i+2] = $moduleParams;
-							} */
-						$found = true;
-						$configurationAuto[$variableId][$i]   = $eventType;
-						if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-						if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
-						}
-					}
-
-			// Variable NOT found --> Create Configuration
-			if (!$found)
-					{
-				   //echo "Create Event."."\n";
-					$configurationAuto[$variableId][] = $eventType;
-					$configurationAuto[$variableId][] = $componentParams;
-					$configurationAuto[$variableId][] = $moduleParams;
-					}
-
-				self::StoreEventConfiguration($configurationAuto);
-				self::CreateEvent($variableId, $eventType);
-
-		}
-
-	}
-
-/******************************************************************************************************************/
-
-	class DetectTemperatureHandler1 {
-
-		private static $eventConfigurationAuto = array();
-
-		/**
-		 * @public
-		 *
-		 * Initialisierung des IPSLight_Manager Objektes
-		 *
-		 */
-		public function __construct() {
-
-		}
-		
-		/**
-		 * @private
-		 *
-		 * Liefert die aktuelle Auto Event Konfiguration
-		 *
-		 * @return string[] Event Konfiguration
-		 */
-		private static function Get_EventConfigurationAuto() {
-			if (self::$eventConfigurationAuto == null) {
-				self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();         /* <-------- change here */
-			}
-			return self::$eventConfigurationAuto;
-		}
-		
-		/**
-		 * @private
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 * @param string[] $configuration Neue Event Konfiguration
-		 */
-		private static function Set_EventConfigurationAuto($configuration) {
-		   self::$eventConfigurationAuto = $configuration;
-		}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function CreateEvents()
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-
-			foreach ($configuration as $variableId=>$params)
-				{
-				self::CreateEvent($variableId, $params[0]);
-				}
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListEvents($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':                /* <-------- change here */
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$variableId]=$params[1];
-							}
-					   break;
-					default:
-					   if ($type!="")
-					      {
-							if ($type==$params[1])
-							   {
-								$result[$variableId]=$params[1];
-							   }
-					      }
-					   else
-					      {
-							$result[$variableId]=$params[0];
-							}
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListGroups($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':                /* <-------- change here */
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$params[1]]="available";
-							}
-					   break;
-					default:
-						$result[$params[1]]="available";
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
-		 * aufruft.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 */
-		public static function CreateEvent($variableId, $eventType)
-			{
-			switch ($eventType)
-				{
-				case 'Temperatur':                        /* <-------- change here */
-					$triggerType = 1;
-					break;
-				case 'Feuchtigkeit':
-					$triggerType = 0;
-					break;
-				case 'par0':
-				case 'par1':
-				case 'par2':
-				   break;
-				default:
-					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
-				}
-			IPSLogger_Dbg (__file__, 'Created IPSDetectTemperatureHandler Event for Variable='.$variableId);               /* <-------- change here */
-			}
-
-
-		/**
-		 * @private
-		 *
-		 * Speichert die aktuelle Event Konfiguration
-		 *
-		 * @param string[] $configuration Konfigurations Array
-		 */
-		private static function StoreEventConfiguration($configuration) {
-
-			// Build Configuration String
-			$configString = '$eventTempConfiguration = array(';                           /* <-------- change here */
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
-			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			if (!file_exists($fileNameFull)) {
-				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
-			}
-			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');                /* <-------- change here */
-			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');                 /* <-------- change here */
-
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			file_put_contents($fileNameFull, $fileContentNew);
-			self::Set_EventConfigurationAuto($configuration);
-		}
-
-		/**
-		 * @public
-		 *
-		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
-		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
-		 * Konfigurations File.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
-		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
-		 */
-		public static function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
-			{
-			$configurationAuto = self::Get_EventConfigurationAuto();
-			//print_r($configurationAuto);
-			//echo "Register Event with VariableID:".$variableId."\n";
-			// Search Configuration
-			$found = false;
-				if (array_key_exists($variableId, $configurationAuto))
-					{
-					//echo "Eintrag in Datenbank besteht.\n";
-				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-					$moduleParamsNew = explode(',', $moduleParams);
-					//print_r($moduleParamsNew);
-					$moduleClassNew  = $moduleParamsNew[0];
-
-					$params = $configurationAuto[$variableId];
-					//print_r($params);
-					for ($i=0; $i<count($params); $i=$i+3)
-						{
-						$moduleParamsCfg = $params[$i+2];
-						$moduleParamsCfg = explode(',', $moduleParamsCfg);
-						$moduleClassCfg  = $moduleParamsCfg[0];
-						// Found Variable and Module --> Update Configuration
-						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-						/*if ($moduleClassCfg=$moduleClassNew)
-							{
-							$found = true;
-							$configurationAuto[$variableId][$i]   = $eventType;
-							$configurationAuto[$variableId][$i+1] = $componentParams;
-							$configurationAuto[$variableId][$i+2] = $moduleParams;
-							} */
-						$found = true;
-						$configurationAuto[$variableId][$i]   = $eventType;
-						if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-						if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
-						}
-					}
-
-			// Variable NOT found --> Create Configuration
-			if (!$found)
-					{
-				   //echo "Create Event."."\n";
-					$configurationAuto[$variableId][] = $eventType;
-					$configurationAuto[$variableId][] = $componentParams;
-					$configurationAuto[$variableId][] = $moduleParams;
-					}
-
-				self::StoreEventConfiguration($configurationAuto);
-				self::CreateEvent($variableId, $eventType);
-
-		}
-		
-	}
-
-
-	
-/******************************************************************************************************************/
-
-	class DetectHumidityHandler1{
-
-		private static $eventConfigurationAuto = array();
-
-		/**
-		 * @private
-		 *
-		 * Liefert die aktuelle Auto Event Konfiguration
-		 *
-		 * @return string[] Event Konfiguration
-		 */
-		private static function Get_EventConfigurationAuto() {
-			if (self::$eventConfigurationAuto == null) {
-				self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
-			}
-			return self::$eventConfigurationAuto;
-		}
-
-		/**
-		 * @public
-		 *
-		 * Initialisierung des IPSLight_Manager Objektes
-		 *
-		 */
-		public function __construct() {
-
-		}
-
-		/**
-		 * @private
-		 *
-		 * Setzen der aktuellen Event Konfiguration
-		 *
-		 * @param string[] $configuration Neue Event Konfiguration
-		 */
-		private static function Set_EventConfigurationAuto($configuration) {
-		   self::$eventConfigurationAuto = $configuration;
-		}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function CreateEvents()
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-
-			foreach ($configuration as $variableId=>$params)
-				{
-				self::CreateEvent($variableId, $params[0]);
-				}
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListEvents($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$variableId]=$params[1];
-							}
-					   break;
-					default:
-					   if ($type!="")
-					      {
-							if ($type==$params[1])
-							   {
-								$result[$variableId]=$params[1];
-							   }
-					      }
-					   else
-					      {
-							$result[$variableId]=$params[0];
-							}
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Listet anhand der Konfiguration alle Events
-		 *
-		 */
-		public static function ListGroups($type="")
-			{
-			$configuration = self::Get_EventConfigurationAuto();
-			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				switch ($type)
-					{
-				   case 'Motion':
-					case 'Contact':
-						if ($type==$params[0])
-						   {
-							$result[$params[1]]="available";
-							}
-					   break;
-					default:
-						$result[$params[1]]="available";
-					   break;
-					}
-				}
-			return ($result);
-			}
-
-		/**
-		 * @public
-		 *
-		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
-		 * aufruft.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 */
-		public static function CreateEvent($variableId, $eventType)
-			{
-			switch ($eventType)
-				{
-				case 'Temperatur':
-					$triggerType = 1;
-					break;
-				case 'Feuchtigkeit':
-					$triggerType = 0;
-					break;
-				case 'par0':
-				case 'par1':
-				case 'par2':
-				   break;
-				default:
-					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
-				}
-			IPSLogger_Dbg (__file__, 'Created IPSDetectMovementHandler Event for Variable='.$variableId);
-			}
-
-
-		/**
-		 * @private
-		 *
-		 * Speichert die aktuelle Event Konfiguration
-		 *
-		 * @param string[] $configuration Konfigurations Array
-		 */
-		private static function StoreEventConfiguration($configuration) {
-
-			// Build Configuration String
-			$configString = '$eventTempConfiguration = array(';
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-
-			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
-			if (!file_exists($fileNameFull)) {
-				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
-			}
-			$fileContent = file_get_contents($fileNameFull, true);
-			$pos1 = strpos($fileContent, '$eventTempConfiguration = array(');
-			$pos2 = strpos($fileContent, 'return $eventTempConfiguration;');
-
-			if ($pos1 === false or $pos2 === false) {
-				throw new IPSMessageHandlerException('EventConfiguration could NOT be found !!!', E_USER_ERROR);
-			}
-			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
-			file_put_contents($fileNameFull, $fileContentNew);
-			self::Set_EventConfigurationAuto($configuration);
-		}
-
-		/**
-		 * @public
-		 *
-		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
-		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
-		 * Konfigurations File.
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
-		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
-		 */
-		public static function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
-			{
-			$configurationAuto = self::Get_EventConfigurationAuto();
-			//print_r($configurationAuto);
-			//echo "Register Event with VariableID:".$variableId."\n";
-			// Search Configuration
-			$found = false;
-				if (array_key_exists($variableId, $configurationAuto))
-					{
-					//echo "Eintrag in Datenbank besteht.\n";
-				   //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-					$moduleParamsNew = explode(',', $moduleParams);
-					//print_r($moduleParamsNew);
-					$moduleClassNew  = $moduleParamsNew[0];
-
-					$params = $configurationAuto[$variableId];
-					//print_r($params);
-					for ($i=0; $i<count($params); $i=$i+3)
-						{
-						$moduleParamsCfg = $params[$i+2];
-						$moduleParamsCfg = explode(',', $moduleParamsCfg);
-						$moduleClassCfg  = $moduleParamsCfg[0];
-						// Found Variable and Module --> Update Configuration
-						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-						/*if ($moduleClassCfg=$moduleClassNew)
-							{
-							$found = true;
-							$configurationAuto[$variableId][$i]   = $eventType;
-							$configurationAuto[$variableId][$i+1] = $componentParams;
-							$configurationAuto[$variableId][$i+2] = $moduleParams;
-							} */
-						$found = true;
-						$configurationAuto[$variableId][$i]   = $eventType;
-						if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-						if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
-						}
-					}
-
-			// Variable NOT found --> Create Configuration
-			if (!$found)
-					{
-				   //echo "Create Event."."\n";
-					$configurationAuto[$variableId][] = $eventType;
-					$configurationAuto[$variableId][] = $componentParams;
-					$configurationAuto[$variableId][] = $moduleParams;
-					}
-
-				self::StoreEventConfiguration($configurationAuto);
-				self::CreateEvent($variableId, $eventType);
-
-		}
-
-	}
-
-
-
-
 
 
 

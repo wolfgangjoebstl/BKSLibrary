@@ -27,15 +27,33 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
+IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');	
+
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('RemoteAccess',$repository);
+		}
+	$installedModules = $moduleManager->GetInstalledModules();
+
+	echo "Folgende Module werden von RemoteAccess bearbeitet:\n";
+	if (isset ($installedModules["Guthabensteuerung"])) 	{ echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "Modul Guthabensteuerung ist NICHT installiert.\n"; }
+	if (isset ($installedModules["Amis"])) 					{ echo "  Modul Amis ist installiert.\n"; } else { echo "Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["CustomComponent"])) 		{ echo "  Modul CustomComponent ist installiert.\n"; } else { echo "Modul CustomComponent ist NICHT installiert.Bitte installieren, fuer Funktion erforderlich\n"; }
+	if (isset ($installedModules["DetectMovement"])) 		{ echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
+	echo "\n";
+
+
 /******************************************************
 
 				INIT
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-$startexec=microtime(true);
+	// max. Scriptlaufzeit definieren
+	ini_set('max_execution_time', 500);
+	$startexec=microtime(true);
 
 	echo "Update Konfiguration und register Events fuer HeatControl:\n\n";
 
@@ -45,71 +63,11 @@ $startexec=microtime(true);
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	
-	$remServer=ROID_List();
-	$status=RemoteAccessServerTable();	
-
 	if (function_exists('HomematicList'))
-	   {
-		echo "Homematic HeatControl Actuatoren werden registriert.\n";
-		$Homematic=HomematicList();		
-		$keyword="VALVE_STATE";
-		foreach ($Homematic as $Key)
-			{
-			if ( (isset($Key["COID"][$keyword])==true) )
-				{
-				/* alle Stellmotoren ausgeben */
-
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$variabletyp=IPS_GetVariable($oid);
-      		
-				if ($variabletyp["VariableProfile"]!="")
-			 		{
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-					}
-				else
-				   {
-					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-					}
-
-				/* check, es sollten auch alle Quellvariablen gelogged werden */
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
-					{
-					/* Wenn variable noch nicht gelogged automatisch logging einschalten */
-					AC_SetLoggingStatus($archiveHandlerID,$oid,true);
-					AC_SetAggregationType($archiveHandlerID,$oid,0);
-					IPS_ApplyChanges($archiveHandlerID);
-					echo "Variable ".$oid." Archiv logging aktiviert.\n";
-					}
-
-				$parameter="";
-				foreach ($remServer as $Name => $Server)
-					{
-					echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-					if ( $status[$Name]["Status"] == true )
-						{				
-						$rpc = new JSONRPC($Server["Adresse"]);
-						$result=RPC_CreateVariableByName($rpc, (integer)$Server["HeatControl"], $Key["Name"], 0);
-						$rpc->IPS_SetVariableCustomProfile($result,"~Intensity.100");
-						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-						$parameter.=$Name.":".$result.";";
-							}
-						}
-					}
-				$messageHandler = new IPSMessageHandler();
-				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				echo "Message Handler hat Homematic HeatControl Actuator Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
-				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,'.$parameter,'IPSModuleHeatControl');
-			
-				}
-			}
+		{
+		$parameter=installAccess(HomematicList(),"VALVE_STATE","HeatControl","~Intensity.100");		
+		print_r($parameter);   
+		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl',$parameter);		   
 		}	
-	// $remote=new RemoteAccess();
-	   /*   list of Elements, Keyword
-	// $remote->RPC_CreateVariableField(HomematicList(), "TEMPERATURE", "Temperatur", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
-
 
 ?>

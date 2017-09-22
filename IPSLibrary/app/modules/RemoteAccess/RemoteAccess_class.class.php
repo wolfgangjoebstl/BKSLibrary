@@ -1034,12 +1034,79 @@ class IPSMessageHandlerExtended extends IPSMessageHandler
 			self::StoreEventConfiguration($configurationAuto);
 			}
 		}
+	}  /* Ende class */	
 	
-		
-		
-		
-	}	
-	
+	/****************************************************************************************************************
+	 *
+	 *                                      Functions
+	 *
+	 ****************************************************************************************************************/
+
+	function installAccess($Elements,$keyword,$identifier,$profile)
+		{
+		$remServer=ROID_List();
+		echo "Fuer Logging aktivierte Remote Server:\n";
+		print_r($remServer);
+		$status=RemoteAccessServerTable();
+		$params=array();		
+
+		echo "Install RemoteAccess für die Stellmotoren (Aktuatoren).\n";
+		foreach ($Elements as $Key)
+			{
+			if ( (isset($Key["COID"][$keyword])==true) )
+				{
+				/* alle Stellmotoren ausgeben */
+
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+				$variabletyp=IPS_GetVariable($oid);
+      		
+				if ($variabletyp["VariableProfile"]!="")
+			 		{
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				else
+					{
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+
+				/* check, es sollten auch alle Quellvariablen gelogged werden */
+				
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
+					{
+					/* Wenn variable noch nicht gelogged automatisch logging einschalten */
+					AC_SetLoggingStatus($archiveHandlerID,$oid,true);
+					AC_SetAggregationType($archiveHandlerID,$oid,0);
+					IPS_ApplyChanges($archiveHandlerID);
+					echo "Variable ".$oid." Archiv logging aktiviert.\n";
+					}
+				
+				/* Install für RemoteAccess */
+
+				$parameter="";
+				foreach ($remServer as $Name => $Server)
+					{
+					echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+					if ( $status[$Name]["Status"] == true )
+						{				
+						$rpc = new JSONRPC($Server["Adresse"]);
+						$result=RPC_CreateVariableByName($rpc, (integer)$Server[$identifier], $Key["Name"], 0);
+						$rpc->IPS_SetVariableCustomProfile($result,$profile);
+						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+						$parameter.=$Name.":".$result.";";
+						}
+					}
+				$params[$oid]=$parameter;	
+				}
+			}
+		return($params);	
+		}
+
+
+
+
 	
 	/** @}*/
 ?>

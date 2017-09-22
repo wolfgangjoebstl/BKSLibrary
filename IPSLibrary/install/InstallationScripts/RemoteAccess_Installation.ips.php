@@ -76,6 +76,7 @@
 	if (isset ($installedModules["Guthabensteuerung"])) { 			echo "  Modul Guthabensteuerung ist installiert.\n"; } else { echo "Modul Guthabensteuerung ist NICHT installiert.\n"; }
 	//if (isset ($installedModules["Gartensteuerung"])) { 	echo "  Modul Gartensteuerung ist installiert.\n"; } else { echo "Modul Gartensteuerung ist NICHT installiert.\n";}
 	if (isset ($installedModules["Amis"])) { 				echo "  Modul Amis ist installiert.\n"; } else { echo "Modul Amis ist NICHT installiert.\n"; }
+	if (isset ($installedModules["CustomComponent"])) { 				echo "  Modul CustomComponent ist installiert.\n"; } else { echo "Modul CustomComponent ist NICHT installiert.Bitte installieren, fuer Funktion erforderlich\n"; }
 	echo "\n";
 
 	/******************************************************
@@ -87,6 +88,7 @@
 	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
 
 	echo "Timer programmieren für :\n";
+	$tim10ID=CreateTimerRA("EvaluateHeatControl",15);
 	$tim1ID=CreateTimerRA("EvaluateHomematic",20);
 	$tim2ID=CreateTimerRA("EvaluateMotion",25);
 	$tim3ID=CreateTimerRA("EvaluateAndere",30);
@@ -95,6 +97,7 @@
 	$tim6ID=CreateTimerRA("EvaluateSwitch",45);
 	$tim7ID=CreateTimerRA("EvaluateButton",50);
 	$tim8ID=CreateTimerRA("EvaluateVariables",55);
+
 	
 	$tim9ID=CreateTimerRA("RemoteAccess",05);		/* erzeugt die ROID_Liste */
 
@@ -207,7 +210,14 @@
 		createPortal($Retro_Path);
 		}
 
-
+/*********************************************************************************************************************************
+ *
+ *							FUNCTIONS
+ *
+ *********************************************************************************************************************************/
+ 
+ /* Timer für Script File anlgen. Jeder dieser Scriptfiles evaluiert die vorhandenen Variablen und spiegelt sie auf einen konfigurierten Logging Server */
+ 
 function CreateTimerRA($name,$minute)
 	{
 	/* EventHandler Config regelmaessig bearbeiten */
