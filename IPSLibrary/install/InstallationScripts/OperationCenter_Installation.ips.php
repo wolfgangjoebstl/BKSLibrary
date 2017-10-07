@@ -376,8 +376,110 @@
 
 		}
 
+	/***********************************************************************
+	 *
+	 * fuer IPSCam einen Overview der ersten 4 Cameras machen 
+	 *
+	 *
+	 ******************************************************************/
 
 
+	if ( isset ($installedModules["IPSCam"] ) ) 
+		{
+		echo "\n"; 
+		echo "Modul IPSCam installiert.\n"; 
+		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
+		$ergebnisCam=$moduleManagerCam->VersionHandler()->GetVersion('IPSCam');
+		echo "IPSCam Version : ".$ergebnisCam."\n";
+		$WFC10Cam_Enabled        = $moduleManagerCam->GetConfigValueDef('Enabled', 'WFC10',false);
+		$WFC10_ConfigId       = $moduleManagerCam->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+		echo "  Default WFC10_ConfigId fuer IPSCam, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";			
+
+		if ($WFC10Cam_Enabled)
+			{
+			
+			// ----------------------------------------------------------------------------------------------------------------------------
+			// Program Installation
+			// ----------------------------------------------------------------------------------------------------------------------------
+			$CategoryIdCamData  		= $moduleManagerCam->GetModuleCategoryID('data');
+			$CategoryIdCamApp   		= $moduleManagerCam->GetModuleCategoryID('app');
+			$categoryIdCams     		= CreateCategory('Cams',    $CategoryIdCamData, 20);
+			$scriptIdActionScript   = IPS_GetScriptIDByName('IPSCam_ActionScript', $CategoryIdCamApp);			
+			
+			// ===================================================================================================
+			// Add Camera Devices
+			// ===================================================================================================
+			
+			IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+			IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+			$camConfig = IPSCam_GetConfiguration();
+			$result=array();
+			foreach ($camConfig as $idx=>$data) 
+				{
+				print_r($data);
+				$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
+				$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
+				echo "Kamera ".$idx." auf Kategorie : ".$categoryIdCamX." mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
+				$result[$idx]["OID"]=$variableIdCamHtmlX;
+				$result[$idx]["Name"]=$data["Name"];
+				}
+			
+			$WFC10Cam_Path        	 = $moduleManagerCam->GetConfigValue('Path', 'WFC10');
+			$WFC10Cam_TabPaneItem    = $moduleManagerCam->GetConfigValue('TabPaneItem', 'WFC10');
+			$WFC10Cam_TabPaneParent  = $moduleManagerCam->GetConfigValue('TabPaneParent', 'WFC10');
+			$WFC10Cam_TabPaneName    = $moduleManagerCam->GetConfigValue('TabPaneName', 'WFC10');
+			$WFC10Cam_TabPaneIcon    = $moduleManagerCam->GetConfigValue('TabPaneIcon', 'WFC10');
+			$WFC10Cam_TabPaneOrder   = $moduleManagerCam->GetConfigValueInt('TabPaneOrder', 'WFC10');
+			$WFC10Cam_TabItem        = $moduleManagerCam->GetConfigValue('TabItem', 'WFC10');
+			$WFC10Cam_TabName        = $moduleManagerCam->GetConfigValue('TabName', 'WFC10');
+			$WFC10Cam_TabIcon        = $moduleManagerCam->GetConfigValue('TabIcon', 'WFC10');
+			$WFC10Cam_TabOrder       = $moduleManagerCam->GetConfigValueInt('TabOrder', 'WFC10');
+			echo "WF10 Administrator\n";
+			echo "  Path          : ".$WFC10Cam_Path."\n";
+			echo "  TabPaneItem   : ".$WFC10Cam_TabPaneItem."\n";
+			echo "  TabPaneParent : ".$WFC10Cam_TabPaneParent."\n";
+			echo "  TabPaneName   : ".$WFC10Cam_TabPaneName."\n";
+			echo "  TabPaneIcon   : ".$WFC10Cam_TabPaneIcon."\n";
+			echo "  TabPaneOrder  : ".$WFC10Cam_TabPaneOrder."\n";
+			echo "  TabItem       : ".$WFC10Cam_TabItem."\n";
+			echo "  TabName       : ".$WFC10Cam_TabName."\n";
+			echo "  TabIcon       : ".$WFC10Cam_TabIcon."\n";
+			echo "  TabOrder      : ".$WFC10Cam_TabOrder."\n";
+			
+			/* zuerst die Kategorien in Visualization aufbauen */
+			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: ".$WFC10Cam_Path." \n";
+			$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path);
+			EmptyCategory($categoryId_WebFrontAdministrator);
+			$categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontAdministrator, 10);
+			$categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontAdministrator, 20);						
+			$categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontAdministrator, 30);
+			$categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontAdministrator, 40);						
+			
+			/* dann die Webfronts initialisieren */
+			
+			//$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
+			//                     WebfrontConfigurator, neuer Name, Ort-Parent
+			//CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    ($WFC10_TabOrder+100),     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+
+			$tabItem = $WFC10Cam_TabPaneItem.'Ovw';																				
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+100), "Overview", $WFC10Cam_TabIcon, 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Left", $tabItem, 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Right", $tabItem, 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Up_Left', $tabItem."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Up_Right', $tabItem."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Left', $tabItem."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Right', $tabItem."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+			CreateLink($result[0]["Name"], $result[0]["OID"], $categoryIdLeftUp, 10);
+			CreateLink($result[1]["Name"], $result[1]["OID"], $categoryIdRightUp, 10);
+			CreateLink($result[2]["Name"], $result[2]["OID"], $categoryIdLeftDn, 10);
+			CreateLink($result[3]["Name"], $result[3]["OID"], $categoryIdRightDn, 10);
+				
+			}
+			
+		}
 
 
 ?>

@@ -60,7 +60,9 @@
 	IPSUtils_Include ('StromheizungLib.class.php', 'IPSLibrary::app::modules::Stromheizung');
 	IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
 	
-	
+	if (false)
+		{  /* bereits bei Custom Components implementiert */
+		
 	echo "FHT Heizungssteuerung Geräte mit Positionswerten werden registriert.\n";
 
 	$StromheizungHandler = new StromheizungHandler();
@@ -104,5 +106,8 @@
 
 			}  /* Ende isset Heizungssteuerung */
 		} /* Ende foreach */
+
+		} /* ende iffalse */
+
 
 ?>

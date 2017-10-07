@@ -32,14 +32,14 @@
 
 
 
-	function StromheizungHandler_GetEventConfiguration() {
-		$eventStromheizungConfiguration = array(
+	function get_IPSComponentHeatControlConfig() {
+		$Configuration = array(
 
 
 
 			);
 
-		return $eventStromheizungConfiguration;
+		return $Configuration;
 	}
 
 	 

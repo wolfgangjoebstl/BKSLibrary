@@ -105,6 +105,31 @@
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
+	/*************
+	 *
+	 * es gibt mehrere unterschiedliche Routinen die auf eine Aenderung einer Variablen abzielen
+	 * Messagehandler arbeitet CustomComponents, DetectMovement und RemoteAccess ab
+	 *
+	 * bei einer Aenderung wird das entsprechen programmierte Custom Event aufgerufen und dann wenn installiert auch RemoteAccess und DetectMovement abgearbeitet.
+	 * Im Detail: eine Eventaenderung ruft den Messagehandler auf, der holt sich aus dem Configfile den entsprechenden Component
+	 * im Component wird zuerst logvalue und dann die RemoteAccess Zugriffe abgearbeitet
+	 * bei LogValue wird auch noch wenn installiert DetectMovement abgearbeitet
+	 *
+	 * Autosteuerung hat ihre eigenenen Messagehandler installiert und haengt nicht von den CustomComponents ab.
+	 * Heizung ist an die CustomCompnents angelehnt
+	 *
+	 *
+	 * Bei der Installation sollten alle drei Module unabhängig davon ob die anderen Module installiert sind die selbe Funktionalitaet haben
+	 *
+	 * in IPSMessageHandler_Configuration enthaelt die OID die entweder als ONCHANGE oder ONUPDATE beobachtet wird und den CustomCompenet der aufgerufen wird
+	 * nach dem CustomCompnet stehen die RemotAccess Paare ServerName:RemoteOID;usw. 
+	 *
+	 * RemoteAccess Config definieren die Server und die Funktion des Servers
+	 * DetectMovement Config definiert die Gruppierung und die zugeordneten Raeume oder Funktionen (Heizungsregelung)
+	 *
+	 **********************/
+
+
 	/****************************************************************************************************************
 	 *                                                                                                    
 	 *                                      Movement
@@ -663,7 +688,7 @@
 	$keyword="VALVE_STATE";
 	foreach ($Homematic as $Key)
 		{
-		/* alle Feuchtigkeitswerte ausgeben */
+		/* alle Actuatoren Positionswerte ausgeben */
 		if (isset($Key["COID"][$keyword])==true)
 			{
 			$oid=(integer)$Key["COID"][$keyword]["OID"];
@@ -696,8 +721,52 @@
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl');
 				}
 
-			}  /* Ende isset Feuchtigkeitswert */
+			}  /* Ende isset Heatcontrol */
 		} /* Ende foreach */
+
+
+	$FHT = FHTList();
+	$keyword="PositionVar";
+	foreach ($FHT as $Key)
+		{
+		/* alle Actuatoren Positionswerte ausgeben */
+		if (isset($Key["COID"][$keyword])==true)
+			{
+			$oid=(integer)$Key["COID"][$keyword]["OID"];
+	     	$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+				{
+				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			else
+				{
+				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+				}
+			
+			$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+				}
+			else
+				{
+				/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl');
+				}
+
+			}  /* Ende isset HeatControl */
+		} /* Ende foreach */
+
+
+
 
 	if (false) {
 	

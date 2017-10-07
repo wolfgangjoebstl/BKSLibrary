@@ -12,7 +12,13 @@
 
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 
-
+/**********************************************************
+ *
+ * class ipsobject
+ *
+ * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten.
+ *
+ **************************************************************/
 
 class ipsobject
 	{
@@ -111,6 +117,13 @@ class ipsobject
 
 	}
 
+/******************************************************
+ *
+ * class logging
+ *
+ * Speicherung von Nachrichten
+ *
+ ****************************************************************/
 
 class Logging
 	{
@@ -127,19 +140,26 @@ class Logging
    	//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
 		//echo "Init ".get_class($this)." : ";
 		//var_dump($this);
-		if (!file_exists($this->log_File))
+		if ($logfile=="No-Output")
 			{
-			$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
-			if (!file_exists($FilePath)) 
+			/* kein Logfile anlegen */
+			}
+		else
+			{			
+			if (!file_exists($this->log_File))
 				{
-				if (!mkdir($FilePath, 0755, true)) {
-					throw new Exception('Create Directory '.$destinationFilePath.' failed!');
-					}
-				}			
-			//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
-			$handle3=fopen($this->log_File, "a");
-		   fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
-	   	fclose($handle3);
+				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
+				if (!file_exists($FilePath)) 
+					{
+					if (!mkdir($FilePath, 0755, true)) {
+						throw new Exception('Create Directory '.$destinationFilePath.' failed!');
+						}
+					}			
+				//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
+				$handle3=fopen($this->log_File, "a");
+				fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
+				fclose($handle3);
+				}
 			}
 		if ($this->nachrichteninput_Id != "Ohne")
 		   {
@@ -309,7 +329,7 @@ class Logging
 		
 	}
 
-/********************** Routine nur zum Spass emgefuegt */
+/********************** Routine nur zum Spass eingefuegt */
 	
 	class IPSComponentLogger {
 

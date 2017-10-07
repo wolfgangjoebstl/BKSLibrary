@@ -252,7 +252,10 @@
  * Webfront Links werden für alle Autosteuerungs Default Funktionen erfasst. Es werden auch gleich die 
  * Default Variablen dazu angelegt
  *
- * Anwesenheitserkennung, Alarmanlage, GutenMorgenWecker, SilentMode, Ventilatorsteuerung
+ * Anwesenheitserkennung, Alarmanlage, GutenMorgenWecker, SilentMode, Ventilatorsteuerung, Stromheizung
+ *
+ * funktioniert für jeden beliebigen Vartiablennamen, zumindest ein/aus Schalter wird angelegt
+ *
  *
  ********************************/
 
@@ -265,6 +268,9 @@
 		$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "-------------------------------------------------------\n";
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."\n";
+		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
+		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
+		
 		switch (strtoupper($AutoSetSwitch["NAME"]))
 			{
 			case "ANWESENHEITSERKENNUNG":
@@ -282,16 +288,13 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-
-												
 				/* wird als Unterelement automatisch gelinked */
 				//$webfront_links[$StatusAnwesendID]["NAME"]="StatusAnwesend";
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
 				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];	
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
-			
-			   	break;
+				$webfront_links[$AutosteuerungID]["OID_R"]=$input;				
+				break;
 			case "ALARMANLAGE":
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
 				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence");
@@ -307,9 +310,7 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
-			   	break;										
+				break;										
 			case "GUTENMORGENWECKER":
 				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";		
 	   			// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')					
@@ -323,7 +324,7 @@
  				if ($Wochenplan_ID === false)
 					{
 					/* Wochenplan muss entweder ueber einer Variable oder über einem Script angeordnet sein.
-					 *   wenn über Varioable, dann gibt es ACtive Scripts im Action Table zum Eintragen 
+					 *   wenn über Variable, dann gibt es ACtive Scripts im Action Table zum Eintragen 
 					 *   wenn über einem Script muss IPS_Target ausgewertet werden. -> flexibler ...
 					 */
 					$Wochenplan_ID = IPS_CreateEvent(2);                  //Wochenplan Ereignis
@@ -345,12 +346,23 @@
 					}
 				else
 					{
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0);");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1);");
-			    	IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2);");
-					}		
-				if (false)
-					{
+					/*gruendlich loeschen */
+					for ($j=0;$j<8;$j++)
+						{
+						for ($i=0;$i<100;$i++)
+							{
+							@IPS_SetEventScheduleGroupPoint($Wochenplan_ID, $j /*Gruppe*/, $i /*Schaltpunkt*/, -1/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
+							}
+						}  
+					//echo "Wochenplan Config ausgeben:\n";
+					//$result_Wp=IPS_GetEvent($Wochenplan_ID);
+					//print_r($result_Wp["ScheduleGroups"]);
+					IPS_SetEventScheduleAction($Wochenplan_ID, 0, "Schlafen",   8048584, "SetValue(".(string)$WeckerID.",0);");
+					IPS_SetEventScheduleAction($Wochenplan_ID, 1, "Aufwachen", 16750848, "SetValue(".(string)$WeckerID.",1);");
+					IPS_SetEventScheduleAction($Wochenplan_ID, 2, "Munter",    32750848, "SetValue(".(string)$WeckerID.",2);");
+					}
+				if (true)
+					{			
 					$i=0;
 				//Montag
 					IPS_SetEventScheduleGroupPoint($Wochenplan_ID, 0 /*Gruppe*/, $i++ /*Schaltpunkt*/, 0/*H*/, 0/*M*/, 0/*s*/, 0 /*Aktion*/);
@@ -402,20 +414,26 @@
 				CreateLinkByDestination("WeckerKalender", $Wochenplan_ID, $AutosteuerungID,  10);
 				$EventInfos = IPS_GetEvent($Wochenplan_ID);
 				//print_r($EventInfos);
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 				break;
 			case "VENTILATORSTEUERUNG":	
 				echo "   Variablen für Ventilatorsteuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')		
 				$TemperaturID = CreateVariable("Temperatur", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 				break;
 			case "ANWESENHEITSSIMULATION":
 				$webfront_links[$AutosteuerungID]["TAB"]="Anwesenheit";
 				break;	
-			default:
+			case "STROMHEIZUNG":
 				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
+				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
+					{
+					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
+					}
+				$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
+				$webfront_links[$AutosteuerungID]["OID_R"]=$categoryId_Wochenplan;									
+				break;	
+			default:
 				break;
 			}
 		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
@@ -497,18 +515,9 @@
 		echo "\nWebportal Administrator.Autosteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		EmptyCategory($categoryId_WebFrontAdministrator);
-		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
-		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
-		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 
-		/* Erweiterung für mehr Automatisiserung */
-		$categoryIdTab2  = CreateCategory('Tab2',  $categoryId_WebFrontAdministrator, 100);
-		$categoryId2Left  = CreateCategory('Left',  $categoryIdTab2, 10);
-		$categoryId2Right = CreateCategory('Right', $categoryIdTab2, 20);
-
-		
 		/*************************************/
 		
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
@@ -523,43 +532,42 @@
 			}	
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-		/* Erweiterung bauen, unter erstem Tab nur die wichtigsten Elemente anzeigen */
-		
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."2",   	  $WFC10_TabPaneItem,    $WFC10_TabOrder+100,     "Anwesenheit",     "LockClosed", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'2_Left',   $tabItem."2",   10, '', '', $categoryId2Left   /*BaseId*/, 'false' /*BarBottomVisible*/);
-		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'2_Right',  $tabItem."2",   20, '', '', $categoryId2Right  /*BaseId*/, 'false' /*BarBottomVisible*/);
-
-																																								
-		// Tab1 Left Panel
+		$tabs=array();
 		foreach ($webfront_links as $OID => $webfront_link)
-		   {
-		   if ($webfront_link["ADMINISTRATOR"]==true)
-				{
-				if ($webfront_link["TAB"]=="Autosteuerung")
-					{
-					echo "Administrator CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdLeft."\n";
-					CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
-					}
-				}
+		   	{
+			$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
 			}
+		$i=0;
+		foreach ($tabs as $tab)
+			{
+			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
+			$categoryIdLeft  = CreateCategory('Left',  $categoryIdTab, 10);
+			$categoryIdRight = CreateCategory('Right', $categoryIdTab, 20);
 
-		// Tab2 Right Panel
-		CreateLinkByDestination("Nachrichtenverlauf", $input,    $categoryId2Right,  20);
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    $WFC10_TabOrder+$i,     $tab, '', 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-		// Tab2 Left Panel
-		foreach ($webfront_links as $OID => $webfront_link)
-		   {
-		   if ($webfront_link["ADMINISTRATOR"]==true)
+			echo "Kategorien erstellt, Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+			$i++;
+																																								
+			foreach ($webfront_links as $OID => $webfront_link)
 				{
-				if ($webfront_link["TAB"]!="Autosteuerung")
+				if ($webfront_link["ADMINISTRATOR"]==true)
 					{
-					CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId2Left,  10);
+					if ($webfront_link["TAB"]==$tab)
+						{
+						echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdLeft."\n";
+						CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
+						if ( isset( $webfront_link["OID_R"]) == true )
+							{
+							CreateLinkByDestination("Nachrichtenverlauf", $webfront_link["OID_R"],    $categoryIdRight,  20);
+							}
+						}
 					}
 				}
+
 			}
 
 
