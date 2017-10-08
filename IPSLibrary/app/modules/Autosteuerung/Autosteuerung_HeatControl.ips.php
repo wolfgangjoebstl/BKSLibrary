@@ -1,7 +1,5 @@
 <?
 
-/* eingefuegt von den timer Events beim Schalten von IPSLight Switches */
-
 include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
