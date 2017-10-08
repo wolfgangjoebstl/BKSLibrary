@@ -429,9 +429,16 @@
 				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
 					{
 					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
+					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+						{
+						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
+						}
+					else $webfront_links[$AutosteuerungID]["TABNAME"]='Wochenplan'; 						
 					}
 				$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
-				$webfront_links[$AutosteuerungID]["OID_R"]=$categoryId_Wochenplan;									
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=CreateVariable("Wochenplan",3,$categoryId_Wochenplan, 0,'',null,'');				
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;									
 				break;	
 			default:
 				break;

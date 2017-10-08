@@ -1,40 +1,33 @@
 <?
 
-include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+/****************************************************************************************
+*
+* Autosteuerung, Spezialroutinen für Stromheizung/Heatcontrol
+*
+*
+*
+*
+*******************************************************************************************/
 
-$lightManager = new IPSLight_Manager();
-$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-$switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
-$groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
-$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);	
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+	
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) 
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-	}
 
-$installedModules = $moduleManager->GetInstalledModules();
-if ( isset($installedModules["Sprachsteuerung"]) === true )
-	{
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
-	}
+/*********************************************************************************************/
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-$object_data= new ipsobject($CategoryIdData);
-$object_app= new ipsobject($CategoryIdApp);
+Switch ($_IPS['SENDER'])
+    {
+	Case "WebFront":
+		/* vom Webfront aus gestartet */
+		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+	Case "Timer":
+	default:
+		$kalender=new AutosteuerungStromheizung();	
+	}																																																																
 
-$NachrichtenID = $object_data->osearch("Nachricht");
-$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+/*********************************************************************************************/
 
-if (isset($NachrichtenScriptID))
-	{
-	$object3= new ipsobject($NachrichtenID);
-	$NachrichtenInputID=$object3->osearch("Input");
-	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
-	}
 
 ?>
