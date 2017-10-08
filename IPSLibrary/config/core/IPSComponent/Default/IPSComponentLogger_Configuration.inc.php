@@ -38,10 +38,20 @@
 			"HumidityLog" 			=> "C:/Scripts/Humidity/",
 			"MotionLog" 			=> "C:/Scripts/Motion/",
 			"CounterLog" 			=> "C:/Scripts/Counter/",
+			"HeatControlLog" 		=> "C:/Scripts/HeatControl/",			
 										),
 			"LogConfigs"         => array (
 			   "DelayMotion"        => 1800,                            /* verzoegerte Bewegungswerte um Hüllkurve zu erzeugen und kurze Unterbrechungen auszufiltern */
 			                     ),
+			);
+		}
+
+	function get_IPSComponentHeatConfig()
+		{
+		return array(
+		   "HeatingPower"    => array (
+
+										),
 			);
 		}
 

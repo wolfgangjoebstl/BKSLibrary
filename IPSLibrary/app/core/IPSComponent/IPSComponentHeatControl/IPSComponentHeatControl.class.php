@@ -103,9 +103,9 @@
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
-				if (function_exists('get_IPSComponentHeatControlConfig'))
+				if (function_exists('get_IPSComponentHeatConfig'))
 					{
-					$powerConfig=get_IPSComponentHeatControlConfig();
+					$powerConfig=get_IPSComponentHeatConfig();
 					echo "Look for ".$variable." in Configuration.\n";
 					if ( isset($powerConfig["HeatingPower"][$variable]) )
 						{
