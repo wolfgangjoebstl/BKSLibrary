@@ -67,13 +67,13 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		{
 		$parameter=installAccess(HomematicList(),"VALVE_STATE","HeatControl","~Intensity.100");		
 		print_r($parameter);   
-		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl',$parameter);		   
+		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$parameter);		   
 		}	
 		
 	if (function_exists('FHTList'))
 		{
 		/* Alternative, alle Module auf einmal gemeinsam installieren */
-		installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl,1,2,3');
+		installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All,1,2,3');
 		}		
 		
 

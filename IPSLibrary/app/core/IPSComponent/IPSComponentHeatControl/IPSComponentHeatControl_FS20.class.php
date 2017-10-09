@@ -112,7 +112,7 @@
 						   	{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
+							//echo "Server : ".$Server." Remote OID: ".$roid." Value ".$value."\n";
 							
 							$rpc->SetValue($roid, $value);
 							}

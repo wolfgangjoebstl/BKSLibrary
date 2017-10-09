@@ -718,7 +718,7 @@
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl');
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl_All');
 				}
 
 			}  /* Ende isset Heatcontrol */
@@ -759,7 +759,7 @@
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl');
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl_All');
 				}
 
 			}  /* Ende isset HeatControl */

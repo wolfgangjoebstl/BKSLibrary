@@ -43,6 +43,10 @@
 		}
 	echo $inst_modules;
 	
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Init
+	// ----------------------------------------------------------------------------------------------------------------------------
+
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -65,7 +69,7 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Sprachsteuerung',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$Nachricht_inputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 
 	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
 
@@ -73,10 +77,51 @@
 	//print_r($listinstalledmodules);
 	//$moduleProp=IPS_GetModule("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
 	//print_r($moduleProp);
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Configuration
+	// ----------------------------------------------------------------------------------------------------------------------------
+	
+	//Alle Modulnamen mit GUID ausgeben
+	foreach(IPS_GetModuleList() as $guid)
+		{
+		$module = IPS_GetModule($guid);
+		if (IPS_ModuleExists($guid)==true) 
+			{
+			$result=IPS_GetInstanceListByModuleID($guid);
+			if ( sizeof($result)>0 )
+				{
+				$pair[$module['ModuleName']] = $guid;
+				//echo $guid."\n";
+				//print_r($result);
+				//print_r($module);
+				}
+			}
+		}
+	ksort($pair);
+	echo "\nAlle verwendeten Module:\n";
+	foreach($pair as $key=>$guid)
+		{
+		echo "   ".$key." = ".$guid."\n";
+		}
+
+
+	echo "Alle SmartHome Module:\n";
+	print_r(IPS_GetInstanceListByModuleID("{3F0154A4-AC42-464A-9E9A-6818D775EFC4}"));
+
 	echo "Alle Mediaplayermodule:\n";
 	print_r(IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"));
 	echo "Alle Text-to-Speech Module:\n";
 	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
+
+	$SmartHomeID = @IPS_GetInstanceIDByName("IQL4SmartHome", 0);
+	if ($SmartHomeID >0 )
+		{
+		echo "Smart Home Instanz ist auf ID : ".$SmartHomeID."\n";
+		$config=IPS_GetConfiguration($SmartHomeID);
+		echo $config;
+		echo "\n\n";
+		}
 	
 	$MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
 
@@ -99,10 +144,10 @@
 		}
 	$MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 
-   if(!IPS_InstanceExists($MediaPlayerTonID))
-      {
-      $MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
-	   IPS_SetName($MediaPlayerTonID, "MP Ton");
+	if(!IPS_InstanceExists($MediaPlayerTonID))
+    	{
+      	$MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
+	   	IPS_SetName($MediaPlayerTonID, "MP Ton");
 		IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
 		IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
 		IPS_SetProperty($MediaPlayerTonID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
@@ -118,10 +163,10 @@
 		}
 	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
 
-   if(!IPS_InstanceExists($TextToSpeachID))
-      {
-      $TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
-	   IPS_SetName($TextToSpeachID, "Text to Speach");
+	if(!IPS_InstanceExists($TextToSpeachID))
+    	{
+    	$TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
+		IPS_SetName($TextToSpeachID, "Text to Speach");
 		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
 		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
 		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
@@ -135,7 +180,7 @@
 		TTSEngine string
 		*/
 		}
-   $SprachCounterID = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	$SprachCounterID = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	//print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
 
@@ -149,14 +194,17 @@
 	echo "DeviceNum :".IPS_GetProperty($MediaPlayerMusikID,"DeviceNum")."\n";
 	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
 	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
+	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
+	
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-
+		echo "  Kategorie Sprachsteuerung installiert : ".$categoryId_WebFront."  (".IPS_GetName($categoryId_WebFront).")\n"; 
+		CreateLinkByDestination("Nachrichtenverlauf", $Nachricht_inputID,    $categoryId_WebFront,  20);
 		}
 
 	if ($WFC10User_Enabled)

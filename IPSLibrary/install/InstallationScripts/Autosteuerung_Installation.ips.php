@@ -167,6 +167,7 @@
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
 
 /*******************************
  *
@@ -423,6 +424,21 @@
 				break;
 			case "ANWESENHEITSSIMULATION":
 				$webfront_links[$AutosteuerungID]["TAB"]="Anwesenheit";
+				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
+					{
+					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
+					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+						{
+						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
+						}
+					else $webfront_links[$AutosteuerungID]["TABNAME"]='Schaltbefehle'; 						
+					}
+				$categoryId_Schaltbefehle = CreateCategory('Schaltbefehle-Anwesenheitssimulation',   $CategoryIdData, 20);
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
+				$simulation=new AutosteuerungAnwesenheitssimulation();
+				$simulation->InitMesagePuffer();								
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;									
 				break;	
 			case "STROMHEIZUNG":
 				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
@@ -438,7 +454,9 @@
 				$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("Wochenplan",3,$categoryId_Wochenplan, 0,'',null,'');				
-				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;									
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;
+				$kalender=new AutosteuerungStromheizung();
+				$kalender->SetupKalender();	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */									
 				break;	
 			default:
 				break;
@@ -475,7 +493,13 @@
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
 
-	/*******************************************************/
+	/******************************************************
+	 *
+	 * Timer Konfiguration
+	 *
+	 * Wecker programmierung ist bei GutenMorgen Funktion
+	 *
+	 ***********************************************************************/
 		
 	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
 	if ($tim1ID==false)
@@ -483,11 +507,20 @@
 		$tim1ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim1ID, $scriptIdAutosteuerung);
 		IPS_SetName($tim1ID, "Aufruftimer");
-		IPS_SetEventCyclic($tim1ID,0,0,0,0,2,5);
+		IPS_SetEventCyclic($tim1ID,0,0,0,0,2,5);		/* alle 5 Minuten */
 		//IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
 		}
 	IPS_SetEventActive($tim1ID,true);
 		
+	$tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
+	if ($tim2ID==false)
+		{
+		$tim2ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim2ID, $scriptIdHeatControl);
+		IPS_SetName($tim2ID, "KalenderTimer");
+		IPS_SetEventCyclicTimeFrom($tim2ID,0,0,10);  /* immer um 00:00:10 */
+		}
+	IPS_SetEventActive($tim2ID,true);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

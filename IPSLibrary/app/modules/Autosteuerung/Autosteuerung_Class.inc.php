@@ -4,16 +4,22 @@
  *
  * Autosteuerung Handler
  *
- * alle Routinen die mit der Erstellung und Verwaltung der Events der Autosteuerung zu tun haben
- *
- * Unterschiedliche Klassen angelegt:
- *
  * AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
  * AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung)
  * Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
- * AutoSteuerungStromheizung für Funktionen rund um die heizungssteuerung
+ * AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung
  *
  **************************************************************************************************************/
+ 
+ 
+/*****************************************************************************************************
+ *
+ * AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
+ *
+ * werden mittlerweile groestenteils haendisch angelegt, es geht aber auch automatisch, zB für Standardvariablen
+ *
+ *
+ **************************************************************************************************************/ 
 
 class AutosteuerungHandler 
 	{
@@ -224,7 +230,9 @@ class AutosteuerungHandler
  *
  * Autosteuerung Operator
  *
- * mächtige Routinen für den Betrieb
+ * Routinen für den Betrieb
+ *
+ * derzeit nur Ermittlung von Anwesend
  *
  **************************************************************************************************************/
 
@@ -378,6 +386,7 @@ class Autosteuerung
 					//echo "SchalterAlarmanlage OID : ".$alarmID."\n";
 					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($alarmID);					
 					break;					
+				case "Stromheizung":
 				default:
 					break;	
 				}
@@ -495,6 +504,21 @@ class Autosteuerung
 			return (true);	/* default away */	
 			}		
 		}
+		
+	function isitheatday()
+		{
+		$functions=self::getFunctions();
+		print_r($functions);
+		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
+			{
+			if ($functions["GutenMorgenWecker"]["STATUS"] == 0) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (false);	/* default awake */	
+			}	
+		}		
 
 	function getDaylight()
 		{
@@ -560,14 +584,15 @@ class Autosteuerung
 	 * unterschiedliche Bearbeitung für Ventilator, Anwesenheit und alle anderen
 	 *
 	 * Es gibt folgende Befehle die extrahiert werden:
-	 *  NAME, SPEAK, OFF, ON, oFF_MASK, ON_MASK, COND, DELAY
+	 *  NAME, SPEAK, OFF, ON, OFF_MASK, ON_MASK, COND, DELAY
 	 *
 	 * Kurzbefehle:
 	 *  1 Parameter:   "NAME"
 	 *  2 Parameter    "NAME" "STATUS"
 	 *  3 Parameter:   "NAME" "STATUS" "DELAY"
 	 *
-	 * Es folgen der Reihe nach die Befehle, möglichst für alle verscheidenen Varianten
+	 * Es folgen der Reihe nach die Befehle, möglichst gleich für alle verschiedenen Varianten
+	 *		ParseCommand()
 	 *      EvaluateCommand()
 	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
 	 *......Abarbeitung von Delay Befehl
@@ -580,7 +605,7 @@ class Autosteuerung
 		 *
 		 * keine Befehlsevaluierung, nur Festlegung des Rahmengerüsts und Vereinheitlichung der Abkürzer
 		 *
-		 * Abkürzer unterschiedlich behandeln für: Ventilator, Anwesenheit und alle anderen 
+		 * Abkürzer unterschiedlich behandeln für: Ventilator(HeatControl, Heizung), Anwesenheit und alle anderen 
 		 * 
 		 * Befehlsgruppe zerlegen zB von params : [0] OnChange [1] Status [2] name:Stiegenlicht,speak:Stiegenlicht
 		 * aus [2] name:Stiegenlicht,speak:Stiegenlicht wird
@@ -624,339 +649,341 @@ class Autosteuerung
 			$switch=false;		// marker wenn kein ON oder OFF Befehl gesetzt wurde
 			echo "   ParseCommand Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
 
-			if (strtoupper($params[1])=="VENTILATOR") 
-				{ 
-				echo "Es geht um Ventilatoren \n"; 
-				// Dieser Befehl muss erkannt werden "Ventilator,25,true,24,false"
-				switch ($count)
-					{
-					case "10":
-					case "9":
-					case "8":
-					case "7":
-					case "6": /* wenn Anzahl Parameter groesser 5 ist, gibt es keine Sonderlocken, einfach einlesen */
-						$i=5;
-						while ($i<count($moduleParams2))
-							{
-							$params_more=explode(":",$moduleParams2[$i]);
-							if (count($params_more)>1)
+			switch (strtoupper($params[1]))
+				{
+				case "VENTILATOR":
+				case "HEATCONTROL":
+				case "HEIZUNG": 
+					echo "Es geht um Ventilatoren \n"; 
+					// Dieser Befehl muss erkannt werden "Ventilator,25,true,24,false"
+					switch ($count)
+						{
+						case "10":
+						case "9":
+						case "8":
+						case "7":
+						case "6": /* wenn Anzahl Parameter groesser 5 ist, gibt es keine Sonderlocken, einfach einlesen */
+							$i=5;
+							while ($i<count($moduleParams2))
 								{
-								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
-								$Eintrag--;
-								}
-							$i++;
-							}					
-					case "5":
-						$i=4;					
-						$params_more=explode(":",$moduleParams2[$i]);
-						if (count($params_more)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
-							$Eintrag--;
-							}
-						else
-							{
-							/* wenn kein Doppelpunkt an Parameter Position 5 dann handelt es sich um den Ventilator Spezialbefehl, Aktivität bei Threshold */ 
-							//echo "Parameter 5 ist ".$params_more[0]."\n";
-							if  (strtoupper($params_more[0])=='FALSE')
-								{
-								$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
-								}
-							else
-								{
-								$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
-								}
-							}	
-						$i--;
-					case "4":
-						$params_more=explode(":",$moduleParams2[$i]);
-						if (count($params_more)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
-							$Eintrag--;						
-							}
-						else
-							{
-							/* wenn kein Doppelpunkt an Parameter Position 4 dann handelt es sich um den Ventilator Spezialbefehl, Wert für Threshold */ 							
-							$parges[$Kommando][$Eintrag][]=(integer)$params_more[0];
-							$Eintrag--;								
-							}
-					case "3":
-						$params_three=explode(":",$moduleParams2[2]);
-						if (count($params_three)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
-							$Eintrag--;						
-							}
-						else
-							{
-							if  (strtoupper($params_more[0])=='FALSE')
-								{
-								$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
-								}
-							else
-								{
-								$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
-								}						
-							}
-					case "2":
-						$params_two=explode(":",$moduleParams2[1]);
-						if (count($params_two)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
-							$Eintrag--;							
-							}
-						else
-							{
-							$parges[$Kommando][$Eintrag][]=$params_two[0];
-							$Eintrag--;								
-							}
-					case "1":
-						$params_one=explode(":",$moduleParams2[0]);
-						if (count($params_one)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
-							$Eintrag--;							
-							}
-						else
-							{
-							/* hier sollte eigentlich immer "Ventilator" stehen */
-							$parges[$Kommando][$Eintrag][]="NAME";
-							$parges[$Kommando][$Eintrag][]=$params_one[0];
-							$Eintrag--;								
-							}
-						break;
-					default:
-						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-						break;
-					}
-				} 
-			elseif (strtoupper($params[1])=="ANWESENHEIT")
-				{	
-				/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
-				 *
-				 * "Schaltername"
-				 * "Schaltername,true"   "Schaltername,false"
-				 * "Schaltername,true,20"
-				 * "name:Schaltername,On:true,Off:false,Delay:20"
-				 *
-				 */
-				switch ($count)
-					{
-					case "10":
-					case "9":
-					case "8":
-					case "7":						
-					case "6":
-					case "5":
-					case "4":
-						$i=3;
-						while ($i<count($moduleParams2))
-							{
-							$params_more=explode(":",$moduleParams2[$i]);
-							if (count($params_more)>1)
-								{
-								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
-								$Eintrag--;
-								}
-							$i++;
-							}
-					case "3":
-						$params_three=explode(":",$moduleParams2[2]);
-						if (count($params_three)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
-							$Eintrag--;						
-							}
-						else
-							{
-							/* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
-							$parges[$Kommando][$Eintrag][]="DELAY";
-							$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
-							$Eintrag--;								
-							}
-					case "2":
-						$params_two=explode(":",$moduleParams2[1]);
-						if (count($params_two)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
-							$Eintrag--;							
-							}
-						else
-							{
-							/* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
-							if ($status==false)
-								{
-								$parges[$Kommando][$Eintrag][]="OFF";
-								$parges[$Kommando][$Eintrag][]=$params_two[0];
-								}
-							else	
-								{
-								$parges[$Kommando][$Eintrag][]="ON";
-								$parges[$Kommando][$Eintrag][]=$params_two[0];
-								}
-							$switch=true;	
-							$Eintrag--;								
-							}
-					case "1":
-						$params_one=explode(":",$moduleParams2[0]);
-						if (count($params_one)>1)
-							{
-							$result=self::parseParameter($params_one);
-							//print_r($result);
-							if ($result[0]=="ALARM")
-								{
-								echo "Alarm.\n";
-								if ($this->CategoryId_SchalterAlarm !== false)
+								$params_more=explode(":",$moduleParams2[$i]);
+								if (count($params_more)>1)
 									{
-									$parges[$Kommando][$Eintrag][]="OID";
-									$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAlarm;
-									if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
-										{
-										$parges[$Kommando][$count+1][]="ON";
-										$parges[$Kommando][$count+1][]="TRUE";
-										}
-									if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
-										{
-										$parges[$Kommando][$count+1][]="OFF";
-										$parges[$Kommando][$count+1][]="FALSE";
-										}
+									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+									$Eintrag--;
+									}
+								$i++;
+								}					
+						case "5":
+							$i=4;					
+							$params_more=explode(":",$moduleParams2[$i]);
+							if (count($params_more)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+								$Eintrag--;
+								}
+							else
+								{
+								/* wenn kein Doppelpunkt an Parameter Position 5 dann handelt es sich um den Ventilator Spezialbefehl, Aktivität bei Threshold */ 
+								//echo "Parameter 5 ist ".$params_more[0]."\n";
+								if  (strtoupper($params_more[0])=='FALSE')
+									{
+									$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
+									}
+								else
+									{
+									$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
 									}
 								}	
-							elseif ($result[0]=="ANWESEND")
-								{
-								echo "Anwesend.\n";								
-								if ($this->CategoryId_SchalterAnwesend !== false)
-									{
-									$parges[$Kommando][$Eintrag][]="OID";
-									$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAnwesend;
-									if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
-										{
-										$parges[$Kommando][$count+1][]="ON";
-										$parges[$Kommando][$count+1][]="TRUE";
-										}
-									if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
-										{
-										$parges[$Kommando][$count+1][]="OFF";
-										$parges[$Kommando][$count+1][]="FALSE";
-										}
-									}
-								}
-							else
-								{		
-								$parges[$Kommando][$Eintrag]=$result;
-								}
-							//echo "Anwesend   ".$this->CategoryId_SchalterAnwesend."   Alarm : ".$this->CategoryId_SchalterAlarm."\n"; 	
-							//print_r($parges[$Kommando]);	
-							$Eintrag--;							
-							}
-						else
-							{
-							/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
-							$parges[$Kommando][$Eintrag][]="NAME";
-							$parges[$Kommando][$Eintrag][]=$params_one[0];
-							$Eintrag--;								
-							}
-						break;
-					default:
-						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-						break;
-					}
-				}	
-			else		/* ------------- Standardbefehlssatz ------------------------- */
-				{	
-				/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
-				 *
-				 * "Schaltername"
-				 * "Schaltername,true"   "Schaltername,false"
-				 * "Schaltername,true,20"
-				 * "name:Schaltername,On:true,Off:false,Delay:20"
-				 *
-				 */
-				switch ($count)
-					{
-					case "10":
-					case "9":
-					case "8":
-					case "7":						
-					case "6":
-					case "5":
-					case "4":
-						$i=3;
-						while ($i<count($moduleParams2))
-							{
+							$i--;
+						case "4":
 							$params_more=explode(":",$moduleParams2[$i]);
 							if (count($params_more)>1)
 								{
 								$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
-								$Eintrag--;
-								}
-							$i++;
-							}
-					case "3":
-						$params_three=explode(":",$moduleParams2[2]);
-						if (count($params_three)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
-							$Eintrag--;						
-							}
-						else
-							{
-							/* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
-							$parges[$Kommando][$Eintrag][]="DELAY";
-							$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
-							$Eintrag--;								
-							}
-					case "2":
-						$params_two=explode(":",$moduleParams2[1]);
-						if (count($params_two)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
-							$Eintrag--;							
-							}
-						else
-							{
-							/* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
-							if ($status==false)
-								{
-								$parges[$Kommando][$Eintrag][]="OFF";
-								$parges[$Kommando][$Eintrag][]=$params_two[0];
-								}
-							else	
-								{
-								$parges[$Kommando][$Eintrag][]="ON";
-								$parges[$Kommando][$Eintrag][]=$params_two[0];
-								}
-							$switch=true;	
-							$Eintrag--;								
-							}
-					case "1":
-						$params_one=explode(":",$moduleParams2[0]);
-						if (count($params_one)>1)
-							{
-							$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
-							$Eintrag--;							
-							}
-						else
-							{
-							/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
-							if ( strlen($params_one[0]) > 0 )
-								{
-								$parges[$Kommando][$Eintrag][]="NAME";
-								$parges[$Kommando][$Eintrag][]=$params_one[0];
-								$Eintrag--;
+								$Eintrag--;						
 								}
 							else
 								{
-								echo "                >>>Länge Name ist ".strlen($params_one[0])." Kommando ".$Kommando." wird nicht angelegt.\n";
-								//print_r($parges);
-								}																		
-							}
-						break;
-					default:
-						echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
-						break;
-					}
+								/* wenn kein Doppelpunkt an Parameter Position 4 dann handelt es sich um den Ventilator Spezialbefehl, Wert für Threshold */ 							
+								$parges[$Kommando][$Eintrag][]=(integer)$params_more[0];
+								$Eintrag--;								
+								}
+						case "3":
+							$params_three=explode(":",$moduleParams2[2]);
+							if (count($params_three)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+								$Eintrag--;						
+								}
+							else
+								{
+								if  (strtoupper($params_more[0])=='FALSE')
+									{
+									$parges[$Kommando][$Eintrag][]="THREASHOLDLOW";
+									}
+								else
+									{
+									$parges[$Kommando][$Eintrag][]="THREASHOLDHIGH";
+									}						
+								}
+						case "2":
+							$params_two=explode(":",$moduleParams2[1]);
+							if (count($params_two)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+								$Eintrag--;							
+								}
+							else
+								{
+								$parges[$Kommando][$Eintrag][]=$params_two[0];
+								$Eintrag--;								
+								}
+						case "1":
+							$params_one=explode(":",$moduleParams2[0]);
+							if (count($params_one)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
+								$Eintrag--;							
+								}
+							else
+								{
+								/* hier sollte eigentlich immer "Ventilator" stehen */
+								$parges[$Kommando][$Eintrag][]="NAME";
+								$parges[$Kommando][$Eintrag][]=$params_one[0];
+								$Eintrag--;								
+								}
+							break;
+						default:
+							echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+							break;
+						}
+					break; 
+				case "ANWESENHEIT":
+					/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
+					 *
+					 * "Schaltername"
+					 * "Schaltername,true"   "Schaltername,false"
+					 * "Schaltername,true,20"
+					 * "name:Schaltername,On:true,Off:false,Delay:20"
+					 *
+					 */
+					switch ($count)
+						{
+						case "10":
+						case "9":
+						case "8":
+						case "7":						
+						case "6":
+						case "5":
+						case "4":
+							$i=3;
+							while ($i<count($moduleParams2))
+								{
+								$params_more=explode(":",$moduleParams2[$i]);
+								if (count($params_more)>1)
+									{
+									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+									$Eintrag--;
+									}
+								$i++;
+								}
+						case "3":
+							$params_three=explode(":",$moduleParams2[2]);
+							if (count($params_three)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+								$Eintrag--;						
+								}
+							else
+								{
+								/* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
+								$parges[$Kommando][$Eintrag][]="DELAY";
+								$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
+								$Eintrag--;								
+								}
+						case "2":
+							$params_two=explode(":",$moduleParams2[1]);
+							if (count($params_two)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+								$Eintrag--;							
+								}
+							else
+								{
+								/* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
+								if ($status==false)
+									{
+									$parges[$Kommando][$Eintrag][]="OFF";
+									$parges[$Kommando][$Eintrag][]=$params_two[0];
+									}
+								else	
+									{
+									$parges[$Kommando][$Eintrag][]="ON";
+									$parges[$Kommando][$Eintrag][]=$params_two[0];
+									}
+								$switch=true;	
+								$Eintrag--;								
+								}
+						case "1":
+							$params_one=explode(":",$moduleParams2[0]);
+							if (count($params_one)>1)
+								{
+								$result=self::parseParameter($params_one);
+								//print_r($result);
+								if ($result[0]=="ALARM")
+									{
+									echo "Alarm.\n";
+									if ($this->CategoryId_SchalterAlarm !== false)
+										{
+										$parges[$Kommando][$Eintrag][]="OID";
+										$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAlarm;
+										if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
+											{
+											$parges[$Kommando][$count+1][]="ON";
+											$parges[$Kommando][$count+1][]="TRUE";
+											}
+										if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
+											{
+											$parges[$Kommando][$count+1][]="OFF";
+											$parges[$Kommando][$count+1][]="FALSE";
+											}
+										}
+									}	
+								elseif ($result[0]=="ANWESEND")
+									{
+									echo "Anwesend.\n";								
+									if ($this->CategoryId_SchalterAnwesend !== false)
+										{
+										$parges[$Kommando][$Eintrag][]="OID";
+										$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAnwesend;
+										if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
+											{
+											$parges[$Kommando][$count+1][]="ON";
+											$parges[$Kommando][$count+1][]="TRUE";
+											}
+										if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
+											{
+											$parges[$Kommando][$count+1][]="OFF";
+											$parges[$Kommando][$count+1][]="FALSE";
+											}
+										}
+									}
+								else
+									{		
+									$parges[$Kommando][$Eintrag]=$result;
+									}
+								//echo "Anwesend   ".$this->CategoryId_SchalterAnwesend."   Alarm : ".$this->CategoryId_SchalterAlarm."\n"; 	
+								//print_r($parges[$Kommando]);	
+								$Eintrag--;							
+								}
+							else
+								{
+								/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
+								$parges[$Kommando][$Eintrag][]="NAME";
+								$parges[$Kommando][$Eintrag][]=$params_one[0];
+								$Eintrag--;								
+								}
+							break;
+						default:
+							echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+							break;
+						}
+					break;	
+				default:		/* ------------- Standardbefehlssatz ------------------------- */
+					/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
+					 *
+					 * "Schaltername"
+					 * "Schaltername,true"   "Schaltername,false"
+					 * "Schaltername,true,20"
+					 * "name:Schaltername,On:true,Off:false,Delay:20"
+					 *
+					 */
+					switch ($count)
+						{
+						case "10":
+						case "9":
+						case "8":
+						case "7":						
+						case "6":
+						case "5":
+						case "4":
+							$i=3;
+							while ($i<count($moduleParams2))
+								{
+								$params_more=explode(":",$moduleParams2[$i]);
+								if (count($params_more)>1)
+									{
+									$parges[$Kommando][$Eintrag]=self::parseParameter($params_more);
+									$Eintrag--;
+									}
+								$i++;
+								}
+						case "3":
+							$params_three=explode(":",$moduleParams2[2]);
+							if (count($params_three)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_three);
+								$Eintrag--;						
+								}
+							else
+								{
+								/* wenn drei Parameter gibt der dritte vor wann wieder abgeschaltet werden soll */
+								$parges[$Kommando][$Eintrag][]="DELAY";
+								$parges[$Kommando][$Eintrag][]=(integer)$params_three[0];
+								$Eintrag--;								
+								}
+						case "2":
+							$params_two=explode(":",$moduleParams2[1]);
+							if (count($params_two)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_two);
+								$Eintrag--;							
+								}
+							else
+								{
+								/* wenn zwei Parameter, gibt der zweite vor auf welchen Wert gesetzt werden soll */
+								if ($status==false)
+									{
+									$parges[$Kommando][$Eintrag][]="OFF";
+									$parges[$Kommando][$Eintrag][]=$params_two[0];
+									}
+								else	
+									{
+									$parges[$Kommando][$Eintrag][]="ON";
+									$parges[$Kommando][$Eintrag][]=$params_two[0];
+									}
+								$switch=true;	
+								$Eintrag--;								
+								}
+						case "1":
+							$params_one=explode(":",$moduleParams2[0]);
+							if (count($params_one)>1)
+								{
+								$parges[$Kommando][$Eintrag]=self::parseParameter($params_one);
+								$Eintrag--;							
+								}
+							else
+								{
+								/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
+								if ( strlen($params_one[0]) > 0 )
+									{
+									$parges[$Kommando][$Eintrag][]="NAME";
+									$parges[$Kommando][$Eintrag][]=$params_one[0];
+									$Eintrag--;
+									}
+								else
+									{
+									echo "                >>>Länge Name ist ".strlen($params_one[0])." Kommando ".$Kommando." wird nicht angelegt.\n";
+									//print_r($parges);
+									}																		
+								}
+							break;
+						default:
+							echo "Anzahl Parameter falsch in Param2: ".count($moduleParams2)."\n";
+							break;
+						}
+					break;	
 				}
 			if ( isset ($parges[$Kommando]) )
 				{
@@ -2014,6 +2041,161 @@ class Autosteuerung
 	
 
 	} // Ende Klasse
+
+
+/*****************************************************************************************************
+ *
+ * Anwesenheitssimulation in der Autosteuerung
+ *
+ * Routinen zur Anwesenheitssimulation
+ *
+ **************************************************************************************************************/
+
+
+class AutosteuerungAnwesenheitssimulation
+	{
+
+	private $log_File="Default";
+	private $script_Id="Default";
+	private $nachrichteninput_Id="Default";
+	private $installedmodules;
+	private $zeile=array();
+	
+	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		//echo "Logfile Construct\n";
+		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+		$CategoryIdApp = $moduleManager->GetModuleCategoryID('app');
+		$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+				
+		$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+		if ($WFC10_Enabled==true)
+			{
+			$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+			}
+		echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+	
+		/******************************* File Logging *********/
+		$log_ConfigFile=get_IPSComponentLoggerConfig();
+		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
+		//echo "Init ".get_class($this)." : ";
+		//var_dump($this);
+		if ($logfile=="No-Output")
+			{
+			/* kein Logfile anlegen */
+			}
+		else
+			{	
+			if (!file_exists($logfile))
+				{
+				/* Pfad aus dem Dateinamen herausrechnen. Wenn keiner definiert ist einen aus dem Configfile nehmen und sonst mit Default arbeiten */
+				//echo "construct class Anwesenheitssimulation, File ".$logfile." existiert nicht. Mit Verzeichnis gemeinsam anlegen.\n";
+				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
+				if ($FilePath==".") 
+					{
+					print_r($log_ConfigFile);
+					if (isset($log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"])==true)
+						{
+						$FilePath=$log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"];
+						}
+					else $FilePath="C:/Scripts/";	
+					}
+				if (!file_exists($FilePath)) 
+					{
+					if (!mkdir($FilePath, 0755, true)) {
+						throw new Exception('Create Directory '.$destinationFilePath.' failed!');
+						}
+					}
+				$this->log_File=$FilePath.$logfile;	
+				}
+			else
+				{
+				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
+				$this->log_File=$logfile;
+				}	
+			if (!file_exists($this->log_File))
+				{											
+				//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
+				$handle3=fopen($this->log_File, "a");
+				fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
+ 				fclose($handle3);
+				echo "construct class Anwesenheitssimulation, Filename angelegt. Verzeichnis für Logfile : ".$this->log_File."\n";
+				}
+			else
+				{
+				echo "construct class Anwesenheitssimulation, Filename vorhanden. Verzeichnis für Logfile : ".$this->log_File."\n";
+				}		
+			}
+			
+		/******************************* Nachrichten Logging *********/
+		$type=3;$profile=""; $this->zeile=array();
+		if ($nachrichteninput_Id != "Ohne")
+			{
+			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+			// bei etwas anderem als einem String stimmt der defaultwert nicht
+			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$nachrichteninput_Id);	
+			if ($vid==false) break;		
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl); }		
+			}
+		else
+			{
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
+			$this->installedmodules=$moduleManager->GetInstalledModules();			
+			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
+			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
+			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			$nachrichteninput_Id=@IPS_GetObjectIDByName('Schaltbefehle-Anwesenheitssimulation',$CategoryIdData);
+			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$nachrichteninput_Id);
+			if ($vid==false) break;
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
+			}
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		}
+
+	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
+		{
+		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')	
+		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,$vid, $i*10,$profile,$scriptIdHeatControl );
+		}
+
+	function InitMesagePuffer()
+		{
+		$type=3;$profile="";		
+		$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
+		if ($vid==false) break;
+		EmptyCategory($vid);			
+		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }		
+		}
+
+	function LogMessage($message)
+		{
+		if ($this->log_File != "No-Output")
+			{
+			$handle3=fopen($this->log_File, "a");
+			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fclose($handle3);
+			//echo $this->log_File."   ".$message."\n";
+			}
+		}
+	function LogNachrichten($message)
+		{		
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			//print_r($this->zeile);
+			for ($i=16; $i>1;$i--) 
+				{ 
+				SetValue($this->zeile[$i],GetValue($this->zeile[$i-1])); 
+				//echo "Wert : ".$i."\n";
+				}
+			SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
+			}		
+		}
+	}
 									
 /*****************************************************************************************************
  *
@@ -2032,6 +2214,7 @@ class AutosteuerungStromheizung
 	private $nachrichteninput_Id="Default";
 	private $installedmodules;
 	private $zeile=array();
+	private $scriptIdHeatControl;
 	
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
@@ -2039,7 +2222,7 @@ class AutosteuerungStromheizung
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 		$CategoryIdApp = $moduleManager->GetModuleCategoryID('app');
-		$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+		$this->scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
 				
 		$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 		if ($WFC10_Enabled==true)
@@ -2082,8 +2265,8 @@ class AutosteuerungStromheizung
 			// bei etwas anderem als einem String stimmt der defaultwert nicht
 			$vid=@IPS_GetObjectIDByName("Wochenplan",$nachrichteninput_Id);	
 			if ($vid==false) break;		
-			EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl); }		
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
 			}
 		else
 			{
@@ -2095,8 +2278,8 @@ class AutosteuerungStromheizung
 			$nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
 			$vid=@IPS_GetObjectIDByName("Wochenplan",$nachrichteninput_Id);
 			if ($vid==false) break;
-			EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl); }
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }
 			}
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
 		}
@@ -2111,32 +2294,35 @@ class AutosteuerungStromheizung
 	function LogMessage($message)
 		{
 		if ($this->log_File != "No-Output")
-		   {
-      	$handle3=fopen($this->log_File, "a");
-		   fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-	   	fclose($handle3);
+			{
+			$handle3=fopen($this->log_File, "a");
+			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fclose($handle3);
 			//echo $this->log_File."   ".$message."\n";
 			}
 		}
 
-	function ShiftforNextDay($value=0)
+	function ShiftforNextDay($message=0)
 		{
-		SetValue($this->zeile16,GetValue($this->zeile15));
-		SetValue($this->zeile15,GetValue($this->zeile14));
-		SetValue($this->zeile14,GetValue($this->zeile13));
-		SetValue($this->zeile13,GetValue($this->zeile12));
-		SetValue($this->zeile12,GetValue($this->zeile11));
-		SetValue($this->zeile11,GetValue($this->zeile10));
-		SetValue($this->zeile10,GetValue($this->zeile9));
-		SetValue($this->zeile9,GetValue($this->zeile8));
-		SetValue($this->zeile8,GetValue($this->zeile7));
-		SetValue($this->zeile7,GetValue($this->zeile6));
-		SetValue($this->zeile6,GetValue($this->zeile5));
-		SetValue($this->zeile5,GetValue($this->zeile4));
-		SetValue($this->zeile4,GetValue($this->zeile3));
-		SetValue($this->zeile3,GetValue($this->zeile2));
-		SetValue($this->zeile2,GetValue($this->zeile1));
-		SetValue($this->zeile1,$value);
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			//print_r($this->zeile);
+			for ($i=16; $i>1;$i--) 
+				{ 
+				SetValue($this->zeile[$i],GetValue($this->zeile[$i-1])); 
+				//echo "Wert : ".$i."\n";
+				}
+			SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
+			}		
+		}
+
+	function SetupKalender()
+		{
+		$type=1;$profile="AusEin";
+		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);
+		if ($vid==false) break;
+		EmptyCategory($vid);			
+		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
 		}
 
 	function PrintNachrichten()

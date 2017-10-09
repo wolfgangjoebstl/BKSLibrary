@@ -51,62 +51,59 @@ Switch ($_IPS['SENDER'])
     {
     Default:
     Case "RunScript":
+		break;
     Case "Execute":
+		$log_Sprachsteuerung->LogNachrichten("Alexa: Execute");
+		break;
     Case "TimerEvent":
         break;
-
     Case "Variable":
     Case "AlexaSmartHome":
-    
-    SetValue($_IPS['VARIABLE'] , $_IPS['VALUE']);      
-                      
-    if ($_IPS['VALUE'] == True)
-          {
-            IPS_LogMessage( "Fernseher:" , "Einschalten" );
-        }
-    else
-        {
+		/* SetValue($_IPS['VARIABLE'] , $_IPS['VALUE']); */      
+	    if ($_IPS['VALUE'] == True)
+    		{
+			$log_Sprachsteuerung->LogNachrichten("Alexa: ".$_IPS['VARIABLE']." Ein ".$_IPS['VALUE']);
+        	}
+    	else
+        	{
+			$log_Sprachsteuerung->LogNachrichten("Alexa: ".$_IPS['VARIABLE']." Aus".$_IPS['VALUE']);
+			/*
             IPS_LogMessage( "Fernseher:" , "Ausschalten" );    
             $host="192.168.0.49";  
             if (Sys_Ping($host,100))  
-            {  
+            	{  
                 $cu = curl_init('http://'.$host.':1925/1/input/key');  
-                  curl_setopt($cu, CURLOPT_RETURNTRANSFER, 1);  
+                curl_setopt($cu, CURLOPT_RETURNTRANSFER, 1);  
                 $befehl=array('key'=>'Standby');  
                 $json_befehl=json_encode($befehl);  
                 curl_setopt($cu, CURLOPT_POSTFIELDS,$json_befehl);  
                 curl_exec($cu);  
                 curl_close($cu);  
-            }          
-        }
-    
-
+        		}          
+			} */
        break;
     Case "WebFront":        // Zum schalten im Webfront
-
-                
+		/*
     SetValue($_IPS['VARIABLE'] , $_IPS['VALUE']); 
       
     if ($_IPS['VALUE'] == True)
-          {
+		{
          // an    
         }
     else
         {            
-            $host="192.168.0.49";  
-            if (Sys_Ping($host,100))  
+        $host="192.168.0.49";  
+        if (Sys_Ping($host,100))  
             {  
-                $cu = curl_init('http://'.$host.':1925/1/input/key');  
-                  curl_setopt($cu, CURLOPT_RETURNTRANSFER, 1);  
-                $befehl=array('key'=>'Standby');  
-                $json_befehl=json_encode($befehl);  
-                curl_setopt($cu, CURLOPT_POSTFIELDS,$json_befehl);  
-                curl_exec($cu);  
-                curl_close($cu);  
+            $cu = curl_init('http://'.$host.':1925/1/input/key');  
+            curl_setopt($cu, CURLOPT_RETURNTRANSFER, 1);  
+            $befehl=array('key'=>'Standby');  
+            $json_befehl=json_encode($befehl);  
+            curl_setopt($cu, CURLOPT_POSTFIELDS,$json_befehl);  
+            curl_exec($cu);  
+            curl_close($cu);  
             }  
-        }
-    
-
+        }	*/
        break;
     } 
 
