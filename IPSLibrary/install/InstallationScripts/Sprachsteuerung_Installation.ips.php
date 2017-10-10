@@ -110,8 +110,22 @@
 	print_r(IPS_GetInstanceListByModuleID("{3F0154A4-AC42-464A-9E9A-6818D775EFC4}"));
 
 	echo "Alle Mediaplayermodule:\n";
-	print_r(IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"));
-	echo "Alle Text-to-Speech Module:\n";
+	$MediaPlayerModule=IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
+	foreach ($MediaPlayerModule as $oid)
+		{
+		echo "    ".$oid."  (".IPS_GetName($oid).")\n";
+		}
+	$result=IPS_GetConfigurationForm($oid);		
+	print_r($result);
+	echo "--------------------\n";
+	$ergebnis=IPS_GetProperty($oid,"DeviceName");
+	print_r($ergebnis);
+	echo "--------------------\n";	
+	$json = json_decode($result,true);
+	echo "\n";
+	var_dump($json);
+	
+	echo "\nAlle Text-to-Speech Module:\n";
 	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
 
 	$SmartHomeID = @IPS_GetInstanceIDByName("IQL4SmartHome", 0);
