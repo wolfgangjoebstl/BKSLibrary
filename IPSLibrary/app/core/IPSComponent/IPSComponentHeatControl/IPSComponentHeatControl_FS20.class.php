@@ -69,20 +69,6 @@
 		/**
 		 * @public
 		 *
-		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
-		 * wieder neu zu erzeugen.
-		 *
-		 * @return string Parameter String des IPSComponent Object
-		 */
-		public function GetComponentParams() {
-			return get_class($this).','.$this->instanceId;
-		}
-
-
-		/**
-		 * @public
-		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
@@ -98,18 +84,24 @@
 			$log=new HeatControl_Logging($variable);
 			$result=$log->HeatControl_LogValue();
 			
+			self::WriteValueRemote($value);
+			}
+			
+
+		public function WriteValueRemote($value)
+			{
 			if ($this->RemoteOID != Null)
-			   {
+				{
 				$params= explode(';', $this->RemoteOID);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            	if (count($para)==2)
-   	            		{
+					if (count($para)==2)
+						{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
-						   	{
+							{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Server : ".$Server." Remote OID: ".$roid." Value ".$value."\n";
@@ -118,9 +110,8 @@
 							}
 						}
 					}
-				}
+				}			
 			}
-			
 
 
 		}

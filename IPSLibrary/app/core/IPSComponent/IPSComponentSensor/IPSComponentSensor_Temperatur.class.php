@@ -160,18 +160,26 @@
 		private $configuration;
 		private $installedmodules;
 				
-		function __construct($variable)
+		function __construct($variable,$variablename=Null)
 			{
 			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
-			$result=IPS_GetObject($variable);
-			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
+			if ($variablename==Null)
+				{
+				$result=IPS_GetObject($variable);
+				$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist der Parent Name wenn nicht anders angegeben
+				} 
+			else
+				{
+				$this->variablename=$variablename;
+				}			
 		
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			
 			$name="Temperatur-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -179,8 +187,9 @@
 				$vid = IPS_CreateCategory();
 				IPS_SetParent($vid, $CategoryIdData);
 				IPS_SetName($vid, $name);
-	    		IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Temperatur. ");
-	    		}
+				IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Temperatur. ");
+				}
+
 			/* Create Category to store the Temperature-Spiegelregister */	
 			$name="Temperatur-Auswertung";
 			$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
@@ -192,9 +201,10 @@
 				IPS_SetInfo($TempAuswertungID, "this category was created by script IPSComponentSensor_Temperatur. ");
 	    		}
 			$this->TempAuswertungID=$TempAuswertungID;
+
+			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird der Name des Parent genommen */
 				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->TempAuswertungID." ".IPS_GetName($this->TempAuswertungID)." anlegen.\n";
 				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
 				$this->variableLogID=CreateVariable($this->variablename,2,$this->TempAuswertungID, 10, "~Temperature", null, null );  /* 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
@@ -216,9 +226,21 @@
 
 		function Temperature_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." °C";
+			// result formatieren
+			$variabletyp=IPS_GetVariable($this->variable);
+			if ($variabletyp["VariableProfile"]!="")
+				{
+				$result=GetValueFormatted($this->variable);
+				}
+			else
+				{
+				$result=number_format(GetValue($this->variable),2,',','.')." °C";
+				}		
+
+			$unchanged=time()-$variabletyp["VariableChanged"];
+			$oldvalue=GetValue($this->variableLogID);
 			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C\n";
+			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 			
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{

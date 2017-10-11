@@ -18,7 +18,7 @@
 
 	IPSUtils_Include ('IPSComponent.class.php', 'IPSLibrary::app::core::IPSComponent');
 
-
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	abstract class IPSComponentHeatControl extends IPSComponent {
 
@@ -33,6 +33,19 @@
 		 * @param IPSModuleSensor $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		abstract public function HandleEvent($variable, $value, IPSModuleHeatControl $module);
+		
+				/**
+		 * @public
+		 *
+		 * Funktion liefert String IPSComponent Constructor String.
+		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * wieder neu zu erzeugen.
+		 *
+		 * @return string Parameter String des IPSComponent Object
+		 */
+		public function GetComponentParams() {
+			return get_class($this).','.$this->instanceId;
+		}
 		
 	}  /* ende class */
 	
@@ -60,18 +73,25 @@
 		private $configuration;
 		private $installedmodules;
 				
-		function __construct($variable)
+		function __construct($variable,$variablename=Null)
 			{
 			//echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
-			$result=IPS_GetObject($variable);
-			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
-		
+			if ($variablename==Null)
+				{
+				$result=IPS_GetObject($variable);
+				$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist der Parent Name wenn nicht anders angegeben
+				} 
+			else
+				{
+				$this->variablename=$variablename;
+				}
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			
 			$name="HeatControl-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -79,8 +99,9 @@
 				$vid = IPS_CreateCategory();
 				IPS_SetParent($vid, $CategoryIdData);
 				IPS_SetName($vid, $name);
-	    		IPS_SetInfo($vid, "this category was created by script IPSComponentHeatControl_Homematic. ");
-	    		}
+				IPS_SetInfo($vid, "this category was created by script IPSComponentHeatControl.");
+				}
+				
 			/* Create Category to store the HeatControl-Spiegelregister */	
 			$name="HeatControl-Auswertung";
 			$HeatControlAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
@@ -92,9 +113,10 @@
 				IPS_SetInfo($HeatControlAuswertungID, "this category was created by script IPSComponentHeatControl_Homematic. ");
 	    		}
 			$this->HeatControlAuswertungID=$HeatControlAuswertungID;
+			
+			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird der Name des Parent genommen */
 				echo "Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
 				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
 				$this->variableLogID=CreateVariable($this->variablename,1,$this->HeatControlAuswertungID, 10, "~Intensity.100", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
@@ -116,8 +138,6 @@
 						AC_SetLoggingStatus($archiveHandlerID,$this->variableEnergyLogID,true);
 						AC_SetAggregationType($archiveHandlerID,$this->variableEnergyLogID,0);      /* normaler Wwert */
 						IPS_ApplyChanges($archiveHandlerID);						
-						
-						
 						}
 					}					
 				}
@@ -134,8 +154,8 @@
 
 		function HeatControl_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." %";
-	     	$variabletyp=IPS_GetVariable($this->variable);
+			// result formatieren
+			$variabletyp=IPS_GetVariable($this->variable);
 			if ($variabletyp["VariableProfile"]!="")
 				{
 				$result=GetValueFormatted($this->variable);
@@ -144,10 +164,13 @@
 				{
 				$result=number_format(GetValue($this->variable),2,',','.')." %";				
 				}
+				
 			$unchanged=time()-$variabletyp["VariableChanged"];
 			$oldvalue=GetValue($this->variableLogID);
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".GetValue($this->variable)." %. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+
+			// Leistungswerte berechnen
 			if (function_exists('get_IPSComponentHeatControlConfig'))
 				{
 				$powerConfig=get_IPSComponentHeatControlConfig();
@@ -158,20 +181,20 @@
 					}				
 				}				
 			
-			if ( (isset ($this->installedmodules["DetectMovement"])) && false)
+			if (isset ($this->installedmodules["DetectMovement"]))
 				{
-				/* Detect Movement kann auch Temperaturen agreggieren */
+				/* Detect Movement kann auch Leistungswerte agreggieren */
 				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$DetectTemperatureHandler = new DetectTemperatureHandler();
+				$DetectHeatControlHandler = new DetectHeatControlHandler();
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectTemperatureHandler->ListGroups();
+				$groups=$DetectHeatControlHandler->ListGroups();
 				foreach($groups as $group=>$name)
 					{
 					echo "Gruppe ".$group." behandeln.\n";
-					$config=$DetectTemperatureHandler->ListEvents($group);
+					$config=$DetectHeatControlHandler->ListEvents($group);
 					$status=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)
@@ -184,10 +207,10 @@
 					if ($count>0) { $status=$status/$count; }
 					echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
+					//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
-					SetValue($statusID,$status);
-			   		}
+					//SetValue($statusID,$status);
+					}
 				}
 			
 			parent::LogMessage($result);
