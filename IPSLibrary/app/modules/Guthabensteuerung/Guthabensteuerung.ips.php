@@ -69,14 +69,18 @@ foreach ($GuthabenConfig as $TelNummer)
 	}
 $maxcount=$i;
 
-if ( isset($GuthabenAllgConfig["FireFoxDirectory"]) == true )
+//print_r($GuthabenAllgConfig);	
+if ( isset($GuthabenAllgConfig["FirefoxDirectory"]) == true )
 	{
-	$firefox=$GuthabenAllgConfig["FireFoxDirectory"]."firefox.exe";
+	$firefox=$GuthabenAllgConfig["FirefoxDirectory"]."firefox.exe";
+	//echo "Firefox verzeichnis : ".$firefox."\n";				
 	}
 else
 	{
 	$firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
-	}		
+	//echo "Firefox Verzeichnis (old style aus AllgemeineDefinitionen): ".$firefox."\n";					
+	}
+
 	
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 

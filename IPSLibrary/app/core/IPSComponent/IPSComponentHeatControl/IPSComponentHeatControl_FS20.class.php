@@ -26,12 +26,12 @@
 	class IPSComponentHeatControl_FS20 extends IPSComponentHeatControl 
 		{
 
-		private $tempObject;
-		private $RemoteOID;
-		private $tempValue;
-		private $installedmodules;
+		protected $tempObject;
+		protected $tempValue;
+		protected $installedmodules;
 
-		private $remServer;
+		protected $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected $remServer;		/* Liste der Urls und der Kurznamen */
 
 		/**
 		 * @public
@@ -47,8 +47,8 @@
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) 
 			{
-			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
+			$this->tempObject   = $lightObject;
 			$this->tempValue    = $lightValue;
 			
 			echo "construct IPSComponentHeatControl_FS20 with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
@@ -79,41 +79,14 @@
 		public function HandleEvent($variable, $value, IPSModuleHeatControl $module)
 			{
 			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			$log=new HeatControl_Logging($variable);
 			$result=$log->HeatControl_LogValue();
 			
-			self::WriteValueRemote($value);
+			$this->WriteValueRemote($value);
 			}
 			
-
-		public function WriteValueRemote($value)
-			{
-			if ($this->RemoteOID != Null)
-				{
-				$params= explode(';', $this->RemoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid." Value ".$value."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}			
-			}
-
-
 		}
 
 	/** @}*/

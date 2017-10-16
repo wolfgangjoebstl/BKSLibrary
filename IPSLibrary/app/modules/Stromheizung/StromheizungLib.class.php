@@ -19,6 +19,10 @@
 
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 
+	include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+
+/******************************************************************************************************************/
+
 
 	abstract class HeizungHandler {
 
@@ -329,9 +333,13 @@
 		}
 
 
+/******************************************************************************************************************/
 
-
-
+	class IPSHeat_Manager extends IPSLight_Manager
+		{
+		
+		
+		}
 
 
 

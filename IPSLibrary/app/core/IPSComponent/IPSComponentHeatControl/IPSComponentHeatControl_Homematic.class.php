@@ -25,12 +25,12 @@
 
 	class IPSComponentHeatControl_Homematic extends IPSComponentHeatControl {
 
-		private $tempObject;
-		private $RemoteOID;
-		private $tempValue;
-		private $installedmodules;
+		protected $tempObject;
+		protected $tempValue;
+		protected $installedmodules;
 
-		private $remServer;
+		protected $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected $remServer;		/* Liste der Urls und der Kurznamen */
 
 		/**
 		 * @public
@@ -45,8 +45,8 @@
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null) 
 			{
-			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
+			$this->tempObject   = $lightObject;
 			$this->tempValue    = $lightValue;
 			
 			echo "construct IPSComponentHeatControl_Homematic with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
@@ -63,30 +63,6 @@
 				$this->remServer	  = array();
 				}
 			}
-
-		/*
-		 * aktueller Status der remote logging server
-		 */	
-	
-		public function remoteServerAvailable()
-			{
-			return ($this->remServer);			
-			}
-			
-
-		/**
-		 * @public
-		 *
-		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
-		 * wieder neu zu erzeugen.
-		 *
-		 * @return string Parameter String des IPSComponent Object
-		 */
-		public function GetComponentParams() {
-			return get_class($this).','.$this->instanceId;
-		}
-
 
 		/**
 		 * @public
@@ -106,28 +82,7 @@
 			$log=new HeatControl_Logging($variable);
 			$result=$log->HeatControl_LogValue();
 			
-			if ($this->RemoteOID != Null)
-			   {
-				$params= explode(';', $this->RemoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            	if (count($para)==2)
-   	            		{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-						   	{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
-
+			$this->WriteValueRemote($value);
 			}
 
 		/**

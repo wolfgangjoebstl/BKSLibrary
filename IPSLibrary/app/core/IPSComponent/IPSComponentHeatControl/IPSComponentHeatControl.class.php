@@ -34,7 +34,7 @@
 		 */
 		abstract public function HandleEvent($variable, $value, IPSModuleHeatControl $module);
 		
-				/**
+		/**
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
@@ -47,6 +47,46 @@
 			return get_class($this).','.$this->instanceId;
 		}
 		
+		/*
+		 * aktueller Status der remote logging server
+		 */	
+	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}
+					
+		/*****************
+		 *
+		 * schreibt den Wert value auf die remote Server. Remote Server sind in RemoteOID mit Kurzname Doppelpunkt und Remote OID angelegt
+		 * die Zuordnung Kurzname zu url steht im remServer array 
+		 *
+		 *****************************************/
+		
+		public function WriteValueRemote($value)
+			{
+			if ($this->RemoteOID != Null)
+				{
+				$params= explode(';', $this->RemoteOID);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+					if (count($para)==2)
+						{
+						$Server=$this->remServer[$para[0]]["Url"];
+						if ($this->remServer[$para[0]]["Status"]==true)
+							{
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Server : ".$Server." Remote OID: ".$roid." Value ".$value."\n";
+							$rpc->SetValue($roid, $value);
+							}
+						}
+					}
+				}			
+			}
+
 	}  /* ende class */
 	
 
@@ -66,16 +106,19 @@
 		private $variable;
 		private $variablename;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
+		
 		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
+		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
 				
 		private $HeatControlAuswertungID;
+		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
 
 		private $configuration;
 		private $installedmodules;
 				
 		function __construct($variable,$variablename=Null)
 			{
-			//echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
+			echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
@@ -88,10 +131,15 @@
 				}
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
+			$CategoryIdData_Lib     = $moduleManager->GetModuleCategoryID('data');
+			echo "  Kategorien im aktuellen Datenverzeichnis:".$CategoryIdData_Lib."   ".IPS_GetName($CategoryIdData_Lib)."\n";
+
+			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			echo "  Kategorien im CustomComponents Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			
+			/* Create Category to store the HeatControl-Nachrichten */				
 			$name="HeatControl-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -125,20 +173,28 @@
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
+				$this->powerConfig=Null;
 				if (function_exists('get_IPSComponentHeatConfig'))
 					{
-					$powerConfig=get_IPSComponentHeatConfig();
-					echo "Look for ".$variable." in Configuration.\n";
-					if ( isset($powerConfig["HeatingPower"][$variable]) )
+					$this->powerConfig=get_IPSComponentHeatConfig()["HeatingPower"];
+					if ( isset($this->powerConfig[$variable]) )
 						{
-						echo "Lokales Spiegelregister für Energiewert auf ".$this->variablename."_Energy"." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
-						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->HeatControlAuswertungID, 10, "~Electricity.HM", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 						$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+						echo "Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
+						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 						AC_SetLoggingStatus($archiveHandlerID,$this->variableEnergyLogID,true);
 						AC_SetAggregationType($archiveHandlerID,$this->variableEnergyLogID,0);      /* normaler Wwert */
+						$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+						AC_SetLoggingStatus($archiveHandlerID,$this->variablePowerLogID,true);
+						AC_SetAggregationType($archiveHandlerID,$this->variablePowerLogID,0);      /* normaler Wwert */
 						IPS_ApplyChanges($archiveHandlerID);						
 						}
+					else 
+						{
+						echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in Configuration not available !\n";
+						$this->powerConfig=Null;
+						}	
 					}					
 				}
 
@@ -170,15 +226,11 @@
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".GetValue($this->variable)." %. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 
-			// Leistungswerte berechnen
-			if (function_exists('get_IPSComponentHeatControlConfig'))
+			// Leistungs und Energiewerte berechnen
+			if ($this->powerConfig<>Null)
 				{
-				$powerConfig=get_IPSComponentHeatControlConfig();
-				echo "Look for ".$this->variable." in Configuration.\n";
-				if ( isset($powerConfig["HeatingPower"][$this->variable]) )
-					{
-					SetValue($this->variableEnergyLogID,GetValue($this->variableEnergyLogID)+$oldvalue*$unchanged/60/60*$powerConfig["HeatingPower"][$this->variable]);
-					}				
+				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
+				SetValue($this->variablePowerLogID,(GetValue($this->variable)/1000*$this->powerConfig[$this->variable]));					
 				}				
 			
 			if (isset ($this->installedmodules["DetectMovement"]))

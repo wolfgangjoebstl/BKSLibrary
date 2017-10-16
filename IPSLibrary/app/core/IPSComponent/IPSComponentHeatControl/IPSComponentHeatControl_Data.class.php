@@ -26,12 +26,13 @@
 	class IPSComponentHeatControl_Data extends IPSComponentHeatControl 
 		{
 
-		private $tempObject;
-		private $tempValue;
-		private $installedmodules;
+		protected $tempObject;
+		protected $tempValue;
+		protected $installedmodules;
 
-		private $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
-		private $remServer;		/* Liste der Urls und der Kurznamen */
+		protected $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected $remServer;		/* Liste der Urls und der Kurznamen */
+
 
 		/**
 		 * @public
@@ -71,20 +72,6 @@
 		/**
 		 * @public
 		 *
-		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
-		 * wieder neu zu erzeugen.
-		 *
-		 * @return string Parameter String des IPSComponent Object
-		 */
-		public function GetComponentParams() {
-			return get_class($this).','.$this->instanceId;
-		}
-
-
-		/**
-		 * @public
-		 *
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
@@ -102,27 +89,7 @@
 			$log=new HeatControl_Logging($variable,IPS_GetName($variable));
 			$result=$log->HeatControl_LogValue();
 			
-			if ($this->RemoteOID != Null)
-				{
-				$params= explode(';', $this->RemoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid." Value ".$value."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
+			$this->WriteValueRemote($value);
 			}
 			
 

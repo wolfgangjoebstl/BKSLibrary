@@ -90,13 +90,13 @@
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 	if ($WFC10_Enabled==true)
-	   	{
-      	$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+		{
+		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
 		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10');
-		$WFC10_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10');
-		$WFC10_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10');
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10');
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"AutoTPA");
+		$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"roottp");
+		$WFC10_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',"");
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',"Car");
 		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
 		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
 		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
@@ -123,10 +123,10 @@
 		{
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
 		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValue('TabPaneItem', 'WFC10User');
-		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValue('TabPaneParent', 'WFC10User');
-		$WFC10User_TabPaneName    = $moduleManager->GetConfigValue('TabPaneName', 'WFC10User');
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValue('TabPaneIcon', 'WFC10User');
+		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',"AutoTPU");
+		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10User',"roottp");
+		$WFC10User_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10User',"");
+		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',"Car");
 		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
 		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
 		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
@@ -179,15 +179,15 @@
 	$pname="AusEinAuto";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-	   	//Var-Profil erstellen
+			//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
-	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-  	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-	   	echo "Profil ".$pname." erstellt;\n";
+		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
 		}
 	$pname="AusEin";
 	if (IPS_VariableProfileExists($pname) == false)
@@ -528,6 +528,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+	echo "\nWebfront Konfiguration für Administraor User usw, geordnet nach data.OID  \n";
 	print_r($webfront_links);
 	
 	if ($WFC10_Enabled)
@@ -560,6 +561,7 @@
 
 		/*************************************/
 		
+		/* TabPaneItem anlegen, etwas kompliziert geloest */
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
 		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
 		 	{
@@ -575,9 +577,11 @@
 
 		$tabs=array();
 		foreach ($webfront_links as $OID => $webfront_link)
-		   	{
+			{
 			$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
 			}
+		echo "\nWebfront Tabs anlegen:\n";
+		print_r($tabs);	
 		$i=0;
 		foreach ($tabs as $tab)
 			{
