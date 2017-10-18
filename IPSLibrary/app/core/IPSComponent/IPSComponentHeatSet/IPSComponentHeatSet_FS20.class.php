@@ -21,9 +21,9 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 	
-	IPSUtils_Include ('IPSComponentHeatControl.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');
+	IPSUtils_Include ('IPSComponentHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
 
-	class IPSComponentHeatControl_FS20 extends IPSComponentHeatControl 
+	class IPSComponentHeatSet_FS20 extends IPSComponentHeatSet 
 		{
 
 		protected $tempObject;
@@ -78,13 +78,13 @@
 		 * @param string $value Wert der Variable
 		 * @param IIPSModuleHeatControl $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleHeatControl $module)
+		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
 			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
-			$log=new HeatControl_Logging($variable);		/* zweite Variable ist optional und wäre der Variablenname wenn er nicht vom Parent Namen abgeleitet werden soll */
-			$result=$log->HeatControl_LogValue($value);	/* Variable ist optional, sonst wird sie aus der OID vom construct ausgelesen */
+			$log=new HeatSet_Logging($variable);		/* zweite Variable ist optional und wäre der Variablenname wenn er nicht vom Parent Namen abgeleitet werden soll */
+			$result=$log->HeatSet_LogValue($value);	/* Variable ist optional, sonst wird sie aus der OID vom construct ausgelesen */
 			
 			$this->WriteValueRemote($value);
 			}

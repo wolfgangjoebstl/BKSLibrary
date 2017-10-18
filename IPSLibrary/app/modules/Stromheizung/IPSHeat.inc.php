@@ -31,197 +31,197 @@
 
 	IPSUtils_Include ("IPSLogger.inc.php",                  "IPSLibrary::app::core::IPSLogger");
 	IPSUtils_Include ("IPSComponent.class.php",             "IPSLibrary::app::core::IPSComponent");
-	IPSUtils_Include ("IPSLight_Constants.inc.php",         "IPSLibrary::app::modules::IPSLight");
-	IPSUtils_Include ("IPSLight_Configuration.inc.php",     "IPSLibrary::config::modules::IPSLight");
-	IPSUtils_Include ("IPSLight_Custom.inc.php",            "IPSLibrary::config::modules::IPSLight");
-	IPSUtils_Include ("IPSLight_Manager.class.php",         "IPSLibrary::app::modules::IPSLight");
+	IPSUtils_Include ("IPSHeat_Constants.inc.php",         "IPSLibrary::app::modules::Stromheizung");
+	IPSUtils_Include ("Stromheizung_Configuration.inc.php",     "IPSLibrary::config::modules::Stromheizung");
+	//IPSUtils_Include ("IPSHeat_Custom.inc.php",            "IPSLibrary::config::modules::Stromheizung");
+	IPSUtils_Include ("IPSHeat_Manager.class.php",         "IPSLibrary::app::modules::Stromheizung");
 
 	/**
-	 * Setzt den Wert einer Variable (Schalter, Dimmer, Gruppe, ...) anhand der zugehörigen ID
+	 * Setzt den Wert einer Variable (Schalter, Dimmer, Gruppe, ...) anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $variableId ID der Variable
 	 * @param variant $value Neuer Wert der Variable
 	 */
-	function IPSLight_SetValue($variableId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetValue($variableId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetValue($variableId, $value);
 	}
 
 	/**
-	 * Setzt den Wert eines Schalters anhand der zugehörigen ID
+	 * Setzt den Wert eines Schalters anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $switchId ID der Variable
 	 * @param bool $value Neuer Wert der Variable
 	 */
-	function IPSLight_SetSwitch($switchId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetSwitch($switchId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetValue($switchId, $value);
 	}
 
 	/**
-	 * "Toggle" eines Schalters anhand der zugehörigen ID
+	 * "Toggle" eines Schalters anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $switchId ID der Variable
 	 */
-	function IPSLight_ToggleSwitch($switchId) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_ToggleSwitch($switchId) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetValue($switchId, !$lightManager->GetValue($switchId));
 	}
 
 	/**
-	 * Setzt den Wert eines Dimmers anhand der zugehörigen Level ID
+	 * Setzt den Wert eines Dimmers anhand der zugehÃ¶rigen Level ID
 	 *
 	 * @param int $levelId ID der Variable
 	 * @param int $value Neuer Wert der Variable
 	 */
-	function IPSLight_SetDimmerAbs($levelId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetDimmerAbs($levelId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetDimmer($levelId, $value);
 	}
 
 	/**
-	 * Verändert den Wert eines Dimmers anhand der zugehörigen Level ID um einen bestimmten Delta Wert
+	 * VerÃ¤ndert den Wert eines Dimmers anhand der zugehÃ¶rigen Level ID um einen bestimmten Delta Wert
 	 *
 	 * @param int $levelId ID der Variable
-	 * @param int $value Delta Wert um den der Dimmer Wert erhöht bzw. erniedrigt werden soll
+	 * @param int $value Delta Wert um den der Dimmer Wert erhÃ¶ht bzw. erniedrigt werden soll
 	 */
-	function IPSLight_SetDimmerRel($levelId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetDimmerRel($levelId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetDimmer($levelId, $lightManager->GetValue($levelId) + $value);
 	}
 
 	/**
-	 * Setzt den Wert eines Gruppen Schalters anhand der zugehörigen ID
+	 * Setzt den Wert eines Gruppen Schalters anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $groupId ID des Gruppen Schalters
 	 * @param bool $value Neuer Wert der Gruppe
 	 */
-	function IPSLight_SetGroup($groupId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetGroup($groupId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetGroup($groupId, $value);
 	}
 
 	/**
-	 * "Toogle" Gruppen Schalter anhand der zugehörigen ID
+	 * "Toogle" Gruppen Schalter anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $groupId ID des Gruppen Schalters
 	 */
-	function IPSLight_ToggleGroup($groupId) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_ToggleGroup($groupId) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetGroup($groupId, !$lightManager->GetValue(groupId));
 	}
 
 	/**
-	 * Setzt den Wert eines Programm Schalters anhand der zugehörigen ID
+	 * Setzt den Wert eines Programm Schalters anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $programId ID des Programm Schalters
 	 * @param bool $value Neuer Wert des Programm Schalters
 	 */
-	function IPSLight_SetProgram($programId, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetProgram($programId, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetProgram($programId, $value);
 	}
 
 	/**
-	 * Setzt des nächtsten Programms anhand der zugehörigen ID
+	 * Setzt des nÃ¤chtsten Programms anhand der zugehÃ¶rigen ID
 	 *
 	 * @param int $programId ID des Programm Schalters
 	 */
-	function IPSLight_SetProgramNext($programId) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetProgramNext($programId) {
+		$lightManager = new IPSHeat_Manager();
 		$lightManager->SetProgram($programId, $lightManager->GetValue($programId) + 1);
 	}
 
 
 	/**
-	 * Setzt den Wert eines Schalters anhand des zugehörigen Namens
+	 * Setzt den Wert eines Schalters anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $lightName Name des Schalters
 	 * @param bool $value Neuer Wert des Schalters
 	 */
-	function IPSLight_SetSwitchByName($lightName, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetSwitchByName($lightName, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$switchId = $lightManager->GetSwitchIdByName($lightName);
 		$lightManager->SetValue($switchId, $value);
 	}
 
 	/**
-	 * "Toogle" Schalter anhand des zugehörigen Namens
+	 * "Toogle" Schalter anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $lightName Name des Schalters
 	 */
-	function IPSLight_ToggleSwitchByName($lightName) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_ToggleSwitchByName($lightName) {
+		$lightManager = new IPSHeat_Manager();
 		$switchId = $lightManager->GetSwitchIdByName($lightName);
 		$lightManager->SetValue($switchId, !$lightManager->GetValue($switchId));
 	}
 
 	/**
-	 * Setzt den Wert eines Dimmers anhand des zugehörigen Namens
+	 * Setzt den Wert eines Dimmers anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $lightName Name des Dimmers
 	 * @param int $value Neuer Wert des Dimmers
 	 */
-	function IPSLight_DimAbsoluteByName($lightName, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_DimAbsoluteByName($lightName, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$levelId = $lightManager->GetLevelIdByName($lightName);
 		$lightManager->SetDimmer($levelId, $value);
 	}
 
 	/**
-	 * Verändert den Wert eines Dimmers anhand des zugehörigen Namens um einen übergebenen Delta Wert
+	 * VerÃ¤ndert den Wert eines Dimmers anhand des zugehÃ¶rigen Namens um einen Ã¼bergebenen Delta Wert
 	 *
 	 * @param string $lightName Name des Dimmers
 	 * @param int $value Delta Wert (positiv oder negativ)
 	 */
-	function IPSLight_DimRelativByName($lightName, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_DimRelativByName($lightName, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$levelId = $lightManager->GetLevelIdByName($lightName);
 		$lightManager->SetDimmer($levelId, $lightManager->GetValue($levelId) + $value);
 	}
 
 	/**
-	 * Setzt den Wert einer Gruppe anhand des zugehörigen Namens
+	 * Setzt den Wert einer Gruppe anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $groupName Name der Gruppe
 	 * @param bool $value Neuer Wert der Gruppe
 	 */
-	function IPSLight_SetGroupByName($groupName, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetGroupByName($groupName, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$groupId = $lightManager->GetGroupIdByName($groupName);
 		$lightManager->SetGroup($groupId, $value);
 	}
 
 	/**
-	 * "Toogle" Wert einer Gruppe anhand des zugehörigen Namens
+	 * "Toogle" Wert einer Gruppe anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $groupName Name der Gruppe
 	 */
-	function IPSLight_ToggleGroupByName($groupName) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_ToggleGroupByName($groupName) {
+		$lightManager = new IPSHeat_Manager();
 		$groupId = $lightManager->GetGroupIdByName($groupName);
 		$lightManager->SetGroup($groupId, !$lightManager->GetValue($groupId));
 	}
 
 	/**
-	 * Setzt den Wert eines Programms anhand des zugehörigen Namens
+	 * Setzt den Wert eines Programms anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $programName Name des Programms
 	 * @param bool $value Neuer Wert des Programms
 	 */
-	function IPSLight_SetProgramName($programName, $value) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetProgramName($programName, $value) {
+		$lightManager = new IPSHeat_Manager();
 		$programId = $lightManager->GetProgramIdByName($programName);
 		$lightManager->SetProgram($programId, $value);
 	}
 
 	/**
-	 * Setzt das nächste Programm eines Programwahlschalters anhand des zugehörigen Namens
+	 * Setzt das nÃ¤chste Programm eines Programwahlschalters anhand des zugehÃ¶rigen Namens
 	 *
 	 * @param string $programName Name des Programms
 	 */
-	function IPSLight_SetProgramNextByName($programName) {
-		$lightManager = new IPSLight_Manager();
+	function IPSHeat_SetProgramNextByName($programName) {
+		$lightManager = new IPSHeat_Manager();
 		$programId = $lightManager->GetProgramIdByName($programName);
 		$lightManager->SetProgram($programId, $lightManager->GetValue($programId) + 1);
 	}

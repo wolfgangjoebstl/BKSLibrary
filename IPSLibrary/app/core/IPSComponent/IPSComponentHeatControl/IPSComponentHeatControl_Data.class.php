@@ -10,9 +10,9 @@
 	 */
 
    /**
-    * @class IPSComponentShutter_Homematic
+    * @class IPSComponentHeatControl_Data
     *
-    * Definiert ein IPSComponentShutter_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
+    * Definiert ein IPSComponentHeatControl_Data Object, das ein IPSComponentHeatControl Object für Homematic implementiert.
     *
     */
 
@@ -87,12 +87,10 @@
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			$log=new HeatControl_Logging($variable,IPS_GetName($variable));
-			$result=$log->HeatControl_LogValue();
+			$result=$log->HeatControl_LogValue($value);
 			
 			$this->WriteValueRemote($value);
 			}
-			
-
 
 		}
 

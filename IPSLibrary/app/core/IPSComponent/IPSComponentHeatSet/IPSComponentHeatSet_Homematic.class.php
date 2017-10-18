@@ -21,9 +21,9 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 	
-	IPSUtils_Include ('IPSComponentHeatControl.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatControl');
+	IPSUtils_Include ('IPSComponentHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
 
-	class IPSComponentHeatControl_Homematic extends IPSComponentHeatControl {
+	class IPSComponentHeatSet_Homematic extends IPSComponentHeatSet {
 
 		protected $tempObject;
 		protected $tempValue;
@@ -74,13 +74,13 @@
 		 * @param string $value Wert der Variable
 		 * @param IIPSModuleHeatControl $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
-		public function HandleEvent($variable, $value, IPSModuleHeatControl $module)
+		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
 			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
-			$log=new HeatControl_Logging($variable);
-			$result=$log->HeatControl_LogValue($value);
+			$log=new HeatSet_Logging($variable);
+			$result=$log->HeatSet_LogValue($value);
 			
 			$this->WriteValueRemote($value);
 			}

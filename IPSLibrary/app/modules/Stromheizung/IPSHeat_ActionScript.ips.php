@@ -16,19 +16,19 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
 
-	/**@ingroup ipslight
+	/**@ingroup IPSHeat
 	 * @{
 	 *
-	 * @file          IPSLight_ActionScript.inc.php
+	 * @file          IPSHeat_ActionScript.inc.php
 	 * @author        Andreas Brauneis
 	 * @version
 	 *  Version 2.50.1, 26.07.2012<br/>
 	 *
-	 * IPSLight ActionScript 
+	 * IPSHeat ActionScript 
 	 *
 	 */
 
-	include_once "IPSLight.inc.php";
+	include_once "IPSHeat.inc.php";
 	
 	$variableId   = $_IPS['VARIABLE'];
 	$value        = $_IPS['VALUE'];
@@ -38,13 +38,13 @@
 	if ($_IPS['SENDER']=='WebFront') {
 		switch ($categoryName) {
 			case 'Switches':
-				IPSLight_SetValue($variableId, $value);
+				IPSHeat_SetValue($variableId, $value);
 				break;
 			case 'Groups':
-				IPSLight_SetGroup($variableId, $value);
+				IPSHeat_SetGroup($variableId, $value);
 				break;
 			case 'Programs':
-				IPSLight_SetProgram($variableId, $value);
+				IPSHeat_SetProgram($variableId, $value);
 				break;
 			default:
 				trigger_error('Unknown Category '.$categoryName);

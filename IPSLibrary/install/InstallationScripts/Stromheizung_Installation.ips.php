@@ -14,41 +14,33 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Stromheizung',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
+	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
+	echo "\nIPS ModulManager Version   : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
-	echo "\nStromheizung Version : ".$ergebnis;
+	echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		$inst_modules.="  ".str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	echo $inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
 	
@@ -59,6 +51,379 @@
 	
 	IPSUtils_Include ('StromheizungLib.class.php', 'IPSLibrary::app::modules::Stromheizung');
 	IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
+	
+	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+	IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	
+
+/*******************************
+ *
+ * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+ *
+ ********************************/
+
+	echo "\n";
+	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
+		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		/* alle Instanzen dargestellt */
+		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+		//print_r($result);
+		}
+	echo "\n";
+	
+/*******************************
+ *
+ * Webfront Konfiguration einlesen
+ 
+[RemoteVis]
+Enabled=false
+
+[WFC10]
+Enabled=true
+Path=Visualization.WebFront.Administrator.Stromheizung
+TabPaneItem=HeatTPA
+TabPaneParent=roottp
+TabPaneName=
+TabPaneOrder=500
+TabPaneIcon=Temperature
+TabPaneExclusive=false
+TabItem=Details
+TabName="Lautsprecher"
+TabIcon=
+TabOrder=20
+
+[WFC10User]
+Enabled=true
+Path=Visualization.WebFront.User.Stromheizung
+TabPaneItem=HeatTPU
+TabPaneParent=roottp
+TabPaneName=
+TabPaneOrder=500
+TabPaneIcon=Temperature
+TabPaneExclusive=false
+TabItem=Details
+TabName="Lautsprecher"
+TabIcon=
+TabOrder=20
+
+[Mobile]
+Enabled=true
+Path=Visualization.Mobile.Stromheizung
+
+[Retro]
+Enabled=false
+Path=Visualization.Mobile.Stromheizung 
+ 
+ *
+ ********************************/	
+	
+	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
+
+	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+	if ($WFC10_Enabled==true)
+		{
+		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
+		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"HeatTPA");
+		$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"roottp");
+		$WFC10_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',"");
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',"Temperature");
+		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10',300);
+		$WFC10_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',"");
+		$WFC10_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10',"");
+		$WFC10_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',"");
+		$WFC10_TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10',"");
+		echo "WF10 Administrator\n";
+		echo "  Path          : ".$WFC10_Path."\n";
+		echo "  ConfigID      : ".$WFC10_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10_ConfigId)).".".IPS_GetName($WFC10_ConfigId).")\n";		
+		echo "  TabPaneItem   : ".$WFC10_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10_TabPaneOrder."\n";
+		echo "  TabItem       : ".$WFC10_TabItem."\n";
+		echo "  TabName       : ".$WFC10_TabName."\n";
+		echo "  TabIcon       : ".$WFC10_TabIcon."\n";
+		echo "  TabOrder      : ".$WFC10_TabOrder."\n";
+		}
+
+	echo "\n";
+
+	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+	if ($WFC10User_Enabled==true)
+		{
+		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
+		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
+		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',"HeatTPU");
+		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10User',"roottp");
+		$WFC10User_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10User',"");
+		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',"Temperature");
+		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',300);
+		$WFC10User_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',"");
+		$WFC10User_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10User',"");
+		$WFC10User_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',"");
+		$WFC10User_TabOrder       = $moduleManager->GetConfigValueIntDef('TabOrder', 'WFC10User',"");
+		echo "WF10 User \n";
+		echo "  Path          : ".$WFC10User_Path."\n";
+		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
+		echo "  TabPaneItem   : ".$WFC10User_TabPaneItem."\n";
+		echo "  TabPaneParent : ".$WFC10User_TabPaneParent."\n";
+		echo "  TabPaneName   : ".$WFC10User_TabPaneName."\n";
+		echo "  TabPaneIcon   : ".$WFC10User_TabPaneIcon."\n";
+		echo "  TabPaneOrder  : ".$WFC10User_TabPaneOrder."\n";
+		echo "  TabItem       : ".$WFC10User_TabItem."\n";
+		echo "  TabName       : ".$WFC10User_TabName."\n";
+		echo "  TabIcon       : ".$WFC10User_TabIcon."\n";
+		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
+		}		
+
+	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+	if ($Mobile_Enabled==true)
+		{	
+		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		echo "Mobile \n";
+		echo "  Path          : ".$Mobile_Path."\n";		
+		}
+
+	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+	if ($Retro_Enabled==true)
+		{	
+		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+		echo "Retro \n";
+		echo "  Path          : ".$Retro_Path."\n";		
+		}
+		
+	$WFC10_Regenerate     = true;
+	$mobile_Regenerate    = false;			
+			
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Program Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$categoryIdSwitches = CreateCategory('Switches', $CategoryIdData, 10);
+	$categoryIdGroups   = CreateCategory('Groups',   $CategoryIdData, 20);
+	$categoryIdPrograms = CreateCategory('Programs', $CategoryIdData, 30);	
+	
+	// Add Scripts
+	$scriptIdActionScript  = IPS_GetScriptIDByName('IPSHeat_ActionScript', $CategoryIdApp);
+	
+	echo "Action Script hat OID: ".$scriptIdActionScript."\n";
+	
+	// ===================================================================================================
+	// Add Heat or Light Devices
+	// ===================================================================================================
+	$idx = 10;
+	$lightConfig = IPSHeat_GetHeatConfiguration();
+	foreach ($lightConfig as $deviceName=>$deviceData) 
+		{
+		$deviceType = $deviceData[IPSHEAT_TYPE];
+
+		switch ($deviceType) 
+			{
+			case IPSLIGHT_TYPE_SWITCH:
+			case IPSHEAT_TYPE_SWITCH:			
+				$switchId = CreateVariable($deviceName,    0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+				break;
+			case IPSLIGHT_TYPE_DIMMER:
+			case IPSHEAT_TYPE_DIMMER:			
+				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+				break;
+			case IPSLIGHT_TYPE_RGB:
+			case IPSHEAT_TYPE_RGB:
+				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~HexColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+				break;
+			case IPSHEAT_TYPE_SET:
+				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+				$tempId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 2 /*Float*/, $categoryIdSwitches,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+				break;
+			default:
+				trigger_error('Unknown DeviceType '.$deviceType.' found for Heat or Light '.$devicename);
+			}
+		$idx = $idx + 1;
+		}	
+
+	// ===================================================================================================
+	// Add Groups
+	// ===================================================================================================
+	$idx = 10;
+	$groupConfig = IPSHeat_GetGroupConfiguration();
+	foreach ($groupConfig as $groupName=>$groupData) {
+		$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+		$idx = $idx + 1;
+	}
+
+	// ===================================================================================================
+	// Add Programs
+	// ===================================================================================================
+	$idx = 10;
+	$programConfig = IPSHeat_GetProgramConfiguration();
+	foreach ($programConfig as $programName=>$programData) {
+		$itemIdx = 0;
+		$programAssociations = array();
+		foreach ($programData as $programItemName=>$programItemData) {
+			$programAssociations[]=$programItemName;
+		}
+		CreateProfile_Associations ('IPSHeat_'.$programName, $programAssociations, "ArrowRight");
+		$programId = CreateVariable($programName, 1 /*Integer*/, $categoryIdPrograms,  $idx,  'IPSLight_'.$programName, $scriptIdActionScript, 0);
+		$idx = $idx + 1;
+	}
+
+	/***********************************************************************************************
+	 * Register Events for Device Synchronization
+	 *
+	 * noch fertig machen, synchronisiert noch nicht die Temperaturwerte wenn am Thermostat geaendert wurde !
+	 * check final dann auch fuer IPSLight, da hier auch nicht mehr vollstaendig implementiert 
+	 *
+	 ***************************************************************************/
+	 
+	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+	$messageHandler = new IPSMessageHandler();
+	$lightConfig = IPSHeat_GetHeatConfiguration();
+	foreach ($lightConfig as $deviceName=>$deviceData) {
+		$component = $deviceData[IPSHEAT_COMPONENT];
+		$componentParams = explode(',', $component);
+		$componentClass = $componentParams[0];
+		switch ($componentClass)
+			{
+			case 'IPSComponentSwitch_LCNa':
+			case 'IPSComponentSwitch_LCN':
+			case 'IPSComponentSwitch_EIB':
+			case 'IPSComponentSwitch_Homematic';
+			default:
+				echo "   ".$deviceName."   ".$componentClass."\n";
+				break;
+			}
+
+		if (false)
+			{
+		// Homematic
+		if ($componentClass=='IPSComponentSwitch_Homematic') 
+			{
+			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+			$variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
+			if ($variableId===false) {
+				$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
+			} else {
+				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+			}
+		// EIB
+		} elseif ($componentClass=='IPSComponentSwitch_EIB') {
+			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+			$variableId = @IPS_GetObjectIDByIdent('Value', $instanceId);
+			if ($variableId===false) {
+				$moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
+			} else {
+				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
+				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+			}
+		// LCN
+		} elseif ($componentClass=='IPSComponentSwitch_LCN') {
+			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+			$variableId = @IPS_GetObjectIDByIdent('Status', $instanceId);
+			if ($variableId===false) {
+				$moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
+			} else {
+				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+			}
+		// LCNa
+		} elseif ($componentClass=='IPSComponentSwitch_LCNa') {
+			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+			$variableId = @IPS_GetObjectIDByIdent('Intensity', $instanceId);
+			if ($variableId===false) {
+				$moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
+			} else {
+				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+			}
+		} else {
+			//$moduleManager->LogHandler()->Log('Found Component '.$componentClass);
+		}
+		} // if false
+	}
+
+	/****************************************************************************
+	 *
+	 * Webfront Installation
+	 *
+	 * jetzt vereinfacht impolementiert, spaeter vollstaendig und gleich machen
+	 *
+	 *****************************************************************************************/
+
+	/* nur die Heizungstellwerte bei der Autosteuerung, Tab Stromheizung dazuhaengen */ 
+
+	$WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung';
+	if ($WFC10_Enabled) 
+		{
+		$categoryId_Autosteuerung_WebFront                = CreateCategoryPath($WFC10_Autosteuerung_Path);
+		}
+			
+	if ($WFC10_Enabled) 
+		{
+		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);   // Administrator.Stromheizung
+		if ($WFC10_Regenerate) {
+			EmptyCategory($categoryId_WebFront);
+			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);				// HeatTPA
+			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* noch nicht klar für was das ist ? */
+		}
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+
+		$webFrontConfig = IPSHeat_GetWebFrontConfiguration();
+		$order = 10;
+		foreach($webFrontConfig as $tabName=>$tabData) {
+			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
+			foreach($tabData as $WFCItem) {
+				$order = $order + 10;
+				switch($WFCItem[0]) 
+					{
+					case IPSHEAT_WFCSPLITPANEL:
+						CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+						break;
+					case IPSHEAT_WFCCATEGORY:
+						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+						CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+						break;
+					case IPSHEAT_WFCGROUP:
+					case IPSHEAT_WFCLINKS:
+						echo "  WFCLINKS : ".$WFCItem[0]."   ".$WFCItem[3]."\n";
+						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
+							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+						}
+						$links      = explode(',', $WFCItem[3]);
+						$names      = $links;
+						if (array_key_exists(4, $WFCItem)) {
+							$names = explode(',', $WFCItem[4]);
+						}
+						foreach ($links as $idx=>$link) {
+							$order = $order + 1;
+							// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+							CreateLinkByDestination($names[$idx], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+						}
+						break;
+					default:
+						trigger_error('Unknown WFCItem='.$WFCItem[0]);
+			   	}
+				}
+			}
+		}
+
+
 	
 	if (false)
 		{  /* bereits bei Custom Components implementiert */
@@ -109,5 +474,35 @@
 
 		} /* ende iffalse */
 
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	
+	function get_VariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
+		{
+		$childrenIds = IPS_GetChildrenIDs($switchCategoryId);
+		foreach ($childrenIds as $childId) 
+			{
+			if (IPS_GetName($childId)==$name) 
+				{
+				return $childId;
+				}
+			}
+		$childrenIds = IPS_GetChildrenIDs($groupCategoryId);
+		foreach ($childrenIds as $childId) 
+			{
+			if (IPS_GetName($childId)==$name) 
+				{
+				return $childId;
+				}
+			}
+		$childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
+		foreach ($childrenIds as $childId) {
+			if (IPS_GetName($childId)==$name) 
+				{
+				return $childId;
+				}
+			}
+		trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
+		}
 
 ?>

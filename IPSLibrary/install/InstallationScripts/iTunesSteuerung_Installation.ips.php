@@ -37,15 +37,11 @@ $moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 $moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 $moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-echo "\nKernelversion : ".IPS_GetKernelVersion();
-$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-echo "\nIPS Version : ".$ergebnis;
-$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-echo " ".$ergebnis;
-$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-echo "\nIPSModulManager Version : ".$ergebnis;
-$ergebnis=$moduleManager->VersionHandler()->GetVersion('iTunesSteuerung');
-echo "\niTunesSteuerung Version : ".$ergebnis;
+	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+	echo "\nIPS ModulManager Version   : ".$ergebnis;
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
+	echo "\nModul iTunesSteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
 	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -53,7 +49,7 @@ echo "\niTunesSteuerung Version : ".$ergebnis;
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	echo $inst_modules."\n";
 
 	echo "Variablen vorbereiten.\n";
 

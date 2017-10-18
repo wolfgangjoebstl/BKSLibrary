@@ -20,7 +20,7 @@
 
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-	abstract class IPSComponentHeatControl extends IPSComponent {
+	abstract class IPSComponentHeatSet extends IPSComponent {
 
 		/**
 		 * @public
@@ -101,7 +101,7 @@
 	 *
 	 **************************/
 
-	class HeatControl_Logging extends Logging
+	class HeatSet_Logging extends Logging
 		{
 		private $variable;
 		private $variablename;
@@ -210,7 +210,7 @@
 
 		/* hier wird der Wert gelogged, Wert immer direkt aus der Variable nehmen, der übergebene Wert hat nur für Remote Write aber nicht für das Logging einen EInfluss */
 
-		function HeatControl_LogValue($value=Null)
+		function HeatSet_LogValue($value=Null)
 			{
 			// result formatieren
 			$variabletyp=IPS_GetVariable($this->variable);

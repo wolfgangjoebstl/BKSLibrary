@@ -80,7 +80,7 @@
 	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			$log=new HeatControl_Logging($variable);
-			$result=$log->HeatControl_LogValue();
+			$result=$log->HeatControl_LogValue($value);
 			
 			$this->WriteValueRemote($value);
 			}

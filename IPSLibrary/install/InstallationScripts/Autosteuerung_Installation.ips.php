@@ -34,23 +34,19 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
+	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
-	echo "\nAutosteuerung Version : ".$ergebnis;
-
+	echo "\nIPS ModulManager Version   : ".$ergebnis;
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
+	echo "\nModul Autosteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
+	
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo "\n".$inst_modules."\n";
+	echo $inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");

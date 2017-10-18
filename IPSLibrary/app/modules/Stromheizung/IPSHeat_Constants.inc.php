@@ -19,40 +19,42 @@
 	/**@ingroup ipslight
 	 * @{
 	 *
-	 * @file          IPSLight_Constants.inc.php
-	 * @author        Andreas Brauneis
+	 * @file          IPSHeat_Constants.inc.php
+	 * @author        Wolfgang Joebstl based on IPSLight Module from Andreas Brauneis
 	 * @version
-	 *  Version 2.50.1, 26.07.2012<br/>
 	 *
-	 * Definition der Konstanten für IPSLight
+	 * Definition der Konstanten fÃ¼r IPSHeat
 	 *
 	 */
 
 	// Confguration Property Definition
-	define ('IPSLIGHT_NAME',				0);
-	define ('IPSLIGHT_GROUPS',				1);
-	define ('IPSLIGHT_TYPE',				2);
-	define ('IPSLIGHT_COMPONENT',			3);
-	define ('IPSLIGHT_POWERCIRCLE',			4);
-	define ('IPSLIGHT_POWERWATT',			5);
-	define ('IPSLIGHT_ACTIVATABLE',			6);
-	define ('IPSLIGHT_PROGRAMON',			7);
-	define ('IPSLIGHT_PROGRAMOFF',			8);
-	define ('IPSLIGHT_PROGRAMLEVEL',		9);
-	define ('IPSLIGHT_PROGRAMRGB',			10);
-	define ('IPSLIGHT_WFCSPLITPANEL',		'WFCSplitPanel');
-	define ('IPSLIGHT_WFCCATEGORY',			'WFCCategory');
-	define ('IPSLIGHT_WFCGROUP',			'WFCGroup');
-	define ('IPSLIGHT_WFCLINKS',			'WFCLinks');
+	define ('IPSHEAT_NAME',				0);
+	define ('IPSHEAT_GROUPS',				1);
+	define ('IPSHEAT_TYPE',				2);
+	define ('IPSHEAT_COMPONENT',			3);
+	define ('IPSHEAT_POWERCIRCLE',			4);
+	define ('IPSHEAT_POWERWATT',			5);
+	define ('IPSHEAT_ACTIVATABLE',			6);
+	define ('IPSHEAT_PROGRAMON',			7);
+	define ('IPSHEAT_PROGRAMOFF',			8);
+	define ('IPSHEAT_PROGRAMLEVEL',		9);
+	define ('IPSHEAT_PROGRAMRGB',			10);
+	define ('IPSHEAT_DESCRIPTION',			99);
+		
+	define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
+	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
+	define ('IPSHEAT_WFCGROUP',			'WFCGroup');
+	define ('IPSHEAT_WFCLINKS',			'WFCLinks');
 
 	// Supported Device Types
-	define ('IPSLIGHT_TYPE_SWITCH',			'Switch');
-	define ('IPSLIGHT_TYPE_RGB',			'RGB');
-	define ('IPSLIGHT_TYPE_DIMMER',			'Dimmer');
+	define ('IPSHEAT_TYPE_SWITCH',			'Switch');
+	define ('IPSHEAT_TYPE_RGB',			'RGB');
+	define ('IPSHEAT_TYPE_DIMMER',			'Dimmer');
+	define ('IPSHEAT_TYPE_SET',			'Thermostat');
 
 	// Device specific Properties
-	define ('IPSLIGHT_DEVICE_COLOR',		'#Color');
-	define ('IPSLIGHT_DEVICE_LEVEL',		'#Level');
+	define ('IPSHEAT_DEVICE_COLOR',		'#Color');
+	define ('IPSHEAT_DEVICE_LEVEL',		'#Level');
 
 
 	/** @}*/
