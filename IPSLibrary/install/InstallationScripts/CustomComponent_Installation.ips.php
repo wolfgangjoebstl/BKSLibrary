@@ -91,7 +91,7 @@
 	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
 	/* Webfront GUID herausfinden */
- 	read_wfc();	
+ 	//read_wfc();	
 
 	echo "\n";
 	$WebfrontConfigID=array();
@@ -368,7 +368,7 @@
 	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
-	print_r($webfront_links);
+	//print_r($webfront_links);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -790,20 +790,20 @@
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "Temperatur Handler wird ausgeführt.\n";
+	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
 
 	if (function_exists('HomematicList'))
 		{
-		installComponent(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+		installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');
 		} 
 
 
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
 	if (function_exists('FHTList'))
 		{
-		installComponent(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,1,2,3');
+		installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');
 		} 	
 
 	/****************************************************************************************************************
@@ -815,13 +815,13 @@
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "Humidity Handler wird ausgeführt.\n";
+	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Humidity Sensoren werden registriert.\n";
 
 	if (function_exists('HomematicList'))
 		{
-		installComponent(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,1,2,3');
+		installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,');
 		} 			
 		
 	/****************************************************************************************************************
@@ -833,7 +833,7 @@
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "Heat Control Actuator Handler wird ausgeführt.\n";
+	echo "Heat Control Actuator Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Heat Control Actuator werden registriert.\n";
 	
@@ -863,7 +863,7 @@
 	
 	echo "\n";
 	echo "***********************************************************************************************\n";
-	echo "Heat Control Set Handler wird ausgeführt.\n";
+	echo "Heat Control Set Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Heat Set Werte aus den Thermostaten werden registriert.\n";
 	

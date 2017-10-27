@@ -63,18 +63,66 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	
+	/****************************************************************************************************************
+	 *
+	 *                                      Heat Control Actuators
+	 *
+	 ****************************************************************************************************************/
+
+
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Heat Control Actuator Handler wird ausgeführt.\n";
+	echo "\n";
+	echo "Homematic Heat Control Actuator werden registriert.\n";
+	
 	if (function_exists('HomematicList'))
 		{
-		$parameter=installAccess(HomematicList(),"VALVE_STATE","HeatControl","~Intensity.100");		
-		print_r($parameter);   
-		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$parameter);		   
-		}	
+		//installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
+		installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
+		} 			
+
+	echo "\n";
+	echo "FHT80b Heat Control Actuator werden registriert.\n";
 		
 	if (function_exists('FHTList'))
 		{
-		/* Alternative, alle Module auf einmal gemeinsam installieren */
-		installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All,1,2,3');
-		}		
+		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		}
+
+	echo "***********************************************************************************************\n";
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Heat Control Set 
+	 *
+	 ****************************************************************************************************************/
+
+	
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Heat Control Set Handler wird ausgeführt.\n";
+	echo "\n";
+	echo "Homematic Heat Set Werte aus den Thermostaten werden registriert.\n";
+	
+	if (function_exists('HomematicList'))
+		{
+		//installComponentFull(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+		installComponentFull(HomematicList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+		} 	
+
+	echo "\n";
+	echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";
+		
+	if (function_exists('FHTList'))
+		{
+		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		}
+
+	echo "***********************************************************************************************\n";
+
 		
 
 ?>
