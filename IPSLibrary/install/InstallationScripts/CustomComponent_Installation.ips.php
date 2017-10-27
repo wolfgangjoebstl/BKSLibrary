@@ -797,7 +797,7 @@
 	 *
 	 ****************************************************************************************************************/
 
-
+	
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Set Handler wird ausgeführt.\n";
@@ -806,15 +806,17 @@
 	
 	if (function_exists('HomematicList'))
 		{
-		installComponent(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All,1,2,3');					
-		} 			
+		//installComponentFull(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+		installComponentFull(HomematicList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+		} 	
 
 	echo "\n";
 	echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";
 		
 	if (function_exists('FHTList'))
 		{
-		installComponent(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All,1,2,3');
+		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
 		}
 
 	echo "***********************************************************************************************\n";

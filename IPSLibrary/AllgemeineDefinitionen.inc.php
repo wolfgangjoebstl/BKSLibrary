@@ -2931,7 +2931,7 @@ function read_wfc()
 			$status=RemoteAccessServerTable();
 			foreach ($remServer as $Name => $Server)
 				{
-				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				echo "    Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 				print_r($Server);
 				}							
 			}
@@ -2951,22 +2951,67 @@ function read_wfc()
 				if ( sizeof($keywords) == $count ) $found=true;
 				$keyword=$keywords[0];	
 				}	
-			elseif (isset($Key["COID"][$keywords])==true) { $found=true; $keyword=$keywords; }	
+			else
+				{
+				if (isset($Key["COID"][$keywords])==true) $found=true; 
+				$keyword=$keywords; 
+				}	
+			
+			if ( (isset($Key["Device"])==true) && ($found==false) )
+				{
+				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
+				if ($Key["Device"] == $keyword)
+					{
+					$found=true;
+					if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
+					if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
+					if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+					}
+				}
+						
+			switch (strtoupper($keyword))
+				{
+				case "TARGETTEMPVAR":
+				case "SET_TEMPERATURE":
+				case "TEMPERATURE":
+					$variabletyp=2; 		/* Float */
+					$index="Temperatur";
+					$profile="Temperatur";
+					break;
+				case "POSITIONVAR":
+					$variabletyp=2; 		/* Float */
+					$index="HeatControl";
+					$profile="~Valve.F";
+					break;
+				case "HUMIDITY":
+					$variabletyp=1; 		/* Integer */							
+					$index="Humidity";
+					$profile="Humidity";
+					break;
+				case "VALVE_STATE":
+					$variabletyp=1; 		/* Integer */	
+					$index="HeatControl";
+					$profile="~Intensity.100";
+					break;
+				default:	
+					$variabletyp=0; 		/* Boolean */	
+					break;
+				}			
+			
 			if ($found)
 				{		
-				echo "********** ".$Key["Name"]."\n";
+				//echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
 				$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
 					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					echo "  ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 					}
 				else
 					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					echo "  ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 					}
-					
 
 				/* check, es sollten auch alle Quellvariablen gelogged werden */
 				if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
@@ -2987,38 +3032,6 @@ function read_wfc()
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-							switch (strtoupper($keyword))
-								{
-								case "TargetTempVar":
-								case "SET_TEMPERATURE":
-									$variabletyp=2; 		/* Float */
-									$index="Temperatur";
-									$profile="Temperatur";
-									break;
-								case "TEMPERATURE":
-									$variabletyp=2; 		/* Float */
-									$index="Temperatur";
-									$profile="Temperatur";
-									break;
-								case "POSITIONVAR":
-									$variabletyp=2; 		/* Float */
-									$index="HeatControl";
-									$profile="~Valve.F";
-									break;
-								case "HUMIDITY":
-									$variabletyp=1; 		/* Integer */							
-									$index="Humidity";
-									$profile="Humidity";
-									break;
-								case "VALVE_STATE":
-									$variabletyp=1; 		/* Integer */	
-									$index="HeatControl";
-									$profile="~Intensity.100";
-									break;
-								default:	
-									$variabletyp=0; 		/* Boolean */	
-									break;
-								}
 							$result=RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], $variabletyp);
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
@@ -3032,7 +3045,7 @@ function read_wfc()
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
 					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$Key["OID"].','.$parameter,$InitModule);
-					echo "Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",".$parameter."\",\"".$InitModule."\"\n";
+					echo "    Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",".$parameter."\",\"".$InitModule."\"\n";
 					}
 				else
 					{
@@ -3044,7 +3057,7 @@ function read_wfc()
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
 					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",".$Key["OID"].",",$InitModule);
-					echo "Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",\",\"".$InitModule."\"\n";
+					echo "    Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",\",\"".$InitModule."\"\n";
 					}			
 				}
 			} /* Ende foreach */		

@@ -142,7 +142,7 @@ if ($_IPS['SENDER']=="Execute")
 			}
 		}
 	echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
-	print_r($serienNummer);
+	//print_r($serienNummer);
 	foreach ($serienNummer as $ccu => $geraete)
  		{
 		echo "-------------------------------------------\n";
@@ -170,6 +170,15 @@ if ($_IPS['SENDER']=="Execute")
 				sort($registerNew);
 				switch ($registerNew[0])
 					{
+					case "ACTIVE_PROFILE":
+						if ($registerNew[23]=="VALVE_ADAPTATION")
+							{
+							echo "Stellmotor-Heizkoerper\n";
+							}
+						else
+							{
+							echo "Funk-Wandthermostat\n";
+							}					
 					case "ERROR":
 						echo "Funk-Tür-/Fensterkontakt\n";
 						break;
@@ -380,8 +389,12 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"COID" => array(';
 
-		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+		if ($typedev<>"") 
+			{
+			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
+			$summary[$typedev][]=IPS_GetName($instanz);
+			}
 
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
@@ -430,8 +443,12 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 		$includefile.="\n         ".'"COID" => array(';
 
-		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+		if ($typedev<>"") 
+			{
+			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
+			$summary[$typedev][]=IPS_GetName($instanz);
+			}
 
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
@@ -477,9 +494,13 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 		$includefile.="\n         ".'"COID" => array(';
 
-		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
-
+		if ($typedev<>"") 
+			{
+			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
+			$summary[$typedev][]=IPS_GetName($instanz);
+			}
+			
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)
@@ -980,29 +1001,20 @@ function getFS20DeviceType($instanz)
 	$type=""; echo "       ";
 	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
 		{
-		switch ($homematic[0])
+		if (strpos($homematic[0],"(") !== false) 	$auswahl=substr($homematic[0],0,(strpos($homematic[0],"(")-1));
+		else $auswahl=$homematic[0];
+		echo "Auf ".$auswahl." untersuchen.\n";
+		switch ($auswahl)
 			{
 			case "ERROR":
 				echo "Funk-Tür-/Fensterkontakt\n";
 				$type="TYPE_CONTACT";
 				break;
-			case "PRESS_LONG":
-				echo "Taster 6fach (IP)\n";
+			case "Gerät":
+				echo "Funk-Display-Wandtaster\n";
 				$type="TYPE_BUTTON";
 				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					echo "Taster 6fach\n";
-					$type="TYPE_BUTTON";
-					}
-				else
-					{
-					echo "Funk-Display-Wandtaster\n";
-					$type="TYPE_BUTTON";
-					}
-				break;
-			case "ACTUAL_HUMIDITY":
+			case "Batterie":
 				echo "Funk-Wandthermostat\n";
 				$type="TYPE_THERMOSTAT";
 				break;
@@ -1038,8 +1050,7 @@ function getFS20DeviceType($instanz)
 					echo "Rolladensteuerung\n";
 					}
 				break;
-			case "PROCESS":
-			case "INHIBIT":
+			case "Daten":
 				echo "Funk-Schaltaktor 1-fach\n";
 				$type="TYPE_SWITCH";
 				break;
