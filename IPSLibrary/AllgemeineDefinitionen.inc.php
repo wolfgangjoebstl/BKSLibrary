@@ -2971,12 +2971,13 @@ function read_wfc()
 						
 			switch (strtoupper($keyword))
 				{
-				case "TARGETTEMPVAR":
+				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
 				case "SET_TEMPERATURE":
 					$variabletyp=2; 		/* Float */
 					$index="HeatSet";
-					$profile="Temperatur";
+					$profile="TemperaturSet";
 					break;				
+				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
 					$variabletyp=2; 		/* Float */
 					$index="Temperatur";
