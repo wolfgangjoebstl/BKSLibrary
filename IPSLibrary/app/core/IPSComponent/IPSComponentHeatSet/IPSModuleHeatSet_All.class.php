@@ -19,7 +19,6 @@
 
 	IPSUtils_Include ('IPSModuleHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
 	
-	include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 	//IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
 	
 	class IPSModuleHeatSet_All extends IPSModuleHeatSet {

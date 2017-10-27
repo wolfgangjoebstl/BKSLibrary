@@ -778,7 +778,8 @@
 	
 	if (function_exists('HomematicList'))
 		{
-		installComponent(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
+		//installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
+		installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');
 		} 			
 
 	echo "\n";
@@ -786,7 +787,8 @@
 		
 	if (function_exists('FHTList'))
 		{
-		installComponent(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All,1,2,3');
+		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
 		}
 
 	echo "***********************************************************************************************\n";

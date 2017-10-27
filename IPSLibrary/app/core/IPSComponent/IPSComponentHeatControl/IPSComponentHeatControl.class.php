@@ -48,9 +48,29 @@
 		}
 		
 		/*
-		 * aktueller Status der remote logging server
+		 * aktuellen Status der remote logging server bestimmen
 		 */	
 	
+		public function remoteServerSet()
+			{
+			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+			if (isset ($this->installedmodules["RemoteAccess"]))
+				{
+				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+				$this->remServer	  = RemoteAccessServerTable();
+				}
+			else
+				{								
+				$this->remServer	  = array();
+				}		
+			}
+
+		/*
+		 * aktueller Status der remote logging server
+		 */	
+
 		public function remoteServerAvailable()
 			{
 			return ($this->remServer);			

@@ -2973,6 +2973,10 @@ function read_wfc()
 				{
 				case "TARGETTEMPVAR":
 				case "SET_TEMPERATURE":
+					$variabletyp=2; 		/* Float */
+					$index="HeatSet";
+					$profile="Temperatur";
+					break;				
 				case "TEMPERATURE":
 					$variabletyp=2; 		/* Float */
 					$index="Temperatur";
@@ -3003,8 +3007,8 @@ function read_wfc()
 				//echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
+				$vartyp=IPS_GetVariable($oid);
+				if ($vartyp["VariableProfile"]!="")
 					{
 					echo "  ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 					}

@@ -25,12 +25,13 @@
 
 	class IPSComponentHeatControl_Homematic extends IPSComponentHeatControl {
 
-		protected $tempObject;
-		protected $tempValue;
-		protected $installedmodules;
-
-		protected $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
-		protected $remServer;		/* Liste der Urls und der Kurznamen */
+		protected 	$tempValue;
+		protected 	$installedmodules;
+		protected	$instanceId;			/* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
+		
+		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected 	$remServer;		/* Liste der Urls und der Kurznamen */
+		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ;
 
 		/**
 		 * @public
@@ -43,25 +44,33 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null) 
+		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			$this->RemoteOID    = $var1;
-			$this->tempObject   = $lightObject;
-			$this->tempValue    = $lightValue;
-			
-			echo "construct IPSComponentHeatControl_Homematic with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($this->installedmodules["RemoteAccess"]))
-				{
-				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-				$this->remServer	  = RemoteAccessServerTable();
+			if (strpos($instanceId,":") !== false ) 
+				{	/* ROID Angabe auf der ersten Position */
+				$this->rpcADR 			= $rpcADR;				
+				$this->RemoteOID  	= $instanceId;
+				$this->instanceId		= null;
 				}
 			else
-				{								
-				$this->remServer	  = array();
+				{	/* keine ROID Angabe auf der ersten Position, kommt von IPSHeat */
+				$this->instanceId		= $instanceId;
+				if (strpos($rpcADR,":") !== false )
+					{ 	/* ROID Angabe auf der zweiten Position */			
+					$this->RemoteOID  	= $rpcADR;
+					$this->rpcADR 			= $rpcADR;
+					}
+				else
+					{	
+					$this->RemoteOID  	= null;
+					$this->rpcADR 			= $rpcADR;
+					}				
 				}
+			$this->tempValue  	= $lightValue;
+			
+			echo "construct IPSComponentHeatControl_Homematic with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			
+			$this->remoteServerSet();
 			}
 
 		/**

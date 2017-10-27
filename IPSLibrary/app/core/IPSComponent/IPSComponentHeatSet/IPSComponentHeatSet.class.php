@@ -237,7 +237,7 @@
 				{
 				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->HeatSetAuswertungID." ".IPS_GetName($this->HeatSetAuswertungID)." anlegen.\n";
 				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-				$this->variableLogID=CreateVariable($this->variablename,2,$this->HeatSetAuswertungID, 10, "~Temperature.HM", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+				$this->variableLogID=CreateVariable($this->variablename,2,$this->HeatSetAuswertungID, 10, "~Temperature.FHT", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
 				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
@@ -294,7 +294,7 @@
 			else
 				{
 				if ($value == Null) { $value=GetValue($this->variable); }
-				$result=number_format($value,2,',','.')." %";				
+				$result=number_format($value,2,',','.')." °C";				
 				}
 				
 			$unchanged=time()-$variabletyp["VariableChanged"];
