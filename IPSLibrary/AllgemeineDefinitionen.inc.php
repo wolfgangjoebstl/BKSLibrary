@@ -2220,6 +2220,7 @@ function RemoteAccessServerTable()
 				$RemoteServer=array();
 	        	//$remServer=RemoteAccess_GetConfiguration();
 				//foreach ($remServer as $Name => $UrlAddress)
+				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");				
 				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
 				foreach ($remServer as $Name => $Server)
 					{
@@ -2831,17 +2832,40 @@ function read_wfc()
 	
 /***********************************************************************************
  *
- * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen anlegen der Variablen
+ * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
  * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
+ *
+ * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
+ * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
+ * InitComponent	erster Parameter bei der Registrierung
+ * InitModule		zweiter Parameter bei der Registrierung
+ * parameter	wenn array parameter[oid] gesetzt ist, ist RemoteAccess vorhanden und aufgesetzt
+ *
+ * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
  *
  ****************************************************************************************/
 	
-	function installComponent($Elements,$keyword,$InitComponent, $InitModule, $parameter=array())
+	function installComponent($Elements,$keywords,$InitComponent, $InitModule, $parameter=array())
 		{
+		//echo "InstallComponent aufgerufen.\n";
 		foreach ($Elements as $Key)
 			{
+			//echo "  Evaluiere ".$Key["Name"]."\n";			
 			/* alle Stellmotoren ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
+			$count=0; $found=false;
+			if ( is_array($keywords) == true )
+				{
+				foreach ($keywords as $entry)
+					{
+					/* solange das Keyword uebereinstimmt ist alles gut */
+					if (isset($Key["COID"][$entry])==true) $count++; 
+					//echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
+					}
+				if ( sizeof($keywords) == $count ) $found=true;
+				$keyword=$keywords[0];	
+				}	
+			elseif (isset($Key["COID"][$keywords])==true) { $found=true; $keyword=$keywords; }	
+			if ($found)
 				{		
 				//echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
@@ -2874,20 +2898,34 @@ function read_wfc()
 					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",1,2,3",$InitModule);
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.',',$InitModule);
 					}			
 				}
 			} /* Ende foreach */		
 		}	
+
+/***********************************************************************************
+ *
+ * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
+ * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
+ *
+ * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
+ * keyword		Name des Children Objektes das enthalten sein muss, wenn array auch mehrer Keywords, erstes Keyword ist das indexierte
+ * InitComponent	erster Parameter bei der Registrierung
+ * InitModule		zweiter Parameter bei der Registrierung
+ * 
+ * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
+ *
+ ****************************************************************************************/
 		
-	function installComponentFull($Elements,$keyword,$InitComponent, $InitModule)
+	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
 		{
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedModules=$moduleManager->GetInstalledModules();
 		$remServer=array();
 		if (isset ($installedModules["RemoteAccess"]))
 			{
-			echo "  Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
+			echo "  Remote Access installiert, Variablen auch am VIS Server aufmachen.\n";
 			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 			$remServer=ROID_List();
 			$status=RemoteAccessServerTable();
@@ -2901,10 +2939,22 @@ function read_wfc()
 			
 		foreach ($Elements as $Key)
 			{
-			/* alle Stellmotoren ausgeben */
-			if (isset($Key["COID"][$keyword])==true)
+			$count=0; $found=false;
+			if ( is_array($keywords) == true )
+				{
+				foreach ($keywords as $entry)
+					{
+					/* solange das Keyword uebereinstimmt ist alles gut */
+					if (isset($Key["COID"][$entry])==true) $count++; 
+					//echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
+					}
+				if ( sizeof($keywords) == $count ) $found=true;
+				$keyword=$keywords[0];	
+				}	
+			elseif (isset($Key["COID"][$keywords])==true) { $found=true; $keyword=$keywords; }	
+			if ($found)
 				{		
-				//echo "********** ".$Key["Name"]."\n";
+				echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
 				$variabletyp=IPS_GetVariable($oid);
@@ -2939,6 +2989,12 @@ function read_wfc()
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
 							switch (strtoupper($keyword))
 								{
+								case "TargetTempVar":
+								case "SET_TEMPERATURE":
+									$variabletyp=2; 		/* Float */
+									$index="Temperatur";
+									$profile="Temperatur";
+									break;
 								case "TEMPERATURE":
 									$variabletyp=2; 		/* Float */
 									$index="Temperatur";
@@ -2975,7 +3031,8 @@ function read_wfc()
 					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$parameter,$InitModule);
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$Key["OID"].','.$parameter,$InitModule);
+					echo "Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",".$parameter."\",\"".$InitModule."\"\n";
 					}
 				else
 					{
@@ -2986,7 +3043,8 @@ function read_wfc()
 					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",1,2,3",$InitModule);
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",".$Key["OID"].",",$InitModule);
+					echo "Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",\",\"".$InitModule."\"\n";
 					}			
 				}
 			} /* Ende foreach */		

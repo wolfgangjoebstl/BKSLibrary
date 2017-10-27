@@ -118,7 +118,7 @@
 				
 		function __construct($variable,$variablename=Null)
 			{
-			echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
+			//echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{

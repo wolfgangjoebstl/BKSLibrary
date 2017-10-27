@@ -3,16 +3,16 @@
 	 * @{
 	 *
  	 *
-	 * @file          IPSComponentHeatControl_Homematic.class.php
+	 * @file          IPSComponentHeatSet_HomematicIP.class.php
 	 * @author        Wolfgang Jöbstl und Andreas Brauneis
 	 *
 	 *
 	 */
 
    /**
-    * @class IPSComponentShutter_Homematic
+    * @class IPSComponentHeatSet_HomematicIP
     *
-    * Definiert ein IPSComponentShutter_Homematic Object, das ein IPSComponentShutter Object für Homematic implementiert.
+    * Definiert ein IPSComponentHeatSet_HomematicIP Object, das ein IIPSComponentHeatSet Object für HomematicIP implementiert.
     *
     */
 	 
@@ -25,12 +25,13 @@
 
 	class IPSComponentHeatSet_HomematicIP extends IPSComponentHeatSet {
 
-		protected $tempObject;
-		protected $tempValue;
-		protected $installedmodules;
+		protected 	$tempValue;
+		protected 	$installedmodules;
+		protected 	$instanceId;		/* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
 
-		protected $RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
-		protected $remServer;		/* Liste der Urls und der Kurznamen */
+		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected 	$remServer;		/* Liste der Urls und der Kurznamen */
+		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ;
 
 		/**
 		 * @public
@@ -43,13 +44,23 @@
 		 * @param integer $instanceId InstanceId des Homematic Devices
 		 * @param boolean $reverseControl Reverse Ansteuerung des Devices
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null) 
+		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			$this->RemoteOID    = $var1;
-			$this->tempObject   = $lightObject;
+			if (strpos($instanceId,":") !== false ) 
+				{
+				$this->RemoteOID  	= $instanceId;
+				$this->instanceId		= null;
+				}
+			else
+				{   /* keine ROID Angabe, kommt von IPSHeat */
+				$this->instanceId		= $instanceId;
+				$this->RemoteOID  	= null;
+				}			
+			$this->rpcADR = $rpcADR;
 			$this->tempValue    = $lightValue;
+			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
 			
-			echo "construct IPSComponentHeatControl_Homematic with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			//echo "construct IPSComponentHeatSet_HomematicIP with parameter ".$this->RemoteOID."  ".$this->instanceId."  (".IPS_GetName($this->instanceId).")   ".$this->rpcADR."  ".$this->tempValue."\n";
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
@@ -97,29 +108,51 @@
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
 			if ($this->rpcADR=="")
-			   {
+				{
 				if (!$power) {
-					HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
+					HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", 6);
 					}
 				else
 					{
-					$levelHM = $level / 100;
-					HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
-					}
-			   }
-			else
-			   {
-				$rpc = new JSONRPC($this->rpcADR);
-				if (!$power) {
-					$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", 0);
-					}
-				else
-					{
-					$levelHM = $level / 100;
-					$rpc->HM_WriteValueFloat($this->instanceId, "LEVEL", $levelHM);
+					$levelHM = $level;
+					HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $levelHM);
 					}
 				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				if (!$power) {
+					$rpc->HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", 6);
+					}
+				else
+					{
+					$levelHM = $level;
+					$rpc->HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $levelHM);
+					}
+				}	
 			}
+
+		/**
+		 * @public
+		 *
+		 * Liefert aktuellen Zustand
+		 *
+		 * @return boolean aktueller Schaltzustand  
+		 */
+		public function GetState() {
+			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert aktuellen Zustand
+		 *
+		 * @return boolean aktueller Schaltzustand  
+		 */
+		public function GetLevel() {
+			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+		}
 
 		/**
 		 * @public

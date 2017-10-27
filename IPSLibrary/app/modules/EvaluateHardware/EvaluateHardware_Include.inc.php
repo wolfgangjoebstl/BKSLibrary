@@ -19,6 +19,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "41894", 
@@ -49,6 +51,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_CONTACT", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "40108", 
@@ -75,6 +78,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "19177", 
@@ -101,6 +105,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_TEMPERATURE", 
          "COID" => array(
                 "HUMIDITY" => array(
                               "OID" => "45504", 
@@ -112,14 +117,20 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"HomeMatic Device" => array(
+"GaestezimmerTischlampe:2" => array(
          "OID" => 30101, 
          "Adresse" => "0001D3C9961367:2", 
-         "Name" => "HomeMatic Device", 
+         "Name" => "GaestezimmerTischlampe:2", 
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
+                "SECTION" => array(
+                              "OID" => "46820", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
                 "PROCESS" => array(
                               "OID" => "35592", 
                               "Name" => "PROCESS", 
@@ -127,10 +138,6 @@ function HomematicList() { return array(
                 "STATE" => array(
                               "OID" => "29880", 
                               "Name" => "STATE", 
-                              "Typ" => "2",), 
-                "SECTION" => array(
-                              "OID" => "46820", 
-                              "Name" => "SECTION", 
                               "Typ" => "2",), 
              	),
       	),
@@ -141,6 +148,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "39344", 
@@ -163,6 +172,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_SHORT" => array(
                               "OID" => "41747", 
@@ -193,6 +204,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "10874", 
@@ -215,6 +228,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "30753", 
@@ -245,6 +260,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_CONTACT", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "46702", 
@@ -271,6 +287,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_ACTUATOR", 
          "COID" => array(
                 "PARTY_STOP_YEAR" => array(
                               "OID" => "19259", 
@@ -345,6 +362,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "FREQUENCY" => array(
                               "OID" => "52208", 
@@ -379,6 +397,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "28137", 
@@ -401,6 +421,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "ERROR" => array(
                               "OID" => "41931", 
@@ -420,25 +441,51 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"HomeMatic Device" => array(
+"SchlafzimmerKastenlicht:2" => array(
          "OID" => 59107, 
          "Adresse" => "0001D3C9961817:2", 
-         "Name" => "HomeMatic Device", 
+         "Name" => "SchlafzimmerKastenlicht:2", 
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
-                "PROCESS" => array(
-                              "OID" => "32363", 
-                              "Name" => "PROCESS", 
-                              "Typ" => "2",), 
                 "STATE" => array(
                               "OID" => "24783", 
                               "Name" => "STATE", 
                               "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "32363", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
                 "SECTION" => array(
                               "OID" => "20447", 
                               "Name" => "SECTION", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"SchlafzimmerKastenlicht:4" => array(
+         "OID" => 12642, 
+         "Adresse" => "0001D3C9961817:4", 
+         "Name" => "SchlafzimmerKastenlicht:4", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "SECTION" => array(
+                              "OID" => "24007", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "56647", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "28093", 
+                              "Name" => "STATE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -459,18 +506,20 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "27062", 
                               "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
-                "PRESS_CONT" => array(
-                              "OID" => "53932", 
-                              "Name" => "PRESS_CONT", 
-                              "Typ" => "2",), 
                 "INSTALL_TEST" => array(
                               "OID" => "32778", 
                               "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "53932", 
+                              "Name" => "PRESS_CONT", 
                               "Typ" => "2",), 
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "35593", 
@@ -489,6 +538,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "20254", 
@@ -519,6 +570,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_THERMOSTAT", 
          "COID" => array(
                 "PARTY_START_YEAR" => array(
                               "OID" => "30230", 
@@ -601,6 +653,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "12358", 
@@ -631,6 +685,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "11126", 
@@ -661,6 +717,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "32572", 
@@ -687,6 +744,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "CURRENT" => array(
                               "OID" => "18670", 
@@ -721,6 +779,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_TEMPERATURE", 
          "COID" => array(
                 "TEMPERATURE" => array(
                               "OID" => "29237", 
@@ -739,6 +798,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "58837", 
@@ -761,6 +822,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "BRIGHTNESS" => array(
                               "OID" => "34596", 
@@ -787,6 +849,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "17815", 
@@ -809,6 +873,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "31626", 
@@ -831,6 +897,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "INHIBIT" => array(
                               "OID" => "35144", 
@@ -853,6 +921,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "PROCESS" => array(
                               "OID" => "19663", 
@@ -875,6 +945,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "INSTALL_TEST" => array(
                               "OID" => "33191", 
@@ -905,6 +977,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "ERROR" => array(
                               "OID" => "22748", 
@@ -931,6 +1004,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "25863", 
@@ -971,6 +1046,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_CONT" => array(
                               "OID" => "29607", 
@@ -1001,6 +1078,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "28983", 
@@ -1031,6 +1110,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_CONTACT", 
          "COID" => array(
                 "LOWBAT" => array(
                               "OID" => "24612", 
@@ -1050,6 +1130,81 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"WohnzimmerWandthermostat:Einstellungen" => array(
+         "OID" => 20699, 
+         "Adresse" => "000313C99546B5:1", 
+         "Name" => "WohnzimmerWandthermostat:Einstellungen", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Device" => "TYPE_THERMOSTAT", 
+         "COID" => array(
+                "BOOST_MODE" => array(
+                              "OID" => "34341", 
+                              "Name" => "BOOST_MODE", 
+                              "Typ" => "2",), 
+                "CONTROL_MODE" => array(
+                              "OID" => "14178", 
+                              "Name" => "CONTROL_MODE", 
+                              "Typ" => "2",), 
+                "PARTY_MODE" => array(
+                              "OID" => "40897", 
+                              "Name" => "PARTY_MODE", 
+                              "Typ" => "2",), 
+                "BOOST_TIME" => array(
+                              "OID" => "49546", 
+                              "Name" => "BOOST_TIME", 
+                              "Typ" => "2",), 
+                "SET_POINT_MODE" => array(
+                              "OID" => "20784", 
+                              "Name" => "SET_POINT_MODE", 
+                              "Typ" => "2",), 
+                "ACTUAL_TEMPERATURE" => array(
+                              "OID" => "25753", 
+                              "Name" => "ACTUAL_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "HUMIDITY" => array(
+                              "OID" => "24955", 
+                              "Name" => "HUMIDITY", 
+                              "Typ" => "2",), 
+                "WINDOW_STATE" => array(
+                              "OID" => "25782", 
+                              "Name" => "WINDOW_STATE", 
+                              "Typ" => "2",), 
+                "SWITCH_POINT_OCCURED" => array(
+                              "OID" => "27871", 
+                              "Name" => "SWITCH_POINT_OCCURED", 
+                              "Typ" => "2",), 
+                "PARTY_SET_POINT_TEMPERATURE" => array(
+                              "OID" => "32122", 
+                              "Name" => "PARTY_SET_POINT_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "ACTIVE_PROFILE" => array(
+                              "OID" => "15573", 
+                              "Name" => "ACTIVE_PROFILE", 
+                              "Typ" => "2",), 
+                "PARTY_TIME_END" => array(
+                              "OID" => "49066", 
+                              "Name" => "PARTY_TIME_END", 
+                              "Typ" => "2",), 
+                "CONTROL_DIFFERENTIAL_TEMPERATURE" => array(
+                              "OID" => "45593", 
+                              "Name" => "CONTROL_DIFFERENTIAL_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "SET_POINT_TEMPERATURE" => array(
+                              "OID" => "29875", 
+                              "Name" => "SET_POINT_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "PARTY_TIME_START" => array(
+                              "OID" => "28142", 
+                              "Name" => "PARTY_TIME_START", 
+                              "Typ" => "2",), 
+                "FROST_PROTECTION" => array(
+                              "OID" => "22897", 
+                              "Name" => "FROST_PROTECTION", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "Arbeitszimmerfenster-Kontakt" => array(
          "OID" => 40055, 
          "Adresse" => "LEQ1060012:1", 
@@ -1057,6 +1212,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_CONTACT", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "16465", 
@@ -1083,6 +1239,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "POWER" => array(
                               "OID" => "56096", 
@@ -1117,6 +1275,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "11370", 
@@ -1147,6 +1307,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "PROCESS" => array(
                               "OID" => "36068", 
@@ -1169,6 +1331,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "32089", 
@@ -1211,6 +1375,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "WORKING" => array(
                               "OID" => "23843", 
@@ -1233,6 +1399,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_TEMPERATURE", 
          "COID" => array(
                 "TEMPERATURE" => array(
                               "OID" => "49273", 
@@ -1251,6 +1418,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG" => array(
                               "OID" => "19143", 
@@ -1281,6 +1450,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "ENERGY_COUNTER" => array(
                               "OID" => "31474", 
@@ -1315,6 +1486,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "55544", 
@@ -1337,6 +1510,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "10401", 
@@ -1359,6 +1534,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "58813", 
@@ -1381,6 +1558,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "VOLTAGE" => array(
                               "OID" => "47687", 
@@ -1415,6 +1593,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "SECTION" => array(
                               "OID" => "34241", 
@@ -1437,6 +1617,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "10547", 
@@ -1460,6 +1642,54 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"SchlafzimmerKastenlicht:5" => array(
+         "OID" => 56903, 
+         "Adresse" => "0001D3C9961817:5", 
+         "Name" => "SchlafzimmerKastenlicht:5", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "18717", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "17536", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "11803", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"GaestezimmerTischlampe:4" => array(
+         "OID" => 23860, 
+         "Adresse" => "0001D3C9961367:4", 
+         "Name" => "GaestezimmerTischlampe:4", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "37571", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "22824", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "56747", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "EsstischEffektlich:4" => array(
          "OID" => 58969, 
          "Adresse" => "0001D3C996136E:4", 
@@ -1467,6 +1697,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "SECTION" => array(
                               "OID" => "29110", 
@@ -1482,6 +1714,54 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"EsstischEffektlicht:5" => array(
+         "OID" => 55603, 
+         "Adresse" => "0001D3C996136E:5", 
+         "Name" => "EsstischEffektlicht:5", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "PROCESS" => array(
+                              "OID" => "33988", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "23940", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "42793", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"GaestezimmerTischlampe:5" => array(
+         "OID" => 31761, 
+         "Adresse" => "0001D3C9961367:5", 
+         "Name" => "GaestezimmerTischlampe:5", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "31927", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "53111", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "21364", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "Schlafzimmer Dimmer Deckenlampe" => array(
          "OID" => 46938, 
          "Adresse" => "IEQ0039436:1", 
@@ -1489,6 +1769,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_DIMMER", 
+         "Device" => "TYPE_DIMMER", 
          "COID" => array(
                 "LEVEL" => array(
                               "OID" => "33096", 
@@ -1527,6 +1809,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "STATE" => array(
                               "OID" => "28270", 
@@ -1549,6 +1833,8 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
                 "PROCESS" => array(
                               "OID" => "49705", 
@@ -1571,6 +1857,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "ENERGY_COUNTER_OVERFLOW" => array(
                               "OID" => "43964", 
@@ -1605,6 +1892,7 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_MOTION", 
          "COID" => array(
                 "ILLUMINATION" => array(
                               "OID" => "28175", 
@@ -1627,14 +1915,15 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "20017", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "12402", 
                               "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "20017", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1645,14 +1934,15 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "26700", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "13201", 
                               "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "26700", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1663,14 +1953,16 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
          "COID" => array(
-                "PROCESS" => array(
-                              "OID" => "30577", 
-                              "Name" => "PROCESS", 
-                              "Typ" => "2",), 
                 "STATE" => array(
                               "OID" => "38468", 
                               "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "30577", 
+                              "Name" => "PROCESS", 
                               "Typ" => "2",), 
                 "SECTION" => array(
                               "OID" => "36471", 
@@ -1685,10 +1977,43 @@ function HomematicList() { return array(
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
+         "Device" => "TYPE_ACTUATOR", 
          "COID" => array(
+                "PARTY_TIME_START" => array(
+                              "OID" => "43327", 
+                              "Name" => "PARTY_TIME_START", 
+                              "Typ" => "2",), 
+                "LEVEL" => array(
+                              "OID" => "17073", 
+                              "Name" => "LEVEL", 
+                              "Typ" => "2",), 
+                "SET_POINT_MODE" => array(
+                              "OID" => "18283", 
+                              "Name" => "SET_POINT_MODE", 
+                              "Typ" => "2",), 
                 "VALVE_ADAPTION" => array(
                               "OID" => "13812", 
                               "Name" => "VALVE_ADAPTION", 
+                              "Typ" => "2",), 
+                "CONTROL_MODE" => array(
+                              "OID" => "34705", 
+                              "Name" => "CONTROL_MODE", 
+                              "Typ" => "2",), 
+                "ACTUAL_TEMPERATURE" => array(
+                              "OID" => "28861", 
+                              "Name" => "ACTUAL_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "ACTIVE_PROFILE" => array(
+                              "OID" => "45680", 
+                              "Name" => "ACTIVE_PROFILE", 
+                              "Typ" => "2",), 
+                "PARTY_TIME_END" => array(
+                              "OID" => "44475", 
+                              "Name" => "PARTY_TIME_END", 
+                              "Typ" => "2",), 
+                "VALVE_STATE" => array(
+                              "OID" => "35977", 
+                              "Name" => "VALVE_STATE", 
                               "Typ" => "2",), 
                 "BOOST_TIME" => array(
                               "OID" => "10597", 
@@ -1702,14 +2027,6 @@ function HomematicList() { return array(
                               "OID" => "22562", 
                               "Name" => "SET_POINT_TEMPERATURE", 
                               "Typ" => "2",), 
-                "PARTY_TIME_START" => array(
-                              "OID" => "43327", 
-                              "Name" => "PARTY_TIME_START", 
-                              "Typ" => "2",), 
-                "CONTROL_MODE" => array(
-                              "OID" => "34705", 
-                              "Name" => "CONTROL_MODE", 
-                              "Typ" => "2",), 
                 "FROST_PROTECTION" => array(
                               "OID" => "46511", 
                               "Name" => "FROST_PROTECTION", 
@@ -1717,14 +2034,6 @@ function HomematicList() { return array(
                 "PARTY_SET_POINT_TEMPERATURE" => array(
                               "OID" => "57472", 
                               "Name" => "PARTY_SET_POINT_TEMPERATURE", 
-                              "Typ" => "2",), 
-                "SET_POINT_MODE" => array(
-                              "OID" => "18283", 
-                              "Name" => "SET_POINT_MODE", 
-                              "Typ" => "2",), 
-                "LEVEL" => array(
-                              "OID" => "17073", 
-                              "Name" => "LEVEL", 
                               "Typ" => "2",), 
                 "SWITCH_POINT_OCCURED" => array(
                               "OID" => "38038", 
@@ -1734,25 +2043,9 @@ function HomematicList() { return array(
                               "OID" => "18588", 
                               "Name" => "CONTROL_DIFFERENTIAL_TEMPERATURE", 
                               "Typ" => "2",), 
-                "VALVE_STATE" => array(
-                              "OID" => "35977", 
-                              "Name" => "VALVE_STATE", 
-                              "Typ" => "2",), 
-                "ACTIVE_PROFILE" => array(
-                              "OID" => "45680", 
-                              "Name" => "ACTIVE_PROFILE", 
-                              "Typ" => "2",), 
                 "WINDOW_STATE" => array(
                               "OID" => "32429", 
                               "Name" => "WINDOW_STATE", 
-                              "Typ" => "2",), 
-                "PARTY_TIME_END" => array(
-                              "OID" => "44475", 
-                              "Name" => "PARTY_TIME_END", 
-                              "Typ" => "2",), 
-                "ACTUAL_TEMPERATURE" => array(
-                              "OID" => "28861", 
-                              "Name" => "ACTUAL_TEMPERATURE", 
                               "Typ" => "2",), 
                 "BOOST_MODE" => array(
                               "OID" => "37627", 

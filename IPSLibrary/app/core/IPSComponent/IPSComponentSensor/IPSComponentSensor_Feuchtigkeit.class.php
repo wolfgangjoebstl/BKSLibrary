@@ -72,8 +72,8 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' mit Wert '.$value);
+			//echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 						
 			$log=new Feuchtigkeit_Logging($variable);
 			$result=$log->Feuchtigkeit_LogValue();

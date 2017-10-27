@@ -268,6 +268,33 @@ if ($_IPS['SENDER']=="Execute")
 			echo "\n";	
 			}
 		}
+
+	/* IPS Heat analysieren */
+	if ( isset($installedModules["Stromheizung"]) )
+		{
+		echo "Stromheizung ist installiert. Configuration auslesen.\n";
+		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
+		IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
+		IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		
+		IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");
+		$IPSLightObjects=IPSHeat_GetHeatConfiguration();
+		foreach ($IPSLightObjects as $name => $object)
+			{
+			$components=explode(",",$object[IPSHEAT_COMPONENT]);
+			echo "  ".$name."  ".$object[IPSHEAT_TYPE]."   ".$components[0]."    ";
+			switch (strtoupper($components[0]))
+				{
+				case "IPSCOMPONENTSWITCH_HOMEMATIC":
+					echo $components[1]."   ".IPS_GetName($components[1]);
+					break;
+				default:
+					break;
+				}
+			echo "\n";	
+			}
+		}
+
+
 	echo "\n==================================================================\n";
 	echo "es geht weiter mit der Timer Routine\n";
 	} /* ende if execute */
@@ -283,7 +310,9 @@ if ($_IPS['SENDER']=="Execute")
 
 	echo "\n";
 	echo "==================================================\n";
-	echo "Vom Timer gestartet.\n";
+	echo "Vom Timer gestartet, include File erstellen.\n";
+	
+	$summary=array();		/* eine Zusammenfassung nach Typen erstellen */
 	
 	//$includefile='<?'."\n".'$fileList = array('."\n";
 	$includefile='<?'."\n";
@@ -351,6 +380,9 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"COID" => array(';
 
+		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
+		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)
@@ -398,6 +430,9 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 		$includefile.="\n         ".'"COID" => array(';
 
+		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
+		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)
@@ -441,6 +476,9 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 		$includefile.="\n         ".'"COID" => array(';
+
+		$type=getFS20Type($instanz);			/* wird für IPS Light benötigt */
+		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
 
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
@@ -515,15 +553,22 @@ if ($_IPS['SENDER']=="Execute")
 				$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
 				$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
 				$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
-				$includefile.="\n         ".'"COID" => array(';
 		
-				$type=getHomematicType($instanz);	/* gibt als echo auch den Typ aus */
+				$type=getHomematicType($instanz);			/* wird für Homematic IPS Light benötigt */
+				$typedev=getHomematicDeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
 				$result=explode(":",IPS_GetProperty($instanz,'Address'));
 				if ($type<>"") 
 					{
 					$includehomematic.='             '.str_pad(('"'.IPS_GetName($instanz).'"'),40).' => array("'.$result[0].'",'.$result[1].',HM_PROTOCOL_BIDCOSRF,'.$type.'),'."\n";
+					$includefile.="\n         ".'"Type" => "'.$type.'", ';
 					}	
-	
+				if ($typedev<>"") 
+					{
+					$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
+					$summary[$typedev][]=IPS_GetName($instanz);
+					}
+					
+				$includefile.="\n         ".'"COID" => array(';
 				$cids = IPS_GetChildrenIDs($instanz);
 				//print_r($cids);
 				foreach($cids as $cid)
@@ -565,6 +610,10 @@ if ($_IPS['SENDER']=="Execute")
 	echo $includehomematic;
 	
 	} // ende else if execute
+	
+	echo "\n";
+	echo "Zusammenfassung:\n\n";
+	print_r($summary);
 
 /********************************************************************************************************************/
 
@@ -617,82 +666,187 @@ function getHomematicType($instanz)
 	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
 		{
 		switch ($homematic[0])
-				{
-				case "ERROR":
-					echo "Funk-Tür-/Fensterkontakt\n";
-					break;
-				case "INSTALL_TEST":
-					if ($homematic[1]=="PRESS_CONT")
-						{
-						echo "Taster 6fach\n";
-						}
-					else
-						{
-						echo "Funk-Display-Wandtaster\n";
-						}
-					$type="HM_TYPE_BUTTON";
-					break;
-				case "ACTUAL_HUMIDITY":
-					echo "Funk-Wandthermostat\n";
-					break;
-				case "ACTUAL_TEMPERATURE":
-					echo "Funk-Heizkörperthermostat\n";
-					break;
-				case "BRIGHTNESS":
-					echo "Funk-Bewegungsmelder\n";
-					break;
-				case "DIRECTION":
-					if ($homematic[1]=="ERROR_OVERHEAT")
-						{
-						echo "Dimmer\n";
-						$type="HM_TYPE_DIMMER";						
-						}
-					else
-						{
-						echo "Rolladensteuerung\n";
-						}
-					break;
-
-				case "PROCESS":
-				case "INHIBIT":
-					echo "Funk-Schaltaktor 1-fach\n";
+			{
+			case "ERROR":
+				//echo "Funk-Tür-/Fensterkontakt\n";
+				break;
+			case "INSTALL_TEST":
+				if ($homematic[1]=="PRESS_CONT")
+					{
+					//echo "Taster 6fach\n";
+					}
+				else
+					{
+					//echo "Funk-Display-Wandtaster\n";
+					}
+				$type="HM_TYPE_BUTTON";
+				break;
+			case "ACTUAL_HUMIDITY":
+				//echo "Funk-Wandthermostat\n";
+				break;
+			case "ACTUAL_TEMPERATURE":
+				//echo "Funk-Heizkörperthermostat\n";
+				break;
+			case "BRIGHTNESS":
+				//echo "Funk-Bewegungsmelder\n";
+				break;
+			case "DIRECTION":
+				if ($homematic[1]=="ERROR_OVERHEAT")
+					{
+					//echo "Dimmer\n";
+					$type="HM_TYPE_DIMMER";						
+					}
+				else
+					{
+					//echo "Rolladensteuerung\n";
+					}
+				break;
+			case "PROCESS":
+			case "INHIBIT":
+				//echo "Funk-Schaltaktor 1-fach\n";
+				$type="HM_TYPE_SWITCH";
+				break;
+			case "BOOT":
+				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+				$type="HM_TYPE_SWITCH";
+				break;
+			case "CURRENT":
+				//echo "Energiemessung\n";
+				break;
+			case "HUMIDITY":
+				//echo "Funk-Thermometer\n";
+				break;
+			case "CONFIG_PENDING":
+				if ($homematic[1]=="DUTYCYCLE")
+					{
+					//echo "Funkstatusregister\n";
+					}
+				elseif ($homematic[1]=="DUTY_CYCLE")
+					{
+					//echo "IP Funkstatusregister\n";
+					}
+				else
+					{
+					//echo "IP Funk-Schaltaktor\n";
 					$type="HM_TYPE_SWITCH";
-					break;
-				case "BOOT":
-					echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-					$type="HM_TYPE_SWITCH";
-					break;
-				case "CURRENT":
-					echo "Energiemessung\n";
-					break;
-				case "HUMIDITY":
-					echo "Funk-Thermometer\n";
-					break;
-				case "CONFIG_PENDING":
-					if ($homematic[1]=="DUTYCYCLE")
-						{
-						echo "Funkstatusregister\n";
-						}
-					elseif ($homematic[1]=="DUTY_CYCLE")
-						{
-						echo "IP Funkstatusregister\n";
-						}
-					else
-						{
-						echo "IP Funk-Schaltaktor\n";
-						$type="HM_TYPE_SWITCH";
-						}
-					//print_r($homematic);
-					break;					
-				default:
-					echo "unknown\n";
-					print_r($homematic);
-					break;
-				}
+					}
+				//print_r($homematic);
+				break;					
+			default:
+				//echo "unknown\n";
+				//print_r($homematic);
+				break;
+			}
 		}
 	else
 		{
-		echo "   noch nicht angelegt.\n";
+		//echo "   noch nicht angelegt.\n";
+		}			
+
+	return ($type);
+	}
+
+/* anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
+ * um welchen Typ von Gerät es sich handeln koennte,
+ * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
+ */
+
+function getFS20Type($instanz)
+	{
+	$cids = IPS_GetChildrenIDs($instanz);
+	//print_r($cids);
+	$homematic=array();
+	foreach($cids as $cid)
+		{
+		$homematic[]=IPS_GetName($cid);
+		}
+	sort($homematic);
+	//print_r($homematic);
+	/* 	define ('HM_TYPE_LIGHT',					'Light');
+	define ('HM_TYPE_SHUTTER',					'Shutter');
+	define ('HM_TYPE_DIMMER',					'Dimmer');
+	define ('HM_TYPE_BUTTON',					'Button');
+	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
+	define ('HM_TYPE_SWITCH',					'Switch'); */
+	$type=""; echo "       ";
+	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+		{
+		switch ($homematic[0])
+			{
+			case "ERROR":
+				//echo "Funk-Tür-/Fensterkontakt\n";
+				break;
+			case "INSTALL_TEST":
+				if ($homematic[1]=="PRESS_CONT")
+					{
+					//echo "Taster 6fach\n";
+					}
+				else
+					{
+					//echo "Funk-Display-Wandtaster\n";
+					}
+				$type="HM_TYPE_BUTTON";
+				break;
+			case "ACTUAL_HUMIDITY":
+				//echo "Funk-Wandthermostat\n";
+				break;
+			case "ACTUAL_TEMPERATURE":
+				//echo "Funk-Heizkörperthermostat\n";
+				break;
+			case "BRIGHTNESS":
+				//echo "Funk-Bewegungsmelder\n";
+				break;
+			case "DIRECTION":
+				if ($homematic[1]=="ERROR_OVERHEAT")
+					{
+					//echo "Dimmer\n";
+					$type="HM_TYPE_DIMMER";						
+					}
+				else
+					{
+					//echo "Rolladensteuerung\n";
+					}
+				break;
+			case "PROCESS":
+			case "INHIBIT":
+				//echo "Funk-Schaltaktor 1-fach\n";
+				$type="HM_TYPE_SWITCH";
+				break;
+			case "BOOT":
+				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+				$type="HM_TYPE_SWITCH";
+				break;
+			case "CURRENT":
+				//echo "Energiemessung\n";
+				break;
+			case "HUMIDITY":
+				//echo "Funk-Thermometer\n";
+				break;
+			case "CONFIG_PENDING":
+				if ($homematic[1]=="DUTYCYCLE")
+					{
+					//echo "Funkstatusregister\n";
+					}
+				elseif ($homematic[1]=="DUTY_CYCLE")
+					{
+					//echo "IP Funkstatusregister\n";
+					}
+				else
+					{
+					//echo "IP Funk-Schaltaktor\n";
+					$type="HM_TYPE_SWITCH";
+					}
+				//print_r($homematic);
+				break;					
+			default:
+				//echo "unknown\n";
+				//print_r($homematic);
+				break;
+			}
+		}
+	else
+		{
+		//echo "   noch nicht angelegt.\n";
 		}			
 
 	return ($type);
@@ -700,8 +854,237 @@ function getHomematicType($instanz)
 
 function getHomematicDeviceType($instanz)
 	{
-
-
+	$cids = IPS_GetChildrenIDs($instanz);
+	$homematic=array();
+	foreach($cids as $cid)
+		{
+		$homematic[]=IPS_GetName($cid);
+		}
+	sort($homematic);
+	$type=""; echo "       ";
+	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+		{
+		switch ($homematic[0])
+			{
+			case "ERROR":
+				echo "Funk-Tür-/Fensterkontakt\n";
+				$type="TYPE_CONTACT";
+				break;
+			case "PRESS_LONG":
+				echo "Taster 6fach (IP)\n";
+				$type="TYPE_BUTTON";
+				break;
+			case "INSTALL_TEST":
+				if ($homematic[1]=="PRESS_CONT")
+					{
+					echo "Taster 6fach\n";
+					$type="TYPE_BUTTON";
+					}
+				else
+					{
+					echo "Funk-Display-Wandtaster\n";
+					$type="TYPE_BUTTON";
+					}
+				break;
+			case "ACTUAL_HUMIDITY":
+				echo "Funk-Wandthermostat\n";
+				$type="TYPE_THERMOSTAT";
+				break;
+			case "ACTIVE_PROFILE":
+				if ($homematic[15]=="VALVE_ADAPTION")
+					{
+					echo "Stellmotor\n";
+					$type="TYPE_ACTUATOR";
+					}
+				else
+					{
+					echo "Wandthermostat (IP)\n";
+					$type="TYPE_THERMOSTAT";
+					}
+				break;
+			case "ACTUAL_TEMPERATURE":
+				echo "Funk-Heizkörperthermostat\n";
+				$type="TYPE_ACTUATOR";
+				break;
+		 	case "ILLUMINATION":
+			case "BRIGHTNESS":
+				echo "Funk-Bewegungsmelder\n";
+				$type="TYPE_MOTION";
+				break;
+			case "DIRECTION":
+				if ($homematic[1]=="ERROR_OVERHEAT")
+					{
+					echo "Dimmer\n";
+					$type="TYPE_DIMMER";						
+					}
+				else
+					{
+					echo "Rolladensteuerung\n";
+					}
+				break;
+			case "PROCESS":
+			case "INHIBIT":
+				echo "Funk-Schaltaktor 1-fach\n";
+				$type="TYPE_SWITCH";
+				break;
+			case "BOOT":
+				echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+				$type="TYPE_SWITCH";
+				break;
+			case "CURRENT":
+				echo "Energiemessung\n";
+				$type="TYPE_METER_POWER";
+				break;
+			case "HUMIDITY":
+				echo "Funk-Thermometer\n";
+				$type="TYPE_METER_TEMPERATURE";
+				break;
+			case "CONFIG_PENDING":
+				if ($homematic[1]=="DUTYCYCLE")
+					{
+					echo "Funkstatusregister\n";
+					}
+				elseif ($homematic[1]=="DUTY_CYCLE")
+					{
+					echo "IP Funkstatusregister\n";
+					}
+				else
+					{
+					echo "IP Funk-Schaltaktor\n";
+					$type="TYPE_SWITCH";
+					}
+				//print_r($homematic);
+				break;					
+			default:
+				echo "unknown\n";
+				print_r($homematic);
+				break;
+			}
+		}
+	else
+		{
+		echo "   noch nicht angelegt.\n";
+		}			
+	return ($type);
 	}
+
+function getFS20DeviceType($instanz)
+	{
+	$cids = IPS_GetChildrenIDs($instanz);
+	$homematic=array();
+	foreach($cids as $cid)
+		{
+		$homematic[]=IPS_GetName($cid);
+		}
+	sort($homematic);
+	$type=""; echo "       ";
+	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+		{
+		switch ($homematic[0])
+			{
+			case "ERROR":
+				echo "Funk-Tür-/Fensterkontakt\n";
+				$type="TYPE_CONTACT";
+				break;
+			case "PRESS_LONG":
+				echo "Taster 6fach (IP)\n";
+				$type="TYPE_BUTTON";
+				break;
+			case "INSTALL_TEST":
+				if ($homematic[1]=="PRESS_CONT")
+					{
+					echo "Taster 6fach\n";
+					$type="TYPE_BUTTON";
+					}
+				else
+					{
+					echo "Funk-Display-Wandtaster\n";
+					$type="TYPE_BUTTON";
+					}
+				break;
+			case "ACTUAL_HUMIDITY":
+				echo "Funk-Wandthermostat\n";
+				$type="TYPE_THERMOSTAT";
+				break;
+			case "ACTIVE_PROFILE":
+				if ($homematic[15]=="VALVE_ADAPTION")
+					{
+					echo "Stellmotor\n";
+					$type="TYPE_ACTUATOR";
+					}
+				else
+					{
+					echo "Wandthermostat (IP)\n";
+					$type="TYPE_THERMOSTAT";
+					}
+				break;
+			case "ACTUAL_TEMPERATURE":
+				echo "Funk-Heizkörperthermostat\n";
+				$type="TYPE_ACTUATOR";
+				break;
+		 	case "ILLUMINATION":
+			case "BRIGHTNESS":
+				echo "Funk-Bewegungsmelder\n";
+				$type="TYPE_MOTION";
+				break;
+			case "DIRECTION":
+				if ($homematic[1]=="ERROR_OVERHEAT")
+					{
+					echo "Dimmer\n";
+					$type="TYPE_DIMMER";						
+					}
+				else
+					{
+					echo "Rolladensteuerung\n";
+					}
+				break;
+			case "PROCESS":
+			case "INHIBIT":
+				echo "Funk-Schaltaktor 1-fach\n";
+				$type="TYPE_SWITCH";
+				break;
+			case "BOOT":
+				echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+				$type="TYPE_SWITCH";
+				break;
+			case "CURRENT":
+				echo "Energiemessung\n";
+				$type="TYPE_METER_POWER";
+				break;
+			case "HUMIDITY":
+				echo "Funk-Thermometer\n";
+				$type="TYPE_METER_TEMPERATURE";
+				break;
+			case "CONFIG_PENDING":
+				if ($homematic[1]=="DUTYCYCLE")
+					{
+					echo "Funkstatusregister\n";
+					}
+				elseif ($homematic[1]=="DUTY_CYCLE")
+					{
+					echo "IP Funkstatusregister\n";
+					}
+				else
+					{
+					echo "IP Funk-Schaltaktor\n";
+					$type="TYPE_SWITCH";
+					}
+				//print_r($homematic);
+				break;					
+			default:
+				echo "unknown\n";
+				print_r($homematic);
+				break;
+			}
+		}
+	else
+		{
+		echo "   noch nicht angelegt.\n";
+		}			
+	return ($type);
+	}
+
+
+
 
 ?>

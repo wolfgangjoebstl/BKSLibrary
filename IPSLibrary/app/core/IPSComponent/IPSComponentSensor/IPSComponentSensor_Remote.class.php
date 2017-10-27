@@ -1,17 +1,54 @@
 <?
-
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	 
    /**
     * @class IPSComponentSensor_remote
     *
     * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
     *
+	 * Events werden im Event Handler des IPSMessageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
+	 * In der IPSMessageHandler Config steht wie die Daten Variable ID udn Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
+	 * 	xxxx => array('OnChange','IPSComponentSensor_TRemote,','IPSModuleSensor_Remote,1,2,3',),
+	 * Nach Angabe des Components und des Moduls sind noch weitere Parameter möglich.
+	 * Es wird zuerst der construct mit den obigen weiteren Config Parametern und dann HandleEvent mit VariableID und Wert der Variable aufgerufen.
+	 *
+	 * allgemeines Handling, macht kein lokales Logging und keine weitere Verarbeitung
+	 *
+	 * Wenn RemoteAccess installiert ist:
+	 * der erste Zusatzparameter aus der obigen Konfig sind Pärchen von Remoteserver und remoteOIDs
+	 * in der RemoteAccessServerTable sind alle erreichbaren Log Remote Server aufgelistet, abgeleitet aus der Server Config und dem Status der Erreichbarkeit
+	 * für alle erreichbaren Server wird auch die remote OID mit dem Wert beschrieben 
+	 *
+	 * Authomatische Registrierung für:
+	 *   Energiewerte
+	 *   Mobilfunkguthaben
+	 *   Taster und Schalter wenn Geber nicht Actuator
+	 *	 
     * @author Wolfgang Jöbstl
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
     */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+	
+	
 			
 	class IPSComponentSensor_Remote extends IPSComponentSensor {
 
@@ -19,18 +56,23 @@
 		private $RemoteOID;
 		private $tempValue;
 		private $installedmodules;
+
+		private $remServer;
 		
 		/**
 		 * @public
 		 *
 		 * Initialisierung eines IPSModuleSensor_IPStemp Objektes
 		 *
+		 * legt die Remote Server aus $var1 an, an die wenn RemoteAccess Modul installiert ist reported werden muss
+		 *		 
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
+			//echo "IPSComponentSensor_Remote: Construct Remote Sensor with ".$var1.".\n";				
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
 			$this->tempValue    = $lightValue;
@@ -47,9 +89,17 @@
 				{								
 				$this->remServer	  = array();
 				}
-
 			}
+
+		/*
+		 * aktueller Status der remote logging server
+		 */	
 	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
+			}	
+
 		/**
 		 * @public
 		 *
@@ -74,15 +124,14 @@
 					{
 					$para= explode(':', $val);
 					echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            if (count($para)==2)
-   	            {
+					if (count($para)==2)
+						{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
-						   {
-							echo "Server : ".$Server."\n";
+							{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
-							echo "Remote OID: ".$roid."\n";
+							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
 							$rpc->SetValue($roid, $value);
 							}
 						}

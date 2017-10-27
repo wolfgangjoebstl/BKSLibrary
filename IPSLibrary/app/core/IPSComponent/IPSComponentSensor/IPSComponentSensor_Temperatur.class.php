@@ -21,6 +21,24 @@
     *
     * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
     *
+	 * Events werden im Event Handler des IPSMEssageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
+	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
+	 * 	xxxx => array('OnChange','IPSComponentSensor_Temperatur,','IPSModuleSensor_Temperatur,1,2,3',),
+	 * Nach Angabe des Components und des Moduls sind noch weitere Parameter möglich.
+	 * Es wird zuerst der construct mit den obigen weiteren Config Parametern und dann HandleEvent mit VariableID und Wert der Variable aufgerufen.
+	 * bei Homematic, FS20, FHT80b wird einfach direkt der Temperaturwert registriert. Der Name wird wenn notwendig aus dem Parent abgeleitet.
+	 *
+	 * Wenn RemoteAccess installiert ist:
+	 * der erste Zusatzparameter aus der obigen Konfig sind Pärchen von Remoteserver und remoteOIDs
+	 * in der RemoteAccessServerTable sind alle erreichbaren Log Remote Server aufgelistet, abgeleitet aus der Server Config und dem Status der Erreichbarkeit
+	 * für alle erreichbaren Server wird auch die remote OID mit dem Wert beschrieben 
+	 *
+	 * Logging der Variablen:
+	 * Alle Wertänderungen werden in einem File und einem Nachrichtenspeicher gelogged.
+	 *
+	 * wenn DetectMovement installiert ist:
+	 * auch den Mittelwert aus mehreren Variablen herausrechnen
+	 *
     * @author Wolfgang Jöbstl
     * @version
     *   Version 2.50.1, 09.06.2012<br/>
@@ -46,7 +64,7 @@
 		 *
 		 * Initialisierung eines IPSModuleSensor_IPStemp Objektes
 		 *
-		 * legt die Remote Server an, an die wenn RemoteAccess Modul installiert ist reported werden muss
+		 * legt die Remote Server  aus $var1 an, an die wenn RemoteAccess Modul installiert ist reported werden muss
 		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
@@ -95,28 +113,27 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   		IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			//echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
 			$log=new Temperature_Logging($variable);
 			$result=$log->Temperature_LogValue();
 			
 			if ($this->RemoteOID != Null)
-			   {
+				{
 				$params= explode(';', $this->RemoteOID);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            	if (count($para)==2)
-   	            		{
+					if (count($para)==2)
+						{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
-						   	{
+							{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							
 							$rpc->SetValue($roid, $value);
 							}
 						}
@@ -156,6 +173,7 @@
 		public $variableLogID;			/* ID der entsprechenden lokalen Spiegelvariable */
 		
 		private $TempAuswertungID;
+		private $TempNachrichtenID;
 
 		private $configuration;
 		private $installedmodules;
@@ -163,23 +181,36 @@
 		function __construct($variable,$variablename=Null)
 			{
 			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
+			
+			/****************** Variablennamen herausfinden und/oder berechnen */
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
 				$result=IPS_GetObject($variable);
-				$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist der Parent Name wenn nicht anders angegeben
+				$ParentId=(integer)$result["ParentID"];
+				$object=IPS_GetObject($ParentId);
+				if ( $object["ObjectType"] == 1)
+					{				
+					$this->variablename=IPS_GetName($ParentId);			// Variablenname ist der Parent Name wenn nicht anders angegeben, und der Parent eine Instanz ist.
+					}
+				else
+					{
+					$this->variablename=IPS_GetName($variable);			// Variablenname ist der Variablen Name wenn der Parent KEINE Instanz ist.
+					}
 				} 
 			else
 				{
 				$this->variablename=$variablename;
 				}			
 		
+			/**************** Speicherort für Nachrichten und Spiegelvarianten herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			
+			/* Create Category to store the Temperature-LogNachrichten */	
 			$name="Temperatur-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -189,6 +220,7 @@
 				IPS_SetName($vid, $name);
 				IPS_SetInfo($vid, "this category was created by script IPSComponentSensor_Temperatur. ");
 				}
+			$this->TempNachrichtenID=$vid;
 
 			/* Create Category to store the Temperature-Spiegelregister */	
 			$name="Temperatur-Auswertung";
@@ -199,7 +231,7 @@
 				IPS_SetParent($TempAuswertungID, $CategoryIdData);
 				IPS_SetName($TempAuswertungID, $name);
 				IPS_SetInfo($TempAuswertungID, "this category was created by script IPSComponentSensor_Temperatur. ");
-	    		}
+				}
 			$this->TempAuswertungID=$TempAuswertungID;
 
 			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
@@ -214,6 +246,7 @@
 				IPS_ApplyChanges($archiveHandlerID);
 				}
 
+			/* Filenamen für die Log Eintraege herausfunfen und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["TemperatureLog"]))
@@ -226,7 +259,7 @@
 
 		function Temperature_LogValue()
 			{
-			// result formatieren
+			// result formatieren für Ausgabe in den LogNachrichten
 			$variabletyp=IPS_GetVariable($this->variable);
 			if ($variabletyp["VariableProfile"]!="")
 				{
@@ -241,7 +274,9 @@
 			$oldvalue=GetValue($this->variableLogID);
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+			IPSLogger_Dbg(__file__, 'CustomComponent Tempoerature_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
 			
+			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
 				/* Detect Movement kann auch Temperaturen agreggieren */

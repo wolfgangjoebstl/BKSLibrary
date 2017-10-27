@@ -28,7 +28,7 @@
 	 *
 	 */
 
-	include_once "IPSHeat.inc.php";
+	include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 	
 	$variableId   = $_IPS['VARIABLE'];
 	$value        = $_IPS['VALUE'];

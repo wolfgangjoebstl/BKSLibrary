@@ -433,7 +433,6 @@
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
 				$simulation=new AutosteuerungAnwesenheitssimulation();
-				$simulation->InitMesagePuffer();								
 				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;									
 				break;	
 			case "STROMHEIZUNG":
@@ -559,14 +558,14 @@
 		
 		/* TabPaneItem anlegen, etwas kompliziert geloest */
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
-		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
+		if ( exists_WFCItem($WFC10_ConfigId, $WFC10_TabPaneItem) )
 		 	{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$tabItem."\n";
-			DeleteWFCItems($WFC10_ConfigId, $tabItem);
+			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$WFC10_TabPaneItem."\n";
+			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);
 			}
 		else
 			{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$WFC10_TabPaneItem." nicht mehr vorhanden.\n";
 			}	
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
@@ -582,12 +581,12 @@
 		foreach ($tabs as $tab)
 			{
 			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
-			$categoryIdLeft  = CreateCategory('Left',  $categoryIdTab, 10);
-			$categoryIdRight = CreateCategory('Right', $categoryIdTab, 20);
+			$categoryIdLeft  = CreateCategory($tabItem.$i.'_Left',  $categoryIdTab, 10);
+			$categoryIdRight = CreateCategory($tabItem.$i.'_Right', $categoryIdTab, 20);
 
-			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    $WFC10_TabOrder+$i,     $tab, '', 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+			//CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    $WFC10_TabOrder+$i,     $tab, '', 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
 			echo "Kategorien erstellt, Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 			$i++;
@@ -614,6 +613,60 @@
 		ReloadAllWebFronts();
 
 		}
+
+if (true)
+	{
+	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+	$webFrontConfig = Autosteuerung_GetWebFrontConfiguration();
+	if ($WFC10_Enabled) 
+		{
+		/* Default Path ist Visualization.WebFront.Administrator.Autosteuerung */
+		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+
+		$order = 10;
+		foreach($webFrontConfig as $tabName=>$tabData) {
+			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
+			foreach($tabData as $WFCItem) {
+				$order = $order + 10;
+				switch($WFCItem[0]) 
+					{
+					case IPSHEAT_WFCSPLITPANEL:
+						CreateWFCItemSplitPane ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+						break;
+					case IPSHEAT_WFCCATEGORY:
+						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+						CreateWFCItemCategory ($WFC10_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+						break;
+					case IPSHEAT_WFCGROUP:
+					case IPSHEAT_WFCLINKS:
+						echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
+						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
+							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+						}
+						$links      = explode(',', $WFCItem[3]);
+						$names      = $links;
+						if (array_key_exists(4, $WFCItem)) {
+							$names = explode(',', $WFCItem[4]);
+						}
+						foreach ($links as $idx=>$link) {
+							$order = $order + 1;
+							// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+							CreateLinkByDestination($names[$idx], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+						}
+						break;
+					default:
+						trigger_error('Unknown WFCItem='.$WFCItem[0]);
+			   	}
+				}
+			}
+		}
+	}	
+
+
+
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

@@ -457,7 +457,7 @@ if ($_IPS['SENDER']=="Execute")
 			case "HeatControl":
 			case "Heizung":
 				//print_r($entry);
-				$status=Ventilator2($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				$status=Ventilator2($entry,32,true);  // Simulation aktiv, Testwert ist 32
 				break;	
 			case "iTunes":
 				$status=iTunesSteuerung($entry,$i++,true);
@@ -760,7 +760,7 @@ function Status($params,$status,$simulate=false)
 
 		/********************
 		 *
-		 * Timer wird einmail aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
+		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
 		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
 		 * 
 		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden

@@ -23,7 +23,7 @@
 	
 	IPSUtils_Include ('IPSComponentHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
 
-	class IPSComponentHeatSetData extends IPSComponentHeatSet 
+	class IPSComponentHeatSet_Data extends IPSComponentHeatSet 
 		{
 
 		protected $tempObject;
@@ -54,7 +54,7 @@
 			$this->tempObject   = $lightObject;
 			$this->tempValue    = $lightValue;
 			
-			echo "construct IPSComponentHeatControl_Data with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			echo "construct IPSComponentHeatSet_Data with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();

@@ -23,7 +23,7 @@ Switch ($_IPS['SENDER'])
 		/* vom Webfront aus gestartet */
 		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 		break;
-	Case "Timer":
+	Case "TimerEvent":
 	Case "Execute":
 		$kalender=new AutosteuerungStromheizung();
 		$kalender->ShiftforNextDay();

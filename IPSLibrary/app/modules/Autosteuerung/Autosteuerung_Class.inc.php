@@ -1727,6 +1727,28 @@ class Autosteuerung
 
 		if (isset($result["SPEAK"]) == true)
 			{
+			$pos=strpos($result["SPEAK"],"#");
+			$len=strpos(substr($result["SPEAK"],$pos+1),"#");
+			if ( ( $pos !== false) && ( $len !== false) )
+				{
+				$var=strtoupper(substr($result["SPEAK"],$pos+1,$len));
+				switch ($var)
+					{
+					case "WERT":
+						//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+						$part1=substr($result["SPEAK"],0,$pos);
+						$part2=substr($result["SPEAK"],$pos+$len+2);
+						$temperatur=$result["STATUS"];
+						$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.";				
+						//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+						$result["SPEAK"]=$part1.$wert.$part2;	
+						//echo $result["SPEAK"]."\n";
+						break;
+					default:
+						break;
+					}
+				//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+				}
 			if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
 				{
 				if ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) )
@@ -2045,63 +2067,64 @@ class Autosteuerung
 
 /*****************************************************************************************************
  *
- * Anwesenheitssimulation in der Autosteuerung
- *
- * Routinen zur Anwesenheitssimulation
+ * Funktionen innerhalb der Autosteuerung
  *
  **************************************************************************************************************/
 
-
-class AutosteuerungAnwesenheitssimulation
+abstract class AutosteuerungFunktionen
 	{
-
-	private $log_File="Default";
-	private $script_Id="Default";
-	private $nachrichteninput_Id="Default";
-	private $installedmodules;
-	private $zeile=array();
 	
-	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+	/********************************************************************
+	 *
+	 * Funktionen für Konstruktor, es gibt ein eigenes Logfile, Filename inklusive Pfad muss übergeben werden, Input Variable für Variablen-Log muss ebenfalls übergeben werden.
+	 * wenn nicht, wird nicht gelogged. 
+	 *
+	 ****************************************************************************/
+	
+	function Init()
 		{
-		//echo "Logfile Construct\n";
-		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
 		$CategoryIdApp = $moduleManager->GetModuleCategoryID('app');
-		$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
-				
+		$this->scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+						
 		$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
 		if ($WFC10_Enabled==true)
 			{
 			$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
 			}
 		echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-	
-		/******************************* File Logging *********/
-		$log_ConfigFile=get_IPSComponentLoggerConfig();
-		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
-		//echo "Init ".get_class($this)." : ";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);		
+		}	
+		
+	function InitLogMessage()
+		{
+		echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
 		//var_dump($this);
-		if ($logfile=="No-Output")
+		if ($this->log_File=="No-Output")
 			{
 			/* kein Logfile anlegen */
 			}
 		else
 			{	
-			if (!file_exists($logfile))
+			$log_ConfigFile=get_IPSComponentLoggerConfig();	
+			if (!file_exists($this->log_File))
 				{
 				/* Pfad aus dem Dateinamen herausrechnen. Wenn keiner definiert ist einen aus dem Configfile nehmen und sonst mit Default arbeiten */
-				//echo "construct class Anwesenheitssimulation, File ".$logfile." existiert nicht. Mit Verzeichnis gemeinsam anlegen.\n";
+				//echo "construct class Anwesenheitssimulation, File ".$this->logfile." existiert nicht. Mit Verzeichnis gemeinsam anlegen.\n";
 				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
+				echo "Verzeichnis für Logfile : ".PATHINFO_DIRNAME.$FilePath."\n";				
 				if ($FilePath==".") 
 					{
+					/* es existiert kein Filepath, einen aus der config nehmen oder annehmen un dhinzufügen*/
 					print_r($log_ConfigFile);
 					if (isset($log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"])==true)
 						{
 						$FilePath=$log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"];
 						}
 					else $FilePath="C:/Scripts/";	
+					$this->log_File=$FilePath.$this->log_File;
 					}
 				if (!file_exists($FilePath)) 
 					{
@@ -2109,13 +2132,8 @@ class AutosteuerungAnwesenheitssimulation
 						throw new Exception('Create Directory '.$destinationFilePath.' failed!');
 						}
 					}
-				$this->log_File=$FilePath.$logfile;	
 				}
-			else
-				{
-				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
-				$this->log_File=$logfile;
-				}	
+			/* nocheinmal probieren, jetzt sollte der Pfad definiert sein */	
 			if (!file_exists($this->log_File))
 				{											
 				//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
@@ -2129,49 +2147,21 @@ class AutosteuerungAnwesenheitssimulation
 				echo "construct class Anwesenheitssimulation, Filename vorhanden. Verzeichnis für Logfile : ".$this->log_File."\n";
 				}		
 			}
-			
-		/******************************* Nachrichten Logging *********/
-		$type=3;$profile=""; $this->zeile=array();
-		if ($nachrichteninput_Id != "Ohne")
-			{
-			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
-			// bei etwas anderem als einem String stimmt der defaultwert nicht
-			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$nachrichteninput_Id);	
-			if ($vid==false) break;		
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl); }		
-			}
-		else
-			{
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-			$nachrichteninput_Id=@IPS_GetObjectIDByName('Schaltbefehle-Anwesenheitssimulation',$CategoryIdData);
-			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$nachrichteninput_Id);
-			if ($vid==false) break;
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
-			}
-		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		}
+		}																												
 
+	function InitLogNachrichten($type,$profile)
+		{
+		/*momentan nur durchreichen */
+		$this->InitMesagePuffer($type,$profile);
+		}
+		
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
 		{
-		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')	
-		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,$vid, $i*10,$profile,$scriptIdHeatControl );
+		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,IPS_GetParent($vid), $i*10,$profile,$scriptIdHeatControl,0 );
+		IPS_SetHidden($this->zeile[$i],true);
+		CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $vid,  $i*10);		
 		}
-
-	function InitMesagePuffer()
-		{
-		$type=3;$profile="";		
-		$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
-		if ($vid==false) break;
-		EmptyCategory($vid);			
-		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }		
-		}
-
+		
 	function LogMessage($message)
 		{
 		if ($this->log_File != "No-Output")
@@ -2182,6 +2172,7 @@ class AutosteuerungAnwesenheitssimulation
 			//echo $this->log_File."   ".$message."\n";
 			}
 		}
+		
 	function LogNachrichten($message)
 		{		
 		if ($this->nachrichteninput_Id != "Ohne")
@@ -2195,136 +2186,7 @@ class AutosteuerungAnwesenheitssimulation
 			SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
 			}		
 		}
-	}
-									
-/*****************************************************************************************************
- *
- * Stromheizung in der Autosteuerung
- *
- * Routinen zur Stromheizungssteuerung
- *
- **************************************************************************************************************/
-
-
-class AutosteuerungStromheizung
-	{
-
-	private $log_File="Default";
-	private $script_Id="Default";
-	private $nachrichteninput_Id="Default";
-	private $installedmodules;
-	private $zeile=array();
-	private $scriptIdHeatControl;
-	
-	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
-		{
-		//echo "Logfile Construct\n";
-		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-		$CategoryIdApp = $moduleManager->GetModuleCategoryID('app');
-		$this->scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
-				
-		$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
-		if ($WFC10_Enabled==true)
-			{
-			$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-			}
-		echo "\nWebportal User.Autosteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-	
-		$this->log_File=$logfile;
-		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
-		//echo "Init ".get_class($this)." : ";
-		//var_dump($this);
-		if ($logfile=="No-Output")
-			{
-			/* kein Logfile anlegen */
-			}
-		else
-			{	
-			if (!file_exists($this->log_File))
-				{
-				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
-				echo "Verzeichnis für Logfile : ".PATHINFO_DIRNAME.$FilePath."\n";
-				if (!file_exists($FilePath)) 
-					{
-					if (!mkdir($FilePath, 0755, true)) {
-						throw new Exception('Create Directory '.$destinationFilePath.' failed!');
-						}
-					}			
-				//echo "Create new file : ".$this->log_File." im Verzeichnis : ".$FilePath." \n";
-				$handle3=fopen($this->log_File, "a");
-				fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
-	 			fclose($handle3);
-				}
-			}
-		$type=1;$profile="AusEin"; $this->zeile=array();
-		if ($nachrichteninput_Id != "Ohne")
-			{
-			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
-			// bei etwas anderem als einem String stimmt der defaultwert nicht
-			$vid=@IPS_GetObjectIDByName("Wochenplan",$nachrichteninput_Id);	
-			if ($vid==false) break;		
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
-			}
-		else
-			{
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
-			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
-			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-			$nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
-			$vid=@IPS_GetObjectIDByName("Wochenplan",$nachrichteninput_Id);
-			if ($vid==false) break;
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }
-			}
-		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		}
-
-	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
-		{
-		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,IPS_GetParent($vid), $i*10,$profile,$scriptIdHeatControl,0 );
-		IPS_SetHidden($this->zeile[$i],true);
-		CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $vid,  $i*10);		
-		}
-
-	function LogMessage($message)
-		{
-		if ($this->log_File != "No-Output")
-			{
-			$handle3=fopen($this->log_File, "a");
-			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-			fclose($handle3);
-			//echo $this->log_File."   ".$message."\n";
-			}
-		}
-
-	function ShiftforNextDay($message=0)
-		{
-		if ($this->nachrichteninput_Id != "Ohne")
-			{
-			//print_r($this->zeile);
-			for ($i=16; $i>1;$i--) 
-				{ 
-				SetValue($this->zeile[$i],GetValue($this->zeile[$i-1])); 
-				//echo "Wert : ".$i."\n";
-				}
-			SetValue($this->zeile[$i],date("d.m.y H:i:s")." : ".$message);
-			}		
-		}
-
-	function SetupKalender()
-		{
-		$type=1;$profile="AusEin";
-		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);
-		if ($vid==false) break;
-		EmptyCategory($vid);			
-		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
-		}
-
+		
 	function PrintNachrichten()
 		{
 		$result=false;
@@ -2341,8 +2203,189 @@ class AutosteuerungStromheizung
 	function status()
 	   {
 	   return true;
-	   }
+	   }		
+						
+	}
+
+
+/*****************************************************************************************************
+ *
+ * Anwesenheitssimulation in der Autosteuerung
+ *
+ * Routinen zur Anwesenheitssimulation
+ *
+ **************************************************************************************************************/
+
+
+class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
+	{
+
+	protected $log_File="Default";
+	protected $script_Id="Default";
+	protected $nachrichteninput_Id="Default";
+	protected $installedmodules;
+	protected $zeile=array();
+
+	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		//echo "Logfile Construct\n";
 		
+		/******************************* Init *********/
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		$this->Init();
+
+		/******************************* File Logging *********/
+		$this->InitLogMessage();
+		
+		/******************************* Nachrichten Logging *********/
+		$type=3;$profile=""; $this->zeile=array();
+		$this->InitLogNachrichten($type,$profile);
+		}
+
+	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
+		{
+		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')	
+		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,$vid, $i*10,$profile,$scriptIdHeatControl );
+		}
+
+	function InitMesagePuffer($type=3,$profile="")
+		{		
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+			// bei etwas anderem als einem String stimmt der defaultwert nicht
+			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
+			if ($vid==false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
+				}
+			else
+				{	
+				EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
+				}	
+			}
+		else
+			{
+			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
+			$this->installedmodules=$moduleManager->GetInstalledModules();			
+			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
+			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
+			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Schaltbefehle-Anwesenheitssimulation",$CategoryIdData);
+			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
+			if ($vid==false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
+				}
+			else
+				{
+				EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
+				}		
+			}
+		}
+
+	function LogMessage($message)
+		{
+		if ($this->log_File != "No-Output")
+			{
+			$handle3=fopen($this->log_File, "a");
+			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fclose($handle3);
+			//echo $this->log_File."   ".$message."\n";
+			}
+		}
+
+	}
+									
+/*****************************************************************************************************
+ *
+ * Stromheizung in der Autosteuerung
+ *
+ * Routinen zur Stromheizungssteuerung
+ *
+ **************************************************************************************************************/
+
+
+class AutosteuerungStromheizung extends AutosteuerungFunktionen
+	{
+
+	protected $log_File="Default";
+	protected $script_Id="Default";
+	protected $nachrichteninput_Id="Default";
+	protected $installedmodules;
+	protected $zeile=array();
+	protected $scriptIdHeatControl;
+	
+	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		//echo "Logfile Construct\n";
+		
+		/******************************* Init *********/
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		$this->Init();
+
+		/******************************* File Logging *********/
+		$this->InitLogMessage();
+		
+		/******************************* Nachrichten Logging *********/
+		$type=1;$profile="AusEin"; $this->zeile=array();
+		$this->InitLogNachrichten($type,$profile);
+		}
+
+	function InitMesagePuffer($type=1,$profile="AusEin")
+		{
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+			// bei etwas anderem als Integer stimmt der defaultwert nicht		
+			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
+			if ($vid==false) break;		
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }	
+			}
+		else
+			{
+			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
+			$this->installedmodules=$moduleManager->GetInstalledModules();			
+			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
+			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
+			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
+			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
+			if ($vid==false) break;		
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }			
+			}		
+		}	
+		
+	function ShiftforNextDay($message=0)
+		{
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			//print_r($this->zeile);
+			for ($i=1; $i<16;$i++) 
+				{ 
+				SetValue($this->zeile[$i],GetValue($this->zeile[$i+1])); 
+				//echo "Wert : ".$i."\n";
+				}
+			SetValue($this->zeile[$i],$message);
+			}		
+		}
+
+	function SetupKalender()
+		{
+		$type=1;$profile="AusEin";
+		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);
+		if ($vid==false) break;
+		EmptyCategory($vid);			
+		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
+		}
 
 	}
 

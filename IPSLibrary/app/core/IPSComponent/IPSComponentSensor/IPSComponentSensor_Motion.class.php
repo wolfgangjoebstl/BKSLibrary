@@ -73,7 +73,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Bewegungs Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.'('.IPS_GetName($variable).') mit Wert '.$value);
+			IPSLogger_Dbg(__file__, 'HandleEvent: Bewegungs Message Handler für VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 
 			$log=new Motion_Logging($variable);
 			$result=$log->Motion_LogValue();

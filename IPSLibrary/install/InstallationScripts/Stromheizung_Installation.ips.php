@@ -261,26 +261,29 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	$idx = 10;
 	$groupConfig = IPSHeat_GetGroupConfiguration();
-	foreach ($groupConfig as $groupName=>$groupData) {
+	foreach ($groupConfig as $groupName=>$groupData) 
+		{
 		$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
 		$idx = $idx + 1;
-	}
+		}
 
 	// ===================================================================================================
 	// Add Programs
 	// ===================================================================================================
 	$idx = 10;
 	$programConfig = IPSHeat_GetProgramConfiguration();
-	foreach ($programConfig as $programName=>$programData) {
+	foreach ($programConfig as $programName=>$programData) 
+		{
 		$itemIdx = 0;
 		$programAssociations = array();
-		foreach ($programData as $programItemName=>$programItemData) {
+		foreach ($programData as $programItemName=>$programItemData) 
+			{
 			$programAssociations[]=$programItemName;
-		}
+			}
 		CreateProfile_Associations ('IPSHeat_'.$programName, $programAssociations, "ArrowRight");
 		$programId = CreateVariable($programName, 1 /*Integer*/, $categoryIdPrograms,  $idx,  'IPSLight_'.$programName, $scriptIdActionScript, 0);
 		$idx = $idx + 1;
-	}
+		}
 
 	/***********************************************************************************************
 	 * Register Events for Device Synchronization
@@ -293,69 +296,84 @@ Path=Visualization.Mobile.Stromheizung
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	$messageHandler = new IPSMessageHandler();
 	$lightConfig = IPSHeat_GetHeatConfiguration();
-	foreach ($lightConfig as $deviceName=>$deviceData) {
+	foreach ($lightConfig as $deviceName=>$deviceData) 
+		{
 		$component = $deviceData[IPSHEAT_COMPONENT];
 		$componentParams = explode(',', $component);
 		$componentClass = $componentParams[0];
 		switch ($componentClass)
 			{
 			case 'IPSComponentSwitch_LCNa':
+				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+				$variableId = @IPS_GetObjectIDByIdent('Intensity', $instanceId);
+				if ($variableId===false) 
+					{
+					$moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
+					} 
+				else 
+					{
+					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+					}
+				break;	
 			case 'IPSComponentSwitch_LCN':
+				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+				$variableId = @IPS_GetObjectIDByIdent('Status', $instanceId);
+				if ($variableId===false) 
+					{
+					$moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
+					} 
+				else 
+					{
+					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+					}
+				break;			
 			case 'IPSComponentSwitch_EIB':
+				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+				$variableId = @IPS_GetObjectIDByIdent('Value', $instanceId);
+				if ($variableId===false) 
+					{
+					$moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
+					} 
+				else 
+					{
+					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+					}			
+				break;	
 			case 'IPSComponentSwitch_Homematic';
+				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+				$variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
+				if ($variableId===false) 
+					{
+					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
+					} 
+				else 
+					{
+					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+					}
+				break;	
+			case 'IPSComponentHeatSet_Homematic':
+				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
+				$variableId = @IPS_GetObjectIDByIdent('SET_TEMPERATURE', $instanceId);
+				echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."   (".IPS_GetName($instanceId).")     ".$variableId."\n";
+				if ($variableId===false) 
+					{
+					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
+					} 
+				else 
+					{
+					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
+					}
+				break;
 			default:
 				echo "   ".$deviceName."   ".$componentClass."\n";
 				break;
 			}
-
-		if (false)
-			{
-		// Homematic
-		if ($componentClass=='IPSComponentSwitch_Homematic') 
-			{
-			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-			$variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
-			if ($variableId===false) {
-				$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
-			} else {
-				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-			}
-		// EIB
-		} elseif ($componentClass=='IPSComponentSwitch_EIB') {
-			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-			$variableId = @IPS_GetObjectIDByIdent('Value', $instanceId);
-			if ($variableId===false) {
-				$moduleManager->LogHandler()->Log('Variable with Ident Value could NOT be found for EIB Instance='.$instanceId);
-			} else {
-				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor EIB Instance='.$instanceId);
-				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-			}
-		// LCN
-		} elseif ($componentClass=='IPSComponentSwitch_LCN') {
-			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-			$variableId = @IPS_GetObjectIDByIdent('Status', $instanceId);
-			if ($variableId===false) {
-				$moduleManager->LogHandler()->Log('Variable with Ident Status could NOT be found for LCN Instance='.$instanceId);
-			} else {
-				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
-				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-			}
-		// LCNa
-		} elseif ($componentClass=='IPSComponentSwitch_LCNa') {
-			$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
-			$variableId = @IPS_GetObjectIDByIdent('Intensity', $instanceId);
-			if ($variableId===false) {
-				$moduleManager->LogHandler()->Log('Variable with Ident Intensity could NOT be found for LCN Instance='.$instanceId);
-			} else {
-				$moduleManager->LogHandler()->Log('Register OnChangeEvent vor LCN Instance='.$instanceId);
-				$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
-			}
-		} else {
-			//$moduleManager->LogHandler()->Log('Found Component '.$componentClass);
 		}
-		} // if false
-	}
 
 	/****************************************************************************
 	 *
@@ -365,25 +383,69 @@ Path=Visualization.Mobile.Stromheizung
 	 *
 	 *****************************************************************************************/
 
+	$webFrontConfig = IPSHeat_GetWebFrontConfiguration();
+	
 	/* nur die Heizungstellwerte bei der Autosteuerung, Tab Stromheizung dazuhaengen */ 
 
-	$WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung';
+	$WFC10_Autosteuerung_Path='Visualization.WebFront.Administrator.Autosteuerung.Stromheizung.AutoTPADetails2_LeftDown';
 	if ($WFC10_Enabled) 
 		{
 		$categoryId_Autosteuerung_WebFront                = CreateCategoryPath($WFC10_Autosteuerung_Path);
+		if ($WFC10_Regenerate) 
+			{
+			/* Loescht die Stromheizung ein/aus und die anderen Variablen auch, eigenes Tab left down machen  */
+			EmptyCategory($categoryId_Autosteuerung_WebFront);
+			}		
+		echo "Auch in Autosteuerung Stromheizung die Links installieren : ".$categoryId_Autosteuerung_WebFront."\n";
+		$order = 10;
+		foreach($webFrontConfig as $tabName=>$tabData) {
+			foreach($tabData as $WFCItem) {
+				$order = $order + 10;
+				switch($WFCItem[0]) 
+					{
+					case IPSHEAT_WFCSPLITPANEL:
+					case IPSHEAT_WFCCATEGORY:
+					case IPSHEAT_WFCGROUP:
+						break;
+					case IPSHEAT_WFCLINKS:
+						echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
+						//print_r($WFCItem);
+						$links      = explode(',', $WFCItem[3]);
+						$names      = $links;
+						if (array_key_exists(4, $WFCItem)) { $names = explode(',', $WFCItem[4]); 	}
+						foreach ($links as $idx=>$link) 
+							{
+							$order = $order + 1;
+							$name=explode('#', $names[$idx]);
+							if (isset($name[1])==true) 
+								{ 
+								// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+								CreateLinkByDestination($name[0], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
+								}
+							}
+						break;
+					default:
+						trigger_error('Unknown WFCItem='.$WFCItem[0]);
+			   	}
+				}
+			}
+		
 		}
+
+	/* komplettes Webfront wie bei IPSLight aufbauen */ 
 			
 	if ($WFC10_Enabled) 
 		{
+		/* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
 		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);   // Administrator.Stromheizung
-		if ($WFC10_Regenerate) {
+		if ($WFC10_Regenerate) 
+			{
 			EmptyCategory($categoryId_WebFront);
 			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);				// HeatTPA
 			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* noch nicht klar für was das ist ? */
-		}
+			}
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
-		$webFrontConfig = IPSHeat_GetWebFrontConfiguration();
 		$order = 10;
 		foreach($webFrontConfig as $tabName=>$tabData) {
 			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
@@ -400,7 +462,7 @@ Path=Visualization.Mobile.Stromheizung
 						break;
 					case IPSHEAT_WFCGROUP:
 					case IPSHEAT_WFCLINKS:
-						echo "  WFCLINKS : ".$WFCItem[0]."   ".$WFCItem[3]."\n";
+						echo "  WFCLINKS : ".$WFCItem[2]."   ".$WFCItem[3]."\n";
 						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
 						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
 							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
