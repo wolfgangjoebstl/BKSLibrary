@@ -49,17 +49,25 @@
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
 			if (strpos($instanceId,":") !== false ) 
-				{
+				{	/* ROID Angabe auf der ersten Position */
+				$this->rpcADR 			= $rpcADR;				
 				$this->RemoteOID  	= $instanceId;
 				$this->instanceId		= null;
 				}
 			else
-				{   /* keine ROID Angabe, kommt von IPSHeat */
+				{	/* keine ROID Angabe auf der ersten Position, kommt von IPSHeat */
 				$this->instanceId		= $instanceId;
-				$this->RemoteOID  	= null;
+				if (strpos($rpcADR,":") !== false )
+					{ 	/* ROID Angabe auf der zweiten Position */			
+					$this->RemoteOID  	= $rpcADR;
+					$this->rpcADR 			= $rpcADR;
+					}
+				else
+					{	
+					$this->RemoteOID  	= null;
+					$this->rpcADR 			= $rpcADR;
+					}				
 				}
-					
-			$this->rpcADR 			= $rpcADR;
 			$this->tempValue  	= $lightValue;
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
@@ -80,7 +88,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "HeatSet Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			$module->SyncPosition($value, $this);
@@ -88,7 +96,7 @@
 			$log=new HeatSet_Logging($variable);
 			$result=$log->HeatSet_LogValue($value);
 			
-			$this->WriteValueRemote($value);  /* schreibt alle Remote Server an die in $this->RemoteOID stehen */
+			$this->WriteValueRemote($value);  /* schreibt alle Remote Server an die in $this->RemoteOID stehen, Format Kurzname:ROID; */
 			}
 
 		/**
@@ -102,7 +110,7 @@
 		public function SetState($power, $level)
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			if ($this->rpcADR=="")
+			if ($this->rpcADR==Null)
 				{
 				if (!$power) {
 					HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", 6);

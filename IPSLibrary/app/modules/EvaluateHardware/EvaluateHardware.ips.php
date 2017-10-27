@@ -387,7 +387,6 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 		$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
-		$includefile.="\n         ".'"COID" => array(';
 
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
 		if ($typedev<>"") 
@@ -395,7 +394,8 @@ if ($_IPS['SENDER']=="Execute")
 			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
 			$summary[$typedev][]=IPS_GetName($instanz);
 			}
-
+		
+		$includefile.="\n         ".'"COID" => array(';
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)
@@ -441,7 +441,6 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"DeviceList" => \''.IPS_GetProperty($instanz,'DeviceList').'\', ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
-		$includefile.="\n         ".'"COID" => array(';
 
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
 		if ($typedev<>"") 
@@ -450,6 +449,7 @@ if ($_IPS['SENDER']=="Execute")
 			$summary[$typedev][]=IPS_GetName($instanz);
 			}
 
+		$includefile.="\n         ".'"COID" => array(';
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)
@@ -492,7 +492,6 @@ if ($_IPS['SENDER']=="Execute")
 		$includefile.="\n         ".'"SubAdresse" => "'.IPS_GetProperty($instanz,'SubAddress').'", ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
-		$includefile.="\n         ".'"COID" => array(';
 
 		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
 		if ($typedev<>"") 
@@ -501,6 +500,7 @@ if ($_IPS['SENDER']=="Execute")
 			$summary[$typedev][]=IPS_GetName($instanz);
 			}
 			
+		$includefile.="\n         ".'"COID" => array(';			
 		$cids = IPS_GetChildrenIDs($instanz);
 		//print_r($cids);
 		foreach($cids as $cid)

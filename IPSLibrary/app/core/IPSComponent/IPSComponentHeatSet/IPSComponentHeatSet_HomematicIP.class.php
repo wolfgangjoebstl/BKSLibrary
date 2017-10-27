@@ -36,7 +36,7 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentheatControl_Homematic Objektes
+		 * Initialisierung eines IPSComponentheatSet_Homematic Objektes
 		 *
 		 * legt die Remote Server an, an die wenn RemoteAccess Modul installiert ist reported werden muss
 		 * var1 ist eine Liste aller Remote Server mit den entsprechenden Remote OID Nummern
@@ -47,32 +47,31 @@
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
 			if (strpos($instanceId,":") !== false ) 
-				{
+				{	/* ROID Angabe auf der ersten Position */
+				$this->rpcADR 			= $rpcADR;				
 				$this->RemoteOID  	= $instanceId;
 				$this->instanceId		= null;
 				}
 			else
-				{   /* keine ROID Angabe, kommt von IPSHeat */
+				{	/* keine ROID Angabe auf der ersten Position, kommt von IPSHeat */
 				$this->instanceId		= $instanceId;
-				$this->RemoteOID  	= null;
-				}			
-			$this->rpcADR = $rpcADR;
-			$this->tempValue    = $lightValue;
-			$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
+				if (strpos($rpcADR,":") !== false )
+					{ 	/* ROID Angabe auf der zweiten Position */			
+					$this->RemoteOID  	= $rpcADR;
+					$this->rpcADR 			= $rpcADR;
+					}
+				else
+					{	
+					$this->RemoteOID  	= null;
+					$this->rpcADR 			= $rpcADR;
+					}				
+				}
+			$this->tempValue  	= $lightValue;
+			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-			//echo "construct IPSComponentHeatSet_HomematicIP with parameter ".$this->RemoteOID."  ".$this->instanceId."  (".IPS_GetName($this->instanceId).")   ".$this->rpcADR."  ".$this->tempValue."\n";
-			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($this->installedmodules["RemoteAccess"]))
-				{
-				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-				$this->remServer	  = RemoteAccessServerTable();
-				}
-			else
-				{								
-				$this->remServer	  = array();
-				}
+			echo "construct IPSComponentHeatSet_Homematic with parameter ".$this->RemoteOID."  ".$this->rpcADR."  ".$this->tempValue."\n";
+			//echo "construct IPSComponentHeatSet_Homematic with parameter ".$this->RemoteOID."  ".$this->instanceId."  (".IPS_GetName($this->instanceId).")   ".$this->rpcADR."  ".$this->tempValue."\n";
+			$this->remoteServerSet();
 			}
 
 		/**
@@ -87,9 +86,11 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			echo "HeatSet HomematicIP Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet HomematicIP Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
+			$module->SyncPosition($value, $this);
+						
 			$log=new HeatSet_Logging($variable);
 			$result=$log->HeatSet_LogValue($value);
 			
@@ -107,7 +108,7 @@
 		public function SetState($power, $level)
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			if ($this->rpcADR=="")
+			if ($this->rpcADR==Null)
 				{
 				if (!$power) {
 					HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", 6);

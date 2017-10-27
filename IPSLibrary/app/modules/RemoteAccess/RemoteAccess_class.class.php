@@ -303,7 +303,8 @@ class RemoteAccess
 	 *
 	 *   legt function ROID_List() an
 	 *
-	 * und eventuell auch angelegt
+	 * und legt auch gleich die Kategorien aud den Logging Servern an. Ziel ist die Remote OIDs hier zu speichern, 
+	 * damit die verarbeitung schneller geht und die ROIDs zuerst erst gesucht werden muessen. auch angelegt
 	 *
 	 * wenn eine status Information mitgeliefert wird (aus sys_ping) werden die nicht erreichbaren Server nicht behandelt, vermeidet Fehler bei Installation
 	 *
@@ -359,7 +360,10 @@ class RemoteAccess
 
 				$this->listofOIDs["HeatControl"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatControl");
 				$this->includefile.="\n         ".'"HeatControl" => "'.$this->listofOIDs["HeatControl"][$Name].'", ';
-	
+
+				$this->listofOIDs["HeatSet"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "HeatSet");
+				$this->includefile.="\n         ".'"HeatSet" => "'.$this->listofOIDs["HeatSet"][$Name].'", ';	
+				
 				$this->listofOIDs["Humidity"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Feuchtigkeit");
 				$this->includefile.="\n         ".'"Humidity" => "'.$this->listofOIDs["Humidity"][$Name].'", ';
 

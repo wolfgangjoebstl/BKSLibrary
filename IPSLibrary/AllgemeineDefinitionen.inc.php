@@ -2932,7 +2932,7 @@ function read_wfc()
 			foreach ($remServer as $Name => $Server)
 				{
 				echo "    Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-				print_r($Server);
+				//print_r($Server);
 				}							
 			}
 		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
