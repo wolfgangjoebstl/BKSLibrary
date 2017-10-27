@@ -281,6 +281,66 @@
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
+	 * Variablen Profile für Darstellung anlegen, sind die selben wie bei Remoote Access
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	
+	$profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion");
+	foreach ($profilname as $pname)
+		{
+		if (IPS_VariableProfileExists($pname) == false)
+			{
+			echo "  Profil ".$pname." existiert nicht \n";
+			switch ($pname)
+				{
+				case "Temperatur":
+					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+					IPS_SetVariableProfileText($pname,'',' °C');
+					break;
+				case "TemperaturSet":
+					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+					IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+					IPS_SetVariableProfileText($pname,'',' °C');
+					break;
+				case "Humidity";
+					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+					IPS_SetVariableProfileText($pname,'',' %');
+					break;
+				case "Switch";
+					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+					IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+					break;
+				case "Contact";
+					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
+					IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
+					break;
+				case "Button";
+					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+					IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
+					break;
+				case "Motion";
+					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+					IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
+					break;
+				default:
+					break;
+				}
+			}
+		else
+			{
+			echo "  Profil ".$pname." existiert. \n";
+			}
+		}
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
 	 * WebFront Variablen für Darstellung evaluieren
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
@@ -299,11 +359,12 @@
 		$Params = explode("-",IPS_GetName($CategoryId)); 
 		$SubCategory=IPS_GetChildrenIDs($CategoryId);
 		foreach ($SubCategory as $SubCategoryId)
-	   		{
+			{
 			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
-	   		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
-	   		}
-	   	}
+			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["ORDER"]=IPS_GetObject($SubCategoryId)["ObjectPosition"];
+			}
+		}
 	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
@@ -381,12 +442,12 @@
 					if ($Group=="Auswertung")
 				 		{
 				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
-						CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  20);
+						CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
 				 		}
 				 	if ($Group=="Nachrichten")
 				 		{
 				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
-						CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  20);
+						CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
 						}
 					}
     			}
@@ -779,7 +840,7 @@
 	if (function_exists('HomematicList'))
 		{
 		//installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
-		installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');
+		installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
 		} 			
 
 	echo "\n";

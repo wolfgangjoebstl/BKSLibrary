@@ -50,6 +50,7 @@
 		 */
 		public function SyncPosition($position, IPSComponentHeatSet $componentToSync) 
 			{
+			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 			if ($position>6) { $state=true; } else { $state=false; }
 			echo "HandleEvent: SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: SyncPosition mit Status '.($state?'On':'Off').' mit Wert '.$position);			

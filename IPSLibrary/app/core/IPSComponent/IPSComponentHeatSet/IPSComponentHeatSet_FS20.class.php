@@ -71,7 +71,7 @@
 			$this->tempValue  	= $lightValue;
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-			echo "construct IPSComponentHeatSet_FS20 with parameter: Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";	
+			echo "construct IPSComponentHeatSet_FS20 with Parameter: Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";	
 			$this->remoteServerSet();
 			}
 			
@@ -92,7 +92,11 @@
 			echo "HeatSet FS20 Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet FS20 Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
-			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncPosition($value, $this);
+			if (isset ($this->installedmodules["Stromheizung"])) 
+				{
+				//IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
+				$module->SyncPosition($value, $this);
+				}
 						
 			$log=new HeatSet_Logging($variable);		/* zweite Variable ist optional und wäre der Variablenname wenn er nicht vom Parent Namen abgeleitet werden soll */
 			$result=$log->HeatSet_LogValue($value);	/* Variable ist optional, sonst wird sie aus der OID vom construct ausgelesen */

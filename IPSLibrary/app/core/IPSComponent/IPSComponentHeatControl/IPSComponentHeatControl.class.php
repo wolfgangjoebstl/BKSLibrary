@@ -255,7 +255,8 @@
 				{
 				/* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100 */
 				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
-				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));					
+				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));
+				IPSLogger_Dbg(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($variable).') mit Wert '.$value.' ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID).' kWh.');	
 				}				
 			
 			if (isset ($this->installedmodules["DetectMovement"]))

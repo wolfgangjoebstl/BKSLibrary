@@ -23,7 +23,7 @@ class RemoteAccess
 
 	public $includefile;
 	private $remServer=array();
-	private $profilname=array("Temperatur","Humidity","Switch","Button","Contact","Motion");
+	private $profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion");
 	private $listofOIDs=array();
 	private $listofROIDs=array();
 	
@@ -518,10 +518,16 @@ class RemoteAccess
 						switch ($pname)
 							{
 							case "Temperatur":
-						 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					  			$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-					  			$rpc->IPS_SetVariableProfileText($pname,'',' °C');
-						  		break;
+								$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+								$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+								$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+								break;
+							case "TemperaturSet":
+								$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+								$rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+								$rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+								$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+								break;								
 							case "Humidity";
 						 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 						  		$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen

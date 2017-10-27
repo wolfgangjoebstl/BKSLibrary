@@ -69,7 +69,7 @@
 			$this->tempValue  	= $lightValue;
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-			echo "construct IPSComponentHeatSet_Homematic with parameter ".$this->RemoteOID."  ".$this->rpcADR."  ".$this->tempValue."\n";
+			echo "construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
 			//echo "construct IPSComponentHeatSet_Homematic with parameter ".$this->RemoteOID."  ".$this->instanceId."  (".IPS_GetName($this->instanceId).")   ".$this->rpcADR."  ".$this->tempValue."\n";
 			$this->remoteServerSet();
 			}

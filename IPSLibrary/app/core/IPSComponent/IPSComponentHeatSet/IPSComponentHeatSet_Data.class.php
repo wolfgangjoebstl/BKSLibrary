@@ -73,7 +73,7 @@
 				}
 			$this->tempValue  	= $lightValue;
 						
-			echo "construct IPSComponentHeatSet_Data with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			echo "construct IPSComponentHeatSet_Data with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
 			$this->remoteServerSet();
 			}
 			
@@ -99,6 +99,101 @@
 			
 			$this->WriteValueRemote($value);
 			}
+
+		/**
+		 * @public
+		 *
+		 * Zustand Setzen
+		 *
+		 * @param integer $power Geräte Power
+		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
+		 */
+		public function SetState($power, $level)
+			{
+			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			if ($this->rpcADR==Null)
+				{
+				if (!$power) {
+					FHT_SetTemperature($this->instanceId, 6);
+					}
+				else
+					{
+					$levelHM = $level;
+					FHT_SetTemperature($this->instanceId,  $levelHM);
+					}
+				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				if (!$power) {
+					$rpc->FHT_SetTemperature($this->instanceId, 6);
+					}
+				else
+					{
+					$levelHM = $level;
+					$rpc->FHT_SetTemperature($this->instanceId, $levelHM);
+					}
+				}
+			}
+
+		/**
+		 * @public
+		 *
+		 * Liefert aktuellen Zustand
+		 *
+		 * @return boolean aktueller Schaltzustand  
+		 */
+		public function GetState() {
+			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+		}
+
+		/**
+		 * @public
+		 *
+		 * Liefert aktuellen Zustand
+		 *
+		 * @return boolean aktueller Schaltzustand  
+		 */
+		public function GetLevel() {
+			GetValue(IPS_GetVariableIDByIdent('STATE', $this->instanceId));
+		}
+
+		/**
+		 * @public
+		 *
+		 * Hinauffahren der Beschattung
+		 */
+		public function MoveUp(){
+		   if ($this->reverseControl) {
+				HM_WriteValueFloat($this->instanceId , 'LEVEL', 0);
+			} else {
+				HM_WriteValueFloat($this->instanceId , 'LEVEL', 1);
+			}
+		}
+		
+		/**
+		 * @public
+		 *
+		 * Hinunterfahren der Beschattung
+		 */
+		public function MoveDown(){
+		   if ($this->reverseControl) {
+				HM_WriteValueFloat($this->instanceId , 'LEVEL', 1);
+			} else {
+				HM_WriteValueFloat($this->instanceId , 'LEVEL', 0);
+			}
+		}
+		
+		/**
+		 * @public
+		 *
+		 * Stop
+		 */
+		public function Stop() {
+			HM_WriteValueBoolean($this->instanceId , 'STOP', true);
+		}			
+			
+
 
 		}
 

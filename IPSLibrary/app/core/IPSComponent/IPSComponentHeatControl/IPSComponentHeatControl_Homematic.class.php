@@ -68,7 +68,7 @@
 				}
 			$this->tempValue  	= $lightValue;
 			
-			echo "construct IPSComponentHeatControl_Homematic with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			echo "construct IPSComponentHeatControl_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
 			
 			$this->remoteServerSet();
 			}

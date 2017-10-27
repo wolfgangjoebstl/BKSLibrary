@@ -70,7 +70,7 @@
 				}
 			$this->tempValue  	= $lightValue;
 			
-			echo "construct IPSComponentHeatControl_FS20 with parameter ".$this->RemoteOID."  ".$this->tempObject."  ".$this->tempValue."\n";
+			echo "construct IPSComponentHeatControl_FS20 with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";;
 			$this->remoteServerSet();
 			}
 			
@@ -89,7 +89,7 @@
 		public function HandleEvent($variable, $value, IPSModuleHeatControl $module)
 			{
 			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.$value);			
 			
 			$log=new HeatControl_Logging($variable);		/* zweite Variable ist optional und wäre der Variablenname wenn er nicht vom Parent Namen abgeleitet werden soll */
 			$result=$log->HeatControl_LogValue($value);	/* Variable ist optional, sonst wird sie aus der OID vom construct ausgelesen */
