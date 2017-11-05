@@ -1278,7 +1278,7 @@ class OperationCenter
 			{
 			/* Überschriften aus der Tabelle einsammeln, mit Strichpunkt trennen */
 			$result_l1=substr($result,$pos,6);       /*  Period  */
-	   	$result=substr($result,$pos+7,1500);
+			$result=substr($result,$pos+7,1500);
 			$result_l1=$result_l1.";".trim(substr($result,20,20));    /* Connection Time  */
 			$result=substr($result,140,1500);
 			$result_l1=$result_l1.";".trim(substr($result,20,40));    /* Upload */
@@ -1291,29 +1291,29 @@ class OperationCenter
 			$result=substr($result,50,1500);
 			$result_l2=trim(substr($result,10,30));        /* Today   */
 			$result=substr($result,20,1500);
-				$result2=trim(substr($result,20,30));
-			   $pos=strpos($result2,":");
-				$conntime=(int)substr($result2,0,$pos);
-				$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
-				echo " Connection Time von Heute in Minuten : ".$conntime." sind ".round(($conntime/60),2)." Stunden.\n";
+			$result2=trim(substr($result,20,30));
+			$pos=strpos($result2,":");
+			$conntime=(int)substr($result2,0,$pos);
+			$conntime=$conntime*60+ (int) substr($result2,$pos+1,2);
+			echo " Connection Time von Heute in Minuten : ".$conntime." sind ".round(($conntime/60),2)." Stunden.\n";
 			$result_l2=$result_l2.";".trim(substr($result,20,30));    /* Today Connection Time */
 			$result=substr($result,30,1500);
-				$result2=trim(substr($result,10,30));
-			   $pos=strpos($result2,".");
-				$Upload= (float) $result2;
-				echo " Upload Datenvolumen Heute bisher ".$Upload." Mbyte \n";;
+			$result2=trim(substr($result,10,30));
+			$pos=strpos($result2,".");
+			$Upload= (float) $result2;
+			echo " Upload Datenvolumen Heute bisher ".$Upload." Mbyte \n";;
 			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Upload */
 			$result=substr($result,30,1500);
-				$result2=trim(substr($result,10,30));
-			   $pos=strpos($result2,".");
-				$Download= (float) $result2;
-				echo " Download Datenvolumen Heute bisher ".$Download." MByte \n";
+			$result2=trim(substr($result,10,30));
+			$pos=strpos($result2,".");
+			$Download= (float) $result2;
+			echo " Download Datenvolumen Heute bisher ".$Download." MByte \n";
 			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Download */
 			$result=substr($result,30,1500);
-				$result2=trim(substr($result,10,30));
-			   $pos=strpos($result2,".");
-				$Today_Totalload= (float) $result2;
-				echo " Gesamt Datenvolumen Heute bisher ".$Today_Totalload." Mbyte \n";
+			$result2=trim(substr($result,10,30));
+			$pos=strpos($result2,".");
+			$Today_Totalload= (float) $result2;
+			echo " Gesamt Datenvolumen Heute bisher ".$Today_Totalload." Mbyte \n";
 			$result_l2=$result_l2.";".trim(substr($result,10,30));    /* Today Total */
 
 			/* und die Werte von gestern */

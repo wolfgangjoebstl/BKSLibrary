@@ -203,28 +203,28 @@
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-      IPS_SetPosition($categoryId_WebFront,999);
+		IPS_SetPosition($categoryId_WebFront,999);
 		}
 
 	if ($WFC10User_Enabled)
 		{
 		echo "\nWebportal User installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-
+		IPS_SetPosition($categoryId_WebFront,999);
 		}
 
 	if ($Mobile_Enabled)
 		{
 		echo "\nWebportal Mobile installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-
+		IPS_SetPosition($categoryId_WebFront,999);
 		}
 
 	if ($Retro_Enabled)
 		{
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
-
+		IPS_SetPosition($categoryId_WebFront,999);
 		}
 
 /***************************************************************************************/

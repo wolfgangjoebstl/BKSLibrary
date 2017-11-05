@@ -127,8 +127,9 @@
 		private $variablename;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
 		
-		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
-		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
+		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert */
+		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den leistungswert */
+		public $variableTimeLogID;				/* ID der entsprechenden lokalen Spiegelvariable für den Zeitpunkt der letzten Änderung */
 				
 		private $HeatControlAuswertungID;
 		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
@@ -202,13 +203,15 @@
 						$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 						echo "Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
 						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
 						AC_SetLoggingStatus($archiveHandlerID,$this->variableEnergyLogID,true);
 						AC_SetAggregationType($archiveHandlerID,$this->variableEnergyLogID,0);      /* normaler Wwert */
 						$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 						AC_SetLoggingStatus($archiveHandlerID,$this->variablePowerLogID,true);
 						AC_SetAggregationType($archiveHandlerID,$this->variablePowerLogID,0);      /* normaler Wwert */
 						IPS_ApplyChanges($archiveHandlerID);						
+						$this->variableTimeLogID=CreateVariable($this->variablename."_Changetime",1,$this->variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+						if (GetValue($this->variableTimeLogID) == 0) SetValue($this->variableTimeLogID,time());
 						}
 					else 
 						{
@@ -244,19 +247,29 @@
 				if ($value == Null) { $value=GetValue($this->variable); }
 				$result=number_format($value,2,',','.')." %";				
 				}
-				
-			$unchanged=time()-$variabletyp["VariableChanged"];
-			$oldvalue=GetValue($this->variableLogID);
+			$results=$result;
+
+
 			SetValue($this->variableLogID,$value);
-			echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." %. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 
 			// Leistungs und Energiewerte berechnen
 			if ($this->powerConfig<>Null)
 				{
+				$unchanged=time()-GetValue($this->variableTimeLogID);
+				$oldvalue=GetValue($this->variableLogID);
+				$unchangedformat="Sekunden";
+				$unchangedvalue=$unchanged;
+				if ($unchangedvalue>100) { $unchangedvalue=$unchangedvalue/60; $unchangedformat="Minuten"; }
+				if ($unchangedvalue>100) { $unchangedvalue=$unchangedvalue/60; $unchangedformat="Stunden"; }
+				echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." %. Alter Wert war : ".$oldvalue." unverändert für ".number_format($unchangedvalue,2,',','.')." ".$unchangedformat.".\n";
+
 				/* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100 */
+				SetValue($this->variableTimeLogID,time());
 				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
 				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));
-				IPSLogger_Dbg(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($variable).') mit Wert '.$value.' ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID).' kWh.');	
+				echo 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID)." kWh.\n";
+				IPSLogger_Dbg(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID).' kWh.');	
+				$results=$result.";".$unchanged.";".number_format(GetValue($this->variablePowerLogID),2,',','.').' kW;'.number_format(GetValue($this->variableEnergyLogID),2,',','.')." kWh";
 				}				
 			
 			if (isset ($this->installedmodules["DetectMovement"]))
@@ -291,7 +304,7 @@
 					}
 				}
 			
-			parent::LogMessage($result);
+			parent::LogMessage($results);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}
 

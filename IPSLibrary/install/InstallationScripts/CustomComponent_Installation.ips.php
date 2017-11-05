@@ -839,8 +839,7 @@
 	
 	if (function_exists('HomematicList'))
 		{
-		//installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
-		installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
+		installComponentFull(HomematicList(),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
 		} 			
 
 	echo "\n";

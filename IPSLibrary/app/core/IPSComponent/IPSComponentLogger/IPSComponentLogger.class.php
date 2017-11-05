@@ -237,10 +237,10 @@ class Logging
 	function LogMessage($message)
 		{
 		if ($this->log_File != "No-Output")
-		   {
-      	$handle3=fopen($this->log_File, "a");
-		   fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
-	   	fclose($handle3);
+			{
+			$handle3=fopen($this->log_File, "a");
+			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fclose($handle3);
 			//echo $this->log_File."   ".$message."\n";
 			}
 		}

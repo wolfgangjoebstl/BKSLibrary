@@ -117,26 +117,31 @@ if ($_IPS['SENDER']=="Execute")
 		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
 		if ( ($status=@file_get_contents($filename)) === false)
 			{
-			echo "Filename wurde noch nicht erzeugt.\n";
-			$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !\n".$emailText);
+			echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
+			$filename=$DIR_copystatusdropbox.date("Ymd",time()-60*60*24).'StatusAktuell.txt';
+			if ( ($status=@file_get_contents($filename)) === false)
+				{
+				echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
+				$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !\n".$emailText);
+				}
 			}
 		else
-		   {
+			{
 			echo "Email wird mit aktuellen Werten gesendet.\n";
-			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
-			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+			$emailStatus=@SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
+			if ($emailStatus==false) echo $status."  Fehler bei der email Uebertragung von Filename : ".$filename.".\n";
 			}
 		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
 		if ( ($status=@file_get_contents($filename)) === false)
 			{
-			echo "Filename wurde noch nicht erzeugt.\n";
+			echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
 			$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !\n".$emailText);
 			}
 		else
 		   {
 			echo "Email wird mit historischen Werten gesendet.\n";			
-			$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang:\n".$emailText,$filename);
-			if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+			$emailStatus=@SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang:\n".$emailText,$filename);
+			if ($emailStatus==false) echo "  Fehler bei der email Uebertragung.\n";
 			}
 		}
 
@@ -207,7 +212,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
 				if ( ($status=@file_get_contents($filename)) === false)
 					{
-					echo "Filename wurde noch nicht erzeugt.\n";
+					echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
 					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !");
 					}
 				else
@@ -218,7 +223,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
 				if ( ($status=@file_get_contents($filename)) === false)
 					{
-					echo "Filename wurde noch nicht erzeugt.\n";
+					echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
 					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !");
 					}
 				else

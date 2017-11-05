@@ -825,6 +825,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$alleMotionWerte="";
 		$alleHelligkeitsWerte="";
 		$alleStromWerte="";
+		$alleHeizungsWerte="";
 		
 		/******************************************************************************************
 		
@@ -973,6 +974,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				}
 
+
+			$alleHeizungsWerte.=ReadThermostatWerte();
+			$alleHeizungsWerte.=ReadAktuatorWerte();
+						
 			$ergebnisRegen.="\n\nAktuelle Regenmengen direkt aus den HW-Registern:\n\n";
 			foreach ($Homematic as $Key)
 				{
@@ -1093,6 +1098,20 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($subnet);
 			
+			$ergebnisOperationCenter.="Lokale IP Adresse im Netzwerk : \n";
+			$result=$OperationCenter->ownIPaddress();
+			foreach ($result as $ip => $data)
+				{
+				$ergebnisOperationCenter.="  Port \"".$data["Name"]."\" hat IP Adresse ".$ip." und das Gateway ".$data["Gateway"].".\n";
+				}
+			
+			$result=$OperationCenter->whatismyIPaddress1()[0];
+			if ($result["IP"]== true)
+				{
+				$ergebnisOperationCenter.= "Externe IP Adresse : \n";
+				$ergebnisOperationCenter.= "  Whatismyipaddress liefert : ".$result["IP"]."\n\n";
+				}
+				
 			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
 			$OperationCenterConfig = OperationCenter_Configuration();
@@ -1119,7 +1138,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 					}
 				else
 					{
-					$ergebnisOperationCenter.="\n";
+					$ergebnisOperationCenter.="    Keine Werte. Router nicht unterstützt.\n";
 					}
 				}
 			$ergebnisOperationCenter.="\n";
@@ -1267,19 +1286,19 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		
 		if ($sommerzeit)
 	      {
-			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$ergebnis_tagesenergie.$alleTempWerte.
+			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$alleHeizungsWerte.$ergebnis_tagesenergie.$alleTempWerte.
 			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleHelligkeitsWerte.
+			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleHelligkeitsWerte.$alleHeizungsWerte.
 			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo;
 		   }
 	  	echo ">>Ende aktuelle Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
 	else   /* historische Werte */
-	   {
-
+		{
+		$alleHeizungsWerte="";
 
 		/******************************************************************************************
 
@@ -1616,11 +1635,11 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 	      {
 			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
-					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleMotionWerte.$inst_modules;
+					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleMotionWerte.$alleHeizungsWerte.$inst_modules;
 			}
 		else
 		   {
-			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.
+			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$alleHeizungsWerte.
 			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleMotionWerte.$inst_modules;
 			}
@@ -2387,29 +2406,160 @@ function ReadTemperaturWerte()
 	elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	
 	$alleTempWerte="";
-		$Homematic = HomematicList();
-		foreach ($Homematic as $Key)
-			{
-			/* alle Homematic Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   		{
+	$Homematic = HomematicList();
+	foreach ($Homematic as $Key)
+		{
+		/* alle Homematic Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TEMPERATURE"])==true)
+	  		{
 	      	$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
+			$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
+		}
 
-		$FHT = FHTList();
-		foreach ($FHT as $Key)
-			{
-			/* alle FHT Temperaturwerte ausgeben */
-			if (isset($Key["COID"]["TemeratureVar"])==true)
-			   {
+	$FHT = FHTList();
+	foreach ($FHT as $Key)
+		{
+		/* alle FHT Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TemeratureVar"])==true)
+		   {
 	      	$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-				$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
+			$alleTempWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
+		}
 	return ($alleTempWerte);
 	}
+
+function ReadThermostatWerte()
+	{
+	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+
+	if (isset($installedModules["EvaluateHardware"])==true) 
+		{
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		}
+	elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	
+	$alleWerte="";
+
+	$Homematic = HomematicList();
+	$FS20= FS20List();
+	$FHT = FHTList();
+
+	$pad=50;
+	$alleWerte.="\n\nAktuelle Heizungswerte direkt aus den HW-Registern:\n\n";
+	$varname="SET_TEMPERATURE";
+	foreach ($Homematic as $Key)
+		{
+		/* Alle Homematic Stellwerte ausgeben */
+		if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+			{
+			/* alle Stellwerte der Thermostate */
+			//print_r($Key);
+
+			$oid=(integer)$Key["COID"][$varname]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+		}
+
+	$varname="SET_POINT_TEMPERATURE";
+	foreach ($Homematic as $Key)
+		{
+		/* Alle Homematic Stellwerte ausgeben */
+		if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+			{
+			/* alle Stellwerte der Thermostate */
+			//print_r($Key);
+			$oid=(integer)$Key["COID"][$varname]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+		}
+
+	foreach ($FHT as $Key)
+		{
+		/* alle FHT Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["TargetTempVar"])==true)
+		   {
+	      	$oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
+			$alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+
+	return ($alleWerte);
+	}
+
+function ReadAktuatorWerte()
+	{
+	$repository = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+	if (isset($installedModules["EvaluateHardware"])==true) 
+		{
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		}
+	elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+	
+	$alleWerte="";
+
+	$Homematic = HomematicList();
+	$FS20= FS20List();
+	$FHT = FHTList();
+
+	$pad=50;
+	$alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
+	$varname="VALVE_STATE";
+	foreach ($Homematic as $Key)
+		{
+		/* Alle Homematic Stellwerte ausgeben */
+		if ( (isset($Key["COID"][$varname])==true) )
+			{
+			/* alle Stellwerte der Thermostate */
+			//print_r($Key);
+
+			$oid=(integer)$Key["COID"][$varname]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
+			if ($variabletyp["VariableProfile"]!="")
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			else
+				{
+				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				}
+			}
+		}
+
+	foreach ($FHT as $Key)
+		{
+		/* alle FHT Temperaturwerte ausgeben */
+		if (isset($Key["COID"]["PositionVar"])==true)
+		   {
+	      	$oid=(integer)$Key["COID"]["PositionVar"]["OID"];
+			$alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+			}
+		}
+
+	return ($alleWerte);
+	}
+
 
 /******************************************************************/
 
@@ -2963,9 +3113,21 @@ function read_wfc()
 				if ($Key["Device"] == $keyword)
 					{
 					$found=true;
-					if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
-					if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
-					if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+					switch ($keyword)
+						{
+						case "TYPE_ACTUATOR":
+							if (isset($Key["COID"]["LEVEL"]["OID"]) == true) 
+								{
+								$keyword="LEVEL";
+								}
+							elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+							break;
+						default:	
+							if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
+							if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
+							if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+							break;
+						}	
 					}
 				}
 						
@@ -2994,6 +3156,7 @@ function read_wfc()
 					$profile="Humidity";
 					break;
 				case "VALVE_STATE":
+				case "LEVEL":
 					$variabletyp=1; 		/* Integer */	
 					$index="HeatControl";
 					$profile="~Intensity.100";
@@ -3006,7 +3169,7 @@ function read_wfc()
 			if ($found)
 				{		
 				//echo "********** ".$Key["Name"]."\n";
-				//print_r($Key);
+				print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
 				$vartyp=IPS_GetVariable($oid);
 				if ($vartyp["VariableProfile"]!="")
