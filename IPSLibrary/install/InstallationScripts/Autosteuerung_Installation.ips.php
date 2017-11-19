@@ -866,30 +866,6 @@ if (true)
 
 /***************************************************************************************/
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	function get_VariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
-		{
-		$childrenIds = IPS_GetChildrenIDs($switchCategoryId);
-		foreach ($childrenIds as $childId) 
-			{
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		$childrenIds = IPS_GetChildrenIDs($groupCategoryId);
-		foreach ($childrenIds as $childId) {
-			if (IPS_GetName($childId)==$name) {
-				return $childId;
-			}
-		}
-		$childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
-		foreach ($childrenIds as $childId) {
-			if (IPS_GetName($childId)==$name) {
-				return $childId;
-			}
-		}
-		trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
-		}
+
 	
 ?>

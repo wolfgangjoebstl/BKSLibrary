@@ -452,7 +452,7 @@ Path=Visualization.Mobile.Stromheizung
 								//echo "GetVariableID from : \n";   //.$link."  (".IPS_GetName($link).")\n";
 								//print_r($link);
 								//echo "\n";
-								CreateLinkByDestination($name[0], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
+								CreateLinkByDestination($name[0], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
 								}
 							}
 						break;
@@ -507,7 +507,7 @@ Path=Visualization.Mobile.Stromheizung
 						foreach ($links as $idx=>$link) {
 							$order = $order + 1;
 							// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
-							CreateLinkByDestination($names[$idx], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
 						}
 						break;
 					default:
@@ -569,34 +569,5 @@ Path=Visualization.Mobile.Stromheizung
 		} /* ende iffalse */
 
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	
-	function get_VariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
-		{
-		$childrenIds = IPS_GetChildrenIDs($switchCategoryId);
-		foreach ($childrenIds as $childId) 
-			{
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		$childrenIds = IPS_GetChildrenIDs($groupCategoryId);
-		foreach ($childrenIds as $childId) 
-			{
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		$childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
-		foreach ($childrenIds as $childId) {
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
-		}
 
 ?>
