@@ -73,7 +73,7 @@
 				}
 			$this->tempValue  	= $lightValue;
 						
-			echo "construct IPSComponentHeatSet_Data with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
+			//echo "construct IPSComponentHeatSet_Data with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
 			$this->remoteServerSet();
 			}
 			
@@ -111,28 +111,22 @@
 		public function SetState($power, $level)
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			if (!$power) 
+				{
+				$setlevel=6;
+				}
+			else
+				{
+				$setlevel=$level;
+				}	
 			if ($this->rpcADR==Null)
 				{
-				if (!$power) {
-					FHT_SetTemperature($this->instanceId, 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					FHT_SetTemperature($this->instanceId,  $levelHM);
-					}
+				/* Dummyobjekt, es gibt nichts zu setzen. Die IPS Heat Register reichen aus */
 				}
 			else
 				{
 				$rpc = new JSONRPC($this->rpcADR);
-				if (!$power) {
-					$rpc->FHT_SetTemperature($this->instanceId, 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					$rpc->FHT_SetTemperature($this->instanceId, $levelHM);
-					}
+				$rpc->SetValue($this->instanceId, $setlevel);
 				}
 			}
 

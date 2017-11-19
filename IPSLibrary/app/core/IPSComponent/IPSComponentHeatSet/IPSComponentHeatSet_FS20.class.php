@@ -71,7 +71,7 @@
 			$this->tempValue  	= $lightValue;
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-			echo "construct IPSComponentHeatSet_FS20 with Parameter: Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";	
+			//echo "construct IPSComponentHeatSet_FS20 with Parameter: Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";	
 			$this->remoteServerSet();
 			}
 			
@@ -89,7 +89,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet FS20 Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//echo "HeatSet FS20 Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet FS20 Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			if (isset ($this->installedmodules["Stromheizung"])) 
@@ -114,29 +114,24 @@
 		 */
 		public function SetState($power, $level)
 			{
-			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			//echo "     Component HeatSet_FS20 SetState Adresse:".$this->rpcADR."und Level ".$level." Power ".($power?'On':'Off')." \n";
+			if (!$power) 
+				{
+				$setlevel=6;
+				}
+			else
+				{
+				$setlevel=$level;
+				}				
 			if ($this->rpcADR==Null)
 				{
-				if (!$power) {
-					FHT_SetTemperature($this->instanceId, 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					FHT_SetTemperature($this->instanceId,  $levelHM);
-					}
+				FHT_SetTemperature($this->instanceId,  $setlevel);
 				}
 			else
 				{
 				$rpc = new JSONRPC($this->rpcADR);
-				if (!$power) {
-					$rpc->FHT_SetTemperature($this->instanceId, 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					$rpc->FHT_SetTemperature($this->instanceId, $levelHM);
-					}
+				//echo "           Befehl FHT_SetTemperature(".$this->instanceId.", ".$setlevel.") ausfuehren.\n";
+				$rpc->FHT_SetTemperature((integer)$this->instanceId, (float)$setlevel);
 				}
 			}
 

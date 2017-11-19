@@ -26,6 +26,7 @@ IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Am
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 400);
 $display=false;       /* alle Eintraege auf der Console ausgeben */
+//$display=true;
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 $archiveHandlerID = $archiveHandlerID[0];
@@ -102,24 +103,32 @@ foreach ($MeterConfig as $meter)
 	echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
 	echo "Variable: ".IPS_GetName($variableID)."\n";
 
+	//$ergebnis=summestartende2($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
+	//echo "Ergebnis (alt) Wert letzter Tag : ".$ergebnis."kWh \n";
 	$ergebnis=summestartende($starttime, $endtime, true,false,$archiveHandlerID,$variableID,$display);
 	echo "Ergebnis Wert letzter Tag : ".$ergebnis."kWh \n";
 	SetValue($letzterTagID,$ergebnis);
 	SetValue($letzterTagEurID,$ergebnis*GetValue($KostenID));
 
 	$starttime=$endtime-60*60*24*7;
+	//$ergebnis=summestartende2($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
+	//echo "Ergebnis (alt) Wert letzte 7 Tage : ".$ergebnis."kWh \n";
 	$ergebnis=summestartende($starttime, $endtime, true, false, $archiveHandlerID, $variableID, $display);
 	echo "Ergebnis Wert letzte 7 Tage : ".$ergebnis."kWh \n";
 	SetValue($letzte7TageID,$ergebnis);
 	SetValue($letzte7TageEurID,$ergebnis*GetValue($KostenID));
 
 	$starttime=$endtime-60*60*24*30;
+	//$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+	//echo "Ergebnis (alt) Wert letzte 30 Tage : ".$ergebnis."kWh \n";
 	$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
 	echo "Ergebnis Wert letzte 30 Tage : ".$ergebnis."kWh \n";
 	SetValue($letzte30TageID,$ergebnis);
 	SetValue($letzte30TageEurID,$ergebnis*GetValue($KostenID));
 
 	$starttime=$endtime-60*60*24*360;
+	//$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
+	//echo "Ergebnis (alt) Wert letzte 360 Tage : ".$ergebnis."kWh \n";
 	$ergebnis=summestartende($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
 	echo "Ergebnis Wert letzte 360 Tage : ".$ergebnis."kWh \n";
 	SetValue($letzte360TageID,$ergebnis);

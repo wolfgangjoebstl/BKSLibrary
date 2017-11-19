@@ -62,7 +62,9 @@
 		 * Initialisierung des IPSHeat_Manager Objektes
 		 *
 		 */
-		public function __construct() {
+		public function __construct() 
+			{
+			//echo "Construct IPS_HeatManager.\n";
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
 			$this->switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
 			$this->groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
@@ -161,15 +163,19 @@
 					switch ($lightType)
 						{
 						case IPSHEAT_TYPE_SWITCH:
+							//echo "IPS_HeatManager SetValue Type Switch SetValue.\n";
 							$this->SetSwitch($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_DIMMER:
+							//echo "IPS_HeatManager SetValue Type Dimmer SetDimmer.\n";
 							$this->SetDimmer($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_RGB:
+							//echo "IPS_HeatManager SetValue Type RGB SetRGB.\n";
 							$this->SetRGB($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_SET:
+							//echo "IPS_HeatManager SetValue Type Heat SetHeat ; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							//echo "     ".$configName."\n";
 							$this->SetHeat($variableId, $value);
 							break;
@@ -196,7 +202,9 @@
 		 * @param int $switchId ID der Variable
 		 * @param bool $value Neuer Wert der Variable
 		 */
-		public function SetSwitch($switchId, $value, $syncGroups=true, $syncPrograms=true) {
+		public function SetSwitch($switchId, $value, $syncGroups=true, $syncPrograms=true) 
+			{
+			echo "Aufruf SetSwitch mit ".$switchId." ".$value." \n";
 			if (GetValue($switchId)==$value) {
 				return;
 			}
@@ -341,22 +349,33 @@
 
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
 
-			if ($variableId==$levelId) {
-			   if (!$switchValue and $value>0) {
-				   SetValue($switchId, true);
-			   } else if ($switchValue and $value==0) {
-				   SetValue($switchId, false);
-			   } else {
-			   }
-			   if (GetValue($levelId) > 100) { $value = 100; }
+			if ($variableId==$levelId) 
+				{
+				if (!$switchValue and $value>0) 
+					{
+					SetValue($switchId, true);
+			   		} 
+				else if ($switchValue and $value==0) 
+					{
+					SetValue($switchId, false);
+			   		} 
+				else 
+					{ }
+					
+				if (GetValue($levelId) > 100) { $value = 100; }
 				if (GetValue($levelId) < 0)   { $value = 0; }
-			} else {
-			   if ($value and $levelValue==0) {
-			      SetValue($levelId, 15);
-			   }
-			}
+				} 
+			else 
+				{
+				if ($value and $levelValue==0) 
+			   		{
+			      	SetValue($levelId, 15);
+			   		}
+				}
 			SetValue($variableId, $value);
-
+			//echo "   SetHeat Berechnung für Component ".null." mit den Werten : ".(GetValue($switchId)?'On, Level='.GetValue($levelId):'Off, Level='.GetValue($levelId))."\n";
+			//print_r($component);
+			
 			$switchValue  = GetValue($switchId);
 			IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId):'Off'));
 
@@ -383,7 +402,8 @@
 		 */
 		public function SetGroup($groupId, $value) {
 			$groupConfig = IPSHeat_GetGroupConfiguration();
-			$groupName   = IPS_GetName($groupId);
+			$groupName   = $this->GetConfigNameById($groupId);			
+			//$groupName   = IPS_GetName($groupId);
 			if ($value and !$groupConfig[$groupName][IPSHEAT_ACTIVATABLE]) {
 				IPSLogger_Trc(__file__, "Ignore ".($value?'On':'Off')." forLightGroup '$groupName' (not allowed)");
 			} else {
@@ -419,7 +439,7 @@
 				foreach ($switches as $idx=>$switchName) {
 					if ($switchName <> '') {
 						$switchId = $this->GetSwitchIdByName($switchName);
-						$configLights = IPSHeat_GetLightConfiguration();
+						$configLights = IPSHeat_GetHeatConfiguration();
 						$lightType    = $configLights[$switchName][IPSHEAT_TYPE];
 						if ($lightType==IPSHEAT_TYPE_SWITCH) {
 							$this->SetSwitch($switchId, true);
@@ -440,7 +460,7 @@
 				foreach ($switches as $idx=>$switchName) {
 					if ($switchName <> '') {
 						$switchId = $this->GetSwitchIdByName($switchName);
-						$configLights = IPSHeat_GetLightConfiguration();
+						$configLights = IPSHeat_GetHeatConfiguration();
 						$lightType    = $configLights[$switchName][IPSHEAT_TYPE];
 						if ($lightType==IPSHEAT_TYPE_SWITCH) {
 							$this->SetSwitch($switchId, false);
@@ -500,15 +520,40 @@
 		}
 
 		// ----------------------------------------------------------------------------------------------------------------------------
-		private function SynchronizeGroupsBySwitch ($switchId) {
-			$switchName  = IPS_GetName($switchId);
-			$lightConfig = IPSHeat_GetHeatConfiguration();
-			$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
-			foreach ($groups as $groupName) {
-				$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
-				$this->SynchronizeGroup($groupId);
+		private function SynchronizeGroupsBySwitch ($switchId) 
+			{
+			$switchName    	= $this->GetConfigNameById($switchId);
+			$switchNameLong	= IPS_GetName($switchId);
+			$lightConfig  = IPSHeat_GetHeatConfiguration();			
+			if ($switchName <> $switchNameLong)
+				{
+				$pos=strpos($switchNameLong,$switchName);
+				$pos1=strpos($switchNameLong,"#");
+				if ( ($pos==0) and !($pos1===false) )
+					{
+					$NameExt=substr($switchNameLong,$pos1);
+					$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
+					//echo "         SynchronizeGroupsBySwitch \n";					
+					//print_r($groups);
+					foreach ($groups as $groupName) 
+						{
+						//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
+						$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
+						$this->SynchronizeGroup($groupId);
+						}				
+					}
+				}
+			else
+				{	
+				$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
+				foreach ($groups as $groupName) 
+					{
+					//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
+					$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
+					$this->SynchronizeGroup($groupId);
+					}
+				}	
 			}
-		}
 
 		// ----------------------------------------------------------------------------------------------------------------------------
 		private function SynchronizeGroup ($groupId) {
@@ -570,20 +615,54 @@
 		}
 
 		// ----------------------------------------------------------------------------------------------------------------------------
-		private function SetAllSwitchesByGroup ($groupId) {
-			$groupName    = IPS_GetName($groupId);
-			$lightConfig  = IPSHeat_GetLightConfiguration();
-			$groupState   = GetValue($groupId);
-			foreach ($lightConfig as $switchName=>$deviceData) {
-				$switchId      = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
-				$switchInGroup = array_key_exists($groupName, array_flip(explode(',', $deviceData[IPSHEAT_GROUPS])));
-				if ($switchInGroup and GetValue($switchId)<>$groupState) {
-					IPSLogger_Trc(__file__, "Set Light $switchName=".($groupState?'On':'Off')." for Group '$groupName'");
-					$this->SetValue($switchId, $groupState);
-					$this->SynchronizeGroupsBySwitch ($switchId);
+		private function SetAllSwitchesByGroup ($groupId) 
+			{
+			$groupName    	= $this->GetConfigNameById($groupId);
+			$groupNameLong	= IPS_GetName($groupId);
+			$lightConfig  = IPSHeat_GetHeatConfiguration();			
+			if ($groupName <> $groupNameLong)
+				{
+				$pos=strpos($groupNameLong,$groupName);
+				$pos1=strpos($groupNameLong,"#");
+				if ( ($pos==0) and !($pos1===false) )
+					{
+					$NameExt=substr($groupNameLong,$pos1);
+					//echo "SetAllSwitchesByGroup : ".$groupName."   ".$groupNameLong."   ".$NameExt."\n";
+					/* GroupState ist ein Wert zB Temperatur oder Farbe */
+					$groupState   = GetValue($groupId);
+					foreach ($lightConfig as $switchName=>$deviceData) 
+						{
+						$switchId      = IPS_GetVariableIDByName($switchName.$NameExt, $this->switchCategoryId);
+						$switchInGroup = array_key_exists($groupName, array_flip(explode(',', $deviceData[IPSHEAT_GROUPS])));
+						//if ($switchInGroup) echo "   ".$switchName.$NameExt."   ".IPS_GetName($switchId)." = ".GetValue($switchId)." Sollwert : ".$groupState."\n";
+						if ($switchInGroup and GetValue($switchId)<>$groupState) 
+							{
+							IPSLogger_Trc(__file__, "SetAllSwitchesByGroup: Set Light ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'");
+							//echo "       SetAllSwitchesByGroup: Set Light ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'\n";
+							$this->SetValue($switchId, $groupState);
+							$this->SynchronizeGroupsBySwitch ($switchId);
+							}
+						}				
+					}
 				}
+			else
+				{
+				$groupState   = GetValue($groupId);
+				foreach ($lightConfig as $switchName=>$deviceData) 
+					{
+					$switchId      = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
+					$switchInGroup = array_key_exists($groupName, array_flip(explode(',', $deviceData[IPSHEAT_GROUPS])));
+					if ($switchInGroup) echo "   ".$switchName."\n";
+					if ($switchInGroup and GetValue($switchId)<>$groupState) 
+						{
+						IPSLogger_Trc(__file__, "Set Light $switchName=".($groupState?'On':'Off')." for Group '$groupName'");
+						$this->SetValue($switchId, $groupState);
+						$this->SynchronizeGroupsBySwitch ($switchId);
+						}
+					}
+				}	
 			}
-		}
+
 
 		// ----------------------------------------------------------------------------------------------------------------------------
 		public function SynchronizeSwitch($switchName, $deviceState) {

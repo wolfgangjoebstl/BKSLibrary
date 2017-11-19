@@ -1917,11 +1917,68 @@ function UpdateObjectData2($ObjectId, $Position, $Icon="")
  *
  * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
  *
+ *
+ * Routine scheiter bei Ende Sommerzeit, hier wird als Strtzeit -30 Tage eine Stunde zu wenig berechnet 
+ *
  ******************************************************************************************/
 
 function summestartende($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
 	{
+	if ($display)
+		{
+		echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
+		echo "Werte von ".date("D d.m.Y H:i:s",$starttime)." bis ".date("D d.m.Y H:i:s",$endtime)."\n";
+		}
+	$zaehler=0;
+	$ergebnis=0;
+	$increment=(integer)$increment_var;
+		
+	do {
+		/* es könnten mehr als 10.000 Werte sein
+			Abfrage generisch lassen
+		*/
+		
+		// Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
+		$aggWerte = AC_GetAggregatedValues ( $archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+		$aggAnzahl=count($aggWerte);
+		//print_r($aggWerte);
+		foreach ($aggWerte as $entry)
+			{
+			if (((time()-$entry["MinTime"])/60/60/24)>1) 
+				{
+				/* keine halben Tage ausgeben */
+				$aktwert=(float)$entry["Avg"];
+				if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
+				switch ($increment)
+					{
+					case 0:
+					case 2:
+						echo "*************Fehler.\n";
+						break;
+					case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+						$ergebnis+=$aktwert;
+						break;
+					default:
+					}
+				}
+			else
+				{
+				$aggAnzahl--;
+				}	
+			}
+		if (($aggAnzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
+		
+		$zaehler+=1;
+			
+		} while (count($aggWerte)==10000);		
+	if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
+	return $ergebnis;
+	}
 
+/* alte Funktion, als Referenz */
+
+function summestartende2($starttime, $endtime, $increment_var, $estimate, $archiveHandlerID, $variableID, $display=false )
+	{
 	$zaehler=0;
 	$initial=true;
 	$ergebnis=0;
@@ -1929,7 +1986,6 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 	$disp_vorigertag="";
 	$neuwert=0;
 
-	echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).") \n";
 	$increment=(integer)$increment_var;
 	//echo "Increment :".$increment."\n";
 	$gepldauer=($endtime-$starttime)/24/60/60;
@@ -1937,7 +1993,6 @@ function summestartende($starttime, $endtime, $increment_var, $estimate, $archiv
 		/* es könnten mehr als 10.000 Werte sein
 			Abfrage generisch lassen
 		*/
-
 		$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
 		/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
 			Nicht mer als 10.000 Werte ...

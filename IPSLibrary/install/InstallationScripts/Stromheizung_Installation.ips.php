@@ -263,7 +263,20 @@ Path=Visualization.Mobile.Stromheizung
 	$groupConfig = IPSHeat_GetGroupConfiguration();
 	foreach ($groupConfig as $groupName=>$groupData) 
 		{
-		$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+		if ( Isset($groupData[IPSHEAT_TYPE]) )
+			{
+			$groupType = $groupData[IPSHEAT_TYPE];		
+			switch ($groupType) 
+				{
+				case IPSHEAT_TYPE_SET:
+					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+					$tempId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 2 /*Float*/, $categoryIdGroups,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+					break;
+				default:
+					$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+					break;								
+				}
+			}	
 		$idx = $idx + 1;
 		}
 
@@ -293,14 +306,18 @@ Path=Visualization.Mobile.Stromheizung
 	 *
 	 ***************************************************************************/
 	 
+	echo "\nRegister Events für Device Synchronization.\n";
+	 
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	$messageHandler = new IPSMessageHandler();
 	$lightConfig = IPSHeat_GetHeatConfiguration();
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
+		//echo "   Bearbeite ".$deviceName."\n";
 		$component = $deviceData[IPSHEAT_COMPONENT];
 		$componentParams = explode(',', $component);
 		$componentClass = $componentParams[0];
+		echo "   Bearbeite ".$deviceName." mit ComponentClass : ".$componentClass."\n";				
 		switch ($componentClass)
 			{
 			case 'IPSComponentSwitch_LCNa':
@@ -356,9 +373,19 @@ Path=Visualization.Mobile.Stromheizung
 					}
 				break;	
 			case 'IPSComponentHeatSet_Homematic':
+			case 'IPSComponentHeatSet_HomematicIP':
+			case 'IPSComponentHeatSet_FS20':	
+				//print_r($componentParams);								
 				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
 				$variableId = @IPS_GetObjectIDByIdent('SET_TEMPERATURE', $instanceId);
-				echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."   (".IPS_GetName($instanceId).")     ".$variableId."\n";
+				if ( isset($componentParams[2]) )
+					{
+					echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."     ".$variableId."       ".$componentParams[2]."\n";
+					}
+				else
+					{	
+					echo "Register IPSComponentHeatSet_Homematic : ".$instanceId."   (".IPS_GetName($instanceId).")     ".$variableId."\n";
+					}
 				if ($variableId===false) 
 					{
 					$moduleManager->LogHandler()->Log('Variable with Name STATE could NOT be found for Homematic Instance='.$instanceId);
@@ -369,8 +396,10 @@ Path=Visualization.Mobile.Stromheizung
 					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
 					}
 				break;
+			case 'IPSComponentHeatSet_Data':
+				break;					
 			default:
-				echo "   ".$deviceName."   ".$componentClass."\n";
+				trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			
 				break;
 			}
 		}
@@ -420,6 +449,9 @@ Path=Visualization.Mobile.Stromheizung
 							if (isset($name[1])==true) 
 								{ 
 								// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
+								//echo "GetVariableID from : \n";   //.$link."  (".IPS_GetName($link).")\n";
+								//print_r($link);
+								//echo "\n";
 								CreateLinkByDestination($name[0], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId_Autosteuerung_WebFront, $order);
 								}
 							}

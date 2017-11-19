@@ -71,8 +71,7 @@
 			$this->tempValue  	= $lightValue;
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-			echo "construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
-			//echo "construct IPSComponentHeatSet_Homematic with parameter ".$this->RemoteOID."  ".$this->instanceId."  (".IPS_GetName($this->instanceId).")   ".$this->rpcADR."  ".$this->tempValue."\n";
+			//echo "construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."\n";
 			$this->remoteServerSet();
 			}
 
@@ -109,29 +108,25 @@
 		 */
 		public function SetState($power, $level)
 			{
-			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			if ($this->rpcADR==Null)
+			if (!$power) 
 				{
-				if (!$power) {
-					HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $levelHM);
-					}
+				$setlevel=6;
 				}
 			else
 				{
+				$setlevel=$level;
+				}	
+			
+			if ($this->rpcADR==Null)
+				{
+				//echo "   IPSComponent HeatSet_Homematic SetState mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
+				}
+			else
+				{
+				//echo "   IPSComponent HeatSet_Homematic SetState mit folgenden Parametern rpc Adresse:".$this->rpcADR."und Level ".$level." Power ".($power?'On':'Off')." \n";
 				$rpc = new JSONRPC($this->rpcADR);
-				if (!$power) {
-					$rpc->HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", 6);
-					}
-				else
-					{
-					$levelHM = $level;
-					$rpc->HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $levelHM);
-					}
+				$rpc->HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
 			}
 
