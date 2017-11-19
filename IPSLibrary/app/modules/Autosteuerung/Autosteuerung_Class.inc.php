@@ -549,29 +549,42 @@ class Autosteuerung
 		
 	function timeright($scene)
 		{
-		echo "Szene ".$scene["NAME"]."\n";
-       	$actualTimes = self::switchingTimes($scene);
-       	//print_r($actualTimes);
+		//echo "Szene ".$scene["NAME"]."\n";
+		$actualTimes = self::switchingTimes($scene);
+		//print_r($actualTimes);
 		$timeright=false;
 		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
 			{		
-       		$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
-        	$actualTimeStartHour = $actualTimeStart[0];
-        	$actualTimeStartMinute = $actualTimeStart[1];
-        	$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
-        	$actualTimeStopHour = $actualTimeStop[0];
-        	$actualTimeStopMinute = $actualTimeStop[1];
-			echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-        	$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-        	$this->timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
-      		$this->now = time();
+			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
+			$actualTimeStartHour = $actualTimeStart[0];
+			$actualTimeStartMinute = $actualTimeStart[1];
+			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
+			$actualTimeStopHour = $actualTimeStop[0];
+			$actualTimeStopMinute = $actualTimeStop[1];
+			//echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+			$this->timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+			$this->now = time();
 
-	       	if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
+			if ($this->timeStart > $this->timeStop)
 				{
-    	      	$minutesRange = ($this->timeStop-$this->timeStart)/60;
-        	  	$actionTriggerMinutes = 5;
-            	$rndVal = rand(1,100);
-				echo "Zufallszahl:".$rndVal."\n";
+				echo "        stop is considered to be on the next day.\n";
+				if (($this->now > $this->timeStart) || ($this->now < $this->timeStop))
+					{				
+					$minutesRange = ($this->timeStop-$this->timeStart)/60+24*60;
+					$actionTriggerMinutes = 5;
+					$rndVal = rand(1,100);
+					//echo "Zufallszahl:".$rndVal."\n";
+					if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) { $timeright=true; }
+					}
+				}
+
+			if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
+				{
+				$minutesRange = ($this->timeStop-$this->timeStart)/60;
+				$actionTriggerMinutes = 5;
+				$rndVal = rand(1,100);
+				//echo "Zufallszahl:".$rndVal."\n";
 				if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) { $timeright=true; }
 				}
 			}	

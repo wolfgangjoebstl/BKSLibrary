@@ -252,7 +252,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 		{
 		if (isset($scene["TYPE"]))
 			{
-			
 			$statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
 			AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
 			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
@@ -267,7 +266,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				 * wird alle 5 Minuten aufgerufen. Egal ob Register bereits vorher eingeschaltet wurde.
 				 *
 				 */
-				if ( (GetValue($AnwesenheitssimulationID)==1) || ( (GetValue($AnwesenheitssimulationID)==2) && ($operate->Anwesend()==false) ) ) 
+				if ( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($operate->Anwesend()==false) ) ) 
  					{
 					SetValue($StatusAnwesendZuletztID,true);
 					$switch = $auto->timeright($scene);
@@ -532,36 +531,38 @@ if ($_IPS['SENDER']=="Execute")
 				{		
 				echo "  Timer Szene : ".$scene["NAME"]."\n";
 				}
-			}	
+			}
+		$switch = $auto->timeright($scene);	
+		echo "      Schaltet jetzt : ".($switch ? "Ja":"Nein")."\n";
 		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
 		$actualTimes = $auto->switchingTimes($scene);
 		//echo "Evaluierte Schaltzeiten:\n";	
 		//print_r($actualTimes);
 		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
 			{
-			echo "Schaltzeit ".$sindex."\n";
+			//echo "   Schaltzeit ".$sindex."\n";
 			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
 			$actualTimeStartHour = $actualTimeStart[0];
 			$actualTimeStartMinute = $actualTimeStart[1];
 			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
 			$actualTimeStopHour = $actualTimeStop[0];
 			$actualTimeStopMinute = $actualTimeStop[1];
-			echo "    Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-       		$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-	       	$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+			echo "      Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
 			}
-   	  	$now = time();
-      		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
-      	if (isset($scene["EVENT_IPSLIGHT"]))
-      	   	{
-      		echo "    Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
-         	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+		$now = time();
+		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
+		if (isset($scene["EVENT_IPSLIGHT"]))
+			{
+			echo "      Objekt : ".$scene["EVENT_IPSLIGHT"]."\n";
+			//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
          	}
          else
             {
       		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
       	   		{
-	      		echo "    Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
+	      		echo "      Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"]."\n";
    	      		//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
       	   		}	
 			}

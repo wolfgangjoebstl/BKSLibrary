@@ -655,6 +655,59 @@ class RemoteAccess
 		return ($this->listofROIDs);
 		}
 
+	public function write_listofROIDs()
+		{
+		$print="";
+		$list=$this->get_listofROIDs();
+		//print_r($list);
+		foreach ($list as $server => $entries)
+			{
+			$print.="   Server: ".$server."\n";
+			foreach ($entries as $id => $entry)
+				{
+				switch ($id)
+					{
+					case "Adresse":
+					case "ArchiveHandler":
+						break;
+					case "VisRootID":
+						$print.="      ".$id."   ".$entry."\n";
+						break;						
+					default:
+						$print.="         ".$id."   ".$entry."\n";
+					}
+				}	
+			}
+		return ($print);
+		}
+
+	public function get_StructureofROID()
+		{
+		$status=$this->RemoteAccessServerTable();
+
+		echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+		$remServer=$this->get_listofROIDs();
+		$struktur=array();
+		foreach ($remServer as $Name => $Server)
+			{
+			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+			if ( $status[$Name]["Status"] == true )
+				{
+				$id=(integer)$Server["Schalter"];
+				$rpc = new JSONRPC($Server["Adresse"]);	
+				$children=$rpc->IPS_GetChildrenIDs($id);
+				$struktur[$Name]=array();			
+				foreach ($children as $oid)
+					{
+					$struktur[$Name][$oid]["Name"]=$rpc->IPS_GetName($oid);
+					$struktur[$Name][$oid]["OID"]=$oid;	
+					$struktur[$Name][$oid]["Hide"]=true;							
+					}
+				}		
+			}		
+		return($struktur);
+		}
+
 	/**
 	 * @public
 	 *
@@ -694,7 +747,13 @@ class RemoteAccess
 			}
 		foreach ($struktur as $oid => $oname)
 			{
-			if ($name==$oname) {$result=$name;$vid=$oid;}
+			if ( isset($oname["Name"]) )
+				{
+				if ($name==$oname["Name"]) 
+					{
+					$result=$name;$vid=$oid;
+					}
+				}	
 			//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
 			}
 		if ($result=="")
@@ -702,12 +761,13 @@ class RemoteAccess
 			echo "Variable ".$name." auf Server neu erzeugen.\n";
 			$vid = $rpc->IPS_CreateVariable($type);
 			$rpc->IPS_SetParent($vid, $id);
-      	$rpc->IPS_SetName($vid, $name);
-      	$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
-      	}
+			$rpc->IPS_SetName($vid, $name);
+			$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+			}
 		echo "Fertig mit ".$vid."\n";
 		return $vid;
 		}
+		
 
 	/******************************************************************/
 
@@ -802,15 +862,15 @@ class RemoteAccess
 			}
 		}
 
-/*****************************************************************
- *
- * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
- * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
- *
- *****************************************************************************/
+	/*****************************************************************
+	 *
+	 * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein
+	 * der Status wird alle 60 Minuten von operationCenter ermittelt. Wenn Modul nicht geladen wurde wird einfach true angenommen
+	 *
+	 *****************************************************************************/
 
-function RemoteAccessServerTable()
-	{
+	function RemoteAccessServerTable()
+		{
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$result=$moduleManager->GetInstalledModules();
 			if (isset ($result["OperationCenter"]))
@@ -855,8 +915,18 @@ function RemoteAccessServerTable()
 						}
 					}	
 			   }
-	return($RemoteServer);
-	}
+		return($RemoteServer);
+		}
+
+	function writeRemoteAccessServerTable($remServer)
+		{
+		$print="";
+		foreach ($remServer as $Name => $RemoteServer)
+			{
+			$print.="   ".$RemoteServer["Name"]."   ".$RemoteServer["Url"]."    ".($RemoteServer["Status"] ? 'Ja' : 'Nein')."\n";
+			}
+		return($print);
+		}
 
 	/*****************************************************************
  	 *

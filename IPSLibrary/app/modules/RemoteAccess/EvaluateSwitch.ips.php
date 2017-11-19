@@ -2,12 +2,13 @@
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
- *	hier für Homematic und FS20 Schalten
+ *	hier für HomematicIP, Homematic und FS20 Schalten
  *
  */
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+	Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
 /******************************************************
 
@@ -37,56 +38,43 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 
 	/******************************************** Schalter  *****************************************/
 
-	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
-	$status=RemoteAccessServerTable();
-	print_r($status);
+	$remote=new RemoteAccess();
+	$status=$remote->RemoteAccessServerTable();
+	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        Exectime: ".exectime($startexec)." Sekunden\n";
+	echo $remote->writeRemoteAccessServerTable($status);
 
-	echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
-	$remServer=ROID_List();
-	print_r($remServer);
+	echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):              Exectime: ".exectime($startexec)." Sekunden\n";
+	$remServer=$remote->get_listofROIDs();
+	echo $remote->write_listofROIDs();
 	
-	$struktur=array();
-	foreach ($remServer as $Name => $Server)
-		{
-		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-		if ( $status[$Name]["Status"] == true )
-			{
-			$id=(integer)$Server["Schalter"];
-			$rpc = new JSONRPC($Server["Adresse"]);	
-			$children=$rpc->IPS_GetChildrenIDs($id);
-			$struktur[$Name]=array();			
-			foreach ($children as $oid)
-				{
-				$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-				}
-			}		
-		}
-	echo "Struktur Server :\n";
+	$struktur=$remote->get_StructureofROID();
+	echo "Struktur Server :                Exectime: ".exectime($startexec)." Sekunden\n";
 	foreach ($struktur as $Name => $Eintraege)
 		{
-		echo "   ".$Name."  hat ".sizeof($Eintraege)." Eintraege \n";
+		echo "   ".$Name." für Schalter hat ".sizeof($Eintraege)." Eintraege \n";
+		//print_r($Eintraege);
+		foreach ($Eintraege as $Eintrag) echo "      ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
 		}
-	print_r($struktur);
 	
 	echo "\n******* Alle Homematic Schalter ausgeben.       ".(microtime(true)-$startexec)." Sekunden\n";
 	foreach ($Homematic as $Key)
 		{
 		/* alle Homematic Schalterzustände ausgeben */
 		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["INHIBIT"]) and (isset($Key["COID"]["ERROR"])==false) )
-	   		{
-	      	$oid=(integer)$Key["COID"]["STATE"]["OID"];
-  	      	$variabletyp=IPS_GetVariable($oid);
+			{
+			$oid=(integer)$Key["COID"]["STATE"]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
-				   {
+					{
 					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
 					}
 				else
-				   {
+					{
 					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
 					}
 				$parameter="";
 				if ($donotregister==false)
-			   	{
+					{
 					$i++; if ($i>$maxi) { $donotregister=true; }				
 					foreach ($remServer as $Name => $Server)
 						{
@@ -95,45 +83,96 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 							{						
 							//print_r($Server);
 							$rpc = new JSONRPC($Server["Adresse"]);
-							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
+							$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
 							$rpc->IPS_SetVariableCustomProfile($result,"Switch");
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 							$parameter.=$Name.":".$result.";";
+							$struktur[$Name][$result]["Status"]=true;
+							$struktur[$Name][$result]["Hide"]=false;
+							$struktur[$Name][$result]["newName"]=$Key["Name"];
 							}
 						}
 					}	
-			   $messageHandler = new IPSMessageHandler();
-			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   Homematic Switch mit Parameter :".$parameter." erzeugt.\n";
 				}
 		}
 
-set_time_limit(120);
+	set_time_limit(120);
+
+	echo "\n******* Alle HomematicIP Schalter ausgeben.       ".(microtime(true)-$startexec)." Sekunden\n";
+	foreach ($Homematic as $Key)
+		{
+		/* alle Homematic Schalterzustände ausgeben */
+		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["SECTION"]) and isset($Key["COID"]["PROCESS"]) )
+			{
+			$oid=(integer)$Key["COID"]["STATE"]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
+				if ($variabletyp["VariableProfile"]!="")
+					{
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
+					}
+				else
+					{
+					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
+					}
+				$parameter="";
+				if ($donotregister==false)
+					{
+					$i++; if ($i>$maxi) { $donotregister=true; }				
+					foreach ($remServer as $Name => $Server)
+						{
+						echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+						if ( $status[$Name]["Status"] == true )
+							{						
+							//print_r($Server);
+							$rpc = new JSONRPC($Server["Adresse"]);
+							$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
+							$rpc->IPS_SetVariableCustomProfile($result,"Switch");
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							$struktur[$Name][$result]["Status"]=true;
+							$struktur[$Name][$result]["Hide"]=false;
+							$struktur[$Name][$result]["newName"]=$Key["Name"];
+							}
+						}
+					}	
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				echo "   HomematicIP Switch mit Parameter :".$parameter." erzeugt.\n";
+				}
+		}
 
 	echo "******* Alle FS20 Schalter ausgeben.\n";
 	foreach ($FS20 as $Key)
 		{
 		/* FS20 alle Schalterzustände ausgeben */
 		if (isset($Key["COID"]["StatusVariable"])==true)
-		   	{
-      		$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-  	      	$variabletyp=IPS_GetVariable($oid);
+			{
+			$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+			$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
-				   {
+					{
 					echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
 					}
 				else
-				   {
+					{
 					echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       Exectime: ".exectime($startexec)." Sekunden\n";
 					}
 				$parameter="";
 				if ($donotregister==false)
-			   	{
+					{
 					$i++; if ($i>$maxi) { $donotregister=true; }				
 					foreach ($remServer as $Name => $Server)
 						{
@@ -141,23 +180,40 @@ set_time_limit(120);
 						if ( $status[$Name]["Status"] == true )
 							{										
 							$rpc = new JSONRPC($Server["Adresse"]);
-							$result=RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
+							$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server["Schalter"], $Key["Name"], 0, $struktur[$Name]);
 							$rpc->IPS_SetVariableCustomProfile($result,"Switch");
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 							$parameter.=$Name.":".$result.";";
+							$struktur[$Name][$result]["Status"]=true;
+							$struktur[$Name][$result]["Hide"]=false;
+							$struktur[$Name][$result]["newName"]=$Key["Name"];														
 							}
 						}
 					}
-			   $messageHandler = new IPSMessageHandler();
-			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   FS20 Switch mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}
 
-
+	print_r($struktur);
+	foreach ($struktur as $server => $entries)
+		{
+		//echo $remServer[$server]["Name"].":\n";
+		print_r($remServer[$server]);
+		$rpc = new JSONRPC($remServer[$server]["Adresse"]);		
+		foreach ($entries as $oid => $entry)
+			{
+			if ($entry["Hide"])
+				{
+				echo "Wert aus alten Zeiten. einfach verstecken, damit die Werte erhalten bleiben.\n";
+				}
+			}
+		}
+	
 ?>
