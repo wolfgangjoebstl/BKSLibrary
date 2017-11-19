@@ -654,7 +654,7 @@ if (true)
 						foreach ($links as $idx=>$link) {
 							$order = $order + 1;
 							// CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="")
-							CreateLinkByDestination($names[$idx], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
 						}
 						break;
 					default:
@@ -850,7 +850,7 @@ if (true)
 						}
 						foreach ($links as $idx=>$link) {
 							$order = $order + 1;
-							CreateLinkByDestination($names[$idx], get_VariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
 						}
 						break;
 					default:
