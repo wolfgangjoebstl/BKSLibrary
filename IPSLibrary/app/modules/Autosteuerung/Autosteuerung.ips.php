@@ -154,7 +154,7 @@ if ($_IPS['SENDER']=="Variable")
 			case "Ventilator":
 			case "HeatControl":
 			case "Heizung":
-				Ventilator2($params,$value);
+				Ventilator2($params,$value,$variableID);
 				break;
 			/*********************************************************************************************/
 		   case "Status":
@@ -456,7 +456,7 @@ if ($_IPS['SENDER']=="Execute")
 			case "HeatControl":
 			case "Heizung":
 				//print_r($entry);
-				$status=Ventilator2($entry,32,true);  // Simulation aktiv, Testwert ist 32
+				$status=Ventilator2($entry,18,26409,true);  // Simulation aktiv, Testwert ist 32
 				break;	
 			case "iTunes":
 				$status=iTunesSteuerung($entry,$i++,true);
@@ -909,12 +909,10 @@ function SwitchFunction()
  *
  *************************************************************************************************/
 
-function Ventilator2($params,$status,$simulate=false)
+function Ventilator2($params,$status,$variableID,$simulate=false)
 	{
 	global $speak_config;
 	
-	IPSLogger_Dbg(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
-
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
    /* array('OnChange','Status',   'ArbeitszimmerLampe',),       														*/
@@ -924,6 +922,10 @@ function Ventilator2($params,$status,$simulate=false)
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,if:light',),       				*/
 
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+
+	$oldValue=$auto->setNewValue($variableID,$status);	/* den Unterschied erkennen, gleich, groesser, kleiner */
+	IPSLogger_Dbg(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status.' der Variable '.$variableID.' alter Wert war : '.$oldValue);
+	
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
 	$parges=$auto->ParseCommand($params,$status,$simulate);
@@ -933,8 +935,9 @@ function Ventilator2($params,$status,$simulate=false)
 	//print_r($parges);
 	foreach ($parges as $kom => $Kommando)
 		{
-		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
-		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["SWITCH"]=true;	  					/* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=$status;					/* neuer Wert der den befehl ausgelöst hat */
+		$command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */	
 	
 		foreach ($Kommando as $num => $befehl)
 			{
@@ -946,6 +949,7 @@ function Ventilator2($params,$status,$simulate=false)
 					break;
 				}	
 			} /* Ende foreach Befehl */
+		$result=$auto->ControlSwitchLevel($command[$entry],$simulate);;			
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		//print_r($command[$entry]);	
 

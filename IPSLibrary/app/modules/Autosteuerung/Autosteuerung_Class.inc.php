@@ -297,8 +297,13 @@ class Autosteuerung
 	var $installedmodules;
 	var $CategoryIdData;
 	var $CategoryId_Ansteuerung;
+	
 	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
 	var $CategoryId_SchalterAnwesend, $CategoryId_SchalterAlarm;
+
+	var $CategoryId_Stromheizung;
+	var $CategoryId_Wochenplan;
+	
 	var $lightManager;
 	var $switchCategoryId, $groupCategoryId , $prgCategoryId;
 
@@ -332,6 +337,7 @@ class Autosteuerung
 		$this->installedModules 				= $moduleManager->GetInstalledModules();
 		$this->CategoryIdData   				= $moduleManager->GetModuleCategoryID('data');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
+		/* speziell fuer Anwesenheitserkennung */
 		$this->CategoryId_Anwesenheit			= @IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
 		if ($this->CategoryId_Anwesenheit === false)
 			{
@@ -350,6 +356,18 @@ class Autosteuerung
 			{	
 			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
 			}
+		/* speziell für Stromheizung */
+		$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
+		if ($this->CategoryId_Stromheizung === false)
+			{
+			$this->CategoryId_Wochenplan = false;			
+			}
+		else
+			{	
+			$wochenplan = IPS_GetObjectIDByName("Wochenplan-Stromheizung",$this->CategoryIdData);
+			$this->CategoryId_Wochenplan	= IPS_GetObjectIDByName("Wochenplan",$wochenplan);			
+			}	
+			
 		$this->lightManager = new IPSLight_Manager();
 		
 		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
@@ -507,16 +525,33 @@ class Autosteuerung
 		
 	function isitheatday()
 		{
+		$status=false;
 		$functions=self::getFunctions();
-		print_r($functions);
-		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
+		if ( isset($functions["Stromheizung"]["STATUS"]) )
 			{
-			if ($functions["GutenMorgenWecker"]["STATUS"] == 0) { return(true); }
-			else  { return(false); }
+			if ($functions["Stromheizung"]["STATUS"] == 0) { $status=true; }
 			}
 		else
 			{
-			return (false);	/* default awake */	
+			/* der Status wurde nicht zentral ermittelt, selbst erfassen */
+			$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Wochenplan);
+			$found=false;
+			foreach ($childrenIDs as $ID)
+				{
+				if (!($found) ) $found=$ID;
+				//echo "      ".IPS_GetName($ID)."    ".$ID."\n";
+				}
+			if ($found) 
+				{
+				$property=IPS_GetObject($found);
+				if ( $property["ObjectType"]==6 )
+					{
+					$status=(integer)GetValue(IPS_GetLink($found)["TargetID"]);
+					echo "    Status : ".$status."\n";
+					}
+				}				
+			//print_r($childrenIDs);
+			return ($status);		
 			}	
 		}		
 
@@ -590,6 +625,26 @@ class Autosteuerung
 			}	
 		return ($timeright);	
 		}	
+
+	/***************************************
+	 *
+	 * Vorwert erfassen und speichern
+	 *
+	 ******************************************************************/
+
+	function setNewValue($variableID,$value)
+		{
+		if ($this->CategoryId_Stromheizung !== false)
+			{
+			echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+			// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+			$mirrorVariableID=CreateVariable (IPS_GetName($variableID), 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+			echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+			$oldValue=GetValue($mirrorVariableID);
+			SetValue($mirrorVariableID,$value);
+			return($oldValue);
+			}
+		}
 
 	/***************************************
 	 *
@@ -667,7 +722,7 @@ class Autosteuerung
 				case "VENTILATOR":
 				case "HEATCONTROL":
 				case "HEIZUNG": 
-					echo "Es geht um Ventilatoren \n"; 
+					//echo "Es geht um Ventilatoren \n"; 
 					// Dieser Befehl muss erkannt werden "Ventilator,25,true,24,false"
 					switch ($count)
 						{
@@ -710,6 +765,7 @@ class Autosteuerung
 								}	
 							$i--;
 						case "4":
+							$i=3;
 							$params_more=explode(":",$moduleParams2[$i]);
 							if (count($params_more)>1)
 								{
@@ -722,6 +778,7 @@ class Autosteuerung
 								$parges[$Kommando][$Eintrag][]=(integer)$params_more[0];
 								$Eintrag--;								
 								}
+							$i--;								
 						case "3":
 							$params_three=explode(":",$moduleParams2[2]);
 							if (count($params_three)>1)
@@ -1155,6 +1212,7 @@ class Autosteuerung
 					$result["VALUE"]=$this->lightManager->GetValue($switchId);
 					}
 				break;
+				
 			case "ON#COLOR":
 			case "ON#LEVEL":
 				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));
@@ -1254,6 +1312,20 @@ class Autosteuerung
 						}
 					}								
 				break;
+				
+			case "MODE":
+				$result["MODE"]=strtoupper($befehl[1]);
+				break;				
+			case "THRESHOLD":
+				$result["THRESHOLD"]=(integer)$befehl[1];
+				break;
+			case "SETPOINT":
+				$result["SETPOINT"]=(integer)$befehl[1];
+				break;
+			case "NOFROST":
+				$result["NOFROST"]=(integer)$befehl[1];
+				break;
+
 			case "DELAY":
 				$result["DELAY"]=(integer)$befehl[1];
 				break;
@@ -1524,7 +1596,19 @@ class Autosteuerung
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Alarmanlage aktiviert ');								
 								}
 							break;
-
+						case "HEATDAY":
+							/* nur Schalten wenn der Kalender aktiv */
+							if ( self::isitheatday() == false )
+								{
+								$result["SWITCH"]=false;
+								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten,kein Heiztag ');
+								}
+							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+								{
+								$result["SWITCH"]=true;
+								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Heiztag ');								
+								}
+							break;
 						default:
 						  	/* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
 							$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
@@ -1628,12 +1712,89 @@ class Autosteuerung
 					}			
 				break;
 			default:
-				echo "Function EvaluateCommand, Befehl unbekannt: ".$befehl[0]." ".$befehl[1]."   \n";
+				echo "Function EvaluateCommand, Befehl unbekannt: \"".strtoupper($befehl[0])."\" ".$befehl[1]."   \n";
 				break;				
 			}  /* ende switch */
 		return ($result);
 		}	
 
+	/***************************************
+	 *
+	 *  HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
+	 *
+	 *  Derzeit Switch implementiert
+	 *
+	 *******************************************************/
+
+
+	function ControlSwitchLevel($result,$simulate=false)
+		{
+		/* Defaultwerte bestimmen, festlegen */
+		$ControlModeHeat=true;	/* Regler fuer Heizen ist Default */
+		$threshold=1;
+		if (isset($result["MODE"]) == true)
+			{
+ 			if ($result["MODE"]=="COOL") $ControlModeHeat=false;
+			}
+		if (isset($result["THRESHOLD"]) == true)
+			{
+			$treshold=$result["THRESHOLD"]; 
+			}		
+		if (isset($result["SETPOINT"]) == true)  
+			{
+			/* es wird wirklich eine Regelfunktion benötigt */
+			IPSLogger_Dbg(__file__, 'Function ControlSwitchLevel Aufruf mit Wert: '.json_encode($result));
+			echo "ControlSwitchLevel: Regelmechanismus Sollwert ".$result["SETPOINT"]." Threshold ".$threshold." IF Ergebnis aktuell ".($result["SWITCH"]?"ON":"OFF").
+				"  Input Wert zum Vergleich ".$result["STATUS"]."  und Stellwert aktuell : ".($result["VALUE"]?"ON":"OFF");
+			if (isset($result["ON"]) == true) echo " ON: ".$result["ON"];
+			if (isset($result["OFF"]) == true) echo " OFF ".$result["OFF"];
+			
+			if ($result["SWITCH"]==true)  /* Es soll die Temperatur geregelt werden, if bedingung erfüllt */
+				{
+				if ($ControlModeHeat==true)
+					{
+					/************************************************* 
+					 *
+					 * Regler , Heizen nur wenn Temp unter Sollwert und die if Bedingungen erfüllt sind 
+					 *
+					 * Entscheidung ob eingeschaltet oder ausgeschaltet wird abhängig vom aktuellen Zustand
+					 *
+					 ******************/
+					if ($result["VALUE"]==true)
+						{
+						if ($result["STATUS"]>($result["SETPOINT"]) ) $result["SWITCH"]=false;
+						}
+					else	
+						{
+						if ($result["STATUS"]<($result["SETPOINT"]-$treshold) ) $result["SWITCH"]=true;
+						}
+					}
+				else
+					{
+					if ($result["VALUE"]==true)
+						{
+						if ($result["STATUS"]<($result["SETPOINT"]) ) $result["SWITCH"]=false;
+						}
+					else	
+						{
+						if ($result["STATUS"]>($result["SETPOINT"]+$treshold) ) $result["SWITCH"]=true;
+						}
+
+					}	
+				}	
+			else	/* keine Temperaturregelung notwendig, aber nofrost Funktion machen */
+				{
+				if ( ($result["STATUS"]<$result["NOFROST"]) && ($ControlModeHeat==true) ) $result["SWITCH"]=true;
+				}
+					
+			echo "  ==>> Ergebnis : ".($result["SWITCH"]?"ON":"OFF");	
+			IPSLogger_Dbg(__file__, "ControlSwitchLevel: Regelmechanismus Sollwert ".$result["SETPOINT"]." Threshold ".$threshold." IF Ergebnis aktuell ".($result["SWITCH"]?"ON":"OFF").
+				"  Input Wert zum Vergleich ".$result["STATUS"]."  und Stellwert aktuell : ".($result["VALUE"]?"ON":"OFF")."  ==>> Ergebnis : ".($result["SWITCH"]?"ON":"OFF"));
+	
+			}	
+			
+		echo "\n";							
+		}
 
 	/***************************************
 	 *
