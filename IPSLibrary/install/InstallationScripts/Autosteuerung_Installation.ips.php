@@ -60,7 +60,7 @@
 
 	echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer IPS_light, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -451,7 +451,12 @@
 				$vid=CreateVariable("Wochenplan",3,$categoryId_Wochenplan, 0,'',null,'');				
 				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;
 				$kalender=new AutosteuerungStromheizung();
-				$kalender->SetupKalender();	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */									
+				$kalender->SetupKalender();	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
+				
+				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
+				$simulation=new AutosteuerungRegler();													
 				break;	
 			default:
 				break;

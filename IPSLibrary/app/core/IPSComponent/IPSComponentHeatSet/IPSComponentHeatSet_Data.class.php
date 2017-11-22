@@ -92,7 +92,9 @@
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
 			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			
+			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncPosition($value, $this);			
 			
 			$log=new HeatSet_Logging($variable,IPS_GetName($variable));
 			$result=$log->HeatSet_LogValue($value);
