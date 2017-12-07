@@ -70,8 +70,8 @@ if (isset($installedModules["IPSPowerControl"])==true)
 	$pos=strpos($WFC10_Path,"OperationCenter");
 	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
 	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-   IPS_SetPosition($categoryId_WebFront,997);
-   IPS_SetHidden($categoryId_WebFront,true);
+	IPS_SetPosition($categoryId_WebFront,997);
+	IPS_SetHidden($categoryId_WebFront,true);
 	echo "   Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
 
@@ -107,8 +107,8 @@ $tim6ID  = @IPS_GetEventIDByName("CopyScriptsTimer", $scriptId);
 $tim7ID  = @IPS_GetEventIDByName("FileStatus", $scriptId);
 $tim8ID  = @IPS_GetEventIDByName("SystemInfo", $scriptId);
 $tim9ID  = @IPS_GetEventIDByName("Reserved", $scriptId);
-$tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintanenance Funktionen */	
-$tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintanenance Funktion: Move Log Files */	
+$tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Maintennance Funktionen */	
+$tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
 
 /*********************************************************************************************/
 
@@ -197,7 +197,9 @@ if ($_IPS['SENDER']=="Execute")
 	echo "  Timer FileStatus OID        : ".$tim7ID."\n";
 	echo "  Timer SystemInfo OID        : ".$tim8ID."\n";
 	echo "  Timer Reserved OID          : ".$tim9ID."\n";
-	
+	echo "  Timer Maintenance OID       : ".$tim10ID."\n";
+	echo "  Timer MoveLogs OID          : ".$tim11ID."\n";
+		
 	/********************************************************
    	Erreichbarkeit Hardware
 	**********************************************************/
@@ -568,6 +570,7 @@ if ($_IPS['SENDER']=="Execute")
 	**********************************************************/
 
 	//SysPingAllDevices($OperationCenter,$log_OperationCenter);
+	$OperationCenter->SysPingAllDevices($log_OperationCenter);
 
 	echo "============================================================================================================\n";
 
@@ -602,6 +605,14 @@ if ($_IPS['SENDER']=="Execute")
 
 	//$OperationCenter->FileStatus();
 
+	/************************************************************************************
+	 * System Informationen berechnen
+	 *
+	 *************************************************************************************/
+
+	$OperationCenter->SystemInfo();
+
+
 	echo "============================================================================================================\n";
 	echo "\nEnde Execute.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
@@ -629,7 +640,9 @@ if ($_IPS['SENDER']=="Variable")
  * 6 Scripts auf Dropbox kopieren
  * 7 File Status kopieren
  * 8 System Info auslesen und speichern
- * logfiles zusammenräumen 
+ * 9 frei
+ * 10 logfiles zusammenräumen starten
+ * 11 Logfiles verschieben, bis alle weg, von 10 gestartet 
  *
  **********************************************************************************************/
 
@@ -859,7 +872,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 				}
 			else
 				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");				
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");	
+				$countdir=$OperationCenter->PurgeLogs();
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");	
 				IPS_SetEventActive($tim11ID,false);
 				}		
 			break;

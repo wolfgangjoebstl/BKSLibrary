@@ -78,6 +78,17 @@
 	//$moduleProp=IPS_GetModule("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
 	//print_r($moduleProp);
 
+	/* Verzeichnis für die wav Files von der Sprahausgabe erstellen */
+
+	$FilePath = IPS_GetKernelDir()."media/wav/";
+	if (!file_exists($FilePath)) 
+		{
+		echo "Verzeichnis wav in media erstellen.\n"; 
+		if (!mkdir($FilePath, 0755, true)) {
+			throw new Exception('Create Directory '.$destinationFilePath.' failed!');
+			}
+		}	
+
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Configuration
 	// ----------------------------------------------------------------------------------------------------------------------------

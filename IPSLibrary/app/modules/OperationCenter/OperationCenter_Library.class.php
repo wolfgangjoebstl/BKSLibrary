@@ -53,7 +53,7 @@ class OperationCenter
 	var $log_OperationCenter  	= array();
 	var $mactable             	= array();
 	var $oc_Configuration     	= array();
-	var $oc_Setup			    = array();
+	var $oc_Setup			    = array();			/* Setup von Operationcenter, Verzeichnisse, Konfigurationen */
 	var $AllHostnames         	= array();
 	var $installedModules     	= array();
 	
@@ -93,6 +93,19 @@ class OperationCenter
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
+		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt */
+		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
+		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
+		if (isset($this->oc_Setup['CONFIG'])===false) 
+			{
+			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
+			}		
+		else
+			{
+			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
+			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
+			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
+			}		
 		$this->AllHostnames = LogAlles_Hostnames();
 		}
 /****************************************************************************************************************/
@@ -1627,56 +1640,139 @@ class OperationCenter
 
 	function MoveLogs()
 		{
-		$verzeichnis=IPS_GetKernelDir().'logs/';
-		echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
-
-		$count=100;
-		//echo "<ol>";
-
-		echo "Heute      : ".date("Ymd", time())."\n";
-		echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-		echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
-		$vorgestern = date("Ymd", strtotime("-2 day"));
-
-		// Test, ob ein Verzeichnis angegeben wurde
-		if ( is_dir ( $verzeichnis ) )
+		if ($this->oc_Setup['CONFIG']['MOVELOGS']==true)
 			{
-	    	// öffnen des Verzeichnisses
-   	 	if ( $handle = opendir($verzeichnis) )
-    			{
-        		/* einlesen der Verzeichnisses
-				nur count mal Eintraege
-   	     	*/
-	        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-   	     		{
-					$dateityp=filetype( $verzeichnis.$file );
-         	   if ($dateityp == "file")
-            		{
-						$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-						if ($unterverzeichnis == $vorgestern)
-						   {
-							$count-=1;
-	      	      	if (is_dir($verzeichnis.$unterverzeichnis))
-   	      	   		{
-      	      			}
-         	   		else
+			$verzeichnis=IPS_GetKernelDir().'logs/';
+			echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
+
+			$count=100;
+			//echo "<ol>";
+
+			echo "Heute      : ".date("Ymd", time())."\n";
+			echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+			echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+			$vorgestern = date("Ymd", strtotime("-2 day"));
+
+			// Test, ob ein Verzeichnis angegeben wurde
+			if ( is_dir ( $verzeichnis ) )
+				{
+				// öffnen des Verzeichnisses
+				if ( $handle = opendir($verzeichnis) )
+					{
+					/* einlesen der Verzeichnisses
+					   nur count mal Eintraege
+   	     			*/
+					while ((($file = readdir($handle)) !== false) and ($count > 0))
+   	     			{
+						$dateityp=filetype( $verzeichnis.$file );
+						if ($dateityp == "file")
+							{
+							$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+							if ($unterverzeichnis == $vorgestern)
 								{
-	            			mkdir($verzeichnis.$unterverzeichnis);
-   	         			}
-	   	         	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-   	   	      	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-   	      	   	}
-         			}
-	      	  	} /* Ende while */
-		     	closedir($handle);
-   			} /* end if dir */
-			}/* ende if isdir */
-		else
-	   	{
-		   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+								$count-=1;
+								if (is_dir($verzeichnis.$unterverzeichnis))
+									{
+									}
+								else
+									{
+		            			mkdir($verzeichnis.$unterverzeichnis);
+   		         			}
+	   		         	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+   	   		      	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+   	      		   	}
+         				}
+		      	  	} /* Ende while */
+			     	closedir($handle);
+   				} /* end if dir */
+				}/* ende if isdir */
+			else
+		   	{
+			   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+				}
+			return (100-$count);
 			}
-		return (100-$count);
+		else return (false);
 		}
+
+	/*
+	 *  Die oft umfangreichen Logfiles in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann.
+	 *
+	 */
+
+	function PurgeLogs($remain=false)
+		{
+		if ($remain===false)
+			{
+			$remain=$this->oc_Setup['CONFIG']['PURGESIZE'];
+			}
+		if ($this->oc_Setup['CONFIG']['PURGELOGS']==true)
+			{		
+			$verzeichnis=IPS_GetKernelDir().'logs/';
+			echo "Überschüssige Logfiles von ".$verzeichnis." löschen.\n";
+
+			echo "Heute      : ".date("Ymd", time())."\n";
+			echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+
+			$count=0;
+			$dir=array();
+		
+			// Test, ob ein Verzeichnis angegeben wurde
+			if ( is_dir ( $verzeichnis ) )
+				{
+				// öffnen des Verzeichnisses
+				if ( $handle = opendir($verzeichnis) )
+					{
+					/* einlesen der Verzeichnisses	*/
+					while ((($file = readdir($handle)) !== false) )
+						{
+						$dateityp=filetype( $verzeichnis.$file );
+						if ($dateityp == "dir" and $file!="." and $file != "..")
+							{
+							$count++;
+							$dir[]=$verzeichnis.$file;
+							}
+						//echo "    ".$file."    ".$dateityp."\n";
+						} /* Ende while */
+					echo "Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+					closedir($handle);
+					} /* end if dir */
+				}/* ende if isdir */
+			else
+				{
+				echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+				}
+			if (($count-$remain)>0) 
+				{	
+				echo "Loeschen von 0 bis ".($count-$remain)."\n";
+				for ($i=0;$i<($count-$remain);$i++)
+					{
+					echo "    Loeschen von Verzeichnis ".$dir[$i]."\n";
+					$this->rrmdir($dir[$i]);
+					}
+				} 	
+			return ($count);
+			}
+		else return (false);	 	
+		}
+
+	private function rrmdir($dir) 
+		{
+		if (is_dir($dir)) 
+			{
+			$objects = scandir($dir);
+			foreach ($objects as $object) 
+				{
+				if ($object != "." && $object != "..") 
+					{
+					if (filetype($dir."/".$object) == "dir") $this->rrmdir($dir."/".$object); else unlink($dir."/".$object);
+					}
+				}
+			reset($objects);
+			rmdir($dir);
+			}
+		} 
 
 	/****************************************************/
 	/*

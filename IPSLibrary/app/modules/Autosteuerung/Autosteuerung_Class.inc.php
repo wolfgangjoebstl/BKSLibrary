@@ -228,6 +228,316 @@ class AutosteuerungHandler
 
 /*****************************************************************************************************
  *
+ * Allgemeiner Handler (Abstract)  zum Anlegen der Konfigurationszeilen im config File
+ *
+ * werden mittlerweile groestenteils haendisch angelegt, es geht aber auch automatisch, zB für Standardvariablen
+ * im construct wird der Messagehandler uebergeben
+ * mit Create Event wird ein Event für den Messagehandler angelegt 
+ * mit storeEventConfiguration wird das Config File wieder geschrieben
+ *
+ * Exkurs, Unterschied $this-> und self::
+ * this referenziert auf die Instanz, bei static Variablen ist es die selbe Variable für alle Instanzen die mit self adressiert werden kann
+ *
+ *
+ **************************************************************************************************************/ 
+
+abstract class AutosteuerungConfiguration 
+	{
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des IPSMessageHandlers
+		 *
+		 */
+		public function __construct($scriptID) {
+			$this->scriptID=$scriptID;
+		}
+
+		/**
+		 * @private
+		 *
+		 * Liefert die aktuelle Auto Event Konfiguration
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		private function Get_EventConfigurationAuto() 
+			{
+			if ($this->eventConfigurationAuto == null) 
+				{
+				$func=$this->functionName;
+				if (function_exists($func)===false)
+					{
+					echo ">>>>Fehler, Function ".$func."() nicht definiert im Configfile.\n";
+					$this->InitEventConfiguration();
+					break;
+					}
+				$this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
+				}
+			return $this->eventConfigurationAuto;
+			}
+		
+		/**
+		 * @private
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 * @param string[] $configuration Neue Event Konfiguration
+		 */
+		private function Set_EventConfigurationAuto($configuration) {
+		   $this->eventConfigurationAuto = $configuration;
+		}
+		
+		/**
+		 * @public
+		 *
+		 * Erzeugt ein Event für eine übergebene Variable, das den IPSMessageHandler beim Auslösen
+		 * aufruft.
+		 *
+		 * @param integer $variableId ID der auslösenden Variable
+		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
+		 */
+		function CreateEvent($variableId, $eventType, $scriptId)
+			{
+			switch ($eventType) {
+				case 'OnChange':
+					$triggerType = 1;
+					break;
+				case 'OnUpdate':
+					$triggerType = 0;
+					break;
+				default:
+					throw new Exception('Found unknown EventType '.$eventType);
+			}
+			$eventName = $eventType.'_'.$variableId;
+			$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+			if ($eventId === false) {
+				$eventId = IPS_CreateEvent(0);
+				IPS_SetName($eventId, $eventName);
+				IPS_SetIdent($eventId, $eventName);
+				IPS_SetEventTrigger($eventId, $triggerType, $variableId);
+				IPS_SetParent($eventId, $scriptId);
+				IPS_SetEventActive($eventId, true);
+				IPSLogger_Dbg (__file__, 'Created IPSMessageHandler Event for Variable='.$variableId);
+			}
+		}
+
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		private function InitEventConfiguration()
+			{
+			// Build Configuration String
+			$configString = '$'.$this->identifier.' = array(';
+			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
+				
+			$funcString=PHP_EOL.PHP_EOL.chr(9).'function '.$this->functionName.'() {'.PHP_EOL;
+			$funcString.=$configString;
+			$funcString.=chr(9).'}'.PHP_EOL.PHP_EOL;				
+
+			// Write to File
+			$fileNameFull = IPS_GetKernelDir().$this->filename;  /* >>>>>>>> change here */
+			if (!file_exists($fileNameFull)) 
+				{
+				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+				}
+			$fileContent = file_get_contents($fileNameFull, true);
+			$pos3 = strpos($fileContent, '?>');
+			if ($pos3 === false) {
+				throw new IPSMessageHandlerException($fileNameFull.' is not a config file !!!', E_USER_ERROR);
+			}
+			echo " End of config file Marker ist auf Position ".$pos3."\n"; 
+			$fileContentNew = substr($fileContent, 0, $pos3).$funcString.substr($fileContent, $pos3);
+			//echo $fileContentNew;
+			file_put_contents($fileNameFull, $fileContentNew);
+						 
+			}
+
+		/**
+		 * @private
+		 *
+		 * Speichert die aktuelle Event Konfiguration
+		 *
+		 * @param string[] $configuration Konfigurations Array
+		 */
+		private function StoreEventConfiguration($configuration)
+		   {
+			// Build Configuration String
+			$configString = '$'.$this->identifier.' = array(';
+			//echo "----> wird jetzt gespeichert:\n";
+			//print_r($configuration);
+
+			foreach ($configuration as $variableId=>$params) 
+				{
+				//echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
+				//print_r($params);
+				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+				for ($i=0; $i<count($params); $i=$i+3) 
+					{
+					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+					}
+				$configString .= '),'.'        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
+				}
+			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
+			//echo $configString;
+			// Write to File
+			$fileNameFull = IPS_GetKernelDir().$this->filename;  /* >>>>>>>> change here */
+			if (!file_exists($fileNameFull)) {
+				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+			}
+			$fileContent = file_get_contents($fileNameFull, true);
+			$pos1 = strpos($fileContent, '$'.$this->identifier.' = array(');
+			$pos2 = strpos($fileContent, 'return $'.$this->identifier.';');
+
+			if ($pos1 === false or $pos2 === false) {
+				throw new IPSMessageHandlerException($this->identifier.' could NOT be found !!!', E_USER_ERROR);
+			}
+			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
+			file_put_contents($fileNameFull, $fileContentNew);
+			Set_EventConfigurationAuto($configuration);
+			}
+			
+		/************************************************************************
+		 *
+		 * Events neu registrieren
+		 * Parameter werden ueberschrieben, wenn sie vorher leer waren
+		 * Parameter werden nicht ueberschrieben wenn sie aktuell leer sind 
+		 *		
+		 ********************************************************************************/	
+
+		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
+			{
+			$configuration = Get_EventConfigurationAuto();
+			//echo "---> war gespeichert.\n";
+			//print_r($configuration);
+
+			if (array_key_exists($variableId, $configuration))
+				{
+				$moduleParamsNew = explode(',', $moduleParams);
+				$moduleClassNew  = $moduleParamsNew[0];
+
+				$params = $configuration[$variableId];
+				//echo "Bearbeite Variable with ID : ".$variableId." : ".count($params)." Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams."\n";
+				//print_r($params);
+				$ct_par=count($params);
+				if (($ct_par%3)>0)
+				   {
+					echo "Anzahl Parameter bei ID ".$variableId." : ".$ct_par." da sind ",($ct_par%3)." Parameter zuviel.\n";
+					$ct_parN=$ct_par-($ct_par%3);
+					for ($i=$ct_parN; $i<$ct_par; $i++)
+						{
+						unset($configuration[$variableId][$i]);
+						}
+               }
+            else
+               {
+               $ct_parN=$ct_par;
+               }
+				for ($i=0; $i<$ct_parN; $i=$i+3)
+					{
+					$moduleParamsCfg = $params[$i+2];
+					$moduleParamsCfg = explode(',', $moduleParamsCfg);
+					$moduleClassCfg  = $moduleParamsCfg[0];
+					// Found Variable and Module --> Update Configuration
+					if ($moduleClassCfg=$moduleClassNew)
+						{
+						$found = true;
+						$configuration[$variableId][$i]   = $eventType;
+						$configuration[$variableId][$i+1] = $componentParams;
+						$configuration[$variableId][$i+2] = $moduleParams;
+						}
+					}
+				}
+			else
+			   {
+			   //echo "Lege neue Variable mit ID : ".$variableId." : ".count($params)." Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
+				//echo "Variable with ID ".$variableId. " not found\n";
+				// Variable NOT found --> Create Configuration
+				$configuration[$variableId][] = $eventType;
+				$configuration[$variableId][] = $componentParams;
+				$configuration[$variableId][] = $moduleParams;
+				}
+				//print_r($configuration);
+				StoreEventConfiguration($configuration);
+				CreateEvent($variableId, $eventType, self::$scriptID);
+   		}
+		
+		/************************************************************************
+		 *
+		 * einmal registrierte Events können auch gelöscht werden
+		 * das Event muss auch später gelöscht werden 
+		 *		
+		 ********************************************************************************/	
+			
+		function UnRegisterAutoEvent($variableId)
+			{
+			$configuration = $this->Get_EventConfigurationAuto();
+
+			if (array_key_exists($variableId, $configuration))
+				{
+				unset($configuration[$variableId]);
+				StoreEventConfiguration($configuration);
+				//self::CreateEvent($variableId, $eventType, self::$scriptID);
+				}
+   		}			
+
+		/**
+		 *
+		 * Druckt die aktuelle Auto Event Konfiguration
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		function PrintAutoEvent() 
+			{
+			$configuration = $this->Get_EventConfigurationAuto();
+			//print_r($configuration);
+			if (sizeof($configuration)==0 )
+				{
+				echo "No configuration stored.\n";
+				}
+			else
+				{
+				echo "Configuration has ".sizeof($configuration)." entries.\n";
+				foreach ($configuration as $id => $entry)
+					{
+					echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry[2].",)\n";
+					}
+				}
+			return $configuration;
+			}
+
+	} /* ende class */
+
+class AutosteuerungConfigurationAlexa extends AutosteuerungConfiguration
+	{
+	
+	protected $eventConfigurationAuto = array();
+	protected $scriptID;
+	protected $functionName="Alexa_GetEventConfiguration";
+	protected $identifier="alexaConfiguration";
+	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+	
+	} 
+
+class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
+	{
+	
+	protected $eventConfigurationAuto = array();
+	protected $scriptID;
+	protected $functionName="Autosteuerung_GetEventConfiguration";
+	protected $identifier="eventConfiguration";
+	protected $filename='scripts/IPSLibrary/config/modules/Autosteuerung/Autosteuerung_Configuration.inc.php';
+
+	} 
+
+
+/*****************************************************************************************************
+ *
  * Autosteuerung Operator
  *
  * Routinen für den Betrieb
@@ -307,6 +617,18 @@ class Autosteuerung
 	var $lightManager;
 	var $switchCategoryId, $groupCategoryId , $prgCategoryId;
 
+	var $heatManager;
+	var $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
+	
+	/***********************
+	 *
+	 * es wird innerhalb von data.modules.Autosteuerung dei Kategorie Ansteuerung erstellt und dort pro 
+	 * im Config File angelegter Applikation ein Eintrag erstellt. Derzeit unterstützt:
+	 *
+	 * Anwesenheitserkennung, Alarmanlage, Stromheizung
+	 *
+	 *************************************************************/
+	
 	public function __construct()
 		{
 		// Sonnenauf.- u. Untergang berechnen
@@ -356,24 +678,37 @@ class Autosteuerung
 			{	
 			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
 			}
-		/* speziell für Stromheizung */
-		$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
-		if ($this->CategoryId_Stromheizung === false)
-			{
-			$this->CategoryId_Wochenplan = false;			
-			}
-		else
-			{	
-			$wochenplan = IPS_GetObjectIDByName("Wochenplan-Stromheizung",$this->CategoryIdData);
-			$this->CategoryId_Wochenplan	= IPS_GetObjectIDByName("Wochenplan",$wochenplan);			
-			}	
 			
-		$this->lightManager = new IPSLight_Manager();
-		
-		$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-		$this->switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
-		$this->groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
-		$this->prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);			
+		if ( isset($this->installedModules["Stromheizung"] ) )
+			{			
+			/* speziell für Stromheizung */
+			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
+			if ($this->CategoryId_Stromheizung === false)
+				{
+				$this->CategoryId_Wochenplan = false;			
+				}
+			else
+				{	
+				$wochenplan = IPS_GetObjectIDByName("Wochenplan-Stromheizung",$this->CategoryIdData);
+				$this->CategoryId_Wochenplan	= IPS_GetObjectIDByName("Wochenplan",$wochenplan);			
+				}
+			$this->heatManager = new IPSHeat_Manager();
+			
+			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
+			$this->switchCategoryHeatId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+			$this->groupCategoryHeatId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+			$this->programCategoryHeatId = IPS_GetObjectIDByIdent('Programs', $baseId);			
+			}	
+								
+		if ( isset($this->installedModules["IPSLight"] ) )
+			{	
+			$this->lightManager = new IPSLight_Manager();
+	
+			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+			$this->switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
+			$this->groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
+			$this->prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);
+			}			
 		}
 
 	/* welche AutosteuerungsFunktionen sind aktiviert */
@@ -387,6 +722,7 @@ class Autosteuerung
 			$children[IPS_GetName($ID)]["OID"]=$ID;
 			$children[IPS_GetName($ID)]["VALUE"]=GetValue($ID);
 			$children[IPS_GetName($ID)]["VALUE_F"]=GetValueFormatted($ID);
+			//echo "getFunctions : ".$ID." (".IPS_GetName($ID).")\n";
 			switch (IPS_GetName($ID))
 				{
 				case "GutenMorgenWecker":
@@ -405,6 +741,14 @@ class Autosteuerung
 					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($alarmID);					
 					break;					
 				case "Stromheizung":
+					/* es gibt keinen Schalter der unter dem Hauptschalter noch zusaetzlich verwendet wird */
+					//$heatID=IPS_GetVariableIDByName("Stromheizung",$ID);
+					//$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($heatID);					
+					break;					
+				case "Alexa":				
+					/* es gibt keinen Schalter der unter dem Hauptschalter noch zusaetzlich verwendet wird */
+					//$alexaID=IPS_GetVariableIDByName("Alexa",$ID);
+					//$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($alexaID);					
 				default:
 					break;	
 				}
@@ -620,7 +964,10 @@ class Autosteuerung
 
 	/***************************************
 	 *
-	 * Vorwert erfassen und speichern
+	 * Vorwert erfassen und speichern, eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
+	 *
+	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
+	 * dem selben Variablennamen machen und daraus den Vorwert ableiten
 	 *
 	 ******************************************************************/
 
@@ -654,6 +1001,7 @@ class Autosteuerung
 	 *
 	 * Es gibt folgende Befehle die extrahiert werden:
 	 *  NAME, SPEAK, OFF, ON, OFF_MASK, ON_MASK, COND, DELAY
+	 *  NAME, SETPOINT, THRESHOLD, MODE
 	 *
 	 * Kurzbefehle:
 	 *  1 Parameter:   "NAME"
@@ -662,7 +1010,7 @@ class Autosteuerung
 	 *
 	 * Es folgen der Reihe nach die Befehle, möglichst gleich für alle verschiedenen Varianten
 	 *		ParseCommand()
-	 *      EvaluateCommand()
+	 * 	mehrmals EvaluateCommand() (in einem Config-String sind mehrere Kommandos (separiert durch ;), die aus einzelnen Befehlen (separiert durch ,)zusammengesetzt sind)
 	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
 	 *......Abarbeitung von Delay Befehl
 	 *
@@ -1134,12 +1482,16 @@ class Autosteuerung
 	 *
 	 * beim Evaluieren wird auch der Wert bevor er geändert wird als VALUE, VALUE#LEVEL, VALUE#COLOR erfasst
 	 *
-	 * SOURCE, OID, NAME, ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF, DELAY, DIM, DIM#LEVEL, DIM#TIME, 
+	 * SOURCE, OID, NAME, 
+	 * ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF,
+	 * MODE, SETPPOINT, THRESHOLD, NOFROST 
+	 * DELAY, DIM, DIM#LEVEL, DIM#TIME, 
 	 * ENVELOPE, LEVEL, SPEAK, MONITOR, MUTE, IF, IFNOT
 	 *
-	 * IF: oder IFNOT:<parameter>     DARK, LIGHT, SLEEP, WAKEUP, AWAKE, ON, OFF oder einen Variablenwert 
+	 * IF: oder IFNOT:<parameter>     DARK, LIGHT, SLEEP, WAKEUP, AWAKE, HEATDAY, ON, OFF oder einen Variablenwert 
 	 *			DARK,LIGHT sind vom Sonneauf/unteragng abhängig
 	 *			SLEEP, WAKEUP, AWAKE sind vom GutenMorgenWecker abhängig
+	 *			HEATDAY wird vom Stromheizung Kalendar festgelegt
 	 *             Auswertung Befehl beeinflusst Parameter result.switch, der das Schalten und Sprechen aktiviert oder deaktiviert
 	 *
 	 * Befehl ON und OFF haben ähnliche Funktion, aber es ist keine IF Funktion sondern entscheidet wie die Variable geschaltet werden soll
@@ -1156,16 +1508,18 @@ class Autosteuerung
 	 * Es werden der Reihe nach die folgenden Befehle abgearbeitet
 	 *		ParseCommand()
 	 *		setzen von STATUS (Wert vom Trigger) und SWITCH (true) auf Defaultwerte
-	 *      EvaluateCommand()
-	 *      ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
-	 *......Abarbeitung von Delay Befehl
+	 *  	bei Stromheizung wird auch noch OLDSTATUS (alter Wert vom Trigger aus einer eigenen Spiegelvariable)
+	 * 	mehrmals EvaluateCommand() (in einem Config-String sind mehrere Kommandos (separiert durch ;), die aus einzelnen Befehlen (separiert durch ,)zusammengesetzt sind)
+	 *		ExecuteCommand() mit switch() liefert als Ergebnis die Parameter für Dim und Delay.
+	 *		Abarbeitung von Delay Befehl
+	 *
 	 ************************************/
 
 	function EvaluateCommand($befehl,$result=array(),$simulate=false)
 		{
 		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
 		
-		switch (strtoupper($befehl[0]))
+		switch (trim(strtoupper($befehl[0])))	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
 			{
 			case "SOURCE":
 				$result["SOURCE"]=strtoupper($befehl[1]);
@@ -1296,7 +1650,49 @@ class Autosteuerung
 				$result["THRESHOLD"]=(float)$befehl[1];
 				break;
 			case "SETPOINT":
-				$result["SETPOINT"]=(float)$befehl[1];
+				$command=$befehl[1];
+				if ( is_numeric($command) )
+					{
+					/* unterschiedliche Varianten, Integer, Float, Hex, Farbbezeichnung gefordert */
+					$result["SETPOINT"]=(float)$command;
+					}
+				else
+					{
+					/* es handelt sich voraussichtlich um einen Variablennamen oder einen Befehl in geschwungenen Klammern 
+					 * Ersatzwert 19 wenn alles schief geht 
+					 */
+					$value=19; 
+					if ( is_string($command) )
+						{
+						if ( (strpos($command,"{") !==false) and (strpos($command,"}") !==false) ) { echo "Subcommand to evaluate found.\n"; }
+						if (strpos($command,"#") === false) { $command.="#Level"; } 
+						echo "!!!! not numeric. Adapted Variablename (".$command."), can be Heat or Light. Check Heat first.\n";
+						if ($this->heatManager != Null)
+							{
+							$switchID = $this->heatManager->GetSwitchIdByName($command);	
+							if ($switchID === false) 
+								{
+								echo "      ".$command." ist kein IPSHeat Thermostat.\n";
+								$switchID = $this->heatManager->GetGroupIdByName($command);
+								if ($switchID===false) 
+									{
+									echo "auch keine Gruppe.\n";
+									}
+								else
+									{
+									$value=$this->heatManager->GetValue($switchID);
+									echo "HeatManager: Variablename found as Group, OID=".$switchID." with value ".$value."\n";
+									}	
+								}
+							else
+								{
+								$value=$this->heatManager->GetValue($switchID);
+								echo "HeatManager: Variablename found as Switch, OID=".$switchID." with value ".$value."\n";
+								}		
+							}
+						}
+					$result["SETPOINT"]=$value;;
+					}	
 				break;
 			case "NOFROST":
 				$result["NOFROST"]=(float)$befehl[1];
@@ -1718,24 +2114,27 @@ class Autosteuerung
 		$ergebnis="";
 		$ControlModeHeat=true;	/* Regler fuer Heizen ist Default */
 		$threshold=1;
+		$nofrost=6;		
 		if (isset($result["MODE"]) == true)
 			{
  			if ($result["MODE"]=="COOL") $ControlModeHeat=false;
 			}
 		if (isset($result["THRESHOLD"]) == true)
 			{
-			$treshold=$result["THRESHOLD"]; 
+			$treshold=(float)$result["THRESHOLD"]; 
 			}
 		if (isset($result["NOFROST"]) == true)
 			{
- 			$nofrost=$result["NOFROST"];
+ 			$nofrost=(float)$result["NOFROST"];
 			}					
 		if (isset($result["SETPOINT"]) == true)  
 			{
 			/* es wird wirklich eine Regelfunktion benötigt */
+			$actTemp=(float)$result["STATUS"];	/* sicherheitshalber umwandeln, vielleicht doch einmal als string übernommen */
+			$setTemp=(float)$result["SETPOINT"];
+						
 			IPSLogger_Dbg(__file__, 'Function ControlSwitchLevel Aufruf mit Wert: '.json_encode($result));
-			$ergebnis .= "Input ".$result["STATUS"]." Sollwert ".$result["SETPOINT"]." Nofrost ".$nofrost." Threshold ".$threshold." => ".($result["SETPOINT"]-$threshold-$result["STATUS"])." IF Ergebnis aktuell ".($result["SWITCH"]?"ON":"OFF").
-				"  und Stellwert aktuell : ".($result["VALUE"]?"ON":"OFF");
+			$ergebnis .= "T ".$actTemp." SP ".$setTemp." NF ".$nofrost." T ".$threshold." IF:".($result["SWITCH"]?"ON":"OFF")." Vnow:".($result["VALUE"]?"ON":"OFF");
 			if (isset($result["ON"]) == true) $ergebnis .= " ON: ".$result["ON"];
 			if (isset($result["OFF"]) == true) $ergebnis .= " OFF ".$result["OFF"];
 			
@@ -1752,10 +2151,10 @@ class Autosteuerung
 					 ******************/
 					if ($result["VALUE"]==true)
 						{
-						if ($result["STATUS"]>$result["SETPOINT"] ) 
+						if ($actTemp > $setTemp ) 
 							{
 							/* Ist Temperatur über Sollwert gestiegen und heizt noch, SWITCH ist true, es wird ausgeschaltet daher ist der Wert OFF false */
-							$ergebnis .=" | T>SP | ";
+							$ergebnis .=" |H1:T>SP| ";
 							$result["SWITCH"]=true;
 							unset($result["ON"]);
 							$result["OFF"]="FALSE";
@@ -1763,11 +2162,19 @@ class Autosteuerung
 						}
 					else	
 						{
-						if ($result["STATUS"]<($result["SETPOINT"]-$treshold) ) 
+						if ( $actTemp < ($setTemp-$treshold) ) 
 							{
+							$ergebnis .=" |H0:T<(SP-T)| ";							
 							$result["SWITCH"]=true;
 							unset($result["OFF"]);
 							$result["ON"]="TRUE";
+							}
+						else
+							{
+							$ergebnis .=" |H0:T>=(SP-T)| ";							
+							$result["SWITCH"]=true;
+							unset($result["ON"]);
+							$result["OFF"]="FALSE";
 							}
 						}
 					}
@@ -1775,8 +2182,9 @@ class Autosteuerung
 					{
 					if ($result["VALUE"]==true)
 						{
-						if ($result["STATUS"]<($result["SETPOINT"]) )
+						if ($actTemp < $setTemp )
 							{
+							$ergebnis .=" |C1:T<SP| ";								
 							$result["SWITCH"]=true;
 							unset($result["ON"]);
 							$result["OFF"]="FALSE";
@@ -1784,14 +2192,15 @@ class Autosteuerung
 						}
 					else	
 						{
-						if ($result["STATUS"]>($result["SETPOINT"]+$treshold) ) 
+						if ($actTemp > ($setTemp+$treshold) ) 
 							{
+							$ergebnis .=" |C1:T>(SP+T)| ";							
 							$result["SWITCH"]=true;
 							unset($result["OFF"]);
 							$result["ON"]="TRUE";
 							}						
 						}
-					}	
+					}					
 				}	
 			else	/* keine Temperaturregelung notwendig, aber nofrost Funktion machen */
 				{
@@ -1802,6 +2211,11 @@ class Autosteuerung
 					unset($result["OFF"]);
 					$result["ON"]="TRUE";
 					}
+				else
+					{
+					unset($result["OFF"]);
+					unset($result["ON"]);
+					}		
 				}
 
 			$ergebnis .= "  ==>> Ergebnis : ".($result["SWITCH"]?"ON":"OFF");	
@@ -1838,6 +2252,12 @@ class Autosteuerung
 		$ergebnis="";
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
+
+		/******
+		 *
+		 *  hier wird zuerst geschaltet
+		 *
+		 *****************/
 
 		if (isset($result["OID"]) == true)
 			{
@@ -1921,30 +2341,56 @@ class Autosteuerung
 			{
 			}
 
+		/******
+		 *
+		 *  und dann gesprochen
+		 *
+		 *****************/
+
 		if (isset($result["SPEAK"]) == true)
 			{
-			$pos=strpos($result["SPEAK"],"#");
-			$len=strpos(substr($result["SPEAK"],$pos+1),"#");
-			if ( ( $pos !== false) && ( $len !== false) )
-				{
-				$var=strtoupper(substr($result["SPEAK"],$pos+1,$len));
-				switch ($var)
+			/* parse Sprachtext auf eingebettete Variablen und ersetze sie mit echten Werten */
+			$start=0;
+			do {	/* alle # Werte bearbeiten */
+				//echo "Bearbeite Text ab Pos ".$start." :".substr($result["SPEAK"],$start)."\n";
+				$pos=strpos(substr($result["SPEAK"],$start),"#");
+				$len=strpos(substr($result["SPEAK"],$start+$pos+1),"#");
+				if ( ( $pos !== false) && ( $len !== false) )
 					{
-					case "WERT":
-						//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
-						$part1=substr($result["SPEAK"],0,$pos);
-						$part2=substr($result["SPEAK"],$pos+$len+2);
-						$temperatur=$result["STATUS"];
-						$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad.";				
-						//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
-						$result["SPEAK"]=$part1.$wert.$part2;	
-						//echo $result["SPEAK"]."\n";
-						break;
-					default:
-						break;
+					/* gültiger Wert zwischen zwei # Zeichen erkannt */
+					$var=strtoupper(substr($result["SPEAK"],$start+$pos+1,$len));
+					//echo "  eingebettete Variable ".$var." Pos : ".$pos." Len ".$len." erkannt. \n";
+					switch ($var)
+						{
+						case "WERT":
+							$part1=substr($result["SPEAK"],0,$start+$pos);
+							$part2=substr($result["SPEAK"],$start+$pos+$len+2);
+							$temperatur=$result["STATUS"];
+							$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad";				
+							//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+							$result["SPEAK"]=$part1.$wert.$part2;	
+							//echo $result["SPEAK"]."\n";
+							break;
+						case "CHANGE":
+							$part1=substr($result["SPEAK"],0,$pos+$start);
+							$part2=substr($result["SPEAK"],$start+$pos+$len+2);
+							$wert="geändert";
+							if ( isset($result["OLDSTATUS"]) )
+								{
+								if ($result["STATUS"]>$result["OLDSTATUS"]) $wert="erhöht";
+								if ($result["STATUS"]<$result["OLDSTATUS"]) $wert="gesenkt";
+								}
+							$result["SPEAK"]=$part1.$wert.$part2;	
+							break;
+						default:
+							break;
+						}
+					$start+=$pos+strlen($wert);					
+					//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
 					}
-				//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
-				}
+				else $pos = false;	/* sicherheitshalber hier Ende festlegen wenn nur ein # erkannt wurde */	
+				}  while ($pos !== false);
+				
 			if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
 				{
 				if ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) )
@@ -2611,7 +3057,109 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 		}
 
 	}
-									
+
+/*****************************************************************************************************
+ *
+ * Alexa in der Autosteuerung
+ *
+ * Routinen zur Darstellung der Alexa Funktionen von Amazon
+ *
+ * Achtung, beim kopieren von Defaultfunktionen auf folgende Punkte aufpassen:
+ *    Links und Namen in Init MessagePugffer adaptieren
+ *
+ *
+ **************************************************************************************************************/
+
+
+class AutosteuerungAlexa extends AutosteuerungFunktionen
+	{
+
+	protected $log_File="Default";
+	protected $script_Id="Default";
+	protected $nachrichteninput_Id="Default";
+	protected $installedmodules;
+	protected $zeile=array();
+	protected $scriptIdHeatControl;	
+
+	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+		{
+		//echo "Logfile Construct\n";
+		
+		/******************************* Init *********/
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;			
+		$this->Init();
+
+		/******************************* File Logging *********/
+		$this->InitLogMessage();
+		
+		/******************************* Nachrichten Logging *********/
+		$type=3;$profile=""; $this->zeile=array();
+		$this->InitLogNachrichten($type,$profile);
+		}
+
+	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
+		{
+		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$this->zeile[$i]=@IPS_GetObjectIDByName("Zeile".$i,$vid);
+		if ($this->zeile[$i]==false) 
+			{			
+			$this->zeile[$i] = CreateVariable("Zeile".$i,$type,$vid, $i*10,$profile,$scriptIdHeatControl );
+			}
+		}
+
+	function InitMesagePuffer($type=3,$profile="")
+		{		
+		if ($this->nachrichteninput_Id != "Ohne")
+			{
+			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+			// bei etwas anderem als einem String stimmt der defaultwert nicht
+			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);	/* <<<<<<< change here */
+			if ($vid===false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
+				}
+			else
+				{	
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
+				}	
+			}
+		else
+			{
+			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
+			$this->installedmodules=$moduleManager->GetInstalledModules();			
+			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
+			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
+			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichten-Alexa",$CategoryIdData);	/* <<<<<<< change here */
+			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);							/* <<<<<<< change here */
+			if ($vid==false) 
+				{
+				IPSLogger_Dbg (__file__, '*** Fehler: Autosteuerung Anwesenheitssimulation InitMessagePuffer, keine Kategorie Schaltbefehle in '.$this->nachrichteninput_Id);
+				}
+			else
+				{
+				//EmptyCategory($vid);			
+				for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,null); }
+				}		
+			}
+		}
+
+	function LogMessage($message)
+		{
+		if ($this->log_File != "No-Output")
+			{
+			$handle3=fopen($this->log_File, "a");
+			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fclose($handle3);
+			//echo $this->log_File."   ".$message."\n";
+			}
+		}
+
+	}
+										
 /*****************************************************************************************************
  *
  * Stromheizung in der Autosteuerung
@@ -2706,6 +3254,12 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		}
 
 	}
+
+
+
+
+
+
 
 /*********************************************************************************************/
 
@@ -3023,6 +3577,10 @@ function SwitchFunction()
  * eigentlich die Status Applikation, kopiert damit möglicherweise andere Abläufe 
  * zusaetzlich eingebaut werden können, Ziel ist selbe Applikation für alles
  *
+ * uebernimmt die Befehlsparameter, den neuen Wert der auslösenden Variable und deren ID
+ * im Unterschied zu den anderen Applikationen wird auch der Vorwert ermittelt OLDSTATUS und gemeinsam mit SWITCH übergeben
+ * SWITCH, STATUS, OLDSTATUS
+ *
  * Hierarchie notwendig wie bei IPSLight, Haus, Zimmer, Gruppen von Zimmern
  *
  * neue Befehle:
@@ -3049,7 +3607,10 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 	$auto=new Autosteuerung(); 						/* um Auto Klasse auch in der Funktion verwenden zu können */
 	$nachrichten=new AutosteuerungRegler();			/* Nachrichten fuer Regler hier sammeln */
 
-	$oldValue=$auto->setNewValue($variableID,$status);	/* den Unterschied erkennen, gleich, groesser, kleiner */
+	/* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
+	 * neuen Wert gelichzeitig schreiben
+	 */
+	$oldValue=$auto->setNewValue($variableID,$status);	
 	IPSLogger_Dbg(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status.' der Variable '.$variableID.' alter Wert war : '.$oldValue);
 	
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
@@ -3082,7 +3643,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 		else $nachrichten->LogNachrichten($command[$entry]["COMMENT"]);
 
 		if (strlen($command[$entry]["COMMENT"])>4) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
-		if (strlen($command[$entry]["COMMENT"])>100) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],100));	
+		if (strlen($command[$entry]["COMMENT"])>140) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],140));	
 
 		//$log_Autosteuerung->LogNachrichten('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').'.$result);
 					

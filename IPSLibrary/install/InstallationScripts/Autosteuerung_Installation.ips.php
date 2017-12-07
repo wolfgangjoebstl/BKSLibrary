@@ -238,10 +238,6 @@
 
 	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
 
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	/* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
-
 /*******************************
  *
  * Links für Webfront identifizieren
@@ -290,6 +286,9 @@
 				//$webfront_links[$StatusAnwesendID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 				//$webfront_links[$StatusAnwesendID]["USER"]=$AutoSetSwitch["USER"];
 				//$webfront_links[$StatusAnwesendID]["MOBILE"]=$AutoSetSwitch["MOBILE"];	
+				$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
+				$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+				/* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
 				$webfront_links[$AutosteuerungID]["OID_R"]=$input;				
 				break;
 			case "ALARMANLAGE":
@@ -458,6 +457,23 @@
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
 				$simulation=new AutosteuerungRegler();													
 				break;	
+			case "ALEXA":
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";	/* Default Tabname, alle im gleichen Tab */
+				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguroert, kann immer noch der selbe sein */
+					{
+					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
+					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+						{
+						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
+						}
+					else $webfront_links[$AutosteuerungID]["TABNAME"]='Alexa'; 						
+					}
+				$categoryId_Alexa = CreateCategory('Nachrichten-Alexa',   $CategoryIdData, 20);
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');	
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;											/* Darstellung rechts im Webfront */				
+				$alexa=new AutosteuerungAlexa();	
+				break;
 			default:
 				break;
 			}
@@ -528,7 +544,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	echo "\nWebfront Konfiguration für Administraor User usw, geordnet nach data.OID  \n";
+	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
 	print_r($webfront_links);
 	
 	if ($WFC10_Enabled)
@@ -593,7 +609,6 @@
 			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-			echo "Kategorien erstellt, Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 			$i++;
 																																								
 			foreach ($webfront_links as $OID => $webfront_link)
@@ -611,13 +626,27 @@
 						}
 					}
 				}
-
+			echo ">>Kategorien erstellt fuer ".$tab.", Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n\n";
 			}
 
 
-		ReloadAllWebFronts();
+		ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 
 		}
+
+	/*******************************************************
+	 *
+	 * es gibt keine automatisierte Webfront Erstellung mehr die anhand der Kategorien, die gerade angelegt worden sind erstellt wird 
+	 *
+	 * Es werden Kategorien AutoTPADetailsX mit laufender Nummer angelegt, beginnend bei 0, nicht aendern und in Config uebernehmen
+	 *
+	 *		'Alexa' => array(
+	 *			array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails3',        'AutoTPA',        'Alexa','Eyes',1,40,0,0,'true'),
+	 *			array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Left',  'AutoTPADetails3', null,null),
+	 *			array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Right',  'AutoTPADetails3', null,null),
+	 *			),
+	 *
+	 *****************************************************************************/
 
 if (true)
 	{
@@ -626,13 +655,16 @@ if (true)
 	$webFrontConfig = Autosteuerung_GetWebFrontConfiguration();
 	if ($WFC10_Enabled) 
 		{
-		/* Default Path ist Visualization.WebFront.Administrator.Autosteuerung */
-		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+		/* Default Path ist Visualization.WebFront.Administrator.Autosteuerung, die folgenden beiden Befehle wurden weiter oben bereits durchgeführt */
+		//$categoryId_WebFrontAdministartor                = CreateCategoryPath($WFC10_Path);
+		//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
 		$order = 10;
-		foreach($webFrontConfig as $tabName=>$tabData) {
-			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFront, $order);
+		foreach($webFrontConfig as $tabName=>$tabData) 
+			{
+			/* tabname muss einer der oben kreierten Tabs sein, sonst Fehler */
+			if (isset($tabs[$tabName])===false) { echo "\nFalsche Konfiguration in Autosteuerung. Tabname stimmt nicht ueberein.\n"; break; } 
+			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontAdministrator, $order);			
 			foreach($tabData as $WFCItem) {
 				$order = $order + 10;
 				switch($WFCItem[0]) 
