@@ -23,7 +23,7 @@ class RemoteAccess
 
 	public $includefile;
 	private $remServer=array();
-	private $profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion");
+	private $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion");
 	private $listofOIDs=array();
 	private $listofROIDs=array();
 	
@@ -520,19 +520,24 @@ class RemoteAccess
 							case "Temperatur":
 								$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 								$rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-								$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+								$rpc->IPS_SetVariableProfileText($pname,'','°C');
 								break;
 							case "TemperaturSet":
 								$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 								$rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
 								$rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-								$rpc->IPS_SetVariableProfileText($pname,'',' °C');
+								$rpc->IPS_SetVariableProfileText($pname,'','°C');
 								break;								
 							case "Humidity";
-						 		$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-						  		$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-						  		$rpc->IPS_SetVariableProfileText($pname,'',' %');
-						  		break;
+								$rpc->IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+								$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+								$rpc->IPS_SetVariableProfileText($pname,'',' %');
+								break;
+							case "HumidityInt";
+								$rpc->IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+								$rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+								$rpc->IPS_SetVariableProfileText($pname,'',' %');
+								break;
 							case "Switch";
 					 			$rpc->IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 						 		$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
@@ -741,7 +746,7 @@ class RemoteAccess
 				{
 				$struktur[$oid]=$rpc->IPS_GetName($oid);
 				}		
-			echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+			echo "RPC_CreateVariableByName, Struktur nicht übergeben, wird neu ermitteln.\n";
 			//echo "Struktur :\n";
 			//print_r($struktur);
 			}
@@ -752,8 +757,17 @@ class RemoteAccess
 				if ($name==$oname["Name"]) 
 					{
 					$result=$name;$vid=$oid;
+					echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";					
 					}
-				}	
+				}
+			else
+				{
+				if ($name==$oname) 
+					{
+					$result=$name;$vid=$oid;
+					echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";					
+					}
+				}			
 			//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
 			}
 		if ($result=="")
@@ -796,8 +810,10 @@ class RemoteAccess
 
 	/*****************************************************************
 	 *
-	 * Übergabe ist die Homematic Struktur und das Keyword, derzeit HUMIDY oder TEMPERATURE
-	 *
+	 * Übergabe ist die Homematic Struktur 
+	 * das Keyword, derzeit HUMIDITY oder TEMPERATURE, damit wird der richtige Sensor in der Homematic Tabelle gefunden
+	 * das Profil für die Remote Variablenerstellung, so wird auf dem RemoteServer formatiert
+	 * aus dem Keyword wird der index berechnet, der index ist die Kategorie in der die Visualization abgelegt ist
 	 *
 	 **********************************************************************/
 
@@ -806,18 +822,62 @@ class RemoteAccess
 		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		if ($startexec==0) {$startexec=microtime(true);}
+		
+		echo "\nRPC_CreateVariableField für ".$keyword."\n";		
+		$struktur=array();
+		$status=RemoteAccessServerTable();
 		foreach ($remServer as $Name => $Server)
 			{
-			echo "Bearbeite Server ".$Name."\n";
-			print_r($Server);
+			$struktur[$Name]=array();
+			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+			if ( $status[$Name]["Status"] == true )
+				{
+				$index="";
+				switch ($keyword)
+					{
+					case "TEMPERATURE":
+						$index="Temperatur";
+						break;
+					case "HUMIDITY":
+						$index="Humidity";
+						break;
+					default:
+						break;
+					}
+				echo "Index ist : ".$index." für Keyword : ".$keyword."\n";	
+				if ($index != "")			
+					{
+					$id=(integer)$Server[$index];			/*   <=== change here */
+					$rpc = new JSONRPC($Server["Adresse"]);	
+					$children=$rpc->IPS_GetChildrenIDs($id);
+					$struktur[$Name]=array();
+					foreach ($children as $oid)
+						{
+						$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
+						}
+					}
+				else $index=$profile;								
+				}
 			}
+		foreach ($remServer as $Name => $Server)
+			{
+			echo "Bearbeite Server ".$Name." für Keyword ".$keyword."\n";
+			print_r($Server);
+			if (sizeof($struktur[$Name])>0)
+				{
+				echo "   Struktur Server für Categorie auf Visualization.RemoteAccess.".$Name.".".$index.":\n";
+				print_r($struktur[$Name]);
+				}	
+			}
+		//print_r($struktur);			
+
 		foreach ($Homematic as $Key)
 			{
 			/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
 			if (isset($Key["COID"][$keyword])==true)
-	   			{
-	      		$oid=(integer)$Key["COID"][$keyword]["OID"];
-      			$variabletyp=IPS_GetVariable($oid);
+				{
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+				$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
 					{
 					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
@@ -833,29 +893,30 @@ class RemoteAccess
 					//print_r($Server);
 					$rpc = new JSONRPC($Server["Adresse"]);
 					if ($keyword=="TEMPERATURE")
-			      		{
-						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 2);
+						{
+						// Variablen für Aufruf function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array() */						
+						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 2, $struktur[$Name]);	/* Struktur wird nicht übergeben */
 						}
 					else
-			      		{
-						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$profile], $Key["Name"], 1);
+						{
+						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 1, $struktur[$Name]);
 						}
-   					$rpc->IPS_SetVariableCustomProfile($result,$profile);
+					$rpc->IPS_SetVariableCustomProfile($result,$profile);
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
-			   $messageHandler = new IPSMessageHandler();
-			   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			   echo "RegisterEvent ".$oid." mit \"OnChange\",\"IPSComponentSensor_Temperatur,".$parameter." IPSModuleSensor_Temperatur,1,2,3\"\n";
-			   if ($keyword=="TEMPERATURE")
-			   		{
+				$messageHandler = new IPSMessageHandler();
+				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				echo "RegisterEvent ".$oid." mit \"OnChange\",\"IPSComponentSensor_Temperatur,".$parameter." IPSModuleSensor_Temperatur,1,2,3\"\n";
+				if ($keyword=="TEMPERATURE")
+					{
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
 					}
 				else
-			    	{
+					{
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
 					}
 				}

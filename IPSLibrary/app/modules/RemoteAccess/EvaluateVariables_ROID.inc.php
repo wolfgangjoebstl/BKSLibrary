@@ -1,62 +1,62 @@
 <?
 function GuthabensteuerungList() { return array(
-"Phone_06603404350" => array(
-         "OID" => 12676, 
-         "Name" => "Phone_06603404350", 
+"Phone_06603192670" => array(
+         "OID" => 12618, 
+         "Name" => "Phone_06603192670", 
          "Typ" => 3, 
          "Order" => "100", 
              	),
-"Phone_06607625474" => array(
-         "OID" => 38943, 
-         "Name" => "Phone_06607625474", 
+"Phone_06602980747" => array(
+         "OID" => 56342, 
+         "Name" => "Phone_06602980747", 
          "Typ" => 3, 
          "Order" => "102", 
              	),
-"Phone_06602765645" => array(
-         "OID" => 52832, 
-         "Name" => "Phone_06602765645", 
+"Phone_06763242665" => array(
+         "OID" => 52044, 
+         "Name" => "Phone_06763242665", 
          "Typ" => 3, 
          "Order" => "104", 
              	),
-"Phone_06603192670" => array(
-         "OID" => 55857, 
-         "Name" => "Phone_06603192670", 
+"Phone_06603404332" => array(
+         "OID" => 12628, 
+         "Name" => "Phone_06603404332", 
          "Typ" => 3, 
          "Order" => "106", 
              	),
-"Phone_06605325076" => array(
-         "OID" => 32717, 
-         "Name" => "Phone_06605325076", 
+"Phone_06607625474" => array(
+         "OID" => 29823, 
+         "Name" => "Phone_06607625474", 
          "Typ" => 3, 
          "Order" => "108", 
              	),
-"Phone_06603404332" => array(
-         "OID" => 34178, 
-         "Name" => "Phone_06603404332", 
+"Phone_06602765645" => array(
+         "OID" => 19494, 
+         "Name" => "Phone_06602765645", 
          "Typ" => 3, 
          "Order" => "110", 
              	),
-"Phone_06605960456" => array(
-         "OID" => 48743, 
-         "Name" => "Phone_06605960456", 
+"Phone_06603404350" => array(
+         "OID" => 26808, 
+         "Name" => "Phone_06603404350", 
          "Typ" => 3, 
          "Order" => "112", 
              	),
-"Phone_06607845067" => array(
-         "OID" => 31273, 
-         "Name" => "Phone_06607845067", 
+"Phone_06605960456" => array(
+         "OID" => 17873, 
+         "Name" => "Phone_06605960456", 
          "Typ" => 3, 
          "Order" => "114", 
              	),
-"Phone_06602980747" => array(
-         "OID" => 35594, 
-         "Name" => "Phone_06602980747", 
+"Phone_06607845067" => array(
+         "OID" => 34977, 
+         "Name" => "Phone_06607845067", 
          "Typ" => 3, 
          "Order" => "116", 
              	),
-"Phone_06763242665" => array(
-         "OID" => 36535, 
-         "Name" => "Phone_06763242665", 
+"Phone_06605325076" => array(
+         "OID" => 11275, 
+         "Name" => "Phone_06605325076", 
          "Typ" => 3, 
          "Order" => "118", 
              	),
@@ -64,72 +64,72 @@ function GuthabensteuerungList() { return array(
       );}
 
 function AmisStromverbrauchList() { return array(
-"Server_Wirkenergie" => array(
-         "OID" => 29257, 
-         "Name" => "Server_Wirkenergie", 
+"Wohnzimmer_Wirkenergie" => array(
+         "OID" => 23399, 
+         "Name" => "Wohnzimmer_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "100", 
              	),
-"Server_Wirkleistung" => array(
-         "OID" => 26534, 
-         "Name" => "Server_Wirkleistung", 
+"Wohnzimmer_Wirkleistung" => array(
+         "OID" => 31445, 
+         "Name" => "Wohnzimmer_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "101", 
              	),
-"Ladestation_Wirkenergie" => array(
-         "OID" => 40933, 
-         "Name" => "Ladestation_Wirkenergie", 
+"Wohnzimmer-Effektlicht_Wirkenergie" => array(
+         "OID" => 14352, 
+         "Name" => "Wohnzimmer-Effektlicht_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "102", 
              	),
-"Ladestation_Wirkleistung" => array(
-         "OID" => 32325, 
-         "Name" => "Ladestation_Wirkleistung", 
+"Wohnzimmer-Effektlicht_Wirkleistung" => array(
+         "OID" => 17352, 
+         "Name" => "Wohnzimmer-Effektlicht_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "103", 
              	),
-"Boiler_Wirkenergie" => array(
-         "OID" => 29362, 
-         "Name" => "Boiler_Wirkenergie", 
+"Arbeitszimmer-Netzwerk_Wirkenergie" => array(
+         "OID" => 35875, 
+         "Name" => "Arbeitszimmer-Netzwerk_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "104", 
              	),
-"Boiler_Wirkleistung" => array(
-         "OID" => 32379, 
-         "Name" => "Boiler_Wirkleistung", 
+"Arbeitszimmer-Netzwerk_Wirkleistung" => array(
+         "OID" => 50977, 
+         "Name" => "Arbeitszimmer-Netzwerk_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "105", 
              	),
-"Feuchtigkeit_Wirkenergie" => array(
-         "OID" => 28404, 
-         "Name" => "Feuchtigkeit_Wirkenergie", 
+"Esstisch-Effektlicht_Wirkenergie" => array(
+         "OID" => 39011, 
+         "Name" => "Esstisch-Effektlicht_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "106", 
              	),
-"Feuchtigkeit_Wirkleistung" => array(
-         "OID" => 49550, 
-         "Name" => "Feuchtigkeit_Wirkleistung", 
+"Esstisch-Effektlicht_Wirkleistung" => array(
+         "OID" => 33998, 
+         "Name" => "Esstisch-Effektlicht_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "107", 
              	),
-"Gartenbeleuchtung_Wirkenergie" => array(
-         "OID" => 31288, 
-         "Name" => "Gartenbeleuchtung_Wirkenergie", 
+"Statusanzeige_Wirkenergie" => array(
+         "OID" => 12580, 
+         "Name" => "Statusanzeige_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "108", 
              	),
-"Gartenbeleuchtung_Wirkleistung" => array(
-         "OID" => 54096, 
-         "Name" => "Gartenbeleuchtung_Wirkleistung", 
+"Statusanzeige_Wirkleistung" => array(
+         "OID" => 23832, 
+         "Name" => "Statusanzeige_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "109", 
@@ -139,49 +139,49 @@ function AmisStromverbrauchList() { return array(
 
 function SysInfoList() { return array(
 "Hostname" => array(
-         "OID" => 35146, 
+         "OID" => 54221, 
          "Name" => "Hostname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "200", 
              	),
 "Betriebssystemname" => array(
-         "OID" => 39862, 
+         "OID" => 52163, 
          "Name" => "Betriebssystemname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "201", 
              	),
 "Betriebssystemversion" => array(
-         "OID" => 23386, 
+         "OID" => 33438, 
          "Name" => "Betriebssystemversion", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "202", 
              	),
 "Hotfix" => array(
-         "OID" => 49154, 
+         "OID" => 29291, 
          "Name" => "Hotfix", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "203", 
              	),
 "ExternalIP" => array(
-         "OID" => 49943, 
+         "OID" => 38967, 
          "Name" => "ExternalIP", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "204", 
              	),
 "IPS_UpTime" => array(
-         "OID" => 49898, 
+         "OID" => 50802, 
          "Name" => "IPS_UpTime", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "205", 
              	),
 "IPS_Version" => array(
-         "OID" => 55022, 
+         "OID" => 47824, 
          "Name" => "IPS_Version", 
          "Typ"      => 3, 
          "Profile"  => "", 
@@ -191,25 +191,6 @@ function SysInfoList() { return array(
       );}
 
 function ROID_List() { return array(
-"LBG70-2Virt" => array(
-         "Adresse" => "http://wolfgangjoebstl@yahoo.com:Cloudg06@wolfgangjoebstl.synology.me:3876/api/", 
-         "VisRootID" => "35687", 
-         "WebFront" => "36315", 
-         "Administrator" => "30569", 
-         "RemoteAccess" => "43362", 
-         "ServerName" => "15320", 
-         "Temperatur" => "19326", 
-         "Schalter" => "50523", 
-         "Kontakte" => "31408", 
-         "Taster" => "41106", 
-         "Bewegung" => "13599", 
-         "HeatControl" => "50914", 
-         "HeatSet" => "30635", 
-         "Humidity" => "26904", 
-         "SysInfo" => "59960", 
-         "Andere" => "48641", 
-         "ArchiveHandler" => "27926", 
-             	),
       );}
 
 ?>

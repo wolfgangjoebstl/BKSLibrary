@@ -472,10 +472,10 @@
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Left', $tabItem."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Right', $tabItem."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-			CreateLink($result[0]["Name"], $result[0]["OID"], $categoryIdLeftUp, 10);
-			CreateLink($result[1]["Name"], $result[1]["OID"], $categoryIdRightUp, 10);
-			CreateLink($result[2]["Name"], $result[2]["OID"], $categoryIdLeftDn, 10);
-			CreateLink($result[3]["Name"], $result[3]["OID"], $categoryIdRightDn, 10);
+			if (sizeof($result)>0) CreateLink($result[0]["Name"], $result[0]["OID"], $categoryIdLeftUp, 10);
+			if (sizeof($result)>1) CreateLink($result[1]["Name"], $result[1]["OID"], $categoryIdRightUp, 10);
+			if (sizeof($result)>2) CreateLink($result[2]["Name"], $result[2]["OID"], $categoryIdLeftDn, 10);
+			if (sizeof($result)>3) CreateLink($result[3]["Name"], $result[3]["OID"], $categoryIdRightDn, 10);
 				
 			}
 			

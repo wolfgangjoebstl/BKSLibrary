@@ -37,7 +37,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 ini_set('max_execution_time', 500);
 $startexec=microtime(true);
 
-	echo "Update Konfiguration und register Events\n";
+	echo "RemoteAccess: Update Konfiguration und register Events\n";
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');

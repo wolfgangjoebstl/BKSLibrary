@@ -274,6 +274,7 @@ abstract class AutosteuerungConfiguration
 					}
 				$this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
 				}
+			echo "Config Function heisst : ".$func."\n";	
 			return $this->eventConfigurationAuto;
 			}
 		
@@ -299,7 +300,8 @@ abstract class AutosteuerungConfiguration
 		 */
 		function CreateEvent($variableId, $eventType, $scriptId)
 			{
-			switch ($eventType) {
+			switch ($eventType) 
+				{
 				case 'OnChange':
 					$triggerType = 1;
 					break;
@@ -307,20 +309,26 @@ abstract class AutosteuerungConfiguration
 					$triggerType = 0;
 					break;
 				default:
-					throw new Exception('Found unknown EventType '.$eventType);
+					$triggerType = 99;
+					if (is_numeric($variableId) ) throw new Exception('Found unknown EventType '.$eventType);
+					break;
+				}
+			if ($triggerType<99)
+				{	
+				$eventName = $eventType.'_'.$variableId;
+				$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+				if ($eventId === false) 
+					{
+					$eventId = IPS_CreateEvent(0);
+					IPS_SetName($eventId, $eventName);
+					IPS_SetIdent($eventId, $eventName);
+					IPS_SetEventTrigger($eventId, $triggerType, $variableId);
+					IPS_SetParent($eventId, $scriptId);
+					IPS_SetEventActive($eventId, true);
+					IPSLogger_Dbg (__file__, 'Created IPSMessageHandler Event for Variable='.$variableId);
+					}
+				}
 			}
-			$eventName = $eventType.'_'.$variableId;
-			$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
-			if ($eventId === false) {
-				$eventId = IPS_CreateEvent(0);
-				IPS_SetName($eventId, $eventName);
-				IPS_SetIdent($eventId, $eventName);
-				IPS_SetEventTrigger($eventId, $triggerType, $variableId);
-				IPS_SetParent($eventId, $scriptId);
-				IPS_SetEventActive($eventId, true);
-				IPSLogger_Dbg (__file__, 'Created IPSMessageHandler Event for Variable='.$variableId);
-			}
-		}
 
 		/**
 		 * @private
@@ -332,9 +340,9 @@ abstract class AutosteuerungConfiguration
 		private function InitEventConfiguration()
 			{
 			// Build Configuration String
-			$configString = '$'.$this->identifier.' = array(';
-			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
-				
+			$configString = chr(9).chr(9).'$'.$this->identifier.' = array('.PHP_EOL.PHP_EOL;
+			$configString .= chr(9).chr(9).chr(9).');'.PHP_EOL;
+			$configString .= chr(9).chr(9).'return $'.$this->identifier.';'.PHP_EOL;				
 			$funcString=PHP_EOL.PHP_EOL.chr(9).'function '.$this->functionName.'() {'.PHP_EOL;
 			$funcString.=$configString;
 			$funcString.=chr(9).'}'.PHP_EOL.PHP_EOL;				
@@ -375,13 +383,26 @@ abstract class AutosteuerungConfiguration
 				{
 				//echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
 				//print_r($params);
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) 
+				if ( is_numeric((string)$variableId) )
 					{
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+					$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+					for ($i=0; $i<count($params); $i=$i+3) 
+						{
+						if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+						$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+						}
+					$configString .= '),'.'        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
 					}
-				$configString .= '),'.'        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
+				else
+					{
+					$configString .= PHP_EOL.chr(9).chr(9).chr(9).'"'.$variableId.'" => array(';
+					for ($i=0; $i<count($params); $i=$i+3) 
+						{
+						if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+						$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+						}
+					$configString .= '),'.'        ';
+					}
 				}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 			//echo $configString;
@@ -399,7 +420,7 @@ abstract class AutosteuerungConfiguration
 			}
 			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
 			file_put_contents($fileNameFull, $fileContentNew);
-			Set_EventConfigurationAuto($configuration);
+			$this->Set_EventConfigurationAuto($configuration);
 			}
 			
 		/************************************************************************
@@ -412,7 +433,7 @@ abstract class AutosteuerungConfiguration
 
 		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
-			$configuration = Get_EventConfigurationAuto();
+			$configuration = $this->Get_EventConfigurationAuto();
 			//echo "---> war gespeichert.\n";
 			//print_r($configuration);
 
@@ -463,8 +484,8 @@ abstract class AutosteuerungConfiguration
 				$configuration[$variableId][] = $moduleParams;
 				}
 				//print_r($configuration);
-				StoreEventConfiguration($configuration);
-				CreateEvent($variableId, $eventType, self::$scriptID);
+				$this->StoreEventConfiguration($configuration);
+				$this->CreateEvent($variableId, $eventType, $this->scriptID);
    		}
 		
 		/************************************************************************
@@ -481,7 +502,7 @@ abstract class AutosteuerungConfiguration
 			if (array_key_exists($variableId, $configuration))
 				{
 				unset($configuration[$variableId]);
-				StoreEventConfiguration($configuration);
+				$this->StoreEventConfiguration($configuration);
 				//self::CreateEvent($variableId, $eventType, self::$scriptID);
 				}
    		}			
