@@ -6,10 +6,23 @@
  *
  * Allerlei betriebliche Abfragen und Wartungsmassnahmen
  *
- * SysPing, alle bekannten Geräte (Router, LED, Denon, Cams) pingen und Status ermitteln
+ *
+ * RouterAufruftimer
+ * RouterExectimer
+ * SysPingTimer			alle 60 Minuten syspingalldevices
+ *						für alle bekannten Geräte (Router, LED, Denon, Cams) pingen und Status ermitteln
+ *						eventuell auch reboot, reset für erhöhte betriebssicherheit
+ * CyclicUpdate			Update aller IPS Module, zB immer am 12. des Monates
+ * CopyScriptsTimer
+ * FileStatus
+ * SystemInfo
+ * Reserved
+ * Maintenance			Starte Maintennance Funktionen 
+ * MoveLogFiles			Maintenance Funktion: Move Log Files 
  *
  *
- * Update aller IPS Module, zB immer am 12. des Monates
+ *
+ * 
  *
  ***********************************************************/
 
@@ -603,7 +616,7 @@ if ($_IPS['SENDER']=="Execute")
   	einmal als aktuelle Werte und einmal als historische Werte
 	*************************************************************************************/
 
-	//$OperationCenter->FileStatus();
+	$OperationCenter->FileStatus();
 
 	/************************************************************************************
 	 * System Informationen berechnen
@@ -732,9 +745,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 					   SetValue($WebCam_MotionID,true);
 					   }
 					else
-					   {
-  				   	SetValue($WebCam_MotionID,false);
-					   }
+						{
+  				   		SetValue($WebCam_MotionID,false);
+						}
 					}
 				} /* Ende isset */
 			if ($count>0)
@@ -787,7 +800,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			break;
 			
 		case $tim4ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPing");
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
 			/********************************************************
 			 *
 			 * Alle 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable
@@ -848,8 +861,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * Maintenance Modi
-	   	 * Timer einmal am Tag um 00:50
-	   	 *
+			 * Timer einmal am Tag um 00:50
+	  		 *
 			 *************************************************************************************/	
 			IPS_SetEventActive($tim11ID,true);	
 			break;		
@@ -858,8 +871,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig
-	   	 * 
-	   	 *
+			 * 
+			 *
 			 *************************************************************************************/	
 			$countlog=$OperationCenter->MoveLogs();
 			if ($countlog == 100)

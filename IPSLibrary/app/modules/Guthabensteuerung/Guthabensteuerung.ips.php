@@ -77,8 +77,16 @@ if ( isset($GuthabenAllgConfig["FirefoxDirectory"]) == true )
 	}
 else
 	{
-	$firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
-	//echo "Firefox Verzeichnis (old style aus AllgemeineDefinitionen): ".$firefox."\n";					
+	if ( isset($GuthabenAllgConfig["FireFoxDirectory"]) == true )
+		{
+		$firefox=$GuthabenAllgConfig["FireFoxDirectory"]."firefox.exe";
+		//echo "Firefox verzeichnis : ".$firefox."\n";				
+		}
+	else
+		{		
+		$firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
+		echo "Firefox Verzeichnis (old style aus AllgemeineDefinitionen): ".$firefox."\n";
+		}					
 	}
 
 	

@@ -26,7 +26,11 @@
  *   device_ping  
  *   server_ping
  *   writeServerPingResults
+ *
+ *
  *   SysPingAllDevices
+ *
+ *
  *   writeSysPingResults
  *
  *
@@ -125,6 +129,7 @@ class OperationCenter
 	 
 	function whatismyIPaddress1()
 		{
+		$posP[0]["IP"]="unknown";
 		$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
 		//$url="http://www.whatismyip.com/";  //gesperrt
 		//$url="http://whatismyip.org/"; // java script
@@ -147,13 +152,11 @@ class OperationCenter
 		if ($result1==false)
 			{
 			echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
-			return (false);
+			return ($posP);
 			}
 		else	
 		   	{
 			$i=0;
-			$posP=array();
-
 			//echo "Variante wenn IPv4 Adresse als Tag im html steht :\n";			
 			$pos_start=strpos($result1,"whatismyipaddress.com/ip")+25;
 			//echo "Suche Punkte:\n";
@@ -372,54 +375,65 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * sys ping IP Adresse von LED Modul oder DENON Receiver
+	 * sys ping IP Adresse von LED Modul, DENON Receiver oder einem anderem generischem Device
+	 *
+	 * es wird ein Statuseintrag und ein reboot Counter Eintrag erstellt und bearbeitet
+	 * Eine Statusänderung erzeugt einen Eintrag im OperationCenter Logfile
 	 *
 	 * config objekt von LED oder DENON Ansteuerung, Device LED oder DENON. Identifier IPADRESSE oder MAC
+	 *
+	 * ROUTER
+	 * es wird die Konfiguration aus OperationCenter_Configuration()["ROUTER"] übergeben, identifier=IPADRESSE, device=router
 	 *
 	 */
 	function device_ping($device_config, $device, $identifier)
 		{
 		foreach ($device_config as $name => $config)
-		   {
-		   //print_r($config);
+			{
+			//print_r($config);
 			$StatusID = CreateVariableByName($this->categoryId_SysPing,   $device."_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 			$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-		   //echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-			$status=Sys_Ping($config[$identifier],1000);
-			if ($status)
+			if (isset($config[$identifier])==true)
 				{
-			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird erreicht       !\n";
-				if (GetValue($StatusID)==false)
-				   {  /* Statusänderung */
-					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
-					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
-					SetValue($StatusID,true);
-					SetValue($RebootID,0);
-				   }
-				}
-			else
-				{
-			   echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Stunden.\n";
-				if (GetValue($StatusID)==true)
-				   {  /* Statusänderung */
-					$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
-					$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
-					SetValue($StatusID,false);
-				   }
+				//echo "Sys_ping Led Ansteuerung : ".$name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
+				$status=Sys_Ping($config[$identifier],1000);
+				if ($status)
+					{
+					echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird erreicht       !\n";
+					if (GetValue($StatusID)==false)
+						{  /* Statusänderung */
+						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf Erreichbar');
+						SetValue($StatusID,true);
+						SetValue($RebootID,0);
+						}
+					}
 				else
-				   {
-					SetValue($RebootID,(GetValue($RebootID)+1));
-				   }
-				}
-		   }
+					{
+					echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$config[$identifier]."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Stunden.\n";
+					if (GetValue($StatusID)==true)
+						{  /* Statusänderung */
+						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von '.$device.'_'.$name.' auf NICHT Erreichbar');
+						SetValue($StatusID,false);
+						}
+					else
+						{
+						SetValue($RebootID,(GetValue($RebootID)+1));
+						}
+					}
+				}	/* falsche Konfigurationen ignorieren */
+			}
 		}
 
 	/**
 	 * @public
 	 *
-	 * sys ping IP Adresse von bekannten IP Symcon Servern
+	 * rpc call (sys ping) der IP Adresse von bekannten IP Symcon Servern
 	 *
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
+	 *
+	 * Wenn der Remote Server erreichbar ist werden Kernel Version udn Uptime abngefragt und lokal gespeichert
 	 *
 	 */
 	function server_ping()
@@ -515,21 +529,21 @@ class OperationCenter
 			   		}
 					}
 				else
-				   {
-				   $ServerName=$rpc->IPS_GetName(0);
-				   $ServerUptime=$rpc->IPS_GetKernelStartTime();
-	   		   $IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
-  				   $ServerVersion=$rpc->IPS_GetKernelVersion();
+					{
+					$ServerName=$rpc->IPS_GetName(0);
+					$ServerUptime=$rpc->IPS_GetKernelStartTime();
+	   				$IPS_VersionID = CreateVariableByName($this->categoryId_Access, $Name."_IPS_Version", 3);
+  					$ServerVersion=$rpc->IPS_GetKernelVersion();
 					echo "   Server : ".$UrlAddress." mit Name: ".$ServerName." und Version ".$ServerVersion." zuletzt rebootet: ".date("d.m H:i:s",$ServerUptime)."\n";
 					SetValue($IPS_UpTimeID,$ServerUptime);
 					SetValue($IPS_VersionID,$ServerVersion);
 					$RemoteServer[$Name]["Status"]=true;
 					if (GetValue($ServerStatusID)==false)
-					   {  /* Statusänderung */
+						{  /* Statusänderung */
 						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
 						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf erreichbar');
 						SetValue($ServerStatusID,true);
-			   		}
+						}
 					}
 			   }
 			else
@@ -569,7 +583,35 @@ class OperationCenter
 		return($result);	
 		}
 
-/**************************************************************************************************************/
+	/*************************************************************************************************************
+	 *
+	 * function SysPingAllDevices
+	 *
+	 * Pingen von IP Geräten, Aufgelistet im Konfigurationsfile:
+	 *
+	 * CAM config file, ping mit sysping
+	 *
+	 * LED config File, ping mit device_ping
+	 *
+	 * Denon
+	 *
+	 * Router, ping mit device_ping (echtes sys_ping aus IP Symcon Funktionsliste)
+	 *				OperationCenterConfig['ROUTER']
+	 *
+	 * Wunderground
+	 *
+	 * localAccess Server, wie für die Remote Abfrage, den lokalen Wert setzen
+	 *
+	 * RemoteAccess Server, rpc call ping mit function server_ping
+	 *				RemoteAccess_Configuration.inc.php : RemoteAccess_GetServerConfig() wenn set to Active
+	 *
+	 *
+	 *
+	 *
+	 * in Data/OperationCenter/Sysping/ pro Gerät ein Status angelegt
+	 * in Data/OperationCenter/RebootCounter/ pro Gerät ein Reboot Request Counter angelegt
+	 *
+	 ********************************************************************************************************************/
 
 	function SysPingAllDevices($log_OperationCenter)
 		{
@@ -652,6 +694,7 @@ class OperationCenter
 				}
 			$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 			$this->device_ping($deviceConfig, $device, $identifier);
+			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier);
 			}
 
 		/************************************************************************************
@@ -659,6 +702,14 @@ class OperationCenter
 		 *************************************************************************************/
 		$device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 		$this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
+		$this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier);
+		
+		/************************************************************************************
+		 * Erreichbarkeit Internet
+		 *************************************************************************************/
+		$device="Internet"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+		$this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier);
+		$this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier);		
 
 		/************************************************************************************
 		 * Überprüfen ob Wunderground noch funktioniert.
@@ -863,31 +914,41 @@ class OperationCenter
 	function device_checkReboot($device_config, $device, $identifier)
 		{
 		foreach ($device_config as $name => $config)
-		   {
-		   //print_r($config);
-			if (isset ($config["REBOOTSWITCH"]))
-			   {
+			{
+			//print_r($config);
+			if (isset ($config["NOK_HOURS"]))
+				{
 				$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 				$reboot_ctr = GetValue($RebootID);
-				$SwitchName = $config["REBOOTSWITCH"];
 				$maxhours = $config["NOK_HOURS"];
 				if ($reboot_ctr != 0)
-				   {
+					{
 					if ($reboot_ctr > $maxhours)
-					   {
-						echo $device."-Modul wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
-						include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-						IPSLight_SetSwitchByName($SwitchName,false);
-						sleep(2);
-						IPSLight_SetSwitchByName($SwitchName,true);
-					   }
+						{
+						echo $device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
+						if (isset ($config["REBOOTSWITCH"]))
+							{
+							$SwitchName = $config["REBOOTSWITCH"];
+							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+							IPSLight_SetSwitchByName($SwitchName,false);
+							sleep(2);
+							IPSLight_SetSwitchByName($SwitchName,true);
+							$this->log_OperationCenter->LogMessage($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." erfolgt");
+							$this->log_OperationCenter->LogNachrichten($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." erfolgt");							
+							}
+						else
+							{
+							$this->log_OperationCenter->LogMessage($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");
+							$this->log_OperationCenter->LogNachrichten($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");							
+							}	
+						}
 					else
-					   {
-						echo $device."-Modul wird NICHT erreicht ! Zustand seit ".$reboot_ctr." Stunden. Max stunden bis zum Reboot ".$maxhours."\n";
+						{
+						echo $device."_".$name." wird NICHT erreicht ! Zustand seit ".$reboot_ctr." Stunden. Max stunden bis zum Reboot ".$maxhours."\n";
 						}
 					}
 				}
-		   }
+			}
 		}
 
 /****************************************************************************************************************/
@@ -2425,50 +2486,48 @@ function extractIPaddress($ip)
 
 function dirToArray($dir)
 	{
-   $result = array();
+   	$result = array();
 
-   $cdir = scandir($dir);
-   foreach ($cdir as $key => $value)
-   {
-      if (!in_array($value,array(".","..")))
-      {
-         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
-         {
-            $result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-         }
-         else
-         {
-            $result[] = $value;
-         }
-      }
-   }
-
-   return $result;
+	$cdir = scandir($dir);
+	foreach ($cdir as $key => $value)
+		{
+		if (!in_array($value,array(".","..")))
+			{
+			if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         		{
+				$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+         		}
+         	else
+         		{
+            	$result[] = $value;
+         		}
+      		}
+   		}
+	return $result;
 	}
 
 /*********************************************************************************************/
 
 function dirToArray2($dir)
 	{
-   $result = array();
+	$result = array();
 
-   $cdir = scandir($dir);
-   foreach ($cdir as $key => $value)
-   {
-      if (!in_array($value,array(".","..")))
-      {
-         if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
-         {
-            //$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-         }
-         else
-         {
-            $result[] = $value;
-         }
-      }
-   }
-
-   return $result;
+	$cdir = scandir($dir);
+   	foreach ($cdir as $key => $value)
+		{
+		if (!in_array($value,array(".","..")))
+			{
+			if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+				{
+            	//$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+				}
+			else
+    			{
+            	$result[] = $value;
+         		}
+      		}
+   		}
+	return $result;
 	}
 
 

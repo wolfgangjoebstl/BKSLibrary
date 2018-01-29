@@ -823,50 +823,33 @@ class RemoteAccess
 		$remServer=ROID_List();
 		if ($startexec==0) {$startexec=microtime(true);}
 		
-		echo "\nRPC_CreateVariableField für ".$keyword."\n";		
-		$struktur=array();
-		$status=RemoteAccessServerTable();
+		switch ($keyword)
+			{
+			case "TEMPERATURE":
+				$index="Temperatur";
+				break;
+			case "HUMIDITY":
+				$index="Humidity";
+				break;
+			default:
+				$index=$profile;
+				break;
+			}	
+
+		echo "===============================================================\n";
+		echo "RPC_CreateVariableField für ".$keyword." Visualization Index : ".$index."\n";		
+		$struktur=$this->RPC_getExtendedStructure($remServer,$index);
 		foreach ($remServer as $Name => $Server)
 			{
-			$struktur[$Name]=array();
-			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-			if ( $status[$Name]["Status"] == true )
-				{
-				$index="";
-				switch ($keyword)
-					{
-					case "TEMPERATURE":
-						$index="Temperatur";
-						break;
-					case "HUMIDITY":
-						$index="Humidity";
-						break;
-					default:
-						break;
-					}
-				echo "Index ist : ".$index." für Keyword : ".$keyword."\n";	
-				if ($index != "")			
-					{
-					$id=(integer)$Server[$index];			/*   <=== change here */
-					$rpc = new JSONRPC($Server["Adresse"]);	
-					$children=$rpc->IPS_GetChildrenIDs($id);
-					$struktur[$Name]=array();
-					foreach ($children as $oid)
-						{
-						$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-						}
-					}
-				else $index=$profile;								
-				}
-			}
-		foreach ($remServer as $Name => $Server)
-			{
-			echo "Bearbeite Server ".$Name." für Keyword ".$keyword."\n";
+			echo "Bearbeite Server ".$Name." für Keyword ".$keyword." Index ".$index."  Visualization OID Werte aus vorermittelteter ROID_List():\n";
 			print_r($Server);
 			if (sizeof($struktur[$Name])>0)
 				{
-				echo "   Struktur Server für Categorie auf Visualization.RemoteAccess.".$Name.".".$index.":\n";
-				print_r($struktur[$Name]);
+				echo "Struktur Server für Categorie auf Visualization.RemoteAccess.".$Name.".".$index.":\n";
+				foreach ($struktur[$Name] as $oid => $entry)
+					{
+					echo "   OID ".$oid." Name ".$entry["Name"]." \n";
+					} 
 				}	
 			}
 		//print_r($struktur);			
@@ -902,10 +885,12 @@ class RemoteAccess
 						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 1, $struktur[$Name]);
 						}
 					$rpc->IPS_SetVariableCustomProfile($result,$profile);
+					$rpc->IPS_SetHidden($result,false);					
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
+					$struktur[$Name][$oid]["Active"]=true;						
 					}
 				$messageHandler = new IPSMessageHandler();
 				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
@@ -921,8 +906,83 @@ class RemoteAccess
 					}
 				}
 			}
+		$this->RPC_setHiddenExtendedStructure($remServer,$struktur);			
+		}
+		
+	/*****************************************************************
+	 *
+	 * get extended Struktur von Visualization der remote Server
+	 *
+	 **********************************************************************/
+
+	function RPC_getExtendedStructure($remServer,$index)
+		{
+		$status=RemoteAccessServerTable();
+		foreach ($remServer as $Name => $Server)
+			{
+			$struktur[$Name]=array();
+			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+			if ( $status[$Name]["Status"] == true )
+				{
+				$id=(integer)$Server[$index];			/*   <=== change here */
+				$rpc = new JSONRPC($Server["Adresse"]);	
+				$children=$rpc->IPS_GetChildrenIDs($id);
+				$struktur[$Name]=array();
+				foreach ($children as $oid)
+					{
+					//$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
+					$struktur[$Name][$oid]["Name"]=$rpc->IPS_GetName($oid);
+					$struktur[$Name][$oid]["OID"]=$oid;
+					$struktur[$Name][$oid]["Active"]=false;						
+					}
+				}
+			}
+		return ($struktur);
+		}
+		
+	/*****************************************************************
+	 *
+	 * write extended Struktur von Visualization der remote Server, eine Zeile pro Eintrag
+	 *
+	 **********************************************************************/	
+					
+	function RPC_writeExtendedStructure($struktur)
+		{
+		foreach ($struktur as $Name => $Server)
+			{
+			echo "Bearbeite Server ".$Name." \n";
+			foreach ($Server as $oid => $entry)
+				{
+				echo "   OID ".$oid." Name ".$entry["Name"]." \n";
+				} 
+			}		
 		}
 
+		
+	/*****************************************************************
+	 *
+	 * anhand der Struktur von Visualization für jeden einzelnen remote Server Eintraege die nicht mehr 
+	 * benötigt werden, Zusatand = false dann hiden (setHidden true)
+	 *
+	 **********************************************************************/	
+
+	function RPC_setHiddenExtendedStructure($remServer,$struktur)
+		{		
+		foreach ($struktur as $server => $oids)
+			{
+			echo "Server ".$server." (".$remServer[$server]["Adresse"].") OIDs die nicht mehr aktuell sind verstecken  :\n";
+			$rpc = new JSONRPC($remServer[$server]["Adresse"]);
+			foreach ($oids as $oid => $entry)
+				{
+				if ($entry["Active"] == false)
+					{
+					$rpc->IPS_SetHidden($oid,true);
+					echo "   Hide OID ".$oid." Name ".$entry["Name"]."    \n";
+					}
+				} 
+			}
+		}	
+				
 	/*****************************************************************
 	 *
 	 * wandelt die Liste der remoteAccess server in eine bessere Tabelle um und hängt den aktuellen Status zur Erreichbarkeit in die Tabell ein

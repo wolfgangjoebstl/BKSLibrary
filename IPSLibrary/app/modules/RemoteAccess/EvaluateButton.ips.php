@@ -8,6 +8,7 @@
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
 /******************************************************
 
@@ -94,30 +95,15 @@ echo "\n";
 	 *  Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Struktur aufgebaut und in EvaluateVariables.inc gespeichert.
 	 */
 	$remServer=ROID_List();
-	$struktur=array();
+	print_r($remServer);
 	
 	$status=RemoteAccessServerTable();
-	
-	foreach ($remServer as $Name => $Server)
-		{
-		echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-		if ( $status[$Name]["Status"] == true )
-			{			
-			$id=(integer)$Server["Taster"];
-			$rpc = new JSONRPC($Server["Adresse"]);	
-			$children=$rpc->IPS_GetChildrenIDs($id);
-			$struktur[$Name]=array();
-			foreach ($children as $oid)
-			   	{
-			   	$struktur[$Name][$oid]=$rpc->IPS_GetName($oid);
-	   			}		
-			}
-		}
-	echo "Struktur Server :\n";
-	print_r($struktur);
+
+	$remote=new RemoteAccess();
+	$struktur=$remote->RPC_getExtendedStructure($remServer,"Taster");
+	$remote->RPC_writeExtendedStructure($struktur);
 
 	echo "******* Alle Homematic Taster ausgeben.\n";
-	
 	foreach ($Homematic as $Key)
 		{
 		set_time_limit(1200);		
@@ -150,6 +136,7 @@ echo "\n";
 						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 						$parameter.=$Name.":".$result.";";
+						$struktur[$Name][$oid]["Active"]=true;							
 						}
 					}
 				$messageHandler = new IPSMessageHandler();
@@ -204,6 +191,7 @@ echo "\n";
 							}
 						$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 						$parameter.=$Name.":".$result.";";
+						$struktur[$Name][$oid]["Active"]=true;							
 						}
 					}	
 				$messageHandler = new IPSMessageHandler();
@@ -217,5 +205,7 @@ echo "\n";
 				}	
 			}
 		}
-
+	$remote->RPC_setHiddenExtendedStructure($remServer,$struktur);
+	
+	
 ?>

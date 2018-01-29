@@ -7,6 +7,7 @@ Emailsteuerung
 ***********************************************************/
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ("Emailsteuerung_Library.class.php","IPSLibrary::app::modules::Emailsteuerung");
 IPSUtils_Include ("Emailsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Emailsteuerung");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
@@ -17,46 +18,53 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 *************************************************************/
 
-// max. Scriptlaufzeit definieren
-ini_set('max_execution_time', 500);
-$startexec=microtime(true);
+	// max. Scriptlaufzeit definieren
+	ini_set('max_execution_time', 500);
+	$startexec=microtime(true);
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) 
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('Emailsteuerung',$repository);
-	}
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Emailsteuerung',$repository);
+		}
 
-$installedModules = $moduleManager->GetInstalledModules();
+	$installedModules = $moduleManager->GetInstalledModules();
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Emailsteuerung'));
+	$scriptId  = IPS_GetObjectIDByIdent('Emailsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Emailsteuerung'));
 
-$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
-$ScriptExecTimeID=CreateVariableByName($CategoryIdData,"ScriptExecTime",1);
+	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+	$ScriptExecTimeID=CreateVariableByName($CategoryIdData,"ScriptExecTime",1);
 	
-$device=IPS_GetName(0);
+	$device=IPS_GetName(0);
 
-$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
+	$SendEmailID = @IPS_GetInstanceIDByName("SendEmail", $CategoryIdData);
 
 
-	/******************************************************
+/******************************************************
 
-				INIT, Timer, sollte eigentlich in der Install Routine sein
+	INIT, Timer 
 
-				MoveCamFiles				, alle 150 Sec
-				RouterAufruftimer       , immer um 0:20
+			EmailExecTimer				, 
+			Aufruftimer       			, 
 
-	*************************************************************/
+*************************************************************/
 	
 	$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptId);
-   $tim3ID = @IPS_GetEventIDByName("EmailExectimer", $scriptId);
+	$tim3ID = @IPS_GetEventIDByName("EmailExectimer", $scriptId);
 
+/*************************************************************/
 
-/*********************************************************************************************/
+	$EmailControl = new EmailControlCenter();
+
+/********************************************************************************************
+
+	WEBFRONT
+
+***********************************************************************************************/
 
 
 if ($_IPS['SENDER']=="WebFront")
@@ -65,7 +73,11 @@ if ($_IPS['SENDER']=="WebFront")
 
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+
+	EXECUTE
+
+***********************************************************************************************************/
 
 
 if ($_IPS['SENDER']=="Execute")
@@ -81,7 +93,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Category App ID:".$CategoryIdApp."\n";
 	echo "Category Script ID:".$scriptId."\n";
 
-	echo "\nSend Email ID: ".$SendEmailID."\n";
+	echo "\nEmail Konfiguration (ID: ".$SendEmailID."):\n";
 	$result=IPS_GetConfiguration($SendEmailID);
 	echo $result."\n";
 
@@ -93,57 +105,15 @@ if ($_IPS['SENDER']=="Execute")
 		}
 	echo "\n";
 	
-	echo "Du arbeitest auf Gerät : ".$device." und sendest zwei Statusemails.\n";
 	SetValue($ScriptExecTimeID,0); /* timer ausschalten, wenn gerade laeuft */
 
-	if (isset($installedModules['OperationCenter']))
-		{
-		echo "\n";
-		echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
-		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-		$CategoryIdData  = $moduleManagerOC->GetModuleCategoryID('data');
+	$status=$EmailControl->SendMailStatusActualasAttachment();
+	if ($status==false) $status=$EmailControl->SendMailStatusActualasAttachment(60*60*24);
 
-		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+	$status=$EmailControl->SendMailStatusHistoryasAttachment();
+	if ($status==false) $status=$EmailControl->SendMailStatusHistoryasAttachment(60*60*24);
 
-		$emailText="\nLogspeicher ausgedruckt:\n".$log_OperationCenter->PrintNachrichten();
-
-		$OperationCenter=new OperationCenter();
-		$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
-		echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
-		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
-		if ( ($status=@file_get_contents($filename)) === false)
-			{
-			echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
-			$filename=$DIR_copystatusdropbox.date("Ymd",time()-60*60*24).'StatusAktuell.txt';
-			if ( ($status=@file_get_contents($filename)) === false)
-				{
-				echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
-				$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !\n".$emailText);
-				}
-			}
-		else
-			{
-			echo "Email wird mit aktuellen Werten gesendet.\n";
-			$emailStatus=@SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
-			if ($emailStatus==false) echo $status."  Fehler bei der email Uebertragung von Filename : ".$filename.".\n";
-			}
-		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
-		if ( ($status=@file_get_contents($filename)) === false)
-			{
-			echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
-			$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !\n".$emailText);
-			}
-		else
-		   {
-			echo "Email wird mit historischen Werten gesendet.\n";			
-			$emailStatus=@SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang:\n".$emailText,$filename);
-			if ($emailStatus==false) echo "  Fehler bei der email Uebertragung.\n";
-			}
-		}
+	$EmailControl->GetDirStatusActual();
 
 	if (false)
 	   {
@@ -171,7 +141,11 @@ if ($_IPS['SENDER']=="Execute")
 	SetValue($ScriptExecTimeID,1); /* timer wieder einschalten, wenn gerade laeuft */
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+
+	VARIABLE
+
+*************************************************************************************************/
 
 
 if ($_IPS['SENDER']=="Variable")
@@ -179,7 +153,11 @@ if ($_IPS['SENDER']=="Variable")
 
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+
+	TIMER
+
+*************************************************************************************************/
 
 
 if ($_IPS['SENDER']=="TimerEvent")
@@ -187,51 +165,67 @@ if ($_IPS['SENDER']=="TimerEvent")
 	switch ($_IPS['EVENT'])
 	   {
 	   case $tim1ID:        /* einmal am Tag */
-			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Aufruftimer email Status Auswertung");
+			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Aufruftimer email Status Auswertung verschicken");
 			/********************************************************
-		   Einmal am Tag: den Staus auslesen und als zwei emails verschicken
+			Einmal am Tag: den Staus auslesen und als zwei emails verschicken
 			**********************************************************/
 			if (isset($installedModules['OperationCenter']))
 				{
 				echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
-				IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-				IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+				if (false)
+					{
+					IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+					IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+	
+					$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+					$CategoryIdData  = $moduleManagerOC->GetModuleCategoryID('data');
 
-				$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-				$CategoryIdData  = $moduleManagerOC->GetModuleCategoryID('data');
+					$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+					$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+					$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 
-				$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-				$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-				$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
-
-				$emailText="\nLogspeicher ausgedruckt:\n".$log_OperationCenter->PrintNachrichten();
+					$emailText="\nLogspeicher ausgedruckt:\n".$log_OperationCenter->PrintNachrichten();
 				
-				$OperationCenter=new OperationCenter();
-				$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
-				echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
-				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
-				if ( ($status=@file_get_contents($filename)) === false)
+					$OperationCenter=new OperationCenter();
+					$DIR_copystatusdropbox = $OperationCenter->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+					echo "Status Dateien findet man auf ".$DIR_copystatusdropbox.".\n";
+					$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
+					if ( ($status=@file_get_contents($filename)) === false)
+						{
+						echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
+						$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !");
+						}
+					else
+					   {
+						$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
+						if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+						}
+					$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
+					if ( ($status=@file_get_contents($filename)) === false)
+						{
+						echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
+						$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !");
+						}
+					else
+					   {
+						$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
+						if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
+						}
+					}
+					
+				$status=$EmailControl->SendMailStatusActualasAttachment();
+				if ($status==false) 
 					{
-					echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
-					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "File wurde noch nicht erzeugt !");
+					echo "Fehler beim email senden der aktuellen Werte.\n";
+					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Fehler: email Status Auswertung aktuelle Daten verschicken gescheitert");
 					}
-				else
-				   {
-					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
-					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
-					}
-				$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
-				if ( ($status=@file_get_contents($filename)) === false)
+				$status=$EmailControl->SendMailStatusHistoryasAttachment();
+				if ($status==false) 
 					{
-					echo "Filename ".$filename." wurde noch nicht erzeugt.\n";
-					$emailStatus=SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "File wurde noch nicht erzeugt !");
-					}
-				else
-				   {
-					$emailStatus=SMTP_SendMailAttachment($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, "Daten und Auswertungen siehe Anhang\n".$emailText,$filename);
-					if ($emailStatus==false) echo "Fehler bei der email Uebertragung.\n";
-					}
-				}
+					echo "Fehler beim email senden der historischen Werte.\n";
+					IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Fehler: email Status Auswertung historische Daten verschicken gescheitert");
+					}										
+				}	
 			else
 			   {
 			   /* wenn nicht OperationCenter geladen, selbst erstellen und verschicken probieren */

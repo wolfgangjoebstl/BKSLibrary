@@ -273,8 +273,8 @@ abstract class AutosteuerungConfiguration
 					break;
 					}
 				$this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
+				echo "Config Function heisst : ".$func."\n";	
 				}
-			echo "Config Function heisst : ".$func."\n";	
 			return $this->eventConfigurationAuto;
 			}
 		
@@ -531,6 +531,35 @@ abstract class AutosteuerungConfiguration
 				}
 			return $configuration;
 			}
+			
+		/**
+		 *
+		 * Gibt das aktuelle Auto Event aus
+		 *
+		 * @return string[] Event Konfiguration
+		 */
+		function getAutoEvent($ID=null) 
+			{
+			$configuration = $this->Get_EventConfigurationAuto();
+			//print_r($configuration);
+			if (sizeof($configuration)>0 )
+				{
+				echo "Configuration has ".sizeof($configuration)." entries.\n";
+				foreach ($configuration as $id => $entry)
+					{
+					echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry[2].",)\n";
+					}
+				}
+			if ($ID==null)
+				{	
+				return $configuration;
+				}
+			else
+				{
+				if ( isset($configuration[$ID]) ) return $configuration[$ID];
+				else return (false);
+				}	
+			}			
 
 	} /* ende class */
 
