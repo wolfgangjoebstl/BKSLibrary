@@ -1,28 +1,24 @@
 <?
 
-	/**@defgroup ipstwilight IPSTwilight
+	/**@defgroup RemoteReadWrite_Installation
 	 * @ingroup modules_weather
 	 * @{
 	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
+	 * Script zum zyklischen externem Schreiben und Lesen von Variablen.
+	 * verwendet nun EvaluateHardware als zentrale Erfassung des eingebauten Hardwarestandes
+	 * 
+	 * Im Vergleich dazu pusht RemoteAccess Variablenänderungen als rpc calls zu entsprechenden Logging servern
 	 *
-	 *
-	 * @file          Gartensteuerung_Installation.ips.php
-	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.44, 07.08.2014<br/>
 	 **/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('RemoteReadWrite',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -38,6 +34,8 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('RemoteReadWrite');
 	echo "\nRemoteReadWrite Version : ".$ergebnis;
 
+	/* feststellen ob Gartensteuerung instaliert ist */
+	
 	$gartensteuerung=false;
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -46,7 +44,49 @@
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		if ($name=="Gartensteuerung") { $gartensteuerung=true; }
 		}
-	echo $inst_modules;
+	echo $inst_modules."\n";
+
+	/******************************************************
+	 *
+	 *				INIT
+	 *
+	 *************************************************************/
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);	
+	echo "EvaluateHardware Script ID: ".$scriptIdEvaluateHardware."\n\n";
+	if ($installedModules["EvaluateHardware"]) 
+		{
+		echo "Modul EvaluateHardware installiert, keine eigenen Aktivitäten zur Erfassung des Hardwarestandes notwendig.\n";
+		$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdEvaluateHardware);
+		if ($tim1ID==false)
+			{
+			IPS_SetEventActive($tim1ID,false);			
+			}
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		}
+	else	
+		{
+		$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdEvaluateHardware);
+		if ($tim1ID==false)
+			{
+			$tim1ID = IPS_CreateEvent(1);
+			IPS_SetParent($tim1ID, $_IPS['SELF']);
+			IPS_SetName($tim1ID, "Aufruftimer");
+			IPS_SetEventCyclic($tim1ID,2,1,0,0,0,0);
+			IPS_SetEventCyclicTimeFrom($tim1ID,1,40,0);  /* immer um 02:20 */
+			}
+		IPS_SetEventActive($tim1ID,true);
+
+		// ----------------------------------------------------------------------------------------------------------------------------
+		// Hardware zum ersten Mal analysieren
+		// ----------------------------------------------------------------------------------------------------------------------------
+
+		IPS_RunScriptWait($scriptIdEvaluateHardware);		
+		IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");			
+
+		}
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -56,40 +96,36 @@
 	
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	if ($WFC10_Enabled==true)
-	   {
+		{
 		$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
 		echo "\nWF10 ";
 		}
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	if ($WFC10User_Enabled==true)
-	   {
+	   	{
 		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
 		echo "WF10User ";
 		}
 
 	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
 	if ($Mobile_Enabled==true)
-	   {
+		{
 		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 		echo "Mobile ";
 		}
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	if ($Retro_Enabled==true)
-	   {
+		{
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		echo "Retro \n";
 		}
 		
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	
-	//print_r($Homematic);
 	
 	/* check if Gartensteuerung ueberhaupt installiert */
 	if ($gartensteuerung==true)
-	   {
+		{
 		IPSUtils_Include ("Gartensteuerung.inc.php","IPSLibrary::app::modules::Gartensteuerung");
 		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.RemoteReadWrite');
 		echo "BaseID :".$baseId."\n";
@@ -108,12 +144,12 @@
 			$oid=(integer)$Key["OID"];
 			if ($Key["Profile"]=="")
 			   { /* keine Formattierung */
-	   		$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
-		   	}
+		   		$vid = CreateVariableByName($baseId, $Key["Name"], $typ);
+			   	}
 			else
 			   {
-	   		$vid = CreateVariableByName($baseId, $Key["Name"], 3);
-		   	}
+	   			$vid = CreateVariableByName($baseId, $Key["Name"], 3);
+		   		}
 			$ReadWriteList[$Key["Name"]]=array("OID" => 0, "Name" => 0, "Profile" => 0, "Type" => 0, "LOID" => 0);
 			$ReadWriteList[$Key["Name"]]["OID"]=$oid;
 			$ReadWriteList[$Key["Name"]]["Name"]=$Key["Name"];
@@ -125,17 +161,6 @@
 		} /* Ende gartensteuerung */
 
 	// ----------------------------------------------------------------------------------------------------------------------------
-	// Hardware zum ersten Mal analysieren
-	// ----------------------------------------------------------------------------------------------------------------------------
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
-	echo "\n\nDie Scripts sind auf               ".$CategoryIdApp."\n";
-	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
-	IPS_RunScriptWait($scriptIdEvaluateHardware);
-
-	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 	if ($WFC10_Enabled)
@@ -143,10 +168,10 @@
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		if ($gartensteuerung==true)
-		   {
-	      foreach ($ReadWriteList as $Key)
-   	      {
-      	   print_r($Key);
+		   	{
+	      	foreach ($ReadWriteList as $Key)
+   	      		{
+      	   		print_r($Key);
 				CreateLinkByDestination($Key["Name"], $Key["LOID"],    $categoryId_WebFront,  10);
 				}
 			}
@@ -175,15 +200,16 @@
 
 
 function createPortal($Path)
-{
+	{
 		$categoryId_WebFront         = CreateCategoryPath($Path);
 		$categoryId_WebFrontTemp     = CreateCategoryPath($Path.".Temperatur");
 		$categoryId_WebFrontHumi     = CreateCategoryPath($Path.".Feuchtigkeit");
 		$categoryId_WebFrontSwitch   = CreateCategoryPath($Path.".Schalter");
 
 		IPSUtils_Include ("RemoteReadWrite_Configuration.inc.php","IPSLibrary::config::modules::RemoteReadWrite");
-		IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+
 		//IPSUtils_Include ("EvaluateVariables.inc.php","IPSLibrary::app::modules::RemoteAccess");
+
 		$Homematic = HomematicList();
 		$FHT = FHTList();
 		$FS20= FS20List();
@@ -243,7 +269,7 @@ function createPortal($Path)
       		CreateLinkByDestination($Key["Name"], $oid,    $categoryId_WebFrontSwitchHM,  10);
 				}
 			}
-}
+	}
 
 
 

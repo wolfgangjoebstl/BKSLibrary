@@ -174,6 +174,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 				echo "OperationCenter installiert, auf Dropbox Verzeichnis gibt es eine Status Datei.\n ";
 				if (false)
 					{
+					/* verwendet jetzt die Library */
 					IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 					IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 	
@@ -237,46 +238,49 @@ if ($_IPS['SENDER']=="TimerEvent")
 	   case $tim3ID:
 
 			/******************************************************************************************
-		     Email Status Auswertung, Schritt für Schritt
-			*********************************************************************************************/
+			 *
+			 * Email Status Auswertung, Schritt für Schritt, 
+			 * OperationCenter ist nicht installiert, alles selber machen
+			 *
+			 *********************************************************************************************/
 
 			$counter=GetValue($ScriptCounterID);
 			switch ($counter)
-			   {
+				{
 				case 3:
-				   /* reserviert für Nachbearbeitung */
-		      	SetValue($ScriptCounterID,0);
-			      IPS_SetEventActive($tim3ID,false);
-		      	break;
-			   case 2:
+					/* reserviert für Nachbearbeitung */
+					SetValue($ScriptCounterID,0);
+					IPS_SetEventActive($tim3ID,false);
+					break;
+				case 2:
 					/* Email Auswertung Teil 2*/
 					if (GetValue($ScriptExecTimeID)>0)
-					   {
-					   SetValue($ScriptExecTimeID,0);
+						{				
+						SetValue($ScriptExecTimeID,0);
 						$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
 							"\n\n************************************************************************************************************************\n";
 						SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$device, $event1);
 						SetValue($ScriptCounterID,$counter+1);
 						}
-			   	break;
-			   case 1:
+					break;
+				case 1:
 					/* Email Auswertung Teil 1 */
 					if (GetValue($ScriptExecTimeID)>0)
-					   {
-					   SetValue($ScriptExecTimeID,0);
+						{
+						SetValue($ScriptExecTimeID,0);
 						$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
 							"\n\n************************************************************************************************************************\n";
 						SMTP_SendMail($SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$device, $event2);
-			      	SetValue($ScriptCounterID,$counter+1);
-			      	SetValue($ScriptExecTimeID,(microtime(true)-$startexec));
-			         }
-			      else
-			         {
-			         IPS_SetEventActive($tim3ID,false);
-			         }
-					break;
-			   case 0:
-  			      IPS_SetEventActive($tim3ID,false);
+						SetValue($ScriptCounterID,$counter+1);
+						SetValue($ScriptExecTimeID,(microtime(true)-$startexec));
+			   			}
+			   		else
+			   			{
+			   			IPS_SetEventActive($tim3ID,false);
+			   			}
+			   		break;	
+				case 0:
+  			   		IPS_SetEventActive($tim3ID,false);
 				default:
 				   break;
 			   }

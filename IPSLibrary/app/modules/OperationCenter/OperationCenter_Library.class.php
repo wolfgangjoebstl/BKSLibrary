@@ -97,6 +97,7 @@ class OperationCenter
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
+		
 		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt */
 		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
 		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
@@ -112,6 +113,7 @@ class OperationCenter
 			}		
 		$this->AllHostnames = LogAlles_Hostnames();
 		}
+		
 /****************************************************************************************************************/
 
 	/**
@@ -778,9 +780,18 @@ class OperationCenter
 
 		}
 
-/**************************************************************************************************************/
+	/*************************************************************************************************************
+	 *
+	 * writeSysPingResults() , in Textform die Ergebnisse des Befehls SysPingAllDevices ausgeben
+	 *
+	 * es werden die Dateneintraege analysiert und ausgegeben
+	 *   Erreichbarkeit IPCams
+	 *	 writeServerPingResults()
+	 *
+	 *
+	 **************************************************************************************************************/
 
-	function writeSysPingResults()
+	function writeSysPingResults($actual=true)
 		{
 		$result="";
 
@@ -805,8 +816,84 @@ class OperationCenter
 					{
 					$result .= str_pad($cam_name,30)."abwesend\n";
 					}
+				if ( (AC_GetLoggingStatus($this->archiveHandlerID,$CamStatusID)) && ($actual==false) )
+		   			{
+					/* schauen ob sich etwas in der Vergangenheit getan hat */
+					//echo "Loggingstatus aktiv.\n";
+        			$werte = AC_GetLoggedValues($this->archiveHandlerID,$CamStatusID, time()-30*24*60*60, time(),1000);
+					//print_r($werte);
+					}
 				} /* Ende foreach */
 			}
+
+		$result .= "\nAusfallsstatistik der konfigurierten Geraete:\n\n";			
+		$childrens=IPS_GetChildrenIDs($this->categoryId_SysPing);
+		echo "Sysping Statusdaten liegen in der Kategorie SysPing unter der OID: ".$this->categoryId_SysPing." \n";
+		$result1=array();
+		foreach($childrens as $oid)
+			{
+			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		   		{
+        		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+		   		//print_r($werte);
+		   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+				$status=getValue($oid); $first=true; $timeok=0;
+		   		foreach ($werte as $wert)
+		   	   		{
+					if ($status!==$wert["Value"])
+						{
+						/* Aenderung */
+						if ($first==true)
+							{
+							/* sollte eigentlich nicht sein dass der erste Eintrag eine Aenderung ist */
+							If ($wert["Value"]==true) echo "     Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+							If ($wert["Value"]==false) echo "    Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+							$first=false;
+							}
+						else
+							{
+							If ($wert["Value"]==true) 
+								{
+								echo "     Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+								$timeok=$wert["TimeStamp"];
+								}
+							If ($wert["Value"]==false) 
+								{
+								$dauer=(($timeok-$wert["TimeStamp"])/60);
+								echo "    Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer ".number_format($dauer,2)." Minuten.\n";
+								if ($dauer>100)	$result .= "        Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
+								}
+							}	
+						$status=$wert["Value"];
+						}
+					else
+						{
+						/* keine Aenderung, erster Eintrag im Logfile, so sollte es sein */
+						if ($first==true)
+							{
+							If ($wert["Value"]==true) 
+								{
+								echo "     Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+								$result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
+								$timeok=$wert["TimeStamp"];
+								}
+							If ($wert["Value"]==false) echo "    Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+							$first=false;
+							}
+						}	
+						
+		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+		   	   		//echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+		   	   		}
+				$result1[IPS_GetName($oid)]=$oid;
+		   		}
+			else
+		    	{
+				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
+		    	}
+			}
+		print_r($result1);	
+							
 		$result .= "\n";
 
 		/************************************************************************************
@@ -1456,30 +1543,30 @@ class OperationCenter
 		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		$result1=array();
 		foreach($result as $oid)
-		   {
-		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
-		      {
-            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
-		   	//print_r($werte);
-		   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-		   	foreach ($werte as $wert)
-		   	   {
-		   	   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
-		   	   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
-		   	   }
+			{
+			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+		   		{
+        		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+		   		//print_r($werte);
+		   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+		   		foreach ($werte as $wert)
+		   	   		{
+		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+		   	   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+		   	   		}
 				$result1[IPS_GetName($oid)]=$oid;
-		   	}
-		   else
-		      {
-		   	echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
-		      }
-		   }
+		   		}
+			else
+		    	{
+				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
+		    	}
+			}
 		//ksort($result1);
 		//print_r($result1);
 		if ($actual==false)
-		   {
+			{
 			return ($ergebnis);
-		   }
+			}
 		}
 
 	/*
@@ -1762,6 +1849,39 @@ class OperationCenter
 	 *
 	 */
 
+	function DirLogs()
+		{
+		$verzeichnis=IPS_GetKernelDir().'logs/';
+		echo "Verzeichnis der Logfiles von ".$verzeichnis.".\n";
+		echo "Konfiguration:\n";
+		print_r($this->oc_Setup);
+	   	$logdir=$this->readdirToArray($verzeichnis);
+		$dir=0; $totalsize=0;
+		foreach ($logdir as $index => $entry)
+			{
+			$size=sizeof($entry);
+			if ($size==1)
+				{ /* Filename */
+				echo $entry."\n";
+				$totalsize++;
+				}
+			else
+				{	
+				//print_r($entry);
+				echo "Dir: ".$index."  ".$size."\n";
+				$dir++;
+				$totalsize+=$size;
+				}
+			}
+		return($dir);		
+		}
+
+	/*
+	 *  Die in einem Ordner pro Tag zusammengefassten Logfiles loeschen.
+	 *  Es werden die älteren Dateien bis zur Anzahl x geloescht.
+	 *
+	 */
+
 	function PurgeLogs($remain=false)
 		{
 		if ($remain===false)
@@ -1817,6 +1937,34 @@ class OperationCenter
 			}
 		else return (false);	 	
 		}
+		
+	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen */
+
+	/* ein Verzeichnis einlesen und als Array zurückgeben */
+	
+	private function readdirToArray($dir)
+		{
+	   	$result = array();
+
+		$cdir = scandir($dir);
+		foreach ($cdir as $key => $value)
+			{
+			if (!in_array($value,array(".","..")))
+				{
+				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+         			{
+					$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+	         		}
+    	     	else
+        	 		{
+            		$result[] = $value;
+         			}
+	      		}
+   			}
+		return $result;
+		}		
+
+	/* ein Verzeichnis rekursiv loeschen */
 
 	private function rrmdir($dir) 
 		{
@@ -1920,8 +2068,8 @@ class OperationCenter
 	 *
 	 */
 
-	function FileStatus()
-	   {
+	function FileStatus($filename="")
+		{
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
 		print_r($this->oc_Setup);
 		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
@@ -1932,21 +2080,97 @@ class OperationCenter
 			"\n\n************************************************************************************************************************\n";
 		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
 			"\n\n************************************************************************************************************************\n";
-
-		//$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
-		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
-		if (!file_put_contents($filename, $event1)) {
-      	  	throw new Exception('Create File '.$filename.' failed!');
+		
+		if ($filename=="")		/* sonst filename übernehmen */
+			{
+			//$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+			$filenameAktuell=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
+			$filenameHistorisch=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
+			
+			if (!file_put_contents($filenameAktuell, $event1)) {
+    	  	  	throw new Exception('Create File '.$filename.' failed!');
     			}
-		$filename=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
-		if (!file_put_contents($filename, $event2)) {
-      	  	throw new Exception('Create File '.$filename.' failed!');
-    			}
-		}
 
+			if (!file_put_contents($filenameHistorisch, $event2)) {
+    	  	  	throw new Exception('Create File '.$filename.' failed!');
+    			}
+			}
+		else
+			{	
+			if (!file_put_contents($filename, $event1.$event2)) {
+    	  	  	throw new Exception('Create File '.$filename.' failed!');
+    			}
+			}
+		}	
 
 	/*
-	 * Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion
+	 * Anzahl der Status Files auf der Dropbox, werden gemeinsam mit der Purge Funktion der Logfiles geloescht
+	 *
+	 */
+
+	function FileStatusDir()
+		{
+		echo "FileStatusDir: Konfiguration:\n";
+		print_r($this->oc_Setup);
+		echo "Verzeichnis für Status Files:\n";
+		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';	
+		echo $DIR_copystatusdropbox."\n";   
+	   	$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
+		rsort($statusdir);
+		print_r($statusdir);
+		$size=sizeof($statusdir);
+		return($size);
+		}
+	
+	/*
+	 * Loescht bis auf die angegebenen letzte x Files alle Status Files auf der Dropbox, werden gemeinsam mit der Purge Funktion der Logfiles geloescht
+	 *
+	 */
+
+	function FileStatusDelete()
+		{
+		$delete=0;	
+		echo "FileStatusDelete: Konfiguration:\n";
+		print_r($this->oc_Setup);		
+		if ( isset($this->oc_Setup['DropboxStatusMaxFileCount']) == true )
+			{
+			echo "Config Eintrag vorhanden.\n";
+			if ( $this->oc_Setup['DropboxStatusMaxFileCount'] > 0)
+				{
+				$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+	   			$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
+				rsort($statusdir);
+				$i=0; 			   
+				foreach ($statusdir as $index => $name)
+					{
+					if ($i > $this->oc_Setup['DropboxStatusMaxFileCount'])
+						{	/* delete File */
+						echo "delete File :".$DIR_copystatusdropbox.$name."\n";
+						unlink($DIR_copystatusdropbox.$name);
+						$delete++;
+						}
+					$i++;	
+					}
+				}
+			}
+		return($delete);			   	   
+		}
+
+	/*
+	 * gibt das lokale Verzeichnis der Status Files auf der Dropbox zurück
+	 *
+	 */
+
+	function getFileStatusDir()
+		{
+		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';	
+		return($DIR_copystatusdropbox);
+		}
+
+	/*
+	 * Statusinfo von Hardware, auslesen der Sensoren 
+	 *
+	 * und Alarm wenn laenger keine Aktion
 	 *
 	 */
 
@@ -1955,7 +2179,10 @@ class OperationCenter
 		$result=array();
 		if (isset($this->installedModules["RemoteReadWrite"])==true)
 			{
-			IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+			/* es gibt nur mehr eine Instanz für die Evaluierung der Hardware und die ist im Modul EvaluateHardware */
+			
+			//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
+			IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
@@ -1963,17 +2190,13 @@ class OperationCenter
 			echo "Alle Temperaturwerte ausgeben :\n";
 			foreach ($Homematic as $Key)
 				{
+				$homematicerror=false;
 				/* alle Homematic Temperaturwerte ausgeben */
 				if (isset($Key["COID"]["TEMPERATURE"])==true)
 					{
 					$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
 					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[]=$Key["Name"];
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
 					}
 				elseif ( (isset($Key["COID"]["MOTION"])==true) )	
 					{
@@ -1995,12 +2218,27 @@ class OperationCenter
 					}	
 				elseif (isset($Key["COID"]["DIRECTION"])==true)
 					{
-					}																		
+					}
+				elseif (isset($Key["COID"]["ACTUAL_TEMPERATURE"])==true)
+					{
+					$oid=(integer)$Key["COID"]["ACTUAL_TEMPERATURE"]["OID"];
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
+					}
+				elseif (sizeof($Key["COID"])==0) 
+				  	{
+					}																								
 				else
 					{
-					echo str_pad($Key["Name"],30)."\n";					
+					echo "**********Homematic Temperatur Geraet unbekannt : ".str_pad($Key["Name"],30)."\n";					
 					print_r($Key);
-					}	
+					}
+				if ($homematicerror == true)		
+					{
+					$result[]=$Key["Name"];
+					$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+					$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+					}
 				}
 
 			$FHT = FHTList();
@@ -2057,14 +2295,27 @@ class OperationCenter
 						{
 						echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 						}
+						
 					/* es kann laenger sein dass keine Bewegung, aber Helligkeitsaenderungen sind immer */	
-					$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];	
+					if (isset($Key["COID"]["BRIGHTNESS"]["OID"])==true)
+						{
+						$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
+						}
+					elseif (isset($Key["COID"]["ILLUMINATION"]["OID"])==true)
+						{
+						$oid=(integer)$Key["COID"]["ILLUMINATION"]["OID"];
+						}					 
+					else	
+						{
+						echo "Bewegungsmelder ohne Helligkeitssensor:\n";
+						print_r($Key);						
+						}		
 					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
 						{
 						$result[]=$Key["Name"];
 						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
 						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
+						}	
 					}
 				}
 				
@@ -2089,6 +2340,137 @@ class OperationCenter
 			}
 		return($result);
 		}
+
+	/*
+	 * aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
+	 *
+	 */
+
+	function getIPSLoggerErrors()
+		{
+		IPSUtils_Include ("IPSLogger_Constants.inc.php","IPSLibrary::app::core::IPSLogger");
+		$htmlstring=GetValue(c_ID_HtmlOutMsgList);
+		$delete_tags = array("style","colgroup");
+		$strip_tags = array("table","tr","td");
+		$result=$this->stripHTMLTags($htmlstring,$delete_tags, $strip_tags);
+		$result2=$this->stripHTMLTags($result,$delete_tags, $strip_tags);
+		$result3=$this->stripHTMLTags($result2,$delete_tags,$strip_tags);
+		$result4=$this->stripHTMLTags($result3,$delete_tags,$strip_tags);
+		$result5=str_replace("<BR>","\n",$result4);	
+		$result5=str_replace("<DIV>"," ",$result5);
+		$result5=str_replace("</DIV>","\n",$result5);
+		return(trim($result5));	
+		}
+		
+	private function stripHTMLTags($htmlstring,$delete_tags=array(), $strip_tags=array())
+		{
+		$len=strlen($htmlstring);
+		$ignorestyle=false; $striptag=false;
+		$ignore=0; $tag=""; $result="";
+		for ($i=0; $i<$len; $i++)
+			{
+			switch ($htmlstring[$i])
+				{
+				case "<":
+					/* Start eines Tags erkannt */
+					$tagstart=$i+1;
+					$ignore=255;
+					break;
+				case ">":
+					/* Ende eines Tags erkannt */
+					$text=substr($htmlstring,$tagstart,$i-$tagstart);
+					if ( $text == ("/".$tag) ) 
+						{  /* es wurde ein Ende Tag zu einem vor her erkanntem Tag erkannt */
+						//echo "\nEnde Tag: </".$tag.">\n";
+						if ( ($ignorestyle==true) && ($style==$tag) ) 
+							{
+							$ignorestyle=false;
+							}
+						else
+							{
+							if ($striptag==true)
+								{
+								$striptag=false;
+								}
+							else
+								{	
+								$result.="<".$text.">";
+								}
+							}	
+						$tag="";
+						$ignore=1;					}
+					else
+						{	/* es wurde das Ende eines Tags erkannt */
+						if (in_array(strtolower($text), $delete_tags) && ($striptag==false))
+							{
+							/* den ganzen Text zwischen start und ende Tag eliminieren */
+							//echo "Ignore ".$text." ";
+							$ignorestyle=true;
+							$style=$text;
+							$ignore=255;
+							if ($tag=="") 
+								{
+								$params=explode(" ",$text);
+								//print_r($params);
+								//echo "Start Tag: <".$params[0].">    ".$text."\n";
+								$tag=$params[0];
+								}
+							else
+								{		
+								//echo "Tag: <".$text."> Start Tag unveraendert ".$tag."\n";
+								$result.="<".$text.">";
+								}
+							}
+						else
+							{
+							//echo "Start Tag: ".$text."\n";
+							if ($ignorestyle==false)
+								{
+								if ($tag=="") 
+									{
+									$params=explode(" ",$text);
+									//print_r($params);
+									$tag=$params[0];
+									if (in_array(strtolower($tag), $strip_tags))
+										{			
+										//echo "Strip Start Tag: <".$tag.">    ".$text."\n";
+										$striptag=true;
+										}
+									else
+										{						
+										//echo "Start Tag: <".$tag.">    ".$text."\n";
+										$result.="<".$text.">";
+										}
+									}
+								else
+									{		
+									//echo "Tag: <".$text."> Start Tag unveraendert ".$tag."\n";
+									$result.="<".$text.">";
+									}								
+								/* nur den Start und Ende tag selbst eliminieren */ 
+								$ignore=1;
+								}
+							}
+						}
+					break;
+				default:
+					break;
+				}
+			if ($ignore>0) 
+				{
+				$ignore--;
+				}
+			else
+				{	 
+				//echo $htmlstring[$i];
+				$result.=$htmlstring[$i];
+				}
+			}
+		//$newresult=stripHTMLTags($result,$strip_tags);
+		//if ($newresult==$result) echo "unveraendert !\n";	
+		return ($result);
+		}																
+		
 			
 	}  /* ende class OperationCenter*/
 

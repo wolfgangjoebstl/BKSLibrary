@@ -100,6 +100,7 @@
 
 		/************************************************************************************************************************
  		 *
+		 * Minuetlich von Momentanwerte abfragen Scipt aufgerufen.				 
  		 * Anforderung Lesebefehl an alle AMIS Zähler schicken
  		 *
  		 * es wird ein String an das entsprechende Com Port geschickt.
@@ -284,6 +285,15 @@
 			return ($homematicAvailable);
 			}
 
+		/************************************************************************************************************************
+ 		 *
+		 * Minuetlich von Momentanwerte abfragen Scipt aufgerufen.		 
+ 		 * Homematic Energiesensoren auslesen, ignoriert andere Typen als Einzelbefehl
+ 		 *
+ 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+		 *
+		 *****************************************************************************************************************************/
+
 		function writeEnergyHomematic($meter)		/* nur einen Wert aus der Config ausgeben */
 			{
 			$homematicAvailable=false;
@@ -347,6 +357,7 @@
 
 		/************************************************************************************************************************
  		 *
+		 * Minuetlich von Momentanwerte abfragen Scipt aufgerufen.
  		 * Alle Energiewerte die als Register definiert sind auslesen, ignoriert andere Typen
  		 *
  		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
@@ -451,6 +462,678 @@
 				}
 			return ($amisAvailable);
 			}
+			
+		/************************************************************************************************************************
+ 		 *
+ 		 * Alle Homematic Energiesensoren der letzten Woche als Wert auslesen, ignoriert andere Typen
+		 * gibt die Werte wenn nicht anders gewünscht mit einer html Formatierung aus
+		 *
+		 * die html Formatierung wird als <style> mit Klassen und mehreren <div> tags aufgebaut. 
+		 * <html> und <body> tags werden nicht erstellt
+		 *
+		 *****************************************************************************************************************************/
+
+		function writeEnergyRegistertoString($MConfig,$html=true)			/* alle Werte aus der Config ausgeben */
+			{
+			if ($html==true) 
+				{
+				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
+				                .rotetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid red;  }
+								.blauetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid blue; }  
+								.gruenetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid green;     }   </style> \n\n";
+				$starttable="<table style=\"border-collapse=collapse;\">"; $endtable="</table>";
+				$startcell="<td style=\"border:1px solid black\">"; $endcell="</td>";
+				$startcellheader="<th colspan=\"11\" style=\"border:1px solid black;\" >";$endcellheader="</th>";
+				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
+				$output="<div class=\"rotetabelle\"> \n";   /* Umschalten auf Courier Font */
+				$outputEnergiewerte="<div class=\"gruenetabelle\"> \n";   /* Umschalten auf Courier Font */
+				$outputTabelle="<div class=\"blauetabelle\"> \n";   /* Umschalten auf Courier Font */
+				$newline="<BR>\n";
+				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				}
+			else
+				{
+				$style="";				
+				$starttable=""; $endtable="";
+				$startcell=""; $endcell="";					/* ein Tabelleneintrag */
+				$startcellheader=""; $endcellheader="";
+				$startparagraph=""; $endparagraph="\n";		/* eine Tabellenzeile */				
+				$output="";
+				$outputEnergiewerte="";
+				$outputTabelle="";				
+				$newline="\n";
+				}
+					
+			$outputEnergiewerte.=$starttable.$startparagraph.$startcellheader."Stromzählerstand aktuell Energiewert in kWh:".$endcellheader.$endparagraph;
+
+			/* Umbauen auf zuerst einlesen der Zählerwerte und danach generieren der entsprechenden Tabellen !*/
+			//$zeile=writeEnergyRegistertoArray($MConfig);
+			//for ($metercount=0;$metercount<size() ...
+
+			$metercount=0;
+			$tabwidth0=24;
+			foreach ($MConfig as $meter)
+				{
+				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+					{
+					echo "-----------------------------".$newline;
+					echo "Werte von : ".$meter["NAME"].$newline;
+					$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					if ( isset($meter["OID"]) == true )
+						{
+						$OID  = $meter["OID"];
+						$cids = IPS_GetChildrenIDs($OID);
+						if (sizeof($cids) == 0) 
+							{
+							$OID = IPS_GetParent($OID);
+							$cids = IPS_GetChildrenIDs($OID);
+							}
+						//echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
+						//print_r($cids);
+						foreach($cids as $cid)
+							{
+			      			$o = IPS_GetObject($cid);
+			      			if($o['ObjectIdent'] != "")
+			         			{
+			         			if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
+			         			if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
+			        			}
+			    			}
+		      			//echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+						}
+					else
+						{
+						$HMenergieID  = $meter["HM_EnergieID"];
+						$HMleistungID = $meter["HM_LeistungID"];
+						}
+						
+					$energievorschub=GetValue($LeistungID);
+					$energie=GetValue($Homematic_WirkergieID);
+	      			echo "  Werte aus der Homematic : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
+	      			echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
+	      			echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
+						
+					/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+					$jetzt=time();
+					$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+					$starttime=$endtime-60*60*24*10;
+					$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+					echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
+
+					$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+					$zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
+					$laufend=1; $alterWert=0; 
+					foreach($werte as $wert)
+						{
+						$zeit=$wert['TimeStamp']-60;
+						//echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+						if (date("d.m.Y", $zeit)!=$vorigertag)
+							{
+							$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+							$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+							echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
+							$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+							if ($laufend>1) 
+								{
+								$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+								}
+							
+							$laufend+=1;
+							$alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
+							//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+							}
+						$vorigertag=date("d.m.Y",$zeit);
+						}
+					$anzahl2=$laufend-1;
+					$ergebnis_datum=""; $ergebnis_wochentag=""; $ergebnis_tabelle="";
+					$zeile[$metercount]["Wochentag"][0]=$meter["NAME"];
+					$laufend=0;
+					while ($laufend<=$anzahl2)
+						{
+						if ($laufend==0) 
+							{
+							$tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
+							echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
+							$ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
+							$ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+							$ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
+							}
+						else
+							{
+							$tabwidth=12;
+							$ergebnis_wochentag.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                            "),0,$tabwidth).$endcell;
+							$ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+							$ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Energie"][$laufend]."                          "),0,$tabwidth).$endcell;
+							}	
+						$laufend+=1;
+						//echo $ergebnis_tabelle."\n";
+						}
+					$output.=$starttable.$startparagraph.$startcell."Stromverbrauch der letzten Tage von ".$meter["NAME"]." :".$newline.$newline;
+					$output.="Energiewert aktuell ".$zeile[$metercount]["Energie"][1].$newline.$newline.$endcell.$endparagraph.$endtable;
+					$output.=$starttable.$startparagraph.$ergebnis_wochentag.$newline.$endparagraph.$startparagraph.$ergebnis_datum.$newline.$endparagraph.$startparagraph.$ergebnis_tabelle.$newline.$newline.$endparagraph.$endtable;						
+
+					$outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
+					$metercount+=1;
+					}
+				} /* ende foreach Meter Entry */
+
+			/* Ausgabe aller Enrgievorschuebe in einer gemeinsamen Tabelle 
+			 * zuerst Überschrift, Einleitung der Tabelle machen, Endergebnis in outputTabelle zusammenstellen
+			 * Tabellenspalten für Ausgabe als plaintext in Courier auf gleiche Länge ablengen/schneiden
+			 * keine automatische Erfassung des laengsten Eintrages 24,8,8,8,8,8
+			 */
+			$tabwidth=6; 			
+			$zeile0=$startcell."Energievorschub in kWh  ".$endcell;
+			$zeile1=$startcell."Datum                   ".$endcell;
+			$zeit=$endtime-24*60*60;
+			for ($i=1;$i<10;$i++)
+				{
+				$zeile0.=$startcell." ".substr((date("D", $zeit)."                            "),0,$tabwidth-1).$endcell;
+				$zeile1.=$startcell." ".substr((date("d.m", $zeit)."                            "),0,$tabwidth-1).$endcell;
+				$zeit-=24*60*60;
+				}
+
+			/* ganze Tabelle zusammenbauen, Zähler fürZähler, Zeile 0 und 1 übernehmen */
+
+			$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:".$endcellheader.$endparagraph;
+			$outputTabelle.=$startparagraph.$zeile0.$endparagraph.$startparagraph.$zeile1.$endparagraph;
+			echo "Gesamt Tabelle aufbauen\n";
+			for ($line=0;$line<($metercount);$line++)
+				{
+				$outputTabelle.=$startparagraph.$startcell.substr($zeile[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
+				$zeit=$endtime-24*60*60;
+				for ($i=1;$i<10;$i++)
+					{				
+					if ( isset($zeile[$line]["EnergieVS"][date("d.m", $zeit)])==true )
+						{
+						$outputTabelle.=$startcell." ".substr($zeile[$line]["EnergieVS"][date("d.m", $zeit)]."        ",0,$tabwidth-1).$endcell;
+						}
+					else	/* wenn es keinen Wert gibt leere Zelle drucken*/
+						{
+						echo "   Zählerwert für ".$zeile[$line]["Wochentag"][0]." vom Datum ".date("d.m", $zeit)." fehlt.\n  ";
+						$outputTabelle.=$startcell.substr("              ",0,$tabwidth).$endcell;
+						}
+					$zeit-=24*60*60;	/* naechster Tag */			
+					}
+				$outputTabelle.=$endparagraph; 					
+				}	
+
+			print_r($zeile);	
+			if ($html==true) 
+				{
+				echo "</p>";
+				$output.="</div> \n";   /* Umschalten auf Courier Font */
+				$outputEnergiewerte.=$endtable."</div> \n";
+				$outputTabelle.=$endtable."</div> \n";				
+				}
+			return ($style.$output."\n\n".$outputEnergiewerte."\n\n".$outputTabelle);
+			}
+
+		function writeEnergyRegisterValuestoString($Werte,$html=true)			/* alle Werte als String ausgeben, Input ist das Array der Werte */
+			{
+			if ($html==true) 
+				{
+				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
+				                .rotetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid red;  }
+								.blauetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid blue; }  
+								.gruenetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid green;     }   </style> \n\n";
+				$starttable="<table style=\"border-collapse=collapse;\">"; $endtable="</table>";
+				$startcell="<td style=\"border:1px solid black\">"; $endcell="</td>";
+				$startcellheader="<th colspan=\"11\" style=\"border:1px solid black;\" >";$endcellheader="</th>";
+				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
+				$outputEnergiewerte="<div> \n";   /* Umschalten auf Courier Font */
+				$newline="<BR>\n";
+				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				}
+			else
+				{
+				$style="";				
+				$starttable=""; $endtable="";
+				$startcell=""; $endcell="";					/* ein Tabelleneintrag */
+				$startcellheader=""; $endcellheader="";
+				$startparagraph=""; $endparagraph="\n";		/* eine Tabellenzeile */				
+				$outputEnergiewerte="";
+				$newline="\n";
+				}
+					
+			$outputEnergiewerte.=$starttable.$startparagraph.$startcellheader."Stromzählerstand aktuell Energiewert in kWh:".$endcellheader.$endparagraph;
+
+			$jetzt=time();
+			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+			$metercount=sizeof($Werte);
+			$tabwidth0=24;
+			echo "Gesamt Tabelle aufbauen. Groesse ist ".$metercount." Eintraege.\n";
+			for ($line=0;$line<($metercount);$line++)			
+				{
+				if (isset($Werte[$line]["Energie"][1])==true)
+					{
+					$outputEnergiewerte.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0).$endcell.$startcell.str_pad($Werte[$line]["Energie"][1],10).$endcell;
+					}
+				else
+					{
+					$outputEnergiewerte.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0).$endcell.$startcell.str_pad(" ",10).$endcell;
+					}
+				$outputEnergiewerte.=$startcell.str_pad($Werte[$line]["Information"]["Type"],11).$endcell;
+				if ( isset($Werte[$line]["Information"]["Parentname"]) == true )
+					{
+					$outputEnergiewerte.=$startcell.str_pad($Werte[$line]["Information"]["Parentname"],28).$endcell;
+					}
+				else	
+					{
+					$outputEnergiewerte.=$startcell.str_pad(" ",28).$endcell;
+					}
+				$outputEnergiewerte.=$endparagraph;		
+				} /* ende foreach Meter Entry */
+
+			if ($html==true) 
+				{
+				echo "</p>";
+				$outputEnergiewerte.=$endtable."</div> \n";
+				}
+			return ($style.$outputEnergiewerte);
+			}
+
+		/* fasst alle Energieregister als Vorschubwerte der letzten 9 Tage in einer uebersichtlichen Tabelle zusammen, 
+		 * Tabelle kann sowohl als html als auch als Text ausgegeben werden
+		 *
+		 *	Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:
+		 *	Energievorschub in kWh   Tue   Mon   Sun   Sat   Fri   Thu   Wed   Tue   Mon  
+		 *	Datum                    06.02 05.02 04.02 03.02 02.02 01.02 31.01 30.01 29.01
+		 *	Arbeitszimmer-AMIS       6,14  7,07  7,25  4,85  7,85  4,49  5,98  5,16  6,73 
+		 *	Wohnzimmer               1,02  1,04  1,01  1,01  1,30  1,03  1,41  1,03  1,10 
+		 *	Wohnzimmer-Effektlicht                                                        
+		 *	Arbeitszimmer-Netzwerk   1,08  1,13  1,84  1,50  1,85  1,86  1,85  1,21  1,79 
+		 *	Esstisch-Effektlicht     0,01  0,01  0,01  0,01  0,01  0,01  0,01  0,01  0,01 
+		 *	Statusanzeige            0,01  0,02  0,02  0,00  0,04        0,02  0,01  0,01
+		 * 
+		 */
+
+		function writeEnergyRegisterTabletoString($Werte,$html=true)			/* alle Werte als String ausgeben */
+			{
+			if ($html==true) 
+				{
+				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
+				                .rotetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid red;  }
+								.blauetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid blue; }  
+								.gruenetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid green;     }   </style> \n\n";
+				$starttable="<table style=\"border-collapse=collapse;\">"; $endtable="</table>";
+				$startcell="<td style=\"border:1px solid black\">"; $endcell="</td>";
+				$startcellheader="<th colspan=\"11\" style=\"border:1px solid black;\" >";$endcellheader="</th>";
+				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
+				$outputTabelle="<div> \n";
+				$newline="<BR>\n";
+				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				}
+			else
+				{
+				$style="";				
+				$starttable=""; $endtable="";
+				$startcell=""; $endcell="";					/* ein Tabelleneintrag */
+				$startcellheader=""; $endcellheader="";
+				$startparagraph=""; $endparagraph="\n";		/* eine Tabellenzeile */				
+				$outputTabelle="";				
+				$newline="\n";
+				}
+					
+			$jetzt=time();
+			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+			$metercount=sizeof($Werte);
+			$tabwidth0=24;
+
+			/* Ausgabe aller Enrgievorschuebe in einer gemeinsamen Tabelle 
+			 * zuerst Überschrift, Einleitung der Tabelle machen, Endergebnis in outputTabelle zusammenstellen
+			 * Tabellenspalten für Ausgabe als plaintext in Courier auf gleiche Länge ablengen/schneiden
+			 * keine automatische Erfassung des laengsten Eintrages 24,8,8,8,8,8
+			 */
+			$tabwidth=6; 			
+			$zeile0=$startcell."Energievorschub in kWh  ".$endcell;
+			$zeile1=$startcell."Datum                   ".$endcell;
+			$zeit=$endtime-24*60*60;
+			for ($i=1;$i<10;$i++)
+				{
+				$zeile0.=$startcell." ".substr((date("D", $zeit)."                            "),0,$tabwidth-1).$endcell;
+				$zeile1.=$startcell." ".substr((date("d.m", $zeit)."                            "),0,$tabwidth-1).$endcell;
+				$zeit-=24*60*60;
+				}
+
+			/* ganze Tabelle zusammenbauen, Zähler fürZähler, Zeile 0 und 1 übernehmen */
+
+			$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:".$endcellheader.$endparagraph;
+			$outputTabelle.=$startparagraph.$zeile0.$endparagraph.$startparagraph.$zeile1.$endparagraph;
+			echo "Gesamt Tabelle aufbauen\n";
+			for ($line=0;$line<($metercount);$line++)
+				{
+				$outputTabelle.=$startparagraph.$startcell.substr($Werte[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
+				$zeit=$endtime-24*60*60;
+				for ($i=1;$i<10;$i++)
+					{				
+					if ( isset($Werte[$line]["EnergieVS"][date("d.m", $zeit)])==true )
+						{
+						$outputTabelle.=$startcell." ".substr($Werte[$line]["EnergieVS"][date("d.m", $zeit)]."        ",0,$tabwidth-1).$endcell;
+						}
+					else	/* wenn es keinen Wert gibt leere Zelle drucken*/
+						{
+						echo "   Zählerwert für ".$Werte[$line]["Wochentag"][0]." vom Datum ".date("d.m", $zeit)." fehlt.\n  ";
+						$outputTabelle.=$startcell.substr("              ",0,$tabwidth).$endcell;
+						}
+					$zeit-=24*60*60;	/* naechster Tag */			
+					}
+				$outputTabelle.=$endparagraph; 					
+				}	
+
+			//print_r($Werte);	
+			if ($html==true) 
+				{
+				echo "</p>";
+				$outputTabelle.=$endtable."</div> \n";				
+				}
+			return ($style.$outputTabelle);
+			}
+
+		function writeEnergyPeriodesTabletoString($Werte,$html=true,$kwh=true)			/* alle Werte als String ausgeben */
+			{
+			/* Werte zwar uebernhemen, aber für Periodenwerte nicht wirklich notwendig */ 
+			
+			if ($html==true) 
+				{
+				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
+				                .rotetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid red;  }
+								.blauetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid blue; }  
+								.gruenetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
+													white-space: pre; border:1px solid green;     }   </style> \n\n";
+				$starttable="<table style=\"border-collapse=collapse;\">"; $endtable="</table>";
+				$startcell="<td style=\"border:1px solid black\">"; $endcell="</td>";
+				$startcellheader="<th colspan=\"11\" style=\"border:1px solid black;\" >";$endcellheader="</th>";
+				$startparagraph="<tr>"; $endparagraph="</tr>";  /* Paragraph oder Table Line */
+				$outputTabelle="<div> \n";
+				$newline="<BR>\n";
+				echo "<p class=\"zeile\"> \n";   /* Umschalten auf Arial Font */				
+				}
+			else
+				{
+				$style="";				
+				$starttable=""; $endtable="";
+				$startcell=""; $endcell="";					/* ein Tabelleneintrag */
+				$startcellheader=""; $endcellheader="";
+				$startparagraph=""; $endparagraph="\n";		/* eine Tabellenzeile */				
+				$outputTabelle="";				
+				$newline="\n";
+				}
+					
+			$metercount=sizeof($Werte);
+			$tabwidth0=24;
+
+			/* Ausgabe aller Periodenwerte in einer gemeinsamen Tabelle 
+			 * zuerst Überschrift, Einleitung der Tabelle machen, Endergebnis in outputTabelle zusammenstellen
+			 * Tabellenspalten für Ausgabe als plaintext in Courier auf gleiche Länge ablengen/schneiden
+			 * keine automatische Erfassung des laengsten Eintrages 24,8,8,8,8,8
+			 */
+			$tabwidth=10; 			
+			$zeile0=$startcell."Periodenwerte           ".$endcell.$startcell."   1      ".$endcell
+														 .$endcell.$startcell."   7      ".$endcell
+														 .$endcell.$startcell."  30      ".$endcell
+														 .$endcell.$startcell." 360      ".$endcell;
+
+			/* ganze Tabelle zusammenbauen, Zähler fürZähler, Zeile 0 übernehmen */
+			
+			if ($kwh==true)
+				{
+				$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch als Periodenwerte aggregiert in kWh:".$endcellheader.$endparagraph;
+				}
+			else
+				{
+				$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch als Periodenwerte aggregiert in EUR:".$endcellheader.$endparagraph;
+				}	
+			$outputTabelle.=$startparagraph.$zeile0.$endparagraph;
+			echo "Gesamt Tabelle aufbauen, eine Zeile pro Zähler\n";
+			for ($line=0;$line<($metercount);$line++)
+				{
+				$outputTabelle.=$startparagraph.$startcell.substr($Werte[$line]["Information"]["NAME"]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
+					
+				$PeriodenwerteID = $Werte[$line]["Information"]["Periodenwerte"];
+				
+				if ($kwh==true)
+					{
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzterTag',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte7Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte30Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_letzte360Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					}
+				else
+					{	
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzterTag',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte7Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte30Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					$outputTabelle.=$startcell.str_pad(number_format(GetValue(IPS_GetVariableIDByName('Wirkenergie_Euro_letzte360Tage',$PeriodenwerteID)), 2, ",", "" ),$tabwidth).$endcell;
+					}
+					
+				$outputTabelle.=$endparagraph; 					
+				}	
+
+			//print_r($Werte);	
+			if ($html==true) 
+				{
+				echo "</p>";
+				$outputTabelle.=$endtable."</div> \n";				
+				}
+			return ($style.$outputTabelle);
+			}
+
+
+		
+		/*
+		 * Vergleichsfunktion, welche Hardware ist installiert 
+		 * und welche ist als Enrgieregister mit Archiv und Anzeige konfiguriert
+		 * Ausgabe als Text-String
+		 */
+		 
+		function getEnergyRegister($Meter=array())
+			{
+			$size=sizeof($Meter);
+			$oids=array();
+			//echo "Zähler-Eintraege im EnergyRegisterArray : ".$size."\n";
+			for ($i=0;$i<$size;$i++)
+				{
+				$oids[$Meter[$i]["Information"]["Register-OID"]]=$Meter[$i]["Information"]["NAME"];
+				//echo "  ".str_pad($Meter[$i]["Information"]["NAME"],28)."  ".$Meter[$i]["Information"]["OID"]."   ".$Meter[$i]["Information"]["Parentname"]."/".$Meter[$i]["Information"]["Register-OID"]."   \n";
+				//print_r($Meter[$i]);
+				}
+			//print_r($oids);	
+			//echo "\n\n";
+			
+			$alleStromWerte="";
+		  	/* EvaluateHardware_include.inc wird automatisch nach Aufruf von EvaluateHardware erstellt */			
+			IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+			$Homematic = HomematicList();
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Energiesensoren ausgeben */
+				if ( (isset($Key["COID"]["VOLTAGE"])==true) )
+					{
+					/* alle Energiesensoren */
+
+					$oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+						{
+						$alleStromWerte.=str_pad($Key["Name"],30)." (".$oid.") = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")";
+						}
+					else
+						{
+						$alleStromWerte.=str_pad($Key["Name"],30)." (".$oid.")  = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")";
+						}
+					if ( (isset($oids[$oid]) == true) ) 
+						{
+						$alleStromWerte.="  Configured as ".$oids[$oid]."\n";
+						}
+					else
+						{
+						$alleStromWerte.="  Not Configured\n";
+						}
+					}
+				}
+			
+			$alleStromWerte.="\n\n";
+										  	
+		  	/* EvaluateVariables_ROID.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routine AmisStromverbrauchlist */
+			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");			
+			$stromverbrauch=AmisStromverbrauchList();
+
+			foreach ($stromverbrauch as $Key)
+				{
+      			$oid=(integer)$Key["OID"];
+     			$variabletyp=IPS_GetVariable($oid);
+				//print_r($variabletyp);
+				if ($variabletyp["VariableProfile"]!="")
+		   			{
+					$alleStromWerte.= str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).") \n";
+					}
+				else
+		   			{
+					$alleStromWerte.= str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  \n";
+					}
+				}
+			return($alleStromWerte);	
+			}
+		
+		
+		function getAMISDataOids()
+			{
+			return(CreateVariableByName($this->parentid, "Zusammenfassung", 3)); 
+			}
+			
+		/* 
+		 * zweiteilige Funktionalitaet, erst die Energieregister samt Einzelwerten der letzten Tage einsammeln und
+		 * dann in einer zweiten Funktion die Ausgabe machen.
+		 * Übergabe erfolgt als Array.
+		 */
+		
+		function writeEnergyRegistertoArray($MConfig)
+			{
+			$zeile=array();
+			$debug=false; $metercount=0;
+			foreach ($MConfig as $meter)
+				{
+				if ($debug)
+					{
+					echo "-----------------------------\n";
+					echo "Werte von : ".$meter["NAME"]."\n";
+					}
+				$meterdataID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				/* ID von Wirkenergie bestimmen */
+				switch ( strtoupper($meter["TYPE"]) )
+					{	
+					case "AMIS":
+						$AmisID = CreateVariableByName($meterdataID, "AMIS", 3);
+						//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+						//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+						$EnergieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+						$RegID=$EnergieID;
+						break;
+					case "HOMEMATIC":
+						if ( isset($meter["OID"]) == true )
+							{
+							$OID  = $meter["OID"];
+							$cids = IPS_GetChildrenIDs($OID);
+							if (sizeof($cids) == 0) 
+								{
+								$OID = IPS_GetParent($OID);
+								$cids = IPS_GetChildrenIDs($OID);
+								}
+							//echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
+							//print_r($cids);
+							foreach($cids as $cid)
+								{
+		      					$o = IPS_GetObject($cid);
+				      			if($o['ObjectIdent'] != "")
+				         			{
+		         					if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $RegID=$o['ObjectID']; }
+				        			}
+				    			}
+	      					//echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+							}
+						else
+							{
+							$RegID  = $meter["HM_EnergieID"];
+							}
+						$EnergieID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+						break;		
+					case "REGISTER":	
+					default:
+						$EnergieID = CreateVariableByName($meterdataID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+						$RegID=$EnergieID;
+						break;
+					}					
+
+
+					
+				/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+				$jetzt=time();
+				$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+				$starttime=$endtime-60*60*24*10;
+				$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
+				if ($debug) echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":\n";
+
+				$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+				$zeile[$metercount] = array(
+					"Wochentag" 	=> array($meter["NAME"]), 
+					"Datum" 		=> array("Datum"), 
+					"Energie" 		=> array("Energie"),
+					"Information" 	=> array(
+						"NAME" 			=> $meter["NAME"],
+						"OID"			=> $EnergieID,
+						"Register-OID"	=> $RegID,
+						"Parentname"	=> (IPS_GetName(IPS_GetParent($RegID))),
+						"Unit"			=> "kWh",
+						"Type"			=> strtoupper($meter["TYPE"]),
+						"Periodenwerte" => CreateVariableByName($meterdataID, "Periodenwerte", 3),
+											) 
+										);
+				$laufend=1; $alterWert=0; 
+				foreach($werte as $wert)
+					{
+					$zeit=$wert['TimeStamp']-60;
+					//echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+					if (date("d.m.Y", $zeit)!=$vorigertag)
+						{
+						$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+						$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+						if ($debug) echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh\n";
+						$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+						if ($laufend>1) 
+							{
+							$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+							}
+						
+						$laufend+=1;
+						$alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
+						//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+						}
+					$vorigertag=date("d.m.Y",$zeit);
+					}
+				$metercount+=1;
+				} /* ende foreach Meter Entry */
+			
+			return($zeile);
+			}
+		
+										
 			
 		}  // ende class
 

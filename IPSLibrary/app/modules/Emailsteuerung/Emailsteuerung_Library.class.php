@@ -91,7 +91,7 @@ class EmailControlCenter
 				if ($emailStatus==false) 
 					{
 					echo "EmailControlCenter: Fehler bei der email Uebertragung der Aktuellen Werte als Anhang. Uebertragung als Dropbox Link.\n";
-					$LinkDropbox='https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/LBG70-2Virt?preview='.$filenamewoDir;
+					$LinkDropbox='https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/'.$this->device.'?preview='.$filenamewoDir;
 					$emailStatus=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$this->device, "Übertragung File als Anhang nicht erfolgreich. Übertragung als Dropbox Link:\n".$LinkDropbox."\n\n".$emailText);
 					if ($emailStatus==false) 
 						{
@@ -135,7 +135,7 @@ class EmailControlCenter
 				if ($emailStatus==false) 
 					{
 					echo "EmailControlCenter: Fehler bei der email Uebertragung der Aktuellen Werte als Anhang. Uebertragung als Dropbox Link.\n";
-					$LinkDropbox='https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/LBG70-2Virt?preview='.$filenamewoDir;
+					$LinkDropbox='https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/'.$this->device.'?preview='.$filenamewoDir;
 					$emailStatus=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$this->device, "Übertragung File als Anhang nicht erfolgreich. Übertragung als Dropbox Link:\n".$LinkDropbox."\n\n".$emailText);
 					if ($emailStatus==false) 
 						{

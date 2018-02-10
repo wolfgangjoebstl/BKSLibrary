@@ -1,8 +1,8 @@
 <?
 
-	/**@defgroup OperationCenter
+	/**@defgroup OperationCenter_Installation
 	 *
-	 * Script zur Unterstützung der Betriebsführung
+	 * Script zur Unterstützung der Betriebsführung, installiert das OperaqtionCenter
 	 *
 	 *
 	 * @file          OperationCenter_Installation.ips.php
@@ -11,17 +11,26 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+
+	/******************************************************
+	 *
+	 * INIT, Init
+	 *
+	 * Setup, define basic includes and variables, general for all modules
+	 * besides the include files
+	 *
+	 *************************************************************/
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('OperationCenter',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -72,12 +81,13 @@
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	/******************************************************
-
-				INIT, Timer
-
-	*************************************************************/
-
-	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
+	 *
+	 *				INIT, Timer
+	 *
+	 * Timer so konfigurieren dass sie sich nicht in die Quere kommen. Es gibt
+	 * mittlerweile 11 Timer die der Reihe nach ab ca. 1 Uhr aufgerufen werden. 
+	 *
+	 *************************************************************/
 
 	echo "Timer programmieren :\n";
 	
@@ -93,11 +103,11 @@
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
 		IPS_SetEventActive($tim4ID,true);
-	   echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
+		echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
+		{
+		echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
   		IPS_SetEventActive($tim4ID,true);
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
   		}
@@ -109,26 +119,28 @@
 		IPS_SetParent($tim5ID, $scriptIdOperationCenter);
 		IPS_SetName($tim5ID, "CyclicUpdate");
 		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche Ausführung, alle 1 Monate, Datumstage, Datumstageintervall,  */
-	   echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
+		echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event CyclicUpdate bereits angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
+		{
+		echo "   Timer Event CyclicUpdate bereits angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
   		IPS_SetEventActive($tim5ID,true);
   		}
 
 	
 	$tim1ID=$timer->CreateTimerOC("RouterAufruftimer",00,20);				/* Eventuell Router regelmaessig auslesen */	
+
 	$tim10ID=$timer->CreateTimerOC("Maintenance",01,20);						/* Starte Maintanenance Funktionen */	
 	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files */	
+
 	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
 	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
 		
-   $tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
-   $tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
-   $tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
+	$tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
+	$tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
+	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
 	
-   $tim9ID=$timer->CreateTimerOC("Reserved",02,40);	
+	$tim9ID=$timer->CreateTimerOC("Reserved",02,40);	
   		
 	/******************************************************
 
@@ -296,7 +308,7 @@
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
 		$device_config=LedAnsteuerung_Config();
 		foreach ($device_config as $name => $config)
-		   {
+			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "LED_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
 			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
@@ -308,7 +320,7 @@
 		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 		$device_config=Denon_Configuration();
 		foreach ($device_config as $name => $config)
-		   {
+			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "Denon_".$name, 0); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
 			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
@@ -322,8 +334,15 @@
 		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
 		}
 
+	foreach ($OperationCenterConfig['INTERNET'] as $name => $config)
+		{
+		$StatusID = CreateVariableByName($categoryId_SysPing, "Internet_".$name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+		}
+
 	if (isset ($installedModules["IPSWeatherForcastAT"]))
-	   {
+		{
 		$StatusID = CreateVariableByName($categoryId_SysPing, "Server_Wunderground", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 		AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
 		AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
@@ -334,7 +353,7 @@
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 		$remServer    = RemoteAccess_GetConfigurationNew();
 		foreach ($remServer as $Name => $UrlAddress)
-		   {
+			{
 			$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
 			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */

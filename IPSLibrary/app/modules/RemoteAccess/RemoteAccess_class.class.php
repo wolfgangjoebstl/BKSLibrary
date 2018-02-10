@@ -918,6 +918,7 @@ class RemoteAccess
 	function RPC_getExtendedStructure($remServer,$index)
 		{
 		$status=RemoteAccessServerTable();
+		$struktur=array();
 		foreach ($remServer as $Name => $Server)
 			{
 			$struktur[$Name]=array();

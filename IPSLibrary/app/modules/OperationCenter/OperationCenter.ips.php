@@ -339,16 +339,16 @@ if ($_IPS['SENDER']=="Execute")
 		//print_r($ipscam_configuration);
 		echo "\nSind die Webcams erreichbar ....\n";
 		foreach ($ipscam_configuration as $webcam)
-	   	{
-	   	/* es gibt einen IPS Component befehl, der wird jetzt zerlegt, da darin die IP Adresse ist */
+	   		{
+	   		/* es gibt einen IPS Component befehl, der wird jetzt zerlegt, da darin die IP Adresse ist */
 			$webcam_config=explode(',',$webcam['Component']);
 			//print_r($webcam_config);
 			if ($webcam_config[0]=="IPSComponentCam_Instar")
-		   	{
+		   		{
 				$url="http://".$webcam_config[1]."/status.htm";  	/* gets the data from a URL */
 				}
 			if ($webcam_config[0]=="IPSComponentCam_Instar5907")
-			   {
+				{
 				$url="http://".$webcam_config[1]."/info.html";  	/* gets the data from a URL */
 				}
 			echo "  Erreichbarkeit Kamera ".$webcam['Name']."  ".$url."\n";
@@ -360,19 +360,19 @@ if ($_IPS['SENDER']=="Execute")
 			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $timeout);
 			curl_setopt($ch, CURLOPT_HEADER, false);                    // don't return headers
 			curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);          // follow redirects, wichtig da die Root adresse automatisch umgeleitet wird
-		   curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
-   		curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
-	   	curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
-		   curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
-   		curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
-	   	curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
+			curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"); // who am i
+			curl_setopt($ch, CURLOPT_ENCODING, "");       // handle all encodings
+			curl_setopt($ch, CURLOPT_AUTOREFERER, true);     // set referer on redirect
+			curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 120);      // timeout on connect
+   			curl_setopt($ch, CURLOPT_TIMEOUT, 120);      // timeout on response
+			curl_setopt($ch, CURLOPT_MAXREDIRS, 10);       // stop after 10 redirects
 			$data = curl_exec($ch);
 			/* Curl Debug Funktionen */
 
 
 		  	$err     = curl_errno( $ch );
-   		$errmsg  = curl_error( $ch );
-	   	$header  = curl_getinfo( $ch );
+			$errmsg  = curl_error( $ch );
+			$header  = curl_getinfo( $ch );
 			curl_close($ch);
 			echo "    Channel :".$ch." und IP Adresse aus Header ".$header["primary_ip"].":".$header["primary_port"]."\n";
 
@@ -615,13 +615,35 @@ if ($_IPS['SENDER']=="Execute")
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
   	einmal als aktuelle Werte und einmal als historische Werte
 	*************************************************************************************/
-
+	echo "============================================================================================================\n";
+	echo "Operation center, Filestatus (Send_status) berechnen.\n";
 	$OperationCenter->FileStatus();
+	
+	if (isset ($installedModules["Amis"]))
+		{
+		echo "============================================================================================================\n";
+		echo "Operation center, AMIS Registertabellen in Zusammenfassung neu berechnen.\n";
+
+		/* html Tabellen der Energieregister und Historien ebenfalls updaten */
+		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+		IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+		$MeterConfig = get_MeterConfiguration();				
+		$amis=new Amis();
+		$dataOID=$amis->getAMISDataOids();
+		$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
+		$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
+		$Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
+		SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
+		SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
+		}				
 
 	/************************************************************************************
 	 * System Informationen berechnen
 	 *
 	 *************************************************************************************/
+
+	echo "============================================================================================================\n";
+	echo "Operation center, SystemInfo.\n";
 
 	$OperationCenter->SystemInfo();
 
@@ -820,7 +842,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		case $tim6ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." CopyScriptsTimer");
 			/************************************************************************************
-	   	 *
+	   		 *
 			 * Alle Scripts auf ein Dropboxverzeichnis kopieren und wenn notwendig umbenennen
 			 * Timer einmal am Tag
 			 *
@@ -832,18 +854,32 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
-	   	 * Timer einmal am Tag um 3:50
-	   	 *
+	   		 * Timer einmal am Tag um 3:50
+	   		 *
 			 *************************************************************************************/
 			$OperationCenter->FileStatus();
+			if (isset ($installedModules["Amis"]))
+				{
+				/* html Tabellen der Energieregister und Historien ebenfalls updaten */
+				IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+				IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
+				$MeterConfig = get_MeterConfiguration();				
+				$amis=new Amis();
+				$dataOID=$amis->getAMISDataOids();
+				$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
+				$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
+				$Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
+				SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
+				SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
+				}			
 			break;
 		case $tim8ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." FileStatusTimer");
 			/************************************************************************************
  			 *
 			 * System Information von sysinfo auswerten
-	   	 * Timer einmal am Tag um 00:50
-	   	 *
+	   		 * Timer einmal am Tag um 00:50
+	   		 *
 			 *************************************************************************************/
 			$OperationCenter->SystemInfo();
 			break;		
@@ -852,8 +888,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * frei
-	   	 * Timer einmal am Tag um 00:50
-	   	 *
+	   		 * Timer einmal am Tag um 00:50
+	   		 *
 			 *************************************************************************************/		
 			break;		
 		case $tim10ID:
@@ -861,7 +897,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * Maintenance Modi
-			 * Timer einmal am Tag um 00:50
+			 * Timer einmal am Tag um 00:50, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
 	  		 *
 			 *************************************************************************************/	
 			IPS_SetEventActive($tim11ID,true);	
@@ -871,7 +907,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig
-			 * 
+			 * am Ende auch alte Statusdateien in der Dropbox loeschen
 			 *
 			 *************************************************************************************/	
 			$countlog=$OperationCenter->MoveLogs();
@@ -887,7 +923,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 				{
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");	
 				$countdir=$OperationCenter->PurgeLogs();
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");	
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");
+				$countdelstatus=$OperationCenter->FileStatusDelete();	
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Dropbox Statusdateien zusammengeraeumt, ".$countdelstatus." alte Dateien geloescht.");
 				IPS_SetEventActive($tim11ID,false);
 				}		
 			break;

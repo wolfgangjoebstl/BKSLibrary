@@ -588,6 +588,21 @@ $cutter=true;
 	  	
    	}  // ende foreach
 	
+	/* html basierte Tabellen ebenfalls anzeigen, Name Zaehlervariablen als Identifier für rechtes Tab */
+	$ID = CreateVariableByName($CategoryIdData, "Zusammenfassung", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	IPS_SetPosition($ID,9999);
+	$tableID = CreateVariableByName($ID, "Historie-Energie", 3);
+	IPS_SetVariableCustomProfile($tableID,'~HTMLBox');			
+	$webfront_links["Zusammenfassung"]["Energievorschub der letzten Tage"][$tableID]["NAME"]="Zaehlervariablen";
+		
+	$regID = CreateVariableByName($ID, "Aktuelle-Energie", 3);
+	IPS_SetVariableCustomProfile($regID,'~HTMLBox');			
+	$webfront_links["Zusammenfassung"]["Energieregister"][$regID]["NAME"]="Zaehlervariablen";	
+	
+	$Meter=$Amis->writeEnergyRegistertoArray($MeterConfig);
+	SetValue($tableID,$Amis->writeEnergyRegisterTabletoString($Meter));
+	SetValue($regID,$Amis->writeEnergyRegisterValuestoString($Meter));
+	
 	/******************* Timer Definition *******************************/
 	
 	$scriptIdMomAbfrage   = IPS_GetScriptIDByName('MomentanwerteAbfragen', $CategoryIdApp);
@@ -598,6 +613,22 @@ $cutter=true;
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+	echo "Entsprechend den Webfront Links wird das Webfront automatisch aufgebaut:\n";
+	echo "  Tab Energiemessung\n";
+	foreach ($webfront_links as $Name => $webfront_group)
+	   	{
+		echo "    Subtab:    ".$Name."\n";
+		foreach ($webfront_group as $Group => $RegisterEntries)
+			{
+			echo "      Gruppe:  ".$Group."\n";
+			foreach ($RegisterEntries as $OID => $Entries)
+				{
+				echo "        Register:  ".$OID."/".$Entries["NAME"]."\n";
+				}
+			}	
+		}
+	//print_r($webfront_links);
+		
 	if ($WFC10_Enabled)
 		{
 		/* Kategorien für Administrator werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
@@ -663,11 +694,13 @@ $cutter=true;
 						{
 						echo "erzeuge Link mit Name ".$Group."-".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
 						CreateLinkByDestination($Group."-".$link["NAME"], $OID,    $categoryIdRight,  20);
+						echo "\n";
 						}
 					else
 						{
 			 			echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft." / ".$categoryIdGroup."\n";
 						CreateLinkByDestination($link["NAME"], $OID,    $categoryIdGroup,  20);
+						echo "\n";
 						}
 					}
     			}
@@ -676,7 +709,7 @@ $cutter=true;
 	else
 	   {
 	   /* Admin not enabled, alles loeschen */
-		DeleteWFCItems($WFC10_ConfigId, "HouseTP");
+		DeleteWFCItems($WFC10_ConfigId, "HouseTPA");
 	   }
 
 	if ($WFC10User_Enabled)
