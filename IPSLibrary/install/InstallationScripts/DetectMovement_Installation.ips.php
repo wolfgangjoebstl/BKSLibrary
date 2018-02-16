@@ -346,31 +346,37 @@
 			$rpc = new JSONRPC($Server["Adresse"]);
 			$ZusammenfassungID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Zusammenfassung");
 			}
+		if (isset($ZusammenfassungID)==true) print_r($ZusammenfassungID);	
 
-
+		echo "\n jetzt die einzelnen Zusammenfassungsvariablen für die Gruppen anlegen.\n";
 		$groups=$DetectMovementHandler->ListGroups();
 		foreach($groups as $group=>$name)
 			{
-			echo "\n";
-			echo "Gruppe ".$group." behandeln.\n";
-			$config=$DetectMovementHandler->ListEvents($group);
-			$status=false;
-			foreach ($config as $oid=>$params)
+			$statusID=$DetectMovementHandler->InitGroup($group);
+			/* nur die Gesamtauswertungen ohne Delay auf den remoteAccess Servern anlegen */		
+			if (false)
 				{
-				$status=$status || GetValue($oid);
-				echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+				echo "\n";
+				echo "Gruppe ".$group." behandeln.\n";
+				$config=$DetectMovementHandler->ListEvents($group);
+				$status=false;
+				foreach ($config as $oid=>$params)
+					{
+					$status=$status || GetValue($oid);
+					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					}
+				echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
+				/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
+				$logMot=new Motion_Logging($oid);
+				//print_r($logMot);
+				$class=$logMot->GetComponent($oid);
+				$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($logMot->GetEreignisID() )));
+  				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+     			AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+				AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				SetValue($statusID,(integer)$status);
 				}
-			echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
-			/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
-			$logMot=new Motion_Logging($oid);
-			//print_r($logMot);
-			$class=$logMot->GetComponent($oid);
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent(intval($logMot->GetEreignisID() )));
-  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
-			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
-			IPS_ApplyChanges($archiveHandlerID);
-			SetValue($statusID,(integer)$status);
 
 			$parameter="";
 			foreach ($remServer as $Name => $Server)

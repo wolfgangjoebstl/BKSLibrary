@@ -333,6 +333,7 @@
 		public function __construct()
 			{
 			self::$configtype = '$eventHumidityConfiguration';
+			parent::__construct();
 			}
 
 
@@ -372,6 +373,9 @@
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
+		
+		private $MoveAuswertungID;
+		private $motionDetect_DataID;		
 
 		/**
 		 * @public
@@ -379,9 +383,39 @@
 		 * Initialisierung des DetectHumidityHandler Objektes
 		 *
 		 */
-		public function __construct()
+		public function __construct($MoveAuswertungID=false)
 			{
-        	self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
+			self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
+			if ($MoveAuswertungID===false)
+				{
+				$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+				$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+				$name="Bewegung-Auswertung";
+				$MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+				if ($MoveAuswertungID==false)
+					{
+					$MoveAuswertungID = IPS_CreateCategory();
+					IPS_SetParent($MoveAuswertungID, $CategoryIdData);
+					IPS_SetName($MoveAuswertungID, $name);
+					IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
+					}
+				$this->MoveAuswertungID=$MoveAuswertungID;					
+				}
+			else $this->MoveAuswertungID=$MoveAuswertungID;
+			
+			$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
+			$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
+			$name="Motion-Detect";
+			$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($mdID==false)
+				{
+				$mdID = IPS_CreateCategory();
+				IPS_SetParent($mdID, $CategoryIdData);
+				IPS_SetName($mdID, $name);
+	 			IPS_SetInfo($mdID, "this category was created by script. ");
+				}			
+			$this->motionDetect_DataID=$mdID;			
+			parent::__construct();
 			}
 
 
@@ -412,7 +446,87 @@
 			}
 
 
-		}
+		/**
+		 * @public
+		 *
+		 */
+		public function getMirrorRegister($oid)
+			{
+			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
+			//echo "Kategorie der Custom Components Spiegelregister : ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).")\n";
+			//echo "Kategorie der Detect Movement   Spiegelregister : ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).")\n";
+			$result=IPS_GetObject($oid);
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+				}
+			elseif (IPS_GetName($oid)=="Cam_Motion")					/* was ist mit den Kameras */
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);
+				}
+			else
+				{
+				$variablename=IPS_GetName($oid);
+				}
+			//$mirrorID=@IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);		/* das sind die schnellen Register, ohne Delay */
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->motionDetect_DataID);		/* das sind die geglätteten Register mit Delay */
+
+			if ($mirrorID===false) $mirrorID=$oid;
+			echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
+			return($mirrorID);
+			}
+			
+
+		/**
+		 *
+		 * Die Gesamtauswertung_ Variablen erstellen 
+		 *
+		 */
+		function InitGroup($group)
+			{
+			echo "\nDetectMovement Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") und in ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).") gespeichert.\n";
+			$config=$this->ListEvents($group);
+			$status=false; $status1=false;
+			foreach ($config as $oid=>$params)
+				{
+				$status=$status || GetValue($oid);
+				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+				$moid=$this->getMirrorRegister($oid);
+				$status1=$status1 || GetValue($moid);
+				}
+			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
+			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->MoveAuswertungID,1000, '~Motion', null,false);
+			SetValue($statusID,$status1);
+			$status1ID=CreateVariable("Gesamtauswertung_".$group,0,$this->motionDetect_DataID,1000, '~Motion', null,false);
+			SetValue($status1ID,$status);
+			
+  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+     		AC_SetLoggingStatus($archiveHandlerID,$status1ID,true);
+			AC_SetAggregationType($archiveHandlerID,$status1ID,0);      /* normaler Wwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			return ($statusID);			
+			}
+			
+		/**
+		 *
+		 * private Variablen ausgeben 
+		 *
+		 */
+		function getCustomComponentsDataGroup()
+			{
+			return($this->MoveAuswertungID);
+			}			
+
+		function getDetectMovementDataGroup()
+			{
+			return($this->motionDetect_DataID);
+			}			
+			
+			
+		} /* ende class */	
 
 /******************************************************************************************************************/
 
@@ -431,6 +545,7 @@
 		public function __construct()
 			{
 			self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
+			parent::__construct();			
 			}
 
 
@@ -484,7 +599,8 @@
 		 */
 		public function __construct()
 			{
-        	self::$configtype = '$eventHeatConfiguration';                                          /* <-------- change here */
+			self::$configtype = '$eventHeatConfiguration';                                          /* <-------- change here */
+			parent::__construct();			
 			}
 
 

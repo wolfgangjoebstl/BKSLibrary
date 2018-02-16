@@ -30,7 +30,7 @@ $installedModules = $moduleManager->GetInstalledModules();
 
 if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
 if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
-if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
+//if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
 if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; break;}
 
 /*
@@ -65,116 +65,154 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::
 /*                                                                                                              */
 /****************************************************************************************************************/
 
-if ($_IPS['SENDER']=="Execute")
-	{
-			$Homematic = HomematicList();
-			//print_r($Homematic);
-			$FS20= FS20List();
-		   $cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
+	if ($_IPS['SENDER']=="Execute")
+		{
+		$Homematic = HomematicList();
+		//print_r($Homematic);
+		$FS20= FS20List();
+		$cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 
-		   $alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
-		   echo "\n";
-		   echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
-			echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
-			foreach ($Homematic as $Name => $Key)
-				{
-				/* Alle Homematic Bewegungsmelder ausgeben */
-				echo "Bearbeite ".$Name."\n";
-				if ( (isset($Key["COID"]["MOTION"])==true) )
+		$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+		echo "\n";
+		echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
+
+		echo "===========================Alle Homematic Bewegungsmelder ausgeben.\n";
+		foreach ($Homematic as $Name => $Key)
+			{
+			/* Alle Homematic Bewegungsmelder ausgeben */
+			if ( (isset($Key["COID"]["MOTION"])==true) )
 		   		{
 		   		/* alle Bewegungsmelder */
-
-			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-					$log=new Motion_Logging($oid);
-					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
-					}
-				if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+				echo "*******\nBearbeite Bewegungsmelder ".$Name."\n";
+			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+				$log=new Motion_Logging($oid);
+				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+				}
+			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
 	   			{
 			   	/* alle Kontakte */
-			      $oid=(integer)$Key["COID"]["STATE"]["OID"];
-					$log=new Motion_Logging($oid);
-					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
-					}
+				echo "*******\nBearbeite Kontakt ".$Name."\n";
+			    $oid=(integer)$Key["COID"]["STATE"]["OID"];
+				$log=new Motion_Logging($oid);
+				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
-			echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
-			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-			$TypeFS20=RemoteAccess_TypeFS20();
-			foreach ($FS20 as $Key)
+			}
+		echo "===========================Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein.\n";
+		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
+		$TypeFS20=RemoteAccess_TypeFS20();
+		foreach ($FS20 as $Key)
+			{
+			/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
+			if ( (isset($Key["COID"]["MOTION"])==true) )
 				{
-				/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
-				if ( (isset($Key["COID"]["MOTION"])==true) )
-		   		{
 		   		/* alle Bewegungsmelder */
-
-			      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-					$log=new Motion_Logging($oid);
-					$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
-					}
-				/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
-				if ((isset($Key["COID"]["StatusVariable"])==true))
+				echo "*******\nBearbeite FS20 Bewegungsmelder ".$Name."\n";
+			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+				$log=new Motion_Logging($oid);
+				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+				}
+			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+			if ((isset($Key["COID"]["StatusVariable"])==true))
 			   	{
 		   		foreach ($TypeFS20 as $Type)
-		   		   {
-		   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-			   	      {
+		   			{
+		   		   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+			   	    	{
+						echo "*******\nBearbeite FS20 Bewegungsmelder ".$Name."\n";						
 	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 			  	      	$variabletyp=IPS_GetVariable($oid);
 			  	      	IPS_SetName($oid,"MOTION");
-							$log=new Motion_Logging($oid);
-							$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
-		   		      }
-		   	   	}
-					}
+						$log=new Motion_Logging($oid);
+						$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
+		   		      	}
+		   	   		}
 				}
+			}
 
 			$alleMotionWerte.="********* Gesamtdarstellung\n".$log->writeEvents(true,true)."\n\n";
+			echo "\n\n======================================================================================\n";
 			echo $alleMotionWerte;
-			
+			echo "\n\n======================================================================================\n";
+						
 			/* Detect Movement Auswertungen analysieren */
 			
 			/* Routine in Log_Motion uebernehmen */
 			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 			IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   $DetectMovementHandler = new DetectMovementHandler();
+			$DetectMovementHandler = new DetectMovementHandler();
+			echo "Ausgabe aller Event IDs mit zugeordneter Gruppe deren erster Parameter Motion ist:\n";
 			print_r($DetectMovementHandler->ListEvents("Motion"));
+			echo "Ausgabe aller Event IDs mit zugeordneter Gruppe deren erster Parameter Contact ist:\n";
 			print_r($DetectMovementHandler->ListEvents("Contact"));
 
+			echo "\n==================================================================\n";
 			$groups=$DetectMovementHandler->ListGroups();
 			foreach($groups as $group=>$name)
-			   {
-			   echo "Gruppe ".$group." behandeln.\n";
+				{
+				echo "*****\nDetect Movement Gruppe ".$group." behandeln.\n";
 				$config=$DetectMovementHandler->ListEvents($group);
 				$status=false;
 				foreach ($config as $oid=>$params)
 					{
 					$status=$status || GetValue($oid);
-					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+					echo "   OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
 					}
-			   echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
-				$log=new Motion_Logging($oid);
-				$class=$log->GetComponent($oid);
-				$statusID=CreateVariable("Gesamtauswertung_".$group,1,IPS_GetParent(intval($log->EreignisID)));
-				SetValue($statusID,(integer)$status);
-			   }
-
-			
-			$config=IPSDetectMovementHandler_GetEventConfiguration();
-
-			foreach ($config as $oid=>$params)
-				{
-				echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)." Type :".str_pad($params[0],15)."Status: ".(integer)GetValue($oid)." Gruppe ".$params[1]."\n";
-				$log=new Motion_Logging($oid);
-				$class=$log->GetComponent($oid);
-				//print_r($class);
-				echo "ParentID:".IPS_GetParent(intval($log->EreignisID))." Name :","Gesamtauswertung_".$params[1]."\n";
-				$erID=CreateVariable("Gesamtauswertung_".$params[1],1,IPS_GetParent(intval($log->EreignisID)));
+				echo "Gruppe ".$group." hat neuen Status : ".(integer)$status."\n";
 				}
 
-		   $alleTempWerte="\n\nHistorische Temperaturwerte aus den Logs der CustomComponents:\n\n";
-		   echo "\n";
-		   echo "Execute von Detect Movement, zusaetzliche Auswertungen.\n\n";
-			echo "===========================Alle Homematic Temperaturmelder ausgeben.\n";
+			echo "****\nDetect Movement Konfiguration durchgehen:\n";
+			$config=IPSDetectMovementHandler_GetEventConfiguration();
+			$gesamt=array();
+			foreach ($config as $oid=>$params)
+				{
+				echo "  OID: ".$oid." Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)." Type :".str_pad($params[0],15)."Status: ".(integer)GetValue($oid)." Gruppe ".$params[1]."\n";
+				$gesamt["Gesamtauswertung_".$params[1]]["NAME"]="Gesamtauswertung_".$params[1];
+				$gesamt["Gesamtauswertung_".$params[1]]["OID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$params[1],$DetectMovementHandler->getCustomComponentsDataGroup());
+				$gesamt["Gesamtauswertung_".$params[1]]["MOID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$params[1],$DetectMovementHandler->getDetectMovementDataGroup());
+				}
 
+			$LogConfiguration=get_IPSComponentLoggerConfig();
+			$delayTime=$LogConfiguration["LogConfigs"]["DelayMotion"]/60;
+			echo "Delay zum Glätten sind ".($delayTime)." Minuten.\n\n";
+				
+			echo "****\nZusammenfassung:\n";	
+			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];			
+			foreach ($gesamt as $entry)
+				{
+				echo "\n    ".$entry["NAME"]."   ".$entry["OID"]." (".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"])).")   ".$entry["MOID"]." (".IPS_GetName($entry["MOID"])."/".IPS_GetName(IPS_GetParent($entry["MOID"])).")\n";
+				$endtime=time();
+				$starttime=$endtime-60*60*24*10;
+				echo "       Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." für : ".$entry["OID"]." Aktuell : ".(GetValue($entry["OID"])?"Ein":"Aus")."\n";
+				$werte = AC_GetLoggedValues($archiveHandlerID, $entry["OID"], $starttime, $endtime, 0);
+				$zeile=0; $zeilemax=6;
+				foreach($werte as $wert)
+					{
+					echo "           ".date("D d.m H:i", $wert['TimeStamp'])."   ".($wert['Value']?"Ein":"Aus")."    ".$wert['Duration']."\n";
+					$zeile++;
+					if ($zeile>($zeilemax*2)) break;
+					}
+				echo "       Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." für : ".$entry["MOID"]." Aktuell : ".(GetValue($entry["OID"])?"Ein":"Aus")."   Geglättet mit ".$delayTime." Minuten.\n";
+				$werte = AC_GetLoggedValues($archiveHandlerID, $entry["MOID"], $starttime, $endtime, 0);
+				$zeile=0;
+				foreach($werte as $wert)
+					{
+					echo "           ".date("D d.m H:i", $wert['TimeStamp'])."   ".($wert['Value']?"Ein":"Aus")."    ".$wert['Duration']."\n";
+					$zeile++;
+					if ($zeile>$zeilemax) break;
+					}
+					
+				}	
+
+			echo "Was ist mit den Gesamtauswertungen_ im CustomComponents verzeichnis.\n";
+
+
+
+			echo "\n";
+			echo "Execute von Detect Movement, zusaetzliche Auswertungen fuer Temperatur.\n\n";
+			echo "===========================Alle Homematic Temperaturmelder ausgeben.\n";
+			
+			$alleTempWerte="\n\nHistorische Temperaturwerte aus den Logs der CustomComponents:\n\n";
+			
 			foreach ($Homematic as $Key)
 				{
 				/* alle Feuchtigkeits oder Temperaturwerte ausgeben */

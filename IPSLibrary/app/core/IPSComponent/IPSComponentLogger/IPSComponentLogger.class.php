@@ -133,11 +133,11 @@ class Logging
 	private $installedmodules;
 	
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
-	   {
-	   //echo "Logfile Construct\n";
-	   $this->log_File=$logfile;
-	   $this->nachrichteninput_Id=$nachrichteninput_Id;
-   	//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
+		{
+		//echo "Logfile Construct\n";
+		$this->log_File=$logfile;
+		$this->nachrichteninput_Id=$nachrichteninput_Id;
+   		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
 		//echo "Init ".get_class($this)." : ";
 		//var_dump($this);
 		if ($logfile=="No-Output")
@@ -186,7 +186,7 @@ class Logging
 			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis Custom Components:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			//echo "  Kategorien im Datenverzeichnis Custom Components:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			$this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
@@ -211,7 +211,7 @@ class Logging
 				/* nur wenn Detect Movement installiert zusaetzlich ein Motion Log fuehren */
 				$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
-				echo "  Kategorien im Datenverzeichnis Detect Movement :".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+				//echo "  Kategorien im Datenverzeichnis Detect Movement :".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 				$name="Motion-Nachrichten";
 				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);			
 				$this->zeile01DM = CreateVariable("Zeile01",3,$vid, 10 );

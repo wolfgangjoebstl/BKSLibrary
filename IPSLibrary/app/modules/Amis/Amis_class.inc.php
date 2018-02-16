@@ -713,7 +713,7 @@
 			$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 			$metercount=sizeof($Werte);
 			$tabwidth0=24;
-			echo "Gesamt Tabelle aufbauen. Groesse ist ".$metercount." Eintraege.\n";
+			echo "Gesamte aktuelle Registerwerte Tabelle aufbauen. Groesse ist ".$metercount." Eintraege.\n";
 			for ($line=0;$line<($metercount);$line++)			
 				{
 				if (isset($Werte[$line]["Energie"][1])==true)
@@ -733,7 +733,8 @@
 					{
 					$outputEnergiewerte.=$startcell.str_pad(" ",28).$endcell;
 					}
-				$outputEnergiewerte.=$endparagraph;		
+				$outputEnergiewerte.=$endparagraph;
+				//echo "    ".substr($Werte[$line]["Wochentag"][0]."                           ",0,$tabwidth0)."   ".str_pad($Werte[$line]["Energie"][1],10)."\n";		
 				} /* ende foreach Meter Entry */
 
 			if ($html==true) 
@@ -1024,10 +1025,10 @@
 		 * Übergabe erfolgt als Array.
 		 */
 		
-		function writeEnergyRegistertoArray($MConfig)
+		function writeEnergyRegistertoArray($MConfig,$debug=false)
 			{
 			$zeile=array();
-			$debug=false; $metercount=0;
+			$metercount=0;
 			foreach ($MConfig as $meter)
 				{
 				if ($debug)

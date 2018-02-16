@@ -256,7 +256,7 @@ if ($_IPS['SENDER']=="Execute")
 	/* IPS Light analysieren */
 	if ( isset($installedModules["IPSLight"]) )
 		{
-		echo "IPSLight ist installiert. Configuration auslesen.\n";
+		echo "\nIPSLight ist installiert. Configuration auslesen.\n";
 		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
 		IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");		
 		IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");		
@@ -281,7 +281,7 @@ if ($_IPS['SENDER']=="Execute")
 	/* IPS Heat analysieren */
 	if ( isset($installedModules["Stromheizung"]) )
 		{
-		echo "Stromheizung ist installiert. Configuration auslesen.\n";
+		echo "\nStromheizung ist installiert. Configuration auslesen.\n";
 		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
 		IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
 		IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		

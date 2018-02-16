@@ -2177,7 +2177,8 @@ class OperationCenter
 	function HardwareStatus()
 		{
 		$result=array();
-		if (isset($this->installedModules["RemoteReadWrite"])==true)
+		//print_r($this->installedModules);
+		if (isset($this->installedModules["EvaluateHardware"])==true)
 			{
 			/* es gibt nur mehr eine Instanz für die Evaluierung der Hardware und die ist im Modul EvaluateHardware */
 			
@@ -2258,7 +2259,6 @@ class OperationCenter
 					}
 				}
 
-			$alleHumidityWerte="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
 			echo "Alle Feuchtigkeitswerte ausgeben :\n";
 			foreach ($Homematic as $Key)
 				{
@@ -2276,7 +2276,6 @@ class OperationCenter
 					}
 				}
 
-			$alleMotionWerte="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
 			echo "Alle Bewegungsmelder ausgeben :\n";
 			foreach ($Homematic as $Key)
 				{
@@ -2337,7 +2336,140 @@ class OperationCenter
 					}
 				}
 				
+			echo "Alle Energiewerte ausgeben :\n";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Energiesensoren ausgeben */
+				if ( (isset($Key["COID"]["VOLTAGE"])==true) )
+					{
+					/* alle Energiesensoren */
+
+					$oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+						{
+						echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+						{
+						echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+						{
+						$result[]=$Key["Name"];
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			$pad=50;
+			echo "Aktuelle Heizungswerte ausgeben:\n";
+			$varname="SET_TEMPERATURE";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Stellwerte ausgeben */
+				if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+					{
+					/* alle Stellwerte der Thermostate */
+					//print_r($Key);
+
+					$oid=(integer)$Key["COID"][$varname]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+						{
+						$result[]=$Key["Name"];
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			$varname="SET_POINT_TEMPERATURE";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Stellwerte ausgeben */
+				if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+					{
+					/* alle Stellwerte der Thermostate */
+					//print_r($Key);
+					$oid=(integer)$Key["COID"][$varname]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+						{
+						$result[]=$Key["Name"];
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			foreach ($FHT as $Key)
+				{
+				/* alle FHT Temperaturwerte ausgeben */
+				if (isset($Key["COID"]["TargetTempVar"])==true)
+		   			{
+	      			$oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				}			
+				
+			echo "Aktuelle Heizungs-Aktuatorenwerte ausgeben:\n\n";
+			$varname="VALVE_STATE";
+			foreach ($Homematic as $Key)
+				{
+				/* Alle Homematic Stellwerte ausgeben */
+				if ( (isset($Key["COID"][$varname])==true) )
+					{
+					/* alle Stellwerte der Thermostate */
+					//print_r($Key);
+
+					$oid=(integer)$Key["COID"][$varname]["OID"];
+					$variabletyp=IPS_GetVariable($oid);
+					if ($variabletyp["VariableProfile"]!="")
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					else
+						{
+						echo "   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+						}
+					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+						{
+						$result[]=$Key["Name"];
+						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+						}
+					}
+				}
+
+			foreach ($FHT as $Key)
+				{
+				/* alle FHT Temperaturwerte ausgeben */
+				if (isset($Key["COID"]["PositionVar"])==true)
+			   		{
+	      			$oid=(integer)$Key["COID"]["PositionVar"]["OID"];
+					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+					}
+				}
 			}
+			
 		return($result);
 		}
 

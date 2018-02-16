@@ -281,7 +281,7 @@
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Variablen Profile für Darstellung anlegen, sind die selben wie bei Remoote Access
+	 * Variablen Profile für Darstellung anlegen, sind die selben wie bei Remote Access
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
