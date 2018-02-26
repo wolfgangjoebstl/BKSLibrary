@@ -694,10 +694,14 @@
 	$keyword="VALVE_STATE";
 	foreach ($Homematic as $Key)
 		{
-		/* alle Actuatoren Positionswerte ausgeben */
+		/* alle Actuatoren Positionswerte ausgeben, 
+		 * Homematic Stellmotoren haben VALVE_STATE als aktuellen Ventilwert,  
+		 * HomematicIP Stellmotoren haben LEVEL als aktuellen Ventilwert
+		 */
 		if (isset($Key["COID"][$keyword])==true)
 			{
-			$oid=(integer)$Key["COID"][$keyword]["OID"];
+			if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
+			else $oid=(integer)$Key["COID"][$keyword]["OID"];			
 	     	$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 				{

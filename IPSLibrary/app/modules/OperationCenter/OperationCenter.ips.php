@@ -884,12 +884,14 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$OperationCenter->SystemInfo();
 			break;		
 		case $tim9ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Reserviert");
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Homematic RSSI auslesen");
 			/************************************************************************************
  			 *
-			 * frei
-	   		 * Timer einmal am Tag um 00:50
-	   		 *
+			 * Timer Homematic, einmal am Tag
+			 * Timer einmal am Tag um 02:40
+			 * Es werden die wicgtigsten Homematic Geraete mit Kanal 0 angelegt.. Passiert in Install.
+			 * Hier die RSSI Werte auslesen und die RSSI Tabelle updaten. Bleibt dann so den ganzen Tag  
+			 * 
 			 *************************************************************************************/		
 			break;		
 		case $tim10ID:
@@ -897,7 +899,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			/************************************************************************************
  			 *
 			 * Maintenance Modi
-			 * Timer einmal am Tag um 00:50, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
+			 * Timer "Maintzenance" einmal am Tag um 01:20, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
 	  		 *
 			 *************************************************************************************/	
 			IPS_SetEventActive($tim11ID,true);	
@@ -906,8 +908,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance Intervall, Logdateien zusammenräumen");
 			/************************************************************************************
  			 *
-			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig
-			 * am Ende auch alte Statusdateien in der Dropbox loeschen
+			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig, von Timer 10 gestartet
+			 * am Ende auch noch alte Statusdateien in der Dropbox loeschen
 			 *
 			 *************************************************************************************/	
 			$countlog=$OperationCenter->MoveLogs();

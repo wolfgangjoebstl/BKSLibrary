@@ -37,12 +37,14 @@ if ($_IPS['SENDER']=="Execute")
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 	print_r($installedModules);
 	
-	echo "\nVon der Konsole aus gestartet.\n";
+	echo "\n================================================================================================\n";
+	echo "Von der Konsole aus gestartet.\n";
 
 	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 	//Auflisten
 	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)." (angeführt nach Ports, keine Zusammenfassung auf Geräte)\n\n";
+	echo "\n================================================================================================\n";	
+	echo "Homematic Instanzen (Seriennummer:Kanal): ".sizeof($alleInstanzen)." (angeführt nach Kategorie OIDs, keine Zusammenfassung auf Geräte)\n\n";
 	$serienNummer=array();
 	foreach ($alleInstanzen as $instanz)
 		{
@@ -92,6 +94,9 @@ if ($_IPS['SENDER']=="Execute")
 	    	}
 		}
 
+	echo "\n================================================================================================\n";
+	echo "Uebersicht Homematic CCUs und anstehende Fehlermeldungen:\n";
+	
 	$texte = Array(
 	    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
     	"LOWBAT" => "Batterieladezustand gering",
@@ -141,8 +146,12 @@ if ($_IPS['SENDER']=="Execute")
 		  	echo "  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
 			}
 		}
+
+	echo "\n================================================================================================\n";
+	echo "Auflistung der angeschlossenen Geräte per CCU:\n";
 	echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
 	//print_r($serienNummer);
+	$serials=array();	
 	foreach ($serienNummer as $ccu => $geraete)
  		{
 		echo "-------------------------------------------\n";
@@ -150,7 +159,9 @@ if ($_IPS['SENDER']=="Execute")
  		echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
 		foreach ($geraete as $name => $anzahl)
 			{
-			//echo "\n *** ".$name."  \n";
+			//echo "\n *** ".$name."  \n"; 
+			if ( isset($serials[$name])==true ) echo "  !!! Doppelter Eintrag.\n";
+				else $serials[$name]=$anzahl["Name"];
 			//print_r($anzahl);
 			$register=explode(" ",trim($anzahl["Values"]));
 			sort($register);
@@ -252,11 +263,16 @@ if ($_IPS['SENDER']=="Execute")
 			}
 
 		}
-
+		
+	echo "\n================================================================================================\n";
+	echo "Auflistung der angeschlossenen Geräte nach Seriennummern. Es gibt insgesamt ".sizeof($serials).".\n";		
+	print_r($serials);
+	
 	/* IPS Light analysieren */
 	if ( isset($installedModules["IPSLight"]) )
 		{
-		echo "\nIPSLight ist installiert. Configuration auslesen.\n";
+		echo "\n=============================================================================\n";
+		echo "IPSLight ist installiert. Configuration auslesen.\n";
 		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
 		IPSUtils_Include ("IPSLight.inc.php",                "IPSLibrary::app::modules::IPSLight");		
 		IPSUtils_Include ("IPSLight_Constants.inc.php",      "IPSLibrary::app::modules::IPSLight");		
@@ -530,7 +546,7 @@ if ($_IPS['SENDER']=="Execute")
 	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 	//Auflisten
 	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-	$includehomematic=	'function get_HomematicConfiguration() {'."\n".'            return array('." \n";
+	$includehomematic=	'function getHomematicConfiguration() {'."\n".'            return array('." \n";
 	$includefile.='function HomematicList() { return array('."\n";
 
 	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
@@ -618,8 +634,9 @@ if ($_IPS['SENDER']=="Execute")
 
 	/*$includefile.=');'."\n".'?>';*/
 	$includefile.=');}'."\n";
-	$includefile.="\n".'?>';
 	$includehomematic.=');}'."\n";
+	$includefile.=$includehomematic;
+	$includefile.="\n".'?>';	
 	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
 	if (!file_put_contents($filename, $includefile)) {
         throw new Exception('Create File '.$filename.' failed!');
@@ -636,6 +653,12 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Zusammenfassung:\n\n";
 	print_r($summary);
 
+/********************************************************************************************************************/
+
+/*    FUNKTIONEN       */
+
+/********************************************************************************************************************/
+/********************************************************************************************************************/
 /********************************************************************************************************************/
 
 

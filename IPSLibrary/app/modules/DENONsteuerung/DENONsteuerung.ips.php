@@ -216,6 +216,7 @@ if ($_IPS['SENDER'] == "Execute")
 			}
 
 		echo "Webfront Administrator Audio ID: ".$categoryId_WebFrontAudio."     ".$Audio_Path."\n";
+		print_r($display_variables);
 		foreach ($configuration as $nameTag => $config)
 			{
 	   	$id=$config['NAME'];

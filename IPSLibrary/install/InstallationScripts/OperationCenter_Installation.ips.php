@@ -1,5 +1,22 @@
 <?
 
+	/*
+     * This file is part of the IPSLibrary.
+     *
+     * The IPSLibrary is free software: you can redistribute it and/or modify
+     * it under the terms of the GNU General Public License as published
+     * by the Free Software Foundation, either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * The IPSLibrary is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     * GNU General Public License for more details.
+     *
+     * You should have received a copy of the GNU General Public License
+     * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+     */
+
 	/**@defgroup OperationCenter_Installation
 	 *
 	 * Script zur Unterstützung der Betriebsführung, installiert das OperaqtionCenter
@@ -140,7 +157,7 @@
 	$tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
 	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
 	
-	$tim9ID=$timer->CreateTimerOC("Reserved",02,40);	
+	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
   		
 	/******************************************************
 
@@ -360,10 +377,112 @@
 			}
 		}
 	IPS_ApplyChanges($archiveHandlerID);
+
+	/******************************************************
+
+				INIT Homematic RSSI Read
+
+	 * @author        Andreas Brauneis, mit Modifikationen Wolfgang JÖBSTL
+	 * @version
+	 *  Version 2.50.1, 02.07.2012<br/>
+	 *
+	*************************************************************/
+
+	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+	IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+	
+	$CategoryIdHardware = CreateCategoryPath('Hardware.Homematic');
+	$CategoryIdRSSIHardware = CreateCategoryPath('Hardware.HomematicRSSI');
+
+	$homematic=HomematicList();
+	$seriennumernliste=array();
+	foreach ($homematic as $instance => $entry)
+		{
+		$adresse=explode(":",$entry["Adresse"])[0];
+		if ( isset($seriennumernliste[$adresse])!=true )
+			{
+			$seriennumernliste[$adresse]["Adresse"]=$adresse;
+			$seriennumernliste[$adresse]["Name"]=$entry["Name"];			
+			if (isset($entry["Type"])==true) $seriennumernliste[$adresse]["Type"]=$entry["Type"];	
+			else $seriennumernliste[$adresse]["Type"]="             ";		
+			if (isset($entry["Device"])==true) $seriennumernliste[$adresse]["Device"]=$entry["Device"];
+			else $seriennumernliste[$adresse]["Device"]="              ";
+			$seriennumernliste[$adresse]["Channel"]=explode(":",$entry["Adresse"])[1];
+			if ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSRF;
+			else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
+			
+			}		
+		}
+	echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste.\n";	
+	foreach ($seriennumernliste as $zeile)
+		{
+		if (trim($zeile["Type"])=="") 
+			{
+			echo "---> kein RSSI Monitoring : ";
+			unset($seriennumernliste[$zeile["Adresse"]]);
+			}
+		echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  ".$zeile["Type"]."  ".$zeile["Device"]."  \n";
+		}
+	echo "\n";
+	echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Button, Switch oder Dimmer.\n";
+	$homematicConfiguration=array();
+	foreach ($seriennumernliste as $zeile)
+		{
+		echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
+		$name=explode(":",$zeile["Name"])[0];
+		$homematicConfiguration[$name][]=$zeile["Adresse"];
+		$homematicConfiguration[$name][]=$zeile["Channel"];
+		$homematicConfiguration[$name][]=$zeile["Protocol"];
+		$homematicConfiguration[$name][]=$zeile["Type"];				
+		}
+
+	foreach ($homematicConfiguration as $component=>$componentData) 
+		{
+		$propertyAddress  = $componentData[0];
+		$propertyChannel  = $componentData[1];
+		$propertyProtocol = $componentData[2];
+		$propertyType     = $componentData[3];
+		$propertyName     = $component;
+		
+		$install=true;
+		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
+			{
+			$HMAddress = HM_GetAddress($HomematicModuleId);
+			if ($HMAddress=="$propertyAddress:$propertyChannel") 
+				{
+				//echo "Found existing HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol\n";
+				$install=false;
+				}
+			}
+		if ($install==true)		/* kein Device gefunden */
+			{
+			echo "HomaticModule '$propertyName' muss komplett neu installiert werden.\n";
+			$moduleManager->LogHandler()->Log("Create NEW HomaticModule '$propertyName' Address=$propertyAddress, Channel=$propertyChannel, Protocol=$propertyProtocol");
+			$DeviceId = CreateHomematicInstance($moduleManager,
+                                            $propertyAddress,
+                                            $propertyChannel,
+                                            $propertyName,
+                                            $CategoryIdHardware,
+                                            $propertyProtocol);
+			}
+		$SystemId = CreateHomematicInstance($moduleManager,
+                                            $propertyAddress,
+                                            0,
+                                            $propertyName.'#',
+                                            $CategoryIdRSSIHardware,
+                                            $propertyProtocol);
+		if ($propertyType==HM_TYPE_SMOKEDETECTOR) 
+			{
+			$variableId = IPS_GetVariableIDByName('STATE', $DeviceId);
+			CreateEvent ($propertyName, $variableId, $scriptIdSmokeDetector);
+			} 
+		}
+
 		
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
+	
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
@@ -499,6 +618,39 @@
 			}
 			
 		}
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Local Functions
+	// ----------------------------------------------------------------------------------------------------------------------------
+	function CreateHomematicInstance($moduleManager, $Address, $Channel, $Name, $ParentId, $Protocol='BidCos-RF') {
+		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) {
+			$HMAddress = HM_GetAddress($HomematicModuleId);
+			if ($HMAddress=="$Address:$Channel") {
+				$moduleManager->LogHandler()->Log("Found existing HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
+				return $HomematicModuleId;
+			}
+		}
+
+		$moduleManager->LogHandler()->Log("Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
+		$HomematicModuleId = IPS_CreateInstance("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
+		IPS_SetParent($HomematicModuleId, $ParentId);
+		IPS_SetName($HomematicModuleId, $Name);
+		HM_SetAddress($HomematicModuleId, $Address.':'.$Channel);
+		if ($Protocol == 'BidCos-RF') 
+			{
+			$Protocol = 0; echo "Funk";
+			}
+		else 
+			{
+			$Protocol = 1; echo "Draht";
+			}
+		HM_SetProtocol($HomematicModuleId, $Protocol);
+		HM_SetEmulateStatus($HomematicModuleId, true);
+		// Apply Changes
+		IPS_ApplyChanges($HomematicModuleId);
+
+		return $HomematicModuleId;
+	}	
 
 
 ?>

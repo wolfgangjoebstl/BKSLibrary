@@ -25,13 +25,13 @@ Funktionen:
 function DenonSetValueAll($webconfig, $item, $value, $vtype, $id)
 	{
 	foreach ($webconfig as $webfrontname => $itemname)
-	   {
-	   if (isset($itemname['*']))
-	      {
+		{
+		if (isset($itemname['*']))
+	   		{
 			DenonSetValue($item, $value, $vtype, $id, $webfrontname);
 			}
-	   if (isset($itemname[$item]))
-	      {
+	   	if (isset($itemname[$item]))
+	   		{
 			DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
 			}
 		}
@@ -39,12 +39,12 @@ function DenonSetValueAll($webconfig, $item, $value, $vtype, $id)
 
 
 
-function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
-{
+function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false)
+	{
 	//global $CategoryIdData,$CategoryIdApp;
 	global $WFC10_Path,$WFC10User_Path,$Mobile_Path,$Retro_Path;
 
-	echo "Aufruf DenonSetValue: Variable ".$item." mit Wert ".$value." beschreiben.\n";
+	if ($debug) echo "      Aufruf DenonSetValue: Variable ".$item." mit Wert ".$value." beschreiben.\n";
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
 		{
@@ -54,54 +54,59 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	if ($webfrontID=="")
-	   {
+		{
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		if ($debug) echo "         Standard Webfront Kategorie ".$webfrontID." (".$categoryId_WebFront."), hier kommt der Link hin.\n";		
 		}
 	else
 		{
 		$categoryId_WebFront         = CreateCategoryPath($webfrontID);
+		if ($debug) echo "         Neue Webfront Kategorie ".$webfrontID." (".$categoryId_WebFront.") anlegen, hier kommt der Link hin.\n";
 		}
 
 	// abhängig von DENON-Zone (Main, Zone 2, Zone 3) Parent ID für Variable und Link ermitteln
 	
 	//IPSLogger_Dbg (__file__, 'Received command for '.$id. ' WebfrontID '.$categoryId_WebFront.' find on '.$webfrontID.' with item '.$item);
 	//$DENON_ID = IPS_GetCategoryIDByName("DENON", 0);
-   $DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
+	$DENON_ID = $id;     /* zb Denon-Arbeitszimmer, dann ist sie einmal in Data und der Link im Webfront zu finden */
 	$praefix =substr($item, 0, 5);
 	if ($praefix == "Zone2") // wenn Präfix "Zone2"
 		{
 	  	$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $VAR_Parent_ID);
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1a: $VAR_Parent_ID";
+		$VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $VAR_Parent_ID);
+		$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		$LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 2", $LINK_Parent_ID);
+		//echo "Script DENON VariablenManager 1a: $VAR_Parent_ID";
 		}
 	elseif ($praefix == "Zone3")// wenn Präfix "Zone3"
 		{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $VAR_Parent_ID);
+		$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		$VAR_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $VAR_Parent_ID);
 	  	$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
+		$LINK_Parent_ID = IPS_GetInstanceIDByName("Zone 3", $LINK_Parent_ID);
+		//echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
 		}
-	elseif ($praefix == "Displ")// wenn Präfix "Zone3"
+	elseif ($praefix == "Displ")// wenn Präfix "Displ"
 		{
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Display", $VAR_Parent_ID);
+		$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		$VAR_Parent_ID = IPS_GetInstanceIDByName("Display", $VAR_Parent_ID);
 	  	$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Display", $LINK_Parent_ID);
-	   //echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
+		$LINK_Parent_ID = IPS_GetInstanceIDByName("Display", $LINK_Parent_ID);
+		//echo "Script DENON VariablenManager 1b: $VAR_Parent_ID";
 		}
 	else // wenn Präfix nicht "Zone2", "Zone3" oder "Display"
 		{
-		//echo "Datenkategorie ist ".$CategoryIdData." mit ".$id."\n";
-	   $VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
-	   $VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
-		//echo "  Daten Mainzone ist auf ".$VAR_Parent_ID."  Das Webfromnt auf ".$categoryId_WebFront."   \n";
-	   $LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
-	   $LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
-		//echo "Werte sind ".$LINK_Parent_ID." \n";
-	  	//echo "Script DENON VariablenManager 1c: ".$VAR_Parent_ID."\n";
+		$VAR_Parent_ID = IPS_GetCategoryIDByName($id, $CategoryIdData);
+		$VAR_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $VAR_Parent_ID);
+		$LINK_Parent_ID = IPS_GetCategoryIDByName($id, $categoryId_WebFront);
+		$LINK_Parent_ID = IPS_GetInstanceIDByName("Main Zone", $LINK_Parent_ID);
+		}
+	if ($debug)
+		{
+		echo "       Datenkategorie ist ".$CategoryIdData." mit ".$id." \n";
+		echo "       Daten sind auf ".$VAR_Parent_ID."  (".IPS_GetName($VAR_Parent_ID)."/".IPS_GetName(IPS_GetParent($VAR_Parent_ID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($VAR_Parent_ID))).")\n";
+		echo "       Webfront Links sind auf ".$LINK_Parent_ID."   (".IPS_GetName($LINK_Parent_ID)."/".IPS_GetName(IPS_GetParent($LINK_Parent_ID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($LINK_Parent_ID))).")\n";
+		echo "       Das Webfront ist auf ".$categoryId_WebFront."  (".IPS_GetName($categoryId_WebFront)."/".IPS_GetName(IPS_GetParent($categoryId_WebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_WebFront))).")  \n";
 		}
 
 	// Definition div. Parent IDs
@@ -113,57 +118,68 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	// Bereinigung $item-Präfix (Displxxx)
 	$item_praefix= substr($item,0,5); //item-Präfix
 	if($item_praefix == "Displ")
-	{
-	   $item = rtrim(substr($item, 5, 95));
-	}
+		{
+		$item = rtrim(substr($item, 5, 95));
+		}
 
 
-   //Variable anlegen wenn nicht vorhanden
+	//Variable anlegen wenn nicht vorhanden
 	$itemID = @IPS_GetVariableIDByName($item, $VAR_Parent_ID);
 	if ($itemID == 0)
-	{
-	   // Variable anlegen
+		{
+		// Variable anlegen
 		$itemID= IPS_CreateVariable($vtype);
 		IPS_SetName($itemID, $item);
 		IPS_SetParent($itemID, $VAR_Parent_ID);
-		echo "Script DENON Variable ".$item." angelegt\n";
-	}
+		if ($debug) echo "        DENON Variable ".$item." angelegt\n";
+		}
+	if ($debug) echo "        DENON Variable ".$item." unter ".$itemID." (".IPS_GetName($itemID)."/".IPS_GetName(IPS_GetParent($itemID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($itemID))).") vorhanden.\n";
 
 	// DENON-Variablenprofil anlegen wenn nicht vorhanden
-	$ProfileName = "DENON.".$item;
+	switch ($item)
+		{
+		case "AuswahlFunktion":
+			$ProfileName = "DENON.".$item."_".$id;
+			break;
+		default:
+			$ProfileName = "DENON.".$item;
+			break;
+		}
 
 	if (IPS_VariableProfileExists($ProfileName)== false)
-	{
-		echo "Script DENON VariablenManager Profil ".$ProfileName." existiert nicht.\n";
+		{
+		if ($debug) echo "          DENON VariablenManager Profil ".$ProfileName." existiert nicht.\n";
 		DENON_SetVarProfile($item, $itemID, $vtype, $id);
-	}
+		}
+	elseif ($debug) echo "          DENON VariablenManager Profil ".$ProfileName." existiert bereits.\n";
 
-	// DENON-Variablenprofil zuweisen wenn nicht bereits zugewiesen
-	$VarCustomProfileName = IPS_GetVariable($itemID);
-	$VarCustomProfileName = $VarCustomProfileName["VariableCustomProfile"];
+	// DENON-Variablenprofil der Variable zuweisen und Actionscript konfigurieren, nur wenn nicht bereits zugewiesen
+	//print_r(IPS_GetVariable($itemID));
+	$VarCustomProfileName = IPS_GetVariable($itemID)["VariableCustomProfile"];
 
 	if ($VarCustomProfileName != $ProfileName)
-	{
-		if (IPS_VariableProfileExists($ProfileName))
 		{
-		IPS_SetVariableCustomProfile($itemID, $ProfileName);
-		echo "Script DENON VariablenManager Profil ".$ProfileName." zugewiesen ;";
+		if (IPS_VariableProfileExists($ProfileName))
+			{
+			IPS_SetVariableCustomProfile($itemID, $ProfileName);
+			echo "               Script DENON VariablenManager Profil ".$ProfileName." zugewiesen ;";
+			}
 		}
-	}
 
 	// Action-Script zuweisen wenn nicht bereits zugewiesen
 	$VarActionscriptID = IPS_GetVariable($itemID);
 	$VarActionscriptID = $VarActionscriptID["VariableCustomAction"];
-   $VarCustomProfileName = IPS_GetVariable($itemID);
+	$VarCustomProfileName = IPS_GetVariable($itemID);
 	$VarCustomProfileName = $VarCustomProfileName["VariableCustomProfile"];
 
-   If ($VarCustomProfileName == $ProfileName)
-   {
-		if ($VarActionscriptID != $ScriptID)
+	//echo ">>>>>>Trickreich, nur wenn ".$VarCustomProfileName." == ".$ProfileName."\n";
+	If ($VarCustomProfileName == $ProfileName)
 		{
+		if ($VarActionscriptID != $ScriptID)
+			{
 			IPS_SetVariableCustomAction($itemID, $ScriptID);
+			}
 		}
-	}
 
 	// Link anlegen/zuweisen
 	$LinkID = @IPS_GetLinkIDByName($item, $LINK_Parent_ID);
@@ -171,20 +187,20 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 	$LinkChildID = $LinkChildID["TargetID"];
 
 	if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
-	{
+		{
     	$LinkID = IPS_CreateLink();
 		IPS_SetName($LinkID, $item);
 		IPS_SetLinkChildID($LinkID, $itemID);
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
-	}
+		}
 	elseif ($LinkChildID != $itemID) // wenn Link nicht korrekt verlinkt -> löschen und neu anlegen
-	{
+		{
 		IPS_DeleteLink($LinkID);
 		$LinkID = IPS_CreateLink();
 		IPS_SetName($LinkID, $item);
 		IPS_SetLinkChildID($LinkID, $itemID);
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
-	}
+		}
 
 	/* es gibt soviele Links, ein bisschen ordnung schaffen und unwichtige nach hinten geben */
 	switch ($item)
@@ -466,7 +482,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="")
 
 function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 	{
-	echo "DENON_SetVarProfile aufgerufen mit ".$item." ".$itemID."  ".$vtype." ".$id."\n";
+	echo "DENON_SetVarProfile aufgerufen mit ".$item." ".$itemID."  ".$vtype."   ".$id."\n";
 	switch ($item)
 		{
 		case "Power":
@@ -634,17 +650,17 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 				{
 				$ProfileName = "DENON.".$item."_".$id;
 				$webconfig=Denon_WebfrontConfig();
-				echo "Jetzt Profil erstellen : ".$ProfileName." mit der ID : \"".$id."\" NameTag zur Wiedererkennung \"".$NameTag."\"\n";
+				//echo "Jetzt Profil erstellen : ".$ProfileName." mit der ID : \"".$id."\" NameTag zur Wiedererkennung \"".$NameTag."\"\n";
 				if (isset($webconfig[$NameTag]['DATA'][$item])==true)
 					{
-					print_r($webconfig[$NameTag]['DATA']);
+					//print_r($webconfig[$NameTag]['DATA']);
 					$profil=$webconfig[$NameTag]['DATA'][$item];
 					$profil_size=sizeof($profil);
-					echo "Neues Profil mit ".$profil_size." Einträgen.\n";
+					//echo "Neues Profil mit ".$profil_size." Einträgen.\n";
 					if (IPS_VariableProfileExists($ProfileName) == false)
 						{
 						//Var-Profil erstellen
-						echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellen.\n";						
+						//echo "Script DENON VariablenManager Profil  ".$ProfileName." erstellen.\n";						
 						IPS_CreateVariableProfile($ProfileName, $vtype); // PName, Typ
 						IPS_SetVariableProfileDigits($ProfileName, 0); // PName, Nachkommastellen
 						IPS_SetVariableProfileValues($ProfileName, 0, $profil_size, 1); //PName, Minimal, Maximal, Schrittweite
@@ -653,7 +669,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 						foreach ($profil as $name => $assoc)
 							{
 							$i++;
-							echo "          Eintrag ".$i." erstellen fuer Name ".$name." Association ".$assoc." \n";
+							//echo "          Eintrag ".$i." erstellen fuer Name ".$name." Association ".$assoc." \n";
 							IPS_SetVariableProfileAssociation($ProfileName, $i, $name, "", -1); //P-Name, Value, Assotiation, Icon, Color
 							}
 						//IPS_SetVariableProfileAssociation($ProfileName, 2, "TUNER", "", -1); //P-Name, Value, Assotiation, Icon, Color
@@ -664,7 +680,7 @@ function DENON_SetVarProfile($item, $itemID, $vtype, $id="")
 						}
 					else
 						{
-						echo "Profil ".$ProfileName." existiert bereits.\n";
+						//echo "Profil ".$ProfileName." existiert bereits.\n";
 						}
 					}
 				}	

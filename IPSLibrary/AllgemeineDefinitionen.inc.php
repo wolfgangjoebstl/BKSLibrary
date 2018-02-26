@@ -1146,6 +1146,9 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			
 			$ergebnisOperationCenter.=$OperationCenter->writeSysPingResults();
 			
+			$ergebnisOperationCenter.="\n\nErreichbarkeit der Hardware Register/Instanzen, zuletzt erreicht am .... :\n\n"; 
+			$ergebnisOperationCenter.=$OperationCenter->HardwareStatus(true);
+			
 			$ergebnisErrorIPSLogger.="\nAus dem Error Log der letzten Tage :\n\n";
 			$ergebnisErrorIPSLogger.=$OperationCenter->getIPSLoggerErrors();
 			
