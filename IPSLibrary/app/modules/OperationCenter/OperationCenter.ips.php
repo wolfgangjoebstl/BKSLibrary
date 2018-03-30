@@ -889,10 +889,20 @@ if ($_IPS['SENDER']=="TimerEvent")
  			 *
 			 * Timer Homematic, einmal am Tag
 			 * Timer einmal am Tag um 02:40
-			 * Es werden die wicgtigsten Homematic Geraete mit Kanal 0 angelegt.. Passiert in Install.
+			 * Es werden die wichtigsten Homematic Geraete mit Kanal 0 angelegt. Passiert in Install.
 			 * Hier die RSSI Werte auslesen und die RSSI Tabelle updaten. Bleibt dann so den ganzen Tag  
 			 * 
-			 *************************************************************************************/		
+			 *************************************************************************************/	
+			IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
+			$homematicManager = new Homematic_OperationCenter();
+			$str=$homematicManager->RefreshRSSI();
+			$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Modules.OperationCenter.HomematicRSSI');
+			$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox');	
+			SetValue($HomematicErreichbarkeit,$str);						 	
+			$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
+			SetValue($UpdateErreichbarkeit,time());
+			$OperationCenter->getHomematicDeviceList();			
 			break;		
 		case $tim10ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");

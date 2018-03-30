@@ -22,29 +22,54 @@ Funktionen:
 
 // ---------------------- Variablen-Management ----------------------------------
 
+/*********************************************
+ *
+ * Die ganze webconfig für ein Denon Gerät durchgehen
+ * Das heisst webfrontname heisst der Reihe nach DATA und dann die String Namen der ganzen Webfronts
+ * sucht den Wert item, wenn ein Index item oder * heisst wird getriggert  
+ *
+ *****************************************************/
+
 function DenonSetValueAll($webconfig, $item, $value, $vtype, $id)
 	{
+	$log=new Logging("C:\Scripts\Denon\Log_ReceiveVariable.csv");	
+	$log->LogMessage("Denon Telegramm;".$id.";".$item.";".$value);
 	foreach ($webconfig as $webfrontname => $itemname)
 		{
 		if (isset($itemname['*']))
-	   		{
+			{
+			$log->LogMessage("DenonSetValue * ;".$item.";  ".$value.";   ".$vtype.";  ID ".$id.";".$webfrontname.";  ");
 			DenonSetValue($item, $value, $vtype, $id, $webfrontname);
 			}
-	   	if (isset($itemname[$item]))
-	   		{
-			DenonSetValue($itemname[$item], $value, $vtype, $id, $webfrontname);
+		if (isset($itemname[$item]))
+			{
+			$log->LogMessage("DenonSetValue ;".$item.";  ".$value.";  ".$vtype.";   ID ".$id.";   ".$webfrontname."; false;  ".$itemname[$item].";");
+			DenonSetValue($item, $value, $vtype, $id, $webfrontname, false, $itemname[$item]);
 			}
 		}
 	}
 
+/*********************************************************
+ *
+ * DenonSetValue (VariablenManager)
+ *   item ist der Denon Name in der Datenbank, kann auch einen Präfix zB Zone2 enthalten
+ *   value der Wert
+ *   id
+ *   vtype
+ *   Webfront zB Visualization.WebFront.User.DENON
+ * setzen der Variablen in Data, 
+ * wenn erforderlich auch Anlegen der Umgebung in Data und im Visualization Webfront
+ *
+ ************************************************************************************************/
 
-
-function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false)
+function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false, $item_link="")
 	{
 	//global $CategoryIdData,$CategoryIdApp;
 	global $WFC10_Path,$WFC10User_Path,$Mobile_Path,$Retro_Path;
 
 	if ($debug) echo "      Aufruf DenonSetValue: Variable ".$item." mit Wert ".$value." beschreiben.\n";
+	if ($item_link=="") $item_link=$item;
+	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager))
 		{
@@ -111,9 +136,8 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false)
 
 	// Definition div. Parent IDs
 
-	$KAT_DENON_Scripts_ID = $CategoryIdApp;
 	$KAT_DENONWFE_ID = $categoryId_WebFront;
-	$ScriptID = IPS_GetScriptIDByName("DENON.ActionScript", $KAT_DENON_Scripts_ID);
+	$ScriptID = IPS_GetScriptIDByName("DENON.ActionScript", $CategoryIdApp);
 
 	// Bereinigung $item-Präfix (Displxxx)
 	$item_praefix= substr($item,0,5); //item-Präfix
@@ -182,14 +206,14 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false)
 		}
 
 	// Link anlegen/zuweisen
-	$LinkID = @IPS_GetLinkIDByName($item, $LINK_Parent_ID);
+	$LinkID = @IPS_GetLinkIDByName($item_link, $LINK_Parent_ID);
 	$LinkChildID = @IPS_GetLink($LinkID);
 	$LinkChildID = $LinkChildID["TargetID"];
 
 	if (IPS_LinkExists($LinkID) == false)// Link anlegen wenn nicht vorhanden
 		{
     	$LinkID = IPS_CreateLink();
-		IPS_SetName($LinkID, $item);
+		IPS_SetName($LinkID, $item_link);
 		IPS_SetLinkChildID($LinkID, $itemID);
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
 		}
@@ -197,7 +221,7 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false)
 		{
 		IPS_DeleteLink($LinkID);
 		$LinkID = IPS_CreateLink();
-		IPS_SetName($LinkID, $item);
+		IPS_SetName($LinkID, $item_link);
 		IPS_SetLinkChildID($LinkID, $itemID);
 		IPS_SetParent($LinkID, $LINK_Parent_ID);
 		}

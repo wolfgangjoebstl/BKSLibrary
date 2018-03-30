@@ -11,6 +11,13 @@ Funktionen:
 		übergibt diese zur Veiterverarbeitung an das Script "DENON.VariablenManager"
 		
 	holt sich die Telegramme direkt von den am Netzwerk gesendeten Telegrammen und wertet sie aus
+	
+	Die Telegramm Hierarchie ist wie folgt aufgebaut:
+	
+	- DENON Client Socket
+	- DENON Cutter
+	- Register Variable
+	- DENON.CommandManager
 
 */
 
@@ -18,6 +25,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
@@ -73,7 +81,7 @@ if (isset($NachrichtenScriptID))
 	echo "Nachrichten Script     ID :".$NachrichtenScriptID."\n";
 	echo "Nachrichten Input      ID : ".$NachrichtenInputID."\n";
 	/* logging in einem File und in einem String am Webfront */
-	$log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
+	$log_Denon=new Logging("C:\Scripts\Denon\Log_Receive_Denon.csv",$NachrichtenInputID);
 	}
 else break;
 
@@ -93,6 +101,7 @@ else
 
 /*****************************************************************************************************************************************************/
 
+$DENON=new DENONsteuerung();
 
 if ($_IPS['SENDER'] == "Execute")
 	{
@@ -107,10 +116,16 @@ if ($_IPS['SENDER'] == "Execute")
 else
 	{
 	
-/*****************************************************************************************************************************************************/
+	/****************************************************************************************************************
+	 *
+	 * hier ist der Bearbeitung der empfangenen Telegramme, sollte auch für mehrere Denon Receiver funktionieren
+	 *
+	 ****************************************************************************/
 
-/* hier ist der Bearbeitung der empfangenen Telegramme, sollte auch für mehrere Denon Receiver funktionieren */
-	
+	$DENON->Command($_IPS['INSTANCE'], $_IPS['VALUE']);
+
+if (false)
+	{	
 	$data=$_IPS['VALUE'];
 	$instanz=IPS_GetName($_IPS['INSTANCE']);  /* feststellen wer der Sender war */
 	/* hier kommt zB DENON2 Register Variable, Register Variable wegtrennen und in Konfiguration suchen */
@@ -142,7 +157,7 @@ else
 			}
 		else
 		   {
-			$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM),Typ ".$config['TYPE']."\n");
+			$log_Denon->LogMessage("Instanz ".$instanz." wurde gefunden (CM),Typ ".$config['TYPE']." Daten ".$data);
 			//$log_Denon->LogNachrichten("Instanz ".$instanz." wurde gefunden (CM), Typ ".$config['TYPE']."\n");
 
 			if ($config['TYPE'] == "Netplayer")
@@ -180,7 +195,7 @@ else
 							$log_Denon->LogMessage("Unbekanntes Telegramm;".$id.";".$data);
 						   }
 						DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data);
+						$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$data.";".$NameTag);
 						$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$data);
 						break;
 
@@ -204,7 +219,7 @@ else
 								$value = (intval($itemdata)/10) -80;
 								}
 							DenonSetValueAll($webconfig[$NameTag], $item, $value, $vtype, $id);
-							$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata);
+							$log_Denon->LogMessage("Denon Telegramm;".$id.";".$item.";".$itemdata.";".$NameTag);
 							$log_Denon->LogNachrichten("Denon Telegramm;".$id.";".$item.";".$itemdata);
 							}
 					 	break;
@@ -2365,6 +2380,8 @@ else
 				} /* Ende Type Denon */
 			} /* Ende richtigen Denon Receiver erkannt */
 		} /* ende foreach Denon Receiver */
+	} // ende else false
+	
 	} /* ende else execute */
 
 ?>

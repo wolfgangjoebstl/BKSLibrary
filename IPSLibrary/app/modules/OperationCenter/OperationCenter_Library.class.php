@@ -132,19 +132,20 @@ class OperationCenter
 	function whatismyIPaddress1()
 		{
 		$posP[0]["IP"]="unknown";
-		$url="http://whatismyipaddress.com/";  //gesperrt da html 1.1
+		$url="http://checkip.dyndns.com/";
+		$posP[0]["Server"]=$url;
+		
+		//$url="http://whatismyipaddress.com/";  //auch gesperrt,  da html 1.1
 		//$url="http://www.whatismyip.com/";  //gesperrt
 		//$url="http://whatismyip.org/"; // java script
 		//$url="http://www.myipaddress.com/show-my-ip-address/"; // check auf computerzugriffe
 		//$url="http://www.ip-adress.com/"; //gesperrt
 
-		/* ab und zu gibt es auch bei der whatismyipaddress url timeouts, 30sek maximum timeout */
-		/* d.h. Timeout: Server wird nicht erreicht
+		/* ab und zu gibt es auch bei der whatismyipaddress url timeouts, 30sek maximum timeout 
+		   d.h. Timeout: Server wird nicht erreicht
 			Zustand false: kein Internet
 		*/
-	
-		/* gets the data from a URL */
-	
+
 		//$result=file_get_contents($url);
 		$result1=get_data($url);
 
@@ -153,13 +154,13 @@ class OperationCenter
 		echo "\n";
 		if ($result1==false)
 			{
-			echo "Whatismyipaddress reagiert nicht. Ip Adresse anders ermitteln.\n";
+			echo "Server reagiert nicht. Ip Adresse anders ermitteln.\n";
 			return ($posP);
 			}
 		else	
-		   	{
+			{
 			$i=0;
-			//echo "Variante wenn IPv4 Adresse als Tag im html steht :\n";			
+			//echo "Variante wenn IPv4 Adresse als Tag im html steht :\n".$result1."\n";			
 			$pos_start=strpos($result1,"whatismyipaddress.com/ip")+25;
 			//echo "Suche Punkte:\n";
 			$result2=$result1; $result=$result1;
@@ -268,7 +269,7 @@ class OperationCenter
 			return (false);
 			}
 		else	
-		   	{
+			{
 			$result=strip_tags($result);
 			$pos_start=strpos($result,"Your IPv4 Address Is:")+21;		
 			$subresult=trim(substr($result,$pos_start,40));
@@ -276,7 +277,7 @@ class OperationCenter
 			//$pos_length=strpos($subresult,chr(10));
 			//echo "Startpos: ".$pos_start." Length: ".$pos_length." \n".$subresult."\n";
 			//$subresult=substr($subresult,0,$pos_length);
-	   		//echo "Whatismyipaddress liefert : ".$subresult."\n";
+			//echo "Whatismyipaddress liefert : ".$subresult."\n";
 			if (filter_var($subresult, FILTER_VALIDATE_IP))
 				{		
 				//echo "Ausgabe ".$subresult."\n";	
@@ -968,7 +969,10 @@ class OperationCenter
 		//print_r($results2);
 		//echo $PrintSI;
 		
-		$IPAdresse=$this->whatismyIPaddress2();
+		//$IPAdresse=$this->whatismyIPaddress2();
+		//$results["ExterneIP"]=$IPAdresse;
+		$IPAdresse=$this->whatismyIPaddress1()[0]["IP"];
+		if (GetValue($ExternalIP) !== $IPAdresse) SetValue($ExternalIP,$IPAdresse);
 		$results["ExterneIP"]=$IPAdresse;
 
 		$ServerUptime=date("D d.m.Y H:i:s",IPS_GetKernelStartTime());
@@ -981,12 +985,44 @@ class OperationCenter
 		SetValue($SystemNameID,$results["Betriebssystemname"]);
 		SetValue($SystemVersionID,trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," "))));
 		SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
-		SetValue($ExternalIP,$IPAdresse);
 		SetValue($UptimeID,$ServerUptime);
 		SetValue($VersionID,$ServerVersion);
 						
 		return $results;
 		}	
+		
+	 function readSystemInfo()
+	 	{
+		$PrintLn="";
+		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
+		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+		$Version=explode(".",getValue($SystemVersionID));
+		//print_r($Version);
+		switch ($Version[2])
+			{
+			case "10240": $Codename="RTM (Threshold 1)"; break;
+			case "10586": $Codename="November Update (Threshold 2)"; break;
+			case "14393": $Codename="Anniversary Update (Redstone 1)"; break;
+			case "15063": $Codename="Creators Update (Redstone 2)"; break;
+			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
+			case "00000": $Codename="Spring Creators Update (Redstone 4)"; break;
+			default: $Codename=$Version[2];break;
+			}			
+		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$ExternalIP			= CreateVariableByName($this->categoryId_SysInfo, "ExternalIP", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$UptimeID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_UpTime", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$VersionID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_Version", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$PrintLn.="   ".str_pad("Hostname",30)." = ".str_pad(GetValue($HostnameID),30)."   (".date("d.m H:i",IPS_GetVariable($HostnameID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("Betriebssystem Name",30)." = ".str_pad(GetValue($SystemNameID),30)."   (".date("d.m H:i",IPS_GetVariable($SystemNameID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("Betriebssystem Version",30)." = ".str_pad(GetValue($SystemVersionID),30)."   (".date("d.m H:i",IPS_GetVariable($SystemVersionID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("Betriebssystem Codename",30)." = ".str_pad($Codename,30)."   \n";
+		$PrintLn.="   ".str_pad("Anzahl Hotfix",30)." = ".str_pad(GetValue($HotfixID),30)."   (".date("d.m H:i",IPS_GetVariable($HotfixID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("External IP Adresse",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($ExternalIP)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("IPS Uptime",30)." = ".str_pad(GetValue($UptimeID),30)."   (".date("d.m H:i",IPS_GetVariable($UptimeID)["VariableChanged"]).") \n";
+		$PrintLn.="   ".str_pad("IPS Version",30)." = ".str_pad(GetValue($VersionID),30)."   (".date("d.m H:i",IPS_GetVariable($VersionID)["VariableChanged"]).") \n";
+		return ($PrintLn);
+		}
 
 /****************************************************************************************************************/
 
@@ -2529,6 +2565,285 @@ class OperationCenter
 		if ($text==true) return($resulttext); 
 		else return($result);
 		}
+
+	function getHomematicDeviceList()
+		{
+		$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
+		//Auflisten
+		$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
+		echo "\nHomematic Instanzen: ".sizeof($alleInstanzen)." \n";
+		echo "Werte geordnet und angeführt nach Instanzen, es erfolgt keine Zusammenfassung auf Geräte/Seriennummern.\n";
+		echo "Children der Instanzen werden nur angeführt wenn die Zeit ungleich 0 ist.\n\n";
+		$serienNummer=array();
+		foreach ($alleInstanzen as $instanz)
+			{
+			$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+			switch (IPS_GetProperty($instanz,'Protocol'))
+				{
+				case 0:
+					$protocol="Funk";
+					break;
+				case 2:
+					$protocol="IP";
+					break;
+				default:
+					$protocol="Wired";
+					break;
+				}
+			$HM_Adresse=IPS_GetProperty($instanz,'Address');
+			$result=explode(":",$HM_Adresse);
+			$sizeResult=sizeof($result);
+			//print_r($result);
+			echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+			if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
+				{
+				$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
+				}
+			else
+				{
+				$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
+				$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
+				}
+			$serienNummer[$HM_CCU_Name][$result[0]]["Name"]=IPS_GetName($instanz);
+			$serienNummer[$HM_CCU_Name][$result[0]]["Protokoll"]=$protocol;
+			if ($sizeResult>1)
+				{
+				$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
+				$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);
+				}
+			else { echo "Fehler mit ".$result[0]."\n"; }			
+			$cids = IPS_GetChildrenIDs($instanz);
+			if ( isset($serienNummer[$HM_CCU_Name][$result[0]]["Update"]) == true) $update=$serienNummer[$HM_CCU_Name][$result[0]]["Update"];
+			else $update=0;
+			foreach($cids as $cid)
+				{
+				$o = IPS_GetObject($cid);
+				if (IPS_GetVariable($cid)["VariableChanged"] != 0) 
+					{
+					if (IPS_GetVariable($cid)["VariableChanged"]>$update) $update=IPS_GetVariable($cid)["VariableChanged"];
+					echo "   CID : ".$cid."  ".IPS_GetName($cid)."  ".date("d.m H:i",IPS_GetVariable($cid)["VariableChanged"])."   \n";
+					}
+				if($o['ObjectIdent'] != "")
+					{
+					$serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
+					}
+		    	}
+			$serienNummer[$HM_CCU_Name][$result[0]]["Update"] = $update;	
+			}
+
+		echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
+		foreach ($serienNummer as $ccu => $geraete)
+ 			{
+			echo "-------------------------------------------\n";
+		 	echo "  CCU mit Name :".$ccu."\n";
+ 			echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
+			foreach ($geraete as $name => $anzahl)
+				{
+				//echo "\n *** ".$name."  \n";
+				//print_r($anzahl);
+				$register=explode(" ",trim($anzahl["Values"]));
+				sort($register);
+				$registerNew=array();
+				echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+				if (sizeof($register)>1)
+					{ /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
+					$oldvalue="";
+					foreach ($register as $index => $value)
+						{
+						//echo "    ".$value."  ".$oldvalue."\n";
+						if ($value!=$oldvalue) {$registerNew[]=$value;}
+						$oldvalue=$value;
+						}
+					//print_r($registerNew);
+					/* dann Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
+					sort($registerNew);
+					switch ($registerNew[0])
+						{
+						case "ACTIVE_PROFILE":
+							if ($registerNew[23]=="VALVE_ADAPTATION")
+								{
+								echo "Stellmotor-Heizkoerper\n";
+								$serienNummer[$ccu][$name]["Typ"]="Stellmotor-Heizkoerper";
+								}
+							else
+								{
+								echo "Funk-Wandthermostat\n";
+								$serienNummer[$ccu][$name]["Typ"]="Wandthermostat";
+								}
+							break;						
+						case "ERROR":
+							echo "Funk-Tür-/Fensterkontakt\n";
+							$serienNummer[$ccu][$name]["Typ"]="Tür-/Fensterkontakt";
+							break;
+						case "INSTALL_TEST":
+							if ($registerNew[1]=="PRESS_CONT")
+								{
+								echo "Taster 6fach\n";
+								$serienNummer[$ccu][$name]["Typ"]="Taster 6fach";							
+								}
+							else
+								{
+								echo "Funk-Display-Wandtaster\n";
+								$serienNummer[$ccu][$name]["Typ"]="Display-Wandtaster";							
+								}
+							break;
+						case "ACTUAL_HUMIDITY":
+							echo "Funk-Wandthermostat\n";
+							$serienNummer[$ccu][$name]["Typ"]="Wandthermostat";						
+								break;
+						case "ACTUAL_TEMPERATURE":
+							echo "Funk-Heizkörperthermostat\n";
+							$serienNummer[$ccu][$name]["Typ"]="Heizkörperthermostat";						
+							break;
+						case "BRIGHTNESS":
+							echo "Funk-Bewegungsmelder\n";
+							$serienNummer[$ccu][$name]["Typ"]="Bewegungsmelder";						
+							break;
+						case "INHIBIT":
+							echo "Funk-Schaltaktor 1-fach\n";
+							$serienNummer[$ccu][$name]["Typ"]="Funk-Schaltaktor 1-fach";							
+							break;
+						case "DIRECTION":
+							echo "Funk-Rolladenansteuerung\n";
+							$serienNummer[$ccu][$name]["Typ"]="Rolladenansteuerung";							
+							print_r($registerNew);	
+							break;
+						case "BOOT":
+							echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+							$serienNummer[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";							
+							break;
+						case "HUMIDITY":
+							echo "Funk-Thermometer\n";
+							$serienNummer[$ccu][$name]["Typ"]="Thermometer";							
+							break;
+						case "CONFIG_PENDING":		/* modernes Register, alles gleich am Anfang */
+							switch ($registerNew[1])
+								{
+								case "DIRECTION":
+									echo "Funkaktor Dimmer\n";
+									$serienNummer[$ccu][$name]["Typ"]="Dimmer";									
+									break;
+									case "DUTYCYCLE":
+									echo "IP Funk-Schaltaktor\n";
+									$serienNummer[$ccu][$name]["Typ"]="Schaltaktor";								
+									break;
+								case "DUTY_CYCLE":
+									echo "IP Funk-Stellmotor\n";
+									$serienNummer[$ccu][$name]["Typ"]="Stellmotor";								
+									break;								
+								case "DEVICE_IN_BOOTLOADER":
+								case "INSTALL_TEST":
+									echo "Funk-Taster\n";
+									$serienNummer[$ccu][$name]["Typ"]="Taster";								
+									break;
+								case "CURRENT":
+									echo "IP Funk-Schaltaktor Energiemessgeraet\n";
+									$serienNummer[$ccu][$name]["Typ"]="Schaltaktor Energiemessgeraet";								
+									break;
+								default:	
+									echo "unknown\n";
+									print_r($registerNew);	
+									break;
+								}					
+							break;					
+						default:
+							echo "unknown\n";
+							print_r($registerNew);
+							break;
+						} /* ende switch */
+					} /* ende size too small */
+				else
+					{	
+					echo "not installed\n";
+					}	
+				}
+
+			}
+
+		/* Tabelle vorbereiten, RSSI Werte ermitteln */
+	
+		IPSUtils_Include ('IPSHomematic.inc.php',      'IPSLibrary::app::hardware::IPSHomematic');
+
+		$homematicManager = new IPSHomematic_Manager();
+		$homematicManager->RefreshRSSI();
+
+			$categoryIdHtml     = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.hardware.IPSHomematic.StatusMessages');
+			$variableIdRssi       = IPS_GetObjectIDByIdent(HM_CONTROL_RSSI, $categoryIdHtml);
+			echo GetValue($variableIdRssi);	// output Table
+
+			$instanceIdList = $homematicManager->GetMaintainanceInstanceList();
+			$rssiDeviceList = array();
+			$rssiPeerList   = array();
+			foreach ($instanceIdList as $instanceId) {
+				$variableId = @IPS_GetVariableIDByName('RSSI_DEVICE', $instanceId);
+				if ($variableId!==false) {
+					$rssiValue = GetValue($variableId);
+					if ($rssiValue<>-65535) {
+						$rssiDeviceList[$instanceId] = $rssiValue;
+					}
+				}
+			}
+			arsort($rssiDeviceList, SORT_NATURAL);
+
+			foreach ($instanceIdList as $instanceId) {
+				$variableId = @IPS_GetVariableIDByName('RSSI_PEER', $instanceId);
+				if ($variableId!==false) {
+					$rssiValue = GetValue($variableId);
+					if ($rssiValue<>-65535) {
+						$rssiPeerList[$instanceId] = $rssiValue;
+					}
+				}
+			}
+			
+			foreach($rssiDeviceList as $instanceId=>$value) 
+				{
+				echo "    ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
+				$HMaddress=explode(":",HM_GetAddress($instanceId));
+				$serienNummer["Homematic-CCU"][$HMaddress[0]]["RSSI"]=$value;
+				}			
+	
+	print_r($serienNummer);
+
+	/* Tabelle indexiert nach Seriennummern ausgeben */
+
+	$str="";
+	$ccuNum=1;	
+	foreach ($serienNummer as $ccu => $geraete)
+ 		{
+		$str .= "<table width='90%' align='center'>"; 
+		$str .= "<tr><td><b>".$ccu."</b></td></tr>";
+		$str .= "<tr><td><b>Seriennummer</b></td><td><b>GeräteName</b></td><td><b>Protokoll</b></td><td><b>GeraeteTyp</b></td><td><b>UpdateTime</b></td><td><b>RSSI</b></td></tr>";
+		foreach ($geraete as $name => $geraet)
+			{
+			if (isset($geraet["Typ"])==true)
+				{
+				if (isset($geraet["RSSI"])==true)
+					{
+					$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+						date("d.m H:i",$geraet["Update"])."</td><td>".$geraet["RSSI"]."</td></tr>";
+					}
+				else
+					{	
+					$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+						date("d.m H:i",$geraet["Update"])."</td></tr>";
+					}
+				}
+			else
+				{
+				$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
+				}		
+			}		
+		$ccuNum++;
+		}
+	echo $str; 		
+
+	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
+	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
+	SetValue($HomematicGeraeteliste,$str);
+		
+		
+		}
+
 
 	/*
 	 * aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen

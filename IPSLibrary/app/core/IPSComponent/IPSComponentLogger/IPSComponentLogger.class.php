@@ -130,11 +130,13 @@ class Logging
 	private $log_File="Default";
 	private $script_Id="Default";
 	private $nachrichteninput_Id="Default";
+	private $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
 	private $installedmodules;
 	
-	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
+	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="")
 		{
 		//echo "Logfile Construct\n";
+		$this->prefix=$prefix;
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
    		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
@@ -239,7 +241,7 @@ class Logging
 		if ($this->log_File != "No-Output")
 			{
 			$handle3=fopen($this->log_File, "a");
-			fwrite($handle3, date("d.m.y H:i:s").";".$message."\r\n");
+			fwrite($handle3, date("d.m.y H:i:s").";".$this->prefix.$message."\r\n");
 			fclose($handle3);
 			//echo $this->log_File."   ".$message."\n";
 			}
@@ -320,12 +322,25 @@ class Logging
 		return $result;
 		}
 
+	function IPSpathinfo($InputID="")
+		{
+		if ($InputID=="") $InputID=$this->nachrichteninput_Id;
+		$path="";
+		$oid=$InputID;
+		do {	
+			if ($path=="") $path=IPS_GetName($oid);
+			else $path=IPS_GetName($oid).".".$path;
+			echo ">>".$path."\n";
+			$oid=IPS_GetParent($oid);	
+		} while ($oid <> 0);
+	
+		return $path;
+		}
+
 	function status()
 	   {
 	   return true;
 	   }
-		
-		
 		
 	}
 

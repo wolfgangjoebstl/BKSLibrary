@@ -58,6 +58,61 @@ class EmailControlCenter
 		$this->device=IPS_GetName(0);
 		echo "   Du arbeitest auf Gerät : ".$this->device." und sendest zwei Statusemails über den Email Client : ".$this->SendEmailID."\n";					
 		}
+
+	public function SendMailStatusasAttachment($delay=0)
+		{
+		$emailstatus=true;
+		if (isset($this->installedModules['OperationCenter']))
+			{		
+			$emailText="\nLogspeicher ausgedruckt:\n".$this->log_OperationCenter->PrintNachrichten();
+			if ($delay != 0)
+				{
+				$filenameActual=$this->DIR_copystatusdropbox.date("Ymd",time()-$delay).'StatusAktuell.txt';
+				$filenameActualwoDir=date("Ymd",time()-$delay).'StatusAktuell.txt';
+				$filenameHistory=$DIR_copystatusdropbox.date("Ymd",time()-$delay).'StatusHistorie.txt';	
+				$filenameHistorywoDir=date("Ymd",time()-$delay).'StatusHistorie.txt';
+				}
+			else
+				{
+				$filenameActual=$this->FilenameActual;
+				$filenameActualwoDir=date("Ymd").'StatusAktuell.txt';
+				$filenameHistory=$this->FilenameHistory;
+				$filenameHistorywoDir=date("Ymd").'StatusHistorie.txt';						
+				}
+			$error=false;
+			if ( ($status=@file_get_contents($this->FilenameActual)) === false)
+				{
+				echo "EmailControlCenter: Filename ".$filenameActual." wurde noch nicht erzeugt.\n";
+				$emailStatus2=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$this->device, "File wurde noch nicht erzeugt !".$emailText);
+				if ($emailStatus2==false) 
+					{
+					echo "EmailControlCenter: Fehler bei der email Uebertragung der Aktuellen Werte.\n";
+					}
+				$error=true;				
+				}
+			if ( ($status=@file_get_contents($this->FilenameHistory)) === false)
+				{
+				echo "EmailControlCenter: Filename ".$filenameHistory." wurde noch nicht erzeugt.\n";
+				$emailStatus2=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$this->device, "File wurde noch nicht erzeugt !".$emailText);
+				if ($emailStatus2==false) 
+					{
+					echo "EmailControlCenter: Fehler bei der email Uebertragung der Historischen Werte.\n";
+					}				
+				$error=true;				
+				}
+			if ($error==false)	/* die Statusdateien sind vorhanden, es geht weiter, bei beiden Dateien immer Übertraqgung als Dropbox Link ! */
+				{
+				$LinkDropbox=	'https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/'.$this->device.'?preview='.$filenameActualwoDir."\n".
+									'https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/'.$this->device.'?preview='.$filenameHistorywoDir;
+				$emailStatus=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status ".$this->device, "Übertragung als Dropbox Link:\n".$LinkDropbox."\n\n".$emailText);
+				if ($emailStatus==false) 
+					{
+					echo "EmailControlCenter: Fehler bei der email Uebertragung der Aktuellen Werte.\n";
+					}			
+				}
+			}	
+		return ($emailstatus);	
+		}
 		
 	public function SendMailStatusActualasAttachment($delay=0)
 		{
@@ -136,7 +191,7 @@ class EmailControlCenter
 					{
 					echo "EmailControlCenter: Fehler bei der email Uebertragung der Aktuellen Werte als Anhang. Uebertragung als Dropbox Link.\n";
 					$LinkDropbox='https://www.dropbox.com/home/PrivatIPS/IP-Symcon/Status/'.$this->device.'?preview='.$filenamewoDir;
-					$emailStatus=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, aktuelle Werte ".$this->device, "Übertragung File als Anhang nicht erfolgreich. Übertragung als Dropbox Link:\n".$LinkDropbox."\n\n".$emailText);
+					$emailStatus=@SMTP_SendMail($this->SendEmailID,date("Y.m.d D")." Nachgefragter Status, historische Werte ".$this->device, "Übertragung File als Anhang nicht erfolgreich. Übertragung als Dropbox Link:\n".$LinkDropbox."\n\n".$emailText);
 					if ($emailStatus==false) 
 						{
 						echo "EmailControlCenter: Fehler bei der email Uebertragung der Historischen Werte als Anhang.\n";

@@ -655,8 +655,11 @@ class Autosteuerung
 	var $timeStart=0;
 	
 	var $installedmodules;
-	var $CategoryIdData;
+	var $CategoryIdData, $CategoryIdApp;
 	var $CategoryId_Ansteuerung;
+	var $availableModules;							// eigentlich Liste aller GUIDs der Module, für check ob Parameter ein gültige Modul GID hat
+	
+	var $log;										// logging class, called with this class
 	
 	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
 	var $CategoryId_SchalterAnwesend, $CategoryId_SchalterAlarm;
@@ -669,6 +672,9 @@ class Autosteuerung
 
 	var $heatManager;
 	var $switchCategoryHeatId, $groupCategoryHeatId , $prgCategoryHeatId;
+	
+	var $DENONsteuerung;
+	var $dataCategoryIdDenon, $configCategoryIdDenon;
 	
 	/***********************
 	 *
@@ -708,7 +714,31 @@ class Autosteuerung
 			}
 		$this->installedModules 				= $moduleManager->GetInstalledModules();
 		$this->CategoryIdData   				= $moduleManager->GetModuleCategoryID('data');
+		$this->CategoryIdApp      				= $moduleManager->GetModuleCategoryID('app');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
+
+		$scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
+
+		$object_data= new ipsobject($this->CategoryIdData);
+		$object_app= new ipsobject($this->CategoryIdApp);
+
+		$NachrichtenID = $object_data->osearch("Nachricht");
+		$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+
+		if (isset($NachrichtenScriptID))
+			{
+			$setup = Autosteuerung_Setup();
+			if ( isset($setup["LogDirectory"]) == false )
+				{
+				$setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+				}	
+			$object3= new ipsobject($NachrichtenID);
+			$NachrichtenInputID=$object3->osearch("Input");
+			/* logging in einem File und in einem String am Webfront */
+			$this->log=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");			
+			}
+		else echo "!!!!!FEHLER: Logging Funktion nicht gefunden.\n";
+		
 		/* speziell fuer Anwesenheitserkennung */
 		$this->CategoryId_Anwesenheit			= @IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
 		if ($this->CategoryId_Anwesenheit === false)
@@ -729,8 +759,25 @@ class Autosteuerung
 			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
 			}
 			
+		/* Modulliste erstellen */
+		//echo "  g:(".memory_get_usage()." Byte).";
+		$this->availableModules=array();
+		foreach(IPS_GetModuleList() as $guid)
+			{
+			$instanzlist=IPS_GetInstanceListByModuleID($guid);
+			if (sizeof($instanzlist)>0)
+				{			
+				$module = IPS_GetModule($guid);
+				$name=$module['ModuleName'];
+				$this->availableModules[$name] = $guid;
+				}
+			}
+		//ksort($this->availableModules);
+		//echo "  k:(".memory_get_usage()." Byte).";
+				
 		if ( isset($this->installedModules["Stromheizung"] ) )
-			{			
+			{
+			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");						
 			/* speziell für Stromheizung */
 			$this->CategoryId_Stromheizung			= @IPS_GetObjectIDByName("Stromheizung",$this->CategoryId_Ansteuerung);
 			if ($this->CategoryId_Stromheizung === false)
@@ -758,12 +805,21 @@ class Autosteuerung
 			$this->switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
 			$this->groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
 			$this->prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);
-			}			
+			}
+			
+								
+		if ( isset($this->installedModules["DENONsteuerung"] ) )
+			{
+			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");						
+			$this->DENONsteuerung = new DENONsteuerung();	
+			$this->dataCategoryIdDenon = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung');
+			//$this->configCategoryIdDenon = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung');
+			}									
 		}
 
 	/* welche AutosteuerungsFunktionen sind aktiviert */
 
-	function getFunctions($function="All")
+	public function getFunctions($function="All")
 		{
 		$children=array();
 		$childrenIDs=IPS_GetChildrenIDs($this->CategoryId_Ansteuerung);
@@ -821,7 +877,7 @@ class Autosteuerung
 	 *
 	 *****************************************************************/
 
-	function isitdark()
+	public function isitdark()
 		{
 		$acttime=time();
 		if (($acttime>$this->sunset) || ($acttime<$this->sunrise))
@@ -834,7 +890,7 @@ class Autosteuerung
 			}
 		}
 	
-	function isitlight()
+	public function isitlight()
 		{
 		$acttime=time();
 		if (($acttime<$this->sunset) && ($acttime>$this->sunrise))
@@ -847,7 +903,7 @@ class Autosteuerung
 			}
 		}
 
-	function isitsleep()
+	public function isitsleep()
 		{
 		$functions=self::getFunctions();
 		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
@@ -861,7 +917,7 @@ class Autosteuerung
 			}	
 		}
 
-	function isitwakeup()
+	public function isitwakeup()
 		{
 		$functions=self::getFunctions();
 		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
@@ -875,7 +931,7 @@ class Autosteuerung
 			}	
 		}
 
-	function isitawake()
+	public function isitawake()
 		{
 		$functions=self::getFunctions();
 		if ( isset($functions["GutenMorgenWecker"]["STATUS"]) )
@@ -889,7 +945,7 @@ class Autosteuerung
 			}		
 		}
 
-	function isithome()
+	public function isithome()
 		{
 		$functions=self::getFunctions();
 		if ( isset($functions["Anwesenheitserkennung"]["STATUS"]) )
@@ -903,7 +959,7 @@ class Autosteuerung
 			}		
 		}
 
-	function isitalarm()
+	public function isitalarm()
 		{
 		$functions=self::getFunctions();
 		if ( isset($functions["Alarmanlage"]["STATUS"]) )
@@ -917,7 +973,7 @@ class Autosteuerung
 			}		
 		}
 		
-	function isitheatday()
+	public function isitheatday()
 		{
 		$status=false;
 		$functions=self::getFunctions();
@@ -941,7 +997,7 @@ class Autosteuerung
 			}	
 		}		
 
-	function getDaylight()
+	public function getDaylight()
 		{
 		$result["Sunrise"]=$this->sunrise;
 		$result["Sunset"]=$this->sunset;
@@ -952,7 +1008,7 @@ class Autosteuerung
 
 	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll */
 
-	function switchingTimes($scene)
+	public function switchingTimes($scene)
 		{
 		$switchingTimes = explode(",",$scene["ACTIVE_FROM_TO"]);
 		$actualTimes=array(); $sindex=0;
@@ -968,7 +1024,7 @@ class Autosteuerung
 		return($actualTimes);
 		}
 		
-	function timeright($scene)
+	public function timeright($scene)
 		{
 		//echo "Szene ".$scene["NAME"]."\n";
 		$actualTimes = self::switchingTimes($scene);
@@ -1021,7 +1077,7 @@ class Autosteuerung
 	 *
 	 ******************************************************************/
 
-	function setNewValue($variableID,$value)
+	public function setNewValue($variableID,$value)
 		{
 		if ($this->CategoryId_Stromheizung !== false)
 			{
@@ -1066,7 +1122,7 @@ class Autosteuerung
 	 *
 	 *******************************************************/
 
-	function ParseCommand($params,$status=false,$simulate=false)
+	public function ParseCommand($params,$status=false,$simulate=false)
 		{
 		/************************** 
 		 *
@@ -1102,7 +1158,7 @@ class Autosteuerung
 		 *
 		 */
 		$parges=array();
-
+		//$this->log->LogMessage("ParseParameter.");
 		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
@@ -1565,32 +1621,41 @@ class Autosteuerung
 	 *
 	 ************************************/
 
-	function EvaluateCommand($befehl,$result=array(),$simulate=false)
+	public function EvaluateCommand($befehl,$result=array(),$simulate=false)
 		{
+		//$this->log->LogMessage("EvaluateCommand : ".json_encode($befehl));		
 		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
-		
-		switch (trim(strtoupper($befehl[0])))	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
+		$Befehl0=trim(strtoupper($befehl[0]));	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
+		switch ($Befehl0)	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
 			{
 			case "SOURCE":
-				$result["SOURCE"]=strtoupper($befehl[1]);
+				$result[$Befehl0]=strtoupper($befehl[1]);
 				break;
 			case "OID":			/* wie switch name nur statt IPSLight die OID */
-				$result["OID"]=$befehl[1];
+			case "MODULE":		/* Das IPSModule in dem das Device oder der Name zu finden ist */
+			case "DEVICE":		/* ein Geraet, wenn das Modul nicht bekannt ist */
+			case "SPEAK":		/* text der zum Sprechen ist */
+			case "COMMAND":	/* befehl für Module oder Device */
+				$result[$Befehl0]=$befehl[1];
 				break;
-			case "NAME":		/* IPSLight identifier */
+			case "NAME":		/* Default IPSLight identifier, kann aber auch etwas anderes sein, wenn Module definiert ist */
 				$result["NAME"]=$befehl[1];
-				$resultID=@IPS_GetVariableIDByName($result["NAME"],$this->switchCategoryId);
-				if ($resultID === false) 
+				if (isset($result["MODULE"])==false) $result["MODULE"]="IPSLight";
+				if ($result["MODULE"]=="IPSLight")
 					{
-					echo "      ".$result["NAME"]." ist kein IPSLight Switch.\n";
-					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
-					$result["VALUE"]=$this->lightManager->GetValue($switchId);					
-					}
-				else
-					{	
-					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"]);
-					$result["VALUE"]=$this->lightManager->GetValue($switchId);
-					}
+					$resultID=@IPS_GetVariableIDByName($result["NAME"],$this->switchCategoryId);
+					if ($resultID === false) 
+						{
+						echo "      ".$result["NAME"]." ist kein IPSLight Switch.\n";
+						$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
+						$result["VALUE"]=$this->lightManager->GetValue($switchId);					
+						}	
+					else
+						{	
+						$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"]);
+						$result["VALUE"]=$this->lightManager->GetValue($switchId);
+						}
+					}	
 				break;
 				
 			case "ON#COLOR":
@@ -1747,7 +1812,6 @@ class Autosteuerung
 			case "NOFROST":
 				$result["NOFROST"]=(float)$befehl[1];
 				break;
-
 			case "DELAY":
 				$result["DELAY"]=(integer)$befehl[1];
 				break;
@@ -1802,9 +1866,6 @@ class Autosteuerung
 				break;
 			case "LEVEL":
 				$result["LEVEL"]=(integer)$befehl[1];
-				break;
-			case "SPEAK":
-				$result["SPEAK"]=$befehl[1];
 				break;
 			case "MONITOR":
 				$monitor=$befehl[1];
@@ -2158,7 +2219,7 @@ class Autosteuerung
 	 *******************************************************/
 
 
-	function ControlSwitchLevel($result,$simulate=false)
+	public function ControlSwitchLevel($result,$simulate=false)
 		{
 		/* Defaultwerte bestimmen, festlegen */
 		$ergebnis="";
@@ -2297,100 +2358,243 @@ class Autosteuerung
 	 *
 	 *******************************************************/
 
-	function ExecuteCommand($result,$simulate=false)
+	public function ExecuteCommand($result,$simulate=false)
 		{
 		$ergebnis="";
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 
-		/******
-		 *
-		 *  hier wird zuerst geschaltet
-		 *
-		 *****************/
+		if (isset($result["MODULE"])==false) $result["MODULE"]="";	// damit Switch bei leeren Befehlen keinen Fehler macht 
+		$this->log->LogMessage("ExecuteCommand;Module ".$result["MODULE"]."; ".json_encode($result));		
 
-		if (isset($result["OID"]) == true)
+		/* hier wird zwischen IPS Modulen der alten Generation und direkt implementierten Modulen geschaltet.
+		 * IPS Module der neuen Generation werden unter Default bearbeitet
+		 */
+		switch ($result["MODULE"])
 			{
-			IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
-			$result["IPSLIGHT"]="None";
-			$command.="SetValue(".$result["OID"].",false);";
-			$result["COMMAND"]=$command;
-			$ergebnis .= self::switchObject($result,$simulate);					
-			}
-		elseif ( isset($result["NAME"])==true )
-			{	/* wenn nicht die OID, dann ist der Name bekannt */
-			if ( isset($result["NAME_EXT"])==true ) 
-				{ 
-				if ($result["NAME_EXT"]=="#COLOR") { $name=$result["NAME"]."#Color"; }
-				if ($result["NAME_EXT"]=="#LEVEL") { $name=$result["NAME"]."#Level"; }
-				}
-			else 
-				{
-				$name=$result["NAME"];
-				}			
-			$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
-			if ($resultID==false)
-				{
-				$resultID=@IPS_GetVariableIDByName($name,$this->groupCategoryId);
-				if ($resultID==false)
+			case "IPSLight":
+				/******
+				 *
+				 *  hier wird zuerst geschaltet
+				 *
+				 *****************/
+
+				if (isset($result["OID"]) == true)
 					{
-					$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
+					IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
+					$result["IPSLIGHT"]="None";
+					$command.="SetValue(".$result["OID"].",false);";
+					$result["COMMAND"]=$command;
+					$ergebnis .= self::switchObject($result,$simulate);					
+					}
+				elseif ( isset($result["NAME"])==true )
+					{	/* wenn nicht die OID, dann ist der Name bekannt */
+					if ( isset($result["NAME_EXT"])==true ) 
+						{ 
+						if ($result["NAME_EXT"]=="#COLOR") { $name=$result["NAME"]."#Color"; }
+						if ($result["NAME_EXT"]=="#LEVEL") { $name=$result["NAME"]."#Level"; }
+						}
+					else 
+						{
+						$name=$result["NAME"];
+						}			
+					$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
 					if ($resultID==false)
 						{
-						/* Name nicht bekannt */
-						$result["IPSLIGHT"]="None";
-						}
-					else /* Wert ist ein Programm */
-						{
-						IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
-						$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
-						$result["COMMAND"]=$command;
-						$result["IPSLIGHT"]="Program";
-						if ($simulate==false)
+						$resultID=@IPS_GetVariableIDByName($name,$this->groupCategoryId);
+						if ($resultID==false)
 							{
-							IPSLight_SetProgramNextByName($name);
+							$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
+							if ($resultID==false)
+								{
+								/* Name nicht bekannt */
+								$result["IPSLIGHT"]="None";
+								}
+							else /* Wert ist ein Programm */
+								{
+								IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
+								$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
+								$result["COMMAND"]=$command;
+								$result["IPSLIGHT"]="Program";
+								if ($simulate==false)
+									{
+									IPSLight_SetProgramNextByName($name);
+									}
+								}
+							}
+						else   /* Wert ist eine Gruppe */
+							{
+							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
+							$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
+							$result["COMMAND"]=$command;
+							$result["IPSLIGHT"]="Group";	
+							$ergebnis .= self::switchObject($result,$simulate);			   	 	
 							}
 						}
-					}
-				else   /* Wert ist eine Gruppe */
-					{
-					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
-					$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
-					$result["COMMAND"]=$command;
-					$result["IPSLIGHT"]="Group";	
-					$ergebnis .= self::switchObject($result,$simulate);			   	 	
-					}
-				}
-			else     /* Wert ist ein Schalter oder Wert eines Schalters */
-				{
-				if (isset($result["NAME_EXT"])==true)
-					{
-					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
-					$result["IPSLIGHT"]=$result["NAME_EXT"];						
-					$result["OID"] = $this->lightManager->GetSwitchIdByName($name);					
-					$value=GetValue($result["OID"]);
-					if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
-					if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
-					if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
-					$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
-					$result["COMMAND"]=$command;
-					$ergebnis .= self::switchObject($result,$simulate);	
-					//echo "**** Aufruf Switch Ergebnis command \"".$result["IPSLIGHT"]."\"   ".str_replace("\n","",$command)."\n";										
-					}
+					else     /* Wert ist ein Schalter oder Wert eines Schalters */
+						{
+						if (isset($result["NAME_EXT"])==true)
+							{
+							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
+							$result["IPSLIGHT"]=$result["NAME_EXT"];						
+							$result["OID"] = $this->lightManager->GetSwitchIdByName($name);					
+							$value=GetValue($result["OID"]);
+							if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
+							if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
+							if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
+							$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
+							$result["COMMAND"]=$command;
+							$ergebnis .= self::switchObject($result,$simulate);	
+							//echo "**** Aufruf Switch Ergebnis command \"".$result["IPSLIGHT"]."\"   ".str_replace("\n","",$command)."\n";										
+							}
+						else
+							{	 				
+							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
+							$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
+							$result["COMMAND"]=$command;
+							$result["IPSLIGHT"]="Switch";
+							$ergebnis .= self::switchObject($result,$simulate);
+							}			
+						}   /* Ende Wert ist ein Schalter */
+					} /* Ende entweder NAME oder OID ist gesetzt */
 				else
-					{	 				
-					IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
-					$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
-					$result["COMMAND"]=$command;
-					$result["IPSLIGHT"]="Switch";
-					$ergebnis .= self::switchObject($result,$simulate);
-					}			
-				}   /* Ende Wert ist ein Schalter */
-			} /* Ende entweder NAME oder OID ist gesetzt */
-		else
-			{
-			}
+					{
+					}
+				break;
+			case "SamsungTV":
+				/* Fernseher der alten Generation behandlen, hier gibt es kein Modul, mach ich direkt hier */
+				$DENONconfig=$this->DENONsteuerung->Configuration($result["NAME"]);
+				if ($DENONconfig !== false)
+					{
+					//print_r($DENONconfig);
+					$instanzID=$this->availableModuleDevice("Client Socket",$result["DEVICE"]);
+					if ($instanzID !== false)
+						{
+						echo "Geraet ".$result["DEVICE"]." mit ID ".$instanzID." bekannt. Befehl : ".$result["COMMAND"]."\n";
+						if (isset($DENONconfig["IPADRESSE"])==true)
+							{
+							$ping = Sys_Ping($DENONconfig["IPADRESSE"], 1000);
+							if ($ping ==false)
+								{
+							    echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>\n";
+								$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf sys_ping.");		
+							    }
+							else
+								{
+								$samsungstatus = IPS_GetInstance($instanzID);
+								if ($samsungstatus['InstanceStatus']>102)
+									{
+								    CSCK_SetOpen($instanzID, true);
+								    IPS_ApplyChanges($instanzID);
+								    $samsungstatus = IPS_GetInstance($instanzID);
+								    if ($samsungstatus['InstanceStatus']>102)
+										{
+								        echo "<FONT SIZE='+3' COLOR=red><br>FERNSEHER REAGIERT NICHT</FONT>";
+										$this->log->LogMessage("ExecuteCommand; Samsung TV reagiert nicht auf Open Socket.");		
+        								}
+									else
+										{
+										if ($simulate==false)
+											{
+											$src = "10.0.0.145"; 			/* ip des IP Symcon, dummy Wert zur Wiedererkennung */
+											$mac = "e4-e0-c5-25-66-27"; /* mac des IP Symcons, dummy Wert zur Wiedererkennung */	
+											$remote = "Perl Samsung Remote";	/* Name der Fernbedienung, erscheint am Fernseher und muss quittiert werden */	
+											$app="iphone..iapp.samsung";		/* tut so als wäre IPS ein iPhone */
+											$tv = "UE55C6700"; 			// iphone.UE55C6700.iapp.samsung										
+											$key=$result["COMMAND"];
+																												
+											CSCK_SetOpen($instanzID, true);
+											$msg = chr(0x64).chr(0x00).chr(strlen(base64_encode($src))).chr(0x00).base64_encode($src).chr(strlen(base64_encode($mac))).chr(0x00).base64_encode($mac).chr(strlen(base64_encode($remote))).chr(0x00).base64_encode($remote);
+											$pkt = chr(0x00).chr(strlen($app)).chr(0x00).$app.chr(strlen($msg)).chr(0x00).$msg;
+											CSCK_SendText($instanzID,$pkt);
+											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$app." ".$src." ".$mac."  ".$remote.".");		
 
+											$msg = chr(0x00).chr(0x00).chr(0x00).chr(strlen(base64_encode($key))).chr(0x00).base64_encode($key);
+											$pkt = chr(0x00).chr(strlen($tv)).chr(0x00).$tv.chr(strlen($msg)).chr(0x00).$msg;
+											CSCK_SendText($instanzID,$pkt);
+											$this->log->LogMessage("ExecuteCommand; Send Data to Samsung TV ".$instanzID.": ".$tv." ".$key.".");		
+	
+											CSCK_SetOpen($instanzID, false);
+											}										
+										}	
+									}								
+								//print_r($samsungstatus);
+								}		
+							}	
+						}
+					else												
+						{
+						echo "Geraet ".$result["DEVICE"]." nicht bekannt.\n"; 
+						}																					
+					}
+				else 
+					{
+					echo "Geraet ".$result["NAME"]." in DENONsteuerung Config nicht eingetragen.\n";
+					$DENONconfig=$this->DENONsteuerung->Configuration();
+					if ($DENONconfig !== false)
+						{
+						print_r($DENONconfig);
+						}
+					}
+					
+				break;	
+			case "":			/* kein Modul definiert, auch nicht Default Wert dann sicherheitshalber nichts machen */
+				break;	
+			default:
+				/* nachschauen ob das gesuchte Modul überhaupt installiert ist */
+				$instanzID=$this->availableModuleDevice($result["MODULE"],$result["DEVICE"]);				
+				if ($instanzID !== false)
+					{
+					echo "Geraet ".$result["DEVICE"]." mit ID ".$instanzID." bekannt. Befehl : ".$result["COMMAND"]."\n";
+					$this->log->LogMessage("ExecuteCommand;Module ".$result["MODULE"].";Geraet ".$result["DEVICE"]." mit ID ".$instanzID." bekannt. Befehl : ".$result["COMMAND"]);					
+					switch ($result["MODULE"])
+						{
+						case "DenonAVRHTTP": 
+							if ($simulate==false) DAVRH_SendHTTPCommand($instanzID,$result["COMMAND"]);
+							break;
+						case "SamsungTizen":
+							$this->log->LogMessage("ExecuteCommand;Module ".$result["MODULE"]."; ".$instanzID."  ".$result["COMMAND"]);	
+							if ($simulate==false) SamsungTizen_SendKeys($instanzID,$result["COMMAND"]);
+							break;
+						case "HarmonyHub":	
+							/* noch Geraetenamen Instanz ermitteln */
+							$DENONconfig=$this->DENONsteuerung->Configuration();
+							$name=false;
+							foreach ($DENONconfig as $device)
+								{
+								if ( ($result["MODULE"]==$device["TYPE"]) && ($result["DEVICE"]==$device["INSTANZ"]) ) $name=$device["NAME"];
+								}
+							print_r($DENONconfig);
+							if ($name !== false)
+								{
+								$Harmony = @IPS_GetCategoryIDByName($name, $this->dataCategoryIdDenon);
+								if ($Harmony !== false)
+									{
+									echo "HarmonyHub Verzeichnis innerhalb data.DENONsteuerung : ".$name."  liegt auf ".$Harmony." (".IPS_GetName($Harmony).") \n";
+									$Childrens=IPS_GetChildrenIDs($Harmony);
+									foreach ($Childrens as $children)
+										{
+										if ( (IPS_GetObject($children)["ObjectType"]==1) && (IPS_GetObject($children)["ObjectName"]==$result["NAME"]) )
+											{
+											$Device=IPS_getName($children);
+											echo "HarmonyHub Geraet Verzeichnis innerhalb data.DENONsteuerung.".$name." liegt auf ".$children." (".IPS_GetName($children).") \n";
+											if ($simulate==false) LHD_Send($children, $result["COMMAND"]);
+											}
+										}
+									}
+								}
+							break;								
+						default:
+							break;		
+						}
+					}	
+				else												
+					{
+					echo "Geraet ".$result["DEVICE"]." oder Module ".$result["MODULE"]." nicht bekannt.\n"; 
+					}
+				break;
+			}
+					
 		/******
 		 *
 		 *  und dann gesprochen
@@ -2455,6 +2659,34 @@ class Autosteuerung
 			}
 		$result["COMMENT"]=$ergebnis;			
 		return ($result);							
+		}
+
+	private function availableModuleDevice($module,$device)
+		{
+		$instanzID=false;
+		if (isset($this->availableModules[$module]) == true)
+			{
+			$gid=$this->availableModules[$module];
+			echo "Module ".$module." mit GUID ".$gid." bekannt.\n";
+			$instanzlist=(IPS_GetInstanceListByModuleID($gid));
+			foreach ($instanzlist as $instanz)
+				{
+				if ($device==IPS_GetName($instanz)) $instanzID=$instanz;
+				}
+			if ($instanzID !== false)
+				{
+				//echo "Geraet ".$device." mit ID ".$instanzID." bekannt.\n";
+				}
+			else												
+				{
+				echo "Geraet ".$device." nicht bekannt.\n"; 
+				}
+			}
+		else
+			{
+			echo "Module ".$module." nicht bekannt.\n";
+			}		
+		return $instanzID;
 		}
 
 	/***************************************
@@ -3359,9 +3591,18 @@ function setDimTimer($name,$delay,$command)
 	}
 
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ *	Implementierte Applikationen:
+ *
+ *	Anwesenheit, iTunesSteuerung, GutenMorgenWecker, Status
+ * StatusRGB sollte nicht mehr in Verwendung sein
+ *
+ ***************************************************************************************************/
 
-function Anwesenheit($params,$status,$simulate=false)
+
+
+function Anwesenheit($params,$status,$variableID,$simulate=false)
 	{
 	global $AnwesenheitssimulationID;
 
@@ -3406,18 +3647,98 @@ function Anwesenheit($params,$status,$simulate=false)
 	return($command);	
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ *  iTunes und Mediabefehle 
+ *
+ *	Neben Standardfunktionen wie in Status Spezialisierung auf die Mediensteuerung mit Sondergeräten wie 
+ *	zB iTunes, Denon, Samsung, Logitech Harmony
+ *
+ *	Befehlsbeispiele:
+ *   'OnUpdate','Media','Denon Arbeitszimmer,PwrOn;',			 Default Device ist Denon
+ *
+ *  komplizierte Algorithmen werden immer mit befehl:parameter eigegeben:
+ *	 'OnUpdate','Media','Device:Denon Arbeitszimmer,Command:PwrOn;',
+ * 
+ *
+ *
+ **********************************************************************************************/
 
-function iTunesSteuerung()
+function iTunesSteuerung($params,$status,$variableID,$simulate=false)
 	{
-
+	IPSLogger_Dbg(__file__, 'Aufruf Routine MediaSteuerung mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	//echo "  i:(".memory_get_usage()." Byte).";
+	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+	//echo "  a:(".memory_get_usage()." Byte).";
+	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */	
+	$parges=$auto->ParseCommand($params,$status,$simulate);
+	//echo "  p:(".memory_get_usage()." Byte).";
+	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
+	$command=array(); $entry=1;	
+	foreach ($parges as $kom => $Kommando)
+		{
+		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=$status;	
+		foreach ($Kommando as $num => $befehl)
+			{
+			switch (strtoupper($befehl[0]))
+				{
+				default:
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					//echo "  ".$entry.":(".memory_get_usage()." Byte).";
+					break;
+				}	
+			} /* Ende foreach Befehl */
+		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+		//echo "  z:(".memory_get_usage()." Byte).";
+		$entry++;			
+		} /* Ende foreach Kommando */
+	unset ($auto);	
+	return($command);	
 	}
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ *	GutenMorgenwecker
+ *
+ *	steht als Platzhalter hier, da eine eigene Applikation. Derzeit fallen uns noch keine Sonderfunktionen ein.
+ *
+ * 	in Autosteurung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
+ *  oder einem Update der Ereignisvariable wird eine Applikation, wie diese oder eine Funktion aufgerufen.
+ *	In der Applikation wird der letzte Parameter, die Kommandokette geparst und als Array gespeichert.
+ * 	Die Kommandokette besteht aus mehreren Kommandos. Jedes Kommando wird dann noch Applikationsspezifisch ergänzt werden.
+ *	Jedes Kommando besteht aus mehreren Befehlen.
+ *
+ *	Parse -> Evaluate -> Execute  
+ *	  
+ *
+ *******************************************************************************************************/
 
-function GutenMorgenWecker()
+function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
 	{
-
+	IPSLogger_Dbg(__file__, 'Aufruf Routine GutenMorgenWecker mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */	
+	$parges=$auto->ParseCommand($params,$status,$simulate);
+	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
+	$command=array(); $entry=1;	
+	foreach ($parges as $kom => $Kommando)
+		{
+		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=$status;	
+		foreach ($Kommando as $num => $befehl)
+			{
+			switch (strtoupper($befehl[0]))
+				{
+				default:
+					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					break;
+				}	
+			} /* Ende foreach Befehl */
+		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+		$entry++;			
+		} /* Ende foreach Kommando */
+	return($command);	
 	}
 
 /********************************************************************************************
@@ -3433,7 +3754,7 @@ function GutenMorgenWecker()
  *  komplizierte Algorithmen werden immer mit befehl:parameter eigegeben
  *
  *  OID:12345        Definition des zu schaltenden objektes
- *  NAME:Wohnzimmer  Definition des zu schaltenden IPSLight Schlaters, Gruppe oder programms, wird automatisch der reihe nach auf
+ *  NAME:Wohnzimmer  Definition des zu schaltenden IPSLight Schalters, Gruppe oder Programms, wird automatisch der Reihe nach auf
  *                       	Vorhandensein überprüft
  * 								Wenn keine Angabe wird der Status des Objektes (OnUpdate/OnChange) für den neuen Schaltzustand verwendet
  *
@@ -3445,7 +3766,7 @@ function GutenMorgenWecker()
  *
  ************************************************************************************************/
 
-function Status($params,$status,$simulate=false)
+function Status($params,$status,$variableID,$simulate=false)
 	{
 	global $speak_config;
 	
@@ -3531,6 +3852,7 @@ function Status($params,$status,$simulate=false)
 			}	
 		$entry++;			
 		} /* Ende foreach Kommando */
+	unset ($auto);							/* Platz machen im Speicher */		
 	return($command);
 	}
 
@@ -3540,7 +3862,7 @@ function Status($params,$status,$simulate=false)
  *
  *********************************************************************************************/
 
-function statusRGB($params,$status,$simulate=false)
+function statusRGB($params,$status,$variableID,$simulate=false)
 	{
    /* allerlei Spielereien mit einer RGB Anzeige */
 
@@ -3598,7 +3920,7 @@ function statusRGB($params,$status,$simulate=false)
 
 /*********************************************************************************************/
 
-function SwitchFunction()
+function SwitchFunction($params,$status,$variableID,$simulate=false)
 	{
 	
 	global $params2,$speak_config;
@@ -3658,7 +3980,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 	$nachrichten=new AutosteuerungRegler();			/* Nachrichten fuer Regler hier sammeln */
 
 	/* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
-	 * neuen Wert gelichzeitig schreiben
+	 * neuen Wert gleichzeitig schreiben
 	 */
 	$oldValue=$auto->setNewValue($variableID,$status);	
 	IPSLogger_Dbg(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status.' der Variable '.$variableID.' alter Wert war : '.$oldValue);
@@ -3759,7 +4081,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
  *
  ************************************************************************************************/
 
-function Ventilator1()
+function Ventilator1($params,$status,$variableID,$simulate=false)
 	{
 	global $categoryId_Autosteuerung,$params;
 	
@@ -3805,7 +4127,7 @@ function Ventilator1()
  *
  *********************************************************************************************/
 
-function Ventilator($params,$status,$simulate=false)
+function Ventilator($params,$status,$variableID,$simulate=false)
 	{
 	global $categoryId_Autosteuerung,$speak_config;
 
@@ -3879,7 +4201,7 @@ function Ventilator($params,$status,$simulate=false)
 
 /*********************************************************************************************/
 
-function Parameter()
+function Parameter($params,$status,$variableID,$simulate=false)
 	{
 	global $speak_config,$params;
 	

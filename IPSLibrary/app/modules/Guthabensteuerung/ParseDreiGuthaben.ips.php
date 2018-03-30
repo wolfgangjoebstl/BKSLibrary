@@ -38,7 +38,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n\n";
 	/* "C:/Users/Wolfgang/Documents/iMacros/Downloads/ */
 
-/* Logging aktivieren
+/*********************************************************************************************
+ * 
+ * Logging aktivieren
  *
  *********************************************************************************************/
 
@@ -48,8 +50,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 	if ($_IPS['SENDER']=="Execute")
 		{
+		/* Logging Einstellungen zum Debuggen */
+		
 		//$ausgeben=true; $ergebnisse=true; $speichern=true;
-		$ausgeben=false; $ergebnisse=false; $speichern=true;
+		$ausgeben=true; $ergebnisse=true; $speichern=true;
 		}
 	else
 		{	
@@ -57,10 +61,13 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		}
 
 /******************************************************
-
-				RUNSCRIPT
-
-*************************************************************/
+ *
+ *                        RUN
+ *
+ * Parse textfiles, die von iMacro generiert wurden
+ *				
+ *
+ *************************************************************/
 
 	//print_r($GuthabenConfig);
 	$ergebnis="";
@@ -227,7 +234,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 /*************************************************************************************************
  *
- *
+ * Function Parse textfile
  *
  *
  ************************************************************************************************************/
@@ -251,8 +258,12 @@ function parsetxtfile($fileconfig, $config)
 
 	if ($handle)
 		{
-		echo "Aufruf von parsetxtfile mit folgender Config:\n";
-		print_r($config);
+		if ($ausgeben) 
+			{
+			echo "Rückmeldung fopen : "; print_r($handle); echo "\n";
+			echo "Aufruf von parsetxtfile mit folgender Config:\n";
+			print_r($config);
+			}
 
 		while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
 			{
@@ -261,15 +272,15 @@ function parsetxtfile($fileconfig, $config)
 			/********** zuerst den User ermitteln, steht hinter Willkommen 
 			 *
 			 */
-			if ($ausgeben) echo $buffer;
+			if ($ausgeben) echo $buffer;			// zeilenweise ausgeben
 			if(preg_match('/Willkommen/i',$buffer))
 				{
 				$pos=strpos($buffer,"kommen");
-				if ($pos!=false)
+				if (($pos!=false) && !(preg_match('/Troy/i',$buffer)))
 					{
 					$result1=trim(substr($buffer,$pos+7,200));
+					if ($ergebnisse) echo "*********Ausgabe User : ".$result1."\n<br>";
 					}
-				if ($ergebnisse) echo "*********Ausgabe User : ".$result1."\n<br>";
 				}
 
 			/********** dann die rufnummer, am einfachsten zu finden mit der 0660er oder 0676er Kennung 

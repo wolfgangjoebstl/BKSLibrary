@@ -362,6 +362,8 @@ if ($_IPS['SENDER']=="Execute")
 	if($HomInstanz == 0)
 		{
 		echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		$includefile.='function HomematicInstanzen() { return array('."\n";
+		$includefile.=');}'."\n\n";		
 		}
 	else
 		{	

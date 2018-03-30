@@ -980,13 +980,14 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$alleHeizungsWerte.=ReadAktuatorWerte();
 						
 			$ergebnisRegen.="\n\nAktuelle Regenmengen direkt aus den HW-Registern:\n\n";
+			$regenmelder=0;
 			foreach ($Homematic as $Key)
 				{
 				/* Alle Homematic Energiesensoren ausgeben */
 				if ( (isset($Key["COID"]["RAIN_COUNTER"])==true) )
 					{
 					/* alle Regenwerte */
-
+					$regenmelder++;
 					$oid=(integer)$Key["COID"]["RAIN_COUNTER"]["OID"];
 					$variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
@@ -999,6 +1000,8 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 						}
 					}
 				}
+			if ($regenmelder==0) $ergebnisRegen="";	/* Ausgabe rückgängig machen, es gibt keine Regenmelder. */	
+				
 			if (isset($installedModules["Gartensteuerung"])==true)
 				{
 				echo "Die Regenwerte der letzten 10 Tage ausgeben.\n";
@@ -1110,8 +1113,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			if ($result["IP"]== true)
 				{
 				$ergebnisOperationCenter.= "Externe IP Adresse : \n";
-				$ergebnisOperationCenter.= "  Whatismyipaddress liefert : ".$result["IP"]."\n\n";
+				$ergebnisOperationCenter.= "  Server liefert : ".$result["IP"]."\n\n";
 				}
+			$ergebnisOperationCenter.="Systeminformationen : \n\n";
+			$ergebnisOperationCenter.=$OperationCenter->readSystemInfo()."\n";
 				
 			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();

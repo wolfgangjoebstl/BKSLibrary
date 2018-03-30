@@ -41,21 +41,24 @@ $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
 
-$object_data= new ipsobject($CategoryIdData);		/* IPSComponentLogger class zum Suchen und Ausgeben von Objekten, hier parent object ID in der Klasse speichern */
-$object_app= new ipsobject($CategoryIdApp);
-
 $scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 
+$object_data= new ipsobject($CategoryIdData);		/* IPSComponentLogger class zum Suchen und Ausgeben von Objekten, hier parent object ID in der Klasse speichern */
+$object_app= new ipsobject($CategoryIdApp);
 $NachrichtenID = $object_data->osearch("Nachricht");	/* Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben */
 $NachrichtenScriptID  = $object_app->osearch("Nachricht");
-
 if (isset($NachrichtenScriptID))
 	{
+	$setup = Autosteuerung_Setup();
+	if ( isset($setup["LogDirectory"]) == false )
+		{
+		$setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+		}	
 	$object3= new ipsobject($NachrichtenID);
 	$NachrichtenInputID=$object3->osearch("Input");
 	//$object3->oprint();
 	/* logging in einem File und in einem String am Webfront */
-	$log_Autosteuerung=new Logging("C:\Scripts\Log_Autosteuerung.csv",$NachrichtenInputID);
+	$log_Autosteuerung=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
 	}
 else break;
 
@@ -117,7 +120,7 @@ if ($_IPS['SENDER']=="Variable")
 	$configuration = Autosteuerung_GetEventConfiguration();
 	/* eine Variablenaenderung ist aufgetreten */
 	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
-	$log_Autosteuerung->LogMessage('Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	$log_Autosteuerung->LogMessage('Variablenaenderung;'.$variableID.';'.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).'.');
 	$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 	if (array_key_exists($variableID, $configuration)) 
 		{
@@ -128,34 +131,38 @@ if ($_IPS['SENDER']=="Variable")
 
 		$wert=$params[1];
 		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
-  		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
+		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
 		switch ($wert)    {
 			/*********************************************************************************************/
-		   case "iTunes":
-		      iTunesSteuerung();
-		      break;
+			case "iTunes":
+			case "Media":
+				$status=iTunesSteuerung($params,$value,$variableID,false);
+				$log_Autosteuerung->LogMessage('Befehl der App Media wurde ausgeführt : '.json_encode($status));
+				break;
 			/*********************************************************************************************/
-		   case "GutenMorgenWecker":
-		      GutenMorgenWecker();
-		      break;
+			case "GutenMorgenWecker":
+				$status=GutenMorgenWecker($params,$value,$variableID,false);
+				$log_Autosteuerung->LogMessage('Befehl der App GutenMorgenWecker wurde ausgeführt : '.json_encode($status));
+				break;
 			/*********************************************************************************************/
-		   case "Anwesenheit":
-		      Anwesenheit($params,$value);
-		      break;
+			case "Anwesenheit":
+				$status=Anwesenheit($params,$value,$variableID,false);
+				$log_Autosteuerung->LogMessage('Befehl der App Anwesenheit wurde ausgeführt : '.json_encode($status));
+				break;
 			/*********************************************************************************************/
 		   case "Ventilator1":
-		      Ventilator1();
+		      Ventilator1($params,$value,$variableID,false);
 				//Ventilator($params,$value);				
 		      break;
 			/*********************************************************************************************/
 		   case "Parameter":
-		      Parameter();
+		      Parameter($params,$value,$variableID,false);
 		      break;
 			/*********************************************************************************************/
 			case "Ventilator":
 			case "HeatControl":
 			case "Heizung":
-				Ventilator2($params,$value,$variableID);
+				Ventilator2($params,$value,$variableID,false);
 				break;
 			/*********************************************************************************************/
 		   case "Status":
@@ -165,20 +172,21 @@ if ($_IPS['SENDER']=="Variable")
 				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				$status=Status($params,$value);
+				$status=Status($params,$value,$variableID,false);
 				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
-		      statusRGB($params,$value);
+		      statusRGB($params,$value,$variableID,false);
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
-				SwitchFunction();
+				SwitchFunction($params,$value,$variableID,false);
 		      break;
 			/*********************************************************************************************/
 		   case "Custom":
 		      /* Aufrufen von kundenspezifischen Funktionen */
+				eval($params[1]);
 		      break;
 			/*********************************************************************************************/
 		   case "par1":
@@ -186,9 +194,8 @@ if ($_IPS['SENDER']=="Variable")
 		   case "Dummy":
 		   case "DUMMY":
 		      break;
-
 		   default:
-				eval($params[1]);
+
 				break;
 			}
 		}
@@ -429,21 +436,27 @@ if ($_IPS['SENDER']=="Execute")
 	test();
 	/* von der Konsole aus gestartet */
 	echo "--------------------------------------------------\n";
-	echo "        EXECUTE\n";
+	echo "        EXECUTE (Überprüfung mit Testwerten)\n";
 	echo "\nEingestellte Programme:\n\n";
 	$i=0;	// testwert um zu sehen wir die Programm reagieren
 	foreach ($configuration as $key=>$entry)
 		{
 		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."\n\n";
+		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."       ";
+		echo "(".memory_get_usage()." Byte).";
+		echo "\n\n";
 		//print_r($entry);
 		//print_r($auto->ParseCommand($entry));
 		switch ($entry[1])
 			{
 			case "Anwesenheit":
-				$status=Anwesenheit($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				$status=Anwesenheit($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
 				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
 				break;
+			case "iTunes":
+			case "Media":
+				$status=iTunesSteuerung($entry,$i++,12345,true);
+				break;				
 			case "Status":
 			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
 			   /* array($params[0], $params[1], $params[2],),                     													*/
@@ -451,7 +464,7 @@ if ($_IPS['SENDER']=="Execute")
 				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				$status=Status($entry,$i++,true);  // Simulation aktiv, Testwert ist +1
+				$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
 				break;
 			case "Ventilator":
 			case "HeatControl":
@@ -460,20 +473,20 @@ if ($_IPS['SENDER']=="Execute")
 				$status=Ventilator2($entry,18,26409,true);  // Simulation aktiv, Testwert ist 32
 				break;	
 			case "iTunes":
-				$status=iTunesSteuerung($entry,$i++,true);
+				$status=iTunesSteuerung($entry,$i++,12345,true);
 				break;
 			/*********************************************************************************************/
 			case "GutenMorgenWecker":
-				$status=GutenMorgenWecker($entry,$i++,true);
+				$status=GutenMorgenWecker($entry,$i++,12345,true);
 		      break;
 			/*********************************************************************************************/
 		   case "Ventilator1":
-				$status=Ventilator1($entry,$i++,true);
+				$status=Ventilator1($entry,$i++,12345,true);
 				//$status=Ventilator($entry,$i++,true);				
 		      break;
 			/*********************************************************************************************/
 		   case "Parameter":
-				$status=Parameter($entry,$i++,true);
+				$status=Parameter($entry,$i++,12345,true);
 		      break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
@@ -482,7 +495,7 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
-				$status=SwitchFunction($entry,$i++,true);
+				$status=SwitchFunction($entry,$i++,12345,true);
 		      break;
 			/*********************************************************************************************/
 		   case "Custom":
