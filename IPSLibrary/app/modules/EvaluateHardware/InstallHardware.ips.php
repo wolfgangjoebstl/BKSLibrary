@@ -19,7 +19,7 @@
 	$analyze=false;						/* redundanten nur zur Analyse gedachten Output reduzieren */
 	
 	$setupHomematicSocket=false;			/* wenn true werden auch die Homematic Sockets aufgesetzt */
-	$setupHomematic=true;					/* wenn true werden auch die Homematic Geraete aufgesetzt */
+	$setupHomematic=false;					/* wenn true werden auch die Homematic Geraete aufgesetzt */
 	$setupFHT=false;					/* wenn true werden auch die FHT Geraete aufgesetzt */
 	$setupFS20=false;					/* wenn true werden auch die FHT Geraete aufgesetzt */
 	
@@ -33,7 +33,7 @@
 	$config=array();
 	if($HomInstanz == 0)
 		{
-		echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		echo "Keine HomeMatic Socket Instanz gefunden!\n";
 		}
 	else
 		{	
@@ -48,38 +48,45 @@
 		echo "\n";	
 		}
 	if ($analyze) print_r($config);
-	$HomematicInstanzen=HomematicInstanzen();
-	if ( (isset($HomematicInstanzen[$installHI]) == true ) && ($setupHomematicSocket == true) )
-		{
-		echo "Homematic CCU instanz mit Namen \"".$installHI."\" im Konfiguratiosfile gefunden.\n";
-		if ( isset($config[$installHI]) == false )
+	
+	if ( function_exists("HomematicInstanzen")==true ) {
+		$HomematicInstanzen=HomematicInstanzen();
+		if ( (isset($HomematicInstanzen[$installHI]) == true ) && ($setupHomematicSocket == true) )
 			{
-			echo "!!! Homematic CCU instanz mit Namen \"".$installHI."\" neu anlegen.\n"; 
-			if (!$debug)
-				{		/* wenn debug true ist keine Variablen anlegen */
-				$InsID = IPS_CreateInstance("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-				IPS_SetName($InsID, $installHI); // Instanz benennen
+			echo "Homematic CCU instanz mit Namen \"".$installHI."\" im Konfiguratiosfile gefunden.\n";
+			if ( isset($config[$installHI]) == false )
+				{
+				echo "!!! Homematic CCU instanz mit Namen \"".$installHI."\" neu anlegen.\n"; 
+				if (!$debug)
+					{		/* wenn debug true ist keine Variablen anlegen */
+					$InsID = IPS_CreateInstance("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
+					IPS_SetName($InsID, $installHI); // Instanz benennen
+					}
+				}
+			else
+				{
+				$InsID = $config[$installHI]["OID"];
+				}
+			$configHI=json_decode($HomematicInstanzen[$installHI]["CONFIG"]);
+			if ($configHI->IPAddress!=$ownIPaddress)
+				{
+				echo "!!! Vorhandene oder neue CCU von ".$configHI->IPAddress." im alten Config File auf eigene IP Adresse ".$ownIPaddress." setzen.\n";
+				echo "   Check config Vorhanden: ".IPS_GetConfiguration($InsID)."\n";
+				$configHI->IPAddress=$ownIPaddress;
+				echo "   mit neuer Configuration: ".json_encode($configHI)."\n";
+				if (!$debug)
+					{		/* wenn debug true ist keine Variablen anlegen */
+					IPS_SetConfiguration($InsID, json_encode($configHI));
+					IPS_ApplyChanges($InsID);
+					}
 				}
 			}
 		else
 			{
-			$InsID = $config[$installHI]["OID"];
-			}
-		$configHI=json_decode($HomematicInstanzen[$installHI]["CONFIG"]);
-		if ($configHI->IPAddress!=$ownIPaddress)
-			{
-			echo "!!! Vorhandene oder neue CCU von ".$configHI->IPAddress." im alten Config File auf eigene IP Adresse ".$ownIPaddress." setzen.\n";
-			echo "   Check config Vorhanden: ".IPS_GetConfiguration($InsID)."\n";
-			$configHI->IPAddress=$ownIPaddress;
-			echo "   mit neuer Configuration: ".json_encode($configHI)."\n";
-			if (!$debug)
-				{		/* wenn debug true ist keine Variablen anlegen */
-				IPS_SetConfiguration($InsID, json_encode($configHI));
-				IPS_ApplyChanges($InsID);
-				}
+			if ($setupHomematicSocket == false) echo "Homematic Socket nicht aufsetzen eingestellt. Ändere SetupHomematicSocket auf true.\n"; 
 			}
 		}
-
+		
 	/**********************************************************************************************
 	 * evaluate Homematic Devices allready installed
 	 *
@@ -222,6 +229,10 @@
 			//print_r( );
 			}
 		}
+	else
+		{
+		echo "Homematic Devices nicht aufsetzen eingestellt. Ändere SetupHomematic auf true.\n";
+		}
 
 	/**********************************************************************************************
 	 * sort Homematic Devices according to Instance Name, alphabetically
@@ -280,7 +291,7 @@
 	 */
 
 	$FS20s = FS20List();
-	//print_r($FS20s);
+	print_r($FS20s);
 	
 	$Hardware_ID    = CreateCategory('Hardware',   0, 0);
 	$FS20_ID   = CreateCategory('FS20',  $Hardware_ID, 0);

@@ -1612,6 +1612,9 @@ class OperationCenter
 	 *
 	 *  derzeit gibt es keinen aktuellen Wert, da der immer vorher mit SNMP Aufrufen ausgelesen werden muesste
 	 *  es fehlt SNMP Aufruf ohne logging !!!
+	 *
+	 * Variablennamen in der Category sind kodiert und mit _ getrennt. Der erste Teil ist der Name des Ports und der letzte der Status
+	 *
 	 */
 
 	function get_routerdata_RT1900($router,$actual=false)
@@ -1620,7 +1623,7 @@ class OperationCenter
 
 		$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
 		if ($router_categoryId==false)
-		   {
+			{
 			$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
 			IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
@@ -1628,13 +1631,13 @@ class OperationCenter
 		$result=IPS_GetChildrenIDs($router_categoryId);
 		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		foreach($result as $oid)
-		   {
-		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
-		      {
-		      $name=explode("_",IPS_GetName($oid));
-		      if ($name[sizeof($name)-1]=="chg")
-		         {
-		         if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
+			{
+			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+			{
+				$name=explode("_",IPS_GetName($oid));
+				if ($name[sizeof($name)-1]=="chg")
+					{
+					if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
 		            {
 			         $ergebnis+=GetValue($oid)/1024/1024;
 			         }

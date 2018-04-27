@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup ipstwilight_configuration IPSTwilight Konfiguration
+	/**@defgroup ipstwilight_configuration Amis Konfiguration
 	 * @ingroup ipstwilight
 	 * @{
 	 *
-	 * Konfigurations File für IPSTwilight
+	 * Konfigurations File für Amis
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          Amis_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -62,13 +62,10 @@
 		}
 	 *
 	 */
-
-	function get_AmisConfiguration()
-		{ 
-		return array(
-			"Type" => "Bluetooth", /* Bluetooth oder Serial auswählen */
-         "Adresse" => "34",         /* keine Funktion, nur damit noch ein Zeile steht */
-					); 
+	function get_Cost()
+		{
+		$cost=0.2;
+		return $cost;
 		}
 					
 	function get_MeterConfiguration()

@@ -21,7 +21,7 @@
 	 * @ingroup AutoSteuerung
 	 * @{
 	 *
-	 * Konfigurations File f�r AutoSteuerung
+	 * Konfigurations File für AutoSteuerung
 	 *
 	 * @file          AutoSteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -145,7 +145,105 @@
                     ),
                 );
 		return $switches;
+		}
+		
+	/***********************************************************
+	 *
+	 * wie funktioniert die Konfiguration zur Erstellung einer komplexen Webfront Darstellung.
+	 *
+	 *  'Anwesenheit'  => array      das ist der Name der Kategorie die in Visualization.Administrator angelegt wird
+	 *    WFCSPLITPANEL,$WFCId, $ItemId, $ParentId, $Position, $Title, $Icon=““, $Alignment=  0=horizontal, 1=vertical, $Ratio=50, $RatioTarget=  0 or 1, $RatioType 0=Percentage, 1=Pixel, $ShowBorder=’true‘ or ‚false’)
+	 *            $WFCId   Webfront Konfigurator ID (Administrator oder User)
+	 *            $ItemId  der neu Name im Webfront Konfigurator
+	 *            $ParentId  der bestehende Namen auf dem ItemID aufsetzt
+	 *            $Title
+	 *            $Icon
+	 *
+	 ************************************************************************************/
+
+	function Autosteuerung_GetWebFrontConfiguration() {
+		return array(
+			'Anwesenheit' => array(
+				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails0',       'AutoTPA',        'Anwesenheit','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Left',  'AutoTPADetails0', null,null),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Right',  'AutoTPADetails0', null,null),
+				),
+			'Autosteuerung' => array(
+				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails1',        'AutoTPA',        'Autosteuerung',null,1,40,0,0,'true'),  /*  vertical=1,   Ratio=65, RatioTarget=0,Percentage, ShowBorder */
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Left',  'AutoTPADetails1', null,null),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Right',  'AutoTPADetails1', null,null),
+				),
+			'Stromheizung' => array(
+				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails2',        'AutoTPA',        'Stromheizung','Radiator',1,40,0,0,'true'),
+				array(IPSHEAT_WFCSPLITPANEL,   'AutoTPADetails2_Links',   'AutoTPADetails2',   null,null,0,270,0,1,'true'),				
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Left',  'AutoTPADetails2_Links', null,null),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_LeftDown',  'AutoTPADetails2_Links', null,null),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Right',  'AutoTPADetails2', null,null),
+				),
+			'Alexa' => array(
+				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails3',        'AutoTPA',        'Alexa','Eyes',1,40,0,0,'true'),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Left',  'AutoTPADetails3', null,null),
+				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Right',  'AutoTPADetails3', null,null),
+				),				
+		);
+
 	}
+
+/* für die Anwesenheitserkennung werden die angeführten Statusvariablen UND und ODER verknüpft */
+
+	function Autosteuerung_Anwesend() {
+		$logic = array(
+			'OR' => array(
+					//45364,
+						),
+			'AND' => array(
+							
+							),
+                );
+		return $logic;
+	}
+	
+	
+
+/**************************************************
+ *
+ * Alexa Konfiguration, Wenn Sprache erkannt werden, sowie bei Autosteuerung, Befehle abarbeiten
+ * Unterschied ist das Übergabeformat von Alexa.
+ *	TurnOnRequest, TurnOffRequest
+ *
+ ***********************************************************************/
+
+	function Alexa_GetEventConfiguration() {
+		$alexaConfiguration = array(
+			//"44404b3f-5f92-40ba-a7d5-63e8a83987a4" => array('OnUpdate','Status','name:ArbeitszimmerHintergrund',),        
+			);
+
+		return $alexaConfiguration;
+	}
+
+/* die folgende Funktion schaltet den Monitor ein und aus wenn die Maschine virtualisiert auf einem Server laeuft */
+
+	function monitorOnOff($status)
+		{
+		$remServer=array(
+//			"BKS-Server"           	=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/',
+					);
+		foreach ($remServer as $Server)
+			{
+			$rpc = new JSONRPC($Server);
+			}
+//		$monitor=array("Monitor" => "on");
+//		$monitor["Monitor"]=$status;
+//		$rpc->IPS_RunScriptEx(20996,$monitor);
+		}
+
+	function Autosteuerung_SetUp()
+		{
+		$as_setup = array(
+			"LogDirectory"     		=> 'C:/Scripts/Autosteuerung/',    /* Dont use Blanks or any other character not suitable for filenames */
+					);
+		return $as_setup;
+		}
 
 
 	function Autosteuerung_Speak() {

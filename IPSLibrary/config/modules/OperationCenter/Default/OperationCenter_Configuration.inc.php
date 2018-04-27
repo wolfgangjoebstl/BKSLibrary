@@ -17,13 +17,13 @@
 	 */    
 
 
-	/**@defgroup DetectMovement
-	 * @ingroup DetectMovement
+	/**@defgroup OperationCenter
+	 * @ingroup OperationCenter
 	 * @{
 	 *
-	 * Konfigurations File für DetectMovement
+	 * Konfigurations File für OperationCenter
 	 *
-	 * @file          Gartensteuerung_Configuration.inc.php
+	 * @file          OperationCenter_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -36,7 +36,14 @@
 
 	function OperationCenter_Configuration() {
 		$eventConfiguration = array(
-			"ROUTER" => array(
+			"INTERNET" 	=> array(
+				"Google"  =>  array (
+					"NAME"         		=> 	'Google',    Dont use Blanks or any othe character not suitable for filenames
+					"IPADRESSE"       	=> 	'8.8.8.8',
+					//"REBOOTSWITCH"    	=> 12345,
+					"NOK_HOURS"       	=>	5,
+						),
+				              ),				"ROUTER" => array(
 				"UMTS Router"  =>  array (
 					"NAME"         	=> 'UMTS_Router',    Dont use Blanks or any othe character not suitable for filenames
 					"TYP"          	=> 'MBRN3000',
@@ -241,6 +248,8 @@ function LogAlles_Hostnames() {
 
 	function OperationCenter_Configuration() {
 		$eventConfiguration = array(
+			"INTERNET" 	=> array(
+				              ),			
 			"ROUTER" 	=> array(
 				              ),
 			"CAM" 		=> array(                                          
@@ -261,24 +270,38 @@ function LogAlles_Hostnames() {
 
 function LogAlles_Manufacturers() {
 		return array(
-			"00-05-cd"      => "Denon Ltd",
-			"00-0c-29"      => "VMware Inc",
-			"00-11-32"      => "Synology Incorporated",
-			"00-1a-22"      => "eQ3 Entwicklung GmbH",
-			"00-17-88"   	 => "Philips Lighting BV",
-			"00-22-fb"      => "Intel Corporate",
-			"00-e0-4c"   	 => "Realtek Semiconductor Corp",
-			"10-fe-ed"      => "TP-LINK TECHNOLOGIES CO LTD",
-			"34-36-3b"      => "Apple Inc",
-			"78-ca-39"      => "Apple Inc",
-			"90-b1-c1"      => "Dell Inc",
-			"90-84-0d"      => "Apple Inc",
-			"90-e6-ba"      => "AsusTek Compunter Inc",
-			"ac-cf-23"      => "Hi-flying electronics technology Co ltd",
-			"c8-bc-c8"      => "Apple Inc",
-			"d8-30-62"      => "Apple Inc",
-			"e8-ab-fa"      => "Shenzen Reecam Tech Ltd",
-			
+			"00-04-20"			=> "Slim Devices, Inc",			
+			"00-05-cd"			=> "Denon Ltd",
+			"00-08-c9"			=> "TechniSat Digital GmbH Daun",			
+			"00-0c-29"			=> "VMware Inc",
+			"00-11-32"			=> "Synology Incorporated",
+			"00-1a-22"			=> "eQ3 Entwicklung GmbH",
+			"00-17-88"			=> "Philips Lighting BV",
+			"00-22-fb"			=> "Intel Corporate",
+			"00-e0-4c"			=> "Realtek Semiconductor Corp",
+			"10-02-b5"			=> "Intel Corporate",
+			"10-fe-ed"			=> "TP-LINK TECHNOLOGIES CO LTD",
+			"1c-b7-2c"			=> "ASUSTek Computer Inc.",
+			"34-36-3b"			=> "Apple Inc",
+			"38-2c-4a"			=> "ASUSTek Computer Inc.",
+			"40-b0-34"			=> "Hewlett Packard",
+			"48-4B-AA"			=> "Apple Inc",			
+			"5c-51-4f"			=> "Intel Corporate",
+			"78-ca-39"			=> "Apple Inc",
+			"80-ee-73"			=> "Shuttle Inc.",
+			"90-b1-c1"			=> "Dell Inc",
+			"90-84-0d"			=> "Apple Inc",
+			"90-e6-ba"			=> "AsusTek Computer Inc",
+			"ac-cf-23"			=> "Hi-flying electronics technology Co ltd",
+			"c8-bc-c8"			=> "Apple Inc",
+			"d8-30-62"			=> "Apple Inc",
+			"dc-85-de"			=> "Azurewave Technologies., inc.",
+			"e4-e0-c5"			=> "Samsung Electronics Co., LTD",
+			"e4-b3-18"			=> "Intel Corporate",
+			"e8-ab-fa"			=> "Shenzen Reecam Tech Ltd",
+			"ec-9b-f3"			=> "SAMSUNG ELECTRO-MECHANICS(THAILAND)",
+			"fc-a1-83"			=> "Amazon Technologies Inc.",
+			"fc-f1-36"			=> "Samsung Electronics Co.,Ltd",
 			         );
 			     }	
 				  
