@@ -1,187 +1,89 @@
 <?
-function GuthabensteuerungList() { return array(
-"Phone_06603192670" => array(
-         "OID" => 12618, 
-         "Name" => "Phone_06603192670", 
-         "Typ" => 3, 
-         "Order" => "100", 
-             	),
-"Phone_06602980747" => array(
-         "OID" => 56342, 
-         "Name" => "Phone_06602980747", 
-         "Typ" => 3, 
-         "Order" => "102", 
-             	),
-"Phone_06763242665" => array(
-         "OID" => 52044, 
-         "Name" => "Phone_06763242665", 
-         "Typ" => 3, 
-         "Order" => "104", 
-             	),
-"Phone_06603404332" => array(
-         "OID" => 12628, 
-         "Name" => "Phone_06603404332", 
-         "Typ" => 3, 
-         "Order" => "106", 
-             	),
-"Phone_06607625474" => array(
-         "OID" => 29823, 
-         "Name" => "Phone_06607625474", 
-         "Typ" => 3, 
-         "Order" => "108", 
-             	),
-"Phone_06602765645" => array(
-         "OID" => 19494, 
-         "Name" => "Phone_06602765645", 
-         "Typ" => 3, 
-         "Order" => "110", 
-             	),
-"Phone_06603404350" => array(
-         "OID" => 26808, 
-         "Name" => "Phone_06603404350", 
-         "Typ" => 3, 
-         "Order" => "112", 
-             	),
-"Phone_06605960456" => array(
-         "OID" => 17873, 
-         "Name" => "Phone_06605960456", 
-         "Typ" => 3, 
-         "Order" => "114", 
-             	),
-"Phone_06607845067" => array(
-         "OID" => 34977, 
-         "Name" => "Phone_06607845067", 
-         "Typ" => 3, 
-         "Order" => "116", 
-             	),
-"Phone_06605325076" => array(
-         "OID" => 11275, 
-         "Name" => "Phone_06605325076", 
-         "Typ" => 3, 
-         "Order" => "118", 
-             	),
-
-      );}
 
 function AmisStromverbrauchList() { return array(
-"Wohnzimmer_Wirkenergie" => array(
-         "OID" => 23399, 
-         "Name" => "Wohnzimmer_Wirkenergie", 
+"BKS01_Wirkenergie" => array(
+         "OID" => 20157, 
+         "Name" => "BKS01_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
          "Order"    => "100", 
              	),
-"Wohnzimmer_Wirkleistung" => array(
-         "OID" => 31445, 
-         "Name" => "Wohnzimmer_Wirkleistung", 
+"BKS01_Wirkleistung" => array(
+         "OID" => 41930, 
+         "Name" => "BKS01_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "101", 
              	),
-"Wohnzimmer-Effektlicht_Wirkenergie" => array(
-         "OID" => 14352, 
-         "Name" => "Wohnzimmer-Effektlicht_Wirkenergie", 
+"BKS01_StromL1" => array(
+         "OID" => 40931, 
+         "Name" => "BKS01_StromL1", 
          "Typ"      => 2, 
-         "Profile"  => "~Electricity", 
+         "Profile"  => "~Ampere", 
          "Order"    => "102", 
              	),
-"Wohnzimmer-Effektlicht_Wirkleistung" => array(
-         "OID" => 17352, 
-         "Name" => "Wohnzimmer-Effektlicht_Wirkleistung", 
+"BKS01_StromL2" => array(
+         "OID" => 28017, 
+         "Name" => "BKS01_StromL2", 
          "Typ"      => 2, 
-         "Profile"  => "~Power", 
+         "Profile"  => "~Ampere", 
          "Order"    => "103", 
              	),
-"Arbeitszimmer-Netzwerk_Wirkenergie" => array(
-         "OID" => 35875, 
-         "Name" => "Arbeitszimmer-Netzwerk_Wirkenergie", 
+"BKS01_StromL3" => array(
+         "OID" => 14761, 
+         "Name" => "BKS01_StromL3", 
          "Typ"      => 2, 
-         "Profile"  => "~Electricity", 
+         "Profile"  => "~Ampere", 
          "Order"    => "104", 
-             	),
-"Arbeitszimmer-Netzwerk_Wirkleistung" => array(
-         "OID" => 50977, 
-         "Name" => "Arbeitszimmer-Netzwerk_Wirkleistung", 
-         "Typ"      => 2, 
-         "Profile"  => "~Power", 
-         "Order"    => "105", 
-             	),
-"Esstisch-Effektlicht_Wirkenergie" => array(
-         "OID" => 39011, 
-         "Name" => "Esstisch-Effektlicht_Wirkenergie", 
-         "Typ"      => 2, 
-         "Profile"  => "~Electricity", 
-         "Order"    => "106", 
-             	),
-"Esstisch-Effektlicht_Wirkleistung" => array(
-         "OID" => 33998, 
-         "Name" => "Esstisch-Effektlicht_Wirkleistung", 
-         "Typ"      => 2, 
-         "Profile"  => "~Power", 
-         "Order"    => "107", 
-             	),
-"Statusanzeige_Wirkenergie" => array(
-         "OID" => 12580, 
-         "Name" => "Statusanzeige_Wirkenergie", 
-         "Typ"      => 2, 
-         "Profile"  => "~Electricity", 
-         "Order"    => "108", 
-             	),
-"Statusanzeige_Wirkleistung" => array(
-         "OID" => 23832, 
-         "Name" => "Statusanzeige_Wirkleistung", 
-         "Typ"      => 2, 
-         "Profile"  => "~Power", 
-         "Order"    => "109", 
              	),
 
       );}
 
 function SysInfoList() { return array(
 "Hostname" => array(
-         "OID" => 54221, 
+         "OID" => 15525, 
          "Name" => "Hostname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "200", 
              	),
 "Betriebssystemname" => array(
-         "OID" => 52163, 
+         "OID" => 42885, 
          "Name" => "Betriebssystemname", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "201", 
              	),
 "Betriebssystemversion" => array(
-         "OID" => 33438, 
+         "OID" => 24817, 
          "Name" => "Betriebssystemversion", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "202", 
              	),
 "Hotfix" => array(
-         "OID" => 29291, 
+         "OID" => 13963, 
          "Name" => "Hotfix", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "203", 
              	),
 "ExternalIP" => array(
-         "OID" => 38967, 
+         "OID" => 10165, 
          "Name" => "ExternalIP", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "204", 
              	),
 "IPS_UpTime" => array(
-         "OID" => 50802, 
+         "OID" => 10309, 
          "Name" => "IPS_UpTime", 
          "Typ"      => 3, 
          "Profile"  => "", 
          "Order"    => "205", 
              	),
 "IPS_Version" => array(
-         "OID" => 47824, 
+         "OID" => 22576, 
          "Name" => "IPS_Version", 
          "Typ"      => 3, 
          "Profile"  => "", 
@@ -191,6 +93,44 @@ function SysInfoList() { return array(
       );}
 
 function ROID_List() { return array(
+"LBG70-2Virt" => array(
+         "Adresse" => "http://wolfgangjoebstl@yahoo.com:Cloudg06@hupo35.ddns-instar.de:3876/api/", 
+         "VisRootID" => "35687", 
+         "WebFront" => "36315", 
+         "Administrator" => "30569", 
+         "RemoteAccess" => "43362", 
+         "ServerName" => "10095", 
+         "Temperatur" => "36141", 
+         "Schalter" => "19094", 
+         "Kontakte" => "47607", 
+         "Taster" => "19095", 
+         "Bewegung" => "37148", 
+         "HeatControl" => "47610", 
+         "HeatSet" => "10097", 
+         "Humidity" => "36145", 
+         "SysInfo" => "19097", 
+         "Andere" => "32174", 
+         "ArchiveHandler" => "27926", 
+             	),
+"BKS-VIS" => array(
+         "Adresse" => "http://wolfgangjoebstl@yahoo.com:cloudg06@sina73.ddns-instar.com:3778/api/", 
+         "VisRootID" => "39666", 
+         "WebFront" => "30860", 
+         "Administrator" => "42703", 
+         "RemoteAccess" => "51433", 
+         "ServerName" => "10082", 
+         "Temperatur" => "36270", 
+         "Schalter" => "19165", 
+         "Kontakte" => "47737", 
+         "Taster" => "37267", 
+         "Bewegung" => "10083", 
+         "HeatControl" => "36275", 
+         "HeatSet" => "32270", 
+         "Humidity" => "26223", 
+         "SysInfo" => "51396", 
+         "Andere" => "48394", 
+         "ArchiveHandler" => "45584", 
+             	),
       );}
 
 ?>

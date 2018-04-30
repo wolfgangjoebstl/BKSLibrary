@@ -116,7 +116,7 @@ function StartPageWrite($PageType)
 	$todayID = @IPS_GetObjectIDByName("IPSWeatherForcastAT",$todayID);
 	if ($todayID == false)
 		{
-		echo "weatherforecast nicht installiert.\n";
+		//echo "weatherforecast nicht installiert.\n";
 		$noweather=true;
 		}
 	else

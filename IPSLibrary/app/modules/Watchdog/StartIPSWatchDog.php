@@ -158,12 +158,6 @@
 	   $processStart["Firefox.exe"]="Off";
 	   }
 
-	IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen */
-	$handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
-	echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
-	fclose($handle3);
-
-
 	/********************************************************************
 	 *
 	 * Execute
@@ -327,9 +321,14 @@
 			}
 		}
 
+	/* bei diesen Programmen gab es manchmal Probleme das die User Session nicht gefunden werden kann. Daher kommen
+	 * sie nun am Schluss und ein Fehler stoppt nicht den Timer3 Aufruf, Setzen des Aktivierungs Bits
+	 */
 
-
-
+	IPS_ExecuteEx($verzeichnis.$unterverzeichnis."read_username.bat","", true, true,-1);  /* warten dass fertig, sonst wird alter Wert ausgelesen */
+	$handle3=fopen($verzeichnis.$unterverzeichnis."username.txt","r");
+	echo "Username von dem aus IP Symcon zugreift ist : ".fgets($handle3);
+	fclose($handle3);
 
 	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","/APPS", true, true);
 	echo $result;

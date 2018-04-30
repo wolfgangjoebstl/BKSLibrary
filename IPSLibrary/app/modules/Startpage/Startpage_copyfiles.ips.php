@@ -42,20 +42,42 @@
  *******************************/
 
 echo "Bilderverzeichnis auslesen und kopieren : ".$bilderverzeichnis."\n";
+$bilderverzeichnis = str_replace('\\','/',$bilderverzeichnis);
 
 $file=array();
-$handle=opendir ($bilderverzeichnis);
-$i=0;
-while ( false !== ($datei = readdir ($handle)) )
+if ( is_dir ( $bilderverzeichnis ) )
 	{
-	if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
+	$handle=opendir ($bilderverzeichnis);
+	$i=0;
+	while ( false !== ($datei = readdir ($handle)) )
 		{
-		$i++;
- 		$file[$i]=$datei;
+		if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
+			{
+			$i++;
+	 		$file[$i]=$datei;
+			}
 		}
+	closedir($handle);
+	//print_r($file);
+	}/* ende if isdir */
+else
+	{
+	echo "Kein Verzeichnis mit dem Namen \"".$bilderverzeichnis."\" vorhanden.\n";
+	$dirstruct=explode("/",$bilderverzeichnis);
+	//print_r($dirstruct);
+	$directoryPath="";
+	foreach ($dirstruct as $directory)
+		{
+		$directoryOK=$directoryPath;
+		$directoryPath.=$directory."/";
+		if ( is_dir ( $directoryPath ) ) {;}
+		else
+			{
+			if ($directory !=="") echo "Error : ".$directory." is not in ".$directoryOK."\n";
+			}
+		//echo $directoryPath."\n";
+		} 			   
 	}
-closedir($handle);
-//print_r($file);
 
 $check=array();
 $handle=opendir ($picturedir);
