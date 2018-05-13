@@ -840,6 +840,9 @@ class Autosteuerung
 					$anwesendID=IPS_GetVariableIDByName("SchalterAnwesend",$ID);
 					//echo "SchalterAnwesend OID : ".$anwesendID."\n";
 					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($anwesendID);					
+					$anwesend2ID=IPS_GetVariableIDByName("StatusAnwesend",$ID);
+					//echo "SchalterAnwesend OID : ".$anwesendID."\n";
+					$children[IPS_GetName($ID)]["STATUS2"]=(integer)GetValue($anwesend2ID);					
 					break;					
 				case "Alarmanlage":
 					$alarmID=IPS_GetVariableIDByName("SchalterAlarmanlage",$ID);
@@ -959,6 +962,20 @@ class Autosteuerung
 			}		
 		}
 
+	public function isitmove()
+		{
+		$functions=self::getFunctions();
+		if ( isset($functions["Anwesenheitserkennung"]["STATUS2"]) )
+			{
+			if ($functions["Anwesenheitserkennung"]["STATUS2"] == 1) { return(true); }
+			else  { return(false); }
+			}
+		else
+			{
+			return (true);	/* default moving */	
+			}		
+		}
+
 	public function isitalarm()
 		{
 		$functions=self::getFunctions();
@@ -1071,9 +1088,10 @@ class Autosteuerung
 	/***************************************
 	 *
 	 * Vorwert erfassen und speichern, eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
+	 * wird bei jeder Änderung aufgerufen
 	 *
 	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
-	 * dem selben Variablennamen machen und daraus den Vorwert ableiten
+	 * dem selben Variablennamen machen (plus Parentname) und daraus den Vorwert ableiten
 	 *
 	 ******************************************************************/
 
@@ -1090,8 +1108,9 @@ class Autosteuerung
 				{	 
 				echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
-				$mirrorVariableID=CreateVariable (IPS_GetName($variableID), 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
+						"   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				SetValue($mirrorVariableID,$value);
 				return($oldValue);
@@ -1100,6 +1119,39 @@ class Autosteuerung
 		else return ($value);	
 		}
 
+	/***************************************
+	 *
+	 * Vorwert erfassen und speichern wenn Änderung groesser $dif ist
+	 *
+	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
+	 * dem selben Variablennamen machen (plus Parentname plus dif)  und daraus den Vorwert ableiten
+	 *
+	 ******************************************************************/
+
+	public function setNewValueIfDif($variableID,$value,$dif)
+		{
+		if ($this->CategoryId_Stromheizung !== false)
+			{
+			if ( !(IPS_ObjectExists($variableID)) ) 
+				{
+				echo "Variable ID : ".$variableID." existiert nicht.\n";
+				return($value);
+				}
+			else
+				{	 
+				echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_Dif", 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
+						"   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				$oldValue=GetValue($mirrorVariableID);
+				if (abs($oldValue-$value)>=$dif) SetValue($mirrorVariableID,$value);
+				return($oldValue);
+				}
+			}
+		else return ($value);	
+		}
+		
 	/***************************************
 	 *
 	 * hier wird der Befehl in die Einzelbefehle zerlegt, und Kurzbefehle in die Langform gebracht
@@ -1621,7 +1673,7 @@ class Autosteuerung
 	 *
 	 ************************************/
 
-	public function EvaluateCommand($befehl,$result=array(),$simulate=false)
+	public function EvaluateCommand($befehl,array &$result,$simulate=false)
 		{
 		//$this->log->LogMessage("EvaluateCommand : ".json_encode($befehl));		
 		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
@@ -1957,7 +2009,7 @@ class Autosteuerung
 							break;
 						}
 					}
-				else
+				else	/*  zweiter Paramneter xx des IF Befehls IF:xx:true */
 					{ 	
 					$result["COND"]=$cond;
 					switch ($cond)
@@ -2053,6 +2105,19 @@ class Autosteuerung
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim aufwachen ');								
 								}								
 							break;
+						case "MOVE":
+							/* nur Schalten wenn wir zuhause sind */
+							if ( self::isitmove() == false )
+								{
+								$result["SWITCH"]=false;
+								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
+								}
+							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+								{
+								$result["SWITCH"]=true;
+								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir bewegen uns ');								
+								}
+							break;
 						case "HOME":
 							/* nur Schalten wenn wir zuhause sind */
 							if ( self::isithome() == false )
@@ -2110,6 +2175,13 @@ class Autosteuerung
 						}		
 					}			
 				break;
+			case "IFDIF":
+				$dif=(float)($befehl[1]);
+				$oldvalue=$this->setNewValueIfDif($result["SOURCEID"],$result["STATUS"],$dif);
+				echo "IFDI Befehl erkannt : aktuelle Temperatur : ".($result["STATUS"])."    ".$dif." alter ifdif Wert : ".$oldvalue."\n";
+				if (abs($result["STATUS"]-$oldvalue)<$dif) $result["SWITCH"]=false;
+				//print_r($result);
+				break;	
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
 				$cond=strtoupper($befehl[1]);
 				$result["COND"]=$cond;
@@ -2171,6 +2243,14 @@ class Autosteuerung
 							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
 							}
 						break;
+					case "MOVE":
+						/* Nicht Schalten wenn wir zuhause sind */
+						if ( self::isitmove() == true )
+							{
+							$result["SWITCH"]=false;
+							IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
+							}
+						break;
 					case "HOME":
 						/* Nicht Schalten wenn wir zuhause sind */
 						if ( self::isithome() == true )
@@ -2210,6 +2290,12 @@ class Autosteuerung
 		return ($result);
 		}	
 
+	private function evalCom_IFDIF()
+		{
+		
+		
+		}
+
 	/***************************************
 	 *
 	 *  HeatControl, Stromheizung erfordert Regelfunktionen, die können entweder auf Switch oder Level gehen. 
@@ -2219,7 +2305,7 @@ class Autosteuerung
 	 *******************************************************/
 
 
-	public function ControlSwitchLevel($result,$simulate=false)
+	public function ControlSwitchLevel(array &$result,$simulate=false)
 		{
 		/* Defaultwerte bestimmen, festlegen */
 		$ergebnis="";
@@ -2538,7 +2624,18 @@ class Autosteuerung
 					}
 					
 				break;	
-			case "":			/* kein Modul definiert, auch nicht Default Wert dann sicherheitshalber nichts machen */
+			case "":			
+				/* kein Modul definiert, auch nicht Default Wert, sicherheitshalber nichts machen 
+				 * ausser wenn OID gesetzt ist, das funktioniert immer. 
+				 */
+				if (isset($result["OID"]) == true)
+					{
+					IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
+					$result["IPSLIGHT"]="None";
+					$command.="SetValue(".$result["OID"].",false);";
+					$result["COMMAND"]=$command;
+					$ergebnis .= self::switchObject($result,$simulate);					
+					}			
 				break;	
 			default:
 				/* nachschauen ob das gesuchte Modul überhaupt installiert ist */
@@ -2614,31 +2711,82 @@ class Autosteuerung
 					/* gültiger Wert zwischen zwei # Zeichen erkannt */
 					$var=strtoupper(substr($result["SPEAK"],$start+$pos+1,$len));
 					//echo "  eingebettete Variable ".$var." Pos : ".$pos." Len ".$len." erkannt. \n";
+					$part1=substr($result["SPEAK"],0,$start+$pos);
+					$part2=substr($result["SPEAK"],$start+$pos+$len+2);
 					switch ($var)
 						{
 						case "WERT":
-							$part1=substr($result["SPEAK"],0,$start+$pos);
-							$part2=substr($result["SPEAK"],$start+$pos+$len+2);
-							$temperatur=$result["STATUS"];
-							$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10)." Grad";				
-							//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
-							$result["SPEAK"]=$part1.$wert.$part2;	
-							//echo $result["SPEAK"]."\n";
+							$typObj=IPS_GetObject($result["SOURCEID"])["ObjectType"];
+							$formWert="";
+							echo "Speak Wert ".$result["STATUS"]." von ".$result["SOURCEID"]." Typ ".$typObj."   (";
+							//Objekt-Typ (0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link)
+							switch ($typObj)
+								{
+								case 0: echo "Kategorie"; break;
+								case 1: echo "Instanz"; break;
+								case 2: 
+									echo "Variable  "; 
+									$typWert=IPS_GetVariable($result["SOURCEID"])["VariableType"];
+									switch ($typWert)
+										{
+										case 0: echo "Boolean"; break;
+										case 1: echo "Integer"; break;
+										case 2: echo "Float"; break;
+										case 3: echo "String"; break;
+										default:  echo "unknown"; break;
+										}
+									$formWert=IPS_GetVariable($result["SOURCEID"])["VariableProfile"].IPS_GetVariable($result["SOURCEID"])["VariableCustomProfile"];										
+									break;
+								case 3: echo "Skript"; break;
+								case 4: echo "Ereignis"; break;
+								case 5: echo "Medie"; break;
+								case 6: echo "link"; break;
+								default:  echo "unknown"; break;
+								}
+							if ($typObj==2)
+								{	
+								if ($formWert == "") echo ")\n";	
+								else echo "  ".$formWert."   ".GetValueFormatted($result["SOURCEID"]).")\n";
+								if ($typWert==2)
+									{
+									$temperatur=$result["STATUS"];
+									$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10);
+									}
+								else $wert=$result["STATUS"];
+								switch ($formWert)
+									{
+									case "~Temperature":
+										$wert.=" Grad";
+										break;
+									default: break;
+									}																				
+								//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+								}
+							else $wert="Achtung Fehler, Wert ist keine Variable";
 							break;
+						case "WERTBOOL":
+							if ( (IPS_GetVariable($result["SOURCEID"])["VariableType"])==2)
+								{
+								$temperatur=$result["STATUS"];
+								$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10);
+								}
+							else $wert=($result["SOURCEID"]?"Aus":"Ein");
+							break;
+						case "WERTFORM":
+							$wert=GetValueFormatted($result["SOURCEID"]);
+							break;	
 						case "CHANGE":
-							$part1=substr($result["SPEAK"],0,$pos+$start);
-							$part2=substr($result["SPEAK"],$start+$pos+$len+2);
 							$wert="geändert";
 							if ( isset($result["OLDSTATUS"]) )
 								{
 								if ($result["STATUS"]>$result["OLDSTATUS"]) $wert="erhöht";
 								if ($result["STATUS"]<$result["OLDSTATUS"]) $wert="gesenkt";
 								}
-							$result["SPEAK"]=$part1.$wert.$part2;	
 							break;
 						default:
 							break;
 						}
+					$result["SPEAK"]=$part1.$wert.$part2;	
 					$start+=$pos+strlen($wert);					
 					//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
 					}
@@ -3609,13 +3757,14 @@ function Anwesenheit($params,$status,$variableID,$simulate=false)
 	IPSLogger_Dbg(__file__, 'Aufruf Routine Anwesenheit mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
-	$parges=$auto->ParseCommand($params);
+	$parges=$auto->ParseCommand($params,$status,$simulate);
 	$command=array(); $entry=1;
 	//print_r($parges);
 	foreach ($parges as $Kommando)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 		$switch=true; $delayValue=0; $speak="Status"; $switchOID=0; // fuer Kompatibilitaetszwecke
 		
 		IPSLogger_Dbg(__file__,"Aufruf mit ***** ".json_encode($Kommando));
@@ -3625,7 +3774,7 @@ function Anwesenheit($params,$status,$variableID,$simulate=false)
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					IPSLogger_Dbg(__file__,"COMMAND: ".$befehl[0]." ".json_encode($command[$entry]));
 					break;
 				}	
@@ -3634,11 +3783,14 @@ function Anwesenheit($params,$status,$variableID,$simulate=false)
 		
 		if (isset($result["DELAY"])==true)
 			{
-			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
-			print_r($result);
-			if ($simulate==false)
+			if ($result["DELAY"]>0)
 				{
-				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+				echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
+				print_r($result);
+				if ($simulate==false)
+					{
+					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+					}
 				}
 			}
 		$entry++;	
@@ -3679,12 +3831,13 @@ function iTunesSteuerung($params,$status,$variableID,$simulate=false)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 		foreach ($Kommando as $num => $befehl)
 			{
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					//echo "  ".$entry.":(".memory_get_usage()." Byte).";
 					break;
 				}	
@@ -3726,12 +3879,13 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 		foreach ($Kommando as $num => $befehl)
 			{
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					break;
 				}	
 			} /* Ende foreach Befehl */
@@ -3792,6 +3946,7 @@ function Status($params,$status,$variableID,$simulate=false)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 	
 		foreach ($Kommando as $num => $befehl)
 			{
@@ -3799,7 +3954,7 @@ function Status($params,$status,$variableID,$simulate=false)
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					//echo "                  ".json_encode($command[$entry])."\n";
 					break;
 				}	
@@ -3842,12 +3997,15 @@ function Status($params,$status,$variableID,$simulate=false)
 				}
 			if (isset($result["DELAY"])==true)
 				{
-				echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				//print_r($result);
-				if ($simulate==false)
+				if ($result["DELAY"]>0)
 					{
-					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
-					}
+					echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+					//print_r($result);
+					if ($simulate==false)
+						{
+						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+						}
+					}	
 				}
 			}	
 		$entry++;			
@@ -3875,7 +4033,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 	IPSLogger_Dbg(__file__, 'Aufruf Routine StatusRGB mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
-	$parges=$auto->ParseCommand($params);
+	$parges=$auto->ParseCommand($params,$status,$simulate);
 	$command=array(); $entry=1;	
 
 	if ($simulate==true) 
@@ -3888,6 +4046,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 
 		foreach ($Kommando as $befehl)
 			{
@@ -3895,7 +4054,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					break;
 				}	
 			} /* Ende foreach Befehl */
@@ -3903,11 +4062,14 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 		
 		if (isset($result["DELAY"])==true)
 			{
-			echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
-			print_r($result);
-			if ($simulate==false)
+			if ($result["DELAY"]>0)
 				{
-				setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+				echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
+				print_r($result);
+				if ($simulate==false)
+					{
+					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+					}
 				}
 			}
 		$entry++;			
@@ -3997,19 +4159,20 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 		$command[$entry]["SWITCH"]=true;	  					/* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;					/* neuer Wert der den befehl ausgelöst hat */
 		$command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */	
-	
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
+			
 		foreach ($Kommando as $num => $befehl)
 			{
 			//echo $kom."|".$num." : Bearbeite Befehl ".$befehl[0]."\n";
 			switch (strtoupper($befehl[0]))
 				{
 				default:
-					$command[$entry]=$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
 					break;
 				}	
 			} /* Ende foreach Befehl */
 		echo "Ergebnis EvaluateCommand ".$entry." : ".json_encode($command[$entry])."\n";
-		$command[$entry]=$auto->ControlSwitchLevel($command[$entry],$simulate);	
+		$auto->ControlSwitchLevel($command[$entry],$simulate);	
 		
 		if ($simulate) echo $command[$entry]["COMMENT"]."\n";
 		else $nachrichten->LogNachrichten($command[$entry]["COMMENT"]);
@@ -4061,11 +4224,14 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 				}
 			if (isset($result["DELAY"])==true)
 				{
-				echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				//print_r($result);
-				if ($simulate==false)
+				if ($result["DELAY"]>0)
 					{
-					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+					echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+					//print_r($result);
+					if ($simulate==false)
+						{
+						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+						}
 					}
 				}
 			}	

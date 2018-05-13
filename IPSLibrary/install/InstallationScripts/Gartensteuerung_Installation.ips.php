@@ -383,48 +383,44 @@
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
-		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		echo "Webportal Administrator :Gartensteuerung Kategorie installieren in: ".$categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
+		echo "    Gartensteuerung Kategorie installieren als: ".$WFC10_Path." und Inhalt löschen und dann verstecken.\n";		
 
-		//DeleteWFCItems($WFC10_ConfigId, "root");
-		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
-		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
-						
-		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		//echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$WFC10_TabPaneItem." ".$WFC10_TabPaneParent." ".$WFC10_TabPaneOrder." ".$WFC10_TabPaneIcon."\n";
-		//CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTP", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
-		//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTP",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
-
-		/*************************************/
-
-		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
-		echo "\nWebportal Administrator.Gartensteuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		EmptyCategory($categoryId_WebFrontAdministrator);
 		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontAdministrator, 10);
 		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontAdministrator, 20);
-		echo "Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
+		echo "     Kategorien erstellt, Main: ".$categoryId_WebFrontAdministrator." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+		
+	
+		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") die ID Admin für die gesamte Kategorie Visualization installieren.\n";
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
+		echo "       Delete/hide IDs root und dwd.\n";
+		//DeleteWFCItems($WFC10_ConfigId, "root");
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
+						
+		/*************************************/
+		/* Neue Tab für untergeordnete Anzeigen wie eben Gartensteuerung in AutoTPA und andere schaffen */
 		/*************************************/
 
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
 		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
 		 	{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$tabItem."\n";
+			echo "   löscht TabItem ID ".$tabItem."\n";
 			DeleteWFCItems($WFC10_ConfigId, $tabItem);
 			}
 		else
 			{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+			echo "    TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
-		
-		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+		echo "        erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon); /* Autosteuerung Haeuschen */
-		
-		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName."2",     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		echo "        erzeugt Split TabItem :".$tabItem." mit Name ".$WFC10_TabName." in ".$WFC10_TabPaneItem." und darunter die Items Left und Right.\n";
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    $WFC10_TabOrder,     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 

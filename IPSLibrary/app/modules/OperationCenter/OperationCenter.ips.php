@@ -897,7 +897,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 			$homematicManager = new Homematic_OperationCenter();
 			$str=$homematicManager->RefreshRSSI();
-			$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Modules.OperationCenter.HomematicRSSI');
+			$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
 			$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox');	
 			SetValue($HomematicErreichbarkeit,$str);						 	
 			$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');

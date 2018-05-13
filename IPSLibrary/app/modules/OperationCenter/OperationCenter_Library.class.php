@@ -1,6 +1,22 @@
 <?
 
-
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	 
 /*********************************************************************************************/
 /*********************************************************************************************/
 /*                                                                                           */
@@ -23,6 +39,7 @@
  *
  * sys device ping IP Adresse von LED Modul oder DENON Receiver
  * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
+ *
  *   device_ping  
  *   server_ping
  *   writeServerPingResults
@@ -3451,70 +3468,68 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 				}
 			}
 		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-		$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+		$scriptIdSprachsteuerung   = @IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+		if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
+		if ($sprachsteuerung==true)
+			{
+			$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+			$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+			$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+			$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+			$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+			$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+			$id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+			echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
 
-		$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-		$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-		$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-		$id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
-		$id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-		$id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
-	   $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-		echo "\nAlle IDs :".$id_sk1_musik." ".$id_sk1_musik_status." ".$id_sk1_musik_vol." ".$id_sk1_ton." ".$id_sk1_ton_status." ".$id_sk1_tts."\n";
-
-		$wav = array
-		(
-      "hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
-      "meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
-      "abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
-      "aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
-      "coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
-      "thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
-      "clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
-      "bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
-      "horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
-      "sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
-		);
-		switch ($sk)
-		{
-			//---------------------------------------------------------------------
-			case '1':
-
-			  		$status = GetValueInteger($id_sk1_ton_status);
-				   while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
-
-			      $sk1_counter = GetValueInteger($id_sk1_counter);
-   	 			$sk1_counter++;
-			      SetValueInteger($id_sk1_counter, $sk1_counter);
+			$wav = array
+				(
+				"hinweis"  => IPS_GetKernelDir()."media/wav/hinweis.wav",
+				"meldung"  => IPS_GetKernelDir()."media/wav/meldung.wav",
+				"abmelden" => IPS_GetKernelDir()."media/wav/abmelden.wav",
+				"aus"      => IPS_GetKernelDir()."media/wav/aus.wav",
+				"coin"     => IPS_GetKernelDir()."media/wav/coin-fall.wav",
+				"thunder"  => IPS_GetKernelDir()."media/wav/thunder.wav",
+				"clock"    => IPS_GetKernelDir()."media/wav/clock.wav",
+				"bell"     => IPS_GetKernelDir()."media/wav/bell.wav",
+				"horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
+				"sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
+				);
+			switch ($sk)
+				{
+				//---------------------------------------------------------------------
+				case '1':
+					$status = GetValueInteger($id_sk1_ton_status);
+					while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
+					$sk1_counter = GetValueInteger($id_sk1_counter);
+					$sk1_counter++;
+					SetValueInteger($id_sk1_counter, $sk1_counter);
 					if($sk1_counter >= 9) SetValueInteger($id_sk1_counter, $sk1_counter = 0);
-
 				 	if($ton == "zeit")
  						{
 						$time = time();
 						// die Integer-Wandlung dient dazu eine führende Null zu beseitigen
-	   				$hrs = (integer)date("H", $time);
-   					$min = (integer)date("i", $time);
-	   				$sec = (integer)date("s", $time);
-   					// "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
-   					if($hrs==1) $hrs = "ein";
-	   				$minuten = "Minuten";
-   					if($min==1)
-   						{
-      					$min = "eine";
-	      				$minuten = "Minute";
-			   			}
-   					// Zeitansage über Text-To-Speech
-  	 					$ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
-			  	 		$ton        = "";
-					 	}
-
-			   	//Lautstärke von Musik am Anfang speichern
+						$hrs = (integer)date("H", $time);
+						$min = (integer)date("i", $time);
+						$sec = (integer)date("s", $time);
+						// "kosmetische Behandlung" für Ein- und Mehrzahl der Minutenangabe
+						if($hrs==1) $hrs = "ein";
+						$minuten = "Minuten";
+						if($min==1)
+							{
+							$min = "eine";
+							$minuten = "Minute";
+							}
+						// Zeitansage über Text-To-Speech
+		 				$ansagetext = "Die aktuelle Uhrzeit ist ". $hrs. " Uhr und ". $min. " ". $minuten;
+						$ton        = "";
+						}
+					//Lautstärke von Musik am Anfang speichern
 					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
-      			$musik_status 			 = GetValueInteger($id_sk1_musik_status);
+					$musik_status 			 = GetValueInteger($id_sk1_musik_status);
 
 					if($modus == 2)
 						{
-					   if($musik_status == 1)
+						if($musik_status == 1)
 							{
 							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
 							WAC_Pause($id_sk1_musik);
@@ -3525,34 +3540,34 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 					if($modus == 3)
 						{
 						//Slider
-		  			 	for ($musik_vol; $musik_vol>=1; $musik_vol--)
-   					  	{
-		      			WAC_SetVolume ($id_sk1_musik, $musik_vol);
-      			   	$slider = 3000; //Zeit des Sliders in ms
+						for ($musik_vol; $musik_vol>=1; $musik_vol--)
+							{
+							WAC_SetVolume ($id_sk1_musik, $musik_vol);
+							$slider = 3000; //Zeit des Sliders in ms
 							if($merken>0) $warten = $slider/$merken; else $warten = 0;
 							IPS_Sleep($warten);
-			     			}
-     					}
+							}
+						}
 
 					if($ton != "" and $modus != 1)
 						{
-  	   				WAC_Stop($id_sk1_ton);
-		      		WAC_SetRepeat($id_sk1_ton, false);
-     					WAC_ClearPlaylist($id_sk1_ton);
-     					WAC_AddFile($id_sk1_ton,$wav[$ton]);
-		     			WAC_Play($id_sk1_ton);
-		            //solange in Schleife bleiben wie 1 = play
-		   	  		sleep(1);
-      			  $status = getvalue($id_sk1_ton_status);
-  	   			  while ($status == 1)	$status = getvalue($id_sk1_ton_status);
-			 		  }
+						WAC_Stop($id_sk1_ton);
+						WAC_SetRepeat($id_sk1_ton, false);
+						WAC_ClearPlaylist($id_sk1_ton);
+						WAC_AddFile($id_sk1_ton,$wav[$ton]);
+						WAC_Play($id_sk1_ton);
+						//solange in Schleife bleiben wie 1 = play
+						sleep(1);
+						$status = getvalue($id_sk1_ton_status);
+						while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+			 			}
 
 					if($ansagetext !="")
 						{
   						WAC_Stop($id_sk1_ton);
-			      	WAC_SetRepeat($id_sk1_ton, false);
-			         WAC_ClearPlaylist($id_sk1_ton);
-   			      $status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
+						WAC_SetRepeat($id_sk1_ton, false);
+						WAC_ClearPlaylist($id_sk1_ton);
+						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) echo "Error";
 		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
 		     			echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
@@ -3562,25 +3577,25 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 					//Script solange anghalten wie Sprachausgabe läuft
 					if($modus != 1)
 						{
-			   		sleep(1);
+						sleep(1);
 						$status = GetValueInteger($id_sk1_ton_status);
-   	  				while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
-			   		}
+						while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
+						}
 
 			 		if($modus == 3)
 						{
-			   		$musik_vol = GetValueInteger($id_sk1_musik_vol);
-		   			for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
-		      			{
-				         WAC_SetVolume ($id_sk1_musik, $musik_vol);
-      	   		   $slider = 3000; //Zeit des Sliders in ms
+						$musik_vol = GetValueInteger($id_sk1_musik_vol);
+		   				for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
+		      				{
+							WAC_SetVolume ($id_sk1_musik, $musik_vol);
+							$slider = 3000; //Zeit des Sliders in ms
 							if($merken>0) $warten = $slider/$merken; else $warten = 0;
 							IPS_Sleep($warten);
+      						}
       					}
-      				}
 					if($modus == 2)
 						{
-					   if($musik_status == 1)
+						if($musik_status == 1)
 							{
 							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
 							WAC_Pause($id_sk1_musik);
@@ -3588,13 +3603,14 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 						}
 					break;
 
-			//---------------------------------------------------------------------
+				//---------------------------------------------------------------------
 
-			//Hier können weitere Soundkarten eingefügt werden
-			//case '2':
-			//entsprechende Werte bitte anpassen
+				//Hier können weitere Soundkarten eingefügt werden
+				//case '2':
+				//entsprechende Werte bitte anpassen
 
-		}  //end switch
+				}  //end switch
+			} //endif	
  	}   //end function
 
 

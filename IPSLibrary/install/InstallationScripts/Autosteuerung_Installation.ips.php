@@ -263,7 +263,7 @@
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."\n";
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
-		
+		/* Spezialfunktionen hier abarbeiten, default am Ende des Switches */
 		switch (strtoupper($AutoSetSwitch["NAME"]))
 			{
 			case "ANWESENHEITSERKENNUNG":

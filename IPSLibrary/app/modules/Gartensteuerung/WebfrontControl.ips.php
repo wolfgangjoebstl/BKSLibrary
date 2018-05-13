@@ -26,9 +26,10 @@
  *
  ****************************************************************/
 
- if ($_IPS['SENDER']=="WebFront")
+if ($_IPS['SENDER']=="WebFront")
 	{
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
 	IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
 
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	

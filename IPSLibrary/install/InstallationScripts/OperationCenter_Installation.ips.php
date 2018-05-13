@@ -234,7 +234,14 @@
 		$input = CreateVariable("RoutePoint".$i,3,$categoryId_Route, $i*5, "",null,null,""  );  /* Name Type ParentID Position */
 		}
 
+	/******************************************************
 
+				INIT, SystemInfo
+
+	*************************************************************/
+
+	$categoryId_SystemInfo    = CreateCategory('SystemInfo',   $CategoryIdData, 230);
+	
 	/******************************************************
 
 				INIT, Webcams FTP Folder auslesen und auswerten
@@ -497,6 +504,7 @@
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
+		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 		CreateLinkByDestination('HomematicErreichbarkeit', $CategoryIdHomematicErreichbarkeit,    $categoryId_WebFront,  100);
 		CreateLinkByDestination('HomematicGeraeteliste', $CategoryIdHomematicGeraeteliste,    $categoryId_WebFront,  110);

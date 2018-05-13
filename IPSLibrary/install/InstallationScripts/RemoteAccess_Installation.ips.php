@@ -88,7 +88,6 @@
 	/* Timer so konfigurieren dass sie sich nicht in die Quere kommen */
 
 	echo "Timer programmieren für :\n";
-	$tim10ID=CreateTimerRA("EvaluateHeatControl",15);
 	$tim1ID=CreateTimerRA("EvaluateHomematic",20);
 	$tim2ID=CreateTimerRA("EvaluateMotion",25);
 	$tim3ID=CreateTimerRA("EvaluateAndere",30);
@@ -97,9 +96,9 @@
 	$tim6ID=CreateTimerRA("EvaluateSwitch",45);
 	$tim7ID=CreateTimerRA("EvaluateButton",50);
 	$tim8ID=CreateTimerRA("EvaluateVariables",55);
-
-	
 	$tim9ID=CreateTimerRA("RemoteAccess",05);		/* erzeugt die ROID_Liste */
+	$tim10ID=CreateTimerRA("EvaluateHeatControl",15);
+	$tim11ID=CreateTimerRA("UpdateAllObjects",10);
 
 	/************************************************************************************************
 	 *

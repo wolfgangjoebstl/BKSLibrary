@@ -1,14 +1,12 @@
 <?
 
 /*
-	 * @defgroup ipstwilight IPSTwilight
-	 * @ingroup modules_weather
-	 * @{
+	 * @defgroup Monitor_onoff Stzartpage
 	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
+	 * Script zur Ansteuerung des Monitors ueber Modul Startpage und OperationCenter
 	 *
 	 *
-	 * @file          Gartensteuerung.ips.php
+	 * @file          Monitor_OnOff.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
@@ -42,7 +40,7 @@ $configuration=startpage_configuration();
 
 if (isset($_IPS['Monitor']))
 	{
-   if ($_IPS['Monitor']=="on")
+	if ($_IPS['Monitor']=="on")
 		{
 		IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
 		if (isset($installedModules["OperationCenter"])==true)
@@ -51,7 +49,7 @@ if (isset($_IPS['Monitor']))
 			tts_play(1,'Monitor ein','',2);
 			}
 		}
-   if ($_IPS['Monitor']=="off")
+	if ($_IPS['Monitor']=="off")
 		{
 		IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "monitor off", false, false, 1);
 		if (isset($installedModules["OperationCenter"])==true)
@@ -60,7 +58,7 @@ if (isset($_IPS['Monitor']))
 			tts_play(1,'Monitor aus','',2);
 			}
 		}
-   }
+	}
 
 
 if ($_IPS['SENDER']=="Execute")

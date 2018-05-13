@@ -450,7 +450,7 @@ if ($_IPS['SENDER']=="Execute")
 		switch ($entry[1])
 			{
 			case "Anwesenheit":
-				$status=Anwesenheit($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
+				$status=Anwesenheit($entry,GetValue($key),$key,true);  // Simulation aktiv, Testwert ist +1
 				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
 				break;
 			case "iTunes":
@@ -470,7 +470,7 @@ if ($_IPS['SENDER']=="Execute")
 			case "HeatControl":
 			case "Heizung":
 				//print_r($entry);
-				$status=Ventilator2($entry,18,26409,true);  // Simulation aktiv, Testwert ist 32
+				$status=Ventilator2($entry,GetValue($key),$key,true);  // Simulation aktiv, Testwert ist 32
 				break;	
 			case "iTunes":
 				$status=iTunesSteuerung($entry,$i++,12345,true);

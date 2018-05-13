@@ -206,20 +206,23 @@
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+		echo "\nWebportal Administrator: Startpage Kategorie installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."/".IPS_GetName(IPS_GetParent($categoryId_AdminWebFront))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($categoryId_AdminWebFront)))."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
+		echo "    Startpage Kategorie installieren als: ".$WFC10_Path." und Inhalt löschen und dann verstecken.\n";
+		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
+		EmptyCategory($categoryId_WebFront);
+		IPS_SetHidden($categoryId_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */			
+
+		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." die ID Admin für die gesamte Kategorie Visualization installieren.\n";
+		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		echo "       Delete/hide IDs root und dwd.\n";
 		//DeleteWFCItems($WFC10_ConfigId, "root");
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);		
 
-		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		EmptyCategory($categoryId_WebFront);
-		IPS_SetHidden($categoryId_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */			
-				  
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;	
+		echo "       Create ID ".$tabItem." in ".$WFC10_TabPaneParent.".\n";
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   $WFC10_TabPaneParent,   $WFC10_TabPaneOrder, '', $WFC10_TabPaneIcon, $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFront,  10);

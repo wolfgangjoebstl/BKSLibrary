@@ -37,16 +37,6 @@
 	$moduleManager = new IPSModuleManager('Watchdog',$repository);
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 
-	if (isset ($installedModules["Sprachsteuerung"]))
-	   {
-		IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
-		IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
-	   }
-	else
-	   {
-	   function tts_play() {};
-	   }
-
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdStartWD    = IPS_GetScriptIDByName('StartIPSWatchDog', $CategoryIdApp);
@@ -63,7 +53,8 @@
 	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
 	
 	if (isset ($installedModules["OperationCenter"]))
-	   {
+		{
+		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 		echo "Logspeicher für OperationCenter mitnutzen.\n";
 		$moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
 		$CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
@@ -71,7 +62,18 @@
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
 		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		}
-		
+	else
+		{
+		if (isset ($installedModules["Sprachsteuerung"]))
+			{
+			IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
+			IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
+			}
+		else
+			{
+			function tts_play() {};
+			}		
+		}	
 	/********************************************************************
 	 *
 	 * Init
@@ -171,13 +173,12 @@
 
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
-   	SetValue($ScriptCounterID,1);
+		SetValue($ScriptCounterID,1);
 		
 		$log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per externem Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
-
 		}
 
 	if ($_IPS['SENDER']=="Execute")
@@ -186,13 +187,19 @@
 		print_r($processStart);
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
-   	SetValue($ScriptCounterID,1);
-	   IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
+		SetValue($ScriptCounterID,1);
+		IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
 		
 		$log_Watchdog->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_Watchdog->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script hochgefahren, Aufruf der Routine StartIPSWatchdog');
+		if (isset ($installedModules["OperationCenter"]))
+			{
+			$subnet='10.255.255.255';
+			$OperationCenter=new OperationCenter($subnet);
+			$OperationCenter->SystemInfo();
+			}
 		}
 
 	if ($_IPS['SENDER']=="Startup")
@@ -202,7 +209,7 @@
 
 		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
 		IPS_SetEventActive($tim3ID,true);
-   		SetValue($ScriptCounterID,1);
+		SetValue($ScriptCounterID,1);
 
 		$log_Watchdog->LogMessage(    'Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
 		$log_Watchdog->LogNachrichten('Lokaler Server wird im IPS Startup Prozess hochgefahren, Aufruf der Routine StartIPSWatchdog');
@@ -213,8 +220,8 @@
 	if ($_IPS['SENDER']=="TimerEvent")
 		{
 		switch ($_IPS['EVENT'])
-		   {
-	   	case $tim3ID:
+			{
+			case $tim3ID:
 				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID:".GetValue($ScriptCounterID));
 
 				/******************************************************************************************
@@ -224,24 +231,33 @@
 
 				$counter=GetValue($ScriptCounterID);
 				switch ($counter)
-				   {
-					case 6:
-			   	   SetValue($ScriptCounterID,0);
-			      	IPS_SetEventActive($tim3ID,false);
+					{
+					case 7:
+						SetValue($ScriptCounterID,0);
+						IPS_SetEventActive($tim3ID,false);
 						IPSLogger_Dbg(__file__, "Autostart: Prozess abgeschlossen");
 						writeLogEvent("Autostart (Ende)");
-			      	break;
+						break;
+					case 6:
+						if (isset ($installedModules["OperationCenter"]))
+							{
+							$subnet='10.255.255.255';
+							$OperationCenter=new OperationCenter($subnet);
+							$OperationCenter->SystemInfo();
+							}
+						SetValue($ScriptCounterID,$counter+1);
+						break;
 					case 5:
 						/* ftp Server wird nun automatisch mit der IS Umgebung von Win 10 gestartet, keine Fremd-Software mehr erforderlich */
 						//IPS_ExecuteEx("c:/Users/wolfg_000/Downloads/Programme/47 ftp server/ftpserver31lite/ftpserver.exe","", true, false,1);
 						//writeLogEvent("Autostart (ftpserverlite)");
 						if ($processStart["Firefox.exe"] == "On")
-						   {
+							{
 							writeLogEvent("Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"]);
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
 							}
 						SetValue($ScriptCounterID,$counter+1);
-			      	break;
+						break;
 					case 4:
 						//if (GetValueBoolean(50871))
 						if ($processStart["iTunes.exe"] == "On")
@@ -281,11 +297,11 @@
 						   echo "vmplayer.exe muss daher nicht erneut gestartet werden.\n";
 						   }
 						SetValue($ScriptCounterID,$counter+1);
-	   			  	break;
-				   case 1:
+						break;
+					case 1:
 						if ($processStart["IPSWatchDog.exe"] == "On")
-						   {
-						   echo "IPSWatchdog.exe wird neu gestartet.\n";
+							{
+							echo "IPSWatchdog.exe wird neu gestartet.\n";
 							IPSLogger_Dbg(__file__, "Autostart: Watchdog wird gestartet");
 
 							/*********************************************************************/
@@ -294,9 +310,9 @@
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Watchdog.bat","",true,false,-1);
 							}
 						else
-						   {
-						   echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
-						   }
+							{
+							echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
+							}
 					 	// Parent-ID der Kategorie ermitteln
 						$parentID = IPS_GetObject($IPS_SELF);
 						$parentID = $parentID['ParentID'];
@@ -307,7 +323,7 @@
 
 						IPS_RunScript($IWDAliveFileSkriptScID);
 					 	IPS_RunScriptEx($IWDSendMessageScID, Array('state' =>  'start'));
-				      SetValue($ScriptCounterID,$counter+1);
+						SetValue($ScriptCounterID,$counter+1);
 						break;
 				   case 0:
 					default:

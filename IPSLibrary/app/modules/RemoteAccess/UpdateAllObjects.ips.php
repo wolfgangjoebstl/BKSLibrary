@@ -23,6 +23,7 @@
  *
  */
 
+$startexec=microtime(true);
  
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
@@ -33,6 +34,27 @@
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
+if ($_IPS['SENDER']=="Execute")
+	{
+	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+ 	$eventlist = IPSMessageHandler_GetEventConfiguration();
+	
+	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+	foreach ($eventlist as $oid => $data)
+		{
+		if (IPS_ObjectExists($oid))
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+			}
+		else
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+			}
+		}
+	}
+	
+if ($_IPS['SENDER']=="TimerEvent")
+	{	
 	$messageHandler = new IPSMessageHandler();
 
 	/*********************************************************************
@@ -60,7 +82,7 @@
 			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
 			}
 		}
-
+	}
 
 
 ?>
