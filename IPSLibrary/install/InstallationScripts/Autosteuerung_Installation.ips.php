@@ -37,7 +37,7 @@
 	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPS ModulManager Version   : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
 	echo "\nModul Autosteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 	
  	$installedModules = $moduleManager->GetInstalledModules();
@@ -268,15 +268,15 @@
 			{
 			case "ANWESENHEITSERKENNUNG":
 				echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
-				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence");
-				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence");
+				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence",null,null,"");
+				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
 				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
-				$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean");				
+				$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");				
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -293,15 +293,15 @@
 				break;
 			case "ALARMANLAGE":
 				echo "   Variablen für Alarmanlage in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";
-				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence");
-				$StatusAnwesendZuletztID=CreateVariable("StatusAlarmanlageZuletzt",0, $AutosteuerungID,0,"~Presence");
+				$StatusAnwesendID=CreateVariable("StatusAlarmanlage",0, $AutosteuerungID,0,"~Presence",null,null,"");
+				$StatusAnwesendZuletztID=CreateVariable("StatusAlarmanlageZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
 				$register->registerAutoEvent($StatusAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
-				$StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean");				
+				$StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");				
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -310,7 +310,7 @@
 			case "GUTENMORGENWECKER":
 				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";		
 	   			// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')					
-				$WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "SchlafenAufwachenMunter",null,"",""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+				$WeckerID = CreateVariable("Wecker", 1, $AutosteuerungID, 0, "SchlafenAufwachenMunter",null,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 				$register->registerAutoEvent($WeckerID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$WeckerID,true);
 				AC_SetAggregationType($archiveHandlerID,$WeckerID,0);      /* normaler Wwert */
@@ -648,10 +648,20 @@
 	 *
 	 *****************************************************************************/
 
-if (true)
+if (isset($installedModules["Stromheizung"])==true)
 	{
 	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+	}
+else
+	{
+	// Confguration Property Definition
+	define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
+	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
+	define ('IPSHEAT_WFCGROUP',			'WFCGroup');
+	define ('IPSHEAT_WFCLINKS',			'WFCLinks');
+	}
+			
 	$webFrontConfig = Autosteuerung_GetWebFrontConfiguration();
 	if ($WFC10_Enabled) 
 		{
@@ -700,7 +710,7 @@ if (true)
 				}
 			}
 		}
-	}	
+		
 
 
 

@@ -49,9 +49,7 @@
 	/********ACHTUNG Function wird automatisch beschrieben */
 	function Autosteuerung_GetEventConfiguration() {
 		$eventConfiguration = array(
-			38272 => array('OnChange','par1','par2',),        /* Anwesenheitssimulation    */
-			54561 => array('OnChange','par1','par2',),        /* Anwesenheitserkennung    */
-			14147 => array('OnChange','par1','par2',),        /* Ventilatorsteuerung    */
+
 			);
 
 		return $eventConfiguration;
@@ -107,14 +105,6 @@
 
 	function Autosteuerung_GetScenes() {
 		 $scenes = array(
-             'AWSWZDeko'  =>  array(
-                	'NAME'                      => 'Dekolampe',
-                  'ACTIVE_FROM_TO'        => 'sunset-23:00',
-                  'EVENT_CHANCE'        => 20, 	//20% Eintrittswahrscheinlichkeit
-                  'EVENT_DURATION'      => 1,   // Minuten
-                  'EVENT_IPSLIGHT_GRP'  => 'DekolampeG'  //zu schaltende IPS-LIGHT Gruppe
-                  //'EVENT_IPSLIGHT'  => 'Dekolampe'  //zu schaltende IPS-LIGHT Switch
-                    ),
 
                 );
 		return $scenes;
@@ -122,26 +112,21 @@
 
 	function Autosteuerung_SetSwitches() {
 		 $switches = array(
-             'Anwesenheitssimulation'  =>  array(
-                	'NAME'               => 'Anwesenheitssimulation',
-                  'PROFIL'             => 'AusEinAuto',
-                  'ADMINISTRATOR'      => true,
-                  'USER'      			=> false,
-                  'MOBILE'  				=> false,
+			'Anwesenheitssimulation' 	=>  array(
+            	'NAME'               	=> 'Anwesenheitssimulation',
+                'PROFIL'             	=> 'AusEinAuto',
+                'ADMINISTRATOR'      	=> true,
+                'USER'      			=> false,
+                'MOBILE'  				=> false,
+				'OWNTAB'				=> 'Anwesenheit',
+				'TABNAME'				=> 'Wochenplan',					  
                     ),
              'Anwesenheitserkennung'   =>  array(
-                	'NAME'               => 'Anwesenheitserkennung',
-                  'PROFIL'             => 'AusEinAuto',
-                  'ADMINISTRATOR'      => true,
-                  'USER'      			=> false,
-                  'MOBILE'  				=> false,
-                    ),
-             'Ventilatorsteuerung'   =>  array(
-                	'NAME'               => 'Ventilatorsteuerung',
-                  'PROFIL'             => 'AusEinAuto',
-                  'ADMINISTRATOR'      => true,
-                  'USER'      			=> false,
-                  'MOBILE'  				=> false,
+             	'NAME'               => 'Anwesenheitserkennung',
+                'PROFIL'             => 'AusEinAuto',
+                'ADMINISTRATOR'      => true,
+                'USER'      			=> false,
+                'MOBILE'  				=> false,
                     ),
                 );
 		return $switches;
@@ -163,28 +148,7 @@
 
 	function Autosteuerung_GetWebFrontConfiguration() {
 		return array(
-			'Anwesenheit' => array(
-				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails0',       'AutoTPA',        'Anwesenheit','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Left',  'AutoTPADetails0', null,null),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Right',  'AutoTPADetails0', null,null),
-				),
-			'Autosteuerung' => array(
-				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails1',        'AutoTPA',        'Autosteuerung',null,1,40,0,0,'true'),  /*  vertical=1,   Ratio=65, RatioTarget=0,Percentage, ShowBorder */
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Left',  'AutoTPADetails1', null,null),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Right',  'AutoTPADetails1', null,null),
-				),
-			'Stromheizung' => array(
-				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails2',        'AutoTPA',        'Stromheizung','Radiator',1,40,0,0,'true'),
-				array(IPSHEAT_WFCSPLITPANEL,   'AutoTPADetails2_Links',   'AutoTPADetails2',   null,null,0,270,0,1,'true'),				
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Left',  'AutoTPADetails2_Links', null,null),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_LeftDown',  'AutoTPADetails2_Links', null,null),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Right',  'AutoTPADetails2', null,null),
-				),
-			'Alexa' => array(
-				array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails3',        'AutoTPA',        'Alexa','Eyes',1,40,0,0,'true'),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Left',  'AutoTPADetails3', null,null),
-				array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Right',  'AutoTPADetails3', null,null),
-				),				
+
 		);
 
 	}

@@ -379,7 +379,7 @@
 	 
 	if ($WFC10_Enabled)
 		{
-		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
+		/* Kategorien werden erstellt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben */
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
@@ -394,8 +394,10 @@
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 		
-	
+		/* Webfront Konfiguration erstellen */
+		
 		echo "\nWebportal Administrator:  in Webfront Konfigurator ID ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") die ID Admin für die gesamte Kategorie Visualization installieren.\n";
+		echo "       Create Admin in roottp (hardcoded).\n";
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   800, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		echo "       Delete/hide IDs root und dwd.\n";
@@ -410,12 +412,12 @@
 		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
 		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
 		 	{
-			echo "   löscht TabItem ID ".$tabItem."\n";
+			echo "      löscht TabItem ID ".$tabItem."\n";
 			DeleteWFCItems($WFC10_ConfigId, $tabItem);
 			}
 		else
 			{
-			echo "    TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
+			echo "      TabItem ID ".$tabItem." nicht mehr vorhanden.\n";
 			}	
 		echo "        erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon); /* Autosteuerung Haeuschen */

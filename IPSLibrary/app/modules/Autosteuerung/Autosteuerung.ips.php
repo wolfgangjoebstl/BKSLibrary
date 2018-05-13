@@ -12,7 +12,6 @@ funktioniert nur mit elektrischen Heizkoerpern
 
 Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -35,6 +34,10 @@ $installedModules = $moduleManager->GetInstalledModules();
 if ( isset($installedModules["Sprachsteuerung"]) === true )
 	{
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+	}
+if ( isset($installedModules["Stromheizung"]) === true )
+	{
+	include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 	}
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -235,10 +238,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	SetValue($StatusAnwesendID,$StatusAnwesend );
 	$Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);
 	
-	if ( $Anwesenheitssimulation>0 )
-		{
-		$simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");
-		}
+	$simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");
 	
 	if ( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) )) 
 		{
