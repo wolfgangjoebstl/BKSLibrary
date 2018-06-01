@@ -35,9 +35,23 @@ class Gartensteuerung
 	
 	public 		$regenStatistik;
 	public 		$letzterRegen, $regenStand2h, $regenStand48h;
+	
+	public 		$GiessTimeID,$GiessDauerInfoID;
 		
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager)) 
+			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+			$moduleManager = new IPSModuleManager('Gartensteuerung',$repository);
+			}
+		$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+		$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
+		$this->GiessTimeID	= @IPS_GetVariableIDByName("GiessTime", $categoryId_Gartensteuerung); 
+		$this->GiessDauerInfoID	= @IPS_GetVariableIDByName("GiessDauerInfo",$categoryId_Gartensteuerung);
+		//echo "GiesstimeID ist ".$this->GiessTimeID."\n";
+
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$this->debug=$debug;
 		$endtime=time();
@@ -164,15 +178,13 @@ class Gartensteuerung
 		}
 	
 
-	public function giessdauer($debug=false)
+	public function Giessdauer($GartensteuerungConfiguration)
 		{
 
-		global $GiessTimeID,$log_Giessanlage,$GiessDauerInfoID;
-		global $GartensteuerungConfiguration; /* für minimale mittlere Temperatur */
+		//global $log_Giessanlage;
 
-		$giessdauer=0;
+		$giessdauerVar=0;
 	
-		if ($debug==true) { $this->debug=true; }
 		$Server=RemoteAccess_Address();
 		if ($this->debug)
 			{
@@ -279,32 +291,32 @@ class Gartensteuerung
 				{ /* und es regnet aktuell nicht */
 				if ( ($AussenTemperaturGesternMax>($GartensteuerungConfiguration["TEMPERATUR-MAX"])) || ($regenStand<($GartensteuerungConfiguration["REGEN10T"])) )
 					{ /* es war richtig warm */
-					$giessdauer=20;
+					$giessdauerVar=20;
 					}
 				else
 					{ /* oder nur gleichmässig warm */
-					$giessdauer=10;
+					$giessdauerVar=10;
 					}
 				}
 			}
-		$textausgabe="Giessdauer:".GetValue($GiessTimeID)
+		$textausgabe="Giessdauer:".GetValue($this->GiessTimeID)
 			." Min. Regen 2/48/max Std:".number_format($regenStand2h, 1, ",", "")."mm/".number_format($regenStand48h, 1, ",", "")."mm/".number_format($regenStand, 1, ",", "")."mm. Temp mit/max: "
 			.number_format($AussenTemperaturGestern, 1, ",", "")."/"
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
-		$textausgabe2="Giessdauer:".GetValue($GiessTimeID)
+		$textausgabe2="Giessdauer:".GetValue($this->GiessTimeID)
 			." Min. <br>Regen 2/48/max Std:".number_format($regenStand2h, 1, ",", "")."mm/".number_format($regenStand48h, 1, ",", "")."mm/".number_format($regenStand, 1, ",", "")."mm. <br>Temp mit/max: "
 			.number_format($AussenTemperaturGestern, 1, ",", "")."/"
 			.number_format($AussenTemperaturGesternMax, 1, ",", "")." Grad.";
-		SetValue($GiessDauerInfoID,$textausgabe2);
+		SetValue($this->GiessDauerInfoID,$textausgabe2);
 		if ($this->debug==false)
 			{
-			$log_Giessanlage->message($textausgabe);
+			//$log_Giessanlage->message($textausgabe);
 			}
 		else
 			{
 			echo $textausgabe;
 			}
-		return $giessdauer;
+		return $giessdauerVar;
 		}
 		
 	}  /* Ende class Gartensteuerung */

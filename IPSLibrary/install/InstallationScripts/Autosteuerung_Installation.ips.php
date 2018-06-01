@@ -18,6 +18,8 @@
  ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 
@@ -217,6 +219,17 @@
 	   	IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 	   	IPS_SetVariableProfileAssociation($pname, 0, "Nein", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
   	   	IPS_SetVariableProfileAssociation($pname, 1, "Ja", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+  	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil ".$pname." erstellt;\n";
+		}
+	$pname="Null";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+	   	//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   	IPS_SetVariableProfileValues($pname, 0, 0, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Null", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   	echo "Profil ".$pname." erstellt;\n";
 		}
@@ -457,9 +470,44 @@
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
 				$simulation=new AutosteuerungRegler();													
 				break;	
+			case "GARTENSTEUERUNG":
+				if ( isset( $installedModules["Gartensteuerung"] ) == true )
+					{
+					$moduleManagerGS = new IPSModuleManager('Gartensteuerung',$repository);
+					$CategoryIdDataGS     = $moduleManagerGS->GetModuleCategoryID('data');
+					$object2= new ipsobject($CategoryIdDataGS);
+					$object3= new ipsobject($object2->osearch("Nachricht"));
+					$NachrichtenInputID=$object3->osearch("Input");
+					$webfront_links[$AutosteuerungID]["OID_R"]=$NachrichtenInputID;
+					$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdDataGS, 10);
+					$SubCategory=IPS_GetChildrenIDs($categoryId_Gartensteuerung);
+					foreach ($SubCategory as $SubCategoryId)
+						{
+						CreateLinkByDestination(IPS_GetName($SubCategoryId), $SubCategoryId,    $AutosteuerungID,  10);
+						}					
+					$categoryId_Register    		= CreateCategory('Gartensteuerung-Register',   $CategoryIdDataGS, 200);
+					$SubCategory=IPS_GetChildrenIDs($categoryId_Register);
+					foreach ($SubCategory as $SubCategoryId)
+						{
+						CreateLinkByDestination(IPS_GetName($SubCategoryId), $SubCategoryId,    $AutosteuerungID,  10);
+						}					
+					echo "****Modul Gartensteuerung konfiguriert und erkannt.\n";
+					$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
+					if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
+						{
+						echo "****OwnTab eingestellt.\n";
+						$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
+						if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+							{
+							$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
+							}
+						else $webfront_links[$AutosteuerungID]["TABNAME"]='Gartensteuerung'; 						
+						}
+					}
+				break;		
 			case "ALEXA":
 				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";	/* Default Tabname, alle im gleichen Tab */
-				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguroert, kann immer noch der selbe sein */
+				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
 					{
 					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
 					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
@@ -473,6 +521,22 @@
 				$vid=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');	
 				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;											/* Darstellung rechts im Webfront */				
 				$alexa=new AutosteuerungAlexa();	
+				break;
+			case "CONTROL":
+				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";	/* Default Tabname, alle im gleichen Tab */
+				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
+					{
+					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
+					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+						{
+						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
+						}
+					else $webfront_links[$AutosteuerungID]["TABNAME"]='Alexa'; 						
+					}
+				$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Control, 0,'',null,'');	
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;											/* Darstellung rechts im Webfront */				
 				break;
 			default:
 				break;
@@ -673,7 +737,7 @@ else
 		foreach($webFrontConfig as $tabName=>$tabData) 
 			{
 			/* tabname muss einer der oben kreierten Tabs sein, sonst Fehler */
-			if (isset($tabs[$tabName])===false) { echo "\nFalsche Konfiguration in Autosteuerung. Tabname stimmt nicht ueberein.\n"; break; } 
+			if (isset($tabs[$tabName])===false) { echo "\nFalsche Konfiguration in Autosteuerung. Tabname ".$tabName." stimmt nicht mit WebConfiguration ueberein.\n"; break; } 
 			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontAdministrator, $order);			
 			foreach($tabData as $WFCItem) {
 				$order = $order + 10;

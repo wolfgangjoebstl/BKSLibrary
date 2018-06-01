@@ -4,21 +4,37 @@
 *
 * Autosteuerung, Spezialroutinen für Alexa Control
 *
+* Befehle die >Alexa aktuell unterstützt:
 *
+* PowerController			Alexa, schalte Smart Home-Gerät ein/aus
+* PowerLevelController		Alexa set the power to 40% on device, Alexa stelle Smart Home gerät auf 40 Prozent.
+* ThermostatController
+*							Alexa Schalte das Licht auf Blau.
+*							Alexa, set the AC to 25 degrees for 4 hours.
+*							Alexa, make it warmer in here until 10pm
 *
+* im Modul implementierte Funktionen:
+*
+    private $switchFunctions = Array("turnOn", "turnOff");
+    private $dimmingFunctions = Array("setPercentage", "incrementPercentage", "decrementPercentage");
+    private $targetTemperatureFunctions = Array("setTargetTemperature", "incrementTargetTemperature", "decrementTargetTemperature", "getTargetTemperature");
+    private $readingTemperatureFunctions = Array("getTemperatureReading");
+    private $rgbColorFunctions = Array("SetColor");
+    private $rgbTemeratureFunctions = Array("SetColorTemperature", "IncrementColorTemperature", "DecrementColorTemperature");
 *
 *******************************************************************************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
 	
 
 
 /*********************************************************************************************/
 
 include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 /******************************************************
@@ -39,37 +55,58 @@ $installedModules = $moduleManager->GetInstalledModules();
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+$configuration = Autosteuerung_Setup();
+
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
 
 $nachrichten=new AutosteuerungAlexa();
+
 
 Switch ($_IPS['SENDER'])
 	{
 	Default:
-	 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+	 	IPSLogger_Dbg(__file__,"Aufruf unbekannt, Alexa empfaengt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."   ".$_IPS['VALUE']);
 		break;
 	Case "RunScript":
+		$nachrichten->LogNachrichten("Extern: ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']." .");
+		$request=array();
+		$request["VARIABLE"]=	$_IPS['VARIABLE'];
+		$request["VALUE"]=		$_IPS['VALUE'];
+		$request["REQUEST"]=	$_IPS['REQUEST'];
+		executeAlexa($request);
+		break;
 	Case "Execute":
-		test_execute($register);
+		$request=array();
+		$request["VARIABLE"]=	"649f57f3-0e76-4d0c-83d2-63b0cc03965e";
+		$request["VALUE"]=		true;
+		$request["REQUEST"]=	"TurnOnRequest";
+		//executeAlexa($request);
+		test_execute();
+		echo $nachrichten->PrintNachrichten();
 	 	break;
 	Case "TimerEvent":
 		break;
 	Case "Variable":
 	Case "AlexaSmartHome":
-		//$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']);
-	 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
-		$params=$register->getAutoEvent($_IPS['VARIABLE']);
-		if ($params === false) 
+		if ( isset($configuration["AlexaProxyAdr"])==true)
 			{
-			$register->registerAutoEvent($_IPS['VARIABLE'], $_IPS['REQUEST'], "", "");
-			$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']." Neu, registrieren.");
+			/* Daten zur Verarbeitung weiterleiten an einen anderen Server */
+		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."    ".$_IPS['REQUEST']."   ".$_IPS['VALUE']." und leitet weiter an ".$configuration["AlexaProxyAdr"]);			
+			$request=array();
+			$request["VARIABLE"]=	$_IPS['VARIABLE'];
+			$request["VALUE"]=		$_IPS['VALUE'];
+			$request["REQUEST"]=	$_IPS['REQUEST'];
+			if (function_exists("proxyAlexa") == true) proxyAlexa($request);
 			}
 		else
-			{
-			$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']." ".json_encode($params));
-			$ergebnis=Status($params,$_IPS['VALUE']);
-			//$nachrichten->LogNachrichten(" ".json_encode($ergebnis));
+			{	
+			//$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']);
+		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+			$request=array();
+			$request["VARIABLE"]=	$_IPS['VARIABLE'];
+			$request["VALUE"]=		$_IPS['VALUE'];
+			$request["REQUEST"]=	$_IPS['REQUEST'];
+			executeAlexa($request);
 			}
 if (false)
 {
@@ -170,12 +207,52 @@ if($_IPS['SENDER'] == "AlexaSmartHome"){
        break;
     } 
 
+/*********************************************************************************************/
 
+function executeAlexa($request)
+	{
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+		}
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+	$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
+	$alexaHandler = new AutosteuerungAlexaHandler(); 
+	$nachrichten=new AutosteuerungAlexa();
+
+	$params=$register->getAutoEvent($request['VARIABLE']);
+	if ($params === false) 
+		{
+		$register->registerAutoEvent($request['VARIABLE'], "OnUpdate", "Alexa", "speak:nicht implementiert.");
+		$nachrichten->LogNachrichten(" ".$request['VARIABLE']." ".$request['REQUEST']."  ".$request['VALUE']." Neu, registrieren.");
+		$params=$register->getAutoEvent($request['VARIABLE']);		
+		}
+	else
+		{
+		$nachrichten->LogNachrichten(" ".$request['VARIABLE']." ".$request['REQUEST']."  ".$request['VALUE']." ".json_encode($params));
+		}
+	echo "AlexaControl: Evaluiere Request:  ".json_encode($request)."  ".json_encode($params)."\n";
+	$ergebnis=Alexa($params,$request['VALUE'], $request['REQUEST'],true);
+	$nachrichten->LogNachrichten(" ".json_encode($ergebnis));
+	}
 
 /*********************************************************************************************/
 
-function test_execute($register)
+function test_execute()
 	{
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+		}
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+	$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
+
 	echo "\n=====================================================================\n";
 	echo "Execute aufgerufen. Analyse der einzelnen abgespeicherten Befehle.\n";
 	//$register->PrintAutoEvent();
@@ -186,7 +263,7 @@ function test_execute($register)
 		{
 		//print_r($entry);
 		echo "Bearbeite Eintrag : ".$index." : \n";
-		Status($entry,$i++,true);
+		Alexa($entry,40,"SETPERCENTAGE",true);
 		}
 		
 	//$result=$register->getAutoEvent("44404b3f-5f92-40ba-a7d5-63e8a83987a4");

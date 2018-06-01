@@ -225,14 +225,16 @@
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
 	$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
-	$categoryId_Nachrichten    		= CreateCategory('Gartensteuerung-Nachrichten',   $CategoryIdData, 20);
 	$categoryId_Register    		= CreateCategory('Gartensteuerung-Register',   $CategoryIdData, 200);
 	
 	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdWebfrontControl   		= IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
-	$scriptIdNachrichtenverlauf   	= IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 
-   	$includefile="<?";
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Gartensteuerung',   $CategoryIdData, 20);
+	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	/* Nachrichtenzeilen werden automatisch von der Logging Klasse beim ersten Aufruf gebildet */
+
+	$includefile="<?";
 	/*  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht */
 	$includefile.="\n".'function ParamList() {
 		return array('."\n";
@@ -251,24 +253,6 @@
 	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Register, 200, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
-
-	$input = CreateVariable3("Nachricht_Garten_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$zeile1 = CreateVariable3("Nachricht_Garten_Zeile01",3,$categoryId_Nachrichten, 10, "",null,null,""  );
-	$zeile2 = CreateVariable3("Nachricht_Garten_Zeile02",3,$categoryId_Nachrichten, 20, "",null,null,""  );
-	$zeile3 = CreateVariable3("Nachricht_Garten_Zeile03",3,$categoryId_Nachrichten, 30, "",null,null,""  );
-	$zeile4 = CreateVariable3("Nachricht_Garten_Zeile04",3,$categoryId_Nachrichten, 40, "",null,null,""  );
-	$zeile5 = CreateVariable3("Nachricht_Garten_Zeile05",3,$categoryId_Nachrichten, 50, "",null,null,""  );
-	$zeile6 = CreateVariable3("Nachricht_Garten_Zeile06",3,$categoryId_Nachrichten, 60, "",null,null,""  );
-	$zeile7 = CreateVariable3("Nachricht_Garten_Zeile07",3,$categoryId_Nachrichten, 70, "",null,null,"" );
-	$zeile8 = CreateVariable3("Nachricht_Garten_Zeile08",3,$categoryId_Nachrichten, 80, "",null,null,""  );
-	$zeile9 = CreateVariable3("Nachricht_Garten_Zeile09",3,$categoryId_Nachrichten, 90, "",null,null,""  );
-	$zeile10 = CreateVariable3("Nachricht_Garten_Zeile10",3,$categoryId_Nachrichten, 100, "",null,null,""  );
-	$zeile11 = CreateVariable3("Nachricht_Garten_Zeile11",3,$categoryId_Nachrichten, 110, "",null,null,""  );
-	$zeile12 = CreateVariable3("Nachricht_Garten_Zeile12",3,$categoryId_Nachrichten, 120, "",null,null,""  );
-	$zeile13 = CreateVariable3("Nachricht_Garten_Zeile13",3,$categoryId_Nachrichten, 130, "",null,null,""  );
-	$zeile14 = CreateVariable3("Nachricht_Garten_Zeile14",3,$categoryId_Nachrichten, 140, "",null,null,""  );
-	$zeile15 = CreateVariable3("Nachricht_Garten_Zeile15",3,$categoryId_Nachrichten, 150, "",null,null,""  );
-	$zeile16 = CreateVariable3("Nachricht_Garten_Zeile16",3,$categoryId_Nachrichten, 160, "",null,null,""  );
 
 	$includefile.=');'."\n";
 	$includefile.='}'."\n".'?>';
@@ -290,7 +274,7 @@
 	echo "\nData Kategorie : ".$CategoryIdData;
 	echo "\nApp  Kategorie : ".$CategoryIdApp;
 	echo "\nScriptID #1    : ".$scriptIdGartensteuerung;
-	echo "\nScriptID #2    : ".$scriptIdNachrichtenverlauf;
+	echo "\nScriptID #2    : ".$scriptIdWebfrontControl;
 	echo "\n";
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -313,12 +297,14 @@
 		$Params = explode("-",IPS_GetName($CategoryId)); 
 		$SubCategory=IPS_GetChildrenIDs($CategoryId);
 		foreach ($SubCategory as $SubCategoryId)
-	   		{
+			{
 			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
-	   		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
-	   		}
-	   	}
-	//print_r($webfront_links);
+			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+			}
+		}
+	echo "\n";
+	print_r($webfront_links);
+	echo "\n";
 
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -327,15 +313,6 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-
-	$eid1 = @IPS_GetEventIDByName("Timer1", $scriptIdGartensteuerung);
-	if ($eid1==false)
-		{
-		$eid1 = IPS_CreateEvent(1);
-		IPS_SetParent($eid1, $scriptIdGartensteuerung);
-		IPS_SetName($eid1, "Timer1");
-		IPS_SetEventCyclic($eid1, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 10 /* Alle 10 Minuten */);
-		}
 
 	$eid2 = @IPS_GetEventIDByName("Timer2", $scriptIdGartensteuerung);
 	if ($eid2==false)
@@ -362,6 +339,7 @@
 		IPS_SetName($eid4, "Timer4");
 		}
 
+	/* UpdateTimer übernimmt das Minutenupdate bei der Giesszeit und gleichzeitig auch das Umschalten zwischen den Giesskreisen */
 	$eid5 = @IPS_GetEventIDByName("UpdateTimer", $scriptIdGartensteuerung);
 	if ($eid5==false)
 		{
@@ -438,22 +416,7 @@
 		CreateLinkByDestination('GiessAnlagePrev', $GiessAnlagePrevID,    $categoryIdLeft,  130);
 		CreateLinkByDestination("GiessPause", $GiessPauseID ,    $categoryIdLeft,  140);
 		
-		CreateLinkByDestination('Nachricht_Zeile01', $zeile1,    $categoryIdRight,  110);
-		CreateLinkByDestination('Nachricht_Zeile02', $zeile2,    $categoryIdRight,  120);
-		CreateLinkByDestination('Nachricht_Zeile03', $zeile3,    $categoryIdRight,  130);
-		CreateLinkByDestination('Nachricht_Zeile04', $zeile4,    $categoryIdRight,  140);
-		CreateLinkByDestination('Nachricht_Zeile05', $zeile5,    $categoryIdRight,  150);
-		CreateLinkByDestination('Nachricht_Zeile06', $zeile6,    $categoryIdRight,  160);
-		CreateLinkByDestination('Nachricht_Zeile07', $zeile7,    $categoryIdRight,  170);
-		CreateLinkByDestination('Nachricht_Zeile08', $zeile8,    $categoryIdRight,  180);
-		CreateLinkByDestination('Nachricht_Zeile09', $zeile9,    $categoryIdRight,  190);
-		CreateLinkByDestination('Nachricht_Zeile10', $zeile10,    $categoryIdRight,  200);
-		CreateLinkByDestination('Nachricht_Zeile11', $zeile11,    $categoryIdRight,  210);
-		CreateLinkByDestination('Nachricht_Zeile12', $zeile12,    $categoryIdRight,  220);
-		CreateLinkByDestination('Nachricht_Zeile13', $zeile13,    $categoryIdRight,  230);
-		CreateLinkByDestination('Nachricht_Zeile14', $zeile14,    $categoryIdRight,  240);
-		CreateLinkByDestination('Nachricht_Zeile15', $zeile15,    $categoryIdRight,  250);
-		CreateLinkByDestination('Nachricht_Zeile16', $zeile16,    $categoryIdRight,  260);
+		CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
 		}
 
 	/*----------------------------------------------------------------------------------------------------------------------------

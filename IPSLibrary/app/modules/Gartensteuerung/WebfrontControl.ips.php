@@ -29,7 +29,7 @@
 if ($_IPS['SENDER']=="WebFront")
 	{
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	include_once(IPS_GetKernelDir()."scripts\_include\Logging.class.php");
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
 
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
@@ -59,19 +59,15 @@ if ($_IPS['SENDER']=="WebFront")
 	$GiessKreisInfoID	= @IPS_GetVariableIDByName("GiessKreisInfo",$categoryId_Gartensteuerung);
 	$GiessTimeID	= @IPS_GetVariableIDByName("GiessTime", $categoryId_Gartensteuerung); 
 	$GiessPauseID 	= @IPS_GetVariableIDByName("GiessPause",$categoryId_Register);
+	$GiessTimeRemainID	= @IPS_GetVariableIDByName("GiessTimeRemain", $categoryId_Gartensteuerung); 
 
 	$GartensteuerungScriptID   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
-	$NachrichtenScriptID   	= IPS_GetScriptIDByName('Nachrichtenverlauf-Garten', $CategoryIdApp);
 
-	if (isset($NachrichtenScriptID))
-		{
-		$object2= new ipsobject($CategoryIdData);
-		$object3= new ipsobject($object2->osearch("Nachricht"));
-		$NachrichtenInputID=$object3->osearch("Input");
-		$log_Giessanlage=new logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenScriptID,$NachrichtenInputID);
-		}
+	$object2= new ipsobject($CategoryIdData);
+	$object3= new ipsobject($object2->osearch("Nachricht"));
+	$NachrichtenInputID=$object3->osearch("Input");
+	$log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
 
-	$giesstimerID = @IPS_GetEventIDByName("Timer1", $GartensteuerungScriptID);
 	$timerDawnID = @IPS_GetEventIDByName("Timer3", $GartensteuerungScriptID);
 	$UpdateTimerID = @IPS_GetEventIDByName("UpdateTimer", $GartensteuerungScriptID);
 
@@ -101,10 +97,11 @@ if ($_IPS['SENDER']=="WebFront")
 				{
 				case "2":  /* Auto */
 				case "-1":  /* Auto */
-    	  			IPS_SetEventActive($giesstimerID,false);
 	    	  		IPS_SetEventActive($UpdateTimerID,false);
     	  			IPS_SetEventActive($timerDawnID,true);
- 					$log_Giessanlage->message("Gartengiessanlage auf Auto gesetzt");
+					SetValue($GiessTimeRemainID ,0);				
+ 					$log_Giessanlage->LogMessage("Gartengiessanlage auf Auto gesetzt");
+ 					$log_Giessanlage->LogNachrichten("Gartengiessanlage auf Auto gesetzt");
 	 				$failure=set_gartenpumpe(false);
 					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 					/* Vorgeschichte egal, nur bei einmal ein wichtig */
@@ -113,37 +110,35 @@ if ($_IPS['SENDER']=="WebFront")
 				case "1":  /* Einmal Ein */
 					/* damit auch wenn noch kein Wetter zum Giessen, gegossen werden kann, Giesszeit manuell setzen */
 					SetValue($GiessTimeID,10);
+					SetValue($GiessTimeRemainID ,0);				
     	  			IPS_SetEventActive($UpdateTimerID,true);				
 					IPS_SetEventCyclicTimeBounds($UpdateTimerID,time(),0);  /* damit alle Timer gleichzeitig und richtig anfangen und nicht zur vollen Stunde */
 					if ($samebutton==true)
 					   	{ /* gleiche Taste heisst weiter */
-						IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
-						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
-      					IPS_SetEventActive($giesstimerID,true);
       					IPS_SetEventActive($timerDawnID,false);
 			      		SetValue($GiessCountID,GetValue($GiessCountID)+1);
- 						$log_Giessanlage->message("Gartengiessanlage Weiter geschaltet");
+ 						$log_Giessanlage->LogMessage("Gartengiessanlage Weiter geschaltet");
+ 						$log_Giessanlage->LogNachrichten("Gartengiessanlage Weiter geschaltet");
  						$failure=set_gartenpumpe(false);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 			   			}
 					else
 					   	{ /* oder wenn zum ersten mal, Aufruf der Giessfunktion, mit Pause beginnen */
-						IPS_SetEventCyclicTimeBounds($giesstimerID,time(),0);  /* damit der Timer richtig anfängt und nicht zur vollen Stunde */
-						IPS_SetEventCyclic($giesstimerID, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , $pauseTime);
-      					IPS_SetEventActive($giesstimerID,true);
 	      				IPS_SetEventActive($timerDawnID,false);
 			      		SetValue($GiessCountID,1);
-		 				$log_Giessanlage->message("Gartengiessanlage auf EinmalEin gesetzt.");
+		 				$log_Giessanlage->LogMessage("Gartengiessanlage auf EinmalEin gesetzt.");
+		 				$log_Giessanlage->LogNachrichten("Gartengiessanlage auf EinmalEin gesetzt.");
  						$failure=set_gartenpumpe(false);
 						//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 						}
 					break;
 				case "0":  /* Aus */
-    		  		IPS_SetEventActive($giesstimerID,false);
       				IPS_SetEventActive($timerDawnID,false);
     	  			IPS_SetEventActive($UpdateTimerID,false);				
 		      		SetValue($GiessCountID,0);
- 					$log_Giessanlage->message("Gartengiessanlage auf Aus gesetzt");
+					SetValue($GiessTimeRemainID ,0);				
+ 					$log_Giessanlage->LogMessage("Gartengiessanlage auf Aus gesetzt");
+ 					$log_Giessanlage->LogNachrichten("Gartengiessanlage auf Aus gesetzt");
  					$failure=set_gartenpumpe(false);
 					//$failure=HM_WriteValueBoolean($gartenpumpeID,"STATE",false); /* sicherheitshalber !!! */
 					/* Vorgeschichte egal, nur bei einmal ein wichtig */
