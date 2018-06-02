@@ -2073,7 +2073,7 @@ class OperationCenter
 			 */
 			$filename=IPS_GetScriptFile($value);	/* von hier wird kopiert -> source */
 			$name=IPS_GetName($value);
-			$trans = array("," => "", ";" => "", ":" => ""); /* falsche zeichen aus filenamen herausnehmen */
+			$trans = array("," => "", ";" => "", ":" => "", "/" => ""); /* falsche zeichen aus filenamen herausnehmen */
 			$name=strtr($name, $trans);
 			$destination=$name."-".$value.".php";		/* name der als Ziel Filename verwendet wird */
 			//echo "-Copy File: ".IPS_GetKernelDir().'scripts/'.$filename." : ".$name." : ".$DIR_copyscriptsdropbox.$destination."\n";
@@ -2782,9 +2782,9 @@ class OperationCenter
 
 		/* Tabelle vorbereiten, RSSI Werte ermitteln */
 	
-		IPSUtils_Include ('IPSHomematic.inc.php',      'IPSLibrary::app::hardware::IPSHomematic');
+		IPSUtils_Include ('Homematic_Library.class.php',      'IPSLibrary::app::modules::OperationCenter');
 
-		$homematicManager = new IPSHomematic_Manager();
+		$homematicManager = new Homematic_OperationCenter();
 		$homematicManager->RefreshRSSI();
 
 			$categoryIdHtml     = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.hardware.IPSHomematic.StatusMessages');
@@ -3257,38 +3257,42 @@ function move_camPicture($verzeichnis,$WebCam_LetzteBewegungID)
 	// Test, ob ein Verzeichnis angegeben wurde
 	if ( is_dir ( $verzeichnis ))
 		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-        	/* einlesen der Verzeichnisses
+		// öffnen des Verzeichnisses
+		if ( $handle = opendir($verzeichnis) )
+ 			{
+			/* einlesen der Verzeichnisses
 			nur count mal Eintraege
-        	*/
-        	while ((($file = readdir($handle)) !== false) and ($count > 0))
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-					$count-=1;
-					$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-					$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
-            	if (is_dir($verzeichnis.$unterverzeichnis))
-            		{
-            		}
-            	else
+			*/
+		 	while ((($file = readdir($handle)) !== false) and ($count > 0))
+				{
+				//echo "move_camPicture, Verzeichnis : ".$verzeichnis."  Filename : ".$file."\n";
+				if ( ($file != ".") && ($file != "..") )
+					{
+					$dateityp=filetype( $verzeichnis.$file );
+					if ($dateityp == "file")
 						{
-            		mkdir($verzeichnis.$unterverzeichnis);
-            		}
-            	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-            	//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-		  		   SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
-         		}
-      	  	} /* Ende while */
-	     	closedir($handle);
-   		} /* end if dir */
+						$count-=1;
+						$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
+						$letztesfotodatumzeit=date("d.m.Y H:i", filectime($verzeichnis.$file));
+						if (is_dir($verzeichnis.$unterverzeichnis))
+							{	
+							}
+						else
+							{
+							mkdir($verzeichnis.$unterverzeichnis);
+							}
+						rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+						//echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+						SetValue($WebCam_LetzteBewegungID,$letztesfotodatumzeit);
+						}
+					}
+				} /* Ende while */
+			closedir($handle);
+			} /* end if dir */
 		}/* ende if isdir */
 	else
-	   {
-	   echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+		{
+		echo "Kein FTP Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 		}
 	return(100-$count);
 	}

@@ -1439,25 +1439,24 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		/************** Guthaben auslesen ****************************************************************************/
 		
 		if (isset($installedModules["Guthabensteuerung"])==true)
-		   {
-		   $guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-	   	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+			{
+			IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+			$guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 			$GuthabenConfig = get_GuthabenConfiguration();
+			//print_r($GuthabenConfig);
 			$guthaben="Guthabenstatus:\n";
-	     	foreach ($GuthabenConfig as $TelNummer)
-   	  	   {
-   			$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
-   			$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
-	   		$guthaben .= "\n".GetValue($phone_Summ_ID);
-			  //"\n".GetValue(24085).
-			  //"\n".GetValue(27029).
-			  //"\n".GetValue(59623).
-			  //"\n".GetValue(39724).
-  			  //"\n".GetValue(54406).
-			  //"\n".GetValue(50426)."\n\n";
+			foreach ($GuthabenConfig as $TelNummer)
+				{
+				if (strtoupper($TelNummer["STATUS"])=="ACTIVE")
+					{
+					$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
+					$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+					$guthaben .= "\n".GetValue($phone_Summ_ID);
+					}
 				}
-			$guthaben .= "\n\n";
-		  	echo ">>Guthaben historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+			$guthaben .= "\n\n";			
+			echo ">>Guthaben historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 		else
 			{

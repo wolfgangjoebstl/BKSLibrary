@@ -266,7 +266,7 @@
 					$this->EreignisID=$erID;
 					/* Log von Variablen mit Delay, wenn DetectMovement installiert, dann dort */
 					echo 'DetectMovement Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name '.$this->variablename.' in '.$mdID." (".IPS_GetName($mdID).")\n";
-					$this->variableDelayLogID=CreateVariable($this->variablename,200,$mdID, 10,'~Motion',null,null );
+					$this->variableDelayLogID=CreateVariable($this->variablename,0,$mdID, 10,'~Motion',null,null );
 					$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 					AC_SetLoggingStatus($archiveHandlerID,$this->variableDelayLogID,true);
 					AC_SetAggregationType($archiveHandlerID,$this->variableDelayLogID,0);      /* normaler Wwert */
