@@ -533,7 +533,7 @@
 
 	/***********************************************************************
 	 *
-	 * fuer IPSCam einen Overview der ersten 4 Cameras machen 
+	 * fuer IPSCam einen Overview für jeweils 4 Cameras machen, Overview1 usw. 
 	 *
 	 *
 	 ******************************************************************/
@@ -572,10 +572,10 @@
 			$result=array();
 			foreach ($camConfig as $idx=>$data) 
 				{
-				print_r($data);
 				$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
 				$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
 				echo "Kamera ".$idx." auf Kategorie : ".$categoryIdCamX." mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
+				print_r($data);
 				$result[$idx]["OID"]=$variableIdCamHtmlX;
 				$result[$idx]["Name"]=$data["Name"];
 				}

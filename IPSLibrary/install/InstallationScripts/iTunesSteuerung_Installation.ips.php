@@ -234,6 +234,18 @@ Path=Visualization.Mobile.iTunes
 		echo "Profil ".$pname." erstellt;\n";
 		}
 
+	$pname="AusEin";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
 
 	/******************************************************
 	 *
@@ -257,16 +269,24 @@ Path=Visualization.Mobile.iTunes
 	 *
 	 ********************************/
 
-	$webfront_links=array();
-	$AutosteuerungID = CreateVariable("iTunesSteuerung", 1, $categoryId_iTunes, 1, "AusEinAuto",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-	$webfront_links[$AutosteuerungID]["TAB"]="iTunes";
-	$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
-	$webfront_links[$AutosteuerungID]["OID_R"]=$iTunes_NachrichtenInput;	
-	$webfront_links[$AutosteuerungID]["NAME"]="iTunesSteuerung";
-	$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=true;
-	$webfront_links[$AutosteuerungID]["USER"]=true;
-	$webfront_links[$AutosteuerungID]["MOBILE"]=true;
+	$config=iTunes_Configuration();
+	print_r($config);
 
+	$webfront_links=array();
+	foreach ($config["iTunes"] as $name => $entry)
+		{
+		if (isset($entry["NAME"])==false) $entry["NAME"]=$name;
+		if (isset($entry["PROFILE"])==false) $entry["PROFILE"]="";
+		$AutosteuerungID = CreateVariable($entry["NAME"], 1, $categoryId_iTunes, 1, $entry["PROFILE"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		$webfront_links[$AutosteuerungID]["TAB"]="iTunes";
+		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
+		$webfront_links[$AutosteuerungID]["OID_R"]=$iTunes_NachrichtenInput;	
+		$webfront_links[$AutosteuerungID]["NAME"]=$entry["NAME"];
+		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=true;
+		$webfront_links[$AutosteuerungID]["USER"]=true;
+		$webfront_links[$AutosteuerungID]["MOBILE"]=true;
+		}
+		
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Administrator Installation

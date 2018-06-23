@@ -1065,9 +1065,9 @@ class OperationCenter
 					{
 					if ($reboot_ctr > $maxhours)
 						{
-						echo $device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
 						if (isset ($config["REBOOTSWITCH"]))
 							{
+							echo $device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
 							$SwitchName = $config["REBOOTSWITCH"];
 							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 							IPSLight_SetSwitchByName($SwitchName,false);
@@ -1837,25 +1837,27 @@ class OperationCenter
 
 
 	/*
-	 *  Die oft umfangreichen Logfiles in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
-	 *	 werden kann.
-	 *
+	 *  Die oft umfangreichen Files in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann. 
+	 *   Verzeichnis: Ort der Dateien, days: wieviele Tage zurück werden Dateien erst zusammengeräumt, StatusID : OID in der der zeitstempel der letzten Datei gespeichert wird.
+	 *    
+	 *  kann für CamFTP Files als auch für Logs verwendet werden.
 	 */
 
-	function MoveLogs()
+	function MoveFiles($verzeichnis="",$days=2,$statusID=0)
 		{
-		if ($this->oc_Setup['CONFIG']['MOVELOGS']==true)
-			{
-			$verzeichnis=IPS_GetKernelDir().'logs/';
-			echo "Alle Logfiles von ".$verzeichnis." verschieben.\n";
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
+		echo "MoveFiles: Alle Files von ".$verzeichnis." in eigene Verzeichnisse pro Tag verschieben.\n";
 
 			$count=100;
 			//echo "<ol>";
 
-			echo "Heute      : ".date("Ymd", time())."\n";
-			echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-			echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
-			$vorgestern = date("Ymd", strtotime("-2 day"));
+			//echo "Heute      : ".date("Ymd", time())."\n";
+			//echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+			//echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+			$vorgestern = date("Ymd", strtotime("-".$days." day"));
+			$moveTime=strtotime("-".$days." day");
+			echo "   Dateien behalten bis ".$vorgestern."\n";
 
 			// Test, ob ein Verzeichnis angegeben wurde
 			if ( is_dir ( $verzeichnis ) )
@@ -1865,69 +1867,134 @@ class OperationCenter
 					{
 					/* einlesen der Verzeichnisses
 					   nur count mal Eintraege
-   	     			*/
+					*/
 					while ((($file = readdir($handle)) !== false) and ($count > 0))
-   	     			{
-						$dateityp=filetype( $verzeichnis.$file );
-						if ($dateityp == "file")
+						{
+						if ( ($file != ".") && ($file != "..") )
 							{
-							$unterverzeichnis=date("Ymd", filectime($verzeichnis.$file));
-							if ($unterverzeichnis == $vorgestern)
+							$dateityp=filetype( $verzeichnis.$file );
+							if ($dateityp == "file")
 								{
-								$count-=1;
-								if (is_dir($verzeichnis.$unterverzeichnis))
+								$fileTime=filectime($verzeichnis.$file);
+								$unterverzeichnis=date("Ymd", $fileTime);
+								$letztesfotodatumzeit=date("d.m.Y H:i", $fileTime);   // anderes Format fuer Status
+								if ($fileTime <= $moveTime)
 									{
+									$count-=1;
+									if (is_dir($verzeichnis.$unterverzeichnis))
+										{
+										}
+									else
+										{
+										mkdir($verzeichnis.$unterverzeichnis);
+										}
+									rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+									echo "  Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+									if ($statusID != 0) SetValue($statusID,$letztesfotodatumzeit);
 									}
-								else
-									{
-		            			mkdir($verzeichnis.$unterverzeichnis);
-   		         			}
-	   		         	rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-   	   		      	echo "Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-   	      		   	}
-         				}
-		      	  	} /* Ende while */
-			     	closedir($handle);
-   				} /* end if dir */
+								}
+							}	
+						} /* Ende while */
+					closedir($handle);
+					} /* end if dir */
 				}/* ende if isdir */
 			else
-		   	{
-			   echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+				{
+				echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 				}
-			return (100-$count);
-			}
-		else return (false);
+		return (100-$count);
 		}
 
 	/*
-	 *  Die oft umfangreichen Logfiles in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *  Die oft umfangreichen Fotos der Webcams in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann. Es werden die selben Move Operationen wie bei Logs verwendet.
+	 *
+	 */
+
+	function MoveCamFiles($cam_config)
+		{
+		$count=0;
+		$cam_name=$cam_config['CAMNAME'];		
+		$verzeichnis = $cam_config['FTPFOLDER'];
+		$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
+		if ($cam_categoryId==false)
+			{
+			$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+			IPS_SetParent($cam_categoryId,$this->CategoryIdData);
+			}
+		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+		$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+		$count=$this->moveFiles($verzeichnis,0,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
+		$PhotoCountID = CreateVariableByName($this->CategoryIdData, "Webcam_PhotoCount", 1);
+		SetValue($PhotoCountID,GetValue($PhotoCountID)+$count);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */
+		SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
+		if ($count>0)
+			{
+			SetValue($WebCam_MotionID,true);
+			}
+		else
+			{
+			SetValue($WebCam_MotionID,false);
+			}
+		echo "    Anzahl verschobener Fotos für ".$cam_name." : ".$count."\n";
+		return ($count);
+		}
+		
+	/*
+	 *  Die oft umfangreichen Files die erstellt werden in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann.
 	 *
 	 */
 
-	function DirLogs()
+	function DirLogs($verzeichnis="")
 		{
-		$verzeichnis=IPS_GetKernelDir().'logs/';
-		echo "Verzeichnis der Logfiles von ".$verzeichnis.".\n";
-		echo "Konfiguration:\n";
-		print_r($this->oc_Setup);
-	   	$logdir=$this->readdirToArray($verzeichnis);
-		$dir=0; $totalsize=0;
-		foreach ($logdir as $index => $entry)
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
+		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
+
+		$print=0;
+		$dir=0; $totalsize=0; $warning=false;
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $verzeichnis ) )
 			{
-			$size=sizeof($entry);
-			if ($size==1)
-				{ /* Filename */
-				echo $entry."\n";
-				$totalsize++;
+			//echo "Konfiguration:\n";
+			//print_r($this->oc_Setup);
+			$logdir=$this->readdirToArray($verzeichnis);	// es gibt zweiten Parameter für rekursiv wenn true
+			//print_r($logdir); // zu gross
+			foreach ($logdir as $index => $entry)
+				{
+				if (is_dir($verzeichnis.$entry)==true) 
+					{
+					echo "  ".$index."  Directory  ".$entry."\n";;
+					$size=sizeof($entry);	
+					$dir++;
+					$totalsize+=$size;							
+					}
+				else
+					{	
+					if (($print++)<1000) 
+						{
+						echo "  ".$index."  Datei     ".$entry."\n"; // aufpassen damit nicht zu gross
+						}
+					else
+						{	
+						if ($warning==false)
+							{
+							echo "**** es sind mehr Dateien als 1000 vorhanden- Ausgabe gestoppt.\n";
+							$warning=true;
+							}
+						}	
+					$totalsize++;
+					}	
 				}
-			else
-				{	
-				//print_r($entry);
-				echo "Dir: ".$index."  ".$size."\n";
-				$dir++;
-				$totalsize+=$size;
-				}
+			echo "Insgesamt wurden ".$totalsize. " Dateien und Verzeichnisse gefunden.\n";	
+			}
+		else
+			{
+			echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 			}
 		return($dir);		
 		}
@@ -1938,85 +2005,109 @@ class OperationCenter
 	 *
 	 */
 
-	function PurgeLogs($remain=false)
+	function PurgeFiles($remain=false,$verzeichnis="")
 		{
 		if ($remain===false)
 			{
 			$remain=$this->oc_Setup['CONFIG']['PURGESIZE'];
 			}
-		if ($this->oc_Setup['CONFIG']['PURGELOGS']==true)
-			{		
-			$verzeichnis=IPS_GetKernelDir().'logs/';
-			echo "Überschüssige Logfiles von ".$verzeichnis." löschen.\n";
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';			
 
-			echo "Heute      : ".date("Ymd", time())."\n";
-			echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+		echo "Überschüssige Sammel-Verzeichnisse von ".$verzeichnis." löschen. Die letzen ".$remain." Verzeichnisse bleiben,\n";
+		echo "Heute      : ".date("Ymd", time())."\n";
+		echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
 
-			$count=0;
-			$dir=array();
+		$count=0;
+		$dir=array();
 		
-			// Test, ob ein Verzeichnis angegeben wurde
-			if ( is_dir ( $verzeichnis ) )
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $verzeichnis ) )
+			{
+			// öffnen des Verzeichnisses
+			if ( $handle = opendir($verzeichnis) )
 				{
-				// öffnen des Verzeichnisses
-				if ( $handle = opendir($verzeichnis) )
+				/* einlesen der Verzeichnisses	*/
+				while ((($file = readdir($handle)) !== false) )
 					{
-					/* einlesen der Verzeichnisses	*/
-					while ((($file = readdir($handle)) !== false) )
-						{
+					if ($file!="." and $file != "..")
+						{	/* kein Directoryverweis (. oder ..), würde zu einer Fehlermeldung bei filetype führen */
+						//echo "Bearbeite ".$verzeichnis.$file."\n";
 						$dateityp=filetype( $verzeichnis.$file );
-						if ($dateityp == "dir" and $file!="." and $file != "..")
+						if ($dateityp == "dir")
 							{
+							echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
 							$count++;
 							$dir[]=$verzeichnis.$file;
 							}
-						//echo "    ".$file."    ".$dateityp."\n";
-						} /* Ende while */
-					echo "Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
-					closedir($handle);
-					} /* end if dir */
-				}/* ende if isdir */
-			else
-				{
-				echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-				}
-			if (($count-$remain)>0) 
-				{	
-				echo "Loeschen von 0 bis ".($count-$remain)."\n";
-				for ($i=0;$i<($count-$remain);$i++)
-					{
-					echo "    Loeschen von Verzeichnis ".$dir[$i]."\n";
-					$this->rrmdir($dir[$i]);
-					}
-				} 	
-			return ($count);
+						}	
+					//echo "    ".$file."    ".$dateityp."\n";
+					} /* Ende while */
+				echo "Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+				closedir($handle);
+				} /* end if dir */
+			}/* ende if isdir */
+		else
+			{
+			echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 			}
-		else return (false);	 	
+		if (($count-$remain)>0) 
+			{	
+			echo "Loeschen von 0 bis ".($count-$remain)."\n";
+			for ($i=0;$i<($count-$remain);$i++)
+				{
+				echo "    Loeschen von Verzeichnis ".$dir[$i]."\n";
+				$this->rrmdir($dir[$i]);
+				}
+			} 	
+		return ($count);
 		}
 		
 	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen */
 
 	/* ein Verzeichnis einlesen und als Array zurückgeben */
 	
-	private function readdirToArray($dir)
+	public function readdirToArray($dir,$recursive=false,$newest=0)
 		{
 	   	$result = array();
 
-		$cdir = scandir($dir);
-		foreach ($cdir as $key => $value)
-			{
-			if (!in_array($value,array(".","..")))
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $dir ) )
+			{		
+			$cdir = scandir($dir);
+			foreach ($cdir as $key => $value)
 				{
-				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
-         			{
-					$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-	         		}
-    	     	else
-        	 		{
-            		$result[] = $value;
-         			}
-	      		}
-   			}
+				if (!in_array($value,array(".","..")))
+					{
+					if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+						{
+						if ($recursive)
+							{ 
+							echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
+							$result[$value]=$this->dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+							echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
+							}
+						else $result[] = $value;
+						//$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+						}
+					else
+						{
+						$result[] = $value;
+						}
+					}
+				} // ende foreach
+			} // ende isdir
+		if ($newest != 0)
+			{
+			if ($newest<0) 
+				{
+				rsort($result);
+				$newest=-$newest;
+				}				
+			foreach ($result as $index => $entry)
+				{
+				if ($index>$newest) unset($result[$index]);
+				}
+			}
 		return $result;
 		}		
 
@@ -2850,7 +2941,8 @@ class OperationCenter
 				}
 			else
 				{
-				$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
+				$str .= "<tr><td>".$name."</td><td>   </td><td>      </td></tr>";				
+				//$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
 				}		
 			}		
 		$ccuNum++;

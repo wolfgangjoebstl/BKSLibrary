@@ -63,13 +63,19 @@ define("ADR_GBESwitch_Stromversorgung",23695);
 
 
 define("ADR_Gateway","10.0.1.200");
-define("ADR_Webcam_innen","10.0.1.2");
-define("ADR_Webcam_innen_Port","2001");
 define("ADR_Homematic","10.0.1.3");
 
+define("ADR_Webcam_innen","10.0.1.2");
+define("ADR_Webcam_innen_Port","2001");
+
 define("ADR_Webcam_lbg","hupo35.ddns-instar.de");
-define("ADR_Webcam_Outdoor","10.0.1.8");
-define("ADR_Webcam_Outdoor_Port","2002");
+
+define("ADR_Webcam_Keller","10.0.1.122");
+define("ADR_Webcam_Keller_Port","2002");
+
+define("ADR_Webcam_Garten","10.0.1.123");
+define("ADR_Webcam_Garten_Port","2003");
+
 
 /* Wohnungszustand */
 
@@ -1004,12 +1010,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 				
 			if (isset($installedModules["Gartensteuerung"])==true)
 				{
-				echo "Die Regenwerte der letzten 10 Tage ausgeben.\n";
-				$ergebnisRegen.="\nIn den letzten 10 Tagen hat es zu folgenden Zeitpunkten geregnet:\n";
+				echo "Die Regenwerte der letzten 20 Tage ausgeben.\n";
+				$ergebnisRegen.="\nIn den letzten 20 Tagen hat es zu folgenden Zeitpunkten geregnet:\n";
 				/* wenn die Gartensteuerung installiert ist, gibt es einen Regensensor der die aktuellen Regenmengen der letzten 10 Tage erfassen kann */
 				IPSUtils_Include ('Gartensteuerung_Library.class.ips.php', 'IPSLibrary::app::modules::Gartensteuerung');
 				$gartensteuerung = new Gartensteuerung();
-				foreach ($gartensteuerung->regenStatistik as $regeneintrag)
+				$rainResults=$gartensteuerung->listRainEvents(20);
+				foreach ($rainResults as $regeneintrag)
 					{
 					$ergebnisRegen.="  Regenbeginn ".date("d.m H:i",$regeneintrag["Beginn"]).
 					   	"  Regenende ".date("d.m H:i",$regeneintrag["Ende"]).
@@ -1538,42 +1545,10 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		/******************************************************************************************/
 
 		if (isset($installedModules["Gartensteuerung"])==true)
-		   {
+			{
+			$gartensteuerung = new Gartensteuerung();
 			$ergebnisGarten="\n\nVerlauf der Gartenbewaesserung:\n\n";
-			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Gartensteuerung.Gartensteuerung-Nachrichten');
-			$zeile1 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile01", 3);
-			$zeile2 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile02", 3);
-			$zeile3 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile03", 3);
-			$zeile4 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile04", 3);
-			$zeile5 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile05", 3);
-			$zeile6 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile06", 3);
-			$zeile7 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile07", 3);
-			$zeile8 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile08", 3);
-			$zeile9 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile09", 3);
-			$zeile10 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile10", 3);
-			$zeile11 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile11", 3);
-			$zeile12 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile12", 3);
-			$zeile13 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile13", 3);
-			$zeile14 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile14", 3);
-			$zeile15 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile15", 3);
-			$zeile16 = CreateVariableByName($baseId, "Nachricht_Garten_Zeile16", 3);
-
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile1)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile2)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile3)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile4)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile5)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile6)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile7)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile8)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile9)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile10)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile11)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile12)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile13)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile14)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile15)."\n";
-			$ergebnisGarten=$ergebnisGarten.GetValue($zeile16)."\n";
+			$ergebnisGarten=$ergebnisGarten.$gartensteuerung->listEvents()."\n";
 		  	echo ">>Gartensteuerung historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 

@@ -98,6 +98,7 @@ SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 	if ($noweather == false) { echo "Keine Anzeige der rechten Wettertabelle in der Startpage.\n"; }
 	
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
+	echo StartPageWrite(1);
 	}
 
 /**************************************** FUNCTIONS *********************************************************/

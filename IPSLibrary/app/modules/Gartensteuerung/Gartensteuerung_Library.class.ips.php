@@ -24,6 +24,7 @@
  
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('Gartensteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Gartensteuerung');
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 class Gartensteuerung
 	{
@@ -37,6 +38,8 @@ class Gartensteuerung
 	public 		$letzterRegen, $regenStand2h, $regenStand48h;
 	
 	public 		$GiessTimeID,$GiessDauerInfoID;
+	
+	public 		$log_Giessanlage;									// logging Library class
 		
 	public function __construct($starttime=0,$starttime2=0,$debug=false)
 		{
@@ -51,6 +54,12 @@ class Gartensteuerung
 		$this->GiessTimeID	= @IPS_GetVariableIDByName("GiessTime", $categoryId_Gartensteuerung); 
 		$this->GiessDauerInfoID	= @IPS_GetVariableIDByName("GiessDauerInfo",$categoryId_Gartensteuerung);
 		//echo "GiesstimeID ist ".$this->GiessTimeID."\n";
+
+		$object2= new ipsobject($CategoryIdData);
+		$object3= new ipsobject($object2->osearch("Nachricht"));
+		$NachrichtenInputID=$object3->osearch("Input");
+		$this->log_Giessanlage=new Logging("C:\Scripts\Log_Giessanlage2.csv",$NachrichtenInputID,IPS_GetName(0).";Gartensteuerung;");
+
 
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$this->debug=$debug;
@@ -318,6 +327,117 @@ class Gartensteuerung
 			}
 		return $giessdauerVar;
 		}
+
+	/*
+	 *   Ausgabe der Regenschauer in den letzten Tagen
+	 *
+	 */
+
+	public function listRainEvents($days=10)
+		{
+		$endtime=time();
+		$starttime2=$endtime-60*60*24*$days;   /* die letzten 10 Tage Niederschlag*/
+
+		$Server=RemoteAccess_Address();
+		if ($this->debug)
+			{
+			echo"--------Class Construct Giessdauerberechnung:\n";
+			}
+		If ($Server=="")
+			{
+			$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$werteLog = AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+			}
+		else
+			{
+			$rpc = new JSONRPC($Server);
+			$this->archiveHandlerID = $rpc->IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$werteLog = $rpc->AC_GetLoggedValues($archiveHandlerID, $this->variableID, $starttime2, $endtime,0);
+			if ($this->debug)
+				{
+				echo "   Daten vom Server : ".$Server."\n";
+				}
+			}
+		/* Letzen Regen ermitteln, alle Einträge der letzten 48 Stunden durchgehen */
+		$regenStand=0;			/* der erste Regenwerte, also aktueller Stand */
+		$regenStandAnfang=0;  /* für den Fall dass gar keine Werte gelogget wurden */
+		$regenAnfangZeit=0;
+		$regenStandEnde=0;
+		$regenEndeZeit=0;
+		$regenMenge=0; $regenMengeAcc=0;
+		$regenDauer=0; $regenDauerAcc=0;
+		$vorwert=0; $vorzeit=0;
+		$regenStatistik=array();
+		$regenMaxStd=0;
+		foreach ($werteLog as $wert)
+			{
+			if ($vorwert==0) 
+		   		{ 
+				if ($this->debug) {	echo "   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
+				$regenStand=$wert["Value"];
+				}
+			else 
+				{
+				/* die erste Zeile erst mit dem zweiten Eintrag auffuellen ... */
+				$regenMenge=round(($vorwert-$wert["Value"]),1);
+				$regenDauer=round(($vorzeit-$wert["TimeStamp"])/60,0);
+				if ($this->debug) { echo " ".$regenMenge."mm/".$regenDauer."min  "; }
+				if (($regenMenge/$regenDauer*60)>$regenMaxStd) {$regenMaxStd=$regenMenge/$regenDauer*60;}
+				if ( ($regenMenge<0.4) and ($regenDauer>60) ) 
+					{
+					/* gilt nicht als Regen, ist uns zu wenig, mehr ein nieseln */
+					if ($regenEndeZeit != 0)
+						{ 
+						/* gilt auch als Regenanfang wenn ein Regenende erkannt wurde*/
+						$regenAnfangZeit=$vorzeit;
+						if ($this->debug) 
+							{ 
+							echo $regenMengeAcc."mm ".$regenDauerAcc."min ";						
+							echo "  Regenanfang : ".date("d.m H:i",$regenAnfangZeit)."   ".round($vorwert,1)."  ".round($regenMaxStd,1)."mm/Std ";	
+							}
+						$regenStatistik[$regenAnfangZeit]["Beginn"]=$regenAnfangZeit;
+						$regenStatistik[$regenAnfangZeit]["Ende"]  =$regenEndeZeit;
+						$regenStatistik[$regenAnfangZeit]["Regen"] =$regenMengeAcc;
+						$regenStatistik[$regenAnfangZeit]["Max"]   =$regenMaxStd;					
+						$regenEndeZeit=0; $regenStandEnde=0; $regenMaxStd=0;
+						}
+					else
+						{
+						if ($this->debug) { echo "* "; }
+						}	
+					$regenMenge=0; $regenDauerAcc=0; $regenMengeAcc=0;
+					} 
+				else
+					{
+					/* es regnet */
+					$regenMengeAcc+=$regenMenge;
+					$regenDauerAcc+=$regenDauer;				
+					if ($this->debug) { echo $regenMengeAcc."mm ".$regenDauerAcc."min "; }
+					if ($regenEndeZeit==0)
+						{
+						$regenStandEnde=$vorwert;
+						$regenEndeZeit=$vorzeit;
+						}						
+					if ($this->debug) { echo "  Regenende : ".date("d.m H:i",$regenEndeZeit)."   ".round($regenStandEnde,1)."  ";	}
+					}	
+				if ($this->debug) { echo "\n   Wert : ".number_format($wert["Value"], 1, ",", "")."mm   ".date("d.m H:i",$wert["TimeStamp"])." "; }
+				}
+			$vorwert=$wert["Value"];	
+			$vorzeit=$wert["TimeStamp"];
+			}
+		return ($regenStatistik);
+		}
+
+	/*
+	 *   Ausgabe der Events/Nachrichten über die Giessanlage, wann wie lange eingeschaltet
+	 *
+	 */
+
+	public function listEvents()
+		{
+		return ($this->log_Giessanlage->PrintNachrichten());
+		}
+
 		
 	}  /* Ende class Gartensteuerung */
 

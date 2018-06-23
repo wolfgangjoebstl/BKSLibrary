@@ -76,7 +76,8 @@ else
 			if ($directory !=="") echo "Error : ".$directory." is not in ".$directoryOK."\n";
 			}
 		//echo $directoryPath."\n";
-		} 			   
+		} 
+	mkdirtree($bilderverzeichnis);	
 	}
 
 $check=array();

@@ -579,7 +579,7 @@ if($_IPS['SENDER'] == "TimerEvent")
 								if ($GartensteuerungConfiguration["DEBUG"]==true)
 									{
 									$log_Giessanlage->LogMessage("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
-									$log_Giessanlage->LogNachrichten("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
+									//$log_Giessanlage->LogNachrichten("Gartengiessanlage Vorgang beginnt jetzt mit einer Giessdauer von: ".$giessTime." Minuten.");
 									}
 								}
 							else

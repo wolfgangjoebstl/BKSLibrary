@@ -43,6 +43,12 @@ $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
 $Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 $Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 
+/****************************************************************
+ *
+ *  Init
+ *
+ */
+
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
@@ -66,6 +72,14 @@ if (isset($NachrichtenScriptID))
 	}
 else break;
 
+/****************************************************************
+ *
+ *  Konfiguration
+ *
+ */
+	
+	$config=iTunes_Configuration();
+	
 /****************************************************************/
 
 if ($_IPS['SENDER'] == "Execute")
@@ -84,12 +98,22 @@ if ($_IPS['SENDER'] == "Execute")
 
 if ($_IPS['SENDER'] == "WebFront")
 	{
-	echo "Script wurde über Webfront aufgerufen.\n";
+	//echo "Script wurde über Webfront aufgerufen.\n";
 	$oid=$_IPS['VARIABLE'];
-	$name=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
+	$name=IPS_GetName($oid);
+	$category=IPS_GetName(IPS_GetParent($oid));
+	$module=IPS_GetName(IPS_GetParent(IPS_GetParent($oid)));
 	$log_iTunes->LogMessage("Script wurde über Webfront von Variable ID :".$oid." aufgerufen.");
-	$log_iTunes->LogNachrichten("Script wurde über Webfront  von Variable ID :".$oid." aufgerufen.");
-	
+	$log_iTunes->LogNachrichten("Variable ID :".$oid." ".$name."/".$category."/".$module." aufgerufen.");
+	if ( isset($config["iTunes"][$name])==true )
+		{
+		$configTunes=$config["iTunes"][$name];
+		if ( isset($configTunes["EXECUTE"])==true )
+			{
+			$log_iTunes->LogNachrichten("Config Eintrag EXECUTE ".$configTunes["EXECUTE"]." vorhanden.");		
+			
+			}
+		}
 	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
 	
 	}

@@ -18,7 +18,7 @@
  * SystemInfo
  * Reserved
  * Maintenance			Starte Maintennance Funktionen 
- * MoveLogFiles			Maintenance Funktion: Move Log Files 
+ * MoveLogFiles			Maintenance Funktion: für Move Log Files 
  *
  *
  *
@@ -610,6 +610,8 @@ if ($_IPS['SENDER']=="Execute")
 	**********************************************************/
 
 	//$OperationCenter->MoveLogs();
+	if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$OperationCenter->MoveFiles(IPS_GetKernelDir().'logs/',2);
+
 
 	/************************************************************************************
   	StatusInformation von sendstatus auf ein Dropboxverzeichnis kopieren
@@ -745,31 +747,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
 					echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-					$verzeichnis = $cam_config['FTPFOLDER'];
-					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-					if ($cam_categoryId==false)
-					   {
-						$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-						IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-						IPS_SetParent($cam_categoryId,$CategoryIdData);
-						}
-					$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
-					$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
-
-					$count1=move_camPicture($verzeichnis,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
-					$count+=$count1;
-					$PhotoCountID = CreateVariableByName($CategoryIdData, "Webcam_PhotoCount", 1);
-					SetValue($PhotoCountID,GetValue($PhotoCountID)+$count1);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */
-					SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count1);
-					if ($count1>0)
-					   {
-					   SetValue($WebCam_MotionID,true);
-					   }
-					else
-						{
-  				   		SetValue($WebCam_MotionID,false);
-						}
+					$cam_config['CAMNAME']=$cam_name;
+					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$OperationCenter->MoveCamFiles($cam_config);
+					if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
 					}
 				} /* Ende isset */
 			if ($count>0)
@@ -922,18 +902,19 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 * am Ende auch noch alte Statusdateien in der Dropbox loeschen
 			 *
 			 *************************************************************************************/	
-			$countlog=$OperationCenter->MoveLogs();
+			$countlog=0;
+			if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$OperationCenter->MoveFiles(IPS_GetKernelDir().'logs/',2);
 			if ($countlog == 100)
 				{
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben. Es gibt noch mehr.");				
 				}
 			elseif ($countlog>0)
 				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben.");
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");
 				}
 			else
 				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");	
+				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei bereits zusammengeraeumt.");	
 				$countdir=$OperationCenter->PurgeLogs();
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");
 				$countdelstatus=$OperationCenter->FileStatusDelete();	
