@@ -26,7 +26,10 @@
 	 *
 	 */
 
-
+	function getHostAddress()
+		{
+		return ('http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:3777/api/');
+		}
 	 
 	 
 
