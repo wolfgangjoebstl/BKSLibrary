@@ -61,10 +61,10 @@ $scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('P
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 
 	/******************************************************
-
-	Webfront zusammenräumen
-	
-	*******************************************************/
+	 *
+	 *  Webfront zusammenräumen
+	 *
+	 *******************************************************/
 	
 if (isset($installedModules["IPSLight"])==true)
 	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
@@ -72,8 +72,8 @@ if (isset($installedModules["IPSLight"])==true)
 	$pos=strpos($WFC10_Path,"OperationCenter");
 	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
 	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-   IPS_SetPosition($categoryId_WebFront,998);
-   IPS_SetHidden($categoryId_WebFront,true);
+	IPS_SetPosition($categoryId_WebFront,998);
+	IPS_SetHidden($categoryId_WebFront,true);
 	echo "   Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
 	}
 
@@ -90,13 +90,13 @@ if (isset($installedModules["IPSPowerControl"])==true)
 
 
 	/******************************************************
-
-				INIT, Timer, sollte eigentlich in der Install Routine sein
-				
-				MoveCamFiles				, alle 150 Sec
-				RouterAufruftimer       , immer um 0:20
-
-	*************************************************************/
+	 *
+	 * INIT, Timer, sollte eigentlich in der Install Routine sein
+	 *			
+	 *		MoveCamFiles				, alle 150 Sec
+	 *		RouterAufruftimer       , immer um 0:20
+ 	 *
+	 *************************************************************/
 
 if (isset ($installedModules["IPSCam"]))
 	{
@@ -751,6 +751,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$OperationCenter->MoveCamFiles($cam_config);
 					if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
 					}
+				$OperationCenter->copyCamSnapshots();	// prüft nicht ob IPSCam Modul installiert ist
 				} /* Ende isset */
 			if ($count>0)
 				{

@@ -60,6 +60,18 @@ if (isset($_IPS['Monitor']))
 		}
 	}
 
+if (isset($_IPS['VLC']))
+	{
+	if ($_IPS['VLC']!="")
+		{
+		if (isset($configuration["Directories"]["Playlist"]) == false) $configuration["Directories"]["Playlist"]="";
+		if (isset($configuration["Directories"]["ViedeoLan"]) == true)
+			{
+			IPS_ExecuteEX('"'.$configuration["Directories"]["ViedeoLan"].'vlc.exe"', $configuration["Directories"]["Playlist"], false, false, 1);
+			}
+		else IPS_ExecuteEX($_IPS['VLC'], "", false, false, 1);
+		}
+	}
 
 if ($_IPS['SENDER']=="Execute")
 	{

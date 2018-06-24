@@ -10,6 +10,7 @@ Funktionen:
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\iTunesSteuerung\iTunes.Configuration.inc.php");
 
 IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
@@ -110,8 +111,10 @@ if ($_IPS['SENDER'] == "WebFront")
 		$configTunes=$config["iTunes"][$name];
 		if ( isset($configTunes["EXECUTE"])==true )
 			{
-			$log_iTunes->LogNachrichten("Config Eintrag EXECUTE ".$configTunes["EXECUTE"]." vorhanden.");		
-			
+			$log_iTunes->LogNachrichten("Config Eintrag EXECUTE ".$configTunes["EXECUTE"]." vorhanden.");
+			$Server=getHostAddress();	
+			$rpc = new JSONRPC($Server);
+			$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);
 			}
 		}
 	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);

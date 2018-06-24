@@ -1942,7 +1942,45 @@ class OperationCenter
 		echo "    Anzahl verschobener Fotos für ".$cam_name." : ".$count."\n";
 		return ($count);
 		}
-		
+
+	/******************************
+	 *
+	 * es werden Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
+	 * diese werden regelmaessig für ein Overview Webfront in das webfront/user Verzeichnis kopiert
+	 * 
+	 * Übergabeparameter ist IPSCam Configfile aus IPSCam
+	 */
+	
+	function CopyCamSnapshots($camConfig=array())
+		{
+		if (sizeof($camConfig)==0)
+			{
+			echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen.\n";
+			IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+			IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+			$camConfig = IPSCam_GetConfiguration();			
+			}
+		$camVerzeichnis=IPS_GetKernelDir()."Cams/";
+		$camVerzeichnis = str_replace('\\','/',$camVerzeichnis);
+		$picVerzeichnis="user/OperationCenter/AllPics/";
+		$picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+		$picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
+		echo "Bilderverzeichnis der Kameras, Quellverzeichnis : ".$camVerzeichnis."   Zielverzeichnis : ".$picVerzeichnisFull."\n";
+		if ( is_dir ( $picVerzeichnisFull ) == false ) mkdirtree($picVerzeichnisFull);
+
+		echo "\n---------------------------------------------------------\n";
+		//print_r($camConfig);
+		foreach ($camConfig as $index=>$data) 
+			{
+			$filename=$camVerzeichnis.$index."/Picture/Current.jpg";
+			if ( file_exists($filename) == true )
+				{
+				echo "Kamera ".$data["Name"]." copy ".$filename." nach ".$picVerzeichnisFull." \n";	
+				copy($filename,$picVerzeichnisFull."Cam".$index.".jpg");
+				}
+			}
+		}
+						
 	/*
 	 *  Die oft umfangreichen Files die erstellt werden in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann.
@@ -2062,9 +2100,11 @@ class OperationCenter
 		return ($count);
 		}
 		
-	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen */
-
-	/* ein Verzeichnis einlesen und als Array zurückgeben */
+	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
+	 *
+	 * ein Verzeichnis einlesen und als Array zurückgeben 
+	 *
+	 */
 	
 	public function readdirToArray($dir,$recursive=false,$newest=0)
 		{
@@ -2130,11 +2170,11 @@ class OperationCenter
 			}
 		} 
 
-	/****************************************************/
-	/*
+	/***************************************************
+	 *
 	 * kopiert die Scriptfiles auf ein Dropboxverzeichnis um die Files sicherheitshalber auch immer zur Verfügung zu haben
 	 * auch wenn Github nicht mehr geht
-
+	 *
 	 */
 
 	function CopyScripts()
@@ -2677,6 +2717,10 @@ class OperationCenter
 		else return($result);
 		}
 
+	/*
+	 *
+	 */
+
 	function getHomematicDeviceList()
 		{
 		$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
@@ -2956,7 +3000,6 @@ class OperationCenter
 		
 		}
 
-
 	/*
 	 * aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
 	 *
@@ -2977,7 +3020,11 @@ class OperationCenter
 		$result5=str_replace("</DIV>","\n",$result5);
 		return(trim($result5));	
 		}
-		
+
+	/*
+	 *
+	 */
+
 	private function stripHTMLTags($htmlstring,$delete_tags=array(), $strip_tags=array())
 		{
 		$len=strlen($htmlstring);
