@@ -751,7 +751,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$OperationCenter->MoveCamFiles($cam_config);
 					if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
 					}
+				/* Die Snapshots der IPS Cam Kameras auf einen Bildschorm bringen */	
 				$OperationCenter->copyCamSnapshots();	// prüft nicht ob IPSCam Modul installiert ist
+				
+				/* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
+				$OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM']);
 				} /* Ende isset */
 			if ($count>0)
 				{

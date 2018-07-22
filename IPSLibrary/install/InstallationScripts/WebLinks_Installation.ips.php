@@ -203,7 +203,7 @@
 	echo $WFC10_Path."\n";
 	echo $WebLinkID."  ".IPS_GetName($WebLinkID)."/".IPS_GetName(IPS_GetParent($WebLinkID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($WebLinkID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($WebLinkID))))."\n";
 
-	echo "Weblink Table aufbauen aus Config Tabelle.\n";
+	echo "Weblink Table aufbauen aus Config Tabelle:\n";
 	$linkConfig=WebLinks_Configuration();
 	$html="";
 	//$html.='<iFrame>';
@@ -213,35 +213,46 @@
                    a:active  {color: yellow;background-color: transparent; text-decoration: underline; } </style>'; 
 	$html.='<table>';
 	$rows=0;$columns=0;
-	foreach ($linkConfig as $config)
+	foreach ($linkConfig as $index => $config)
 		{
 		$html.='<tr>';
 		$col=0;
-		foreach ($config as $entry)
+		echo "  Weblinks Konfigurationen für ".$index." bearbeiten.\n";
+		switch (strtoupper($index))
 			{
-			print_r($entry);
-			if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
-			if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
-			$html.='<td> <a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td>';
-			$col++;
+			case "WEBLINKS":
+				foreach ($config as $entry)
+					{
+					print_r($entry);
+					if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
+					if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
+					$html.='<td> <a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td>';
+					$col++;
+					echo "    ".$entry["NAME"]."\n";
+					}
+				break;
+			case "CAMERAS":
+				if (isset ($installedModules["IPSCam"]))
+					{
+					IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+					IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+					$camConfig = IPSCam_GetConfiguration();
+					foreach ($camConfig as $idx=>$data) 
+						{
+						print_r($data);
+						$result=explode(",",$data[IPSCAM_PROPERTY_COMPONENT]);
+						$html.='<td> <a href="'.'http://'.$result[1].'" target="_blank">'.$data[IPSCAM_PROPERTY_NAME].'</a> </td>';
+						}			
+					}			
+				break;
+			default:
+				break;
 			}
 		if ($col>$columns) $columns=$col;	
 		$html.='</tr>';
 		$rows++;			
 		}
 	echo "Tabelle mit ".$rows." Spalten und ".$col." Zeilen.\n";
-	foreach ($linkConfig as $config)
-		{
-		$html.='<tr>';
-		foreach ($config as $entry)
-			{
-			print_r($entry);
-			if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
-			if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
-			$html.='<td> <a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td>';
-			}
-		$html.='</tr>';			
-		}
 	$html.='</table>';
  	//$html.='<a href="http://derstandard.at" target="_blank">Link zum Standard</a>';
 	//$html.='<a href="http://10.0.0.132:8001/1:0:19:2B66:3F3:1:C00000:0:0:0:" target="_blank">Link zum Streaming von der Dreambox</a>';

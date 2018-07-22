@@ -176,26 +176,26 @@
 			{
 			echo "      iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
 			$handle2=fopen($router["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
-      		fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
-	    	fwrite($handle2,'TAB T=1'."\n");
-	      	fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+			fwrite($handle2,'VERSION BUILD=8961227 RECORDER=FX'."\n");
+			fwrite($handle2,'TAB T=1'."\n");
+			fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
 			fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-     		fwrite($handle2,'ONLOGIN USER=admin PASSWORD=cloudg06'."\n");
-	      	fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
-   	   		fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
-      		fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
-	      	fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>Statistics'."\n");
-   	   		fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
-      		fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
-	      	fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
-	      	fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
-	      	fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
-   	   		//fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
-   	   		fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
-   	   		fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
-   	   		fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Status'."\n");
-   	   		fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."_Statistics\n");
-      		fwrite($handle2,'TAB CLOSE'."\n");
+			fwrite($handle2,'ONLOGIN USER=admin PASSWORD=cloudg06'."\n");
+			fwrite($handle2,'URL GOTO=http://'.$router['IPADRESSE']."\n");
+			fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:System<SP>Tools'."\n");
+			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:-<SP>Statistics'."\n");
+	 		fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+			fwrite($handle2,'TAG POS=1 TYPE=SELECT FORM=NAME:sysStatic ATTR=NAME:Num_per_page CONTENT=%100'."\n");
+			fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:NextPage'."\n");
+			fwrite($handle2,'FRAME NAME="mainFrame"'."\n");
+		 	fwrite($handle2,'TAG POS=1 TYPE=INPUT:SUBMIT FORM=NAME:sysStatic ATTR=NAME:Refresh'."\n");
+			//fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");  /* Textfile speichert nicht die komplette Struktur */
+			fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."\n");
+			fwrite($handle2,'FRAME NAME="bottomLeftFrame"'."\n");
+	 		fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Status'."\n");
+			fwrite($handle2,'SAVEAS TYPE=HTM FOLDER=* FILE=report_router_'.$router['TYP']."_".$router['NAME']."_Statistics\n");
+			fwrite($handle2,'TAB CLOSE'."\n");
 			fclose($handle2);
 
 			//SetValue($ScriptCounterID,1);
@@ -258,7 +258,7 @@
 		echo "Modul IPSCam installiert. Im Verzeichnis Data die Variablen für Übersichtsdarstellungen Pics und Movies anlegen:\n"; 
 		
 		/* es werden für alle in IPSCam registrierten Webcams auch Zusammenfassungsdarstellungen angelegt.
-		   OperationCenter kopiert alle 150 Sekunden die verfügbaren Cam Snapshot in ein eigenes für dei dartsellung im
+		   OperationCenter kopiert alle 150 Sekunden die verfügbaren Cam Snapshot in ein eigenes für die Darstellung im
 		   Webfront geeignetes Verzeichnis */ 
 
 		$CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
@@ -571,30 +571,42 @@
 
 	/***********************************************************************
 	 *
-	 * fuer IPSCam einen Overview für jeweils 4 Cameras machen, Overview1 usw. 
+	 * fuer IPSCam verschiedene Overview Darstellungen machen
+	 * 
+	 * Snapshot Darstellung der in der IPSCam erstellten Snapshot Dateien (current0 bis x), Zeitraster einstellbar
+	 * Live Overview für jeweils 4 Cameras machen, Overview1 usw. sollte sich den lokalen Stream holen, anstelle extern, 
+	 *		abhängig von der verfügbaren Bandbreite
+	 * Capture Darstellung, aus dem FTP Verzeichnissen entsprechende Bilder auswählen
 	 *
+	 * es gibt zwei Kamera Config Files, für das IPSCam Modul und innerhalb des OperationCenter Config Teil für die CAMs
+	 *		IPSCam sind alle Kameras, lokal und remote
+	 *		OC Cams sind nur die lokalen Kameras, die teilweise, muessen nicht alle sein auf einem FTP Verzeichis Alarm-Capture Bilder ablegen 
 	 *
 	 ******************************************************************/
 
 
 	if ( isset ($installedModules["IPSCam"] ) ) 
 		{
-		echo "\n"; 
+		echo "\n";
+		echo "=====================================================================================\n"; 
 		echo "Modul IPSCam installiert. Die Überblickdarstellung im WebCam Frontend wenn gewünscht anlegen:\n"; 
 		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 		$ergebnisCam=$moduleManagerCam->VersionHandler()->GetVersion('IPSCam');
-		echo "IPSCam Version : ".$ergebnisCam."\n";
+		echo "  IPSCam Module Version : ".$ergebnisCam."\n";
 		
 		$WFC10Cam_Enabled	= $moduleManagerCam->GetConfigValueDef('Enabled', 'WFC10',false);
 		if ($WFC10Cam_Enabled)
 			{
-			echo "IPSCam Überblickdarstellung für Administartor im WebCam Frontend anlegen:\n";
+			echo "IPSCam Überblickdarstellung für Administrator im WebCam Frontend anlegen:\n";
+			
 			// ----------------------------------------------------------------------------------------------------------------------------
 			// Program Installation
 			// ----------------------------------------------------------------------------------------------------------------------------
+			
 			$WFC10_ConfigId 	= $moduleManagerCam->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-			echo "  Default WFC10_ConfigId fuer IPSCam, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";				$CategoryIdCamData  		= $moduleManagerCam->GetModuleCategoryID('data');
+			echo "  Default WFC10_ConfigId fuer IPSCam, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";				
+			$CategoryIdCamData  		= $moduleManagerCam->GetModuleCategoryID('data');
 			$CategoryIdCamApp   		= $moduleManagerCam->GetModuleCategoryID('app');
 			$categoryIdCams     		= CreateCategory('Cams',    $CategoryIdCamData, 20);
 			$scriptIdActionScript   = IPS_GetScriptIDByName('IPSCam_ActionScript', $CategoryIdCamApp);			
@@ -611,37 +623,19 @@
 				{
 				$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
 				$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
-				echo "\nKamera ".$idx." auf Kategorie : ".$categoryIdCamX." mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
-				print_r($data);
+				echo "Kamera ".$idx." (".$data["Name"].") auf Kategorie : ".$categoryIdCamX." mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
+				//print_r($data);
 				$result[$idx]["OID"]=$variableIdCamHtmlX;
 				$result[$idx]["Name"]=$data["Name"];
 				$cam_name="Cam_".$data["Name"];
 				$cam_categoryId=@IPS_GetObjectIDByName($cam_name,$CategoryIdData);
-				if ($cam_categoryId==false) echo "Name ungleich zu OperationCenter.\n";
+				if ($cam_categoryId==false) echo "   Name ungleich zu OperationCenter.\n";
 				}
 			$anzahl=sizeof($result);
-			//$tabs=intdiv($anzahl,4);
-			$tabs=(integer)($anzahl/4);
-			echo "Es werden im Overview insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt. ".$tabs." zusaetzliche Tabs benötigt.\n";
+			echo "Es werden im Snapshot Overview insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
 
-			$rows=(integer)($anzahl/2);			
 			$html="";
-			$html.='<table style="width:100%">';
-			$count=0;
-			$picVerzeichnis="user/OperationCenter/AllPics/";
-			for ($i=0;$i<$rows;$i++)
-				{
-				/* immer zwei Bilder auf einmal, also zeilenweise */
-				$html.="<tr>";
-				if (($count+1)<$anzahl) 
-					{
-					$html.='<td frameborder="1"> <img src="'.imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg").'"> </td> <td frameborder="1"> <img src="'.imgsrcstring($picVerzeichnis,"Cam".($count+1).".jpg","Cam".($count+1).".jpg").'"> </td>';
-					$count++;
-					}	
-				else $html.='<td frameborder="1"> <img src="'.imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg").'"> </td>';
-				$count++;
-				}
-			$html.="</table>";			
+			/* html table wird erst in der copyCamSnapshots Funktion, die regelmaessig aufgerufen wird erzeugt */ 
 			SetValue($CamTablePictureID,$html);			
 
 			$WFC10Cam_Path        	 = $moduleManagerCam->GetConfigValue('Path', 'WFC10');
@@ -735,19 +729,24 @@
 			CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPictures,  10,"");								
 				
 			/* zuerst die Kategorien in Visualization aufbauen */
-			
+			$tabs=(integer)($anzahl/4);
 			if ($tabs>0)
 				{
 				/* mehr als 4 Kameras, zusaetzliche Tabs eröffnen */
 				for ($i=0;$i<=$tabs;$i++)
 					{
-					$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path.$i);
+					if ($i==0) $ext="";
+					else $ext=(string)$i;
+
+					echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: ".$WFC10Cam_Path.$ext." \n";					
+					$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path.$ext);
 					EmptyCategory($categoryId_WebFrontAdministrator);
 					$categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontAdministrator, 10);
 					$categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontAdministrator, 20);						
 					$categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontAdministrator, 30);
 					$categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontAdministrator, 40);						
-					$tabItem = $WFC10Cam_TabPaneItem.'Ovw'.$i;																				
+
+					$tabItem = $WFC10Cam_TabPaneItem.'Ovw'.$ext;																				
 					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+100), "Overview", $WFC10Cam_TabIcon, 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Left", $tabItem, 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Right", $tabItem, 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
@@ -757,10 +756,10 @@
 					CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Left', $tabItem."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
 					CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'Dn_Right', $tabItem."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
 
-					if (sizeof($result)>($tabs*4)) CreateLink($result[($tabs*4)+0]["Name"], $result[($tabs*4)+0]["OID"], $categoryIdLeftUp, 10);
-					if (sizeof($result)>(($tabs*4)+1)) CreateLink($result[($tabs*4)+1]["Name"], $result[($tabs*4)+1]["OID"], $categoryIdRightUp, 10);
-					if (sizeof($result)>(($tabs*4)+2)) CreateLink($result[($tabs*4)+2]["Name"], $result[($tabs*4)+2]["OID"], $categoryIdLeftDn, 10);
-					if (sizeof($result)>(($tabs*4)+3)) CreateLink($result[($tabs*4)+3]["Name"], $result[($tabs*4)+3]["OID"], $categoryIdRightDn, 10);
+					if (sizeof($result)>($i*4)) CreateLink($result[($i*4)+0]["Name"], $result[($i*4)+0]["OID"], $categoryIdLeftUp, 10);
+					if (sizeof($result)>(($i*4)+1)) CreateLink($result[($i*4)+1]["Name"], $result[($i*4)+1]["OID"], $categoryIdRightUp, 10);
+					if (sizeof($result)>(($i*4)+2)) CreateLink($result[($i*4)+2]["Name"], $result[($i*4)+2]["OID"], $categoryIdLeftDn, 10);
+					if (sizeof($result)>(($i*4)+3)) CreateLink($result[($i*4)+3]["Name"], $result[($i*4)+3]["OID"], $categoryIdRightDn, 10);
 					}
 				}
 			else
@@ -772,12 +771,6 @@
 				$categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontAdministrator, 20);						
 				$categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontAdministrator, 30);
 				$categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontAdministrator, 40);						
-			
-				/* dann die Webfronts initialisieren */
-			
-				//$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
-				//                     WebfrontConfigurator, neuer Name, Ort-Parent
-				//CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem,           $WFC10_TabPaneItem,    ($WFC10_TabOrder+100),     $WFC10_TabName,     $WFC10_TabIcon, 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 
 				$tabItem = $WFC10Cam_TabPaneItem.'Ovw';																				
 				CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+100), "Overview", $WFC10Cam_TabIcon, 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');

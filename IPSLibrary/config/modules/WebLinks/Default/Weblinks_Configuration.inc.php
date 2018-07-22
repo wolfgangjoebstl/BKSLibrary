@@ -26,7 +26,20 @@
 	 */
 
 
-
+	function WebLinks_Configuration()
+		{
+		$weblinks=array(
+			"Cameras" 	=> array( "IPSCam" => true),
+			"WebLinks" 	=> array(
+				"derStandard" => array (
+					"NAME" 	=> "derStandard",
+					"TITLE"	=> "Link zum Standard",
+					"LINK"	=> "http://derstandard.at",
+												),
+										),
+			);
+		return ($weblinks);
+		}
 
 	 
 	 
