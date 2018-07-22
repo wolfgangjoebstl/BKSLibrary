@@ -1106,11 +1106,10 @@ class Autosteuerung
 				}
 			else
 				{	 
-				echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				//echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
 				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
-						"   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				//echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				SetValue($mirrorVariableID,$value);
 				return($oldValue);
@@ -1214,7 +1213,7 @@ class Autosteuerung
 		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
-		echo "Gesamter Befehl : ".$params2."\n";
+		echo "   Gesamter Befehl : ".$params2."\n\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;

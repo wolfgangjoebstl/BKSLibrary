@@ -483,7 +483,7 @@ if ($_IPS['SENDER']=="Execute")
 		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
 		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."       ";
 		echo "(".memory_get_usage()." Byte).";
-		echo "\n\n";
+		echo "\n";
 		//print_r($entry);
 		//print_r($auto->ParseCommand($entry));
 		switch ($entry[1])
