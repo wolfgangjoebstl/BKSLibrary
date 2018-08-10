@@ -86,14 +86,14 @@ class Homematic_OperationCenter
 		 *
 		 * Refreshed alle RSSI Variablen von der CCU
 		 */
-		public function RefreshRSSIValues() 
+		public function RefreshRSSIValues($debug=false) 
 			{
 			$error=true;
 			$instanceIdList = $this->GetMaintainanceInstanceList();
 			foreach ($instanceIdList as $instanceId) 
 				{
 				$error1=true; $error2=true;
-				echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
+				if ($debug) echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
 				$variableId = @IPS_GetVariableIDByName('RSSI_DEVICE', $instanceId);
 				if ($variableId!==false) 
 					{
@@ -113,17 +113,19 @@ class Homematic_OperationCenter
 				$error=$error && $error1 && $error2;
 				if ($error2==false)
 					{
+					echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
 					echo "   ->RSSI Instanz nicht verfügbar.\n";
 					}
 				else
 					{
 					if ($error1==false)
 						{
+						echo "RefreshRSSIValues: ".$instanceId."   ".IPS_GetName($instanceId);
 						echo "   ->Fehler, RSSI Instanz nicht erreichbar.\n";
 						}
 					else
 						{
-						echo "\n";
+						if ($debug) echo "\n";		// Endezeile wenn kein Fehler
 						}
 					}	
 				}
@@ -348,7 +350,7 @@ class Homematic_OperationCenter
 		 *
 		 * @return array[int] Homematic Instance IDs
 		 */
-		public function GetMaintainanceInstanceList() {
+		public function GetMaintainanceInstanceList($debug=false) {
 			$homematicInstanceList     = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
 			$homematicAddressList      = array();
 			$homematicMaintainanceList = array();

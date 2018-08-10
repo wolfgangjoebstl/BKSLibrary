@@ -78,8 +78,10 @@ $log_Anwesenheit=new Logging($setup["LogDirectory"]."Anwesenheit.csv",$Nachricht
 $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 	
 $timerAufrufID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
-if ($timerAufrufID==false) break;
 $tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
+
+if ($timerAufrufID==false) $fatalerror=true;
+if ($tim2ID==false) $fatalerror=true;
 
 /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
 /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */

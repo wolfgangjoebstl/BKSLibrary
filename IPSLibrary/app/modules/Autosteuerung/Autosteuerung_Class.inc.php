@@ -270,7 +270,7 @@ abstract class AutosteuerungConfiguration
 					{
 					echo ">>>>Fehler, Function ".$func."() nicht definiert im Configfile.\n";
 					$this->InitEventConfiguration();
-					break;
+					$fatalerror=true;
 					}
 				$this->eventConfigurationAuto = $func();		/* >>>>>>>> change here */
 				echo "Config Function heisst : ".$func."\n";	
@@ -1213,7 +1213,7 @@ class Autosteuerung
 		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
-		echo "   Gesamter Befehl : ".$params2."\n\n";
+		echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;
@@ -1222,7 +1222,7 @@ class Autosteuerung
 			$count=count($moduleParams2);
 			$Eintrag=$count;
 			$switch=false;		// marker wenn kein ON oder OFF Befehl gesetzt wurde
-			echo "   ParseCommand Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
+			echo "        Kommando ".$Kommando." : Anzahl ".$count." Parameter erkannt in \"".$command."\" \n";
 
 			switch (strtoupper($params[1]))
 				{
@@ -1572,7 +1572,7 @@ class Autosteuerung
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
 		if ($simulate==true) 
 			{
-			echo "Ergebnisse ParseCommand : ".json_encode($parges)."\n";
+			echo "       >>Ergebnisse : ".json_encode($parges)."\n\n";
 			//print_r($parges);
 			}			
 		return($parges);
@@ -2493,7 +2493,7 @@ class Autosteuerung
 
 	public function ExecuteCommand($result,$simulate=false)
 		{
-		echo "Execute Command and eventually speak.\n";
+		echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
@@ -2792,11 +2792,13 @@ class Autosteuerung
 								default:  echo "unknown"; break;
 								}
 							if ($typObj==2)
-								{	
+								{
+								/* Sprachausgabe einer Variable	*/
 								if ($formWert == "") echo ")\n";	
 								else echo "  ".$formWert."   ".GetValueFormatted($result["SOURCEID"]).")\n";
 								if ($typWert==2)
 									{
+									/* vom Typ Float */
 									$temperatur=$result["STATUS"];
 									$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10);
 									}
@@ -2806,7 +2808,9 @@ class Autosteuerung
 									case "~Temperature":
 										$wert.=" Grad";
 										break;
-									default: break;
+									default: 
+										$wert = GetValueFormatted($result["SOURCEID"]);
+										break;
 									}																				
 								//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
 								}
@@ -2845,7 +2849,7 @@ class Autosteuerung
 				{
 				if ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) )
 					{
-					echo "Es wird gesprochen : ".$result["SPEAK"]."\n";
+					echo "  Es wird gesprochen : ".$result["SPEAK"]."\n";
 					if ($simulate==false)
 						{													
 						tts_play(1,$result["SPEAK"],'',2);
@@ -3690,7 +3694,8 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
 			// bei etwas anderem als Integer stimmt der defaultwert nicht		
 			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
-			if ($vid==false) break;		
+			if ($vid==false) $fatalerror=true;
+;		
 			//EmptyCategory($vid);			
 			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }	
 			}
@@ -3704,7 +3709,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
 			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
-			if ($vid==false) break;		
+			if ($vid==false) $fatalerror=true;		
 			//EmptyCategory($vid);			
 			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }			
 			}		
@@ -3728,7 +3733,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		{
 		$type=1;$profile="AusEin";
 		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);
-		if ($vid==false) break;
+		if ($vid==false) $fatalerror=true;
 		EmptyCategory($vid);			
 		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
 		}

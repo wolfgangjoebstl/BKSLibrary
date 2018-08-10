@@ -30,7 +30,7 @@
 
 /***************************************************************************************************************
  *
- * Routinen für
+ * Routinen für Klasse  OperationCenter
  *
  * Herausfinden der eigenen externen und lokalen IP Adresse
  *   whatismyIPaddress1   verwendet http://whatismyipaddress.com/
@@ -46,11 +46,10 @@
  *   writeServerPingResults
  *
  *   SysPingAllDevices
- *
  *   writeSysPingResults
  *
- * systeminfo 			auslesen und lokal die relevanten Daten speichern
- * readSystemInfo
+ * systeminfo 			systeminfo vom PC auslesen und lokal die relevanten Daten speichern
+ * readSystemInfo		die lokalen Daten als text ausgeben
  *
  * device_checkReboot	wenn device_ping zu oft gescheitert ist
  *
@@ -71,14 +70,44 @@
  * Bearbeiten von FTP Cam Files als auch Logdateien
  * MoveFiles			räumt die Dateien in ein Verzeichnisse pro Tag, einstellbar ist wieviele Tage zurückliegend damit begonnen werden soll
  * MoveCamFiles			MoveFiles mit den CamFiles. Es werden alle am FTP Laufwerk abgespeicherten Bilder sofort in die Tagesverzeichnissse geschlichtet
- * PurgeFiles			die älteren Verzeichnisse loeschen
+ * PurgeFiles			die älteren Verzeichnisse loeschen, wenn () keine Parameter dann die Funktion von PurgeLogs nachstellen
  *
  * CopyCamSnapshots		die Snapshots (zB alle Tage, Stunden, Minuten die von IPSCam erstellt werden im Webfront darstellen, und dazu wegkopieren
+ * showCamCaptureFiles	es werden von den ftp Verzeichnissen ausgewählte Dateien in das Webfront/user verzeichnis für die Darstellung im Webfront kopiert
  *
- * DirLogs, readdirToArray	Hilfsroutinen
+ * imgsrcstring, extracttime	Hilfsroutinen
+ * DirLogs, readdirToArray		Hilfsroutinen
  *
  * CopyScripts			Scriptfiles auf Dropbox kopieren
  * FileStatus			Statusfiles auf Dropbox kopieren
+ * FileStatusDir		StatusFiles in Verzeichnisse verschieben
+ * FileStatusDelete		verschobene Files gemeinsam mit den Verzeichnisssen loeschen
+ * getFileStatusDir
+ *
+ * HardwareStatus
+ *
+ * Verwenden gemeinsames Array $HomematicSerialNumberList:
+ * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweterbar ist
+ * addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
+ * writeHomematicSerialNumberList	Ausgabe der Liste
+ * getHomematicDeviceList
+ *
+ * getIPSLoggerErrors	aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
+ * stripHTMLTags
+ *
+ * Klasse parsefile
+ *
+ *
+ * Klasse TimerHandling
+ *
+ * Funktionen ausserhalb der Klassen
+ *
+ * move_camPicture
+ * get_Data
+ * extractIPaddress		
+ * dirtoArray, dirtoArray2
+ * tts_play				Ausgabe von Ton für Sprachansagen
+ * CyclicUpdate 		updatet und installiert neue Versionen der Module
  *
  ****************************************************************************************************************/
 
@@ -97,6 +126,8 @@ class OperationCenter
 	var $oc_Setup			    = array();			/* Setup von Operationcenter, Verzeichnisse, Konfigurationen */
 	var $AllHostnames         	= array();
 	var $installedModules     	= array();
+	
+	var $HomematicSerialNumberList	= array();
 	
 	/**
 	 * @public
@@ -950,7 +981,7 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * liest systeminfo aus und speichert die relevanten Daten
+	 * liest systeminfo aus und speichert die relevanten Daten als Register
 	 *
 	 */
 	 function SystemInfo()
@@ -1027,7 +1058,13 @@ class OperationCenter
 						
 		return $results;
 		}	
-		
+	
+	/*******************
+	 *
+	 * Die von SystemInfo aus dem PC (via systeminfo) ausgelesenen und gespeicherten Daten werden für die Textausgabe formatiert und angereichert
+	 *
+	 ***************************************************/
+									
 	 function readSystemInfo()
 	 	{
 		$PrintLn="";
@@ -1038,12 +1075,14 @@ class OperationCenter
 		//print_r($Version);
 		switch ($Version[2])
 			{
+			/* siehe wikipedia Eintrag : https://en.wikipedia.org/wiki/Windows_10_version_history für die Uebersetzung der PC Versionen */
 			case "10240": $Codename="RTM (Threshold 1)"; break;
 			case "10586": $Codename="November Update (Threshold 2)"; break;
 			case "14393": $Codename="Anniversary Update (Redstone 1)"; break;
 			case "15063": $Codename="Creators Update (Redstone 2)"; break;
 			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
-			case "00000": $Codename="Spring Creators Update (Redstone 4)"; break;
+			case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
+			case "17713": $Codename="Fall 2018 Update (Redstone 5)"; break;			
 			default: $Codename=$Version[2];break;
 			}			
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1365,7 +1404,7 @@ class OperationCenter
 				{
 			   	echo "   Fehler beim holen der Webdatei. Abbruch. \n";
 				IPSLogger_Dbg(__file__, "OperationCenter: Fehler beim Holen der Webdatei. Abbruch.");			   
-			   	break;
+			   	$fatalerror=true;
 			   	}
 	  		}
 		$result=strip_tags($result);
@@ -1859,7 +1898,7 @@ class OperationCenter
 	/*
 	 *  Die oft umfangreichen Files in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
 	 *	 werden kann. 
-	 *   Verzeichnis: Ort der Dateien, days: wieviele Tage zurück werden Dateien erst zusammengeräumt, StatusID : OID in der der zeitstempel der letzten Datei gespeichert wird.
+	 *   Verzeichnis: Ort der Dateien, days: wieviele Tage zurück werden Dateien erst zusammengeräumt, StatusID : OID in der der Zeitstempel der letzten Datei gespeichert wird.
 	 *    
 	 *  kann für CamFTP Files als auch für Logs verwendet werden.
 	 */
@@ -2947,18 +2986,24 @@ class OperationCenter
 		else return($result);
 		}
 
-	/*
-	 *
-	 */
 
-	function getHomematicDeviceList()
+	/********************************************************************
+	 *
+	 * erfasst alle Homematic Geräte anhand der Seriennumme rund erstellt eine gemeinsame liste 
+	 *
+	 *****************************************************************************/
+
+	function getHomematicSerialNumberList($debug=false)
 		{
 		$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 		//Auflisten
 		$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-		echo "\nHomematic Instanzen: ".sizeof($alleInstanzen)." \n";
-		echo "Werte geordnet und angeführt nach Instanzen, es erfolgt keine Zusammenfassung auf Geräte/Seriennummern.\n";
-		echo "Children der Instanzen werden nur angeführt wenn die Zeit ungleich 0 ist.\n\n";
+		if ($debug)
+			{
+			echo "\nHomematic Instanzen: ".sizeof($alleInstanzen)." \n";
+			echo "Werte geordnet und angeführt nach Instanzen, es erfolgt keine Zusammenfassung auf Geräte/Seriennummern.\n";
+			echo "Children der Instanzen werden nur angeführt wenn die Zeit ungleich 0 ist.\n\n";
+			}
 		$serienNummer=array();
 		foreach ($alleInstanzen as $instanz)
 			{
@@ -2979,7 +3024,7 @@ class OperationCenter
 			$result=explode(":",$HM_Adresse);
 			$sizeResult=sizeof($result);
 			//print_r($result);
-			echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
+			if ($debug) echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
 			if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
 				{
 				$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
@@ -2996,7 +3041,7 @@ class OperationCenter
 				$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
 				$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);
 				}
-			else { echo "Fehler mit ".$result[0]."\n"; }			
+			else { if ($debug) echo "Fehler mit ".$result[0]."\n"; }			
 			$cids = IPS_GetChildrenIDs($instanz);
 			if ( isset($serienNummer[$HM_CCU_Name][$result[0]]["Update"]) == true) $update=$serienNummer[$HM_CCU_Name][$result[0]]["Update"];
 			else $update=0;
@@ -3006,7 +3051,7 @@ class OperationCenter
 				if (IPS_GetVariable($cid)["VariableChanged"] != 0) 
 					{
 					if (IPS_GetVariable($cid)["VariableChanged"]>$update) $update=IPS_GetVariable($cid)["VariableChanged"];
-					echo "   CID : ".$cid."  ".IPS_GetName($cid)."  ".date("d.m H:i",IPS_GetVariable($cid)["VariableChanged"])."   \n";
+					if ($debug) echo "   CID : ".$cid."  ".IPS_GetName($cid)."  ".date("d.m H:i",IPS_GetVariable($cid)["VariableChanged"])."   \n";
 					}
 				if($o['ObjectIdent'] != "")
 					{
@@ -3015,13 +3060,30 @@ class OperationCenter
 		    	}
 			$serienNummer[$HM_CCU_Name][$result[0]]["Update"] = $update;	
 			}
+		$this->HomematicSerialNumberList=$serienNummer;
+		return ($serienNummer);
+		}
 
-		echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
-		foreach ($serienNummer as $ccu => $geraete)
+	/********************************************************************
+	 *
+	 * Wenn Debug gib die erfasst Liste aller Homematic Geräte mit der Seriennummer als
+	 * formatierte liste aus 
+	 *
+	 * die Homematic Liste wird um weitere Informationen erweitert:  Typ
+	 *
+	 *****************************************************************************/
+
+	function addHomematicSerialList_Typ($debug=false)
+		{
+		if ($debug) echo "\nInsgesamt gibt es ".sizeof($this->HomematicSerialNumberList)." Homematic CCUs.\n";
+		foreach ($this->HomematicSerialNumberList as $ccu => $geraete)
  			{
-			echo "-------------------------------------------\n";
-		 	echo "  CCU mit Name :".$ccu."\n";
- 			echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
+			if ($debug) 
+				{
+				echo "-------------------------------------------\n";
+			 	echo "  CCU mit Name :".$ccu."\n";
+ 				echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
+				}
 			foreach ($geraete as $name => $anzahl)
 				{
 				//echo "\n *** ".$name."  \n";
@@ -3029,7 +3091,7 @@ class OperationCenter
 				$register=explode(" ",trim($anzahl["Values"]));
 				sort($register);
 				$registerNew=array();
-				echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+				if ($debug) echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
 				if (sizeof($register)>1)
 					{ /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
 					$oldvalue="";
@@ -3047,104 +3109,325 @@ class OperationCenter
 						case "ACTIVE_PROFILE":
 							if ($registerNew[23]=="VALVE_ADAPTATION")
 								{
-								echo "Stellmotor-Heizkoerper\n";
-								$serienNummer[$ccu][$name]["Typ"]="Stellmotor-Heizkoerper";
+								if ($debug) echo "Stellmotor-Heizkoerper\n";
+								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Stellmotor-Heizkoerper";
 								}
 							else
 								{
-								echo "Funk-Wandthermostat\n";
-								$serienNummer[$ccu][$name]["Typ"]="Wandthermostat";
+								if ($debug) echo "Funk-Wandthermostat\n";
+								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Wandthermostat";
 								}
 							break;						
 						case "ERROR":
-							echo "Funk-Tür-/Fensterkontakt\n";
-							$serienNummer[$ccu][$name]["Typ"]="Tür-/Fensterkontakt";
+							if ($debug) echo "Funk-Tür-/Fensterkontakt\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Tür-/Fensterkontakt";
 							break;
 						case "INSTALL_TEST":
 							if ($registerNew[1]=="PRESS_CONT")
 								{
-								echo "Taster 6fach\n";
-								$serienNummer[$ccu][$name]["Typ"]="Taster 6fach";							
+								if ($debug) echo "Taster 6fach\n";
+								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Taster 6fach";							
 								}
 							else
 								{
-								echo "Funk-Display-Wandtaster\n";
-								$serienNummer[$ccu][$name]["Typ"]="Display-Wandtaster";							
+								if ($debug) echo "Funk-Display-Wandtaster\n";
+								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Display-Wandtaster";							
 								}
 							break;
 						case "ACTUAL_HUMIDITY":
-							echo "Funk-Wandthermostat\n";
-							$serienNummer[$ccu][$name]["Typ"]="Wandthermostat";						
-								break;
+							if ($debug) echo "Funk-Wandthermostat\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Wandthermostat";						
+							break;
 						case "ACTUAL_TEMPERATURE":
-							echo "Funk-Heizkörperthermostat\n";
-							$serienNummer[$ccu][$name]["Typ"]="Heizkörperthermostat";						
+							switch ($registerNew[1])
+								{
+								case "CONFIG_PENDING":
+									if ($debug) echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";
+									break;
+								default:
+									if ($debug) echo "Funk-Heizkörperthermostat\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Heizkörperthermostat";
+									break;
+								}	
+							print_r($registerNew);														
 							break;
 						case "BRIGHTNESS":
-							echo "Funk-Bewegungsmelder\n";
-							$serienNummer[$ccu][$name]["Typ"]="Bewegungsmelder";						
+							if ($debug) echo "Funk-Bewegungsmelder\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Bewegungsmelder";						
 							break;
 						case "INHIBIT":
-							echo "Funk-Schaltaktor 1-fach\n";
-							$serienNummer[$ccu][$name]["Typ"]="Funk-Schaltaktor 1-fach";							
+							if ($debug) echo "Funk-Schaltaktor 1-fach\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Funk-Schaltaktor 1-fach";							
 							break;
 						case "DIRECTION":
-							echo "Funk-Rolladenansteuerung\n";
-							$serienNummer[$ccu][$name]["Typ"]="Rolladenansteuerung";							
-							print_r($registerNew);	
+							if ($debug) echo "Funk-Rolladenansteuerung\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Rolladenansteuerung";							
+							//print_r($registerNew);	
 							break;
 						case "BOOT":
-							echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-							$serienNummer[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";							
+						case "CURRENT":
+						case "PROCESS":		// wenn Energieregister nicht angelegt ist Process das erste Register
+							if ($debug) echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";							
 							break;
 						case "HUMIDITY":
-							echo "Funk-Thermometer\n";
-							$serienNummer[$ccu][$name]["Typ"]="Thermometer";							
+							if ($debug) echo "Funk-Thermometer\n";
+							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Thermometer";							
 							break;
 						case "CONFIG_PENDING":		/* modernes Register, alles gleich am Anfang */
 							switch ($registerNew[1])
 								{
 								case "DIRECTION":
-									echo "Funkaktor Dimmer\n";
-									$serienNummer[$ccu][$name]["Typ"]="Dimmer";									
+									if ($debug) echo "Funkaktor Dimmer\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Dimmer";									
 									break;
-									case "DUTYCYCLE":
-									echo "IP Funk-Schaltaktor\n";
-									$serienNummer[$ccu][$name]["Typ"]="Schaltaktor";								
+								case "DUTYCYCLE":
+									if ($debug) echo "IP Funk-Schaltaktor\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor";								
 									break;
 								case "DUTY_CYCLE":
-									echo "IP Funk-Stellmotor\n";
-									$serienNummer[$ccu][$name]["Typ"]="Stellmotor";								
+									if ($debug) echo "IP Funk-Stellmotor\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Stellmotor";								
 									break;								
 								case "DEVICE_IN_BOOTLOADER":
 								case "INSTALL_TEST":
-									echo "Funk-Taster\n";
-									$serienNummer[$ccu][$name]["Typ"]="Taster";								
+									if ($debug) echo "Funk-Taster\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Taster";								
 									break;
 								case "CURRENT":
-									echo "IP Funk-Schaltaktor Energiemessgeraet\n";
-									$serienNummer[$ccu][$name]["Typ"]="Schaltaktor Energiemessgeraet";								
+									if ($debug) echo "IP Funk-Schaltaktor Energiemessgeraet\n";
+									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor Energiemessgeraet";								
 									break;
 								default:	
-									echo "unknown\n";
-									print_r($registerNew);	
+									//if ($debug)
+										{
+										echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+										echo "unknown CONFIG_PENDING Typ\n";
+										print_r($registerNew);
+										}	
 									break;
 								}					
 							break;					
 						default:
-							echo "unknown\n";
-							print_r($registerNew);
+							//if ($debug)
+								{
+								echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+								echo "unknown Typ\n";
+								print_r($registerNew);
+								}
 							break;
 						} /* ende switch */
 					} /* ende size too small */
 				else
 					{	
-					echo "not installed\n";
+					//if ($debug)
+						{ 
+						echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
+						echo "not installed\n";
+						}
 					}	
 				}
+			}
+		}
+
+	/********************************************************************
+	 *
+	 * die Homematic Liste der Seriennummern wird um weitere Informationen erweitert:  RSSI
+	 *
+	 *****************************************************************************/
+
+	function addHomematicSerialList_RSSI($debug=false)
+		{
+		/* Tabelle vorbereiten, RSSI Werte ermitteln */
+	
+		IPSUtils_Include ('Homematic_Library.class.php',      'IPSLibrary::app::modules::OperationCenter');
+
+		$homematicManager = new Homematic_OperationCenter();
+		$homematicManager->RefreshRSSI($debug);
+
+		$categoryIdHtml     = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.hardware.IPSHomematic.StatusMessages');
+		$variableIdRssi       = IPS_GetObjectIDByIdent(HM_CONTROL_RSSI, $categoryIdHtml);
+		if ($debug) echo GetValue($variableIdRssi);	// output Table
+
+		$instanceIdList = $homematicManager->GetMaintainanceInstanceList($debug);
+		$rssiDeviceList = array();
+		$rssiPeerList   = array();
+		foreach ($instanceIdList as $instanceId) {
+			$variableId = @IPS_GetVariableIDByName('RSSI_DEVICE', $instanceId);
+			if ($variableId!==false) {
+				$rssiValue = GetValue($variableId);
+				if ($rssiValue<>-65535) {
+					$rssiDeviceList[$instanceId] = $rssiValue;
+					}
+				}
+			}
+		arsort($rssiDeviceList, SORT_NATURAL);
+
+		foreach ($instanceIdList as $instanceId) {
+			$variableId = @IPS_GetVariableIDByName('RSSI_PEER', $instanceId);
+			if ($variableId!==false) {
+				$rssiValue = GetValue($variableId);
+				if ($rssiValue<>-65535) {
+					$rssiPeerList[$instanceId] = $rssiValue;
+					}
+				}
+			}
+			
+		if ($debug) echo "\n\nAusgabe RSSI Werte pro Seriennummer (Anreicherung der serienNummer Tabelle):\n\n";	
+		foreach($rssiDeviceList as $instanceId=>$value) 
+			{
+			$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanceId)['ConnectionID']);
+			if ($debug) echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
+			$HMaddress=explode(":",HM_GetAddress($instanceId));
+			$this->HomematicSerialNumberList[$HM_CCU_Name][$HMaddress[0]]["RSSI"]=$value;
+			}			
+		}
+
+	/********************************************************************
+	 *
+	 * die Homematic Liste der Seriennummern wird um weitere Informationen erweitert:  Detect Movement
+	 *
+	 *****************************************************************************/
+
+	function addHomematicSerialList_DetectMovement($debug=false)
+		{
+		if (isset($this->installedModules["DetectMovement"])==true)
+			{
+			/* DetectMovement */
+			IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+
+			if (function_exists('IPSDetectMovementHandler_GetEventConfiguration')) 		$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
+			else $movement_config=array();
+			if (function_exists('IPSDetectTemperatureHandler_GetEventConfiguration'))	$temperature_config=IPSDetectTemperatureHandler_GetEventConfiguration();
+			else $temperature_config=array();
+			if (function_exists('IPSDetectHumidityHandler_GetEventConfiguration'))		$humidity_config=IPSDetectHumidityHandler_GetEventConfiguration();
+			else $humidity_config=array();
+			if (function_exists('IPSDetectHeatControlHandler_GetEventConfiguration'))	$heatcontrol_config=IPSDetectHeatControlHandler_GetEventConfiguration();
+			else $heatcontrol_config=array();
+
 
 			}
+		}
+	
+	/********************************************************************
+	 *
+	 * Die erfasst Liste aller Homematic Geräte mit der Seriennummer als
+	 *  formatierte liste ausgeben mit echo 
+	 *
+	 *****************************************************************************/
 
+	function writeHomematicSerialNumberList()
+		{
+		$instanzCount=0;
+		$channelCount=0;
+		echo "\nInsgesamt gibt es ".sizeof($this->HomematicSerialNumberList)." Homematic CCUs.\n";
+		foreach ($this->HomematicSerialNumberList as $ccu => $geraete)
+ 			{
+			echo "-------------------------------------------\n";
+		 	echo "  CCU mit Name :".$ccu."\n";
+			echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
+			foreach ($geraete as $name => $anzahl)
+				{
+				$register=explode(" ",trim($anzahl["Values"]));
+				if ( isset($anzahl["Typ"]) == true )
+					{
+					echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ".$anzahl["Typ"]."\n";
+					}
+				else
+					{
+					echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ********** Typ nicht bekannt \n";
+					}
+				$instanzCount+=$anzahl["Anzahl"];
+				$channelCount+=sizeof($register);	
+				}
+			}
+		echo "\nEs wurden insgesamt ".$instanzCount." Geraeteinstanzen mit total ".$channelCount." Kanälen/Registern ausgegeben.\n";
+		}
+
+	/********************************************************************
+	 *
+	 * Die erfasst Liste aller Homematic Geräte mit der Seriennummer als
+	 * html formatierte liste ausgeben (echo) 
+	 *
+	 *****************************************************************************/
+
+	function tableHomematicSerialNumberList($columns=array(),$sort=array())
+		{
+		//print_r($columns);
+		if (isset($columns["Channels"])==true) $showChannels=$columns["Channels"]; else $showChannels=false;
+		if (isset($sort["Serials"])==true) $sortSerials=$sort["Serials"]; else $sortSerials=false;
+		$str="";
+		$ccuNum=1;	
+		foreach ($this->HomematicSerialNumberList as $ccu => $geraete)
+ 			{
+			$str .= "<table width='90%' align='center'>"; 
+			$str .= "<tr><td><b>".$ccu."</b></td></tr>";
+			$str .= "<tr><td><b>Seriennummer</b></td>";
+			if ($showChannels) $str .= "<td><b>Kanal</b></td>";
+			$str .= "<td><b>GeräteName</b></td><td><b>Protokoll</b></td><td><b>GeraeteTyp</b></td><td><b>UpdateTime</b></td><td><b>RSSI</b></td></tr>";
+			if ($sortSerials) ksort($geraete);
+			foreach ($geraete as $name => $geraet)
+				{
+				$str .= "<tr><td>".$name."</td>";			// Name ist die Seriennummer
+				if ($showChannels) $str .= "<td></td>";		// eventuell Platz lassen für Kanalnummer	
+				if (isset($geraet["Typ"])==true)
+					{
+					if (isset($geraet["RSSI"])==true)
+						{
+						$str .= "<td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+						date("d.m H:i",$geraet["Update"])."</td><td>".$geraet["RSSI"]."</td></tr>";
+						}
+					else
+						{	
+						$str .= "<td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+						date("d.m H:i",$geraet["Update"])."</td></tr>";
+						}
+					}
+				else
+					{
+					$str .= "<td>   </td><td>      </td></tr>";				
+					//$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
+					}
+				$strChannel=array();	
+				if ($showChannels) 
+					{
+					foreach ($geraet as $id => $channels)
+						{
+						$channel=explode(":",$id);
+						if (sizeof($channel)==2) 
+							{
+							if ($channel[0]=="Name")
+								{
+								$strChannel[$channel[1]] = "<tr><td></td><td>".$channel[1]."</td><td>".$channels."</td></tr>";
+								}
+							}	
+						}
+					ksort($strChannel);	
+					foreach ($strChannel as $index => $line) { $str .= $line; }					
+					}
+				}		
+			$ccuNum++;
+			}
+		echo $str; 
+		return ($str);		
+		}
+	
+	/********************************************************************
+	 *
+	 * alle Homematic geräte erfassen und in einer grossen Tabelle ausgeben
+	 *
+	 *****************************************************************************/
+
+	function getHomematicDeviceList()
+		{
+
+		$this->getHomematicSerialNumberList();			// es gibt aber auch eine Liste die in der Klasse gespeichert wird
+		$this->addHomematicSerialList_Typ();
+		//$this->writeHomematicSerialNumberList();						// Die Geräte schön formatiert als Liste ausgeben
+
+
+		$serienNummer=$this->HomematicSerialNumberList;
 		/* Tabelle vorbereiten, RSSI Werte ermitteln */
 	
 		IPSUtils_Include ('Homematic_Library.class.php',      'IPSLibrary::app::modules::OperationCenter');
@@ -3180,16 +3463,18 @@ class OperationCenter
 				}
 			}
 			
+		echo "\n\nAusgabe RSSI Werte pro Seriennummer (Anreicherung der serienNummer Tabelle):\n\n";	
 			foreach($rssiDeviceList as $instanceId=>$value) 
 				{
-				echo "    ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
+				$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanceId)['ConnectionID']);
+				echo "    ".$HM_CCU_Name."     ".IPS_GetName($instanceId)."    ".HM_GetAddress($instanceId)."    ".$value."\n";
 				$HMaddress=explode(":",HM_GetAddress($instanceId));
-				$serienNummer["Homematic-CCU"][$HMaddress[0]]["RSSI"]=$value;
+				$serienNummer[$HM_CCU_Name][$HMaddress[0]]["RSSI"]=$value;
 				}			
 	
 	print_r($serienNummer);
 
-	/* Tabelle indexiert nach Seriennummern ausgeben */
+	/* Tabelle indexiert nach Seriennummern ausgeben, es wird pro Homematic Socket eine eigene Tabelle erstellt */
 
 	$str="";
 	$ccuNum=1;	
@@ -3810,7 +4095,11 @@ function dirToArray2($dir)
 	}
 
 
-/*********************************************************************************************/
+/********************************************************************************************
+ *
+ * Ausgabe von Ton für Sprachansagen
+ *
+ *************************************************************/
 
 function tts_play($sk,$ansagetext,$ton,$modus)
  	{
@@ -3986,13 +4275,11 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			} //endif	
  	}   //end function
 
-
-/*********************************************************************************************/
-
-
-
-
-/****************************************************/
+/***************************************************
+ *
+ * updatet und installiert neue Versionen der Module
+ *
+ *******************************************/
 
 function CyclicUpdate()
 	{

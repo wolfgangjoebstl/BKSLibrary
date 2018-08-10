@@ -920,7 +920,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			else
 				{
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei bereits zusammengeraeumt.");	
-				$countdir=$OperationCenter->PurgeLogs();
+				$countdir=$OperationCenter->PurgeFiles();
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");
 				$countdelstatus=$OperationCenter->FileStatusDelete();	
 				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Dropbox Statusdateien zusammengeraeumt, ".$countdelstatus." alte Dateien geloescht.");

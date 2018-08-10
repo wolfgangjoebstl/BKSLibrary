@@ -93,6 +93,67 @@ if ($_IPS['SENDER'] == "Execute")
 	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\n";
 	echo "Nachrichten      Input ID: ".$NachrichtenInputID."\n\n";
 
+	if ( isset($config["iTunes"]["Fernsehen"])==true )
+		{
+		$configTunes=$config["iTunes"]["Fernsehen"];
+		$Server=getHostAddress();
+		if ($Server=="")
+			{
+			IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);	
+			}
+		else
+			{
+			echo "Verfügbare RemoteAccess Server:\n";
+			print_r($Server);		
+			$rpc = new JSONRPC($Server);
+			print_r($configTunes);
+			//$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
+			if ( isset($configTunes["STARTPAGE"])==true )
+				{
+				if ($configTunes["STARTPAGE"]=="VLC")
+					{
+					/* In Modul Startpage ist ein Aufruf des VLC Players integriert, bislang nur für Monitor Ein/Aus verwendet */
+					$ServerName=$rpc->IPS_GetName(0);
+					if ($ServerName !== false)
+						{
+						echo "Zugriff auf ".$Server." mit Namen ".$ServerName."\n";
+						$ProgramID=@$rpc->IPS_GetObjectIDByName ( "Program", 0 );
+						if ($ProgramID !== false)
+							{
+							echo "ProgramID ist : ".$ProgramID."\n";
+							$LibraryID=@$rpc->IPS_GetObjectIDByName ( "IPSLibrary", $ProgramID );
+							if ($LibraryID !== false)
+								{
+								echo "IPSLibraryID ist : ".$LibraryID."\n";
+								$appID=@$rpc->IPS_GetObjectIDByName ( "app", $LibraryID );
+								if ($appID !== false)
+									{					
+									echo "appID ist : ".$appID."\n";
+									$modulesID=@$rpc->IPS_GetObjectIDByName ( "modules", $appID );
+									if ($modulesID !== false)
+										{					
+										echo "modulesID ist : ".$modulesID."\n";
+										$startpageID=@$rpc->IPS_GetObjectIDByName ( "Startpage", $modulesID );
+										if ($startpageID !== false)
+											{					
+											echo "startpageID ist : ".$startpageID."\n";
+											$monitorID=@$rpc->IPS_GetObjectIDByName ( "Monitor_OnOff", $startpageID );
+											if ($monitorID !== false)
+												{					
+												echo "monitorID ist : ".$monitorID."\n";
+												$monitor=array("VLC" => $configTunes["EXECUTE"]);
+												print_r($monitor);												
+												}
+											}
+										}
+									}
+								}
+							}
+						}	
+					}
+				}
+			}
+		}
 	$log_iTunes->LogMessage("Script wurde direkt aufgerufen");
 	$log_iTunes->LogNachrichten("Script wurde direkt aufgerufen");
 	}
@@ -113,12 +174,60 @@ if ($_IPS['SENDER'] == "WebFront")
 			{
 			$log_iTunes->LogNachrichten("Config Eintrag EXECUTE ".$configTunes["EXECUTE"]." vorhanden.");
 			$Server=getHostAddress();	
-			$rpc = new JSONRPC($Server);
-			$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);
+			if ($Server=="")
+				{
+				IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);	
+				}
+			else
+				{
+				$rpc = new JSONRPC($Server);
+				//$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
+				if ( isset($configTunes["STARTPAGE"])==true )
+					{
+					if ($configTunes["STARTPAGE"]=="VLC")
+						{
+						/* In Modul Startpage ist ein Aufruf des VLC Players integriert, bislang nur für Monitor Ein/Aus verwendet */
+						$ServerName=$rpc->IPS_GetName(0);
+						if ($ServerName !== false)
+							{				
+							$ProgramID=@$rpc->IPS_GetObjectIDByName ( "Program", 0 );
+							if ($ProgramID !== false)
+								{
+								$LibraryID=@$rpc->IPS_GetObjectIDByName ( "IPSLibrary", $ProgramID );
+								if ($LibraryID !== false)
+									{
+									$appID=@$rpc->IPS_GetObjectIDByName ( "app", $LibraryID );
+									if ($appID !== false)
+										{					
+										$modulesID=@$rpc->IPS_GetObjectIDByName ( "modules", $appID );
+										if ($modulesID !== false)
+											{					
+											$startpageID=@$rpc->IPS_GetObjectIDByName ( "Startpage", $modulesID );
+											if ($startpageID !== false)
+												{					
+												$monitorID=@$rpc->IPS_GetObjectIDByName ( "Monitor_OnOff", $startpageID );
+												if ($monitorID !== false)
+													{					
+													echo "Monitor Script ID ist : ".$monitorID."\n";
+													}
+												}
+											}
+										}
+									}
+								}	
+							}
+						}
+					}
+				}
 			}
 		}
+	/* nur wenn MonitorID gesetzt ist weiter machen */	
+	if ( isset($monitorID) == true )
+		{
+		$monitor=array("VLC" => $configTunes["EXECUTE"]);
+		$rpc->IPS_RunScriptEx($monitorID,$monitor);
+		}	
 	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
-	
 	}
 	
 	
