@@ -82,7 +82,7 @@ class DENONsteuerung
 			/* logging in einem File und in einem String am Webfront */
 			$this->log_Denon=new Logging("C:\Scripts\Denon\Log_Control_Denon.csv",$NachrichtenInputID);
 			}
-		else break;
+		else $fatalerror=true;
 		}
 	
 
@@ -143,7 +143,7 @@ class DENONsteuerung
 			$this->log_Denon->LogMessage("Instanz wurde nicht gefunden (AS)");
 			$this->log_Denon->LogNachrichten("Instanz wurde nicht gefunden (AS)");
 			IPSLogger_Dbg(__file__, "Denon: neue unbekannte Instanz, aufgerufen wurde von Webfront Name \"".$name."\"  ");
-			break;
+			$fatalerror=true;
 			}
 
 		if ($name=='RemoteNetPlayer')

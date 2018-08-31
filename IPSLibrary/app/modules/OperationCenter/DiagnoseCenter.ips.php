@@ -6,7 +6,7 @@
  *
  * Allerlei betriebliche Abfragen und Wartungsmassnahmen
  *
- * derzeit nur evaluate traceRoute einmal am Tag bis zu Google verfolgen
+ * derzeit nur evaluate traceRoute einmal am Tag bis zu Google verfolgen.
  *
  ***********************************************************/
 

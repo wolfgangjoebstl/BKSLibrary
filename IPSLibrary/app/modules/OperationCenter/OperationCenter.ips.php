@@ -33,6 +33,13 @@ IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationC
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
+if ($_IPS['SENDER']=="WebFront")
+	{   /* vom Webfront aus gestartet */
+	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+	}
+else
+    {    /*  hier ganz normal weitermachen, Abfrage steht nur am Anfang um sich die Initialisierungszeiten und Meldungen zu sparen */
+
 /******************************************************
 
 				INIT
@@ -161,16 +168,18 @@ $OperationCenterSetup  = OperationCenter_SetUp();
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
 
-/*********************************************************************************************/
+/* Homematic RSSI Werte auslesen
+ *
+ ********************************************************************************************/
 
-
-
-
-if ($_IPS['SENDER']=="WebFront")
-	{
-	/* vom Webfront aus gestartet */
-
-	}
+	$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
+    $ExecuteRefreshID = @IPS_GetObjectIDByName("UpdateDurchfuehren", $CategoryIdHomematicErreichbarkeit);
+    if ($ExecuteRefreshID === false )
+        {
+        $fatalerror=true;
+        $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptIdOperationCenter,null,"");
+        }
+    $ExecuteRefreshRSSI=GetValue($ExecuteRefreshID);    
 
 /*********************************************************************************************/
 
@@ -214,7 +223,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "  Timer MoveLogs OID          : ".$tim11ID."\n";
 		
 	/********************************************************
-   	Erreichbarkeit Hardware
+   	Erreichbarkeit Hardware im Execute
 	**********************************************************/
 
 	$OperationCenter->HardwareStatus();
@@ -677,7 +686,7 @@ if ($_IPS['SENDER']=="Variable")
  * 6 Scripts auf Dropbox kopieren
  * 7 File Status kopieren
  * 8 System Info auslesen und speichern
- * 9 frei
+ * 9 Homematic RSSI Werte updaten
  * 10 logfiles zusammenräumen starten
  * 11 Logfiles verschieben, bis alle weg, von 10 gestartet 
  *
@@ -869,32 +878,36 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$OperationCenter->SystemInfo();
 			break;		
 		case $tim9ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Homematic RSSI auslesen");
 			/************************************************************************************
  			 *
 			 * Timer Homematic, einmal am Tag
 			 * Timer einmal am Tag um 02:40
 			 * Es werden die wichtigsten Homematic Geraete mit Kanal 0 angelegt. Passiert in Install.
-			 * Hier die RSSI Werte auslesen und die RSSI Tabelle updaten. Bleibt dann so den ganzen Tag  
+			 * Wenn Der Schalter im Webfront auf An gestellt ist werden hier die RSSI Werte ausgelesen 
+             * und die RSSI Tabelle upgedaten. Abhängig von der Größe der Tabelle kann es in den nächsten 
+             * Stunden zu einem DUTY_CYCLE Alarm kommen. Nur testweise einschalten !   
 			 * 
 			 *************************************************************************************/	
+    		IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Homematic RSSI auslesen");
 			IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-
-			$homematicManager = new Homematic_OperationCenter();
-			$str=$homematicManager->RefreshRSSI();
-			$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
-			$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox');	
-			SetValue($HomematicErreichbarkeit,$str);						 	
-			$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
-			SetValue($UpdateErreichbarkeit,time());
-			$OperationCenter->getHomematicDeviceList();			
+   			$homematicManager = new Homematic_OperationCenter();
+	    	$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
+            if ($ExecuteRefreshRSSI)
+                {
+    		    $HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox');	
+	    		$str=$homematicManager->RefreshRSSI();
+    			SetValue($HomematicErreichbarkeit,$str);						 	
+	    		$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
+		    	SetValue($UpdateErreichbarkeit,time());
+                }
+		    $OperationCenter->getHomematicDeviceList();			
 			break;		
 		case $tim10ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");
 			/************************************************************************************
  			 *
 			 * Maintenance Modi
-			 * Timer "Maintzenance" einmal am Tag um 01:20, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
+			 * Timer "Maintenance" einmal am Tag um 01:20, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
 	  		 *
 			 *************************************************************************************/	
 			IPS_SetEventActive($tim11ID,true);	
@@ -932,7 +945,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   break;
 		}
 	}
-
+}       /* Abfrage Webfront Aktualisierung else Ende */
 
 
 

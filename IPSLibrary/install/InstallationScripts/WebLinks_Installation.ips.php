@@ -17,17 +17,14 @@
      * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
      */
 	 
-	/**@defgroup ipstwilight IPSTwilight
-	 * @ingroup modules_weather
-	 * @{
+	/**
 	 *
 	 * Script zur Erstellung von WebLinks
 	 *
 	 *
-	 * @file          WedbLinks_Installation.ips.php
+	 * @file          WebLinks_Installation.ips.php
 	 * @author        Wolfgang Joebstl
-	 * @version
-	 *  Version 2.50.44, 07.08.2014<br/>
+	 *
 	 **/
 
 /*******************************
@@ -39,10 +36,12 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\WebLinks\WebLinks_Configuration.inc.php");
+
+    IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
-//	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\WebLink_Configuration.inc.php");
-//	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\WebLink_Class.inc.php");
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
@@ -50,24 +49,27 @@
 	if (!isset($moduleManager)) 
 		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		//$moduleManager = new IPSModuleManager('WebLink',$repository);
-		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+		$moduleManager = new IPSModuleManager('WebLinks',$repository);
 		}
  	$installedModules = $moduleManager->GetInstalledModules();
-	
-	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	//print_r($installedModules);
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	// definition CreateCategory ($Name, $ParentId, $Position, $Icon=null)
+	$CategoryIdDataWL=CreateCategory("WebLinks",IPS_GetParent($CategoryIdData),2000,"");
+	echo "Kategorie WebLinks : ".$CategoryIdDataWL."  ".IPS_GetName($CategoryIdDataWL)."/".IPS_GetName(IPS_GetParent($CategoryIdDataWL))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataWL)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataWL))))."\n";
 
 /*******************************
  *
- * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+ * Webfront Vorbereitung, hier werden keine Webfront Konfiguratoren mehr installiert, nur mehr konfigurierte ausgelesen
  *
  ********************************/
 
 	echo "\n";
 	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	echo "Default WFC10_ConfigId fuer WebLinks, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -95,19 +97,15 @@
 	if ($WFC10_Enabled==true)
 		{
 		$WFC10_ConfigId       = $WebfrontConfigID["Administrator"];
-		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-		$WFC10_Path           = "Visualization.WebFront.Administrator.WebLinks";
-		$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"AutoTPA");
-		$WFC10_TabPaneItem    = "WebLinksTPA";
+		$WFC10_Path           = $moduleManager->GetConfigValueDef('Path', 'WFC10',"Visualization.WebFront.Administrator.WebLinks");
+		$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"WebLinksTPA");
 		$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"roottp");
 		$WFC10_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',"");
-		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',"Car");
-		$WFC10_TabPaneIcon    = "Internet";
+		$WFC10_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',"Internet");
 		$WFC10_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10');
-		$WFC10_TabPaneOrder   = 900;
-		$WFC10_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10');
-		$WFC10_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10');
-		$WFC10_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10');
+		$WFC10_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',"");
+		$WFC10_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10',"");
+		$WFC10_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',"");
 		$WFC10_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10');
 		echo "WF10 Administrator\n";
 		echo "  Path          : ".$WFC10_Path."\n";
@@ -129,16 +127,16 @@
 	if ($WFC10User_Enabled==true)
 		{
 		$WFC10User_ConfigId       = $WebfrontConfigID["User"];
-		$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',"AutoTPU");
+		$WFC10User_Path        	 = $moduleManager->GetConfigValueDef('Path', 'WFC10User',"Visualization.WebFront.Administrator.WebLinks");
+		$WFC10User_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',"WebLinksTPU");
 		$WFC10User_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10User',"roottp");
 		$WFC10User_TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10User',"");
-		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',"Car");
-		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueInt('TabPaneOrder', 'WFC10User');
-		$WFC10User_TabItem        = $moduleManager->GetConfigValue('TabItem', 'WFC10User');
-		$WFC10User_TabName        = $moduleManager->GetConfigValue('TabName', 'WFC10User');
-		$WFC10User_TabIcon        = $moduleManager->GetConfigValue('TabIcon', 'WFC10User');
-		$WFC10User_TabOrder       = $moduleManager->GetConfigValueInt('TabOrder', 'WFC10User');
+		$WFC10User_TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',"Internet");
+		$WFC10User_TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',"900");
+		$WFC10User_TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',"");
+		$WFC10User_TabName        = $moduleManager->GetConfigValueDef('TabName', 'WFC10User',"");
+		$WFC10User_TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',"");
+		$WFC10User_TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10User',"");
 		echo "WF10 User \n";
 		echo "  Path          : ".$WFC10User_Path."\n";
 		echo "  ConfigID      : ".$WFC10User_ConfigId."  (".IPS_GetName(IPS_GetParent($WFC10User_ConfigId)).".".IPS_GetName($WFC10User_ConfigId).")\n";
@@ -169,16 +167,8 @@
 		echo "  Path          : ".$Retro_Path."\n";		
 		}	
 
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-	
 	// umbauen auf Weblinks
 	
-	// definition CreateCategory ($Name, $ParentId, $Position, $Icon=null)
-	$CategoryIdDataWL=CreateCategory("WebLinks",IPS_GetParent($CategoryIdData),2000,"");
-	echo $CategoryIdDataWL."  ".IPS_GetName($CategoryIdDataWL)."/".IPS_GetName(IPS_GetParent($CategoryIdDataWL))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataWL)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataWL))))."\n";
-
-
 /*******************************
  *
  * Variablen Profile Vorbereitung
@@ -192,6 +182,7 @@
  *
  ********************************/
 
+    echo "\nWebfront Link Tabelle aufbauen:\n";
 	$webfront_links=array();
 
 	/* Abkuerzer, keine Kategorie in Data erstellt sondern gleich in Visualisation die Originalwerte abgelegt - funktioniert nicht da Inhalt geloescht wird bei Installation 
@@ -212,36 +203,40 @@
                    a:hover   {color: red;   background-color: transparent; text-decoration: underline; }
                    a:active  {color: yellow;background-color: transparent; text-decoration: underline; } </style>'; 
 	$html.='<table>';
+    $html.="<th> <tr> <td> Bezeichnung des Link </td> <td> Lokales LAN </td> <td> Internet </td> </tr> </th>";
 	$rows=0;$columns=0;
 	foreach ($linkConfig as $index => $config)
 		{
 		$html.='<tr>';
 		$col=0;
-		echo "  Weblinks Konfigurationen für ".$index." bearbeiten.\n";
+		echo "    Weblinks Konfigurationen für ".$index." bearbeiten.\n";
 		switch (strtoupper($index))
 			{
 			case "WEBLINKS":
+                echo "      Modul WEBLINKS:\n";
 				foreach ($config as $entry)
 					{
 					print_r($entry);
 					if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
 					if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
-					$html.='<td> <a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td>';
-					$col++;
-					echo "    ".$entry["NAME"]."\n";
+                    if (isset($entry["TYPE"])==false) $entry["TYPE"]="extern";
+					$html.='<tr> <td>'.$entry["NAME"].'</td> <td> ';
+                    if ($entry["TYPE"]=="extern") $html .= "</td> <td>";
+                    $html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> </tr>';
 					}
 				break;
 			case "CAMERAS":
 				if (isset ($installedModules["IPSCam"]))
 					{
-					IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+                    echo "      Modul CAMERAS:\n";
+                	IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
 					IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
 					$camConfig = IPSCam_GetConfiguration();
 					foreach ($camConfig as $idx=>$data) 
 						{
 						print_r($data);
 						$result=explode(",",$data[IPSCAM_PROPERTY_COMPONENT]);
-						$html.='<td> <a href="'.'http://'.$result[1].'" target="_blank">'.$data[IPSCAM_PROPERTY_NAME].'</a> </td>';
+						$html.='<tr> <td>'.$data["Type"].' '.$data["Name"].'</td> <td> </td> <td> <a href="'.'http://'.$result[1].'" target="_blank">'.$data[IPSCAM_PROPERTY_NAME].'</a> </td> </tr>';
 						}			
 					}			
 				break;
@@ -249,14 +244,9 @@
 				break;
 			}
 		if ($col>$columns) $columns=$col;	
-		$html.='</tr>';
-		$rows++;			
 		}
-	echo "Tabelle mit ".$rows." Spalten und ".$col." Zeilen.\n";
 	$html.='</table>';
- 	//$html.='<a href="http://derstandard.at" target="_blank">Link zum Standard</a>';
-	//$html.='<a href="http://10.0.0.132:8001/1:0:19:2B66:3F3:1:C00000:0:0:0:" target="_blank">Link zum Streaming von der Dreambox</a>';
-	//$html.='</iFrame>';
+
 	SetValue($WebLinkID,$html);
  
 	/*----------------------------------------------------------------------------------------------------------------------------

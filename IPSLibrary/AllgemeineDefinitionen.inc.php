@@ -3322,7 +3322,121 @@ Moudule und Klassendefinitionen
 
 ******************************************************************/
 
+class ModuleHandling
+	{
+	
+	private $libraries;	// array mit Liste der Namen und GUIDs von Libraries 
+	private $modules;	// array mit Liste der Namen und GUIDs von Modules 
+	
+	public function __construct()
+		{
+		$debug=false;
+		if ($debug) echo "Alle Bibliotheken mit GUID ausgeben:\n";
+		foreach(IPS_GetLibraryList() as $guid)
+			{
+			$module = IPS_GetLibrary($guid);
+			$pair[$module['Name']] = $guid;
+			}
+		ksort($pair);
+		foreach($pair as $key=>$guid)
+			{
+			$this->libraries[$key]=$guid;
+			if ($debug) echo "    ".$key." = ".$guid."\n";
+			}
+		unset($pair);
+		if ($debug) echo "Alle Modulnamen mit GUID ausgeben: \n";
+		foreach(IPS_GetModuleList() as $guid)
+			{
+			$module = IPS_GetModule($guid);
+			$pair[$module['ModuleName']] = $guid;
+			}
+		ksort($pair);
+		foreach($pair as $key=>$guid)
+			{
+			$this->modules[$key]=$guid;
+			if ($debug) echo $key." = ".$guid."\n";
+			}
+		}
 
+	public function printrLibraries()
+		{
+		print_r($this->libraries);
+		}
+
+	public function printrModules()
+		{
+		print_r($this->modules);
+		}
+
+
+	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben */
+	public function printModules($input)
+		{
+		$input=trim($input);
+		$key=$this->get_string_between($input,'{','}');
+		if (strlen($key)==36) 
+			{
+			echo "Gültige GUID mit ".$key."\n";
+			$modules=IPS_GetLibraryModules($input);
+			}
+		else
+			{
+			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			if (isset($this->libraries[$input])==true)
+				{
+				echo "Library ".$input." hat GUID :".$this->libraries[$input]."\n";
+				$modules=IPS_GetLibraryModules($this->libraries[$input]);
+				}
+			else $modules=array();	
+			}		
+		foreach($modules as $guid)
+			{
+			$module = IPS_GetModule($guid);
+			$pair[$module['ModuleName']] = $guid;
+			}
+		ksort($pair);
+		foreach($pair as $key=>$guid)
+			{
+			echo "     ".$key." = ".$guid;
+			//if (IPS_ModuleExists($guid)) echo "***************";
+			echo "\n";
+			}
+		}
+
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind ausgeben */
+	public function printInstances($input)
+		{
+		$input=trim($input);
+		$key=$this->get_string_between($input,'{','}');
+		if (strlen($key)==36) 
+			{
+			echo "Gültige GUID mit ".$key."\n";
+			$instances=IPS_GetInstanceListByModuleID($input);
+			}
+		else
+			{
+			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			if (isset($this->modules[$input])==true)
+				{
+				echo "Library ".$input." hat GUID :".$this->modules[$input]."\n";
+				$instances=IPS_GetInstanceListByModuleID($this->modules[$input]);
+				}
+			else $instances=array();	
+			}		
+		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
+		}
+
+		
+	private function get_string_between($string, $start, $end)
+		{
+		$string = ' ' . $string;
+		$ini = strpos($string, $start);
+		if ($ini == 0) return '';
+		$ini += strlen($start);
+		$len = strpos($string, $end, $ini) - $ini;
+		return substr($string, $ini, $len);
+		}	
+	}
 
 
 

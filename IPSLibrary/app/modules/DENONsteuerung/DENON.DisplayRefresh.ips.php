@@ -51,13 +51,13 @@ $scriptIdDENONsteuerung   = IPS_GetScriptIDByName('DENONsteuerung', $CategoryIdA
 */
 
 if (IPS_GetObjectIDByName("DENON.Functions", $CategoryIdApp) >0)
-{
+    {
 	include "DENON.Functions.ips.php";
-}
+    }
 else
-{
+    {
 	echo "Script DENON.Functions kann nicht gefunden werden!";
-}
+    }
 $Denon_Power_val_all=false;
 $configuration=Denon_Configuration();
 foreach ($configuration as $config)
@@ -68,11 +68,11 @@ foreach ($configuration as $config)
     *         'INSTANZ'          	=> 'DENON1'
     */
 	$DENON_VAVR_IP = $config['IPADRESSE']; // hier die IP des DENON AVR angeben
-   echo "\nDENON.DisplayRefresh for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n(c) Wolfgang Joebstl und www.raketenschnecke.net\n\n";
+    echo "\nDENON.DisplayRefresh for \"".$config['NAME']."\" started with IP Adresse ".$DENON_VAVR_IP."\n(c) Wolfgang Joebstl und www.raketenschnecke.net\n\n";
 	$DENON_ID  = CreateCategory($config['NAME'], $CategoryIdData, 10);
 	$DENON_MainZone_ID = @IPS_GetInstanceIDByName("Main Zone", $DENON_ID);
 	// Timer Ein bei POWER ein
-	echo "CategoryID vom receiver ".$config['NAME']." : ".$DENON_ID." und MainZone ID : ".$DENON_MainZone_ID." .\n";
+	echo "CategoryID vom receiver ".$config['NAME']." : ".$DENON_ID." (".IPS_GetName($DENON_ID)."/".IPS_GetName(IPS_GetParent($DENON_ID)).") und MainZone ID : ".$DENON_MainZone_ID." .\n";
 	$DENON_Power_ID = IPS_GetObjectIDByName("Power", $DENON_MainZone_ID);
 	$Denon_Power_val = getvalueBoolean($DENON_Power_ID);
 	// Event "DisplayRefreshTimer" anlegen und zuweisen wenn nicht vorhanden
@@ -82,8 +82,8 @@ foreach ($configuration as $config)
 	// ermitteln der DENON Quickselct Variablen-ID
 	$Denon_Quickselect_ID = @IPS_GetObjectIDByName("QuickSelect", $DENON_MainZone_ID);
 	if ($Denon_Quickselect_ID>0)
-	   {
-      $Denon_Quickselect_val = getValueInteger($Denon_Quickselect_ID);
+	    {
+        $Denon_Quickselect_val = getValueInteger($Denon_Quickselect_ID);
 		}
 	else
 	   {

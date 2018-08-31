@@ -19,7 +19,7 @@
 
 	/**@defgroup OperationCenter_Installation
 	 *
-	 * Script zur Unterstützung der Betriebsführung, installiert das OperaqtionCenter
+	 * Script zur Unterstützung der Betriebsführung, installiert das OperationCenter
 	 *
 	 *
 	 * @file          OperationCenter_Installation.ips.php
@@ -67,13 +67,27 @@
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		$inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
 		}
 	echo $inst_modules;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
+
+	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+	/******************************************************
+	 *
+	 * Webfront Config einlesen
+	 *
+	 *************************************************************/    
 
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
@@ -88,14 +102,6 @@
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-	$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
-	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
-
-	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 	/******************************************************
 	 *
@@ -219,7 +225,7 @@
 
 	if ($_IPS['SENDER']=="Execute")
 		{
-		echo "\nNachrichtenspeicher azsgedruckt:\n";
+		echo "\nNachrichtenspeicher ausgedruckt:\n";
 		echo 	$log_OperationCenter->PrintNachrichten();
 		}
 
@@ -349,6 +355,8 @@
 
 	*************************************************************/
 
+	echo "===========================================\n";
+	echo "Sysping Variablen anlegen.\n";
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
 	$OperationCenterConfig = $OperationCenter->oc_Configuration;
@@ -412,13 +420,19 @@
 
 	if (isset ($installedModules["RemoteAccess"]))
 		{
+		echo "    Remote Access Server Status Information anlegen.\n";
 		IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
-		$remServer    = RemoteAccess_GetConfigurationNew();
-		foreach ($remServer as $Name => $UrlAddress)
+		$remServer    = RemoteAccess_GetConfigurationNew();	// das wären nur die Server mit STATUS active und LOGGING enabled
+		$remServer    = RemoteAccess_GetServerConfig();
+		foreach ($remServer as $Name => $Server)
 			{
-			$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-			AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
-			AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+			if (strtoupper($Server["STATUS"])=="ACTIVE") 
+				{
+				echo "       Server Name : ".$Name."\n";
+				$StatusID = CreateVariableByName($categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+				AC_SetLoggingStatus($archiveHandlerID,$StatusID,true);
+				AC_SetAggregationType($archiveHandlerID,$StatusID,0);      /* normaler Wwert */
+				}
 			}
 		}
 	IPS_ApplyChanges($archiveHandlerID);
@@ -440,13 +454,14 @@
 	$CategoryIdRSSIHardware = CreateCategoryPath('Hardware.HomematicRSSI');
 	
 	$CategoryIdHomematicErreichbarkeit = CreateCategoryPath('Program.IPSLibrary.data.modules.OperationCenter.HomematicRSSI');
-	$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox');
-	$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
+	$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox',null,null,"");
+	$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*Integer*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp',null,null,"");
+    
+    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptIdOperationCenter,null,"");
 
 	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
-	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
+	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox',null,null,"");
 
-		
 	$homematic=HomematicList();
 	$seriennumernliste=array();
 	foreach ($homematic as $instance => $entry)
@@ -463,7 +478,6 @@
 			$seriennumernliste[$adresse]["Channel"]=explode(":",$entry["Adresse"])[1];
 			if ($entry["Protocol"]=="Funk") $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSRF;
 			else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
-			
 			}		
 		}
 	echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste.\n";	
@@ -689,7 +703,7 @@
 						}
 					$categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
 					CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    10*$i,  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
-					$pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox');
+					$pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
 					$box='<iframe frameborder="0" width="100%">     </iframe>';
 					SetValue($pictureFieldID,$box);
 					}

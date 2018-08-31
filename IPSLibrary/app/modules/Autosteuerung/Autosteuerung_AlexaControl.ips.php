@@ -65,23 +65,74 @@ $nachrichten=new AutosteuerungAlexa();
 Switch ($_IPS['SENDER'])
 	{
 	Default:
-	 	IPSLogger_Dbg(__file__,"Aufruf unbekannt, Alexa empfaengt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."   ".$_IPS['VALUE']);
+		if (isset($_IPS['REQUEST'])) IPSLogger_Dbg(__file__,"Aufruf unbekannt, Alexa empfaengt : Variable ".$_IPS['VARIABLE']."  Request ".$_IPS['REQUEST']."  Wert ".$_IPS['VALUE']);
+		else IPSLogger_Dbg(__file__,"Aufruf unbekannt, Alexa empfaengt : Variable ".$_IPS['VARIABLE']." Sender ".$_IPS['SENDER']."  Wert ".$_IPS['VALUE']);
+		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+		break;
+	Case "VoiceControl":
+		$nachrichten->LogNachrichten("Alexa empfaengt von VoiceControl : ".$_IPS['VARIABLE']." ".$_IPS['SENDER']."  ".$_IPS['VALUE']." .");
+		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+    	$modulhandling = new ModuleHandling();
+        $config=IPS_GetConfiguration($modulhandling->getInstances("Alexa")[0]);
+        $ac=json_decode($config,true);
+    
+        $alexaConfig=array();
+        $alexaTypes=array("DeviceDeactivatableScene","DeviceGenericSlider","DeviceGenericSwitch","DeviceLightColor","DeviceLightDimmer","DeviceLightSwitch","DeviceLock","DeviceSimpleScene","DeviceTemperatureSensor","DeviceThermostat");
+        foreach($alexaTypes as $Type)
+            {
+            $acdl=json_decode($ac[$Type],true);
+            foreach ($acdl as $entry) 
+                {
+                $alexaConfig[$entry["PowerControllerID"]]["Type"]=$Type;
+                $alexaConfig[$entry["PowerControllerID"]]["Name"]=$entry["Name"];
+                }
+            }
+        if ( isset ($alexaConfig[$_IPS['VARIABLE']]) ) $request["REQUEST"]= $alexaConfig[$_IPS['VARIABLE']]["Type"];
+		if ( isset($configuration["AlexaProxyAdr"])==true)
+			{
+			/* Daten zur Verarbeitung weiterleiten an einen anderen Server */
+		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."  von  ".$_IPS['SENDER']." mit Wert  ".($_IPS['VALUE']?"Ein":"Aus")." und leitet weiter an ".$configuration["AlexaProxyAdr"]);			
+			$request=array();
+			$request["VARIABLE"]=	$_IPS['VARIABLE'];
+			$request["VALUE"]=		$_IPS['VALUE'];
+			if (function_exists("proxyAlexa") == true) proxyAlexa($request);
+			}
+		else
+			{	
+			//$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']);
+		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+			$request=array();
+			$request["VARIABLE"]=	$_IPS['VARIABLE'];
+			$request["VALUE"]=		$_IPS['VALUE'];
+			$request["SENDER"]=		$_IPS['SENDER'];
+			executeAlexa($request);			
+			}			
 		break;
 	Case "RunScript":
-		$nachrichten->LogNachrichten("Extern: ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']." .");
 		$request=array();
+		if (isset($_IPS['REQUEST'])) 
+			{
+			$nachrichten->LogNachrichten("Extern Alexa RunScript empfängt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus")." .");
+			IPSLogger_Dbg(__file__,"Extern Alexa RunScript empfaengt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus"));
+			$request["REQUEST"]=	$_IPS['REQUEST'];
+			}
+		else 
+			{
+			$nachrichten->LogNachrichten("Extern VoiceControl Request mit Variable ".$_IPS['VARIABLE']." und Wert ".($_IPS['VALUE']?"Ein":"Aus")." .");
+			IPSLogger_Dbg(__file__,"Extern VoiceControl Request mit Variable ".$_IPS['VARIABLE']." und Wert ".($_IPS['VALUE']?"Ein":"Aus"));
+			}
 		$request["VARIABLE"]=	$_IPS['VARIABLE'];
 		$request["VALUE"]=		$_IPS['VALUE'];
-		$request["REQUEST"]=	$_IPS['REQUEST'];
 		executeAlexa($request);
 		break;
 	Case "Execute":
 		$request=array();
-		$request["VARIABLE"]=	"649f57f3-0e76-4d0c-83d2-63b0cc03965e";
+		//$request["VARIABLE"]=	"649f57f3-0e76-4d0c-83d2-63b0cc03965e";
+		$request["VARIABLE"]=20093;
 		$request["VALUE"]=		true;
-		$request["REQUEST"]=	"TurnOnRequest";
+		//$request["REQUEST"]=	"TurnOnRequest";
 		//executeAlexa($request);
-		test_execute();
+		test_execute($request);
 		echo $nachrichten->PrintNachrichten();
 	 	break;
 	Case "TimerEvent":
@@ -241,8 +292,9 @@ function executeAlexa($request)
 
 /*********************************************************************************************/
 
-function test_execute()
+function test_execute($request)
 	{
+    echo "function test_execute aufgerufen:\n\n";
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -252,18 +304,24 @@ function test_execute()
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 	$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
+	$alexaHandler = new AutosteuerungAlexaHandler(); 
+	$nachrichten=new AutosteuerungAlexa();
+	
+	$params=$register->getAutoEvent($request['VARIABLE']);
+	print_r($params);
 
 	echo "\n=====================================================================\n";
 	echo "Execute aufgerufen. Analyse der einzelnen abgespeicherten Befehle.\n";
-	//$register->PrintAutoEvent();
+	$register->PrintAutoEvent();
 	$entries=$register->getAutoEvent();
 	$i=0;
 	echo "\n";
 	foreach ($entries as $index => $entry)
 		{
 		//print_r($entry);
+        echo "==============================================\n";
 		echo "Bearbeite Eintrag : ".$index." : \n";
-		Alexa($entry,40,"SETPERCENTAGE",true);
+		Alexa($entry,1,"SETPERCENTAGE",true);
 		}
 		
 	//$result=$register->getAutoEvent("44404b3f-5f92-40ba-a7d5-63e8a83987a4");

@@ -76,7 +76,16 @@
 	/* 
 	 *  neue Webfronts werden nicht mehr angelegt, wir gehen davon aus dass Administrator und User bereits bestehen 
 	 *  zusaetzliche Webfront Variablen werden nicht ausgewertet. 
+	 *
+	 *  es wird automatisch eine eigene Hauptkategorie für die Gartensteuerung erstellt. Diese wird von diesem Install in das Autosteuerung Webfront als Unterwebfront erstellt und 
+	 *        auf die beiden Unterkategorien verwiesen. Dieses Webfront wird doppelt zum Autosteuerung/Gartensteuerungs Webfront erstellt. 
+	 *
+	 *  Es gibt aber auch in der Autosteuerung eine eigene Unterkategorie für die Gartensteuerung die vom Install der Autosteuerung erstellt wird. 
+	 *
+	 *  in der Gartensteuerung Kategorie wird auch eine eigene Unterkategorie für die statistischen Auswertungen erstellt werden als zweite Unterkategorie für das eigene Giessanlagen Icon
+	 *
 	 */
+	 
 	echo "\n";
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 
@@ -179,8 +188,7 @@
 
 	$pname="GiessAnlagenProfil";
 	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
+		{		//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 	   	IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
@@ -190,11 +198,21 @@
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   	echo "Profil Giessanlagen erstellt;\n";
 		}
+		
+	$pname="GiessConfigProfil";
+	if (IPS_VariableProfileExists($pname) == false)
+		{		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		//IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+	   	//IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileAssociation($pname, 0, "Morgen", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+  	   	IPS_SetVariableProfileAssociation($pname, 1, "Abend", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+	   	echo "Profil Giessanlagen Konfiguration erstellt;\n";
+		}		
 
 	$pname="GiessKreisProfil";
 	if (IPS_VariableProfileExists($pname) == false)
-		{
-	   	//Var-Profil erstellen
+		{		//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 	   	IPS_SetVariableProfileValues($pname, 1, 6, 1); //PName, Minimal, Maximal, Schrittweite
@@ -220,8 +238,12 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Variablen für Modul anlegen
-	 *
+	 * Variablen für Modul anlegen ind en Kategorien
+     *      Gartensteuerung-Auswertung
+     *      Gartensteuerung-Register
+	 *      Nachrichtenverlauf-Gartensteuerung
+     *      Statistiken                         Regenkalender und Regenereignisse
+     *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
 	$categoryId_Gartensteuerung  	= CreateCategory('Gartensteuerung-Auswertung', $CategoryIdData, 10);
@@ -230,17 +252,23 @@
 	$scriptIdGartensteuerung   		= IPS_GetScriptIDByName('Gartensteuerung', $CategoryIdApp);
 	$scriptIdWebfrontControl   		= IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Gartensteuerung',   $CategoryIdData, 20);
+	$categoryId_Nachrichten			= CreateCategory('Nachrichtenverlauf-Gartensteuerung',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 	/* Nachrichtenzeilen werden automatisch von der Logging Klasse beim ersten Aufruf gebildet */
+
+	$CategoryId_Statistiken			= CreateCategory('Statistiken',   $CategoryIdData, 200);
+	$StatistikBox1ID				= CreateVariable("Regenmengenkalender"   ,3,$CategoryId_Statistiken,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$StatistikBox2ID				= CreateVariable("Regendauerkalender"   ,3,$CategoryId_Statistiken,  40, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$StatistikBox3ID				= CreateVariable("Regenereignisse" ,3,$CategoryId_Statistiken,  20, "~HTMLBox",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	$includefile="<?";
 	/*  Kommentar muss sein sonst funktioniert Darstellung vom Editor nicht */
 	$includefile.="\n".'function ParamList() {
 		return array('."\n";
 		
-   	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-   	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+	// CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	/* CreateVariable3 wie unten legt automatisch die Infos im Include File an */
+	$GiessAnlageID 		= CreateVariable3("GiessAnlage", 1, $categoryId_Gartensteuerung, 0, "GiessAnlagenProfil",$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessKreisID		= CreateVariable3("GiessKreis",1,$categoryId_Gartensteuerung, 10, "GiessKreisProfil",$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessTimeID		= CreateVariable3("GiessTime",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessTimeRemainID	= CreateVariable3("GiessTimeRemain",1,$categoryId_Gartensteuerung,  30, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -251,6 +279,7 @@
 	$GiessCountOffsetID	= CreateVariable3("GiessCountOffset",1,$categoryId_Register, 210, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessPauseID 		= CreateVariable3("GiessPause",1,$categoryId_Register, 20, "Minuten",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	$GiessAnlagePrevID 	= CreateVariable3("GiessAnlagePrev",1,$categoryId_Register, 200, "",null,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$GiessKonfigID 		= CreateVariable3("GiessStartzeitpunkt",0,$categoryId_Register, 300, "GiessConfigProfil",$scriptIdWebfrontControl,null,"" ); /* 0 Boolean 1 Integer 2 Float 3 String */
 	
 	//function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 
@@ -298,13 +327,16 @@
 		$SubCategory=IPS_GetChildrenIDs($CategoryId);
 		foreach ($SubCategory as $SubCategoryId)
 			{
-			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
-			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+            if (sizeof($Params)>1)
+                {
+    			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
+	    		$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+                }
 			}
 		}
 	echo "\n";
-	print_r($webfront_links);
-	echo "\n";
+	//print_r($webfront_links);		// werden noch nicht ausgewertet
+	//echo "\n";
 
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -313,16 +345,25 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-
-	$eid2 = @IPS_GetEventIDByName("Timer2", $scriptIdGartensteuerung);
+    echo "Timer aufsetzen :\n";
+    /* Timer zum Giessstopp, zu diesem Zeitpunkt alles ausschalten - sicherheitshalber */
+	$eid2 = @IPS_GetEventIDByName("Giessstopp1", $scriptIdGartensteuerung);
 	if ($eid2==false)
 		{
 		$eid2 = IPS_CreateEvent(1);
 		IPS_SetParent($eid2, $scriptIdGartensteuerung);
-		IPS_SetName($eid2, "Timer2");
+		IPS_SetName($eid2, "Giessstopp1");
 		IPS_SetEventCyclicTimeFrom($eid2,22,0,0);  /* immer um 22:00 */
 		}
-	
+	$eid2m = @IPS_GetEventIDByName("Giessstopp2", $scriptIdGartensteuerung);
+	if ($eid2m==false)
+		{
+		$eid2m = IPS_CreateEvent(1);
+		IPS_SetParent($eid2m, $scriptIdGartensteuerung);
+		IPS_SetName($eid2m, "Giessstopp2");
+		IPS_SetEventCyclicTimeFrom($eid2m,10,0,0);  /* immer um 10:00 */
+		}
+
 	$eid3 = @IPS_GetEventIDByName("Timer3", $scriptIdGartensteuerung);
 	if ($eid3==false)
 		{
@@ -348,10 +389,28 @@
 		IPS_SetName($eid5, "UpdateTimer");
 		IPS_SetEventCyclic($eid5, 0 /* Keine Datumsüberprüfung */, 0, 0, 2, 2 /* Minütlich */ , 1 /* Alle Minuten */);
 		}
-	
+
+    /* Alte Timer loeschen, damit sie nicht doppelt vorkommen, zumindest ein Timer muss aktiv sein damit Gartensteuerung zum ersten mal aufgerufen wird */
+    $deltimerID = @IPS_GetEventIDByName("Timer2", $scriptIdGartensteuerung);	
+    if ($deltimerID !== false) 
+        {
+        echo "Timer Event \"Timer2\" noch vorhanden : ".$deltimerID."   -> loeschen.\n";
+        IPS_DeleteEvent($deltimerID);
+        }
+    IPS_SetEventActive($eid2,true);
+    IPS_SetEventActive($eid2m,true);
+
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Administrator Installation
+	 *
+	 * es werden die Kategorien erstellt, es werden die tabs für das Webfront erstellt und auf die Kategorien verlinkt
+	 * das ganze wird für den Administrator und den User gemacht.
+	 *
+	 * WFC10 Path ist der Administrator.Gartensteuerung
+	 * das webfront für diese Kategorien ist immer admin
+	 * es werden zusätzliche Tabs festgelegt, diese haben nur ein Icon.
+	 * aus TabPaneItem.TabPaneItemTabItem wird eine passende Unterkategorie im Webfront generiert
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	 
@@ -406,6 +465,7 @@
 
 		CreateLinkByDestination('GiessAnlage', $GiessAnlageID,    $categoryIdLeft,  10);
 		CreateLinkByDestination('GiessKreis', $GiessKreisID, $categoryIdLeft,  20);
+		CreateLinkByDestination('GiessStartzeitpunkt', $GiessKonfigID, $categoryIdLeft,  30); 	
 		CreateLinkByDestination('GiessTime', $GiessTimeID,    $categoryIdLeft,  40);
 		CreateLinkByDestination('GiessTimeRemain', $GiessTimeRemainID,    $categoryIdLeft,  40);
 		CreateLinkByDestination("GiessKreisInfo", $GiessKreisInfoID,    $categoryIdLeft,  50);
@@ -417,7 +477,21 @@
 		CreateLinkByDestination("GiessPause", $GiessPauseID ,    $categoryIdLeft,  140);
 		
 		CreateLinkByDestination('Nachrichten', $input,    $categoryIdRight,  110);
+
+		/* zusaetzliches Webfront Tab für Statistik Auswertungen */
+
+		$categoryIdLeft0  = CreateCategory('Left0',  $categoryId_WebFrontAdministrator, 10);
+		$categoryIdRight0 = CreateCategory('Right0', $categoryId_WebFrontAdministrator, 20);
+		CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."0",           $WFC10_TabPaneItem,    100,     "Statistik",     "Rainfall", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Left',   $tabItem."0",   10, '', '', $categoryIdLeft0   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."0".'_Right',  $tabItem."0",   20, '', '', $categoryIdRight0  /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateLinkByDestination("Regenmengenkalender", $StatistikBox1ID ,    $categoryIdLeft0,  140);
+		CreateLinkByDestination("Regendauerkalender", $StatistikBox2ID ,    $categoryIdLeft0,  140);
+		CreateLinkByDestination("Regenereignisse", $StatistikBox3ID ,    $categoryIdRight0,  150);
+
 		}
+
+	ReloadAllWebFronts(); /* es wurde das Gartensteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

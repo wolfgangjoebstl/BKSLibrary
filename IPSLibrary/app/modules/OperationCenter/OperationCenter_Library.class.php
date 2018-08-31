@@ -526,7 +526,7 @@ class OperationCenter
 			
 				$ServerStatusID = CreateVariableByName($this->categoryId_SysPing, "Server_".$Name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
 
-			   $RemoteServer[$Name]["Name"]=$UrlAddress;
+				$RemoteServer[$Name]["Name"]=$UrlAddress;
 				$rpc = new JSONRPC($UrlAddress);
 				//echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
 				$data = @parse_url($UrlAddress);
@@ -544,7 +544,7 @@ class OperationCenter
 					$username = "";
 					}
 				if(isset($data['pass']))
-				   {
+					{
 					$password = $data['pass'];
 					}
 				else
@@ -588,12 +588,12 @@ class OperationCenter
 
 				$response = @file_get_contents($url, false, $context);
 				if ($response===false)
-				   {
+					{
 					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
 					SetValue($IPS_UpTimeID,0);
 					$RemoteServer[$Name]["Status"]=false;
 					if (GetValue($ServerStatusID)==true)
-					   {  /* Statusänderung */
+						{  /* Statusänderung */
 						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
 						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
 						SetValue($ServerStatusID,false);
@@ -674,8 +674,9 @@ class OperationCenter
 	 * localAccess Server, wie für die Remote Abfrage, den lokalen Wert setzen
 	 *
 	 * RemoteAccess Server, rpc call ping mit function server_ping
+	 *	Aufruf von function server_ping()
 	 *				RemoteAccess_Configuration.inc.php : RemoteAccess_GetServerConfig() wenn set to Active
-	 *
+	 *				
 	 *
 	 *
 	 *

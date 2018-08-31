@@ -606,6 +606,14 @@
 	 *
 	 * WebFront Administrator Installation
 	 *
+	 * es werden die Kategorien erstellt, es werden die tabs für das Webfront erstellt und auf die Kategorien verlinkt
+	 * das ganze wird für den Administrator und den User gemacht.
+	 *
+	 * WFC10 Path ist der Administrator.Gartensteuerung
+	 * das webfront für diese Kategorien ist immer admin
+	 * es werden zusätzliche Tabs festgelegt, diese haben nur ein Icon.
+	 * aus TabPaneItem.TabPaneItemTabItem wird eine passende Unterkategorie im Webfront generiert	 
+	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
 	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
@@ -692,7 +700,6 @@
 				}
 			echo ">>Kategorien erstellt fuer ".$tab.", Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n\n";
 			}
-
 
 		ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 

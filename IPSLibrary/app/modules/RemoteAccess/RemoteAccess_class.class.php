@@ -15,6 +15,26 @@
 	 * You should have received a copy of the GNU General Public License
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
+	 
+	/*********************
+	 *
+	 * RemoteAccess Class
+	 *
+	 * Vereinfachung von Remote Access von Servern zum Logging oder Update von Variablen
+	 *
+	 * Um Zeit zu sparen werden nur die mit Logging enable und im Status Active konfigurierten Server angesprochen
+	 *
+	 * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
+	 * abgespeichert wird als Includefile das regelmaessig erzeugt wird
+	 * Routinen um Ihre Daten im Incliudefile zu speichern
+	 *     add_Guthabensteuerung()
+	 *     add_Amis()
+	 *     add_Sysinfo()
+	 *     add_Remoteserver(array)    legt function ROID_List() an
+	 *
+	 * Server_ping()	ermittelt die Erreichbarkeit aller Server in der Liste und gibt sie als Array aus
+	 *
+	 ****************************************************/
 
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 

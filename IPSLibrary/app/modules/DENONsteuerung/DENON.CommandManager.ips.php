@@ -27,6 +27,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENONsteuerung.Library.inc.php");
 
+$fatalerror=false;
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
 	{
@@ -83,7 +84,7 @@ if (isset($NachrichtenScriptID))
 	/* logging in einem File und in einem String am Webfront */
 	$log_Denon=new Logging("C:\Scripts\Denon\Log_Receive_Denon.csv",$NachrichtenInputID);
 	}
-else break;
+else $fatalerror=true;
 
 $DenonConfiguration=Denon_Configuration();
 
@@ -97,6 +98,7 @@ if (IPS_GetObjectIDByName("DENON.VariablenManager", $CategoryIdApp) >0)
 else
 	{
 	echo "Script DENON.VariablenManager kann nicht gefunden werden!";
+    $fatalerror=true;
 	}
 
 /*****************************************************************************************************************************************************/
@@ -112,6 +114,7 @@ if ($_IPS['SENDER'] == "Execute")
 		}
 	$log_Denon->LogMessage("Script wurde direkt aufgerufen");
 	$log_Denon->LogNachrichten("Script wurde direkt aufgerufen");
+    if ($fatalerror) echo "!!!!!!!!!!!!!!  FATAL ERROR !!!!!!!!!!!!!!!!!\n";
 	}
 else
 	{

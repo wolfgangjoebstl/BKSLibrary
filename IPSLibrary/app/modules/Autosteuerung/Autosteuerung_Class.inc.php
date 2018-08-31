@@ -2,12 +2,49 @@
 
 /*****************************************************************************************************
  *
- * Autosteuerung Handler
+ * Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
+ *    AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
+ *      Get_EventConfigurationAuto()
+ *      Set_EventConfigurationAuto
+ *      CreateEvent
+ *      StoreEventConfiguration
+ *      RegisterAutoEvent
+ *      UnRegisterAutoEvent
  *
- * AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
- * AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung)
- * Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
- * AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung
+ *    AutosteuerungConfiguration, abstract class für:
+ *       AutosteuerungConfigurationAlexa 
+ *       AutosteuerungConfigurationHandler 
+ *
+ *          mit folgenden abstract functions:
+ *              Get_EventConfigurationAuto()
+ *              Set_EventConfigurationAuto
+ *              CreateEvent
+ *              InitEventConfiguration()
+ *              StoreEventConfiguration
+ *              RegisterAutoEvent
+ *              UnRegisterAutoEvent
+ *              printAutoEvent
+ *              getAutoEvent 
+ * 
+ *    AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung)
+ *          Anwesend()
+ *
+ *    Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
+ *       getFunctions
+ *       isitdark(), isitlight()
+ *
+ *
+ *    AutosteuerungFunktionen
+ *       AutosteuerungRegler
+ *       AutosteuerungAnwesenheitsSimulation
+ *       AutosteuerungAlexa
+ *    AutoSteuerungStromheizung für Funktionen rund um die Heizungssteuerung
+ *
+ * alleinstehende functions
+ *
+ *
+ *  Ventilator, Ventilator1, Alexa, 
+ *  test, parseParemeter, Parameter
  *
  **************************************************************************************************************/
  
@@ -526,7 +563,39 @@ abstract class AutosteuerungConfiguration
 				echo "Configuration has ".sizeof($configuration)." entries.\n";
 				foreach ($configuration as $id => $entry)
 					{
-					echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry[2].",)\n";
+                    $entry2=str_replace("\n","",$entry[2]);
+                    //echo $entry2."\n";  
+                    $kommandotrim=array();
+                    $kommandogruppe=explode(";",$entry2);
+                    foreach ($kommandogruppe as $index => $kommando)
+                        {
+                        $befehlsgruppe=explode(",",$kommando);
+                        foreach ( $befehlsgruppe as $count => $befehl)
+                            {
+                            $result=trim($befehl);
+                            if ($result != "")
+                                {
+                                //echo "   ".$index." ".$count."  ".$result."\n ";
+                                $kommandotrim[$index][$count]=$result;
+                                }
+                            }
+                        }
+                    $entry3="";  $semi="";  
+                    //print_r($kommandotrim);
+                    foreach ($kommandotrim as $kommando)
+                        {
+                        //print_r($kommando);
+                        $comma="";
+                        $entry3.=$semi;
+                        if ($semi=="") $semi=";"; 
+                        foreach ($kommando as $befehl)
+                            {
+                            //echo $befehl;
+                            $entry3.=$comma.$befehl;
+                            if ($comma=="") $comma=",";
+                            }
+                        }
+    				echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry3.",)\n";
 					}
 				}
 			return $configuration;
@@ -544,10 +613,10 @@ abstract class AutosteuerungConfiguration
 			//print_r($configuration);
 			if (sizeof($configuration)>0 )
 				{
-				echo "Configuration has ".sizeof($configuration)." entries.\n";
+				//echo "Configuration has ".sizeof($configuration)." entries.\n";
 				foreach ($configuration as $id => $entry)
 					{
-					echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry[2].",)\n";
+					//echo "  ".$id." => (".$entry[0].",".$entry[1].",".$entry[2].",)\n";
 					}
 				}
 			if ($ID==null)
@@ -1150,7 +1219,50 @@ class Autosteuerung
 			}
 		else return ($value);	
 		}
-		
+
+	/**
+	 *
+	 * Command trimmen, damit es in einer Zeile ausgegeben werden kann, Befehl wird oft formatiert für bessere Lesbarkeit
+	 *
+	 * @return string[] Event Konfiguration
+	 */
+	function trimCommand($command) 
+		{
+	    $kommandotrim=array();
+        $kommandogruppe=explode(";",$command);
+        foreach ($kommandogruppe as $index => $kommando)
+            {
+            $befehlsgruppe=explode(",",$kommando);
+            foreach ( $befehlsgruppe as $count => $befehl)
+                {
+                $result=trim($befehl);
+                if ($result != "")
+                    {
+                    //echo "   ".$index." ".$count."  ".$result."\n ";
+                    $kommandotrim[$index][$count]=$result;
+                    }
+                }
+            }
+        $entry3="";  $semi="";  
+        //print_r($kommandotrim);
+        foreach ($kommandotrim as $kommando)
+            {
+            //print_r($kommando);
+            $comma="";
+            $entry3.=$semi;
+            if ($semi=="") $semi=";"; 
+            foreach ($kommando as $befehl)
+               {
+               //echo $befehl;
+               $entry3.=$comma.$befehl;
+               if ($comma=="") $comma=",";
+               }
+           }
+    	return ($entry3);
+	    }
+
+
+
 	/***************************************
 	 *
 	 * hier wird der Befehl in die Einzelbefehle zerlegt, und Kurzbefehle in die Langform gebracht
@@ -1213,7 +1325,7 @@ class Autosteuerung
 		$params2=$params[2];
 		$commands = explode(';', $params2);
 		$Kommando=0;
-		echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
+		echo "   ParseCommand Gesamter Befehl : ".$this->trimCommand($params2)."\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;
@@ -1312,6 +1424,7 @@ class Autosteuerung
 						}
 					break; 
 				case "ANWESENHEIT":
+                case "ALEXA":
 					/* es gibt noch Sonderformen der Befehlsdarstellung, diese vorverarbeiten und damit standardisieren
 					 *
 					 * "Schaltername"
@@ -1319,6 +1432,7 @@ class Autosteuerung
 					 * "Schaltername,true,20"
 					 * "name:Schaltername,On:true,Off:false,Delay:20"
 					 *
+                     * Aufpassen mit leeren Befehlen, damit hier nicht ein leerer Name erkannt wird
 					 */
 					switch ($count)
 						{
@@ -1382,43 +1496,21 @@ class Autosteuerung
 							if (count($params_one)>1)
 								{
 								$result=self::parseParameter($params_one);
+                                $oid=$this->parseName($result[0]);
 								//print_r($result);
-								if ($result[0]=="ALARM")
-									{
-									echo "Alarm.\n";
-									if ($this->CategoryId_SchalterAlarm !== false)
+                                if ($oid !== false)
+                                    {
+									$parges[$Kommando][$Eintrag][]="OID";
+									$parges[$Kommando][$Eintrag][]=$oid;
+									if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
 										{
-										$parges[$Kommando][$Eintrag][]="OID";
-										$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAlarm;
-										if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
-											{
-											$parges[$Kommando][$count+1][]="ON";
-											$parges[$Kommando][$count+1][]="TRUE";
-											}
-										if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
-											{
-											$parges[$Kommando][$count+1][]="OFF";
-											$parges[$Kommando][$count+1][]="FALSE";
-											}
+										$parges[$Kommando][$count+1][]="ON";
+										$parges[$Kommando][$count+1][]="TRUE";
 										}
-									}	
-								elseif ($result[0]=="ANWESEND")
-									{
-									echo "Anwesend.\n";								
-									if ($this->CategoryId_SchalterAnwesend !== false)
+									if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
 										{
-										$parges[$Kommando][$Eintrag][]="OID";
-										$parges[$Kommando][$Eintrag][]=$this->CategoryId_SchalterAnwesend;
-										if ( (strtoupper($result[1]) == "ON") || (strtoupper($result[1]) == "TRUE") )
-											{
-											$parges[$Kommando][$count+1][]="ON";
-											$parges[$Kommando][$count+1][]="TRUE";
-											}
-										if ( (strtoupper($result[1]) == "OFF") || (strtoupper($result[1]) == "FALSE") )
-											{
-											$parges[$Kommando][$count+1][]="OFF";
-											$parges[$Kommando][$count+1][]="FALSE";
-											}
+										$parges[$Kommando][$count+1][]="OFF";
+										$parges[$Kommando][$count+1][]="FALSE";
 										}
 									}
 								else
@@ -1431,10 +1523,23 @@ class Autosteuerung
 								}
 							else
 								{
-								/* nur ein Parameter, muss der Name des Schalters/Gruppe sein */
-								$parges[$Kommando][$Eintrag][]="NAME";
-								$parges[$Kommando][$Eintrag][]=$params_one[0];
-								$Eintrag--;								
+								/* nur ein Parameter, muss der Name des Schalters/Gruppe sein, wenn der Name nach trim leer ist, ueberspringen */
+                                $name=trim($params_one[0]);
+                                if ($name != "")
+                                    {
+                                    $oid=$this->parseName(strtoupper($name));
+                                    if ($oid !== false)
+                                        {
+									    $parges[$Kommando][$Eintrag][]="OID";
+									    $parges[$Kommando][$Eintrag][]=$oid;
+                                        }
+                                    else 
+                                        {
+    								    $parges[$Kommando][$Eintrag][]="NAME";
+	    							    $parges[$Kommando][$Eintrag][]=$name;
+                                        }
+		    						$Eintrag--;								
+                                    }
 								}
 							break;
 						default:
@@ -1577,6 +1682,27 @@ class Autosteuerung
 			}			
 		return($parges);
 		}
+
+	/*
+	 * Wenn der Name der IPSLight Variablen keine IPS Light Vartiable aber vielleicht ein vordefinierter Wert ist, die OID der bekannten Variable zurückmelden
+	 */
+		
+	private function parseName($name)
+		{
+        switch ($name)
+            {
+            case "ALARM":    
+				$oid=$this->CategoryId_SchalterAlarm;
+                break;
+            case "ANWESEND":    
+				$oid=$this->CategoryId_SchalterAnwesend;
+                break;
+            default:
+                $oid=false;
+                break;    
+            }			
+        return ($oid);
+        }
 
 	/*
 	 * ersten teil des Arrays als befehl erkenn, auf Grossbuchtaben wandeln, und das ganze array nochmals darunter speichern
@@ -3213,7 +3339,14 @@ abstract class AutosteuerungFunktionen
 	 *
 	 * Funktionen für Konstruktor, es gibt ein eigenes Logfile, Filename inklusive Pfad muss übergeben werden, Input Variable für Variablen-Log muss ebenfalls übergeben werden.
 	 * wenn nicht, wird nicht gelogged. 
-	 *
+     *
+	 * Funktion Init() macht zwar einiges aber im Endeffekt wird nur $this->scriptIdHeatControl bestimmt und sicherheitshalber zB  
+     * und der Kategorie Pfad für Administartor Autosteuerung angelegt.
+     *
+     * Funktion InitLogMessage() legt ein Logfile an
+     *
+     * Funktion InitLogNachrichten(() ruft das Geraete spezifische InitMesagePuffer() auf
+     *
 	 ****************************************************************************/
 	
 	function Init()
@@ -3378,7 +3511,7 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 		/******************************* Nachrichten Logging *********/
 		
 		$type=3;$profile=""; $this->zeile=array();
-		$this->InitLogNachrichten($type,$profile);		/* logging in Objekten mit String und ohne Profil festlegen, keien Abstrkte Routine, auf jeden Fall programmieren */
+		$this->InitLogNachrichten($type,$profile);		/*  ruft das Geraete spezifische InitMesagePuffer() auf, logging in Objekten mit String und ohne Profil festlegen, keien Abstrkte Routine, auf jeden Fall programmieren */
 		}
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
@@ -3470,14 +3603,14 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		$this->Init();
+		$this->Init();      /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
 
 		/******************************* File Logging *********/
 		$this->InitLogMessage();
 		
 		/******************************* Nachrichten Logging *********/
 		$type=3;$profile=""; $this->zeile=array();
-		$this->InitLogNachrichten($type,$profile);
+		$this->InitLogNachrichten($type,$profile);      /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
@@ -3514,7 +3647,7 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
 			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Schaltbefehle-Anwesenheitssimulation",$CategoryIdData);
 			$vid=@IPS_GetObjectIDByName("Schaltbefehle",$this->nachrichteninput_Id);
 			if ($vid==false) 
@@ -3572,14 +3705,14 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		$this->Init();
+		$this->Init();      /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
 
 		/******************************* File Logging *********/
 		$this->InitLogMessage();
 		
 		/******************************* Nachrichten Logging *********/
 		$type=3;$profile=""; $this->zeile=array();
-		$this->InitLogNachrichten($type,$profile);
+		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
@@ -3616,7 +3749,7 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
 			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Nachrichten-Alexa",$CategoryIdData);	/* <<<<<<< change here */
 			$vid=@IPS_GetObjectIDByName("Nachrichten",$this->nachrichteninput_Id);							/* <<<<<<< change here */
 			if ($vid==false) 
@@ -3670,14 +3803,14 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		/******************************* Init *********/
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;			
-		$this->Init();
+		$this->Init();          /* Autosteuerung_HeatControl Script ID wird festgelegt in $this->scriptIdHeatControl */
 
 		/******************************* File Logging *********/
 		$this->InitLogMessage();
 		
 		/******************************* Nachrichten Logging *********/
 		$type=1;$profile="AusEin"; $this->zeile=array();
-		$this->InitLogNachrichten($type,$profile);
+		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
@@ -3693,39 +3826,44 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			{
 			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
 			// bei etwas anderem als Integer stimmt der defaultwert nicht		
-			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
-			if ($vid==false) $fatalerror=true;
-;		
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }	
 			}
 		else
 			{
-			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt */
+			/* auch Wenn "Ohne" angegeben wird, wird gelogged, Verzeichnis wird dann selbst ermittelt, $this->nachrichteninput_Id umschreiben */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
 			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_AS = new IPSModuleManager('Autosteuerung');
 			$CategoryIdData     = $moduleManager_AS->GetModuleCategoryID('data');
-			echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
+			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
-			$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
-			if ($vid==false) $fatalerror=true;		
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }			
 			}		
+		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
+		if ($vid==false) 
+            {
+            echo "Fatal Error !!!!\n";
+            $fatalerror=true;
+            }
+        else 
+            {    
+			//EmptyCategory($vid);			
+			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }
+            }
 		}	
 		
 	function ShiftforNextDay($message=0)
 		{
 		if ($this->nachrichteninput_Id != "Ohne")
 			{
-			//print_r($this->zeile);
-			for ($i=1; $i<16;$i++) 
-				{ 
-				SetValue($this->zeile[$i],GetValue($this->zeile[$i+1])); 
-				//echo "Wert : ".$i."\n";
-				}
-			SetValue($this->zeile[$i],$message);
+            if (@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id) != false)
+                {
+    			//print_r($this->zeile);
+	    		for ($i=1; $i<16;$i++) 
+		    		{ 
+			    	SetValue($this->zeile[$i],GetValue($this->zeile[$i+1])); 
+				    //echo "Wert : ".$i."\n";
+    				}
+	    		SetValue($this->zeile[$i],$message);
+                }
 			}		
 		}
 
@@ -4303,8 +4441,8 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
  *
  *  Alexa
  *
- * passt nicht ganz dazu. Soll aber wie Status die Befehle die von Alexa kommen abarbeiten.
- * Parameter Struktur ist etwas anders.
+ * passt nicht ganz dazu. Soll aber wie die Routinen Status die Befehle die von Alexa kommen abarbeiten.
+ * Parameter Struktur ist etwas anders, statt der Variable ID wird ein Request Identifier der die Art der Anforderung beschreibt mitgeliefert.
  *
  *************************************************************************************************/
 
