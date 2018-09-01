@@ -9,28 +9,28 @@
      *
      */
 
-   /**
-    * @class IPSComponentRGB_HUE
-    *
-    * Definiert ein IPSComponentRGB_PhilipsHUE Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
-	*
-    * Farbumwandlung implementiert von meberhardt analog der offiziellen iOS App:
-	*
-	* https://github.com/PhilipsHue/PhilipsHueSDK-iOS-OSX/blob/master/ApplicationDesignNotes/RGB%20to%20xy%20Color%20conversion.md 
-	*
-    * <br/>
-    */
+	/**
+	 * @class IPSComponentRGB_HUE
+	 *
+	 * Definiert ein IPSComponentRGB_HUE Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
+	 *
+	 * verwendet das neue IPSModul Philips HUE Bridge, damit sind keine neue Anpassungen oder Adaptierungen notwendig
+	 * Routinen sind zwar noch vorhanden, werden aber nicht mehr verwendet
+	 *
+	 *  es wird nur construct und setState aufgerufen
+	 *
+	 */
 
-    IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
-    IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
+	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
+	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
 
-    class IPSComponentRGB_HUE extends IPSComponentRGB {
+	class IPSComponentRGB_HUE extends IPSComponentRGB {
 
 		private $bridgeOID, $lampOID;
 			
-        private $bridgeIP;
-        private $lampNr;
-        private $hueKey;
+		private $bridgeIP;
+		private $lampNr;
+		private $hueKey;
 		private $modelID;
 		
 		public 	$Status;
@@ -57,7 +57,7 @@
 		 * @param string $modelID Philips Modelnummer der Lampe
 		 *
          */
-        public function __construct($bridgeOID, $lampOID) 
+		public function __construct($bridgeOID, $lampOID) 
 			{
 			$this->bridgeOID = $bridgeOID;
 			$this->lampOID = $lampOID;
@@ -155,7 +155,7 @@
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
          */
-        public function SetState($power, $color, $level) {
+        public function SetStateHUE($power, $color, $level) {
             if (!$power) {
                 $cmd = '"on":false';  
             } else {
@@ -185,7 +185,43 @@
 			HUE_SetValue($this->lampOID, "COLOR",$color);
 			HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
         }
-		
+
+        /**
+         * @public
+         *
+         * @brief Zustand Setzen 
+         *
+         * @param boolean $power RGB Gerät On/Off
+         * @param integer $color RGB Farben (Hex Codierung)
+         * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
+         */
+		public function SetState($power, $color, $level) 
+			{
+			if (!$power) 
+				{
+				HUE_SetValue($this->lampOID, "STATE",$power);
+				} 
+			else 
+				{
+				$rotDec = (($color >> 16) & 0xFF);
+				$gruenDec = (($color >> 8) & 0xFF);
+				$blauDec = (($color >> 0) & 0xFF); 
+				$color_array = array($rotDec,$gruenDec,$blauDec);
+			   
+				$modelID = $this->modelID;
+			   
+			   //Convert RGB to XY values
+				$values = $this->calculateXY($color_array, $modelID);
+			  
+				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
+				$level = round($level * 2.55);
+				$cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
+				HUE_SetValue($this->lampOID, "STATE",$power);
+				HUE_SetValue($this->lampOID, "COLOR",$color);
+				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
+				}
+		}
+				
 		/**
 		 *  @brief Queries bridge for details of the lamp 
 		 *  

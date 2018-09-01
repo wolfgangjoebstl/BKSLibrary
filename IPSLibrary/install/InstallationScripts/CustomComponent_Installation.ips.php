@@ -608,7 +608,7 @@
 
 
 	if (function_exists('HomematicList'))
-	   {
+		{
 		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
 		$Homematic = HomematicList();
 		$keyword="MOTION";
@@ -616,29 +616,29 @@
 			{
 			$found=false;
 			if ( (isset($Key["COID"][$keyword])==true) )
-		   	{
-	   		/* alle Bewegungsmelder */
+				{
+				/* alle Bewegungsmelder */
 
-		      $oid=(integer)$Key["COID"][$keyword]["OID"];
-		      $found=true;
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+				$found=true;
 				}
 
 			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-		   	{
-	   		/* alle Kontakte */
+				{
+				/* alle Kontakte */
 
-		      $oid=(integer)$Key["COID"]["STATE"]["OID"];
-		      $found=true;
+				$oid=(integer)$Key["COID"]["STATE"]["OID"];
+				$found=true;
 				}
 			if ($found)
-			   {
-      		$variabletyp=IPS_GetVariable($oid);
+				{
+ 				$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
-			   	{
+					{
 					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				else
-				   {
+					{
 					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 
@@ -647,16 +647,16 @@
 					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
 					}
 				else
-				   {
-				   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+					{
+					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
 					echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
-			   	$messageHandler = new IPSMessageHandler();
-				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+					$messageHandler = new IPSMessageHandler();
+					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-				   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+					/* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
-				   }
+					}
 				}
 			}
 		}
