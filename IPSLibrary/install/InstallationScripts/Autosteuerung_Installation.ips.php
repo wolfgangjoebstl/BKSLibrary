@@ -36,11 +36,11 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPS ModulManager Version   : ".$ergebnis;
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
-	echo "\nModul Autosteuerung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
+	$ergebnis1=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+	$ergebnis2=$moduleManager->VersionHandler()->GetVersion('Autosteuerung');
+	//echo "\nIP Symcon Kernelversion    : ".IPS_GetKernelVersion();
+	//echo "\nIPS ModulManager Version   : ".$ergebnis1;
+	//echo "\nModul Autosteuerung Version : ".$ergebnis2."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 	
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -48,11 +48,21 @@
 		{
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules."\n";
+	//echo $inst_modules."\n";
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	
+	$modulhandling = new ModuleHandling();
+	$Alexa=$modulhandling->getInstances("Alexa");
+	$countAlexa = sizeof($Alexa);
+	echo "Es gibt insgesamt ".$countAlexa." Alexa Instanzen.\n";
+	if ($countAlexa>0)
+		{
+		$config=IPS_GetConfiguration($modulhandling->getInstances("Alexa")[0]);
+		echo "   ".$config."\n";
+		}	
 
 /*******************************
  *
@@ -166,6 +176,7 @@
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 
 /*******************************
  *
@@ -289,7 +300,8 @@
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
-				$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");				
+				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
+				else $StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -314,7 +326,8 @@
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
 				
-				$StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");				
+				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
+				else $StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */

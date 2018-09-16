@@ -124,7 +124,7 @@ $GiessStartzeitpunkt=GetValue($GiessStartzeitpunktID);         // true ist Abend
 echo "Naechstes mal Giessen erfolgt ".($GiessStartzeitpunkt ? "Abends":"Morgens")." fuer ".$giessTime." Minuten.\n";
 $GartensteuerungConfiguration=getGartensteuerungConfiguration();
 
-$gartensteuerung = new Gartensteuerung();
+$gartensteuerung = new Gartensteuerung();   // default, default, debug=false
 	
 /******************************************************
 
@@ -458,8 +458,6 @@ if($_IPS['SENDER'] == "TimerEvent")
 		/*
 		 * Giess Start bei Sonnenuntergang oder Sonnenaufgang
 		 *
-		 * derzeit nur Sonnenuntergang programmiert
-		 *
 		 */
 		case $timerDawnID: /* Immer um 16:00 bzw. aus Astroprogramm den nächsten Wert übernehmen  */
 			if ((GetValue($GiessTimeID)>0) and (GetValue($GiessAnlageID)>0))
@@ -475,6 +473,10 @@ if($_IPS['SENDER'] == "TimerEvent")
 				SetValue($GiessCountID,0);
 				IPS_SetEventActive($UpdateTimerID,false);
 				}
+            $gartensteuerung->getRainStatistics();  // die Werte berechnen, die in der nächsten Routine verwendet werden    
+            SetValue($gartensteuerung->StatistikBox1ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->RegenKalendermonate));
+            SetValue($gartensteuerung->StatistikBox2ID,$gartensteuerung->writeOverviewMonthsHtml($gartensteuerung->DauerKalendermonate));
+            SetValue($gartensteuerung->StatistikBox3ID,$gartensteuerung->writeRainEventsHtml($gartensteuerung->listRainEvents(100)));
 			break;
 
 		/*

@@ -3426,6 +3426,28 @@ class ModuleHandling
 		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
+/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben */
+	public function getInstances($input)
+		{
+		$input=trim($input);
+		$key=$this->get_string_between($input,'{','}');
+		if (strlen($key)==36) 
+			{
+			echo "Gültige GUID mit ".$key."\n";
+			$instances=IPS_GetInstanceListByModuleID($input);
+			}
+		else
+			{
+			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			if (isset($this->modules[$input])==true)
+				{
+				echo "Library ".$input." hat GUID :".$this->modules[$input]."\n";
+				$instances=IPS_GetInstanceListByModuleID($this->modules[$input]);
+				}
+			else $instances=array();	
+			}		
+		return ($instances);
+		}
 		
 	private function get_string_between($string, $start, $end)
 		{
@@ -3441,6 +3463,81 @@ class ModuleHandling
 
 
 
-/******************************************************************/
+/******************************************************************
+
+Alternativer Error Handler
+
+******************************************************************/
+
+function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$Vars)
+    {
+    if (!(error_reporting() & $fehlercode)) 
+        {
+        // Dieser Fehlercode ist nicht in error_reporting enthalten
+        return;
+        }
+    $noerror=false;
+    switch ($fehlercode) 
+        {
+        case E_WARNING:
+            echo "<b>WARNING</b> [$fehlercode] $fehlertext<br />\n";
+            if (strpos($fehlertext,"DUTY_CYCLE") !== false) $noerror=true;
+            else
+                {
+                echo "  Warning in Zeile $fehlerzeile in der Datei $fehlerdatei";
+                echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
+                //print_r($Vars); echo "\n";            
+                }
+            break;
+        case E_USER_ERROR:
+            echo "<b>Mein FEHLER</b> [$fehlercode] $fehlertext<br />\n";
+            echo "  Fataler Fehler in Zeile $fehlerzeile in der Datei $fehlerdatei";
+            echo ", PHP " . PHP_VERSION . " (" . PHP_OS . ")<br />\n";
+            echo "Abbruch...<br />\n";
+            exit(1);
+            break;
+        case E_USER_WARNING:
+            echo "<b>Meine WARNUNG</b> [$fehlercode] $fehlertext<br />\n";
+            break;
+        case E_USER_NOTICE:
+            echo "<b>Mein HINWEIS</b> [$fehlercode] $fehlertext<br />\n";
+            break;
+        default:
+            echo "Unbekannter Fehlertyp: [$fehlercode] $fehlertext<br />\n";
+            break;
+        }
+    if ($noerror=false)
+        {
+    	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+	    $AllgemeineDefId     = IPS_GetObjectIDByName('AllgemeineDefinitionen',$moduleManager->GetModuleCategoryID('data'));
+    
+        echo "ScriptID ist ".$AllgemeineDefId."  ".IPS_GetName($AllgemeineDefId)."/".IPS_GetName(IPS_GetParent($AllgemeineDefId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($AllgemeineDefId)))."\n";    
+    
+        if ($AllgemeineDefId===false)
+            {
+            restore_error_handler();
+            return (true);
+            //throw new ErrorException($fehlertext, 0, $fehlercode, $fehlerdatei, $fehlerzeile);
+            }
+        else
+            {
+            $ErrorHandlerAltID = CreateVariableByName($AllgemeineDefId, "ErrorHandler", 3);
+            $ErrorHandler=GetValue($ErrorHandlerAltID);
+            if (function_exists($ErrorHandler) == true)
+                {
+                //echo "Naechsten Error Handler aufrufen.\n";
+                /* function IPSLogger_PhpErrorHandler ($ErrType, $ErrMsg, $FileName, $LineNum, $Vars) */
+                $fehler=$ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile, $Vars);
+                }
+            else return (true);
+            }
+        }    
+    }
+
+
+
+
+
+
 
 ?>

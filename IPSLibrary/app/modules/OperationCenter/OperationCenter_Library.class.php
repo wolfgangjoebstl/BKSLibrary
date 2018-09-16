@@ -589,7 +589,7 @@ class OperationCenter
 				$response = @file_get_contents($url, false, $context);
 				if ($response===false)
 					{
-					echo "   Server : ".$url." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
+					echo "   Server : ".$UrlAddress." mit Name: ".$Name." Fehler Context: ".$context." nicht erreicht.\n";
 					SetValue($IPS_UpTimeID,0);
 					$RemoteServer[$Name]["Status"]=false;
 					if (GetValue($ServerStatusID)==true)
@@ -619,7 +619,7 @@ class OperationCenter
 			   }
 			else
 				{
-				echo "   Server : ".$url." mit Name: ".$Name." nicht auf active konfiguriert.\n";
+				echo "   Server : ".$UrlAddress." mit Name: ".$Name." nicht auf active konfiguriert.\n";
 				}	
 			}
 			return ($RemoteServer);
@@ -1907,7 +1907,7 @@ class OperationCenter
 	function MoveFiles($verzeichnis="",$days=2,$statusID=0)
 		{
 		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
-		echo "MoveFiles: Alle Files von ".$verzeichnis." in eigene Verzeichnisse pro Tag verschieben.\n";
+		echo "MoveFiles: Alle Files von ".$verzeichnis." in eigene Verzeichnisse pro Tag verschieben.";
 
 			$count=100;
 			//echo "<ol>";
@@ -1917,7 +1917,7 @@ class OperationCenter
 			//echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
 			$vorgestern = date("Ymd", strtotime("-".$days." day"));
 			$moveTime=strtotime("-".$days." day");
-			echo "   Dateien behalten bis ".$vorgestern."\n";
+			echo " Dateien behalten bis ".$vorgestern."\n";
 
 			// Test, ob ein Verzeichnis angegeben wurde
 			if ( is_dir ( $verzeichnis ) )
@@ -1949,7 +1949,7 @@ class OperationCenter
 										mkdir($verzeichnis.$unterverzeichnis);
 										}
 									rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-									echo "  Datei: ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+									echo "  Datei: ".$verzeichnis.$file." auf ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
 									if ($statusID != 0) SetValue($statusID,$letztesfotodatumzeit);
 									}
 								}
@@ -2321,9 +2321,9 @@ class OperationCenter
 			}
 		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';			
 
-		echo "PurgeFiles: Überschüssige Sammel-Verzeichnisse von ".$verzeichnis." löschen. Die letzen ".$remain." Verzeichnisse bleiben,\n";
-		echo "Heute      : ".date("Ymd", time())."\n";
-		echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+		echo "PurgeFiles: Überschüssige (>".$remain.") Sammel-Verzeichnisse von ".$verzeichnis." löschen. Die letzen ".$remain." Verzeichnisse bleiben.\n";
+		//echo "Heute      : ".date("Ymd", time())."\n";
+		//echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
 
 		$count=0;
 		$dir=array();
@@ -2343,14 +2343,14 @@ class OperationCenter
 						$dateityp=filetype( $verzeichnis.$file );
 						if ($dateityp == "dir")
 							{
-							echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
+							//echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
 							$count++;
 							$dir[]=$verzeichnis.$file;
 							}
 						}	
 					//echo "    ".$file."    ".$dateityp."\n";
 					} /* Ende while */
-				echo "Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+				//echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
 				closedir($handle);
 				} /* end if dir */
 			}/* ende if isdir */
@@ -2366,8 +2366,9 @@ class OperationCenter
 				echo "    Loeschen von Verzeichnis ".$dir[$i]."\n";
 				$this->rrmdir($dir[$i]);
 				}
+    		return ($count-$remain);
 			} 	
-		return ($count);
+		else return (0);
 		}
 		
 	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
@@ -2587,11 +2588,11 @@ class OperationCenter
 	function FileStatusDelete()
 		{
 		$delete=0;	
-		echo "FileStatusDelete: Konfiguration:\n";
-		print_r($this->oc_Setup);		
+		echo "FileStatusDelete: ";
+		//print_r($this->oc_Setup);		
 		if ( isset($this->oc_Setup['DropboxStatusMaxFileCount']) == true )
 			{
-			echo "Config Eintrag vorhanden.\n";
+			echo "Wenn mehr als ".$this->oc_Setup['DropboxStatusMaxFileCount']." Status Dateien gespeichert, diese loeschen.\n";
 			if ( $this->oc_Setup['DropboxStatusMaxFileCount'] > 0)
 				{
 				$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';

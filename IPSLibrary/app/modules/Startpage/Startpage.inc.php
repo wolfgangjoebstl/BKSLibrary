@@ -40,7 +40,7 @@
 	$i=0;
 	while ( false !== ($datei = readdir ($handle)) )
 		{
-		if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
+		if ( $datei != "." && $datei != ".." && $datei != "Thumbs.db" && (is_dir($bilderverzeichnis.$datei)==false) ) 
 			{
 			$i++;
  			$file[$i]=$datei;

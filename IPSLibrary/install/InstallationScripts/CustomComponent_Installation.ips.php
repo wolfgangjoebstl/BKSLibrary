@@ -49,11 +49,11 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "IPSModulManager Version : ".$ergebnis."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
-	echo "CustomComponent Version : ".$ergebnis."\n";
+	$ergebnis1=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
+	$ergebnis2=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
+	//echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
+	//echo "IPSModulManager Version : ".$ergebnis1."\n";
+	//echo "CustomComponent Version : ".$ergebnis2."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -61,9 +61,17 @@
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules."\n";
+	//echo $inst_modules."\n";
 
-	/* zusammenräumen */
+	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+/*******************************
+ *
+ * Zusammenräumen
+ *
+ ********************************/
 
 	if (isset ($installedModules["IPSTwilight"]))
 		{
@@ -73,11 +81,19 @@
 		IPS_SetHidden($categoryId_Twilight_Path, true); /* in der normalen Viz Darstellung verstecken */	
 		echo "Twilight Vizualisation Path : ".$WFC10Twilight_Path." versteckt.\n";
 		}
-	
-	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
-	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
-	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+    $module="IPSModuleManagerGUI";
+	if (isset ($installedModules[$module]))
+		{
+		$mManager = new IPSModuleManager($module);
+		$WFC10Module_Path    	 = $mManager->GetConfigValue('Path', 'WFC10');
+		$categoryId_Module_Path  = CreateCategoryPath($WFC10Module_Path);
+		IPS_SetHidden($categoryId_Module_Path, true); /* in der normalen Viz Darstellung verstecken */	
+        $parent=IPS_GetParent($categoryId_Module_Path);
+        if ( ($parent != "Administrator") && ($parent != "User") ) IPS_SetHidden($parent, true);
+		echo "Module ".$module." Vizualisation Path : ".$WFC10Module_Path." versteckt.\n";
+		}        
+	
 /*******************************
  *
  * Webfront Vorbereitung
@@ -608,7 +624,7 @@
 
 
 	if (function_exists('HomematicList'))
-	   {
+		{
 		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
 		$Homematic = HomematicList();
 		$keyword="MOTION";
@@ -616,29 +632,29 @@
 			{
 			$found=false;
 			if ( (isset($Key["COID"][$keyword])==true) )
-		   	{
-	   		/* alle Bewegungsmelder */
+				{
+				/* alle Bewegungsmelder */
 
-		      $oid=(integer)$Key["COID"][$keyword]["OID"];
-		      $found=true;
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+				$found=true;
 				}
 
 			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-		   	{
-	   		/* alle Kontakte */
+				{
+				/* alle Kontakte */
 
-		      $oid=(integer)$Key["COID"]["STATE"]["OID"];
-		      $found=true;
+				$oid=(integer)$Key["COID"]["STATE"]["OID"];
+				$found=true;
 				}
 			if ($found)
-			   {
-      		$variabletyp=IPS_GetVariable($oid);
+				{
+ 				$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
-			   	{
+					{
 					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				else
-				   {
+					{
 					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 
@@ -647,16 +663,16 @@
 					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
 					}
 				else
-				   {
-				   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+					{
+					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
 					echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
-			   	$messageHandler = new IPSMessageHandler();
-				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+					$messageHandler = new IPSMessageHandler();
+					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-				   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+					/* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
-				   }
+					}
 				}
 			}
 		}

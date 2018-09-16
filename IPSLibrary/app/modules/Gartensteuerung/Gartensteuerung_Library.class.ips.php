@@ -870,7 +870,7 @@ class Gartensteuerung
      * Ausgabe der Regenmenge/dauer (ermittelt mit listrainevents) als html Tabelle zum speichern in einer hml Box
 	 */
 
-	public function writeOverviewMonthsHtml($monthlyValues)
+	public function writeOverviewMonthsHtml($monthlyValues=array())
 		{
         $startjahr=(integer)date("y",time());
         $minjahr=$startjahr;

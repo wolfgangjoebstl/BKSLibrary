@@ -1,11 +1,8 @@
 <?
 
- //Fügen Sie hier Ihren Skriptquellcode ein
-
-
 /********************************************* CONFIG *******************************************************/
 
-
+ini_set('memory_limit', '-1');
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
@@ -41,8 +38,15 @@ while ( false !== ($datei = readdir ($handle)) )
 	{
 	if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
 		{
-		$i++;
- 		$file[$i]=$datei;
+        if (is_dir($picturedir.$datei)==true ) 
+            {
+            //echo "Verzeichnis ".$picturedir.$datei." gefunden.\n";
+            }
+        else
+            {            
+		    $i++;
+ 		    $file[$i]=$datei;
+            }
 		}
 	}
 closedir($handle);
@@ -50,6 +54,34 @@ $maxcount=count($file);
 $showfile=rand(1,$maxcount-1);
 //echo $maxcount."  ".$showfile."\n";;
 //print_r($file);
+
+if ( is_dir($picturedir."SmallPics") ==  false ) mkdir($picturedir."SmallPics");
+$datei=$file[$showfile];
+
+// Get new dimensions
+list($width, $height) = getimagesize($picturedir.$datei);
+//echo "Resample Picture (".$width." x ".$height.") from ".$picturedir.$datei." to ".$picturedir."SmallPics/".$datei.".\n";
+
+$new_width=1920;
+$percent=$new_width/$width;
+$new_height = $height * $percent;
+if ($new_height > 1080) 
+    { 
+    //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
+    $new_height=1080;
+    $percent=$new_height/$height;
+    $new_width = $width * $percent;
+    }
+//echo "New Size : (".$new_width." x ".$new_height.").\n";
+
+// Resample
+$image_p = imagecreatetruecolor($new_width, $new_height);
+$image = imagecreatefromjpeg($picturedir.$datei);
+imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+
+// Output
+imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
+
 
 /**************************************** PROGRAM *********************************************************/
 
@@ -139,186 +171,84 @@ function StartPageWrite($PageType)
 	/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
 	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=true; } }
 
-	/* html file schreiben, Anfang für alle gleich --- HEADER */
+	/* html file schreiben, Anfang Style für alle gleich */
 
-	$wert='<!DOCTYPE html >
-<html lang="de">
-
-<head>
-
-  <meta charset="UTF-8"/>
-  <title>Design über CSS pur - Beispiel</title>
-
-  <style type="text/css">
-
-   kopf {
-     background-color: red;
-	  height:120px;
-   }
-
-   strg {
-	  height:280px;
-	  color:black;
-     background-color: #c1c1c1;
-	  font-size: 12em;
-   }
-
-	innen {
-	  color:black;
-     background-color: #ffffff;
-	  height:100px;
-	  font-size: 80px;
-   }
-
-	aussen {
-	  color:black;
-     background-color: #c1c1c1;
-	  height:100px;
-	  font-size: 80px;
-   }
-
-	temperatur {
-	  color:black;
-	  height:100px;
-	  font-size: 28px;
-	  align:center;
-   }
-
-	#temp td {
-		background-color:#ffefef;
-	}
-
-
-	infotext {
-	  color:white;
-	  height:100px;
-	  font-size: 12px;
-   }
-
-  </style>
-
-</head>
-<body>
-';
-
+	$wert='<style>';
+    $wert.='kopf { background-color: red; height:120px;  }';        // define element selectors
+    $wert.='strg { height:280px; color:black; background-color: #c1c1c1; font-size: 12em; }';
+    $wert.='innen { color:black; background-color: #ffffff; height:100px; font-size: 80px; }';
+    $wert.='aussen { color:black; background-color: #c1c1c1; height:100px; font-size: 80px; }';
+    $wert.='temperatur { color:black; height:100px; font-size: 28px; align:center; }';
+    $wert.='infotext { color:white; height:100px; font-size: 12px; }';
+    $wert.='#temp td { background-color:#ffefef; }';                // define ID Selectors
+    $wert.='#imgdisp { border-radius: 8px;  max-width: 100%; height: auto;  }';
+    $wert.='#startpage { border-collapse: collapse; border: 2px dotted white; width: 100%; }';
+    $wert.='.container { width: 100%; }';
+    $wert.='.image { opacity: 1; display: block; width: 90%; height: auto; transition: .5s ease; backface-visibility: hidden; padding: 5px }';
+    $wert.='.middle { transition: .5s ease; opacity: 0; position: absolute; top: 90%; left: 30%; transform: translate(-50%, -50%); -ms-transform: translate(-50%, -50%) }';
+    $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
+    $wert.='.container:hover .middle { opacity: 1; }';
+    $wert.='.text { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';
+    $wert.='</style>';
 
 	if ( $noweather==true )
 		{
-		$wert.='
-<table border="0" cellspacing="10">
-<tr>
-   <td>
-   		';
+        //echo "NOWEATHER true.\n";
+		$wert.='<table id="startpage">';
+        $wert.='<tr><td>';
    		if ($maxcount >0)
    			{
-			$wert.='   
-		<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
-		
-			';
+			$wert.='<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">';
 			}		
-		$wert.='		
-   </td>
-</tr>
-</table>
-
-		';
+		$wert.='</td></tr></table>';
 		}
 	else
-		{	
+		{
 		if ($PageType==2)
 			{
-			$wert.='
-
-<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">
-
-  	<tr>
-     <td>
-		<table border="0" bgcolor="#f1f1f1">
-			   <tr>
-				  <td align="center"> <img src="'.$today.'" alt="Heute" > </td>
-				</tr>
-			   <tr>
-				  <td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td>
-				</tr>
-			   <tr>
-				  <td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td>
-				</tr>
-			 </table>
-     </td>
-    <td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
-    <td><strg>'.number_format($temperatur, 1, ",", "" ).'°C</strg></td>
-  	 <td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle>
-	   <tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>
-		<tr> <td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr>
-    </tablestyle> </table> </td>
-  	</tr>
-</table>
-
-';
+            echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
+			$wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
+		    $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
+			$wert.='<tr><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
+			$wert.='<tr><td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
+			$wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($temperatur, 1, ",", "" ).'°C</strg></td>';
+            $wert.='<td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle><tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>';
+            $wert.='<tr> <td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr></tablestyle> </table> </td></tr>';
+            $wert.='</table>';
 			}
 		else
 			{
-			$wert.='
-
-<table border="0" cellspacing="10">
-<tr>
-   <td>
-		<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">
-   </td>
-   <td>
-		<table border="0" bgcolor="#f1f1f1">
-	   		<tr>
-   		     <td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>
-				  <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td>
-				</tr>
-				<tr>
-   			   <td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td>
-					<td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td>
-				</tr>
-			   <tr id="temp">
-				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  </table>
-				  </td>
-				  <td align="center"> <img src="'.$today.'" alt="Heute" > </td>
-				</tr>
-			   <tr id="temp">
-				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  </table>
-				  </td>
-				  <td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td>
-				</tr>
-			   <tr id="temp">
-				  <td> <table>
-					  <tr> <td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  </table>
-				  </td>
-				  <td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td>
-				</tr>
-			   <tr id="temp">
-				  <td> <table>
-					  <tr> <td style="background-color:#efefef;right:50px;"> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  <tr> <td><temperatur>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td> </tr>
-  					  </table>
-				  <td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td>
-				</tr>
-			 </table>
-   </td>
-</tr>
-</table>
-
-';
-}
-$wert.='
-</body>
-</html>
-';
-
-		}
+            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
+            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
+            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
+            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+                {
+                //echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                }
+            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";            	                
+			$wert.='<table id="startpage">';
+            $wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr><tr>';
+            //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
+            $wert.='<td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+            $wert.='</div></td>';
+            $wert.='<td><table border="0" bgcolor="#f1f1f1"><tr><td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+            $wert.='<td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+            $wert.='<tr><td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            $wert.='<tr id="temp"><td><table><tr> <td> <temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
+            $wert.='<tr> <td><temperatur>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td> </tr></table>';
+			$wert.='</td><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr><tr id="temp"><td> <table>';
+			$wert.='<tr> <td> <temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
+  			$wert.='<tr> <td><temperatur>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>';
+  			$wert.='</table></td><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr><tr id="temp"><td><table>';
+  			$wert.='<tr><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C</temperatur></td></tr>';
+  			$wert.='<tr><td><temperatur>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td></tr></table></td>';
+  			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
+  			$wert.='<tr id="temp"><td><table><tr> <td style="background-color:#efefef;right:50px;"> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
+  			$wert.='<tr><td><temperatur>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td></tr>';
+  			$wert.='</table><td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr></table>';
+            }
+        }    
 	return $wert;
 
 	}

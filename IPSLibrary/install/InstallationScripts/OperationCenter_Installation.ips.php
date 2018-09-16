@@ -69,7 +69,7 @@
 		{
 		$inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	//echo $inst_modules;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -249,7 +249,31 @@
 	*************************************************************/
 
 	$categoryId_SystemInfo    = CreateCategory('SystemInfo',   $CategoryIdData, 230);
+
+	/*******************************
+     *
+     * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+     *
+     ********************************/
+
+	echo "\n";
+	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
+	$WebfrontConfigID=array();
+	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
+		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		/* alle Instanzen dargestellt */
+		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+		//print_r($result);
+		}
+	echo "\n";
+
 	/******************************************************
 	 *
 	 *			INIT, Webcams FTP Folder auslesen und auswerten
@@ -261,6 +285,7 @@
 	if (isset ($installedModules["IPSCam"]))
 		{
 		echo "\n"; 
+		echo "=====================================================================================\n"; 
 		echo "Modul IPSCam installiert. Im Verzeichnis Data die Variablen für Übersichtsdarstellungen Pics und Movies anlegen:\n"; 
 		
 		/* es werden für alle in IPSCam registrierten Webcams auch Zusammenfassungsdarstellungen angelegt.
@@ -271,16 +296,12 @@
 		echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
 		$CamTablePictureID=CreateVariable("CamTablePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
 		$CamTableMovieID=CreateVariable("CamTableMovie",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
-		$html="";
-		SetValue($CamTablePictureID,$html);
-				
+
 		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 		$ergebnisCam=$moduleManagerCam->VersionHandler()->GetVersion('IPSCam');
-		echo "IPSCam Version : ".$ergebnisCam."\n";
-		$WFC10Cam_Enabled        = $moduleManagerCam->GetConfigValueDef('Enabled', 'WFC10',false);
-		$WFC10_ConfigId       = $moduleManagerCam->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-		echo "  Default WFC10_ConfigId fuer IPSCam, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";			
+		echo "  IPSCam Module Version : ".$ergebnisCam."\n";
+		$WFC10Cam_Enabled	= $moduleManagerCam->GetConfigValueDef('Enabled', 'WFC10',false);				
 
 		/* Das ist das html Objekt das in den Wefront Frame eingebunden wird:
 		
@@ -292,7 +313,8 @@
 		$camManager->GetHTMLWebFront(cameraIdx, Size, ShowPreDefPosButtons, ShowCommandButtons, ShowNavigationButtons)
 
 		*/
-
+		$html="";
+		SetValue($CamTablePictureID,$html);
 
 		echo "\nFtp Folder für Webcams zusammenräumen.\n";
 
@@ -544,7 +566,40 @@
 			CreateEvent ($propertyName, $variableId, $scriptIdSmokeDetector);
 			} 
 		}
+		
+	/********************************************************
+	 *
+	 *		INIT Detect Movement Event Darstellung und Auswertung
+	 *
+	 ***************************************************/
 
+	if (isset ($installedModules["DetectMovement"]))
+		{
+		$moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
+		$CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
+		$CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
+		$scriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);		
+		$categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdData, 150);
+		$TableEventsDM_ID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
+		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		}
+		
+	/********************************************************
+	 *
+	 *		INIT Autosteuerung Event Darstellung und Auswertung
+	 *
+	 ***************************************************/
+
+	if (isset ($installedModules["Autosteuerung"]))
+		{
+		$moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
+		$CategoryIdDataAS     = $moduleManagerAS->GetModuleCategoryID('data');
+		$CategoryIdAppAS      = $moduleManagerAS->GetModuleCategoryID('app');
+		$scriptId  = IPS_GetObjectIDByIdent('WebfrontControl', $CategoryIdAppAS);		
+		$categoryId_Autosteuerung    = CreateCategory('Autosteuerung',   $CategoryIdData, 150);
+		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_Autosteuerung,0,"~HTMLBox",null,null,"");
+		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		}
 		
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
@@ -555,6 +610,8 @@
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
+		CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
@@ -604,12 +661,7 @@
 		echo "\n";
 		echo "=====================================================================================\n"; 
 		echo "Modul IPSCam installiert. Die Überblickdarstellung im WebCam Frontend wenn gewünscht anlegen:\n"; 
-		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
-		$ergebnisCam=$moduleManagerCam->VersionHandler()->GetVersion('IPSCam');
-		echo "  IPSCam Module Version : ".$ergebnisCam."\n";
-		
-		$WFC10Cam_Enabled	= $moduleManagerCam->GetConfigValueDef('Enabled', 'WFC10',false);
+
 		if ($WFC10Cam_Enabled)
 			{
 			echo "IPSCam Überblickdarstellung für Administrator im WebCam Frontend anlegen:\n";
@@ -618,8 +670,6 @@
 			// Program Installation
 			// ----------------------------------------------------------------------------------------------------------------------------
 			
-			$WFC10_ConfigId 	= $moduleManagerCam->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-			echo "  Default WFC10_ConfigId fuer IPSCam, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";				
 			$CategoryIdCamData  		= $moduleManagerCam->GetModuleCategoryID('data');
 			$CategoryIdCamApp   		= $moduleManagerCam->GetModuleCategoryID('app');
 			$categoryIdCams     		= CreateCategory('Cams',    $CategoryIdCamData, 20);
@@ -633,11 +683,14 @@
 			IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
 			$camConfig = IPSCam_GetConfiguration();
 			$result=array();
+			
+			/* der iFrame für die Movie Darstellung wird von IPSCam übernommen, damit wird ein eigenen Cam.php File aufgerufen */
+
 			foreach ($camConfig as $idx=>$data) 
 				{
 				$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
 				$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
-				echo "Kamera ".$idx." (".$data["Name"].") auf Kategorie : ".$categoryIdCamX." mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
+				echo "\nKamera ".$idx." (".$data["Name"].") auf Kategorie : ".$categoryIdCamX." (".IPS_GetName($categoryIdCamX).") mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
 				//print_r($data);
 				$result[$idx]["OID"]=$variableIdCamHtmlX;
 				$result[$idx]["Name"]=$data["Name"];
@@ -647,10 +700,6 @@
 				}
 			$anzahl=sizeof($result);
 			echo "Es werden im Snapshot Overview insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
-
-			$html="";
-			/* html table wird erst in der copyCamSnapshots Funktion, die regelmaessig aufgerufen wird erzeugt */ 
-			SetValue($CamTablePictureID,$html);			
 
 			$WFC10Cam_Path        	 = $moduleManagerCam->GetConfigValue('Path', 'WFC10');
 			$WFC10Cam_TabPaneItem    = $moduleManagerCam->GetConfigValue('TabPaneItem', 'WFC10');
@@ -685,6 +734,8 @@
 			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$WFC10Cam_Path."_Capture\"\n";			
 			$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
 			EmptyCategory($categoryId_WebFrontAdministrator);
+			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+
 			//CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
 			CreateWFCItemTabPane  ($WFC10_ConfigId, "CamCapture", $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+1000), 'CamCapture', $WFC10Cam_TabIcon);
 			if (isset ($OperationCenterConfig['CAM']))
@@ -755,6 +806,8 @@
 					echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: ".$WFC10Cam_Path.$ext." \n";					
 					$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path.$ext);
 					EmptyCategory($categoryId_WebFrontAdministrator);
+        			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                    
 					$categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontAdministrator, 10);
 					$categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontAdministrator, 20);						
 					$categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontAdministrator, 30);

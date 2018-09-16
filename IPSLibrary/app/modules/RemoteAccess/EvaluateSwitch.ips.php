@@ -38,6 +38,9 @@
 
 	/******************************************** Schalter  *****************************************/
 
+    $componentName="IPSComponentSwitch_Remote";
+    $componentHomematicName="IPSComponentSwitch_Remote";
+
 	$remote=new RemoteAccess();
 	$status=$remote->RemoteAccessServerTable();
 	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        Exectime: ".exectime($startexec)." Sekunden\n";
@@ -99,7 +102,7 @@
 				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				$messageHandler->RegisterEvent($oid,"OnChange",$componentHomematicName.','.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   Homematic Switch mit Parameter :".$parameter." erzeugt.\n";
 				}
 		}
@@ -109,7 +112,7 @@
 	echo "\n******* Alle HomematicIP Schalter ausgeben.       ".(microtime(true)-$startexec)." Sekunden\n";
 	foreach ($Homematic as $Key)
 		{
-		/* alle Homematic Schalterzustände ausgeben */
+		/* alle HomematicIP Schalterzustände ausgeben */
 		if ( isset($Key["COID"]["STATE"]) and isset($Key["COID"]["SECTION"]) and isset($Key["COID"]["PROCESS"]) )
 			{
 			$oid=(integer)$Key["COID"]["STATE"]["OID"];
@@ -149,7 +152,7 @@
 				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				$messageHandler->RegisterEvent($oid,"OnChange",$componentHomematicName.','.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   HomematicIP Switch mit Parameter :".$parameter." erzeugt.\n";
 				}
 		}
@@ -196,7 +199,7 @@
 				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSwitch_Remote,'.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				$messageHandler->RegisterEvent($oid,"OnChange",$componentname.','.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   FS20 Switch mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}

@@ -16,11 +16,11 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
-   /**
-    * @class IPSComponentSensor_remote
-    *
-    * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
-    *
+    /**
+     * @class IPSComponentSensor_remote
+     *
+     * Definiert ein IPSComponentSensor_Remote Object, das ein IPSComponentSensor Object für einen beliebigen Sensor implementiert.
+     *
 	 * Events werden im Event Handler des IPSMessageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
 	 * In der IPSMessageHandler Config steht wie die Daten Variable ID udn Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
 	 * 	xxxx => array('OnChange','IPSComponentSensor_TRemote,','IPSModuleSensor_Remote,1,2,3',),
@@ -39,10 +39,10 @@
 	 *   Mobilfunkguthaben
 	 *   Taster und Schalter wenn Geber nicht Actuator
 	 *	 
-    * @author Wolfgang Jöbstl
-    * @version
-    *   Version 2.50.1, 09.06.2012<br/>
-    */
+     * @author Wolfgang Jöbstl
+     * @version
+     *   Version 2.50.1, 09.06.2012<br/>
+     ****/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	

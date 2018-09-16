@@ -73,8 +73,8 @@
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
 			//echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ".$var1.".\n";			
-			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;
+			$this->tempObject   = $lightObject;
 			$this->tempValue    = $lightValue;
 			
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
