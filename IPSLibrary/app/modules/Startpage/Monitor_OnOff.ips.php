@@ -58,6 +58,14 @@ if (isset($_IPS['Monitor']))
 			tts_play(1,'Monitor aus','',2);
 			}
 		}
+	if ($_IPS['Monitor']=="FullScreen")
+		{		
+		IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);  // oder -1 ?
+		if (isset($installedModules["OperationCenter"])==true)
+			{  /* nur wenn OperationCenter vorhanden auch die lokale Soundausgabe starten*/
+			IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+			tts_play(1,'Monitor Vollbild Modus umschalten','',2);
+			}
 	}
 
 if (isset($_IPS['VLC']))

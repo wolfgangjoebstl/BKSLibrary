@@ -14,17 +14,19 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");
 IPSUtils_Include ("Sprachsteuerung_Library.class.php","IPSLibrary::app::modules::Sprachsteuerung");
 
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 /******************************************************
 
 				INIT
 
 *************************************************************/
 
+$debug=false;
+
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager)) {
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
 }
 
@@ -34,13 +36,13 @@ foreach ($installedModules as $name=>$modules)
 	{
 	$inst_modules.=str_pad($name,30)." ".$modules."\n";
 	}
-echo $inst_modules."\n\n";
+if ($debug) echo $inst_modules."\n\n";
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $scriptId  = IPS_GetObjectIDByIdent('Sprachsteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Sprachsteuerung'));
-echo "Category App ID:".$CategoryIdApp."\n";
-echo "Category Script ID:".$scriptId."\n";
+if ($debug) echo "Category App ID:".$CategoryIdApp."\n";
+if ($debug) echo "Category Script ID:".$scriptId."\n";
 
 $scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
 $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
@@ -135,6 +137,8 @@ if ($_IPS['SENDER']=="Execute")
 	IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
 	IPS_ApplyChanges($TextToSpeachID);
 	
+	echo "Ausgabe Sprache \n";
+	tts_play(1,'','hinweis',2);
 	tts_play(1,'Hallo Claudia ich liebe dich so sehr','',2);
 	}
 

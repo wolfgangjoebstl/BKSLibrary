@@ -2075,7 +2075,7 @@ class OperationCenter
 	 * 
 	 */
 	
-	function showCamCaptureFiles($ocCamConfig)
+	function showCamCaptureFiles($ocCamConfig,$debug=false)
 		{
 		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
@@ -2087,8 +2087,7 @@ class OperationCenter
 			echo "\n---------------------------------------------------------\n";
 			echo "  Webfront Tabname für ".$cam_name." erstellen.\n";
 			$heute=date("Ymd", time());
-			echo "    Heute      : ".$heute."\n";
-			echo "    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+			//echo "    Heute      : ".$heute."    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
 
 			/* in data/OperationCenter/ jeweils pro Camera eine Kategorie mit Cam_Name anlegen 
 			 * sollte bereits vorhanden sein, hier werden die Infos über letzte Bewegung und Anzahl Capture Bilder gesammelt
@@ -2144,7 +2143,7 @@ class OperationCenter
 			$imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
 			$imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
 			$imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
-			echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
+			//echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
 			if ( is_dir ( $imgVerzeichnisFull ) == false ) mkdirtree($imgVerzeichnisFull);
 		
 			$picdir=$this->readdirToArray($verzeichnis,false,-500);
@@ -2154,7 +2153,7 @@ class OperationCenter
 			$logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
 			for ($i=0;$i<$size;$i++)
 				{
-				echo "   ".$picdir[$i];
+				if ($debug) echo "   ".$picdir[$i];
 				$path_parts = pathinfo($picdir[$i]);
 				if ($path_parts['extension']=="jpg")
 					{
@@ -2162,14 +2161,14 @@ class OperationCenter
 					//echo "       Basename: ".$path_parts['basename'], "\n";
 					//echo "       Extension: ".$path_parts['extension'], "\n";
 					//echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
-					if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; echo "  *"; };
+					if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; if ($debug) echo "  *"; };
 					$k++;		// eigener Index, da manche Files übersprungen werden
 					} 
-				echo "\n";
+				if ($debug) echo "\n";
 				}
-			echo "Dateien im Quellverzeichnis (insgesamt ".$size.") :\n";
+			echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
 			echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-			print_r($logdir);	
+			//print_r($logdir);	
 			$check=array();
 			$handle=opendir ($imgVerzeichnisFull);
 			while ( false !== ($datei = readdir ($handle)) )
@@ -2181,34 +2180,38 @@ class OperationCenter
 				}
 			closedir($handle);
 			/* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
+			$c=0;
 			foreach ($logdir as $filename)
 				{
 				if ( isset($check[$filename]) == true )
 					{
 					$check[$filename]=false;
-					echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+					if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
 					}
 				else
 					{	
 					echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
 					copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
+					$c++;
 					}
 				}		
-			echo "Verzeichnis für Anzeige im Webfront:\n";	
-			$i=0;
+			if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
+			$i=0; $d=0;
 			foreach ($check as $filename => $delete)
 				{
 				if ($delete == true)
 					{
-					echo "Datei ".$filename." wird gelöscht.\n";
+					if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
+					unlink($imgVerzeichnisFull.$filename);
+					$d++;
 					}
 				else
 					{
-					echo "   ".$filename."\n";
+					if ($debug) echo "   ".$filename."\n";
 					$i++;		
 					}	
 				}	
-			echo "insgesamt ".$i." Dateien.\n";
+			echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
 
 			$end=sizeof($logdir);
 			if ($end>100) $end=100;		
@@ -2221,7 +2224,7 @@ class OperationCenter
 
 			$box.='</table>';
 			SetValue($pictureFieldID,$box);
-			echo $box;		
+			//echo $box;		
 		
 			}
 		}	
@@ -4099,25 +4102,26 @@ function dirToArray2($dir)
 
 /********************************************************************************************
  *
- * Ausgabe von Ton für Sprachansagen
+ * Ausgabe von Ton für Sprachansagen, kommt noch einmal in der Sprachsteuerungslibrary vor 
+ * beide functions sind gleich gestellt.
+ *
+ *  sk    soundkarte   es gibt immer nur 1, andere kann man implementieren
+ *
+ * 	modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
+ * 	modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
+ * 	modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
+ *
+ * zum Beispiel  tts_play(1,$speak,'',2);  // Soundkarte 1, mit diesem Ansagetext, kein Ton, Modus 2 
  *
  *************************************************************/
 
-function tts_play($sk,$ansagetext,$ton,$modus)
- 	{
-
-  	/*
-		modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
-		modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
-		modus == 3 ==> Sprache = on / Ton = on / Musik = play  / Slider = on  / Script Wait = on
-		*/
-
+	function tts_play($sk,$ansagetext,$ton,$modus)
+ 		{
+		echo "Aufgerufen als Teil der Library des OperationCenter.\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager))
 			{
 			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-			echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
 			}
 		$sprachsteuerung=false;
@@ -4128,7 +4132,27 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 			$infos   = $moduleManager->GetModuleInfos($module);
 			if (array_key_exists($module, $installedModules))
 				{
-				if ($module=="Sprachsteuerung") $sprachsteuerung=true;
+				if ($module=="Sprachsteuerung") 
+					{
+					$sprachsteuerung=true;
+					$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+					$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+					$object_data= new ipsobject($CategoryIdData);
+					$object_app= new ipsobject($CategoryIdApp);
+
+					$NachrichtenID = $object_data->osearch("Nachricht");
+					$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+					echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
+
+					if (isset($NachrichtenScriptID))
+						{
+						$object3= new ipsobject($NachrichtenID);
+						$NachrichtenInputID=$object3->osearch("Input");
+						$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+						$log_Sprachsteuerung->LogNachrichten("Sprachsteuerung: Ausgabe von \"".$ansagetext."\"");
+						}
+					}
 				}
 			}
 		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -4158,7 +4182,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 				"horn"     => IPS_GetKernelDir()."media/wav/horn.wav",
 				"sirene"   => IPS_GetKernelDir()."media/wav/sirene.wav"
 				);
-			switch ($sk)
+			switch ($sk)		/* Switch unterschiedliche Routinen anhand der Spoundkarten ID, meistens eh nur eine */
 				{
 				//---------------------------------------------------------------------
 				case '1':
@@ -4190,6 +4214,7 @@ function tts_play($sk,$ansagetext,$ton,$modus)
 					//Lautstärke von Musik am Anfang speichern
 					$merken = $musik_vol = GetValue($id_sk1_musik_vol);
 					$musik_status 			 = GetValueInteger($id_sk1_musik_status);
+					$ton_status           = GetValueInteger($id_sk1_ton_status);					
 
 					if($modus == 2)
 						{

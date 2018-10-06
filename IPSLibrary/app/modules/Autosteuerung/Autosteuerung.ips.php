@@ -472,12 +472,16 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 
 if ($_IPS['SENDER']=="Execute")
-	{
-	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
-	test();
-	/* von der Konsole aus gestartet */
+	{	/* von der Konsole aus gestartet */
 	echo "--------------------------------------------------\n";
 	echo "        EXECUTE (Überprüfung mit Testwerten)\n";
+	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
+	
+	test();
+	
+	// testweise Sprache ausgeben */
+	tts_play(1,"Claudia, ich hab dich so lieb.",'',2);
+	
 	echo "\nEingestellte Programme:\n\n";
 	$i=0;	// testwert um zu sehen wir die Programm reagieren
 	foreach ($configuration as $key=>$entry)

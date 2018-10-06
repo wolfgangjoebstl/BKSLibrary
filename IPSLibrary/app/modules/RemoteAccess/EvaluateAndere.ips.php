@@ -1,9 +1,40 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
+	 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
  * 	hier für den Regensensor und die Temperaturwerte der FHT Heizungssteuerungen/zentralen
  *    Basis ist das File EvaluateVariables_ROID.inc.php
+ *
+ * RemoteAccess				erzeugt die include Files für EvaluateVariables und erstellt die benötigten Profile
+ *
+ * EvaluateAndere				Regensensor, FHT Temperatur (TemeratureVar)
+ * EvaluateButton				Taster Homematic und FS20EX
+ * EvaluateContact			Kontakte Homematic
+ * EvaluateHeatControl		Homematic und FHT Thermostate den Stellwert und den Sollwert
+ * EvaluateHomematic			Homematic Temperatur und Feuchtigkeitswerte
+ * EvaluateMotion				Homematic und FS20 Bewegungsmelder, und die Bewegungsmelder der Cams
+ * EvaluateStronverbrauch 	die von AMIS angelegten Register
+ * EvaluateSwitch				Homematic, HomematicIP udn FS20 Schalter 
+ * EvaluateVariables			Guthaben, SysInfo und RouterDaten Register
+ *
+ *
  *
  */
 
@@ -20,12 +51,11 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 ini_set('max_execution_time', 500);
 $startexec=microtime(true);
 
-	echo "Update Konfiguration und register Events\n";
+echo "Update Konfiguration und register Events\n";
 
-	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	
 IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 $remServer=ROID_List();

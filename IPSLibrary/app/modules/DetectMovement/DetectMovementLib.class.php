@@ -38,7 +38,10 @@
 
 	abstract class DetectHandler {
 
+		/* von den extended Classes mindestens geforderte Funktionen */
 		abstract function Get_Configtype();
+		abstract function Get_ConfigFileName();		
+				
 		abstract function Get_EventConfigurationAuto();
 		abstract function Set_EventConfigurationAuto($configuration);
 
@@ -61,6 +64,7 @@
 		 */
 		function StoreEventConfiguration($configuration)
 			{
+			$configurationSort=$this->sortEventList($configuration);			
 
 			// Build Configuration String
 			$configString = $this->Get_Configtype().' = array(';
@@ -76,7 +80,7 @@
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
 			// Write to File
-			$fileNameFull = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			$fileNameFull = $this->Get_ConfigFileName();
 			if (!file_exists($fileNameFull)) {
 				throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
 			}
@@ -87,7 +91,7 @@
 			if ($pos1 === false or $pos2 === false) 
 				{
 				echo "================================================\n";
-				echo "Function for heat control not inserted in config file. Insert now.\n";
+				echo "Function not inserted in config file. Insert now.\n";
 				$comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
 				for ($i=0;$i<strlen($fileContent);$i++)
 					{
@@ -155,7 +159,9 @@
 		 * @public
 		 *
 		 * Listet anhand der Konfiguration alle Events
-		 *
+		 * Erster Parameter ist ein bekannter Event Typ. Wenn kein Eventtyp übergeben wird, wiord dieser ausgegeben.
+		 * Wenn ein bekannter Eventtyp übergeben wird, wird der nächste Parameter ausgegeben.
+		 * 
 		 */
 		public function ListEvents($type="")
 			{
@@ -167,8 +173,9 @@
 					{
 					case 'Motion':
 					case 'Contact':
+					case 'Topology':					
 						if ($type==$params[0])
-						   {
+							{
 							$result[$variableId]=$params[1];
 							}
 					   break;
@@ -176,9 +183,9 @@
 					   if ($type!="")
 							{
 							if ($type==$params[1])
-							   {
+								{
 								$result[$variableId]=$params[1];
-							   }
+								}
 					   		}
 					   else
 					   		{
@@ -206,9 +213,12 @@
 					{
 				   	case 'Motion':
 					case 'Contact':
+					case 'Topology':					
 						if (($type==$params[0]) && ($params[1] != ""))
-						   {
-							$result[$params[1]]="available";
+							{
+							$params1=explode(",",$params[1]);
+							//echo sizeof($params1)."  ".$params1[0]."  ";
+							foreach ($params1 as $entry) $result[$entry]="available";
 							}
 					   break;
 					default:
@@ -234,13 +244,16 @@
 		public function CreateEvent($variableId, $eventType)
 			{
 			
-			/* Funktion nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parametzer richtig benannt worden sind */
+			/* Funktion nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parameter richtig benannt worden sind */
 			
 			switch ($eventType)
 				{
-				case 'HeatControl':
-					$triggerType = 3;
+				case 'Topology':
+					$triggerType = 5;
 					break;
+				case 'HeatControl':
+					$triggerType = 4;
+					break;				
 				case 'Temperatur':
 					$triggerType = 3;
 					break;
@@ -260,9 +273,43 @@
 				default:
 					throw new IPSMessageHandlerException('Found unknown EventType '.$eventType);
 				}
-			IPSLogger_Dbg (__file__, 'Created '.$this->Get_Configtype().' Handler Event for Variable='.$variableId);
+			//IPSLogger_Dbg (__file__, 'Created '.$this->Get_Configtype().' Handler Event for Variable='.$variableId);
 			}
 
+   /************************************************************
+     *
+     * eventlist nach Kriterien/Ueberschriften sortieren
+     *
+     ****************************************************************************/
+
+	public function sortEventList($array)
+		{
+		$order="SORT_ASC";
+		$new_array = array();
+		$sortable_array = array();
+		//if ( sizeof($array)==0 ) $array=$this->eventlist;
+		if (count($array) > 0) 
+			{
+			foreach ($array as $k => $v) 
+				{
+				$sortable_array[$k] = IPS_GetName($k);
+				}
+			switch ($order) 
+				{
+				case "SORT_ASC":
+					asort($sortable_array);
+					break;
+				case "SORT_DESC":
+					arsort($sortable_array);
+					break;
+				}
+			foreach ($sortable_array as $k => $v) 
+				{
+				$new_array[$k] = $array[$k];
+				}
+			}
+		return $new_array;
+		}
 
 
 		/**
@@ -339,6 +386,7 @@
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
+		private static $configFileName;				
 
 		/**
 		 * @public
@@ -348,15 +396,22 @@
 		 */
 		public function __construct()
 			{
+			/* Customization of Classes */
 			self::$configtype = '$eventHumidityConfiguration';
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
 			parent::__construct();
 			}
 
-
+		/* Customization Part */
+		
 		function Get_Configtype()
 			{
 			return self::$configtype;
 			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
@@ -389,6 +444,7 @@
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
+		private static $configFileName;				
 		
 		private $MoveAuswertungID;
 		private $motionDetect_DataID;		
@@ -396,12 +452,15 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung des DetectHumidityHandler Objektes
+		 * Initialisierung des DetectMovementHandler Objektes
 		 *
 		 */
 		public function __construct($MoveAuswertungID=false)
 			{
+			/* Customization of Classes */
 			self::$configtype = '$eventMoveConfiguration';                                          /* <-------- change here */
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			
 			if ($MoveAuswertungID===false)
 				{
 				$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -434,11 +493,16 @@
 			parent::__construct();
 			}
 
-
+		/* Customization Part */
+		
 		function Get_Configtype()
 			{
 			return self::$configtype;
 			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
@@ -551,6 +615,7 @@
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
+		private static $configFileName;				
 
 		/**
 		 * @public
@@ -560,15 +625,22 @@
 		 */
 		public function __construct()
 			{
+			/* Customization of Classes */
 			self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
 			parent::__construct();			
 			}
 
-
+		/* Customization Part */
+		
 		function Get_Configtype()
 			{
 			return self::$configtype;
 			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}	
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
@@ -606,24 +678,32 @@
 
 		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
+		private static $configFileName;				
 
 		/**
 		 * @public
 		 *
-		 * Initialisierung des DetectHumidityHandler Objektes
+		 * Initialisierung des DetectHeatControlHandler Objektes
 		 *
 		 */
 		public function __construct()
 			{
+			/* Customization of Classes */
 			self::$configtype = '$eventHeatConfiguration';                                          /* <-------- change here */
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
 			parent::__construct();			
 			}
 
-
+		/* Customization Part */
+		
 		function Get_Configtype()
 			{
 			return self::$configtype;
 			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
@@ -654,6 +734,68 @@
 			}
 		}
 
+	/*******************************************************************************
+	 *
+	 * Class Definitionen
+	 *
+	 ****************************************************************************************/
+
+	class DetectDeviceHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+		private static $configFileName;		
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectHumidityHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+			self::$configtype = '$deviceTopology';
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php';
+			parent::__construct();
+			}
+
+
+		function Get_Configtype()
+			{
+			return self::$configtype;
+			}
+			
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}			
+
+		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				self::$eventConfigurationAuto = IPS_getDeviceTopology();
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+			self::$eventConfigurationAuto = $configuration;
+			}
+
+
+		}  /* ende class */
+
+
 /****************************************************************************************
  *
  * Class TestMovement, erstellen einer Tabelle mit allen CustomEvents des IPSMessageHandlers
@@ -683,6 +825,8 @@ class TestMovement
 	private $debug;
 	public $eventlist;
 	public $eventlistDelete;
+	
+	public $motionDevice, $switchDevice;	/* erkannte Homematic Geräte */
 
 	
 	/**********************************
@@ -705,10 +849,19 @@ class TestMovement
 		/* IPSComponent mit CustomComponent */ 	
  		$eventlistConfig = IPSMessageHandler_GetEventConfiguration();
 
-		$motionDevice=$this->findMotionDetection();							
-		$switchDevice=$this->findSwitches();							
-
-        if ($debug) echo "Detect Movement Configurationen auslesen:\n";
+		$this->motionDevice=$this->findMotionDetection();							
+		$this->switchDevice=$this->findSwitches();
+		$this->buttonDevice=$this->findButtons();	
+		$motionDevice=$this->motionDevice;
+		$switchDevice=$this->switchDevice;
+		$buttonDevice=$this->buttonDevice;		
+		//print_r($motionDevice); print_r($switchDevice);
+		
+		if ($debug) 
+			{
+			echo "\n============================================================\n";
+			echo "CustomComponents MessageHandler Events auslesen:\n";
+			}		
 		/* DetectMovement */
 		if (function_exists('IPSDetectMovementHandler_GetEventConfiguration')) 		
             {
@@ -846,11 +999,13 @@ class TestMovement
 						{ 
 						$eventlist[$i]["Homematic"]="Motion";
 						$motionDevice[$eventID]=false;
+						if ($debug) echo " Homematic Motion";						
 						}
                     elseif (isset($switchDevice[$eventID])==true)
                         {
 						$eventlist[$i]["Homematic"]="Switch";
 						$switchDevice[$eventID]=false;
+						if ($debug) echo " Homematic Switch";						
                         }     
 					else $eventlist[$i]["Homematic"]="";	
 					
@@ -875,6 +1030,187 @@ class TestMovement
 		$this->eventlist=$eventlist;
 		if ($delete>0) echo "****Es muessen insgesamt ".$delete." Events geloescht werden, das Objekt auf das sie verweisen gibt es nicht mehr.\n";
 		}	
+	
+	/**************************************************
+	 *
+	 * nicht nur die CustomComponents Events bearbeiten, sondern auch Autosteuerungs Events anschauen, hier die Liste erstellen
+	 *
+	 * mit der CustomComponents Eventliste auch vergleichen
+	 *
+	 *
+	 * Alle Events die unter dem Autosteuerung Script angelegt sind durchgehen
+	 * Events die nicht mit O anfangen ignorieren. Es gibt noch einen Aufruftimer für die Anwesenheitssimulation
+	 * Die Events heissen OnUpdtae oder Unchange mit _ und der ID des überwachten Objektes im Anschluss.
+	 *
+	 * #, OID, Name, EventID, Pfad, EventName, Instanz, Typ, Config, Homematic usw.
+	 *      #, EventID nur ein Index von 0 aufsteigend 
+	 *      OID, ID, die ID des Events
+	 *      Name, der Name des Events (OnUpdate/OnChange_EventID
+	 *      EventID, ObjektID aus dem Namen extrahiert, steht nach dem _
+	 *          Wenn das Object zur EventID nicht vorhanden ist, wird ein Fehler (2) für diese Zeile ausgegeben
+	 *          Wenn für das Objekt keine Configuration vorlieget gibt es ebenfalls einen Fehler (2)
+	 *          Wenn OnChange oder OnUpdate nicht zur Configuration passt wird ebenfalls ein Fehler (3) ausgegeben
+	 *      Pfad, Objektpfad/Fehler bis zum Object (damit kann man die Herkunft bestimmen, hier steht der fehler wenn es einer ist)
+	 *      EventName, NameEvent, Objektname, der Object Name
+	 *      Instanz, Module für das Object zur EventID wird geprüft ob der Parent eine instanz ist, Wenn dann den Namen hier hinschreiben
+	 *      Typ, ist der DetectMovement Auswertungstyp, in welcher Configuration steht das IPS_GetObject
+	 *      Config, ist die Config aus dem MessageHandler
+	 *      Homematic, ist das Object eine Homematic Instanz und wenn ja welche*
+	 *****************************************/
+	
+	public function getAutoEventListTable($autosteuerung_config, $debug=true)
+		{
+		//print_r($autosteuerung_config);
+		$i=0; $delete=0;
+		$motionDevice=$this->motionDevice;		/* kopieren, da zusaetzliche Eintraege dazu gemacht werden */
+		$switchDevice=$this->switchDevice;
+		$buttonDevice=$this->buttonDevice;
+		//print_r($motionDevice); print_r($switchDevice);
+		if ($debug)
+			{ 
+			if ( (sizeof($motionDevice) == 0) || (sizeof($motionDevice) == 0) ) echo "********** Fehler, keine Homematic Typen erkannt.\n";
+			echo "\n============================================================\n";
+			echo "Autosteuerung Events auslesen:\n";
+			}		
+			  			
+		$eventlist=array();
+		$eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
+		$eventlistCC=$this->eventlist;
+		$scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
+		$children=IPS_GetChildrenIDs($scriptId);		// alle Events des IPSMessageHandler erfassen
+		foreach ($children as $childrenID)
+			{
+			$name=IPS_GetName($childrenID);
+			if (substr($name,0,1)=="O")									// sollte mit O anfangen, Aufruftimer alle 5 Minuten wird herausgenommen
+				{ 
+				//$eventID_str=substr($name,Strpos($name,"_")+1,10);
+				$event=explode("_",$name);
+				$eventID_str=$event[1];
+				$eventID=(integer)$eventID_str;
+				
+				$eventlist[$i]["OID"]=$childrenID;				
+				$eventlist[$i]["Name"]=IPS_GetName($childrenID);
+				$eventlist[$i]["EventID"]=$eventID;
+				if (IPS_ObjectExists($eventID)==false)
+					{ /* Objekt für das Event existiert nicht */
+					$delete++;
+					if ($debug) echo "***".$eventID." existiert nicht.\n";
+					$eventlist[$i]["Fehler"]='does not exists any longer. Event has to be deleted ***********.';
+					$eventlistDelete[$eventID_str]["Fehler"]=1;
+					$eventlistDelete[$eventID_str]["OID"]=$childrenID;
+					//if (isset($eventlistConfig[$eventID_str])) echo "**** und Event ".$eventID_str." auch aus der Config Datei loeschen.: ".$eventlistConfig[$eventID_str][1].$eventlistConfig[$eventID_str][2]."\n";
+					}	
+				elseif (isset ($autosteuerung_config[$eventID])==false )
+					{	/* kein Eintrag in der Konfiguration für dieses Event */
+					$delete++;
+					if ($debug) echo "***".$eventID." hat keine Konfiguration\n";
+					$eventlist[$i]["Fehler"]='has no Configuration in Autosteuerung. Event has to be deleted ***********.';
+					$eventlistDelete[$eventID_str]["Fehler"]=2;
+					$eventlistDelete[$eventID_str]["OID"]=$childrenID;
+					}
+				elseif ($event[0] != $autosteuerung_config[$eventID][0])
+					{ /* Event für das Objekt entspricht nicht der Konfiguration */
+					$delete++;
+					if ($debug) echo "***".$eventID." hat falschen Typ. Konfiguration : ".$autosteuerung_config[$eventID][0].",".$autosteuerung_config[$eventID][1].",".$autosteuerung_config[$eventID][2]." versus ".$event[0]."\n";
+					$eventlist[$i]["Fehler"]='has wrong type OnUpdate/OnChange. Event has to be deleted ***********.';
+					$eventlistDelete[$eventID_str]["Fehler"]=3;
+					$eventlistDelete[$eventID_str]["OID"]=$childrenID;
+					}
+				else	
+					{ /* Objekt für das Event existiert, den Pfad dazu ausgeben */
+					$instanzID=IPS_GetParent($eventID);
+					if ($debug) echo "   ".$eventID."  ".IPS_GetName($instanzID)." Type : ";
+					$instanz="";
+					switch (IPS_GetObject($instanzID)["ObjectType"])
+						{
+						/* 0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link */
+						case 0:
+							if ($debug) echo "Kategorie";
+							break;
+						case 1:
+							$instanz=IPS_GetInstance($instanzID)["ModuleInfo"]["ModuleName"];
+							if ($debug) echo "Instanz ";
+							break;
+						case 2:
+							if ($debug) echo "Variable";
+							break;
+						case 3:	
+							if ($debug) echo "Skript";
+							break;
+						case 4:
+							if ($debug) echo "Ereignis";
+							break;
+						case 5:
+							if ($debug) echo "Media";
+							break;
+						case 6:
+							if ($debug) echo "Link";
+							break;
+						default:
+							echo "unknown";
+							break;
+						}
+					if (IPS_GetObject($eventID)["ObjectType"]==2) 	
+						{
+						if ($debug) echo $instanz;
+						}
+					else 	
+						{
+						if ($debug) echo "Fehler, Objekt ist vom Typ keine Variable.   ";
+						if ($debug) echo "Objekt : ".$eventID." Instanz : ".IPS_GetName($instanzID);
+						}
+					$eventlist[$i]["Pfad"]=IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($eventID))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID)))."/".IPS_GetName(IPS_GetParent($eventID));
+					$eventlist[$i]["NameEvent"]=IPS_GetName($eventID);
+					$eventlist[$i]["Instanz"]=$instanz;
+					/* Array Format: <index> OID Name EventID Pfad NameEvent Instanz Typ Config Homemeatic DetectMovemeent Autosteuerung */
+					$eventlist[$i]["DetectMovement"]="";
+					$found=false;
+					foreach ($eventlistCC as $entry) { if ($entry["EventID"]==$eventID) $found=true; }
+					if ( $found ) 
+						{
+						$eventlist[$i]["DetectMovement"]="CustomComponent";
+						if ($debug) echo " Typ CustomComponent";
+						}
+					else $eventlist[$i]["DetectMovement"]="";
+					$eventlist[$i]["Typ"]="";
+					$eventlist[$i]["Config"]="";
+					
+					if (isset($motionDevice[$eventID])==true)
+						{ 
+						$eventlist[$i]["Homematic"]="Motion";
+						$motionDevice[$eventID]=false;
+						if ($debug) echo " Homematic Motion";
+						}
+					elseif (isset($switchDevice[$eventID])==true)
+						{
+						$eventlist[$i]["Homematic"]="Switch";
+						$switchDevice[$eventID]=false;
+						if ($debug) echo " Homematic Switch";
+						}     
+					elseif (isset($buttonDevice[$eventID])==true)
+						{
+						$eventlist[$i]["Homematic"]="Button";
+						$buttonDevice[$eventID]=false;
+						if ($debug) echo " Homematic Button";
+						}     
+					else $eventlist[$i]["Homematic"]="";
+										
+					$eventlist[$i]["Autosteuerung"]="";
+					if (isset($autosteuerung_config[$eventID])==true)
+						{ 
+						$eventlist[$i]["Autosteuerung"]=$autosteuerung_config[$eventID][1]."|".$autosteuerung_config[$eventID][2];
+						$autosteuerung_config[$eventID]["EventExists"]=true; 
+						}
+					else if ($debug) echo " Fehler************************";                       
+					if ($debug) echo "\n";
+					}				
+				}
+			$i++;
+			//IPS_SetPosition($childrenID,$eventID);				
+			}		
+		//print_r($eventlist);
+		return ($eventlist);
+		}			    
 	
     /***************************************
      *
@@ -924,6 +1260,7 @@ class TestMovement
 	public function findMotionDetection()
 		{
 		//$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
         else $Homematic=array();
 
@@ -1033,6 +1370,7 @@ class TestMovement
 
 	public function findSwitches()
 		{
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");		
 		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
         else $Homematic=array();
 
@@ -1075,7 +1413,53 @@ class TestMovement
 			}
 		return($switchDevice);
 		}
+		
+    /*******************************
+     *
+     * Geräte mit Taster finden
+     *
+     **************************************************************/
 
+	public function findButtons()
+		{
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");		
+		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
+		else $Homematic=array();
+
+		if ( function_exists("FS20List") ) 
+            { 
+            $FS20 = FS20List(); 		
+            $TypeFS20=RemoteAccess_TypeFS20(); // if there is no FS20 it will not be needed
+            }
+        else $FS20=array();
+	
+		$buttonDevice=array();
+		
+		//echo "\n===========================Alle Homematic Buttons ausgeben.\n";
+		foreach ($Homematic as $Key)
+			{
+			if ( ( (isset($Key["COID"]["INSTALL_TEST"])==true) and (isset($Key["COID"]["PRESS_SHORT"])==true) ) ||
+					( (isset($Key["COID"]["PRESS_LONG"])==true) and (isset($Key["COID"]["PRESS_SHORT"])==true) ) )
+				{
+				//print_r($Key);			
+				$oid=(integer)$Key["COID"]["PRESS_SHORT"]["OID"];
+				$buttonDevice[$oid]=true;
+				if (isset($Key["COID"]["INSTALL_TEST"])==true)
+					{				
+					$oid=(integer)$Key["COID"]["INSTALL_TEST"]["OID"];
+					$buttonDevice[$oid]=true;
+					}
+				if (isset($Key["COID"]["PRESS_LONG"])==true)
+					{
+					$oid=(integer)$Key["COID"]["PRESS_LONG"]["OID"];
+					$buttonDevice[$oid]=true;					
+					}
+				}
+			}
+		return ($buttonDevice);
+		}
+		
+		
     /************************************************************
      *
      * eventlist nach Kriterien/Ueberschriften sortieren

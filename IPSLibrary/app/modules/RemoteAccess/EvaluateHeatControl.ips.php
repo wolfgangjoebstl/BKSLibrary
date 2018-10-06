@@ -19,7 +19,7 @@
 
 /* Program baut auf einem remote Server eine Variablenstruktur auf in die dann bei jeder Veränderung Werte geschrieben werden
  *
- *	hier für Homematic Temperatur und Feuchtigkeits Werte
+ *	hier für die Homematic und FHT Thermostate den Stellwert und den Sollwert
  *
  */
 

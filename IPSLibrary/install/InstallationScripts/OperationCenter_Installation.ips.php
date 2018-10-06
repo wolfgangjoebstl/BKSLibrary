@@ -257,8 +257,6 @@
      ********************************/
 
 	echo "\n";
-	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	echo "Default WFC10_ConfigId fuer Autosteuerung, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
 	
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -271,6 +269,14 @@
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r($result);
+		}
+	$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	echo "Default WFC10_ConfigId fuer OperationCenter, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+	if (IPS_GetName($WFC10_ConfigId) != "Administrator")
+		{
+		$WFC10_ConfigId=$WebfrontConfigID["Administrator"];
+		$WFC10User_ConfigId=$WebfrontConfigID["User"];
+		echo "Default WFC10_ConfigId fuer OperationCenter auf ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.") geändert.\n\n";
 		}
 	echo "\n";
 
@@ -469,6 +475,9 @@
 	 *
 	*************************************************************/
 
+	echo "===========================================\n";
+	echo "Homematic RSSI Variablen anlegen.\n";
+
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 	
@@ -573,6 +582,31 @@
 	 *
 	 ***************************************************/
 
+	echo "===========================================\n";
+	echo "Detect Movement Variablen anlegen.\n";
+	
+	/* Autosteuerung und Detectmovement verwenden folgendes Profil um die Event tabellen zu sortieren. */
+		$pname="SortTableEvents";
+		if (IPS_VariableProfileExists($pname) == false)
+			{
+			//Var-Profil erstellen
+			IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+			IPS_SetVariableProfileValues($pname, 0, 10, 1); //PName, Minimal, Maximal, Schrittweite
+			IPS_SetVariableProfileAssociation($pname, 0, "Event#", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+			IPS_SetVariableProfileAssociation($pname, 1, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 2, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 4, "Objektname", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 5, "Module", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 6, "Funktion", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 7, "Konfiguration", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 8, "Homematic", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 9, "DetectMovement", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+			IPS_SetVariableProfileAssociation($pname, 10, "Autosteuerung", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color			
+			echo "Profil ".$pname." erstellt;\n";
+			}
+			
 	if (isset ($installedModules["DetectMovement"]))
 		{
 		$moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
@@ -589,6 +623,9 @@
 	 *		INIT Autosteuerung Event Darstellung und Auswertung
 	 *
 	 ***************************************************/
+
+	echo "===========================================\n";
+	echo "Autosteuerung Variablen anlegen.\n";
 
 	if (isset ($installedModules["Autosteuerung"]))
 		{
@@ -611,7 +648,7 @@
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
 		CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
-		CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
+		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
@@ -753,7 +790,8 @@
 						IPS_SetParent($cam_categoryId,$CategoryIdData);
 						}
 					$categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
-					CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    10*$i,  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+					CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+					echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
 					$pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
 					$box='<iframe frameborder="0" width="100%">     </iframe>';
 					SetValue($pictureFieldID,$box);

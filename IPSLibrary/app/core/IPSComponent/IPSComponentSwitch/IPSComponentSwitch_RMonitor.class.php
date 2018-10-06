@@ -33,7 +33,7 @@
     * Definiert eine IPSComponentSwitch_RMonitor Klasse, die ein IPSComponentSwitch Object für die Remote Steuerung des PC auf einem anderen Server implementiert.
 	* Aufruf erfolgt von zB IPS-Light mit folgendem Parameter:
 	*
-	* IPSComponentSwitch_RMonitor,12345,http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/ 
+	* IPSComponentSwitch_RMonitor,aaaa ,http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/ 
 	*
 	* Teil von zusaetzlichen selbst definierten Klassen für IPS Component:
 	*

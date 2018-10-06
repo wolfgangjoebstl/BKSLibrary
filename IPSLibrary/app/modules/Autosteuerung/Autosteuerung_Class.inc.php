@@ -3,6 +3,7 @@
 /*****************************************************************************************************
  *
  * Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
+ *
  *    AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
  *      Get_EventConfigurationAuto()
  *      Set_EventConfigurationAuto
@@ -31,7 +32,17 @@
  *
  *    Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
  *       getFunctions
- *       isitdark(), isitlight()
+ *       isitdark(), isitlight(), isitsleep(), isitwakeup(), isitawake(), isithome(), isitmove(),isitalarm()
+ *       isitheatday(),
+ *       getDaylight, switchingTimes, timeright,
+ *       setNewValue, setNewValueIfDif
+ *       trimCommand
+ *
+ *       ParseCommand, parseName, parseParameter, parseValue,
+ *
+ *       EvaluateCommand, evalCom_IFDIF, evalCom_LEVEL, ControlSwitchLevel
+ *
+ *       ExecuteCommand, 
  *
  *
  *    AutosteuerungFunktionen

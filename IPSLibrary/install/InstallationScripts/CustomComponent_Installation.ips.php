@@ -16,12 +16,11 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
-	/**@defgroup CustomComponent
-	 * @ingroup 
-	 * @{
+	/***********************************
 	 *
 	 * Script für zusätzliche eigene Komponenten und Programme rund um die Verarbeitung der Hardware Komponenten
 	 * baut das gesamte Webfront mit Administrator und User auf
+	 * korrigiert diverse Einstellungen, loescht nicht konfigurierte Webfrontends
 	 *
 	 * @file          CustomComponent_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -204,7 +203,7 @@
 					}
 				else	
 					{
-					//echo "  ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
+					echo "  OK ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
 					}					
 				break;
 			default:
@@ -297,7 +296,7 @@
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Variablen Profile für Darstellung anlegen, sind die selben wie bei Remote Access
+	 * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
@@ -414,7 +413,7 @@
 		/*************************************/
 		
 		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
-		echo "\nWebportal Administrator.LocalAccess TabPane Datenstruktur installieren in: ".$WFC10_Path." \n";
+		echo "\nWebportal Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
 		

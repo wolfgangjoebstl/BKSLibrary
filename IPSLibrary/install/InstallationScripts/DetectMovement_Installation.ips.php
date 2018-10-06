@@ -16,12 +16,40 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
 
+	/****************************************************************************************************
+	 *
+	 * es gibt mehrere unterschiedliche Routinen die auf eine Aenderung einer Variablen abzielen
+	 * Messagehandler arbeitet CustomComponents, DetectMovement und RemoteAccess ab
+	 *
+	 * bei einer Aenderung wird das entsprechen programmierte Custom Event aufgerufen und dann wenn installiert auch RemoteAccess und DetectMovement abgearbeitet.
+	 * Im Detail: eine Eventaenderung ruft den Messagehandler auf, der holt sich aus dem Configfile den entsprechenden Component
+	 * im Component wird zuerst logvalue und dann die RemoteAccess Zugriffe abgearbeitet
+	 * bei LogValue wird auch noch wenn installiert DetectMovement abgearbeitet
+	 *
+	 * Autosteuerung hat ihre eigenenen Messagehandler installiert und haengt nicht von den CustomComponents ab.
+	 * Heizung ist an die CustomComponents angelehnt
+	 *
+	 *
+	 * Bei der Installation sollten alle drei Module unabhängig davon ob die anderen Module installiert sind die selbe Funktionalitaet haben
+	 *
+	 *
+	 *
+	 *
+	 *
+	 *
+	 * in IPSMessageHandler_Configuration enthaelt die OID die entweder als ONCHANGE oder ONUPDATE beobachtet wird und den CustomCompenet der aufgerufen wird
+	 * nach dem CustomComponet stehen die RemotAccess Paare ServerName:RemoteOID;usw. 
+	 *
+	 * RemoteAccess Config definieren die Server und die Funktion des Servers
+	 * DetectMovement Config definiert die Gruppierung und die zugeordneten Raeume oder Funktionen (Heizungsregelung)
+	 *
+	 **********************/
 
 	/**@defgroup DetectMovement
 	 * @ingroup modules_weather
 	 * @{
 	 *
-	 * Script um Ereignisse zusammenzufassen, ursprünglich für die Bewegungserfassung gecshrieben
+	 * Script um Ereignisse zusammenzufassen, ursprünglich für die Bewegungserfassung geschrieben
 	 *
 	 * funktioniert nun auch für Bewegung, Temperatur und feuchtigkeit
 	 *
@@ -76,8 +104,8 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
-	if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
+	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
+	if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteAccess"]))
 		{
@@ -105,30 +133,6 @@
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
-	/*************
-	 *
-	 * es gibt mehrere unterschiedliche Routinen die auf eine Aenderung einer Variablen abzielen
-	 * Messagehandler arbeitet CustomComponents, DetectMovement und RemoteAccess ab
-	 *
-	 * bei einer Aenderung wird das entsprechen programmierte Custom Event aufgerufen und dann wenn installiert auch RemoteAccess und DetectMovement abgearbeitet.
-	 * Im Detail: eine Eventaenderung ruft den Messagehandler auf, der holt sich aus dem Configfile den entsprechenden Component
-	 * im Component wird zuerst logvalue und dann die RemoteAccess Zugriffe abgearbeitet
-	 * bei LogValue wird auch noch wenn installiert DetectMovement abgearbeitet
-	 *
-	 * Autosteuerung hat ihre eigenenen Messagehandler installiert und haengt nicht von den CustomComponents ab.
-	 * Heizung ist an die CustomCompnents angelehnt
-	 *
-	 *
-	 * Bei der Installation sollten alle drei Module unabhängig davon ob die anderen Module installiert sind die selbe Funktionalitaet haben
-	 *
-	 * in IPSMessageHandler_Configuration enthaelt die OID die entweder als ONCHANGE oder ONUPDATE beobachtet wird und den CustomCompenet der aufgerufen wird
-	 * nach dem CustomCompnet stehen die RemotAccess Paare ServerName:RemoteOID;usw. 
-	 *
-	 * RemoteAccess Config definieren die Server und die Funktion des Servers
-	 * DetectMovement Config definiert die Gruppierung und die zugeordneten Raeume oder Funktionen (Heizungsregelung)
-	 *
-	 **********************/
-
 
 	/****************************************************************************************************************
 	 *                                                                                                    
@@ -146,20 +150,19 @@
 	/* nur die Detect Movement Funktion registrieren */
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
-	echo "\n";
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		echo "!!! Achtung, rufen sie für Install der einzelnen Geraete die entsprechende Remote Access Routine auf .... \n";
+		}
+	else
+		{
+		echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
+		}
+
 	if (function_exists('HomematicList'))
-	   {
+		{
+		echo "\n";
 		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			echo "!!! Achtung, rufen sie für Install die entsprechende remote Access Routine auf .... \n";
-			}
-		else
-			{
-			echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
-			}
-		echo "\n";	
-		
 		$Homematic = HomematicList();
 		$keyword="MOTION";
 		foreach ($Homematic as $Key)
@@ -209,9 +212,10 @@
 				}
 			}
 		}
-
+		
 	if (function_exists('FS20List'))
-	   {
+		{
+		echo "\n";
 		echo "FS20 Bewegungsmelder und Kontakte werden registriert.\n";
 		$TypeFS20=RemoteAccess_TypeFS20();
 		$FS20= FS20List();
@@ -270,26 +274,29 @@
 			}
 		}
 		
+		
 	if (isset ($installedModules["IPSCam"]))
 		{
 		IPSUtils_Include ("IPSCam.inc.php",     "IPSLibrary::app::modules::IPSCam");
 
 		$camManager = new IPSCam_Manager();
 		$config     = IPSCam_GetConfiguration();
+		echo "\n";
 		echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
 		foreach ($config as $cam)
 	   		{
 			echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
 			}
-		echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
+		echo "\n";
+		echo "Bearbeite lokale Kameras wie im Modul OperationCenter definiert:\n";
 		if (isset ($installedModules["OperationCenter"]))
 			{
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 			$OperationCenterConfig = OperationCenter_Configuration();
-			echo "IPSCam und OperationCenter Modul installiert. \n";
+			echo "    IPSCam und OperationCenter Modul installiert. \n";
 			if (isset ($OperationCenterConfig['CAM']))
 				{
-				echo "Im OperationCenterConfig sind auch die CAM Variablen angelegt.\n";
+				echo "  Im OperationCenterConfig sind auch die CAM Variablen angelegt.\n";
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
 					$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
@@ -297,7 +304,7 @@
 					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$OperationCenterDataId);
 
 					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-					echo "   Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
+					echo "    Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
 
     				$oid=$WebCam_MotionID;
     				$cam_name="IPCam_".$cam_name;
@@ -337,8 +344,8 @@
 	if (isset ($installedModules["RemoteAccess"]))
 		{
 		echo "\n";
-		echo "Remote Access installiert, Gruppen Variablen für Bewegung/Motion auch auf den RemoteAccess VIS Server aufmachen.\n";
-		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
+		echo "Remote Access installiert, zumindest die Gruppen Variablen für Bewegung/Motion auch auf den RemoteAccess VIS Server aufmachen.\n";
+		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechenden Remote Access Routinen auf (EvaluateXXXX) ! \n";
 		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
 		foreach ($remServer as $Name => $Server)

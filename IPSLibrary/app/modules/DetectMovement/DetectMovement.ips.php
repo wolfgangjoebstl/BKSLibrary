@@ -16,13 +16,10 @@ IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::m
 
 $startexec=microtime(true);
 
-//$repository = 'https://10.0.1.6/user/repository/';
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
 	{
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-	echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 	$moduleManager = new IPSModuleManager('DetectMovement',$repository);
 	}
 

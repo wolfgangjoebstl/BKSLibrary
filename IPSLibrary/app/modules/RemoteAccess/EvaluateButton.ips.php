@@ -83,6 +83,8 @@ echo "\n";
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
+	/* die hier aufgerufenen Functions sind das von Evelaute hardware in EvaluateHardware.inc angelegte Inventory der lokalen Hardware Register. */
+
 	$Homematic = HomematicList();
 	$FHT = FHTList();
 	$FS20= FS20List();
@@ -91,19 +93,35 @@ echo "\n";
 	/******************************************* Kontakte ***********************************************/
 
 	/*	ROID_List() bestimmt die Server an die Daten gesendet werden sollen,  
- 	 *  Function Ist in EvaluateVariables.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !
-	 *  Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Struktur aufgebaut und in EvaluateVariables.inc gespeichert.
+ 	 * Function Ist in EvaluateVariables_ROID.inc in Modul RemoteAccess und wird von add_remoteServer aus RemoteAccess_GetConfiguration angelegt !
+	 * Aufruf erfolgt in RemoteAccess. es wird auf den remote Servern die komplette Visualization Struktur erfasst und in EvaluateVariables.inc gespeichert.
+	 * Bislang werden allerdings nur die Kategorien im includefile angegeben. man könnte es auch um die Objekte in den Kategorien erweitern. Diese werden
+	 * aktuell einmal pro Scriptaufruf ermittelt.
+	 *
+	 *    [Server Name] => Array ([Adresse], [VisRootID], [WebFront], [Administrator], [RemoteAccess], [ServerName], [Temperatur] 
+	 *                  [Schalter], [Kontakte], [Taster], [Bewegung], [HeatControl], [HeatSet], [Humidity], [SysInfo], [Andere], [ArchiveHandler] }
+	 *
+	 * in EvaluateVariables_ROID.inc werden auch lokale Variablen angelegt um die Suche nach denselben auf den Remoteservern zu erleichtern.
+	 *
+	 * Mit RemoteAccessServerTable wird anhand von RemoteAccess_GetServerConfig() eine Tabelle erstellt mit den Remote Servern und die im 60 Minutenabstand 
+	 * von OperationCenter aktualisierte Erreichbarkeit. Es werden nur die Server uebernommen mit LOGGING STATUS active.
+	 *
 	 */
+	 
+ 	echo "Remote Server OID der Kategorien aus dem EvaluateVariable_ROID inlude File ausgeben:\n";
 	$remServer=ROID_List();
 	print_r($remServer);
-	
+
+	echo "Zugangsdaten und Erreichbarkeit der remote Server ausgeben:\n";
 	$status=RemoteAccessServerTable();
+	print_r($status);
 
 	$remote=new RemoteAccess();
+	echo "Jetzt die Struktur für jeden Remote Server und die Kategorie Taster ermitteln und ausgeben:\n";
 	$struktur=$remote->RPC_getExtendedStructure($remServer,"Taster");
 	$remote->RPC_writeExtendedStructure($struktur);
 
-	echo "******* Alle Homematic Taster ausgeben.\n";
+	echo "******* Alle Homematic Taster ausgeben.     Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 	foreach ($Homematic as $Key)
 		{
 		set_time_limit(1200);		
@@ -130,7 +148,7 @@ echo "\n";
 					if ( $status[$Name]["Status"] == true )
 						{						
 						$rpc = new JSONRPC($Server["Adresse"]);
-						$result=RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
+						$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
 						$rpc->IPS_SetVariableCustomProfile($result,"Button");
 						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 						$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);

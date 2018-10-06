@@ -1,7 +1,23 @@
 <?
 
+	/*
+     * This file is part of the IPSLibrary.
+     *
+     * The IPSLibrary is free software: you can redistribute it and/or modify
+     * it under the terms of the GNU General Public License as published
+     * by the Free Software Foundation, either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * The IPSLibrary is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     * GNU General Public License for more details.
+     *
+     * You should have received a copy of the GNU General Public License
+     * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+     */
+	 
 	/**@defgroup Guthabensteuerung
-	 * @ingroup modules_weather
 	 * @{
 	 *
 	 * Script um herauszufinden ob die Guthaben der Simkarten schon abgelaufen sind
@@ -13,7 +29,17 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+/********************************************************
+ *
+ * INIT, generell
+ *
+ *******************************************************************/
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
+	// max. Scriptlaufzeit definieren
+	ini_set('max_execution_time', 500);
+	$startexec=microtime(true);
 
 	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -27,15 +53,15 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
+	//echo "\nKernelversion : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
+	//echo "\nIPS Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " ".$ergebnis;
+	//echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
-	echo "\nIPSModulManager Version : ".$ergebnis;
+	//echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Guthabensteuerung');
-	echo "\nRemoteAccess Version : ".$ergebnis;
+	//echo "\nRemoteAccess Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -43,7 +69,7 @@
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	//echo $inst_modules;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -52,46 +78,26 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	/* Create Variables */
+/********************************************************
+ *
+ * INIT, Variablen anlegen
+ *
+ *******************************************************************/
 
-	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+
 	$ParseGuthabenID=IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
 	$GuthabensteuerungID=IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
-
+	
+	$ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+	$statusReadID = CreateVariable("StatusWebread", 3, $CategoryIdData,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	$testInputID = CreateVariable("TestInput", 3, $CategoryIdData,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	
 	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
 
 	$GuthabenConfig = get_GuthabenConfiguration();
 	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
 	//print_r($GuthabenConfig);
 
-	$pname="Euro";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
-		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		IPS_SetVariableProfileText($pname,'','Euro');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-		{
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-
-	$pname="MByte";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-		echo "Profile existiert nicht \n";
-		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-		IPS_SetVariableProfileText($pname,'',' MByte');
-		print_r(IPS_GetVariableProfile($pname));
-		}
-	else
-		{
-		//print_r(IPS_GetVariableProfile($pname));
-		}
-	   
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 	
@@ -101,31 +107,7 @@
 		{
 		if ( strtoupper($TelNummer["STATUS"]) == "ACTIVE" )
 			{   /* nur für die noch aktiven Nummern die Scripts anlegen und auch im Webfront darstellen */	
-			if (false)	// alte Webseitendarstellung
-				{	
-				$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["NUMMER"].".iim","w");
-				fwrite($handle2,'VERSION BUILD=8300326 RECORDER=FX'."\n");
- 				fwrite($handle2,'TAB T=1'."\n");
-				fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
-    	  		fwrite($handle2,'SET !EXTRACT NULL'."\n");
-      			fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
-				fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-				fwrite($handle2,'URL GOTO=https://www.drei.at/portal/de/privat/index.html'."\n");
-      			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:nav_user'."\n");
-	      		fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=NAME:loginForm ATTR=ID:userName CONTENT={{!VAR0}}'."\n");
-				fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-    	  		fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=NAME:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");
-	      		fwrite($handle2,'TAG POS=1 TYPE=BUTTON ATTR=TXT:Einloggen'."\n");
-				fwrite($handle2,'TAG POS=1 TYPE=DIV ATTR=ID:account-balance EXTRACT=TXT'."\n");
-				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Link_B2C_CoCo'."\n");
-				fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-				fwrite($handle2,'\'Ausloggen'."\n");
-				fwrite($handle2,'FRAME NAME="topbar"'."\n");
-				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:nav_user'."\n");
-				fwrite($handle2,'TAB CLOSE'."\n");
-				fclose($handle2);
-				}
-				
+			if (isset($TelNummer["TYP"]) == false) $TelNummer["TYP"]="Drei";
 			$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["NUMMER"].".iim","w");
 			fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
 			fwrite($handle2,'TAB T=1'."\n");
@@ -133,22 +115,41 @@
 			fwrite($handle2,'SET !EXTRACT NULL'."\n");
 			fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
 			fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-			fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["NUMMER"]."\n");
-			fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
-	      	fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-    	  	fwrite($handle2,'\'Ausloggen'."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Kundenzone'."\n");
-			fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
-    	  	fwrite($handle2,'TAB CLOSE'."\n");
-			fclose($handle2);
-				
+			if ( strtoupper($TelNummer["TYP"]) == "DREI" )
+				{
+				//fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
+				fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");			
+				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["NUMMER"]."\n");
+				fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
+				fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+				fwrite($handle2,'\'Ausloggen'."\n");
+				fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
+				fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");			
+				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
+				}
+			else		// UPC oder anderer Anbieter
+				{
+				fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
+				//fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
+				fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
+				fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
+				}	
+			fwrite($handle2,'TAB CLOSE'."\n");
+			fwrite($handle2,'TAB CLOSE'."\n");
+			fclose($handle2);			
 			$phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$TelNummer["NUMMER"], 3);
 			$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
-			$phoneID[$i++]=$phone_Summ_ID;
+			$phoneID[$i]["Nummer"]=$TelNummer["NUMMER"];
+			$phoneID[$i]["Short"]=substr($TelNummer["NUMMER"],(strlen($TelNummer["NUMMER"])-3),10);
+			$phoneID[$i++]["Summ"]=$phone_Summ_ID;
 	    	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
     	 	$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Status", 3);
      		$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
@@ -182,7 +183,8 @@
 			IPS_ApplyChanges($archiveHandlerID);
 			}
 		}
-
+	$maxcount=$i;
+	
   	$phone_CL_Change_ID = CreateVariableByName($CategoryIdData, "Phone_CL_Change", 2);
 	IPS_SetVariableCustomProfile($phone_CL_Change_ID,'Euro');
 	
@@ -198,7 +200,75 @@
 	AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,0);
 	IPS_ApplyChanges($archiveHandlerID);
 
-	/* initialize timer */
+	/****************************************************************
+	 *
+	 * Initialisiere Profile
+	 *
+	 ************************************************************************/
+
+	$pname="Euro";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		IPS_SetVariableProfileText($pname,'','Euro');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+		{
+		//print_r(IPS_GetVariableProfile($pname));
+		}
+
+	$pname="MByte";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		echo "Profile existiert nicht \n";
+		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+		IPS_SetVariableProfileText($pname,'',' MByte');
+		print_r(IPS_GetVariableProfile($pname));
+		}
+	else
+		{
+		//print_r(IPS_GetVariableProfile($pname));
+		}
+
+	$pname="GuthabenKonto";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+			//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
+		for ($i=0;$i<$maxcount;$i++)
+			{
+			IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+			}	
+		IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+		IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+		echo "Profil ".$pname." erstellt;\n";
+		}
+	else
+		{	/* profil sicherheitshalber überarbeiten */
+		IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
+		for ($i=0;$i<$maxcount;$i++)
+			{
+			IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+			}
+		IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+		IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau	
+		echo "Profil ".$pname." überarbeitet;\n";		
+		}
+
+	$startImacroID = CreateVariable("StartImacro", 1, $CategoryIdData,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+
+	/*****************************************************
+	 *
+	 * initialize Timer 
+	 *
+	 ******************************************************************/
 
 	echo "Guthabensteuerung ScriptID:".$GuthabensteuerungID."\n";
 
@@ -250,10 +320,10 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	/******************************************************
-
-				INIT, Nachrichtenspeicher
-
-	*************************************************************/
+	 *
+	 *			INIT, Nachrichtenspeicher
+	 *
+	 *************************************************************/
 
 
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -267,9 +337,12 @@
 		echo 	$log_OperationCenter->PrintNachrichten();
 		}
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/******************************************************
+	 *
+	 *		WebFront Installation
+	 *
+	 *************************************************************/	
+
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren auf ".$WFC10_Path.": \n";
@@ -288,9 +361,13 @@
 		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
 		foreach ($phoneID as $phone)
 			{
-	   		CreateLinkByDestination(IPS_GetName($phone), $phone,    $phone_summary_ID,  10);
+	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
 			}
-		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
+		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID, $categoryId_WebFront,  20);
+		CreateLinkByDestination(IPS_GetName($startImacroID), $startImacroID, $categoryId_WebFront,  30);
+		CreateLinkByDestination(IPS_GetName($statusReadID), $statusReadID, $categoryId_WebFront,  40);
+		CreateLinkByDestination(IPS_GetName($testInputID), $testInputID, $categoryId_WebFront,  50);
+	
 		}
 
 	if ($WFC10User_Enabled)
@@ -311,7 +388,7 @@
 		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
 		foreach ($phoneID as $phone)
 			{
-	   		CreateLinkByDestination(IPS_GetName($phone), $phone,    $phone_summary_ID,  10);
+	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
 			}
 		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
 		}
@@ -334,7 +411,7 @@
 		$phone_summary_ID = CreateVariableByName($categoryId_WebFront, "Summary", 3);
 		foreach ($phoneID as $phone)
 			{
-	   		CreateLinkByDestination(IPS_GetName($phone), $phone,    $phone_summary_ID,  10);
+	   		CreateLinkByDestination(IPS_GetName($phone["Summ"]), $phone["Summ"],    $phone_summary_ID,  10);
 			}
 		CreateLinkByDestination(IPS_GetName($phone_Cost_ID), $phone_Cost_ID,    $categoryId_WebFront,  20);
 		}

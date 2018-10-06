@@ -3388,13 +3388,14 @@ class ModuleHandling
 				$modules=IPS_GetLibraryModules($this->libraries[$input]);
 				}
 			else $modules=array();	
-			}		
+			}
+		$pair=array();			
 		foreach($modules as $guid)
 			{
 			$module = IPS_GetModule($guid);
 			$pair[$module['ModuleName']] = $guid;
 			}
-		ksort($pair);
+		if ( sizeof($pair) > 0 ) ksort($pair);
 		foreach($pair as $key=>$guid)
 			{
 			echo "     ".$key." = ".$guid;

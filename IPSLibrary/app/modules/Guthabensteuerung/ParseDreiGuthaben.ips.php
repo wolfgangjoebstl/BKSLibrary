@@ -24,7 +24,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	echo "Category Data ID           : ".$CategoryIdData."\n";
 	echo "Category App ID            : ".$CategoryIdApp."\n";
 
-/* Config einlesen
+/***************************************************************************** 
+ *
+ * Config einlesen
  *
  *********************************************************************************************/
 
@@ -52,8 +54,9 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		{
 		/* Logging Einstellungen zum Debuggen */
 		
-		//$ausgeben=true; $ergebnisse=true; $speichern=true;
-		$ausgeben=true; $ergebnisse=true; $speichern=true;
+		//$ausgeben=true; $ergebnisse=true; $speichern=true;				// Debug
+		//$ausgeben=false; $ergebnisse=false; $speichern=false;				// Operation
+		$ausgeben=true; $ergebnisse=true; $speichern=false;
 		}
 	else
 		{	
@@ -97,11 +100,17 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 	if ($_IPS['SENDER']=="Execute")
 		{
-		echo "Execute, Script wird ausgeführt:\n\n";
+		echo "========================================================\n";
+		echo "Execute, Script ParseDreiGuthaben wird ausgeführt:\n\n";
+		echo "  Ausgabe Ergebnis parsetxtfile :\n";
+		echo "  -------------------------------\n";
 		echo $ergebnis;
+		echo "  Ausgabe Status der aktiven SIM Karten :\n";
+		echo "  ---------------------------------------\n";
 		$ergebnis1="";
 		foreach ($GuthabenConfig as $TelNummer)
 			{
+			//print_r($TelNummer);
 			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
 
 			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
@@ -109,11 +118,14 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 			$ldateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_loadDate", 3);
 			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
 			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-			$ergebnis1.=$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+			if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
+				{
+				$ergebnis1.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+				}
 			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
 			}
-		echo "\nAusgabe der letzten Aenderungen der ausgelesenen Files : \n";
-		echo "Nummer           Name                  letztes File von       letzte Aenderung Guthaben    letzte Aufladung\n".$ergebnis1;
+		echo "  Nummer                Name                                letztes File von       letzte Aenderung Guthaben    letzte Aufladung\n";
+		echo $ergebnis1;
 		//print_r($GuthabenConfig);
 
 		echo "\n\nHistorie der Guthaben und verbrauchten Datenvolumen.\n";
@@ -236,6 +248,16 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
  *
  * Function Parse textfile
  *
+ * bestimmte Textfelder/Marker finden und denn Wert dahinter auslesen und einer Variablen zuordnen
+ *
+ * $result1 	Username
+ * $result2 	Telefonnummer
+ * $result3 	Datum der letzten Aktualisierung (wenn vorhanden)
+ * $result4v	MB verbraucht
+ * $tarif1  	Name des Tarifs
+ * $lastbill 	letzte Rechnungsperiode
+ * $result5 	Guthaben oder Bertrag aktuelle Rechnung
+ * $result7 	Gültigkeit des aktuellen Guthabens
  *
  ************************************************************************************************************/
 
@@ -245,6 +267,7 @@ function parsetxtfile($fileconfig, $config)
 
 	$verzeichnis=$fileconfig["DownloadDirectory"];
 	$nummer=$config["NUMMER"];
+	$typ=strtoupper($config["TYP"]);
 	//$startdatenguthaben=7;
 	$startdatenguthaben=0;
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
@@ -260,15 +283,17 @@ function parsetxtfile($fileconfig, $config)
 		{
 		if ($ausgeben) 
 			{
-			echo "Rückmeldung fopen : "; print_r($handle); echo "\n";
-			echo "Aufruf von parsetxtfile mit folgender Config:\n";
-			print_r($config);
+			//echo "Rückmeldung fopen : "; print_r($handle); echo "\n";
+			echo "Aufruf von parsetxtfile mit folgender Config: ".$config["NAME"]." / ".$config["NUMMER"]." (".$config["PASSWORD"].")  -> ".$config["TARIF"]."   ";
+			if ($typ=="DREI") echo "Drei prepaid oder postpaid Karte.\n";
+			else echo "Alternative erkannt, UPC.\n";
+			//print_r($config);
 			}
-
+		
 		while (($buffer = fgets($handle, 4096)) !== false) /* liest bis zum Zeilenende */
 			{
 			/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
-
+	
 			/********** zuerst den User ermitteln, steht hinter Willkommen 
 			 *
 			 */
@@ -278,16 +303,18 @@ function parsetxtfile($fileconfig, $config)
 				$pos=strpos($buffer,"kommen");
 				if (($pos!=false) && !(preg_match('/Troy/i',$buffer)))
 					{
-					$result1=trim(substr($buffer,$pos+7,200));
+					$posEnde=strpos($buffer,"Abmelden");
+					if ($posEnde !== false) $result1=trim(substr($buffer,$pos+7,($posEnde-7-$pos)));		/* UPC klebt am Ende des Usenamens ein Abmelden dran */
+					else $result1=trim(substr($buffer,$pos+7,200));
 					if ($ergebnisse) echo "*********Ausgabe User : ".$result1."\n<br>";
 					}
 				}
 
-			/********** dann die rufnummer, am einfachsten zu finden mit der 0660er oder 0676er Kennung 
+			/********** dann die rufnummer, am einfachsten zu finden mit der 0660er (Drei) oder 0676er (TMobile) oder 0678 (UPC) Kennung 
 			 *
 			 */
-			if ( (preg_match('/0660/i',$buffer)) or (preg_match('/0676/i',$buffer)) )
-				/* manchmal haben wir die Rufnummer mitgenommen */
+			if ( (preg_match('/0660/i',$buffer)) or (preg_match('/0676/i',$buffer)) or (preg_match('/0678/i',$buffer)) )
+				/* manchmal haben wir die Rufnummer mitgenommen, geht auch jetzt für UPC */
 				{
 				$result2=trim($buffer);
 				$fnd1=strpos($result2,"0");
@@ -337,19 +364,27 @@ function parsetxtfile($fileconfig, $config)
 						}
 					}
 				}
+			/********* dann der Name des Tarifs
+			 *
+			 *********************/				
 			//echo "-----------------------------------------\n";
 			//echo $buffer;
 			if ( (preg_match('/Wertkarte/i',$buffer)) && !(preg_match('/Wertkarte im/i',$buffer)) )
 				{
 				if (strpos($buffer,"Wertkarte")==0)
 					{
-					$buffer = fgets($handle, 4096);
-					if ($ausgeben) echo $buffer;
+					$buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
 					$tarif1=trim($buffer);
 					if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";
 					}
 				}
-
+			$posTarif=strpos($buffer,"Tarif:");
+			if ($posTarif !== false)
+				{  // anscheind etwas gefunden, Tarif: wird bei UPC verwendet */	
+				$tarif1=trim(substr($buffer,6,100));
+				if ($ergebnisse) echo "********* Tarif : ".$tarif1."\n";				
+				}
+				
 			/********* dann das Datum der letzten Aufladung
 			 *
 			 *********************/
@@ -393,7 +428,8 @@ function parsetxtfile($fileconfig, $config)
 					}
 				}
 
-			if ( (preg_match('/MB verbr/i',$buffer)) or (preg_match('/MB gesamt verbr/i',$buffer)) )
+			if ( ( (preg_match('/MB verbr/i',$buffer)) or (preg_match('/MB gesamt verbr/i',$buffer)) or (preg_match('/MB verbraucht Inland/i',$buffer)) ) && 
+					!( (preg_match('/MB verbraucht EU/i',$buffer)) ) )
 				{
 				$pos=strpos($buffer,"MB");
 				if ($pos)
@@ -435,6 +471,8 @@ function parsetxtfile($fileconfig, $config)
 					if ($ergebnisse) echo "*********Gültig bis : ".$result7."\n<br>";
 					}
 				}
+				
+			/************************ Erkennung Postpaidvertrag */	
 			if (preg_match('/Abrechnungszeitraum:/i',$buffer))
 				{
 				$pos=strpos($buffer,"-");
@@ -445,10 +483,47 @@ function parsetxtfile($fileconfig, $config)
 					if ($ergebnisse) 
 						{
 						echo "*********Gültig bis : ".$result7."\n<br>";
-						echo "*********Postpaidvertrag.\n";
+						echo "*********Postpaidvertrag (1).\n";
 						}
 					}
 				}
+			$posPostpaid=strpos($buffer,"Verbleibende Tage:");
+			if ($posPostpaid !== false)
+				{  // bei UPC gibt es kein Ende der Abrechnungsperiode, aber verbleibende Tage, auch gut 
+				$pos=strpos($buffer,":");
+				if ($pos)
+					{ // kein hinweis auf postpaid System, aber Abrechnungsperiode gültig bis
+					$tage=(integer)trim(substr($buffer,$pos+1,4));
+					$result7=date("d.m.Y",(time()+(60*60*24*$tage)) );
+					if ($ergebnisse) 
+						{
+						echo "*********Gültig bis : ".$result7."\n<br>";
+						echo "*********Postpaidvertrag (3).\n";
+						}
+					}
+				}
+			$posPostpaid=strpos($buffer,"Rechnung");
+			if ($posPostpaid !== false)
+				{  // anscheind etwas gefunden, Rechnung wird bei UPC verwendet */	
+				$posDatum=strpos($buffer,"Datum zeit");
+				if ($posDatum !== false)				
+					{ /* interessant, uebernaechste Zeile holen */
+					$buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
+					$buffer = fgets($handle, 4096); if ($ausgeben) echo $buffer;
+					$pos=strpos($buffer,"-");
+					if ($pos)
+						{ // wenn ein bis Zeichen ist das ein hinweis auf postpaid System
+						$lastbill=trim(substr($buffer,$pos+1,200));
+						$postpaid=true;
+						if ($ergebnisse) 
+							{
+							echo "*********Gültig bis : ".$lastbill."\n<br>";
+							echo "*********Postpaidvertrag (2).\n";
+							}
+						}
+					}
+				}
+				
 
 			/************************** 
 			 * Ermittlung des Guthabens, oder zusätzlicher Verbindungsentgelte 
@@ -497,7 +572,6 @@ function parsetxtfile($fileconfig, $config)
 					if ($ergebnisse) echo "*********Guthaben : ".$result5." \n<br>";
 					}
 				}
-
 			if ($entgelte==true)
 				{
 				$entgelte=false;
@@ -509,10 +583,22 @@ function parsetxtfile($fileconfig, $config)
 				{
 				$entgelte=true;
 				}
+			if (preg_match('/Aktuelle Kosten:/i',$buffer))
+				{
+				$pos=strpos($buffer,"Kosten:");
+				$Ende=strpos($buffer,",");
+				if ( ($pos>0) && ($Ende >0) )
+					{
+					$result5=trim(substr($buffer,$pos+7,$Ende-$pos+3+7));
+					if ($ergebnisse) echo "*********Rechnung : ".$result5." \n<br>";
+					}
+				}				
+				
 			}  /* ende while buffer schleife */
 			
 
 		if ($result1=="") $result1=$config["TARIF"];	// wenn der Username nicht gefunden wurde einen Ersatzwert nehmen
+		else $result1.=$tarif1;							// wenn Username gefunden wurde gleich auch mit dem ermittelten Tarif zusammanhaengen
 		
 		//$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";
 		if ($ausgeben) echo "\n-----------------------------\n";
@@ -629,6 +715,10 @@ function parsetxtfile($fileconfig, $config)
 				SetValue($phone_VolumeCumm_ID,$bisherVolumen);
 		 		}				
 			}
+		else
+			{
+			$result6=" verbraucht sind ".$result4f;
+			}	
 		if ($speichern) 
 			{
 			echo "--> ".IPS_GetName($phone_Volume_ID)." : ".GetValue($phone_Volume_ID)."\n";

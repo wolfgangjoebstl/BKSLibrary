@@ -48,7 +48,6 @@ $startexec=microtime(true);
 	$remote=new RemoteAccess();
 
 	$Homematic = HomematicList();
-	
 
 	$remote->RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur", $startexec);  /* rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler */
 

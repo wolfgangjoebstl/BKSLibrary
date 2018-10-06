@@ -24,12 +24,10 @@
 *
 *******************************************************************************************/
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
-	
-
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
 
 /*********************************************************************************************/
 
@@ -61,6 +59,19 @@ $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp
 
 $nachrichten=new AutosteuerungAlexa();
 
+/******************************************************
+ *
+ *				Abarbeiten nach SENDER 
+ *
+ *	Default 
+ * 	VoiceControl
+ *	RunScript
+ *	Execute
+ *	TimerEvent
+ *	Variable
+ *	AlexaSmartHome
+ *
+ *************************************************************/
 
 Switch ($_IPS['SENDER'])
 	{
@@ -80,19 +91,95 @@ Switch ($_IPS['SENDER'])
         $alexaTypes=array("DeviceDeactivatableScene","DeviceGenericSlider","DeviceGenericSwitch","DeviceLightColor","DeviceLightDimmer","DeviceLightSwitch","DeviceLock","DeviceSimpleScene","DeviceTemperatureSensor","DeviceThermostat");
         foreach($alexaTypes as $Type)
             {
+			echo "Alle ".$Type." in der Konfiguration suchen.\n";
             $acdl=json_decode($ac[$Type],true);
-            foreach ($acdl as $entry) 
-                {
-                $alexaConfig[$entry["PowerControllerID"]]["Type"]=$Type;
-                $alexaConfig[$entry["PowerControllerID"]]["Name"]=$entry["Name"];
-                }
+			switch ($Type)
+				{
+				case "DeviceGenericSwitch":
+				case "DeviceLightSwitch":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["PowerControllerID"]]["OID"]=$entry["PowerControllerID"];
+						$alexaConfig[$entry["PowerControllerID"]]["Type"]=$Type;
+						$alexaConfig[$entry["PowerControllerID"]]["Name"]=$entry["Name"];
+                		}
+					break;
+				case "DeviceDeactivatableScene":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["SceneControllerDeactivatableActivateID"]]["OID"]=$entry["SceneControllerDeactivatableActivateID"];						
+						$alexaConfig[$entry["SceneControllerDeactivatableActivateID"]]["Type"]=$Type;
+						$alexaConfig[$entry["SceneControllerDeactivatableActivateID"]]["Name"]=$entry["Name"];
+						$alexaConfig[$entry["SceneControllerDeactivatableActivateID"]]["Script"]=$entry["SceneControllerDeactivatableDeactivateID"];						
+                		}
+					break;
+				case "DeviceSimpleScene":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["SceneControllerSimpleID"]]["OID"]=$entry["SceneControllerSimpleID"];						
+						$alexaConfig[$entry["SceneControllerSimpleID"]]["Type"]=$Type;
+						$alexaConfig[$entry["SceneControllerSimpleID"]]["Name"]=$entry["Name"];
+                		}
+					break;
+				case "DeviceGenericSlider":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["PercentageControllerID"]]["OID"]=$entry["PercentageControllerID"];						
+						$alexaConfig[$entry["PercentageControllerID"]]["Type"]=$Type;
+						$alexaConfig[$entry["PercentageControllerID"]]["Name"]=$entry["Name"];
+						}
+					break;					
+				case "DeviceLightColor":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["ColorControllerID"]]["OID"]=$entry["ColorControllerID"];						
+						$alexaConfig[$entry["ColorControllerID"]]["Type"]=$Type;
+						$alexaConfig[$entry["ColorControllerID"]]["Name"]=$entry["Name"];
+						}
+					break;						
+				case "DeviceLock":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["ColorControllerID"]]["OID"]=$entry["ColorControllerID"];						
+						$alexaConfig[$entry["ColorControllerID"]]["Type"]=$Type;
+						$alexaConfig[$entry["ColorControllerID"]]["Name"]=$entry["Name"];
+						}
+					break;
+				case "DeviceTemperatureSensor":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["TemperatureSensorID"]]["OID"]=$entry["TemperatureSensorID"];						
+						$alexaConfig[$entry["TemperatureSensorID"]]["Type"]=$Type;
+						$alexaConfig[$entry["TemperatureSensorID"]]["Name"]=$entry["Name"];
+						}
+					break;
+				case "DeviceThermostat":
+					foreach ($acdl as $entry) 
+						{
+						print_r($entry);
+						$alexaConfig[$entry["ThermostatControllerID"]]["OID"]=$entry["ThermostatControllerID"];						
+						$alexaConfig[$entry["ThermostatControllerID"]]["Type"]=$Type;
+						$alexaConfig[$entry["ThermostatControllerID"]]["Name"]=$entry["Name"];
+						}
+					break;											
+				default:
+					break;
+				}	
             }
+			
 		$request=array();
 		if ( isset ($alexaConfig[$_IPS['VARIABLE']]) ) $request["REQUEST"]= $alexaConfig[$_IPS['VARIABLE']]["Type"];
 		if ( isset($configurationAutosteuerung["AlexaProxyAdr"])==true)
 			{
 			/* Daten zur Verarbeitung weiterleiten an einen anderen Server */
-			$nachrichten->LogNachrichten("VoiceControl : ".$_IPS['VARIABLE']." mit Wert ".($_IPS['VALUE']?"Ein":"Aus")." Typ ".$request["REQUEST"]." und leitet weiter an ".$configuration["AlexaProxyAdr"].".");
+			$nachrichten->LogNachrichten("VoiceControl : ".$_IPS['VARIABLE']." mit Wert ".($_IPS['VALUE']?"Ein":"Aus")." Typ ".$request["REQUEST"]." und leitet weiter an ".$configurationAutosteuerung["AlexaProxyAdr"].".");
 		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."  von  ".$_IPS['SENDER']." mit Wert  ".($_IPS['VALUE']?"Ein":"Aus")." und leitet weiter an ".$configurationAutosteuerung["AlexaProxyAdr"]);			
 			$request["VARIABLE"]=	$_IPS['VARIABLE'];
 			$request["VALUE"]=		$_IPS['VALUE'];

@@ -94,20 +94,19 @@ imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
 
 	switch ($_IPS['VALUE'])
 		{
-		case "3":  /* Bildschirmschoner */
+		case "4":	/* Monitor off/on */
+			controlMonitor("off",$configuration);
+			break;
+		case "3":  	/* Bildschirmschoner */
 			SetValue($StartPageTypeID,1);
 			break;
-
-
-		case "2":  /* Wetterstation */
+		case "2":  	/* Wetterstation */
 			SetValue($StartPageTypeID,2);
 			break;
-
-		case "1":  /* Full Screen ein */
-		case "0":  /* Full Screen aus */
-
-			IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
-
+		case "1":  	/* Full Screen ein */
+		case "0":  	/* Full Screen aus */
+			controlMonitor("FullScreen",$configuration);
+			//IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
 			break;
 		}
 	}
@@ -180,11 +179,14 @@ function StartPageWrite($PageType)
     $wert.='aussen { color:black; background-color: #c1c1c1; height:100px; font-size: 80px; }';
     $wert.='temperatur { color:black; height:100px; font-size: 28px; align:center; }';
     $wert.='infotext { color:white; height:100px; font-size: 12px; }';
+	 $wert.='#nested { border-collapse: collapse; border: 2px solid white; background-color: #f1f1f1; width: auto;  }';
+    $wert.='#nested td { border: 1px solid white; }';		  
     $wert.='#temp td { background-color:#ffefef; }';                // define ID Selectors
     $wert.='#imgdisp { border-radius: 8px;  max-width: 100%; height: auto;  }';
     $wert.='#startpage { border-collapse: collapse; border: 2px dotted white; width: 100%; }';
-    $wert.='.container { width: 100%; }';
-    $wert.='.image { opacity: 1; display: block; width: 90%; height: auto; transition: .5s ease; backface-visibility: hidden; padding: 5px }';
+    $wert.='#startpage td { border: 1px dotted DarkSlateGrey; }';	 
+    $wert.='.container { width: auto; height: auto; max-height:95%; max-width: 100% }';
+    $wert.='.image { opacity: 1; display: block; width: auto; height: auto; max-height: 90%; max-width: 80%; object-fit: contain; transition: .5s ease; backface-visibility: hidden; padding: 5px }';
     $wert.='.middle { transition: .5s ease; opacity: 0; position: absolute; top: 90%; left: 30%; transform: translate(-50%, -50%); -ms-transform: translate(-50%, -50%) }';
     $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
     $wert.='.container:hover .middle { opacity: 1; }';
@@ -206,9 +208,9 @@ function StartPageWrite($PageType)
 		{
 		if ($PageType==2)
 			{
-            echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
+			//echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
 			$wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
-		    $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
+			$wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
 			$wert.='<tr><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
 			$wert.='<tr><td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
 			$wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($temperatur, 1, ",", "" ).'°C</strg></td>';
@@ -218,39 +220,89 @@ function StartPageWrite($PageType)
 			}
 		else
 			{
-            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
-            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
-            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
-            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
-                {
-                //echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
-                }
-            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";            	                
+			/*******************************************
+			 *
+			 * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt 
+			 * Bild und Wetterstation als zweispaltige Tabelle gestalten
+			 *
+			 *************************/
+			$filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
+			$filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
+			$info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
+			if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+				{
+				//echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+				}
+			//echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";            	                
 			$wert.='<table id="startpage">';
-            $wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr><tr>';
-            //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
-            $wert.='<td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
-            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-            $wert.='</div></td>';
-            $wert.='<td><table border="0" bgcolor="#f1f1f1"><tr><td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-            $wert.='<td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-            $wert.='<tr><td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
-            $wert.='<tr id="temp"><td><table><tr> <td> <temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
-            $wert.='<tr> <td><temperatur>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td> </tr></table>';
-			$wert.='</td><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr><tr id="temp"><td> <table>';
-			$wert.='<tr> <td> <temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
-  			$wert.='<tr> <td><temperatur>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td> </tr>';
-  			$wert.='</table></td><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr><tr id="temp"><td><table>';
-  			$wert.='<tr><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C</temperatur></td></tr>';
-  			$wert.='<tr><td><temperatur>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td></tr></table></td>';
+			//$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
+			//$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
+			$wert.='<tr><td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+			$wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+			$wert.='</div></td>';
+			$wert.='<td><table id="nested"><tr><td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+			$wert.='<td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+			$wert.='<tr><td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+			$wert.='<tr id="temp"><td><temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C<br>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td>';
+			$wert.='<td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
+			$wert.='<tr id="temp"><td><temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td>';
+			$wert.='<td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
+  			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td>';
   			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
-  			$wert.='<tr id="temp"><td><table><tr> <td style="background-color:#efefef;right:50px;"> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C</temperatur></td> </tr>';
-  			$wert.='<tr><td><temperatur>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td></tr>';
-  			$wert.='</table><td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr></table>';
+  			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td>';
+  			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr></table>';
             }
         }    
 	return $wert;
-
 	}
+
+function controlMonitor($status,$configuration)
+	{
+	/* aus Konfiguration lernen ob Remote oder lokal zu schalten ist */
+	$lokal=true;
+	if (isset($configuration["Monitor"]["Remote"]) == true )
+		{
+		if ( ( strtoupper($configuration["Monitor"]["Remote"])=="ACTIVE" ) && ( isset ($configuration["Monitor"]["Address"]) ) ) $lokal=false; 
+		$url=$configuration["Monitor"]["Address"];
+		$oid=$configuration["Monitor"]["ScriptID"];
+		}
+	if ($lokal)
+		{	/* Remote Config nicht ausreichen, lokal probieren */ 
+		switch ($status)
+			{
+			case "on":
+				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
+				break;
+			case "off":
+				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "monitor off", false, false, 1);
+				break;
+			case "FullScren":
+			default:
+				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
+				break;
+			}	
+		}
+	else
+		{	/* remote ansteuern */
+		$rpc = new JSONRPC($url);
+		switch ($status)
+			{
+			case "on":
+				$monitor=array("Monitor" => "on");
+				$rpc->IPS_RunScriptEx($oid,$monitor);
+				break;
+			case "off":
+				$monitor=array("Monitor" => "off");
+				$rpc->IPS_RunScriptEx($oid,$monitor);
+				break;
+			case "FullScren":
+			default:
+				$monitor=array("Monitor" => "FullScreen");
+				$rpc->IPS_RunScriptEx($oid,$monitor);
+				break;
+			}			
+		}																
+	}
+
 
 ?>

@@ -79,13 +79,13 @@ Switch ($_IPS['SENDER'])
                 curl_setopt($cu, CURLOPT_POSTFIELDS,$json_befehl);  
                 curl_exec($cu);  
                 curl_close($cu);  
-        		}          
-			} */
+        		}  */          
+			} 
        break;
     Case "WebFront":        // Zum schalten im Webfront
-		/*
+
     SetValue($_IPS['VARIABLE'] , $_IPS['VALUE']); 
-      
+ 		/*     
     if ($_IPS['VALUE'] == True)
 		{
          // an    

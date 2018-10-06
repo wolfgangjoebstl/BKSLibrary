@@ -777,7 +777,7 @@ class RemoteAccess
 				if ($name==$oname["Name"]) 
 					{
 					$result=$name;$vid=$oid;
-					echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";					
+					echo "     Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
 					}
 				}
 			else
@@ -785,20 +785,20 @@ class RemoteAccess
 				if ($name==$oname) 
 					{
 					$result=$name;$vid=$oid;
-					echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";					
+					echo "      Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
 					}
 				}			
 			//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
 			}
 		if ($result=="")
 			{
-			echo "Variable ".$name." auf Server neu erzeugen.\n";
 			$vid = $rpc->IPS_CreateVariable($type);
 			$rpc->IPS_SetParent($vid, $id);
 			$rpc->IPS_SetName($vid, $name);
 			$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+			echo "   Variable ".$name." auf Server als ".$vid." neu erzeugt.\n";
 			}
-		echo "Fertig mit ".$vid."\n";
+		//echo "Fertig mit ".$vid."\n";
 		return $vid;
 		}
 		
@@ -837,7 +837,7 @@ class RemoteAccess
 	 *
 	 **********************************************************************/
 
-	function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0)
+	function RPC_CreateVariableField($Homematic, $keyword, $profile,$startexec=0,$struktur=array())
 		{
 		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 		$remServer=ROID_List();
@@ -858,14 +858,14 @@ class RemoteAccess
 
 		echo "===============================================================\n";
 		echo "RPC_CreateVariableField für ".$keyword." Visualization Index : ".$index."\n";		
-		$struktur=$this->RPC_getExtendedStructure($remServer,$index);
+		if ( sizeof($struktur == 0) ) $struktur=$this->RPC_getExtendedStructure($remServer,$index);
 		foreach ($remServer as $Name => $Server)
 			{
 			echo "Bearbeite Server ".$Name." für Keyword ".$keyword." Index ".$index."  Visualization OID Werte aus vorermittelteter ROID_List():\n";
 			print_r($Server);
 			if (sizeof($struktur[$Name])>0)
 				{
-				echo "Struktur Server für Categorie auf Visualization.RemoteAccess.".$Name.".".$index.":\n";
+				echo "Struktur Server für Categorie auf Visualization.RemoteAccess.".IPS_GetName(0).".".$index.":\n";
 				foreach ($struktur[$Name] as $oid => $entry)
 					{
 					echo "   OID ".$oid." Name ".$entry["Name"]." \n";
@@ -873,7 +873,7 @@ class RemoteAccess
 				}	
 			}
 		//print_r($struktur);			
-
+		echo "Homematic Variablen der Reihe nach durchgehen:\n";
 		foreach ($Homematic as $Key)
 			{
 			/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
@@ -883,11 +883,11 @@ class RemoteAccess
 				$variabletyp=IPS_GetVariable($oid);
 				if ($variabletyp["VariableProfile"]!="")
 					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 					}
 				else
 					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
+					echo "   ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 					}
 				$parameter="";
 				foreach ($remServer as $Name => $Server)
@@ -895,15 +895,7 @@ class RemoteAccess
 					//echo "Bearbeite Server ".$Name."\n";
 					//print_r($Server);
 					$rpc = new JSONRPC($Server["Adresse"]);
-					if ($keyword=="TEMPERATURE")
-						{
-						// Variablen für Aufruf function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array() */						
-						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 2, $struktur[$Name]);	/* Struktur wird nicht übergeben */
-						}
-					else
-						{
-						$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 1, $struktur[$Name]);
-						}
+					$result=$this->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], 2, $struktur[$Name]);	    /* Variablen für Aufruf function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array() */
 					$rpc->IPS_SetVariableCustomProfile($result,$profile);
 					$rpc->IPS_SetHidden($result,false);					
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
