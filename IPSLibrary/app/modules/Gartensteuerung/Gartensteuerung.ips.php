@@ -499,8 +499,8 @@ if($_IPS['SENDER'] == "TimerEvent")
 			
 			if ($GartensteuerungConfiguration["DEBUG"]==true)
 				{
-    			$log_Giessanlage->LogMessage("Evaluierung Gieesbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60)));
-	    		$log_Giessanlage->LogNachrichten("Evaluierung Gieesbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60)));
+    			$log_Giessanlage->LogMessage("Evaluierung Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60)));
+	    		$log_Giessanlage->LogNachrichten("Evaluierung Giessbeginn morgen um ".(floor($startminuten/60)).":".sprintf("%2d",($startminuten%60)));
                 }
         	break;
 

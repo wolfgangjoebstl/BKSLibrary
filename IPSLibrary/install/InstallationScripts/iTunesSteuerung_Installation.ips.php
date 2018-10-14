@@ -269,6 +269,9 @@ Path=Visualization.Mobile.iTunes
 	 *
 	 ********************************/
 
+	echo "\n";
+	echo "===================================================\n";
+	echo "Konfiguration ausgeben:\n";
 	$config=iTunes_Configuration();
 	print_r($config);
 
@@ -287,6 +290,9 @@ Path=Visualization.Mobile.iTunes
 		$webfront_links[$AutosteuerungID]["MOBILE"]=true;
 		}
 		
+	echo "Webfront Visualisierungskonfiguration ausgeben:\n";		
+	print_r($webfront_links);
+	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Administrator Installation
@@ -337,7 +343,7 @@ Path=Visualization.Mobile.iTunes
 			{
 			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$tabItem." nicht mehr vorhanden.\n";
 			}	
-		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
+		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem : ".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
 		$tabs=array();
@@ -345,15 +351,30 @@ Path=Visualization.Mobile.iTunes
 			{
 			$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
 			}
-
+		echo "Folgende Tabs werden erstellt:\n";
+		print_r($tabs);
+		
 		$i=0;
 		foreach ($tabs as $tab)
 			{
 			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
 			$categoryIdLeft  = CreateCategory('Left',  $categoryIdTab, 10);
 			$categoryIdRight = CreateCategory('Right', $categoryIdTab, 20);
-
-			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    $WFC10_TabOrder+$i,     $tab, '', 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			echo "Splitpane erzeugen in $WFC10_TabPaneItem:\n";
+			/* @param integer $WFCId ID des WebFront Konfigurators
+			 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+			 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+			 * @param integer $Position Positionswert im Objekt Baum
+			 * @param string $Title Title
+			 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+			 * @param integer $Alignment Aufteilung der Container (0=horizontal, 1=vertical)
+			 * @param integer $Ratio Größe der Container
+			 * @param integer $RatioTarget Zuordnung der Größenangabe (0=erster Container, 1=zweiter Container)
+			 * @param integer $RatioType Einheit der Größenangabe (0=Percentage, 1=Pixel)
+	 		 * @param string $ShowBorder Zeige Begrenzungs Linie
+			 */
+			//CreateWFCItemSplitPane ((integer)$WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    (integer)($WFC10_TabOrder+$i) ,     $tab, '', '1' /*Vertical*/, '40' /*Width*/, '0' /*Target=Pane1*/, '0' /*UsePixel*/, 'true');
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i, $WFC10_TabPaneItem,(integer)$WFC10_TabOrder+$i,$tab,"",1,40,0,0,true);
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
 			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
 
