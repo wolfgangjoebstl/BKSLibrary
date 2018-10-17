@@ -784,6 +784,38 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"ArbeitszimmerTestTaster:1" => array(
+         "OID" => 25408, 
+         "Adresse" => "OEQ0311350:1", 
+         "Name" => "ArbeitszimmerTestTaster:1", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "PRESS_CONT" => array(
+                              "OID" => "32967", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "33864", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "10247", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "18090", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "42906", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "Zentralzimmer Bewegung" => array(
          "OID" => 19031, 
          "Adresse" => "NEQ0046162:1", 
@@ -808,6 +840,38 @@ function HomematicList() { return array(
                 "INSTALL_TEST" => array(
                               "OID" => "39055", 
                               "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"ArbeitszimmerTestTaster:4" => array(
+         "OID" => 31596, 
+         "Adresse" => "OEQ0311350:4", 
+         "Name" => "ArbeitszimmerTestTaster:4", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "PRESS_LONG" => array(
+                              "OID" => "34770", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "33321", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "16911", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "36949", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "34555", 
+                              "Name" => "PRESS_CONT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1154,10 +1218,6 @@ function HomematicList() { return array(
                               "OID" => "25753", 
                               "Name" => "ACTUAL_TEMPERATURE", 
                               "Typ" => "2",), 
-                "PARTY_SET_POINT_TEMPERATURE" => array(
-                              "OID" => "32122", 
-                              "Name" => "PARTY_SET_POINT_TEMPERATURE", 
-                              "Typ" => "2",), 
                 "HUMIDITY" => array(
                               "OID" => "24955", 
                               "Name" => "HUMIDITY", 
@@ -1169,6 +1229,10 @@ function HomematicList() { return array(
                 "SWITCH_POINT_OCCURED" => array(
                               "OID" => "27871", 
                               "Name" => "SWITCH_POINT_OCCURED", 
+                              "Typ" => "2",), 
+                "PARTY_SET_POINT_TEMPERATURE" => array(
+                              "OID" => "32122", 
+                              "Name" => "PARTY_SET_POINT_TEMPERATURE", 
                               "Typ" => "2",), 
                 "ACTIVE_PROFILE" => array(
                               "OID" => "15573", 
@@ -1182,10 +1246,6 @@ function HomematicList() { return array(
                               "OID" => "45593", 
                               "Name" => "CONTROL_DIFFERENTIAL_TEMPERATURE", 
                               "Typ" => "2",), 
-                "SET_POINT_TEMPERATURE" => array(
-                              "OID" => "29875", 
-                              "Name" => "SET_POINT_TEMPERATURE", 
-                              "Typ" => "2",), 
                 "PARTY_TIME_START" => array(
                               "OID" => "28142", 
                               "Name" => "PARTY_TIME_START", 
@@ -1193,6 +1253,10 @@ function HomematicList() { return array(
                 "FROST_PROTECTION" => array(
                               "OID" => "22897", 
                               "Name" => "FROST_PROTECTION", 
+                              "Typ" => "2",), 
+                "SET_POINT_TEMPERATURE" => array(
+                              "OID" => "29875", 
+                              "Name" => "SET_POINT_TEMPERATURE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1624,6 +1688,38 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"ArbeitszimmerTestTaster:5" => array(
+         "OID" => 28286, 
+         "Adresse" => "OEQ0311350:5", 
+         "Name" => "ArbeitszimmerTestTaster:5", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "PRESS_CONT" => array(
+                              "OID" => "45018", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "30862", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "17238", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "38908", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "22441", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "SchlafzimmerTaster:6" => array(
          "OID" => 58492, 
          "Adresse" => "000B55699AE8F6:6", 
@@ -1633,13 +1729,13 @@ function HomematicList() { return array(
          "EmulateStatus" => "1", 
          "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "53353", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "37595", 
                               "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "53353", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1707,6 +1803,34 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"ArbeitszimmerTest2:Schalter" => array(
+         "OID" => 10246, 
+         "Adresse" => "0001D709900FD6:3", 
+         "Name" => "ArbeitszimmerTest2:Schalter", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "STATE" => array(
+                              "OID" => "10410", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "SECTION" => array(
+                              "OID" => "10605", 
+                              "Name" => "SECTION", 
+                              "Typ" => "2",), 
+                "SECTION_STATUS" => array(
+                              "OID" => "28009", 
+                              "Name" => "SECTION_STATUS", 
+                              "Typ" => "2",), 
+                "PROCESS" => array(
+                              "OID" => "14956", 
+                              "Name" => "PROCESS", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "GaestezimmerTischlampe:Energie" => array(
          "OID" => 20006, 
          "Adresse" => "0001D3C9961367:6", 
@@ -1762,6 +1886,89 @@ function HomematicList() { return array(
                 "MOTION_DETECTION_ACTIVE" => array(
                               "OID" => "56453", 
                               "Name" => "MOTION_DETECTION_ACTIVE", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"ArbeitszimmerTest2:Energie" => array(
+         "OID" => 32898, 
+         "Adresse" => "0001D709900FD6:6", 
+         "Name" => "ArbeitszimmerTest2:Energie", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Device" => "TYPE_METER_POWER", 
+         "COID" => array(
+                "POWER" => array(
+                              "OID" => "43392", 
+                              "Name" => "POWER", 
+                              "Typ" => "2",), 
+                "FREQUENCY" => array(
+                              "OID" => "24263", 
+                              "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "POWER_STATUS" => array(
+                              "OID" => "42795", 
+                              "Name" => "POWER_STATUS", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER_OVERFLOW" => array(
+                              "OID" => "46316", 
+                              "Name" => "ENERGY_COUNTER_OVERFLOW", 
+                              "Typ" => "2",), 
+                "ENERGY_COUNTER" => array(
+                              "OID" => "33791", 
+                              "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "18060", 
+                              "Name" => "VOLTAGE", 
+                              "Typ" => "2",), 
+                "CURRENT_STATUS" => array(
+                              "OID" => "29409", 
+                              "Name" => "CURRENT_STATUS", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "17212", 
+                              "Name" => "CURRENT", 
+                              "Typ" => "2",), 
+                "VOLTAGE_STATUS" => array(
+                              "OID" => "40245", 
+                              "Name" => "VOLTAGE_STATUS", 
+                              "Typ" => "2",), 
+                "FREQUENCY_STATUS" => array(
+                              "OID" => "44886", 
+                              "Name" => "FREQUENCY_STATUS", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"ArbeitszimmerTestTaster:2" => array(
+         "OID" => 29468, 
+         "Adresse" => "OEQ0311350:2", 
+         "Name" => "ArbeitszimmerTestTaster:2", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "PRESS_SHORT" => array(
+                              "OID" => "33870", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "10248", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "18093", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "32972", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "42912", 
+                              "Name" => "PRESS_LONG_RELEASE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1910,6 +2117,38 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"ArbeitszimmerTestTaster:3" => array(
+         "OID" => 24303, 
+         "Adresse" => "OEQ0311350:3", 
+         "Name" => "ArbeitszimmerTestTaster:3", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "INSTALL_TEST" => array(
+                              "OID" => "29475", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "40350", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "43506", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "46440", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "24304", 
+                              "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "ArbeitszimmerTaster:4" => array(
          "OID" => 54513, 
          "Adresse" => "000B5569A28100:4", 
@@ -1957,13 +2196,45 @@ function HomematicList() { return array(
          "EmulateStatus" => "1", 
          "Device" => "TYPE_BUTTON", 
          "COID" => array(
+                "PRESS_SHORT" => array(
+                              "OID" => "29047", 
+                              "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "21462", 
                               "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
+             	),
+      	),
+"ArbeitszimmerTestTaster:6" => array(
+         "OID" => 10893, 
+         "Adresse" => "OEQ0311350:6", 
+         "Name" => "ArbeitszimmerTestTaster:6", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_BUTTON", 
+         "Device" => "TYPE_BUTTON", 
+         "COID" => array(
+                "PRESS_LONG" => array(
+                              "OID" => "16102", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
                 "PRESS_SHORT" => array(
-                              "OID" => "29047", 
+                              "OID" => "50054", 
                               "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "INSTALL_TEST" => array(
+                              "OID" => "13889", 
+                              "Name" => "INSTALL_TEST", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "16902", 
+                              "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_CONT" => array(
+                              "OID" => "24880", 
+                              "Name" => "PRESS_CONT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1976,13 +2247,13 @@ function HomematicList() { return array(
          "EmulateStatus" => "1", 
          "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_LONG" => array(
-                              "OID" => "46008", 
-                              "Name" => "PRESS_LONG", 
-                              "Typ" => "2",), 
                 "PRESS_SHORT" => array(
                               "OID" => "27308", 
                               "Name" => "PRESS_SHORT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "46008", 
+                              "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
              	),
       	),
@@ -2093,6 +2364,8 @@ function getHomematicConfiguration() {
              "Wohnzimmer-Taster:4"                    => array("LEQ1059882",4,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "Badezimmer-Taster:1"                    => array("MEQ1084617",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "Wohnzimmer-Mediencenter"                => array("LEQ0538372",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
+             "ArbeitszimmerTestTaster:1"              => array("OEQ0311350",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
+             "ArbeitszimmerTestTaster:4"              => array("OEQ0311350",4,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "Homematic Dummy Schalter"               => array("JEQ0066960",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "Arbeitszimmer4fach:Schalter1"           => array("LEQ0627606",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "Kueche-Schalter-Ledlicht"               => array("JEQ0295555",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
@@ -2113,9 +2386,14 @@ function getHomematicConfiguration() {
              "Arbeitszimmer-Netzwerk:Energie"         => array("LEQ1346339",2,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "SchlafzimmerKastenlicht:Schalter"       => array("0001D3C9961817",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "Abwesenheits-Schalter:Verriegeln"       => array("IEQ0100238",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
+             "ArbeitszimmerTestTaster:5"              => array("OEQ0311350",5,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "Schlafzimmer-DimmerDeckenlampe"         => array("IEQ0039436",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_DIMMER),
              "GaestezimmerTischlampe:Schalter"        => array("0001D3C9961367",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
+             "ArbeitszimmerTest2:Schalter"            => array("0001D709900FD6",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
+             "ArbeitszimmerTestTaster:2"              => array("OEQ0311350",2,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "ArbeitszimmerTest:Schalter"             => array("0001D709900F6B",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
+             "ArbeitszimmerTestTaster:3"              => array("OEQ0311350",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
+             "ArbeitszimmerTestTaster:6"              => array("OEQ0311350",6,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
 );}
 
 ?>

@@ -473,11 +473,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 
 if ($_IPS['SENDER']=="Execute")
 	{	/* von der Konsole aus gestartet */
-	echo "--------------------------------------------------\n";
+	echo "--------------------------------------------------------------\n";
 	echo "        EXECUTE (Überprüfung mit Testwerten)\n";
+	echo "--------------------------------------------------------------\n\n";
 	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
 	
-	test();
+	test();		/* gibt die IDs von Anwesenheitsimulation, Nachrichten Script und Nachrichten Input aus.\n";
 	
 	// testweise Sprache ausgeben */
 	tts_play(1,"Claudia, ich hab dich so lieb.",'',2);
@@ -509,7 +510,8 @@ if ($_IPS['SENDER']=="Execute")
 				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
+				//$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
+				$status=Status($entry,GetValue($key),$key,true);
 				break;
 			case "Ventilator":
 			case "HeatControl":

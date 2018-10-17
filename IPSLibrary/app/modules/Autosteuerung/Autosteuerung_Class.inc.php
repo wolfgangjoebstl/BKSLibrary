@@ -1087,7 +1087,7 @@ class Autosteuerung
 				//$property=IPS_GetObject($found);
 				//if ( $property["ObjectType"]==6 ) $status=(integer)GetValue(IPS_GetLink($found)["TargetID"]);
 				$status=(integer)GetValue($found);
-				echo "    Status Heiztag : ".($status?"JA":"NEIN")."\n";
+				//echo "    Status Heiztag : ".($status?"JA":"NEIN")."\n";
 				}				
 			//print_r($childrenIDs);
 			return ($status);		
@@ -2630,7 +2630,7 @@ class Autosteuerung
 
 	public function ExecuteCommand($result,$simulate=false)
 		{
-		echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
+		//echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
@@ -2877,9 +2877,13 @@ class Autosteuerung
 				break;
 			}
 					
-		/******
+		/***********************************************************
 		 *
-		 *  und dann gesprochen
+		 * und dann gesprochen
+		 *
+		 * vordefinierte zwischen Hashtags gekennzeichnete Texte werden ausgewertet
+		 * #WERT#  #WERTBOOL#  #CHANGE#
+		 * nur Event Trigger Variablen vom Typ Variable werden ausgewertet. Es wird das Standard oder das Custom Profil ausgewertet
 		 *
 		 *****************/
 
@@ -2903,14 +2907,14 @@ class Autosteuerung
 						case "WERT":
 							$typObj=IPS_GetObject($result["SOURCEID"])["ObjectType"];
 							$formWert="";
-							echo "Speak Wert ".$result["STATUS"]." von ".$result["SOURCEID"]." Typ ".$typObj."   (";
+							echo "Speak Wert ".$result["STATUS"]." von ID ".$result["SOURCEID"]." vom Typ ".$typObj."   (";
 							//Objekt-Typ (0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link)
 							switch ($typObj)
 								{
 								case 0: echo "Kategorie"; break;
 								case 1: echo "Instanz"; break;
 								case 2: 
-									echo "Variable  "; 
+									echo "Variable->"; 
 									$typWert=IPS_GetVariable($result["SOURCEID"])["VariableType"];
 									switch ($typWert)
 										{
@@ -2932,7 +2936,7 @@ class Autosteuerung
 								{
 								/* Sprachausgabe einer Variable	*/
 								if ($formWert == "") echo ")\n";	
-								else echo "  ".$formWert."   ".GetValueFormatted($result["SOURCEID"]).")\n";
+								else echo "   Profil ".$formWert." , formatiert \"".GetValueFormatted($result["SOURCEID"])."\")\n";
 								if ($typWert==2)
 									{
 									/* vom Typ Float */
@@ -2943,6 +2947,7 @@ class Autosteuerung
 								switch ($formWert)
 									{
 									case "~Temperature":
+									case "Temperatur":
 										$wert.=" Grad";
 										break;
 									default: 
@@ -3419,11 +3424,11 @@ abstract class AutosteuerungFunktionen
 				$handle3=fopen($this->log_File, "a");
 				fwrite($handle3, date("d.m.y H:i:s").";Meldung\r\n");
  				fclose($handle3);
-				echo "construct class Anwesenheitssimulation, Filename angelegt. Verzeichnis für Logfile : ".$this->log_File."\n";
+				//echo "construct class Anwesenheitssimulation, Filename angelegt. Verzeichnis für Logfile : ".$this->log_File."\n";
 				}
 			else
 				{
-				echo "construct class Anwesenheitssimulation, Filename vorhanden. Verzeichnis für Logfile : ".$this->log_File."\n";
+				//echo "construct class Anwesenheitssimulation, Filename vorhanden. Verzeichnis für Logfile : ".$this->log_File."\n";
 				}		
 			}
 		}																												
@@ -3433,6 +3438,7 @@ abstract class AutosteuerungFunktionen
 		/*momentan nur durchreichen */
 		$this->InitMesagePuffer($type,$profile);
 		}
+		
 	abstract function InitMesagePuffer($type,$profile);
 			
 	abstract function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl); 	
@@ -3792,7 +3798,14 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
  *
  * Stromheizung in der Autosteuerung
  *
- * Routinen zur Stromheizungssteuerung
+ * Routinen zur Stromheizungssteuerung aufgebaut auf die Standard Autosteuerungsklasse die kleine Nachrichtenspeicher aufbaut
+ * zusaetzlich wird auch in Files gelogged. Hier werden beim AUfruf die Logging und Nachrichtenspeicher Default genutzt.
+ * Default bedeutet ohne
+ *
+ * es werden statt Nachrichten ein Kalendar dargestellt
+ * im construct muss Init() aufgerufen werden das eigentlich nur $this->scriptIdHeatControl bestimmt.
+ * dann InitLogMessage() dass bei Defaultwert kein Logfile anlegt
+ * dann InitLogNachrichten das InitMesagePuffer($type,$profile) aufruft.
  *
  **************************************************************************************************************/
 
@@ -3820,19 +3833,69 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		$this->InitLogMessage();
 		
 		/******************************* Nachrichten Logging *********/
-		$type=1;$profile="AusEin"; $this->zeile=array();
-		$this->InitLogNachrichten($type,$profile);          /*  ruft das Geraete spezifische InitMesagePuffer() auf */
+		$this->zeile=array();		
+		//$type=1;$profile="AusEin"; 		/* Umstellen auf Boolean und Standard Profil für bessere Darstellung Mobile Frontend*/
+		$type=0;$profile="~Switch";
+		$this->InitLogNachrichten($type,$profile);          	/*  ruft das Geraete spezifische InitMesagePuffer() auf */
 		}
+
+	/*************
+	 *
+	 * schreibt einen Link mit aktuellem Datum auf zeile1 bis zeile16
+	 * $i		Zeilennummer (1-16)
+	 * $type	Type Boolen, Integer, Float oder String
+	 * $vid	parent in der die Zeile1 bis zeile16 angelegt werden
+	 * $profile	wenn notwendig
+	 * $sctriptIdHeatControl	ist das Action Script
+	 *
+	 *****************************************/
 
 	function WriteLink($i,$type,$vid,$profile,$scriptIdHeatControl)
 		{
-		$this->zeile[$i] = CreateVariable("Zeile".$i,$type,IPS_GetParent($vid), $i*10,$profile,$scriptIdHeatControl,0 );
-		IPS_SetHidden($this->zeile[$i],true);
-		CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $vid,  $i*10);		
+		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$this->zeile[$i]=@IPS_GetObjectIDByName("Zeile".$i,$vid);
+		if ($this->zeile[$i]==false) 
+			{
+			echo "Variable mit Name Zeile$i in $vid (".IPS_GetName($vid).") mit $profile neu anlegen.\n";			
+			$this->zeile[$i] = CreateVariable2("Zeile".$i,$type,$vid, $i*10,$profile,$scriptIdHeatControl);
+			}
 		}
 
+	function CreateLink($i,$sourceCategory,$linkCategory)
+		{
+		//$this->zeile[$i] = CreateVariable("Zeile".$i,$type,IPS_GetParent($vid), $i*10,$profile,$scriptIdHeatControl,0 );
+		//IPS_SetHidden($this->zeile[$i],true);
+
+		$this->zeile[$i] = @IPS_GetObjectIDByName("Zeile".$i,$sourceCategory);
+		if ($this->zeile[$i]) CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $linkCategory,  (($i*10)+100));		
+		}
+
+	function UpdateLinks($linkCategory)
+		{
+		for ($i=1;$i<17;$i++)
+			{
+			if ($this->zeile[$i]) 
+				{
+				CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $linkCategory, (($i*10)+100));
+				}
+			}		
+		}
+		
+	function getWochenplanID()
+		{	
+		return(@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id));
+		}
+
+	/************************
+	 *
+	 * wird mit construct automatisch aufgerufen. Ist in InitLogNachrichten($type,$profile) enthalten
+	 * wenn construct mit Defaultwerten aufgerufen wird kommt die Kategorie Wochenplan-Stromheizung zur Anwendung
+	 *
+	 ***********************************************/
+	 
 	function InitMesagePuffer($type=1,$profile="AusEin")
 		{
+		$fatalerror=false;
 		if ($this->nachrichteninput_Id != "Ohne")
 			{
 			// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
@@ -3848,43 +3911,61 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			//echo "  Kategorien, Variablen und Links im Datenverzeichnis Autosteuerung : ".$CategoryIdData."  (".IPS_GetName($CategoryIdData).")\n";
 			$this->nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
 			}		
-		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);	
+		$vid=$this->getWochenplanID();	
 		if ($vid==false) 
-            {
-            echo "Fatal Error !!!!\n";
-            $fatalerror=true;
-            }
-        else 
-            {    
-			//EmptyCategory($vid);			
-			for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }
-            }
+			{
+			echo "Fatal Error !!!!\n";
+			$fatalerror=true;
+			}
+		else 
+			{    
+			//EmptyCategory($vid);
+			$vid=IPS_GetParent($vid);	/* Wochenplan ist nur für die lokalen links auf die Heiztage Register */
+			//echo "Init MessagePuffer in construct with Typ $type und Profil $profile in Kategorie $vid (".IPS_GetName($vid).")\n";			
+			for ($i=1; $i<17;$i++)	
+				{
+				//echo $i."  "; 
+				$this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); 		/* schreibt die Zeile Register */
+				}
+			}
+		return($fatalerror);	
 		}	
 		
 	function ShiftforNextDay($message=0)
 		{
 		if ($this->nachrichteninput_Id != "Ohne")
 			{
-            if (@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id) != false)
-                {
-    			//print_r($this->zeile);
-	    		for ($i=1; $i<16;$i++) 
-		    		{ 
-			    	SetValue($this->zeile[$i],GetValue($this->zeile[$i+1])); 
-				    //echo "Wert : ".$i."\n";
-    				}
-	    		SetValue($this->zeile[$i],$message);
-                }
+			if ($this->getWochenplanID() != false)
+				{
+				//print_r($this->zeile);
+				for ($i=1; $i<16;$i++) 
+					{ 
+					SetValue($this->zeile[$i],GetValue($this->zeile[$i+1])); 
+					//echo "Wert : ".$i."\n";
+					}
+				SetValue($this->zeile[$i],$message);
+				}
 			}		
 		}
 
-	function SetupKalender()
+	function SetupKalender($type=1,$profile="AusEin")
 		{
-		$type=1;$profile="AusEin";
-		$vid=@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id);
-		if ($vid==false) $fatalerror=true;
-		EmptyCategory($vid);			
-		for ($i=1; $i<17;$i++)	{ $this->WriteLink($i,$type,$vid,$profile,$this->scriptIdHeatControl); }		
+		/* alles loeschen und neu aufbauen */
+		$vid=$this->getWochenplanID();
+		$pvid=IPS_GetParent($vid);
+		EmptyCategory($vid);	
+		EmptyCategory($pvid);	
+		echo "Kategorien geloescht. Neu anlegen mit Typ ".$type." und Profil ".$profile."\n";
+		$vid=CreateVariable("Wochenplan",3,$pvid, 0,'',null,'');				
+		for ($i=1; $i<17;$i++)	
+			{
+			//echo $i."  ";
+			/* Create Variable macht Probleme mit den Profilen. Besser createVariable2 verwenden */ 
+			$this->zeile[$i] = CreateVariable2("Zeile".$i,$type,$pvid, $i*10,$profile,$this->scriptIdHeatControl,0 );
+			IPS_SetHidden($this->zeile[$i],true);
+			$this->CreateLink($i,$pvid,$vid); 
+			}
+		//echo "\n";			
 		}
 
 	}
@@ -3903,21 +3984,21 @@ function setEventTimer($name,$delay,$command)
 	{
 	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
 	IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
-  	$now = time();
-   $EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
-   if ($EreignisID === false)
+	$now = time();
+	$EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
+	if ($EreignisID === false)
 		{ //Event nicht gefunden > neu anlegen
-      $EreignisID = IPS_CreateEvent(1);
-      IPS_SetName($EreignisID,$name."_EVENT");
-      IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-     	}
-   IPS_SetEventActive($EreignisID,true);
-   IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
+		$EreignisID = IPS_CreateEvent(1);
+		IPS_SetName($EreignisID,$name."_EVENT");
+		IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+		}
+	IPS_SetEventActive($EreignisID,true);
+	IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
 	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
 	/* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
-   IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
-   IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
-   IPS_SetEventScript($EreignisID,$command);
+	IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
+	IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
+	IPS_SetEventScript($EreignisID,$command);
 	}
 
 /*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                */
@@ -4203,7 +4284,7 @@ function Status($params,$status,$variableID,$simulate=false)
 				{
 				if ($result["DELAY"]>0)
 					{
-					echo "Execute Command Delay, Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+					echo "Execute Command Delay, Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
 					//print_r($result);
 					if ($simulate==false)
 						{

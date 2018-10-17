@@ -1804,16 +1804,23 @@ function CreateVariableByName2($name, $type,$profile,$action,$visible)
     return $vid;
 }
 
-/* Original wird im Library Modul Manager verwendet */
+/************************************
+ *
+ * Original wird im Library Modul Manager verwendet 
+ * Aufruf mit CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
+ *
+ *
+ *
+ **********************************************************/
 
 function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault=null, $Icon='')
-{
-
+	{
 		$VariableId = @IPS_GetObjectIDByIdent(Get_IdentByName2($Name), $ParentId);
-		echo "CreateVariable ".$Name." unter der Parent ID ".$ParentId." mit aktuellem Wert ".$ValueDefault." \n";
+		//echo "CreateVariable2: erzeuge Variable mit Name ".$Name." unter der Parent ID ".$ParentId." (".IPS_GetName($ParentId).") mit aktuellem Wert ".$ValueDefault." und Profil $Profile.\n";
 		if ($VariableId === false) $VariableId = @IPS_GetVariableIDByName($Name, $ParentId);
 		if ($VariableId === false)
-		{
+			{
+			//echo "    erzeuge neu !\n";
  			$VariableId = IPS_CreateVariable($Type);
 			IPS_SetParent($VariableId, $ParentId);
 			IPS_SetName($VariableId, $Name);
@@ -1823,37 +1830,43 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
  			IPS_SetVariableCustomAction($VariableId, $Action);
 			IPS_SetIcon($VariableId, $Icon);
 			if ($ValueDefault===null)
-			{
-			   switch($Type)
 				{
-			      case 0: SetValue($VariableId, false); break; /*Boolean*/
-			      case 1: SetValue($VariableId, 0); break; /*Integer*/
-			      case 2: SetValue($VariableId, 0.0); break; /*Float*/
-			      case 3: SetValue($VariableId, ""); break; /*String*/
-			      default:
-			   }
-			}
+				switch($Type)
+					{
+					case 0: SetValue($VariableId, false); break; /*Boolean*/
+					case 1: SetValue($VariableId, 0); break; /*Integer*/
+					case 2: SetValue($VariableId, 0.0); break; /*Float*/
+					case 3: SetValue($VariableId, ""); break; /*String*/
+					default:
+					}
+				}
 			else
-			{
+				{
 				SetValue($VariableId, $ValueDefault);
-			}
+				}
 
 			//Debug ('Created VariableId '.$Name.'='.$VariableId."");
-		}
+			}
 		$VariableData = IPS_GetVariable ($VariableId);
 		if ($VariableData['VariableCustomProfile'] <> $Profile)
-		{
+			{
 			//Debug ("Set VariableProfile='$Profile' for Variable='$Name' ");
+			//echo "Set VariableProfile='$Profile' for Variable='$Name' \n";
 			IPS_SetVariableCustomProfile($VariableId, $Profile);
-		}
+			}
+		else 
+			{
+			//echo "Aktuelles Profil ist :".$VariableData['VariableCustomProfile']."\n";
+			}	
 		if ($VariableData['VariableCustomAction'] <> $Action)
-		{
+			{
 			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+			//echo "Set VariableCustomAction='$Action' for Variable='$Name' \n";
 			IPS_SetVariableCustomAction($VariableId, $Action);
-		}
+			}
 		UpdateObjectData2($VariableId, $Position, $Icon);
 		return $VariableId;
-}
+	}
 
 /******************************************************************/
 
@@ -3138,7 +3151,7 @@ function read_wfc()
 
 /***********************************************************************************
  *
- * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
+ * verwendet zum schnellen und einheitlichen Anlegen der Variablen und Events für CustomComponents, RemoteAccess und EvaluateHeatControl 
  * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
  *
  * Elements		Objekte aus EvaluateHardware, alle Homematic, alle FS20 etc.
@@ -3148,10 +3161,22 @@ function read_wfc()
  * 
  * Ergebnis: ein zusaetzliches Event wurde beim Messagehandler registriert
  *
+ * funktioniert für Humidity, Temperature, Heat Control Actuator und Heat Control Set
+ * wenn RemoteAccess Modul installiert ist werden die Variablen auch auf den Remote Vis Servern angelegt
+ * die Erkennung ob es sich um das richtige Gerät handelt erfolgt über Keywords, die auch ein Array sein können:
+ * 		Die Untervariablen(Children/COID einer Instanz werden verglichen ob einer der Variablen wie das keyword heisst
+ * 		bei einem Array gilt die Und Verknüpfung - also Variablen für alle Keywords muessen vorhanden sein.
+ * 		das Keyword kann auch ein Device Type sein, Evaluate Hardware speichert unter Device einen Device TYP ab
+ *			TYPE_BUTTON, TYPE_CONTACT, TYPE_METER_POWER, TYPE_METER_TEMPERATURE, TYPE_MOTION
+ *			TYPE_SWITCH, TYPE_DIMMER, 
+ *			TYPE_ACTUATOR	setzt $keyword auf VALVE_STATE 
+ *			TYPE_THERMOSTAT	setzt $keyword auf SET_TEMPERATURE, SET_POINT_TEMPERATURE, TargetTempVar wenn die COID Objekte auch vorhanden sind.
+ *
  ****************************************************************************************/
 		
 	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
 		{
+		$heatcontrol=false;
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedModules=$moduleManager->GetInstalledModules();
 		$remServer=array();
@@ -3168,7 +3193,8 @@ function read_wfc()
 				}							
 			}
 		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			
+		
+		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
 		foreach ($Elements as $Key)
 			{
 			$count=0; $found=false;
@@ -3194,15 +3220,17 @@ function read_wfc()
 				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
 				if ($Key["Device"] == $keyword)
 					{
-					$found=true;
+					$found=true; 
 					switch ($keyword)
 						{
 						case "TYPE_ACTUATOR":
-							if (isset($Key["COID"]["LEVEL"]["OID"]) == true) 
+							/* if (isset($Key["COID"]["LEVEL"]["OID"]) == true) 
 								{
 								$keyword="LEVEL";
 								}
-							elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+							else  */
+							if (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+							$heatcontrol=true;
 							break;
 						default:	
 							if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
@@ -3216,16 +3244,19 @@ function read_wfc()
 			switch (strtoupper($keyword))
 				{
 				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
+				case "SET_POINT_TEMPERATURE":
 				case "SET_TEMPERATURE":
 					$variabletyp=2; 		/* Float */
 					$index="HeatSet";
-					$profile="TemperaturSet";
+					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+					$profile="~Temperatur";
 					break;				
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
 					$variabletyp=2; 		/* Float */
 					$index="Temperatur";
-					$profile="Temperatur";
+					//$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+					$profile="~Temperatur";
 					break;
 				case "POSITIONVAR":
 					$variabletyp=2; 		/* Float */
@@ -3251,16 +3282,16 @@ function read_wfc()
 			if ($found)
 				{		
 				//echo "********** ".$Key["Name"]."\n";
-				print_r($Key);
+				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
 				$vartyp=IPS_GetVariable($oid);
 				if ($vartyp["VariableProfile"]!="")
 					{
-					echo "  ".str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					echo "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 					}
 				else
 					{
-					echo "  ".str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					echo "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 					}
 
 				/* check, es sollten auch alle Quellvariablen gelogged werden */
@@ -3271,7 +3302,14 @@ function read_wfc()
 					AC_SetAggregationType($archiveHandlerID,$oid,0);
 					IPS_ApplyChanges($archiveHandlerID);
 					echo "Variable ".$oid." Archiv logging für Register aktiviert.\n";
-					}					
+					}
+				if ( (isset ($installedModules["DetectMovement"])) && $heatcontrol )
+					{
+					IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+					IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');					
+					$DetectHeatControlHandler = new DetectHeatControlHandler();						
+					$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+					}										
 				if (isset ($installedModules["RemoteAccess"]))
 					{					
 					$parameter="";
@@ -3313,7 +3351,15 @@ function read_wfc()
 			} /* Ende foreach */		
 		}	
 		
-		
+		function selectProtocol($protocol,$devicelist)
+			{
+			$result=array();
+			foreach ($devicelist as $index => $device)
+				{
+				if ($device["Protocol"]==$protocol) $result[$index]=$device;
+				}
+			return ($result);
+			}	
 		
 		
 /******************************************************************
@@ -3404,7 +3450,7 @@ class ModuleHandling
 			}
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind ausgeben */
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben */
 	public function printInstances($input)
 		{
 		$input=trim($input);
@@ -3427,7 +3473,7 @@ class ModuleHandling
 		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
-/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben */
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben */
 	public function getInstances($input)
 		{
 		$input=trim($input);

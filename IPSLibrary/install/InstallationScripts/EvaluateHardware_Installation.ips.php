@@ -232,8 +232,8 @@
 	echo "\n";
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
 	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
-	//IPS_RunScript($scriptIdEvaluateHardware);
-	
+	IPS_RunScript($scriptIdEvaluateHardware);
+	echo "Script Evaluate Hardware gestartet wird parallel 
 	
 	
 	

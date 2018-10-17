@@ -67,6 +67,40 @@
 
 /*******************************
  *
+ * Initialisierung für Monitor On/Off Befehle. Scripts verwenden wenn im Pfad ein Blank vorkommt.
+ *
+ ********************************/
+
+	echo "\n";
+	echo "Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";
+	echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC.\n";
+
+	$verzeichnis="C:/scripts/";
+	$unterverzeichnis="process/";
+	if (is_dir($verzeichnis.$unterverzeichnis))
+		{
+		}
+	else
+		{
+		mkdir($verzeichnis.$unterverzeichnis);	
+		}
+	if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
+	else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
+	if ( isset($configuration["Directories"]["Playlist"]) == true ) $playlist=$configuration["Directories"]["Playlist"];	
+	else $playlist=" C:\Scripts\Fernsehprogramme\Technisat.m3u";
+	$handle2=fopen($verzeichnis.$unterverzeichnis."start_vlc.bat","w");
+	fwrite($handle2,'"'.$command.'"  "'.$playlist.'"'."\r\n");
+	fwrite($handle2,'pause'."\r\n");
+	fclose($handle2);
+
+	echo "Schreibe Batchfile zum automatischen Stopp von VLC.\n";
+	$handle2=fopen($verzeichnis.$unterverzeichnis."kill_vlc.bat","w");
+	fwrite($handle2,'c:/Windows/System32/taskkill.exe /im vlc.exe');
+	fwrite($handle2,"\r\n");
+	fclose($handle2);
+
+/*******************************
+ *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
  *
  ********************************/

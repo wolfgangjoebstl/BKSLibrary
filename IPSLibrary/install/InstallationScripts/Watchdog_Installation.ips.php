@@ -1,11 +1,11 @@
 <?
 
-	/**@defgroup Sprachsteuerung
+	/**@defgroup Watchdog
 	 *
-	 * Script um automatisch irgendetwas ein und auszuschalten
+	 * Script um automatisch beim Hoch- und Runterfahren irgendetwas ein und auszuschalten
 	 *
 	 *
-	 * @file          Sprachsteuerungung_Installation.ips.php
+	 * @file          Watchdog_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 07.12.2014<br/>
@@ -15,12 +15,11 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) {
+	if (!isset($moduleManager)) 
+		{
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
-		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Watchdog',$repository);
-	}
+		}
 
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPS','2.50');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
@@ -68,13 +67,13 @@
 	//Alle Modulnamen mit GUID ausgeben
 	foreach(IPS_GetModuleList() as $guid)
 		{
-    	$module = IPS_GetModule($guid);
-    	$pair[$module['ModuleName']] = $guid;
+		$module = IPS_GetModule($guid);
+		$pair[$module['ModuleName']] = $guid;
 		}
 	ksort($pair);
 	foreach($pair as $key=>$guid)
 		{
-    	//echo $key." = ".$guid."\n";
+		//echo $key." = ".$guid."\n";
 		}
 
 $name=IPS_GetModule("{ED573B53-8991-4866-B28C-CBE44C59A2DA}");
@@ -133,14 +132,14 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 		IPS_SetParent($tim2ID, $scriptIdAliveWD);
 		IPS_SetName($tim2ID, "KeepAlive");
 		IPS_SetEventCyclic($tim2ID,0,1,0,0,1,15);      /* alle 15 sec */
-  		IPS_SetEventActive($tim2ID,true);
+		IPS_SetEventActive($tim2ID,true);
 		IPS_SetEventCyclicTimeFrom($tim2ID,0,0,12);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim2ID, 0, 0, 0);
-	   echo "   Timer Event KeepAlive neu angelegt. Timer 15 sec ist bereits aktiviert.\n";
+		echo "   Timer Event KeepAlive neu angelegt. Timer 15 sec ist bereits aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event KeepAlive bereits angelegt. Timer 15 sec ist aktiviert.\n";
+		{
+		echo "   Timer Event KeepAlive bereits angelegt. Timer 15 sec ist aktiviert.\n";
 		IPS_SetEventCyclicTimeFrom($tim2ID,0,0,12);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim2ID, 0, 0, 0);		
   		}
@@ -155,11 +154,11 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
   		//IPS_SetEventActive($tim3ID,true);
 		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim3ID, 0, 0, 0);		
-	   echo "   Timer Event StartWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		echo "   Timer Event StartWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event StartWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		{
+		echo "   Timer Event StartWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		IPS_SetEventCyclicTimeFrom($tim3ID,0,3,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim3ID, 0, 0, 0);	
   		}
@@ -173,12 +172,12 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,1,60);      /* alle 60 sec */
   		//IPS_SetEventActive($tim4ID,true);
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);  /* damit die Timer hintereinander ausgeführt werden */
-	   IPS_SetEventCyclicTimeTo($tim4ID, 0, 0, 0);
+		IPS_SetEventCyclicTimeTo($tim4ID, 0, 0, 0);
 		echo "   Timer Event StopWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event StopWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		{
+		echo "   Timer Event StopWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim4ID, 0, 0, 0);		
   		}
@@ -193,11 +192,11 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
   		//IPS_SetEventActive($tim5ID,true);
 		IPS_SetEventCyclicTimeFrom($tim5ID,0,5,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim5ID, 0, 0, 0);
-	   echo "   Timer Event ShutdownWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		echo "   Timer Event ShutdownWD neu angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		}
 	else
-	   {
-	   echo "   Timer Event ShutdownWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
+		{
+		echo "   Timer Event ShutdownWD bereits angelegt. Timer 60 sec ist noch nicht aktiviert.\n";
 		IPS_SetEventCyclicTimeFrom($tim5ID,0,5,0);  /* damit die Timer hintereinander ausgeführt werden */
 		IPS_SetEventCyclicTimeTo($tim5ID, 0, 0, 0);		
   		}
@@ -211,12 +210,12 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	$verzeichnis="C:/scripts/";
 	$unterverzeichnis="process/";
 	if (is_dir($verzeichnis.$unterverzeichnis))
-   	{
-      }
-   else
 		{
-	   mkdir($verzeichnis.$unterverzeichnis);
-   	}
+		}
+	else
+		{
+		mkdir($verzeichnis.$unterverzeichnis);	
+		}
 
 
 	$configWD=Watchdog_Configuration();

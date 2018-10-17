@@ -49,6 +49,17 @@
 		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
 	//echo $inst_modules."\n";
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
+	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
+	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
+	
+	$eventType='OnChange';
+	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -125,7 +136,6 @@
 		}
 
 	echo "\n";
-
 	$WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
 	if ($WFC10User_Enabled==true)
 		{
@@ -154,6 +164,7 @@
 		echo "  TabOrder      : ".$WFC10User_TabOrder."\n";
 		}		
 
+	echo "\n";
 	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
 	if ($Mobile_Enabled==true)
 		{	
@@ -169,14 +180,6 @@
 		echo "Retro \n";
 		echo "  Path          : ".$Retro_Path."\n";		
 		}	
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
-	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-	$scriptIdHeatControl   = IPS_GetScriptIDByName('Autosteuerung_HeatControl', $CategoryIdApp);
-	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 
 /*******************************
  *
@@ -257,10 +260,6 @@
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   	echo "Profil ".$pname." erstellt;\n";
 		}
-
-	$eventType='OnChange';
-
-	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
 
 /*******************************
  *
@@ -472,12 +471,12 @@
 					else $webfront_links[$AutosteuerungID]["TABNAME"]='Wochenplan'; 						
 					}
 				$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
-				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
-				$vid=CreateVariable("Wochenplan",3,$categoryId_Wochenplan, 0,'',null,'');				
-				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;
 				$kalender=new AutosteuerungStromheizung();
-				$kalender->SetupKalender();	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
-				
+				$kalender->SetupKalender(0,"~Switch");	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
+				$vid=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);				
+				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;
+								
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
@@ -631,7 +630,14 @@
 
 	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
 	print_r($webfront_links);
-	
+	$tabs=array();
+	foreach ($webfront_links as $OID => $webfront_link)
+		{
+		$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
+		}
+	echo "\nWebfront Tabs anlegen:\n";
+	print_r($tabs);	
+			
 	if ($WFC10_Enabled)
 		{
 		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen, redundant sollte in allen Install sein um gleiche Strukturen zu haben 
@@ -676,13 +682,6 @@
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
-		$tabs=array();
-		foreach ($webfront_links as $OID => $webfront_link)
-			{
-			$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
-			}
-		echo "\nWebfront Tabs anlegen:\n";
-		print_r($tabs);	
 		$i=0;
 		foreach ($tabs as $tab)
 			{
@@ -713,9 +712,6 @@
 				}
 			echo ">>Kategorien erstellt fuer ".$tab.", Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n\n";
 			}
-
-		ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
-
 		}
 
 	/*******************************************************
@@ -746,9 +742,19 @@ else
 	define ('IPSHEAT_WFCLINKS',			'WFCLinks');
 	}
 			
-	$webFrontConfig = Autosteuerung_GetWebFrontConfiguration();
+	$webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration();
 	if ($WFC10_Enabled) 
 		{
+		if ( isset($webFrontConfiguration["Administrator"]) == true )
+			{	/* neue Art der Konfiguration */
+			$webFrontConfig=$webFrontConfiguration["Administrator"];
+			echo "Neue Webfront Konfiguration mit Unterscheidung Administrator, User und Mobile.\n";
+			}
+		else
+			{	/* alte Art der Konfiguration */
+			echo "Alte Webfront Konfiguration nur für Administrator.\n";
+			$webFrontConfig=$webFrontConfiguration;
+			}
 		/* Default Path ist Visualization.WebFront.Administrator.Autosteuerung, die folgenden beiden Befehle wurden weiter oben bereits durchgeführt */
 		//$categoryId_WebFrontAdministartor                = CreateCategoryPath($WFC10_Path);
 		//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
@@ -859,20 +865,53 @@ else
 			}
 
 		foreach ($webfront_links as $OID => $webfront_link)
-		   {
-		   if ($webfront_link["USER"]==true)
+			{
+			if ($webfront_link["USER"]==true)
 				{
 				echo "User CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryId_WebFrontUser."\n";
 				CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryId_WebFrontUser,  10);
 				}
 			}
-
 		}
 
 	if ($Mobile_Enabled)
 		{
-		echo "\nWebportal Mobile installieren: \n";
-		$categoryId_MobileWebFront         = CreateCategoryPath($Mobile_Path);
+		$categoryId_MobileWebFront=CreateCategoryPath("Visualization.Mobile");
+		echo "====================================================================================\n";		
+		echo "\n";
+		echo "Webportal Mobile Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in der Kategorie ". $categoryId_MobileWebFront." (".IPS_GetName($categoryId_MobileWebFront).")\n";
+		echo "Webportal Mobile.Autosteuerung Datenstruktur installieren in: ".$Mobile_Path." \n";
+		$categoryId_WebFrontMobile         = CreateCategoryPath($Mobile_Path);
+		EmptyCategory($categoryId_WebFrontMobile);
+		$i=0;
+		foreach ($tabs as $tab)
+			{
+			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontMobile, 100);
+			$i++;
+			foreach ($webfront_links as $OID => $webfront_link)
+				{
+				if ( ($webfront_link["MOBILE"]==true) && ($webfront_link["TAB"]==$tab) )
+					{
+					echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdTab."\n";
+					CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdTab,  10);
+					if ( isset( $webfront_link["OID_R"]) == true )
+						{
+						echo "Link aufbauen von ".$webfront_link["OID_R"]." in ".$categoryIdTab." Name Quelle: ".IPS_GetName($webfront_link["OID_R"])."\n";
+						if (IPS_GetName($webfront_link["OID_R"])=="Wochenplan")
+							{
+							$nachrichteninput_Id=@IPS_GetObjectIDByName("Wochenplan-Stromheizung",$CategoryIdData);
+							for ($i=1;$i<17;$i++)
+								{
+								$zeile = IPS_GetVariableIDbyName("Zeile".$i,$nachrichteninput_Id);
+								CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $zeile, $categoryIdTab,  $i*10);
+								}
+							}
+						else CreateLinkByDestination("Nachrichtenverlauf", $webfront_link["OID_R"],    $categoryIdTab,  20);
+						}
+					}
+				}
+			echo ">>Kategorien fertig gestellt fuer ".$tab." (".$categoryIdTab.") \n\n";
+			}	
 		}
 
 	if ($Retro_Enabled)
@@ -880,6 +919,8 @@ else
 		echo "\nWebportal Retro installieren: \n";
 		$categoryId_RetroWebFront         = CreateCategoryPath($Retro_Path);
 		}
+
+	ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -991,6 +1032,9 @@ else
 		}
 	}
 
+
+	ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
+		
 	echo "================= ende webfront installation \n";
 
 

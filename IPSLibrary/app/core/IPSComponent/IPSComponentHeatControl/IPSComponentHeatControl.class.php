@@ -139,7 +139,6 @@
 				
 		function __construct($variable,$variablename=Null)
 			{
-			//echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
@@ -150,16 +149,17 @@
 				{
 				$this->variablename=$variablename;
 				}
+			echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$this->variable." mit dem Namen ".$this->variablename."\n";
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$CategoryIdData_Lib     = $moduleManager->GetModuleCategoryID('data');
-			echo "  Kategorien im aktuellen Datenverzeichnis:".$CategoryIdData_Lib."   ".IPS_GetName($CategoryIdData_Lib)."\n";
+			echo "  Kategorie Data im aktuellen Datenverzeichnis: ".$CategoryIdData_Lib."   ".IPS_GetName($CategoryIdData_Lib)."\n";
 
 			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im CustomComponents Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-			
+			echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+						
 			/* Create Category to store the HeatControl-Nachrichten */				
 			$name="HeatControl-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
@@ -186,7 +186,7 @@
 			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
-				echo "Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+				echo "  Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
 				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
 				$this->variableLogID=CreateVariable($this->variablename,1,$this->HeatControlAuswertungID, 10, "~Intensity.100", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -281,26 +281,31 @@
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectHeatControlHandler->ListGroups();
+				$groups=$DetectHeatControlHandler->ListGroups("HeatControl");
 				foreach($groups as $group=>$name)
 					{
 					echo "Gruppe ".$group." behandeln.\n";
 					$config=$DetectHeatControlHandler->ListEvents($group);
 					$status=(float)0;
+					$power=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)
 						{
+						$mirrorID=$DetectHeatControlHandler->getMirrorRegister($oid);
+						$variablename=IPS_GetName($mirrorID);
+						$mirrorPowerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID);						
 						$status+=GetValue($oid);
+						if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
 						$count++;
 						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status."\n";
+						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status." | ".GetValue($mirrorPowerID)."   ".$power."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
-					echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+					echo "Gruppe ".$group." hat neuen Status : ".$status." | ".$power."\n";
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
+					$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->HeatControlAuswertungID,100, "~Power", null, null);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
-					//SetValue($statusID,$status);
+					SetValue($statusID,$power);
 					}
 				}
 			

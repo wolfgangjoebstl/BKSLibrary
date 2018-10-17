@@ -52,19 +52,25 @@
 			{
 			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 			if ($position>6) { $state=true; } else { $state=false; }
-			echo "HandleEvent: SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
+			echo "iPSModuleHeatSet_All HandleEvent SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: SyncPosition mit Status '.($state?'On':'Off').' mit Wert '.$position);			
 			$componentParamsToSync = $componentToSync->GetComponentParams();
 			$deviceConfig          = IPSHeat_GetHeatConfiguration();
-			foreach ($deviceConfig as $deviceIdent=>$deviceData) {
+			foreach ($deviceConfig as $deviceIdent=>$deviceData) 
+				{
 				$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
 				$componentParamsConfig = $componentConfig->GetComponentParams();
-				if ($componentParamsConfig==$componentParamsToSync) {
+				$componentParamsConfig1=(string)explode(",",$componentParamsConfig)[1];
+				$componentParamsToSync1=(string)explode(",",$componentParamsToSync)[1];
+				//echo "Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
+				if ($componentParamsConfig1==$componentParamsToSync1) 
+					{
+					//echo "Parameter to Sync found : $componentParamsToSync1 \n";
 					$lightManager = new IPSHeat_Manager();
 					$lightManager->SynchronizePosition($deviceIdent, $state, $position);				
+					}
 				}
 			}
-		}
 	
 		/**
 		 * @public

@@ -697,6 +697,13 @@
 	echo "\n";
 	echo "Homematic Heat Actuators werden registriert.\n";
 
+	if (function_exists('HomematicList'))
+		{
+		installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
+		installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');
+		}
+		
+	if (false) {	
 	$Homematic = HomematicList();
 	$keyword="VALVE_STATE";
 	foreach ($Homematic as $Key)
@@ -707,9 +714,10 @@
 		 */
 		if (isset($Key["COID"][$keyword])==true)
 			{
-			if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
-			else $oid=(integer)$Key["COID"][$keyword]["OID"];			
-	     	$variabletyp=IPS_GetVariable($oid);
+			//if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
+			//else 
+			$oid=(integer)$Key["COID"][$keyword]["OID"];			
+			$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 				{
 				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
@@ -740,7 +748,7 @@
 
 			}  /* Ende isset Heatcontrol */
 		} /* Ende foreach */
-
+	} /***************** ende false */
 
 	$FHT = FHTList();
 	$keyword="PositionVar";

@@ -29,7 +29,8 @@ IPS_SetEventActive($tim1ID,true);
 
 *************************************************************/
 
-if ($_IPS['SENDER']=="Execute")
+echo "Aufruf gestartet von : ".$_IPS['SENDER']."\n";
+if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	{
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
