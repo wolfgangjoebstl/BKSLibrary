@@ -92,6 +92,21 @@
         if ( ($parent != "Administrator") && ($parent != "User") ) IPS_SetHidden($parent, true);
 		echo "Module ".$module." Vizualisation Path : ".$WFC10Module_Path." versteckt.\n";
 		}        
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Evaluierung Harwdare starten, CustomComponent baut darauf auf
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
+	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+	$CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
+	echo "\n";
+	echo "Die EvaluateHardware Scripts sind auf               ".$CategoryIdAppEH."\n";
+	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
+	echo "Evaluate Hardware hat die ScriptID                  ".$scriptIdEvaluateHardware." \n";
+	IPS_RunScriptWait($scriptIdEvaluateHardware);
+	echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet.\n";
 	
 /*******************************
  *
