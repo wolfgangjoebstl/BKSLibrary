@@ -1,16 +1,64 @@
 <?
 
+/*
+ * This file is part of the IPSLibrary.
+ *
+ * The IPSLibrary is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published
+ * by the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * The IPSLibrary is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+ */ 
 
-/* Herausfinden welche Hardware verbaut ist und in IPSComponent und IPSHOmematic bekannt machen
-	Define Files und Array function notwendig
-	
-*/
+/* EvaluateHardware
+ *
+ * Herausfinden welche Hardware verbaut ist und in IPSComponent und IPSHomematic bekannt machen
+ * Define Files und Array function notwendig
+ *
+ * wird regelmaessig taeglich um 1:10 aufgerufen. macht nicht nur ein Inventory der gesamten verbauten Hardware sondern versucht auch die Darstellung als Topologie
+ *	
+ */
 
 /******************************************************
+ *
+ *				INIT
+ *
+ *************************************************************/
+Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-				INIT
+IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-*************************************************************/
+IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
+
+$startexec=microtime(true);
+
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager))
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+	$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+	}
+$installedModules = $moduleManager->GetInstalledModules();
+if (isset($installedModules["DetectMovement"]))
+    {
+    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+    $Handler = new DetectDeviceHandler();
+    }
+
+if (isset($installedModules["OperationCenter"])) 
+    {
+    IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+    }
+
+//print_r($installedModules); 
 
 $tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
 if ($tim1ID==false)
@@ -24,10 +72,12 @@ if ($tim1ID==false)
 IPS_SetEventActive($tim1ID,true);
 
 /******************************************************
-
-				EXECUTE
-
-*************************************************************/
+ *
+ *				Aufruf von EXECUTE oder RUNSCRIPT
+ *
+ * soll nur einen Ueberblick ueber die gesammelten Daten geben eigentliche Erfassung kommt dann bei timer, diesen immer ausführen
+ *
+ *************************************************************/
 
 echo "Aufruf gestartet von : ".$_IPS['SENDER']."\n";
 if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
@@ -41,230 +91,13 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	echo "\n================================================================================================\n";
 	echo "Von der Konsole aus gestartet.\n";
 
-	$guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
-	//Auflisten
-	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
-	echo "\n================================================================================================\n";	
-	echo "Homematic Instanzen (Seriennummer:Kanal): ".sizeof($alleInstanzen)." (angeführt nach Kategorie OIDs, keine Zusammenfassung auf Geräte)\n\n";
-	$serienNummer=array();
-	foreach ($alleInstanzen as $instanz)
-		{
-		$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
-		switch (IPS_GetProperty($instanz,'Protocol'))
-			{
-			case 0:
-				$protocol="Funk";
-				break;
-			case 2:
-				$protocol="IP";
-				break;
-			default:
-				$protocol="Wired";
-				break;
-			}
-		$HM_Adresse=IPS_GetProperty($instanz,'Address');
-		$result=explode(":",$HM_Adresse);
-		$sizeResult=sizeof($result);
-		//print_r($result);
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name."\n";
-		if (isset($serienNummer[$HM_CCU_Name][$result[0]]))
-			{
-			$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]+=1;
-			}
-		else
-			{
-			$serienNummer[$HM_CCU_Name][$result[0]]["Anzahl"]=1;
-			$serienNummer[$HM_CCU_Name][$result[0]]["Values"]="";
-			}
-		$serienNummer[$HM_CCU_Name][$result[0]]["Name"]=IPS_GetName($instanz);
-		if ($sizeResult>1)
-			{
-			$serienNummer[$HM_CCU_Name][$result[0]]["OID:".$result[1]]=$instanz;
-			$serienNummer[$HM_CCU_Name][$result[0]]["Name:".$result[1]]=IPS_GetName($instanz);
-			}
-		else { echo "Fehler mit ".$result[0]."\n"; }			
-		$cids = IPS_GetChildrenIDs($instanz);
-		foreach($cids as $cid)
-			{
-			$o = IPS_GetObject($cid);
-			echo "   CID : ".$cid."  ".IPS_GetName($cid)."  ".date("d.m H:i",IPS_GetVariable($cid)["VariableChanged"])."\n";
-			if($o['ObjectIdent'] != "")
-				{
-				$serienNummer[$HM_CCU_Name][$result[0]]["Values"].=$o['ObjectIdent']." ";
-				}
-	    	}
-		}
+    if (isset($installedModules["OperationCenter"])) 
+        {
+        $DeviceManager = new DeviceManagement();
+        echo $DeviceManager->HomematicFehlermeldungen();
+	    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
+        }
 
-	echo "\n================================================================================================\n";
-	echo "Uebersicht Homematic CCUs und anstehende Fehlermeldungen:\n";
-	
-	$texte = Array(
-	    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
-    	"LOWBAT" => "Batterieladezustand gering",
-	    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
-   	 	"UNREACH" => "Gerätekommunikation aktuell gestört"
-	);
-
-	$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-	$HomInstanz=sizeof($ids);
-	if($HomInstanz == 0)
-		{
-		echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
-		}
-
-	for ($i=0;$i < $HomInstanz; $i++)
-		{
-		$ccu_name=IPS_GetName($ids[$i]);
-		echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   ".sizeof($serienNummer[$ccu_name])." Endgeräte angeschlossen.\n";
-		$msgs = HM_ReadServiceMessages($ids[$i]);
-		if($msgs === false)
-			{
-			echo "  ERROR: Verbindung zur CCU fehlgeschlagen!\n";
-			}
-		if(sizeof($msgs) == 0)
-			{
-			echo "  OK, keine Servicemeldungen!\n";
-			}
-		foreach($msgs as $msg)
-			{
-			if(array_key_exists($msg['Message'], $texte))
-				{
-  			  	$text = $texte[$msg['Message']];
-   				}
-			else
-				{
-  	  			$text = $msg['Message'];
-  				}
-			$id = GetInstanceIDFromHMID($msg['Address']);
-		  	if(IPS_InstanceExists($id))
-			 	{
-				$name = IPS_GetLocation($id);
-				}
-			else
-				{
-				$name = "Gerät nicht in IP-Symcon eingerichtet";
-	    		}
-		  	echo "  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
-			}
-		}
-
-	echo "\n================================================================================================\n";
-	echo "Auflistung der angeschlossenen Geräte per CCU:\n";
-	echo "\nInsgesamt gibt es ".sizeof($serienNummer)." Homematic CCUs.\n";
-	//print_r($serienNummer);
-	$serials=array();	
-	foreach ($serienNummer as $ccu => $geraete)
- 		{
-		echo "-------------------------------------------\n";
-	 	echo "  CCU mit Name :".$ccu."\n";
- 		echo "    Es sind ".sizeof($geraete)." Geraete angeschlossen. (Zusammenfassung nach Geräte, Seriennummer)\n";
-		foreach ($geraete as $name => $anzahl)
-			{
-			//echo "\n *** ".$name."  \n"; 
-			if ( isset($serials[$name])==true ) echo "  !!! Doppelter Eintrag.\n";
-				else $serials[$name]=$anzahl["Name"];
-			//print_r($anzahl);
-			$register=explode(" ",trim($anzahl["Values"]));
-			sort($register);
-			$registerNew=array();
-			echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
-			if (sizeof($register)>1)
-				{ /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
-				$oldvalue="";
-				foreach ($register as $index => $value)
-					{
-					//echo "    ".$value."  ".$oldvalue."\n";
-					if ($value!=$oldvalue) {$registerNew[]=$value;}
-					$oldvalue=$value;
-					}
-				//print_r($registerNew);
-				/* dann Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
-				sort($registerNew);
-				switch ($registerNew[0])
-					{
-					case "ACTIVE_PROFILE":
-						if ($registerNew[23]=="VALVE_ADAPTATION")
-							{
-							echo "Stellmotor-Heizkoerper\n";
-							}
-						else
-							{
-							echo "Funk-Wandthermostat\n";
-							}					
-					case "ERROR":
-						echo "Funk-Tür-/Fensterkontakt\n";
-						break;
-					case "INSTALL_TEST":
-						if ($registerNew[1]=="PRESS_CONT")
-							{
-							echo "Taster 6fach\n";
-							}
-						else
-							{
-							echo "Funk-Display-Wandtaster\n";
-							}
-						break;
-					case "ACTUAL_HUMIDITY":
-						echo "Funk-Wandthermostat\n";
-						break;
-					case "ACTUAL_TEMPERATURE":
-						echo "Funk-Heizkörperthermostat\n";
-						break;
-					case "BRIGHTNESS":
-						echo "Funk-Bewegungsmelder\n";
-						break;
-					case "INHIBIT":
-						echo "Funk-Schaltaktor 1-fach\n";
-						break;
-					case "DIRECTION":
-						echo "Funk-Rolladenansteuerung\n";
-						print_r($registerNew);	
-						break;
-					case "BOOT":
-						echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-						break;
-					case "HUMIDITY":
-						echo "Funk-Thermometer\n";
-						break;
-					case "CONFIG_PENDING":		/* modernes Register, alles gleich am Anfang */
-						switch ($registerNew[1])
-							{
-							case "DIRECTION":
-								echo "Funkaktor Dimmer\n";
-								break;
-							case "DUTYCYCLE":
-								echo "IP Funk-Schaltaktor\n";
-								break;
-							case "DUTY_CYCLE":
-								echo "IP Funk-Stellmotor\n";
-								break;								
-							case "DEVICE_IN_BOOTLOADER":
-							case "INSTALL_TEST":
-								echo "Funk-Taster\n";
-								break;
-							case "CURRENT":
-								echo "IP Funk-Schaltaktor Energiemessgeraet\n";
-								break;
-							default:	
-								echo "unknown\n";
-								print_r($registerNew);	
-								break;
-							}					
-						break;					
-					default:
-						echo "unknown\n";
-						print_r($registerNew);
-						break;
-					} /* ende switch */
-				} /* ende size too small */
-			else
-				{	
-				echo "not installed\n";
-				}	
-			}
-
-		}
-		
 	echo "\n================================================================================================\n";
 	echo "Auflistung der angeschlossenen Geräte nach Seriennummern. Es gibt insgesamt ".sizeof($serials).".\n";		
 	print_r($serials);
@@ -327,10 +160,12 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 //else
 
 /******************************************************
-
-				TIMER
-
-*************************************************************/
+ *
+ *				TIMER
+ *
+ * keine else mehr, immer ausführen, das heisst jeden Tag ein neues Inventory erstellen
+ *
+ *************************************************************/
 
 	{
 
@@ -340,21 +175,26 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	
 	$summary=array();		/* eine Zusammenfassung nach Typen erstellen */
 	
-	//$includefile='<?'."\n".'$fileList = array('."\n";
-	$includefile='<?'."\n";
+    echo "Auflistung aller Geraeteinstanzen:\n";
 	$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
 	foreach ($alleInstanzen as $instanz)
 		{
 		$result=IPS_GetInstance($instanz);
-		//echo IPS_GetName($instanz)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		//echo IPS_GetName($instanz)." ".$instanz." \n";
+        //echo IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
 		/* alle Instanzen dargestellt */
-		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($result['ModuleInfo']['ModuleName'],20)." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r(IPS_GetInstance($instanz));
 		}
 
+	//$includefile='<?'."\n".'$fileList = array('."\n";
+	$includefile='<?'."\n";
+
 	/************************************
 	 *
-	 *  Homematic Sockets auflisten, nur wenn vorhanden
+	 *  Zuerst wenn vorhanden die Homematic Sockets auflisten, dann kommen die geräte dran
+     *  damit kann die Konfiguration der CCU Anknüpfung wieder hergestellt werden
+     *  CCU Sockets werden als function HomematicInstanzen() dargestellt
 	 *
 	 ******************************************/
 
@@ -374,7 +214,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 			$ccu_name=IPS_GetName($ids[$i]);
 			echo "\nHomatic Socket ID ".$ids[$i]." / ".$ccu_name."   \n";
 			$config[$i]=json_decode(IPS_GetConfiguration($ids[$i]));
-			Print_r($config[$i]);
+			//print_r($config[$i]);
 			
 			//$config=IPS_GetConfigurationForm($ids[$i]);
 			//echo "    ".$config[$i]."\n";		
@@ -402,17 +242,20 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	foreach ($alleInstanzen as $instanz)
 		{
 		echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */            
+            
 		//echo IPS_GetName($instanz)." ".$instanz." \n";
 		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 		$includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 
-		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
-		if ($typedev<>"") 
-			{
-			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
-			$summary[$typedev][]=IPS_GetName($instanz);
-			}
+        if (isset($installedModules["OperationCenter"])) $typedev=$DeviceManager->getFS20DeviceType($instanz);  /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+        else $typedev="";
+	    if ($typedev<>"") 
+		    {
+		    $includefile.="\n         ".'"Device" => "'.$typedev.'", ';
+		    $summary[$typedev][]=IPS_GetName($instanz);
+            }    
 		
 		$includefile.="\n         ".'"COID" => array(';
 		$cids = IPS_GetChildrenIDs($instanz);
@@ -451,9 +294,11 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	echo "\nFS20EX Geräte: ".sizeof($alleInstanzen)."\n\n";
 	foreach ($alleInstanzen as $instanz)
 		{
+		echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
+		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */            
+            
 		//$FS20EXconfig=IPS_GetConfiguration($instanz);
 		//print_r($FS20EXconfig);
-		echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'DeviceList')."\n";
 
 		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 		$includefile.="\n         ".'"HomeCode" => \''.IPS_GetProperty($instanz,'HomeCode').'\', ';
@@ -461,7 +306,8 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 
-		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+        if (isset($installedModules["OperationCenter"])) $typedev=$DeviceManager->getFS20DeviceType($instanz);  /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+        else $typedev="";
 		if ($typedev<>"") 
 			{
 			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
@@ -504,6 +350,8 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	foreach ($alleInstanzen as $instanz)
 		{
 		echo str_pad(IPS_GetName($instanz),45)." ".$instanz." ".IPS_GetProperty($instanz,'HomeCode')." ".IPS_GetProperty($instanz,'Address').IPS_GetProperty($instanz,'SubAddress')." ".IPS_GetProperty($instanz,'EnableTimer')." ".IPS_GetProperty($instanz,'EnableReceive').IPS_GetProperty($instanz,'Mapping')."\n";
+		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */            
+            
 		//echo IPS_GetName($instanz)." ".$instanz." \n";
 		$includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
 		$includefile.="\n         ".'"HomeCode" => "'.IPS_GetProperty($instanz,'HomeCode').'", ';
@@ -512,7 +360,8 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
 		$includefile.="\n         ".'"CONFIG" => \''.IPS_GetConfiguration($instanz).'\', ';		
 
-		$typedev=getFS20DeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+        if (isset($installedModules["OperationCenter"])) $typedev=$DeviceManager->getFS20DeviceType($instanz);  /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+        else $typedev="";
 		if ($typedev<>"") 
 			{
 			$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
@@ -560,20 +409,26 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 		switch (IPS_GetProperty($instanz,'Protocol'))
 			{
 			case 0:
-				$protocol="Funk";
-				break;
-			case 2:
-				$protocol="IP";
-				break;
-			default:
-				$protocol="Wired";
-				break;
+					$protocol="Funk";
+					break;
+			case 1:
+				    $protocol="Wired";
+    				break;
+    		case 2:
+		    		$protocol="IP";
+			    	break;
+            default:
+	    			$protocol="Unknown";
+    				break;
 			}
 		$HM_Adresse=IPS_GetProperty($instanz,'Address');
 		$result=explode(":",$HM_Adresse);
 		$sizeResult=sizeof($result);
 		//print_r($result);
+
 		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
+		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */
+        //echo "check.\n";
 		if ($sizeResult > 1)
 			{
 			if ($result[1]<>"0")
@@ -593,9 +448,14 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 				$includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
 				$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
 				$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
-		
-				$type=getHomematicType($instanz);			/* wird für Homematic IPS Light benötigt */
-				$typedev=getHomematicDeviceType($instanz);	/* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+                
+                echo "Typen und Geräteerkennung durchführen.\n";
+                if (isset($installedModules["OperationCenter"])) 
+                    {
+                    $type   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
+                    $typedev= $DeviceManager->getHomematicDeviceType($instanz);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+                    }
+                else { $typedev=""; $type=""; }
 				$result=explode(":",IPS_GetProperty($instanz,'Address'));
 				if ($type<>"") 
 					{
@@ -652,9 +512,146 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	
 	} // ende else if execute
 	
+if (isset($installedModules["DetectMovement"]))
+    {
 	echo "\n";
 	echo "Zusammenfassung:\n\n";
 	print_r($summary);
+
+	echo "=======================================================================\n";
+	echo "Summenregister suchen und evaluieren :\n";
+    echo "\n";
+	echo "Bewegungsregister hereinholen:\n";								
+	$DetectMovementHandler = new DetectMovementHandler();
+	$groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+	$events=$DetectMovementHandler->ListEvents();
+	foreach ($events as $oid => $typ)
+		{
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$moid=$DetectMovementHandler->getMirrorRegister($oid);
+		$Handler->RegisterEvent($moid,'Topology','','Movement');		
+		}
+    print_r($groups); 
+	foreach ($groups as $group => $entry)
+		{
+		$soid=$DetectMovementHandler->InitGroup($group);
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$Handler->RegisterEvent($soid,'Topology','','Movement');		
+		}	
+	
+    echo "\n";
+	echo "Temperaturregister hereinholen:\n";								
+	$DetectTemperatureHandler = new DetectTemperatureHandler();
+	$groups=$DetectTemperatureHandler->ListGroups("Temperature");        /* Type angeben damit mehrere Gruppen aufgelöst werden können */
+	$events=$DetectTemperatureHandler->ListEvents();
+	foreach ($events as $oid => $typ)
+		{
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$moid=$DetectTemperatureHandler->getMirrorRegister($oid);
+		$Handler->RegisterEvent($moid,'Topology','','Temperature');		
+		}
+	print_r($groups);
+    //echo "Alle Gruppen durchgehen:\n";
+	foreach ($groups as $group => $entry)
+		{
+		$soid=$DetectTemperatureHandler->InitGroup($group);
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$Handler->RegisterEvent($soid,'Topology','','Temperature');		
+		}	
+
+    echo "\n";
+	echo "Feuchtigkeitsregister hereinholen:\n";								
+	$DetectHumidityHandler = new DetectHumidityHandler();
+	$groups=$DetectHumidityHandler->ListGroups("Humidity");
+	$events=$DetectHumidityHandler->ListEvents();
+	foreach ($events as $oid => $typ)
+		{
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$moid=$DetectHumidityHandler->getMirrorRegister($oid);
+		$Handler->RegisterEvent($moid,'Topology','','Humidity');		
+		}
+    print_r($groups);         
+	foreach ($groups as $group => $entry)
+		{
+		$soid=$DetectHumidityHandler->InitGroup($group);
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$Handler->RegisterEvent($soid,'Topology','','Humidity');		
+		}	
+
+    echo "\n";
+	echo "Stellwertsregister hereinholen:\n";								
+	$DetectHeatControlHandler = new DetectHeatControlHandler();
+	$groups=$DetectHeatControlHandler->ListGroups("HeatControl");
+	$events=$DetectHeatControlHandler->ListEvents();
+	foreach ($events as $oid => $typ)
+		{
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$moid=$DetectHeatControlHandler->getMirrorRegister($oid);
+		$Handler->RegisterEvent($moid,'Topology','','HeatControl');		
+		}
+    print_r($groups);    
+	foreach ($groups as $group => $entry)
+		{
+		$soid=$DetectHeatControlHandler->InitGroup($group);
+		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
+		$Handler->RegisterEvent($soid,'Topology','','HeatControl');		
+		}	
+
+
+
+	/*-----------------------------------------------------------------*/
+																																													
+    echo "\n";
+    echo "=======================================================================\n";
+	echo "Jetzt in den einzelnen Katgorien die Links hineinsortieren :\n";
+    echo "\n";
+    echo "Noch einmal Ausgabe der nun erfolgreich registrierten Topologie Eintraege:";
+	$configurationAuto = $Handler->Get_EventConfigurationAuto();
+	//$result=$Handler->sortEventList($configurationAuto);
+	foreach ($configurationAuto as $oid => $entry) 
+		{ 
+		echo "     ".$oid."    ".IPS_GetName($oid)."   ".$entry[0]."  ".$entry[1]."   ".$entry[2]."  \n"; 
+		}
+
+    $topology=$Handler->Get_Topology();
+    print_r($topology);
+	foreach (IPS_getDeviceTopology() as $index => $entry)
+		{
+		$name=IPS_GetName($index);
+		$entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen */
+		$entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
+		if (sizeof($entry1)>0)
+			{
+			foreach ($entry1 as $place)
+				{
+				if ( isset($topology[$place]["OID"]) != true ) 
+					{
+					echo "Kategorie $place anlegen.\n";
+					}
+				else
+					{
+					$oid=$topology[$place]["OID"];
+					//print_r($topology[$place]);
+					$size=sizeof($entry2);
+					if ($entry2[0]=="") $size=0;
+					if ($size > 0) 
+						{	/* ein Gewerk, vorne einsortieren */
+						echo "erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+						CreateLinkByDestination($name, $index, $oid, 10);						
+						}
+					else
+						{	/* eine Instanz, dient nur der Vollstaendigkeit */
+						echo "erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+						CreateLinkByDestination($name, $index, $oid, 1000);						
+						}
+					}
+							
+				}
+			//print_r($entry1);
+			}
+		}
+    } /* ende if isset DetectMovement */
+
 
 /********************************************************************************************************************/
 
@@ -663,464 +660,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 /********************************************************************************************************************/
 /********************************************************************************************************************/
 /********************************************************************************************************************/
-
-
-/* durchsucht alle Homematic Instanzen
- * nach Adresse:Port
- * wenn adresse:port uebereinstimmt die Instanz ID zurückgeben, sonst 0
- */
-
-function GetInstanceIDFromHMID($sid)
-	{
-    $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
-    foreach($ids as $id)
-    	{
-        $a = explode(":", HM_GetAddress($id));
-        $b = explode(":", $sid);
-        if($a[0] == $b[0])
-        	{
-            return $id;
-        	}
-    	}
-    return 0;
-	}
-
 /********************************************************************************************************************/
-
-/* anhand einer Homatic Instanz ID ermitteln 
- * um welchen Typ von Homematic Geraet es sich handeln koennte,
- * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
- */
-
-function getHomematicType($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	//print_r($cids);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	//print_r($homematic);
-	/* 	define ('HM_TYPE_LIGHT',					'Light');
-	define ('HM_TYPE_SHUTTER',					'Shutter');
-	define ('HM_TYPE_DIMMER',					'Dimmer');
-	define ('HM_TYPE_BUTTON',					'Button');
-	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
-	define ('HM_TYPE_SWITCH',					'Switch'); */
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				//echo "Funk-Tür-/Fensterkontakt\n";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					//echo "Taster 6fach\n";
-					}
-				else
-					{
-					//echo "Funk-Display-Wandtaster\n";
-					}
-				$type="HM_TYPE_BUTTON";
-				break;
-			case "ACTUAL_HUMIDITY":
-				//echo "Funk-Wandthermostat\n";
-				break;
-			case "ACTUAL_TEMPERATURE":
-				//echo "Funk-Heizkörperthermostat\n";
-				break;
-			case "BRIGHTNESS":
-				//echo "Funk-Bewegungsmelder\n";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					//echo "Dimmer\n";
-					$type="HM_TYPE_DIMMER";						
-					}
-				else
-					{
-					//echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				//echo "Funk-Schaltaktor 1-fach\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "BOOT":
-				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				//echo "Energiemessung\n";
-				break;
-			case "HUMIDITY":
-				//echo "Funk-Thermometer\n";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					//echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					//echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					//echo "IP Funk-Schaltaktor\n";
-					$type="HM_TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				//echo "unknown\n";
-				//print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		//echo "   noch nicht angelegt.\n";
-		}			
-
-	return ($type);
-	}
-
-/* anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
- * um welchen Typ von Gerät es sich handeln koennte,
- * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
- */
-
-function getFS20Type($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	//print_r($cids);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	//print_r($homematic);
-	/* 	define ('HM_TYPE_LIGHT',					'Light');
-	define ('HM_TYPE_SHUTTER',					'Shutter');
-	define ('HM_TYPE_DIMMER',					'Dimmer');
-	define ('HM_TYPE_BUTTON',					'Button');
-	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
-	define ('HM_TYPE_SWITCH',					'Switch'); */
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				//echo "Funk-Tür-/Fensterkontakt\n";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					//echo "Taster 6fach\n";
-					}
-				else
-					{
-					//echo "Funk-Display-Wandtaster\n";
-					}
-				$type="HM_TYPE_BUTTON";
-				break;
-			case "ACTUAL_HUMIDITY":
-				//echo "Funk-Wandthermostat\n";
-				break;
-			case "ACTUAL_TEMPERATURE":
-				//echo "Funk-Heizkörperthermostat\n";
-				break;
-			case "BRIGHTNESS":
-				//echo "Funk-Bewegungsmelder\n";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					//echo "Dimmer\n";
-					$type="HM_TYPE_DIMMER";						
-					}
-				else
-					{
-					//echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				//echo "Funk-Schaltaktor 1-fach\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "BOOT":
-				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				//echo "Energiemessung\n";
-				break;
-			case "HUMIDITY":
-				//echo "Funk-Thermometer\n";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					//echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					//echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					//echo "IP Funk-Schaltaktor\n";
-					$type="HM_TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				//echo "unknown\n";
-				//print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		//echo "   noch nicht angelegt.\n";
-		}			
-
-	return ($type);
-	}
-
-function getHomematicDeviceType($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				echo "Funk-Tür-/Fensterkontakt\n";
-				$type="TYPE_CONTACT";
-				break;
-			case "PRESS_LONG":
-				echo "Taster 6fach (IP)\n";
-				$type="TYPE_BUTTON";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					echo "Taster 6fach\n";
-					$type="TYPE_BUTTON";
-					}
-				else
-					{
-					echo "Funk-Display-Wandtaster\n";
-					$type="TYPE_BUTTON";
-					}
-				break;
-			case "ACTUAL_HUMIDITY":
-				echo "Funk-Wandthermostat\n";
-				$type="TYPE_THERMOSTAT";
-				break;
-			case "ACTIVE_PROFILE":
-				if ($homematic[15]=="VALVE_ADAPTION")
-					{
-					echo "Stellmotor\n";
-					$type="TYPE_ACTUATOR";
-					}
-				else
-					{
-					echo "Wandthermostat (IP)\n";
-					$type="TYPE_THERMOSTAT";
-					}
-				break;
-			case "ACTUAL_TEMPERATURE":
-				echo "Funk-Heizkörperthermostat\n";
-				$type="TYPE_ACTUATOR";
-				break;
-		 	case "ILLUMINATION":
-			case "BRIGHTNESS":
-				echo "Funk-Bewegungsmelder\n";
-				$type="TYPE_MOTION";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					echo "Dimmer\n";
-					$type="TYPE_DIMMER";						
-					}
-				else
-					{
-					echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				echo "Funk-Schaltaktor 1-fach\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "BOOT":
-				echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				echo "Energiemessung\n";
-				$type="TYPE_METER_POWER";
-				break;
-			case "HUMIDITY":
-				echo "Funk-Thermometer\n";
-				$type="TYPE_METER_TEMPERATURE";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					echo "IP Funk-Schaltaktor\n";
-					$type="TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				echo "unknown\n";
-				print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		echo "   noch nicht angelegt.\n";
-		}			
-	return ($type);
-	}
-
-function getFS20DeviceType($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		if (strpos($homematic[0],"(") !== false) 	$auswahl=substr($homematic[0],0,(strpos($homematic[0],"(")-1));
-		else $auswahl=$homematic[0];
-		echo "Auf ".$auswahl." untersuchen.\n";
-		switch ($auswahl)
-			{
-			case "ERROR":
-				echo "Funk-Tür-/Fensterkontakt\n";
-				$type="TYPE_CONTACT";
-				break;
-			case "Gerät":
-				echo "Funk-Display-Wandtaster\n";
-				$type="TYPE_BUTTON";
-				break;
-			case "Batterie":
-				echo "Funk-Wandthermostat\n";
-				$type="TYPE_THERMOSTAT";
-				break;
-			case "ACTIVE_PROFILE":
-				if ($homematic[15]=="VALVE_ADAPTION")
-					{
-					echo "Stellmotor\n";
-					$type="TYPE_ACTUATOR";
-					}
-				else
-					{
-					echo "Wandthermostat (IP)\n";
-					$type="TYPE_THERMOSTAT";
-					}
-				break;
-			case "ACTUAL_TEMPERATURE":
-				echo "Funk-Heizkörperthermostat\n";
-				$type="TYPE_ACTUATOR";
-				break;
-		 	case "ILLUMINATION":
-			case "BRIGHTNESS":
-				echo "Funk-Bewegungsmelder\n";
-				$type="TYPE_MOTION";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					echo "Dimmer\n";
-					$type="TYPE_DIMMER";						
-					}
-				else
-					{
-					echo "Rolladensteuerung\n";
-					}
-				break;
-			case "Daten":
-				echo "Funk-Schaltaktor 1-fach\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "BOOT":
-				echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				echo "Energiemessung\n";
-				$type="TYPE_METER_POWER";
-				break;
-			case "HUMIDITY":
-				echo "Funk-Thermometer\n";
-				$type="TYPE_METER_TEMPERATURE";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					echo "IP Funk-Schaltaktor\n";
-					$type="TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				echo "unknown\n";
-				print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		echo "   noch nicht angelegt.\n";
-		}			
-	return ($type);
-	}
-
 
 
 

@@ -1108,6 +1108,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($subnet);
+            $DeviceManager = new DeviceManagement();
 			
 			$ergebnisOperationCenter.="Lokale IP Adresse im Netzwerk : \n";
 			$result=$OperationCenter->ownIPaddress();
@@ -1159,10 +1160,14 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 			$ergebnisOperationCenter.=$OperationCenter->writeSysPingResults();
 			
 			$ergebnisOperationCenter.="\n\nErreichbarkeit der Hardware Register/Instanzen, zuletzt erreicht am .... :\n\n"; 
-			$ergebnisOperationCenter.=$OperationCenter->HardwareStatus(true);
+			$ergebnisOperationCenter.=$DeviceManager->HardwareStatus(true);
 			
 			$ergebnisErrorIPSLogger.="\nAus dem Error Log der letzten Tage :\n\n";
 			$ergebnisErrorIPSLogger.=$OperationCenter->getIPSLoggerErrors();
+
+            /******************************************************************************************/
+
+		    $alleHM_Errors=$DeviceManager->HomematicFehlermeldungen();
 			
 		  	echo ">>OperationCenter. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
@@ -1246,7 +1251,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 								ksort($objectsbyName);
 								//print_r($objectsbyName);
 								foreach ($objectsbyName as $objectID)
-								   {
+								    {
 									$werte = @AC_GetLoggedValues($archiveHandlerID, $objectID, $starttime, $endtime, 0);
 									if ($werte===false)
 										{
@@ -1257,12 +1262,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 										$log=sizeof($werte)." logged in 24h";
 										}
 									if ( (IPS_GetVariable($objectID)["VariableProfile"]!="") or (IPS_GetVariable($objectID)["VariableCustomProfile"]!="") )
-								   	{
+								   	    {
+                                        echo "Variablenprofil von $objectID (".IPS_GetName($objectID).") erkannt: Standard ".IPS_GetVariable($objectID)["VariableProfile"]." Custom ".IPS_GetVariable($objectID)["VariableCustomProfile"]."\n";
 										$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValueFormatted($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
 										       .$log."\n";
 										}
 									else
-									   {
+									    {
 										$ServerRemoteAccess .=  "            ".str_pad(IPS_GetName($objectID),30)." = ".str_pad(GetValue($objectID),30)."   (".date("d.m H:i",IPS_GetVariable($objectID)["VariableChanged"]).") "
 										       .$log."\n";
 										}
@@ -1278,11 +1284,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		//echo $ServerRemoteAccess;
 
 
-		/******************************************************************************************/
-
-		$alleHM_Errors=HomematicFehlermeldungen();
-
-		/*****************************************************************************************
+    	/*****************************************************************************************
 		 *
 		 * SystemInfo des jeweiligen PCs ausgeben
 		 *
@@ -1654,6 +1656,11 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 /********************************************************************************************************************/
 
+/* durchsucht alle Homematic Instanzen
+ * nach Adresse:Port
+ * wenn adresse:port uebereinstimmt die Instanz ID zurückgeben, sonst 0
+ */
+ 
 function GetInstanceIDFromHMID($sid)
 	{
     $ids = IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
@@ -2362,101 +2369,6 @@ function RemoteAccess_GetConfigurationNew()
 			}
 		}	
 	return($RemoteServer);
-	}
-
-
-/******************************************************************/
-
-function HomematicFehlermeldungen()
-	{
-		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
-		$texte = Array(
-		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
-		    "LOWBAT" => "Batterieladezustand gering",
-		    "STICKY_UNREACH" => "Gerätekommunikation war gestört",
-		    "UNREACH" => "Gerätekommunikation aktuell gestört"
-			);
-
-		$ids = IPS_GetInstanceListByModuleID("{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}");
-		$HomInstanz=sizeof($ids);
-		if($HomInstanz == 0)
-		   {
-		   //die("Keine HomeMatic Socket Instanz gefunden!");
-		   $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
-		   }
-		else
-		   {
-			/* Homematic Instanzen vorhanden, sind sie aber auch aktiv ? */
-			$aktiv=false;
-			foreach ($ids as $id)
-	   		{
-				$ergebnis=IPS_GetConfiguration($id);
-				echo "Homematic Socket : ".IPS_GetName($id)."\n";
-				echo "  Konfig : ".$ergebnis."\n";
-      		$remove = array("{", "}", '"');
-				$ergebnis = str_replace($remove, "", $ergebnis);
-				$result = explode(",",$ergebnis);
-				$AllConfig=array();
-				foreach ($result as $configItem)
-				   {
-				   $items=explode (':',$configItem);
-				   $Allconfig[$items[0]]=$items[1];
-				   }
-				//print_r($Allconfig);
-				if ( $Allconfig["Open"]="false" )
-				   {
-					echo "Homematic Port nicht aktiviert.\n";
-					}
-				else
-				   {
-				   $aktiv=true;
-				   }
-				}
-			//echo "\n\nHomatic Socket Count :".$HomInstanz."\n";
-			if ($aktiv==true)
-	   		{
-				for ($i=0;$i < $HomInstanz; $i++)
-				   {
-			      $alleHM_Errors.="\nHomatic Socket ID ".$ids[$i]." / ".IPS_GetName($ids[$i])."\n";
-					$msgs = HM_ReadServiceMessages($ids[$i]);
-					if($msgs === false)
-					   {
-						//die("Verbindung zur CCU fehlgeschlagen");
-					   $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
-					   }
-
-					if(sizeof($msgs) == 0)
-					   {
-						//echo "Keine Servicemeldungen!\n";
-				   	$alleHM_Errors.="OK, keine Servicemeldungen!\n";
-						}
-
-					foreach($msgs as $msg)
-						{
-			   		if(array_key_exists($msg['Message'], $texte))
-							{
-      				  	$text = $texte[$msg['Message']];
-		   				}
-						else
-							{
-      	  				$text = $msg['Message'];
-		        			}
-					   $id = GetInstanceIDFromHMID($msg['Address']);
-				    	if(IPS_InstanceExists($id))
-						 	{
-        					$name = IPS_GetLocation($id);
-					   	}
-						else
-							{
-		      	  		$name = "Gerät nicht in IP-Symcon eingerichtet";
-    						}
-			  			//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-					  	$alleHM_Errors.="Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-						}
-					}
-				}
-			}
-		return($alleHM_Errors);
 	}
 	
 /******************************************************************/
@@ -3176,7 +3088,7 @@ function read_wfc()
 		
 	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
 		{
-		$heatcontrol=false;
+		$detectmovement=false;
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedModules=$moduleManager->GetInstalledModules();
 		$remServer=array();
@@ -3204,7 +3116,7 @@ function read_wfc()
 					{
 					/* solange das Keyword uebereinstimmt ist alles gut */
 					if (isset($Key["COID"][$entry])==true) $count++; 
-					//echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
+					echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
 					}
 				if ( sizeof($keywords) == $count ) $found=true;
 				$keyword=$keywords[0];	
@@ -3224,19 +3136,17 @@ function read_wfc()
 					switch ($keyword)
 						{
 						case "TYPE_ACTUATOR":
-							/* if (isset($Key["COID"]["LEVEL"]["OID"]) == true) 
-								{
-								$keyword="LEVEL";
-								}
-							else  */
-							if (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
-							$heatcontrol=true;
+							if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
+							elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+							$detectmovement="HeatControl";
 							break;
-						default:	
+						case "TYPE_THERMOSTAT":
 							if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
 							if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
 							if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
 							break;
+						default:	
+							echo "FEHLER: unknown keyword.\n";
 						}	
 					}
 				}
@@ -3249,27 +3159,32 @@ function read_wfc()
 					$variabletyp=2; 		/* Float */
 					$index="HeatSet";
 					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-					$profile="~Temperatur";
+					$profile="~Temperature";
 					break;				
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
+				case "ACTUAL_TEMPERATURE":
+					$detectmovement="Temperatur";				
 					$variabletyp=2; 		/* Float */
 					$index="Temperatur";
 					//$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-					$profile="~Temperatur";
+					$profile="~Temperature";
 					break;
 				case "POSITIONVAR":
+				case "VALVE_STATE": 
+					$detectmovement="HeatControl";
 					$variabletyp=2; 		/* Float */
 					$index="HeatControl";
 					$profile="~Valve.F";
 					break;
 				case "HUMIDITY":
+					$detectmovement="Feuchtigkeit";
 					$variabletyp=1; 		/* Integer */							
 					$index="Humidity";
 					$profile="Humidity";
 					break;
-				case "VALVE_STATE":
 				case "LEVEL":
+					$detectmovement="HeatControl";
 					$variabletyp=1; 		/* Integer */	
 					$index="HeatControl";
 					$profile="~Intensity.100";
@@ -3303,12 +3218,27 @@ function read_wfc()
 					IPS_ApplyChanges($archiveHandlerID);
 					echo "Variable ".$oid." Archiv logging für Register aktiviert.\n";
 					}
-				if ( (isset ($installedModules["DetectMovement"])) && $heatcontrol )
+				if ( (isset ($installedModules["DetectMovement"])) && ($detectmovement !== false) )
 					{
 					IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-					IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');					
-					$DetectHeatControlHandler = new DetectHeatControlHandler();						
-					$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+					IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+					switch ($detectmovement)
+						{
+						case "HeatControl":					
+							$DetectHeatControlHandler = new DetectHeatControlHandler();						
+							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+							break;
+						case "Feuchtigkeit":
+							$DetectHumidityHandler = new DetectHumidityHandler();		
+							$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+							break;
+						case "Temperatur":
+							$DetectTemperatureHandler = new DetectTemperatureHandler();						
+							$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+							break;
+						default:
+							break;
+						}		
 					}										
 				if (isset ($installedModules["RemoteAccess"]))
 					{					
@@ -3361,6 +3291,17 @@ function read_wfc()
 			return ($result);
 			}	
 		
+        function selectProtocolDevice($protocol,$type,$devicelist)
+			{
+			$result=array();
+			foreach ($devicelist as $index => $device)
+				{
+				if ( ($device["Protocol"]==$protocol) && ($device["Device"]==$type) ) $result[$index]=$device;
+                elseif ( ($protocol=="") && ($device["Device"]==$type) ) $result[$index]=$device;
+                elseif ( ($type=="")     && ($device["Protocol"]==$protocol) ) $result[$index]=$device;   
+				}
+			return ($result);
+			}
 		
 /******************************************************************
 
@@ -3488,7 +3429,7 @@ class ModuleHandling
 			/* wahrscheinlich keine GUID sondern ein Name eingeben */
 			if (isset($this->modules[$input])==true)
 				{
-				echo "Library ".$input." hat GUID :".$this->modules[$input]."\n";
+				//echo "Objekt Input ".$input." hat GUID :".$this->modules[$input]."\n";
 				$instances=IPS_GetInstanceListByModuleID($this->modules[$input]);
 				}
 			else $instances=array();	

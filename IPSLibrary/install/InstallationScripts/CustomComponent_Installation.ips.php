@@ -817,19 +817,16 @@
 	 *                                      Temperature
 	 *
 	 ****************************************************************************************************************/
-
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
-
 	if (function_exists('HomematicList'))
 		{
-		installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');
+		installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');				/* Tempoertursensoren und Homematic Thermostat */
+		installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');		/* HomematicIP Thermostat */
 		} 
-
-
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
 	if (function_exists('FHTList'))
 		{
@@ -841,14 +838,11 @@
 	 *                                      Humidity
 	 *
 	 ****************************************************************************************************************/
-
-
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Humidity Sensoren werden registriert.\n";
-
 	if (function_exists('HomematicList'))
 		{
 		installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,');
@@ -859,23 +853,18 @@
 	 *                                      Heat Control Actuators
 	 *
 	 ****************************************************************************************************************/
-
-
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Actuator Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
 	echo "Homematic Heat Control Actuator werden registriert.\n";
-	
 	if (function_exists('HomematicList'))
 		{
 		installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
 		installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');
 		} 			
-
 	echo "\n";
 	echo "FHT80b Heat Control Actuator werden registriert.\n";
-		
 	if (function_exists('FHTList'))
 		{
 		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
@@ -889,14 +878,11 @@
 	 *                                      Heat Control Set 
 	 *
 	 ****************************************************************************************************************/
-
-	
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Set Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
-	echo "Homematic Heat Set Werte aus den Thermostaten werden registriert.\n";
-	
+	echo "Homematic Heat Set Werte werden aus den Thermostaten registriert.\n";
 	if (function_exists('HomematicList'))
 		{
 		//installComponentFull(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
@@ -904,13 +890,10 @@
 		installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
 		installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All');
 		} 	
-
-	echo "\n";
-	echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";
-		
-	if (function_exists('FHTList'))
+	if ( (function_exists('FHTList')) && (sizeof(FHTList())>0) )
 		{
-		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+    	echo "\n";
+	    echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
 		installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
 		}
 

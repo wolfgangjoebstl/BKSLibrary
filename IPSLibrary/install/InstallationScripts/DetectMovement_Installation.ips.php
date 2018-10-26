@@ -356,7 +356,7 @@
 		if (isset($ZusammenfassungID)==true) print_r($ZusammenfassungID);	
 
 		echo "\n jetzt die einzelnen Zusammenfassungsvariablen für die Gruppen anlegen.\n";
-		$groups=$DetectMovementHandler->ListGroups();
+		$groups=$DetectMovementHandler->ListGroups('Motion');
 		foreach($groups as $group=>$name)
 			{
 			$statusID=$DetectMovementHandler->InitGroup($group);
@@ -513,7 +513,7 @@
 			}
 
 
-		$groups=$DetectTemperatureHandler->ListGroups();
+		$groups=$DetectTemperatureHandler->ListGroups('Temperatur');
 		foreach($groups as $group=>$name)
 			{
 			if (($group != "") | ($group != " "))
@@ -631,7 +631,7 @@
 			}
 
 
-		$groups=$DetectHumidityHandler->ListGroups();
+		$groups=$DetectHumidityHandler->ListGroups('Feuchtigkeit');
 		foreach($groups as $group=>$name)
 			{
 			if (($group != "") | ($group != " "))
@@ -714,9 +714,8 @@
 		 */
 		if (isset($Key["COID"][$keyword])==true)
 			{
-			//if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
-			//else 
-			$oid=(integer)$Key["COID"][$keyword]["OID"];			
+			if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
+			else $oid=(integer)$Key["COID"][$keyword]["OID"];			
 			$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 				{
@@ -809,7 +808,7 @@
 			}
 
 
-		$groups=$DetectHumidityHandler->ListGroups();
+		$groups=$DetectHumidityHandler->ListGroups('Feuchtigkeit');
 		foreach($groups as $group=>$name)
 			{
 			if (($group != "") | ($group != " "))

@@ -286,7 +286,7 @@
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectTemperatureHandler->ListGroups();
+				$groups=$DetectTemperatureHandler->ListGroups("Temperatur");
 				foreach($groups as $group=>$name)
 					{
 					echo "Gruppe ".$group." behandeln.\n";

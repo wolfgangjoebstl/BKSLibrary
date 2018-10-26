@@ -167,6 +167,7 @@ $OperationCenterSetup  = OperationCenter_SetUp();
 
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
+    $DeviceManager = new DeviceManagement();
 
 /* Homematic RSSI Werte auslesen
  *
@@ -226,7 +227,7 @@ if ($_IPS['SENDER']=="Execute")
    	Erreichbarkeit Hardware im Execute
 	**********************************************************/
 
-	$OperationCenter->HardwareStatus();
+	$DeviceManager->HardwareStatus();
 
 	/********************************************************
    	Externe Ip Adresse immer ermitteln

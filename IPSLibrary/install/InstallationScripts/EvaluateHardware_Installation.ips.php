@@ -215,7 +215,7 @@
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
 		$worldID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
-
+	    EmptyCategory($worldID);
 
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'World', $WFC10_TabPaneItem,   10, 'World', 'Wellness', $worldID   /*BaseId*/, 'true' /*BarBottomVisible*/);
 

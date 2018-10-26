@@ -858,7 +858,7 @@ class RemoteAccess
 
 		echo "===============================================================\n";
 		echo "RPC_CreateVariableField für ".$keyword." Visualization Index : ".$index."\n";		
-		if ( sizeof($struktur == 0) ) $struktur=$this->RPC_getExtendedStructure($remServer,$index);
+		if ( sizeof($struktur) == 0 ) $struktur=$this->RPC_getExtendedStructure($remServer,$index);
 		foreach ($remServer as $Name => $Server)
 			{
 			echo "Bearbeite Server ".$Name." für Keyword ".$keyword." Index ".$index."  Visualization OID Werte aus vorermittelteter ROID_List():\n";

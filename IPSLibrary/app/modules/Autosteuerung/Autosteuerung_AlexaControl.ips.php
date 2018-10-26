@@ -12,6 +12,9 @@
 *							Alexa Schalte das Licht auf Blau.
 *							Alexa, set the AC to 25 degrees for 4 hours.
 *							Alexa, make it warmer in here until 10pm
+* DeviceTemperatureSensor
+*                           Alexa wie ist die Temperatur im Wohnzimmer/Wohnung
+*     es reicht wenn die Variable in der ALexa Konfiguration Wohnung Arbeitszimmer etc. heisst
 *
 * im Modul implementierte Funktionen:
 *

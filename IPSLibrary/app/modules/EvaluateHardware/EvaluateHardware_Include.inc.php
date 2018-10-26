@@ -90,6 +90,93 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
+"WohnzimmerFenster-Stellmotor" => array(
+         "OID" => 24592, 
+         "Adresse" => "002018A99742E8:1", 
+         "Name" => "WohnzimmerFenster-Stellmotor", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "IP", 
+         "EmulateStatus" => "1", 
+         "Device" => "TYPE_ACTUATOR", 
+         "COID" => array(
+                "VALVE_ADAPTION" => array(
+                              "OID" => "21245", 
+                              "Name" => "VALVE_ADAPTION", 
+                              "Typ" => "2",), 
+                "BOOST_TIME" => array(
+                              "OID" => "56412", 
+                              "Name" => "BOOST_TIME", 
+                              "Typ" => "2",), 
+                "PARTY_MODE" => array(
+                              "OID" => "54022", 
+                              "Name" => "PARTY_MODE", 
+                              "Typ" => "2",), 
+                "SET_POINT_TEMPERATURE" => array(
+                              "OID" => "51742", 
+                              "Name" => "SET_POINT_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "LEVEL_STATUS" => array(
+                              "OID" => "37621", 
+                              "Name" => "LEVEL_STATUS", 
+                              "Typ" => "2",), 
+                "PARTY_TIME_START" => array(
+                              "OID" => "11812", 
+                              "Name" => "PARTY_TIME_START", 
+                              "Typ" => "2",), 
+                "QUICK_VETO_TIME" => array(
+                              "OID" => "40117", 
+                              "Name" => "QUICK_VETO_TIME", 
+                              "Typ" => "2",), 
+                "FROST_PROTECTION" => array(
+                              "OID" => "59807", 
+                              "Name" => "FROST_PROTECTION", 
+                              "Typ" => "2",), 
+                "PARTY_SET_POINT_TEMPERATURE" => array(
+                              "OID" => "17487", 
+                              "Name" => "PARTY_SET_POINT_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "SET_POINT_MODE" => array(
+                              "OID" => "41804", 
+                              "Name" => "SET_POINT_MODE", 
+                              "Typ" => "2",), 
+                "LEVEL" => array(
+                              "OID" => "15404", 
+                              "Name" => "LEVEL", 
+                              "Typ" => "2",), 
+                "ACTUAL_TEMPERATURE_STATUS" => array(
+                              "OID" => "37597", 
+                              "Name" => "ACTUAL_TEMPERATURE_STATUS", 
+                              "Typ" => "2",), 
+                "SWITCH_POINT_OCCURED" => array(
+                              "OID" => "18715", 
+                              "Name" => "SWITCH_POINT_OCCURED", 
+                              "Typ" => "2",), 
+                "VALVE_STATE" => array(
+                              "OID" => "58576", 
+                              "Name" => "VALVE_STATE", 
+                              "Typ" => "2",), 
+                "ACTIVE_PROFILE" => array(
+                              "OID" => "48155", 
+                              "Name" => "ACTIVE_PROFILE", 
+                              "Typ" => "2",), 
+                "WINDOW_STATE" => array(
+                              "OID" => "55592", 
+                              "Name" => "WINDOW_STATE", 
+                              "Typ" => "2",), 
+                "PARTY_TIME_END" => array(
+                              "OID" => "12270", 
+                              "Name" => "PARTY_TIME_END", 
+                              "Typ" => "2",), 
+                "ACTUAL_TEMPERATURE" => array(
+                              "OID" => "38436", 
+                              "Name" => "ACTUAL_TEMPERATURE", 
+                              "Typ" => "2",), 
+                "BOOST_MODE" => array(
+                              "OID" => "45217", 
+                              "Name" => "BOOST_MODE", 
+                              "Typ" => "2",), 
+             	),
+      	),
 "Arbeitszimmer Bewegung" => array(
          "OID" => 19582, 
          "Adresse" => "GEQ0127585:1", 
@@ -1076,13 +1163,13 @@ function HomematicList() { return array(
                               "OID" => "10315", 
                               "Name" => "PRESS_CONT", 
                               "Typ" => "2",), 
-                "PRESS_SHORT" => array(
-                              "OID" => "34739", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "31767", 
                               "Name" => "PRESS_LONG_RELEASE", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "34739", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "35616", 
@@ -1210,10 +1297,6 @@ function HomematicList() { return array(
                               "OID" => "49546", 
                               "Name" => "BOOST_TIME", 
                               "Typ" => "2",), 
-                "SET_POINT_MODE" => array(
-                              "OID" => "20784", 
-                              "Name" => "SET_POINT_MODE", 
-                              "Typ" => "2",), 
                 "ACTUAL_TEMPERATURE" => array(
                               "OID" => "25753", 
                               "Name" => "ACTUAL_TEMPERATURE", 
@@ -1229,6 +1312,14 @@ function HomematicList() { return array(
                 "SWITCH_POINT_OCCURED" => array(
                               "OID" => "27871", 
                               "Name" => "SWITCH_POINT_OCCURED", 
+                              "Typ" => "2",), 
+                "SET_POINT_MODE" => array(
+                              "OID" => "20784", 
+                              "Name" => "SET_POINT_MODE", 
+                              "Typ" => "2",), 
+                "SET_POINT_TEMPERATURE" => array(
+                              "OID" => "29875", 
+                              "Name" => "SET_POINT_TEMPERATURE", 
                               "Typ" => "2",), 
                 "PARTY_SET_POINT_TEMPERATURE" => array(
                               "OID" => "32122", 
@@ -1253,10 +1344,6 @@ function HomematicList() { return array(
                 "FROST_PROTECTION" => array(
                               "OID" => "22897", 
                               "Name" => "FROST_PROTECTION", 
-                              "Typ" => "2",), 
-                "SET_POINT_TEMPERATURE" => array(
-                              "OID" => "29875", 
-                              "Name" => "SET_POINT_TEMPERATURE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1295,7 +1382,7 @@ function HomematicList() { return array(
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
          "Type" => "HM_TYPE_SWITCH", 
-         "Device" => "TYPE_SWITCH", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "POWER" => array(
                               "OID" => "56096", 
@@ -1550,7 +1637,7 @@ function HomematicList() { return array(
          "Protocol" => "Funk", 
          "EmulateStatus" => "1", 
          "Type" => "HM_TYPE_SWITCH", 
-         "Device" => "TYPE_SWITCH", 
+         "Device" => "TYPE_METER_POWER", 
          "COID" => array(
                 "ENERGY_COUNTER" => array(
                               "OID" => "31474", 
@@ -2034,10 +2121,10 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"Wohnzimmer-Stellmotor:1" => array(
+"Wohnzimmer-Stellmotor" => array(
          "OID" => 40129, 
          "Adresse" => "000397098A4330:1", 
-         "Name" => "Wohnzimmer-Stellmotor:1", 
+         "Name" => "Wohnzimmer-Stellmotor", 
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 
@@ -2114,6 +2201,30 @@ function HomematicList() { return array(
                 "BOOST_MODE" => array(
                               "OID" => "37627", 
                               "Name" => "BOOST_MODE", 
+                              "Typ" => "2",), 
+             	),
+      	),
+"Arbeitszimmer-Netzwerk:Status" => array(
+         "OID" => 29604, 
+         "Adresse" => "LEQ1346339:1", 
+         "Name" => "Arbeitszimmer-Netzwerk:Status", 
+         "CCU" => "Homematic-CCU", 
+         "Protocol" => "Funk", 
+         "EmulateStatus" => "1", 
+         "Type" => "HM_TYPE_SWITCH", 
+         "Device" => "TYPE_SWITCH", 
+         "COID" => array(
+                "INHIBIT" => array(
+                              "OID" => "36484", 
+                              "Name" => "INHIBIT", 
+                              "Typ" => "2",), 
+                "STATE" => array(
+                              "OID" => "23528", 
+                              "Name" => "STATE", 
+                              "Typ" => "2",), 
+                "WORKING" => array(
+                              "OID" => "30080", 
+                              "Name" => "WORKING", 
                               "Typ" => "2",), 
              	),
       	),
@@ -2247,13 +2358,13 @@ function HomematicList() { return array(
          "EmulateStatus" => "1", 
          "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "27308", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_LONG" => array(
                               "OID" => "46008", 
                               "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "27308", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -2392,6 +2503,7 @@ function getHomematicConfiguration() {
              "ArbeitszimmerTest2:Schalter"            => array("0001D709900FD6",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "ArbeitszimmerTestTaster:2"              => array("OEQ0311350",2,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "ArbeitszimmerTest:Schalter"             => array("0001D709900F6B",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
+             "Arbeitszimmer-Netzwerk:Status"          => array("LEQ1346339",1,HM_PROTOCOL_BIDCOSRF,HM_TYPE_SWITCH),
              "ArbeitszimmerTestTaster:3"              => array("OEQ0311350",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
              "ArbeitszimmerTestTaster:6"              => array("OEQ0311350",6,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
 );}

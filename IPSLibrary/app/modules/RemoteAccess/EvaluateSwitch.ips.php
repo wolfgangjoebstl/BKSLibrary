@@ -199,7 +199,7 @@
 				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 				//echo "Message Handler hat Event mit ".$oid." angelegt.\n";
 				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($oid,"OnChange",$componentname.','.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
+				$messageHandler->RegisterEvent($oid,"OnChange",$componentName.','.$parameter,'IPSModuleSwitch_IPSLight,1,2,3');
 				echo "   FS20 Switch mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}

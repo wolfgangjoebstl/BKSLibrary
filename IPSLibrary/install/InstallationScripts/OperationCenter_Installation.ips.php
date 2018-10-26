@@ -582,9 +582,6 @@
 	 *
 	 ***************************************************/
 
-	echo "===========================================\n";
-	echo "Detect Movement Variablen anlegen.\n";
-	
 	/* Autosteuerung und Detectmovement verwenden folgendes Profil um die Event tabellen zu sortieren. */
 		$pname="SortTableEvents";
 		if (IPS_VariableProfileExists($pname) == false)
@@ -609,11 +606,15 @@
 			
 	if (isset ($installedModules["DetectMovement"]))
 		{
+	    echo "===========================================\n";
+	    echo "DetectMovement Variablen für Webfront anlegen.\n";		
 		$moduleManagerDM = new IPSModuleManager('DetectMovement',$repository);
 		$CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
 		$CategoryIdAppDM      = $moduleManagerDM->GetModuleCategoryID('app');
-		$scriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);		
+		$scriptId  = IPS_GetObjectIDByIdent('TestMovement', $CategoryIdAppDM);	
+
 		$categoryId_DetectMovement    = CreateCategory('DetectMovement',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_DetectMovement, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 		$TableEventsDM_ID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
 		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
@@ -624,18 +625,24 @@
 	 *
 	 ***************************************************/
 
-	echo "===========================================\n";
-	echo "Autosteuerung Variablen anlegen.\n";
-
 	if (isset ($installedModules["Autosteuerung"]))
 		{
-		$moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
+	    echo "===========================================\n";
+	    echo "Autosteuerung Variablen für Webfront anlegen.\n";		
+        $moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
 		$CategoryIdDataAS     = $moduleManagerAS->GetModuleCategoryID('data');
 		$CategoryIdAppAS      = $moduleManagerAS->GetModuleCategoryID('app');
 		$scriptId  = IPS_GetObjectIDByIdent('WebfrontControl', $CategoryIdAppAS);		
+
 		$categoryId_Autosteuerung    = CreateCategory('Autosteuerung',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_Autosteuerung, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_Autosteuerung,0,"~HTMLBox",null,null,"");
 		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+		$categoryId_AutosteuerungAlexa    = CreateCategory('Alexa',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_AutosteuerungAlexa, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
+		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
+		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
 		
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -647,7 +654,11 @@
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 		CreateLinkByDestination('OperationCenter', $CategoryIdData,    $categoryId_WebFront,  10);
-		CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
+		if (isset ($installedModules["Autosteuerung"]))
+            {
+            CreateLinkByDestination('Alexa', $categoryId_AutosteuerungAlexa,    $categoryId_WebFront,  80);		
+            CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
+            }
 		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
@@ -903,15 +914,18 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 
 
-	function CreateHomematicInstance($moduleManager, $Address, $Channel, $Name, $ParentId, $Protocol='BidCos-RF') {
-		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) {
+	function CreateHomematicInstance($moduleManager, $Address, $Channel, $Name, $ParentId, $Protocol='BidCos-RF') 
+        {
+		foreach (IPS_GetInstanceListByModuleID("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}") as $HomematicModuleId ) 
+            {
 			$HMAddress = HM_GetAddress($HomematicModuleId);
-			if ($HMAddress=="$Address:$Channel") {
+			if ($HMAddress=="$Address:$Channel") 
+                {
 				$moduleManager->LogHandler()->Log("Found existing HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
 				return $HomematicModuleId;
-			}
-		}
-
+			    }
+		    }
+        echo "Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol\n";
 		$moduleManager->LogHandler()->Log("Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
 		$HomematicModuleId = IPS_CreateInstance("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
 		IPS_SetParent($HomematicModuleId, $ParentId);

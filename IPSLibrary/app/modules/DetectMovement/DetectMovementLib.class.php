@@ -230,7 +230,8 @@
 					case 'Motion':
 					case 'Contact':
 					case 'Topology':
-					case 'Temperature':										
+					case 'Temperatur':										
+					case 'Feuchtigkeit':
 					case 'Humidity':
 					case 'HeatControl':										
 						if (($type==$params[0]) && ($params[1] != ""))
@@ -311,6 +312,7 @@
 			{
 			foreach ($array as $k => $v) 
 				{
+                //echo "Sort ".IPS_GetName($k)."\n";
 				$sortable_array[$k] = IPS_GetName($k);
 				}
 			switch ($order) 
@@ -396,6 +398,18 @@
 
 		}
 
+		/**
+		 * Ausgeabe der registrierten Events als echo
+		 *
+		 */
+        public function Print_EventConfigurationAuto()
+            {
+			$configuration = $this->Get_EventConfigurationAuto();
+			foreach ($configuration as $variableId=>$params)
+                {
+                echo "  ".$variableId."   ".str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"\n";
+                }
+            }
 	}
 
 /******************************************************************************************************************/
@@ -501,7 +515,7 @@
 		 */
 		function InitGroup($group)
 			{
-			echo "\nDetect Temperature Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			echo "\nDetect Feuchtigkeit Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
 			$status=false; $status1=false;
 			foreach ($config as $oid=>$params)
@@ -512,7 +526,7 @@
 				$status1=$status1 || GetValue($moid);
 				}
 			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Motion', null,false);
+			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Humidity', null,false);
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -652,7 +666,7 @@
 		 */
 		function InitGroup($group)
 			{
-			echo "\nDetectMovement Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") und in ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).") gespeichert.\n";
+			echo "\nDetect Movement Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") und in ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
 			$status=false; $status1=false;
 			foreach ($config as $oid=>$params)
@@ -812,7 +826,7 @@
 				$status1=$status1 || GetValue($moid);
 				}
 			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Motion', null,false);
+			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Temperature', null,false);
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -936,7 +950,7 @@
 		 */
 		function InitGroup($group)
 			{
-			echo "\nDetect Temperature Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			echo "\nDetect HeatControl Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
 			$status=false; $status1=false;
 			foreach ($config as $oid=>$params)
@@ -947,7 +961,7 @@
 				$status1=$status1 || GetValue($moid);
 				}
 			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Motion', null,false);
+			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Power', null,false);
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -974,33 +988,67 @@
 		private static $configtype;
 		private static $configFileName;		
 
+		private $topology;
+
 		/**
 		 * @public
 		 *
-		 * Initialisierung des DetectHumidityHandler Objektes
+		 * Initialisierung des DetectDeviceHandler Objektes
 		 *
 		 */
 		public function __construct()
 			{
 			self::$configtype = '$deviceTopology';
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php';
-			parent::__construct();
+
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+            if (!isset($moduleManager))
+	            {
+            	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+	            $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+            	}
+            $installedModules = $moduleManager->GetInstalledModules();
+            //print_r($installedModules); 
+    	    $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
+        	echo "\nWebportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
+	        $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+        	$ID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
+            echo "Topologie Datestruktur ist in $ID (World) abgelegt.\n";
+            $this->topology=get_Topology();
+    	    $this->topology["World"]["OID"]=$ID;
+        	foreach ( $this->topology as $category => $entry)
+	        	{
+		        if ( (isset($this->topology[$this->topology[$category]["Parent"]]["OID"]) == true) && ($category != "World") )
+			        {
+        			$parentID=$this->topology[$this->topology[$category]["Parent"]]["OID"];
+	        		$this->topology[$category]["OID"]=CreateCategory($category,  $parentID, 10);
+		        	$this->topology[$this->topology[$category]["Parent"]]["Children"][$category]=$category;
+			        }
+        		}
+            //print_r($this->topology);
+	        parent::__construct();
 			}
 
 
-		function Get_Configtype()
+		public function Get_Configtype()
 			{
 			return self::$configtype;
 			}
 			
-		function Get_ConfigFileName()
+		public function Get_ConfigFileName()
 			{
 			return self::$configFileName;
-			}			
+			}	
+
+		public function Get_Topology()
+			{
+			return($this->topology);
+			}
+            		
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
-		function Get_EventConfigurationAuto()
+		public function Get_EventConfigurationAuto()
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
@@ -1014,11 +1062,52 @@
 		 * Setzen der aktuellen Event Konfiguration
 		 *
 		 */
-		function Set_EventConfigurationAuto($configuration)
+		public function Set_EventConfigurationAuto($configuration)
 			{
 			self::$eventConfigurationAuto = $configuration;
 			}
 
+
+		/**
+		 *
+		 * Topologie als Tree darstellen
+		 *
+		 */
+	    public function evalTopology($lookfor,$hierarchy=0)
+		    {
+    		if (is_array($lookfor)==true ) 
+	    		{
+		    	//echo "Ist Array. ".$hierarchy."\n";
+			    foreach ($lookfor as $item)
+				    {
+    				//for ($i=0;$i<$hierarchy;$i++) echo "   ";
+	    			//echo $item."\n";
+		    		$this->evalTopology($item,$hierarchy);
+			    	}
+    			//print_r($lookfor);
+	    		}
+		    else 
+			    {
+    			$goal=$lookfor;	
+	    		for ($i=0;$i<$hierarchy;$i++) echo "   ";
+		    	echo $goal."\n";
+			    foreach ($this->topology as $index => $entry)
+				    {
+    				if ($index == $goal) 
+	    				{
+		    			if (isset($entry["Children"]) == true )
+			    			{
+				    		if ( sizeof($entry["Children"]) > 0 )
+    							{
+	    						//print_r($entry["Children"]);
+		    					$hierarchy++;
+			    				$this->evalTopology($entry["Children"],$hierarchy);
+				    			}
+					    	}	
+    					}
+	    			}
+		    	}
+    		}
 
 		}  /* ende class */
 
