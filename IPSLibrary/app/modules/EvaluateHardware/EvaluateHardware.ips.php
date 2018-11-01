@@ -661,7 +661,7 @@ if (isset($installedModules["DetectMovement"]))
 			}
 		}
     else "FEHLER, function IPSDetectDeviceHandler_GetEventConfiguration noch nicht angelegt.\n";    
-    } /* ende if isset DetectMovement */
+
 	
     /*-----------------------------------------------------------------*/
 																																													
@@ -673,7 +673,8 @@ if (isset($installedModules["DetectMovement"]))
     $configuration=$Handler->Get_EventConfigurationAuto();
     $configurationNew=$Handler->sortEventList($configuration);
     $Handler->StoreEventConfiguration($configurationNew);
-    
+    } /* ende if isset DetectMovement */
+	    
 /********************************************************************************************************************/
 
 /*    FUNKTIONEN       */
