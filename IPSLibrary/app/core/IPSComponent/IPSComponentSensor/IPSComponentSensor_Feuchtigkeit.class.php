@@ -137,7 +137,7 @@
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			//echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			$name="Feuchtigkeit-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -180,24 +180,27 @@
 			{
 			$result=number_format(GetValue($this->variable),2,',','.')." %";
 			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %\n";
+			echo "Feuchtigkeit_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %\n";
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$installedmodules=$moduleManager->GetInstalledModules();
 			if (isset ($installedmodules["DetectMovement"]))
 				{
+                echo "Modul DetectMovement installiert. Gruppen behandeln:\n";
 				/* Detect Movement kann auch Feuchtigkeitswerte agreggieren */
 				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   	$DetectHumidityHandler = new DetectHumidityHandler();
+		   	    $DetectHumidityHandler = new DetectHumidityHandler();
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectHumidityHandler->ListGroups();
+				$groups=$DetectHumidityHandler->ListGroups("Feuchtigkeit"); // mit Angabe Feuchtigkeit können auch mehrere Gruppen pro Event ausgegeben werden */
+                //print_r($groups);
 				foreach($groups as $group=>$name)
-				   {
-				   echo "Gruppe ".$group." behandeln.\n";
+				    {
+				    echo "Gruppe ".$group." behandeln.\n";
 					$config=$DetectHumidityHandler->ListEvents($group);
+                    print_r($config);
 					$status=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)
@@ -207,8 +210,9 @@
 						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
+                    else echo "Gruppe ".$group." hat keine eigenen Eintraege.\n";
 					$statusint=(integer)$status;
-				   echo "Gruppe ".$group." hat neuen Status : ".$statusint."\n";
+				    echo "Gruppe ".$group." hat neuen Status : ".$statusint."\n";
 
 					$log=new Feuchtigkeit_Logging($oid);
 					$class=$log->GetComponent($oid);
@@ -216,7 +220,7 @@
 					$statusID=CreateVariable("Gesamtauswertung_".$group,1,$this->HumidityAuswertungID);
 					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
 					SetValue($statusID,$statusint);
-			   	}
+			   	    }
 				}
 
 			parent::LogMessage($result);

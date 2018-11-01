@@ -13,6 +13,8 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+$startexec=microtime(true);
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	//$repository = 'https://10.0.1.6/user/repository/';
@@ -231,9 +233,10 @@
 	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdApp);
 	echo "\n";
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
-	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." \n";
-	IPS_RunScript($scriptIdEvaluateHardware);
-	echo "Script Evaluate Hardware gestartet wird parallel zu diesem Script ausgeführt.\n";
+	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware.". Wird jetzt aufgerufen.\n";
+	echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	IPS_RunScriptWait($scriptIdEvaluateHardware);
+	echo "Script Evaluate Hardware bereits abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
 	
 	

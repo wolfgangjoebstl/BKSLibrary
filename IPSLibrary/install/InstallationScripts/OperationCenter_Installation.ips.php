@@ -38,6 +38,8 @@
 	 *
 	 *************************************************************/
 
+$startexec=microtime(true);
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -70,6 +72,20 @@
 		$inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
 		}
 	//echo $inst_modules;
+	
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * Evaluierung starten
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+	$CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
+	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
+	echo "\n";
+	echo "Die Scripts sind auf               ".$CategoryIdAppEH."\n";
+	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	IPS_RunScriptWait($scriptIdEvaluateHardware);
+	echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");

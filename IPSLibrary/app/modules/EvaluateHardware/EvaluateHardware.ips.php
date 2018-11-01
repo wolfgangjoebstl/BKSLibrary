@@ -86,7 +86,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-	print_r($installedModules);
+	//print_r($installedModules);
 	
 	echo "\n================================================================================================\n";
 	echo "Von der Konsole aus gestartet.\n";
@@ -115,7 +115,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 		foreach ($IPSLightObjects as $name => $object)
 			{
 			$components=explode(",",$object[IPSLIGHT_COMPONENT]);
-			echo "  ".$name."  ".$object[IPSLIGHT_TYPE]."   ".$components[0]."    ";
+			echo "  ".str_pad($name,30)."  ".str_pad($object[IPSLIGHT_TYPE],10)."   ".$components[0]."    ";
 			switch (strtoupper($components[0]))
 				{
 				case "IPSCOMPONENTSWITCH_HOMEMATIC":
@@ -153,6 +153,17 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 			}
 		}
 
+    echo "Auflistung aller Geraeteinstanzen:\n";
+	$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
+	foreach ($alleInstanzen as $instanz)
+		{
+		$result=IPS_GetInstance($instanz);
+		//echo IPS_GetName($instanz)." ".$instanz." \n";
+        //echo IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		/* alle Instanzen dargestellt */
+		echo "  ".str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($result['ModuleInfo']['ModuleName'],20)." ".$result['ModuleInfo']['ModuleID']."\n";
+		//print_r(IPS_GetInstance($instanz));
+		}
 
 	echo "\n==================================================================\n";
 	echo "es geht weiter mit der Timer Routine\n";
@@ -175,18 +186,6 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	
 	$summary=array();		/* eine Zusammenfassung nach Typen erstellen */
 	
-    echo "Auflistung aller Geraeteinstanzen:\n";
-	$alleInstanzen = IPS_GetInstanceListByModuleType(3); // nur Geräte Instanzen auflisten
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		//echo IPS_GetName($instanz)." ".$instanz." \n";
-        //echo IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		/* alle Instanzen dargestellt */
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($result['ModuleInfo']['ModuleName'],20)." ".$result['ModuleInfo']['ModuleID']."\n";
-		//print_r(IPS_GetInstance($instanz));
-		}
-
 	//$includefile='<?'."\n".'$fileList = array('."\n";
 	$includefile='<?'."\n";
 
@@ -401,7 +400,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	$includehomematic=	'function getHomematicConfiguration() {'."\n".'            return array('." \n";
 	$includefile.='function HomematicList() { return array('."\n";
 
-	echo "\nHomematic Geräte: ".sizeof($alleInstanzen)."\n\n";
+	echo "\nHomematic Geräte/Kanäle: ".sizeof($alleInstanzen)."\n\n";
 	$serienNummer=array();
 	foreach ($alleInstanzen as $instanz)
 		{
@@ -426,8 +425,8 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 		$sizeResult=sizeof($result);
 		//print_r($result);
 
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".$HM_Adresse." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
-		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren */
+		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($HM_Adresse,22)." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
+		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren, RSSI Register mit registrieren für spätere geografische Auswertungen */
         //echo "check.\n";
 		if ($sizeResult > 1)
 			{
@@ -449,11 +448,12 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 				$includefile.="\n         ".'"Protocol" => "'.$protocol.'", ';
 				$includefile.="\n         ".'"EmulateStatus" => "'.IPS_GetProperty($instanz,'EmulateStatus').'", ';
                 
-                echo "Typen und Geräteerkennung durchführen.\n";
+                //echo "Typen und Geräteerkennung durchführen.\n";
                 if (isset($installedModules["OperationCenter"])) 
                     {
                     $type   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
                     $typedev= $DeviceManager->getHomematicDeviceType($instanz);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+					echo "  ".str_pad($type,15)."   $typedev \n";
                     }
                 else { $typedev=""; $type=""; }
 				$result=explode(":",IPS_GetProperty($instanz,'Address'));
@@ -490,7 +490,7 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 				}
 			else
 				{
-				echo "     Statusvariable, wird nicht im Includefile geführt.\n";
+				echo "     RSSI Statusvariable, wird nicht im Includefile geführt.\n";
 				}
 			}		
 		}
@@ -511,13 +511,21 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	echo $includehomematic;
 	
 	} // ende else if execute
-	
+
+	echo "\n";
+	echo "=======================================================================\n";
+	echo "Zusammenfassung:\n\n";
+	//print_r($summary);
+    foreach ($summary as $type => $devices)
+        {
+        echo "   Type : ".$type."\n";
+        asort($devices);
+        foreach ($devices as $device) echo "     ".$device."\n";
+        }
+
 if (isset($installedModules["DetectMovement"]))
     {
-	echo "\n";
-	echo "Zusammenfassung:\n\n";
-	print_r($summary);
-
+    echo "\n";
 	echo "=======================================================================\n";
 	echo "Summenregister suchen und evaluieren :\n";
     echo "\n";
@@ -613,46 +621,59 @@ if (isset($installedModules["DetectMovement"]))
 		echo "     ".$oid."    ".IPS_GetName($oid)."   ".$entry[0]."  ".$entry[1]."   ".$entry[2]."  \n"; 
 		}
 
-    $topology=$Handler->Get_Topology();
-    print_r($topology);
-	foreach (IPS_getDeviceTopology() as $index => $entry)
+	if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true )
 		{
-		$name=IPS_GetName($index);
-		$entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen */
-		$entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
-		if (sizeof($entry1)>0)
+	    $topology=$Handler->Get_Topology();
+    	print_r($topology);
+		foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
 			{
-			foreach ($entry1 as $place)
+			$name=IPS_GetName($index);
+			$entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen */
+			$entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
+			if (sizeof($entry1)>0)
 				{
-				if ( isset($topology[$place]["OID"]) != true ) 
+				foreach ($entry1 as $place)
 					{
-					echo "Kategorie $place anlegen.\n";
-					}
-				else
-					{
-					$oid=$topology[$place]["OID"];
-					//print_r($topology[$place]);
-					$size=sizeof($entry2);
-					if ($entry2[0]=="") $size=0;
-					if ($size > 0) 
-						{	/* ein Gewerk, vorne einsortieren */
-						echo "erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-						CreateLinkByDestination($name, $index, $oid, 10);						
+					if ( isset($topology[$place]["OID"]) != true ) 
+						{
+						echo "Kategorie $place anlegen.\n";
 						}
 					else
-						{	/* eine Instanz, dient nur der Vollstaendigkeit */
-						echo "erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
-						CreateLinkByDestination($name, $index, $oid, 1000);						
+						{
+						$oid=$topology[$place]["OID"];
+						//print_r($topology[$place]);
+						$size=sizeof($entry2);
+						if ($entry2[0]=="") $size=0;
+						if ($size > 0) 
+							{	/* ein Gewerk, vorne einsortieren */
+							echo "erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+							CreateLinkByDestination($name, $index, $oid, 10);						
+							}
+						else
+							{	/* eine Instanz, dient nur der Vollstaendigkeit */
+							echo "erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+							CreateLinkByDestination($name, $index, $oid, 1000);						
+							}
 						}
 					}
-							
+				//print_r($entry1);
 				}
-			//print_r($entry1);
 			}
 		}
+    else "FEHLER, function IPSDetectDeviceHandler_GetEventConfiguration noch nicht angelegt.\n";    
     } /* ende if isset DetectMovement */
+	
+    /*-----------------------------------------------------------------*/
+																																													
+    echo "\n";
+    echo "=======================================================================\n";
+	echo "Jetzt noch einmal den ganzen DetectDevice Event table sortieren, damit Raumeintraege schneller gehen :\n";
 
 
+    $configuration=$Handler->Get_EventConfigurationAuto();
+    $configurationNew=$Handler->sortEventList($configuration);
+    $Handler->StoreEventConfiguration($configurationNew);
+    
 /********************************************************************************************************************/
 
 /*    FUNKTIONEN       */

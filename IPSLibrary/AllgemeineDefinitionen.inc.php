@@ -2303,6 +2303,7 @@ function RemoteAccessServerTable()
 	{
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$result=$moduleManager->GetInstalledModules();
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");	
 			if (isset ($result["OperationCenter"]))
 				{
 				$moduleManager_DM = new IPSModuleManager('OperationCenter');     /*   <--- change here */
@@ -2311,25 +2312,28 @@ function RemoteAccessServerTable()
 				$RemoteServer=array();
 	        	//$remServer=RemoteAccess_GetConfiguration();
 				//foreach ($remServer as $Name => $UrlAddress)
-				IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");				
 				$remServer    = RemoteAccess_GetServerConfig();     /* es werden alle Server abgefragt, im STATUS und LOGGING steht wie damit umzugehen ist */
 				foreach ($remServer as $Name => $Server)
 					{
 					$UrlAddress=$Server["ADRESSE"];
-					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-						{				
-						$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
-						$RemoteServer[$Name]["Url"]=$UrlAddress;
-						$RemoteServer[$Name]["Name"]=$Name;
-						if (GetValue($IPS_UpTimeID)==0)
-							{
-							$RemoteServer[$Name]["Status"]=false;
-							}
-						else
-							{
-							$RemoteServer[$Name]["Status"]=true;
-							}
+                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
+                        {                    
+    					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+	    					{				
+		    				$IPS_UpTimeID = CreateVariableByName($Access_categoryId, $Name."_IPS_UpTime", 1);
+			    			$RemoteServer[$Name]["Url"]=$UrlAddress;
+				    		$RemoteServer[$Name]["Name"]=$Name;
+					    	if (GetValue($IPS_UpTimeID)==0)
+						    	{
+							    $RemoteServer[$Name]["Status"]=false;
+							    }
+    						else
+	    						{
+		    					$RemoteServer[$Name]["Status"]=true;
+			    				}
+                            }    
 						}
+                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
 					}
 				}
 			else
@@ -2338,14 +2342,19 @@ function RemoteAccessServerTable()
 				foreach ($remServer as $Name => $Server)
 					{
 					$UrlAddress=$Server["ADRESSE"];
-					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
-						{				
-						$RemoteServer[$Name]["Url"]=$UrlAddress;
-						$RemoteServer[$Name]["Name"]=$Name;
-						$RemoteServer[$Name]["Status"]=true;
-						}
+                    if ( (isset($Server["STATUS"])===true) and (isset($Server["LOGGING"])===true) )
+                        {                    
+    					if ( (strtoupper($Server["STATUS"])=="ACTIVE") and (strtoupper($Server["LOGGING"])=="ENABLED") )
+	    					{				
+		    				$RemoteServer[$Name]["Url"]=$UrlAddress;
+			    			$RemoteServer[$Name]["Name"]=$Name;
+				    		$RemoteServer[$Name]["Status"]=true;
+					    	}
+                        }
+                    if (isset($Server["ALEXA"])===true ) $RemoteServer[$Name]["Alexa"] = $Server["ALEXA"];
 					}	
 			   }
+
 	return($RemoteServer);
 	}
 
@@ -3063,6 +3072,8 @@ function read_wfc()
 
 /***********************************************************************************
  *
+ * installComponentFull, anlegen von CustomComponents Events
+ *
  * verwendet zum schnellen und einheitlichen Anlegen der Variablen und Events für CustomComponents, RemoteAccess und EvaluateHeatControl 
  * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
  *
@@ -3280,7 +3291,13 @@ function read_wfc()
 				}
 			} /* Ende foreach */		
 		}	
-		
+
+/***********************************************************************************
+ *
+ *  selectProtocol, selectProtocolDevice
+ *
+ **************************************************************************************/
+
 		function selectProtocol($protocol,$devicelist)
 			{
 			$result=array();
@@ -3296,7 +3313,12 @@ function read_wfc()
 			$result=array();
 			foreach ($devicelist as $index => $device)
 				{
-				if ( ($device["Protocol"]==$protocol) && ($device["Device"]==$type) ) $result[$index]=$device;
+                if ( isset($device["Device"]) === false ) 
+                    {
+                    echo "FEHLER, Array Identifier Device nicht festgelegt.\n";
+                    print_r($device);
+                    }
+                elseif ( ($device["Protocol"]==$protocol) && ($device["Device"]==$type) ) $result[$index]=$device;
                 elseif ( ($protocol=="") && ($device["Device"]==$type) ) $result[$index]=$device;
                 elseif ( ($type=="")     && ($device["Protocol"]==$protocol) ) $result[$index]=$device;   
 				}

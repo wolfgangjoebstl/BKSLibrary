@@ -3301,240 +3301,11 @@ class DeviceManagement
 				$register=explode(" ",trim($anzahl["Values"]));
 
 
-				if ($debug) echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
-			    if (sizeof($register)>1)
+				if ($debug) echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".str_pad($name,20)." Inst: ".str_pad($anzahl["Anzahl"],4)." Child: ".str_pad(sizeof($register),6)." ";
+			    if (sizeof($register)>1) 
 				    { /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
-    				$oldvalue="";
-				    
-				    sort($register);
-                    $registerNew=array();
-	    			foreach ($register as $index => $value)
-		    			{
-			    		//echo "    ".$value."  ".$oldvalue."\n";
-				    	if ($value!=$oldvalue) {$registerNew[]=$value;}
-					    $oldvalue=$value;
-    					}
-	    			//print_r($registerNew);
-                    /* einfache Auswertung nach speziellen Variablennamen */
-                    $found=true;
-                    /*-------------------------------------*/
-                    if ( array_search("VALVE_STATE",$registerNew) !== false) /* Stellmotor */
-                        {
-                        //print_r($registerNew);
-                        if (array_search("ACTIVE_PROFILE",$registerNew) !== false) 
-                            {
-                            if ($debug) echo "IP Funk Stellmotor\n";
-                            }
-                        else 
-                            {
-                            if ($debug) echo "Funk Stellmotor\n";
-                            }                         
-                        $result="Stellmotor";                               
-                        }
-                    /*-------------------------------------*/
-                    elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
-                        {
-                        $result="Wandthermostat";
-                        if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
-                            {
-                            if ($debug) echo "Funk Wandthermostat\n";
-                            }
-                        else 
-                            {
-                            if ($debug) echo "IP Funk Wandthermostat\n";
-                            }
-                        }                    
-                    /*-------------------------------------*/
-                    elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
-                        {
-                        $result="Temperatursensor";
-                        if ($debug) echo "Funk Temperatursensor\n";
-                        }                    
-                    /*-------------------------------------*/
-                    elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
-                        {
-                        //print_r($registerNew);
-                        $anzahl=sizeof(array_keys($register,"PRESS_SHORT")); 
-                        if (array_search("INSTALL_TEST",$registerNew) !== false) 
-                            {
-                            $result="Taster ".$anzahl."-fach";
-                            if ($debug) echo "Funk-Taster ".$anzahl."-fach\n";
-                            }
-                        else 
-                            {
-                            $result="Taster ".$anzahl."-fach";
-                            if ($debug) echo "IP Funk-Taster ".$anzahl."-fach\n";
-                            }
-                        }
-                    /*-------------------------------------*/
-                    elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
-                        {
-                        //print_r($registerNew);
-                        $anzahl=sizeof(array_keys($register,"STATE"));                     
-                        if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )
-                            {
-                            $result="Schaltaktor ".$anzahl."-fach";
-                            if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )
-                                {
-                                if ($debug) echo "Funk-Schaltaktor ".$anzahl."-fach";
-                                }
-                            else    
-                                {
-                                if ($debug) echo "IP Funk-Schaltaktor ".$anzahl."-fach";
-                                }
-                            if (array_search("ENERGY_COUNTER",$registerNew) !== false) 
-                                {
-                                $result .= " mit Energiemesung";
-                                if ($debug) echo " mit Energiemesung\n";
-                                }
-                            else if ($debug) echo "\n";     
-                            }
-                        else 
-                            {
-                            $result="Tuerkontakt";
-                            if ($debug) echo "Funk-Tuerkontakt\n";
-                            }
-                        }
-                    /*-------------------------------------*/
-                    elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )/* Dimmer */
-                        {
-                        $result="Dimmer";
-                        if ($debug) echo "Funk-Dimmer\n";
-                        }                    
-                    /*-------------------------------------*/
-                    elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
-                        {
-                        //print_r($registerNew);    
-                        $result="Bewegungsmelder";
-                        if ($debug) echo "Funk-Bewegungsmelder\n";
-                        }
-                    else $found=false;
-
-                    if ($found==false)    
-                        {                
-                        /* dann Children register sortieren, anhand der sortierten Reihenfolge der Register können die Geräte erkannt werden */
-					    sort($registerNew);
-                        print_r($registerNew);
-					switch ($registerNew[0])
-						{
-						case "ACTIVE_PROFILE":
-							if ($registerNew[23]=="VALVE_ADAPTATION")
-								{
-								if ($debug) echo "Stellmotor-Heizkoerper\n";
-								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Stellmotor-Heizkoerper";
-								}
-							else
-								{
-								if ($debug) echo "Funk-Wandthermostat\n";
-								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Wandthermostat";
-								}
-							break;						
-						case "ERROR":
-							if ($debug) echo "Funk-Tür-/Fensterkontakt\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Tür-/Fensterkontakt";
-							break;
-						case "INSTALL_TEST":
-							if ($registerNew[1]=="PRESS_CONT")
-								{
-								if ($debug) echo "Taster 6fach\n";
-								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Taster 6fach";							
-								}
-							else
-								{
-								if ($debug) echo "Funk-Display-Wandtaster\n";
-								$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Display-Wandtaster";							
-								}
-							break;
-						case "ACTUAL_HUMIDITY":
-							if ($debug) echo "Funk-Wandthermostat\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Wandthermostat";						
-							break;
-						case "ACTUAL_TEMPERATURE":
-							switch ($registerNew[1])
-								{
-								case "CONFIG_PENDING":
-									if ($debug) echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";
-									break;
-								default:
-									if ($debug) echo "Funk-Heizkörperthermostat\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Heizkörperthermostat";
-									break;
-								}	
-							print_r($registerNew);														
-							break;
-						case "BRIGHTNESS":
-							if ($debug) echo "Funk-Bewegungsmelder\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Bewegungsmelder";						
-							break;
-						case "INHIBIT":
-							if ($debug) echo "Funk-Schaltaktor 1-fach\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Funk-Schaltaktor 1-fach";							
-							break;
-						case "DIRECTION":
-							if ($debug) echo "Funk-Rolladenansteuerung\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Rolladenansteuerung";							
-							//print_r($registerNew);	
-							break;
-						case "BOOT":
-						case "CURRENT":
-						case "PROCESS":		// wenn Energieregister nicht angelegt ist Process das erste Register
-							if ($debug) echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor 1-fach mit Energiemessung";							
-							break;
-						case "HUMIDITY":
-							if ($debug) echo "Funk-Thermometer\n";
-							$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Thermometer";							
-							break;
-						case "CONFIG_PENDING":		/* modernes Register, alles gleich am Anfang */
-							switch ($registerNew[1])
-								{
-								case "DIRECTION":
-									if ($debug) echo "Funkaktor Dimmer\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Dimmer";									
-									break;
-								case "DUTYCYCLE":
-									if ($debug) echo "IP Funk-Schaltaktor\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor";								
-									break;
-								case "DUTY_CYCLE":
-									if ($debug) echo "IP Funk-Stellmotor\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Stellmotor";								
-									break;								
-								case "DEVICE_IN_BOOTLOADER":
-								case "INSTALL_TEST":
-									if ($debug) echo "Funk-Taster\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Taster";								
-									break;
-								case "CURRENT":
-									if ($debug) echo "IP Funk-Schaltaktor Energiemessgeraet\n";
-									$this->HomematicSerialNumberList[$ccu][$name]["Typ"]="Schaltaktor Energiemessgeraet";								
-									break;
-								default:	
-									//if ($debug)
-										{
-										echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
-										echo "unknown CONFIG_PENDING Typ\n";
-										print_r($registerNew);
-										}	
-									break;
-								}					
-							break;					
-						default:
-							//if ($debug)
-								{
-								echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
-								echo "unknown Typ\n";
-								print_r($registerNew);
-								}
-							break;
-						} /* ende switch */
-                    } /* ende found */
-                    else
-                        {
-                        $this->HomematicSerialNumberList[$ccu][$name]["Typ"]=$result;
-                        }    
-					} /* ende size too small */
+				    echo $this->HomematicDeviceType($register,2)."\n";
+					} 
 				else
 					{	
 					//if ($debug)
@@ -3825,16 +3596,18 @@ class DeviceManagement
 		}
 	echo $str; 		
 
-	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
-	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
-	SetValue($HomematicGeraeteliste,$str);
-		
-		
+    	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
+	    $HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
+	    SetValue($HomematicGeraeteliste,$str);
 		}
 
-/* anhand einer Homatic Instanz ID ermitteln 
+/*****************************************************
+ *
+ * HM_TYPE für Homematic feststellen
+ *
+ * anhand einer Homatic Instanz ID ermitteln 
  * um welchen Typ von Homematic Geraet es sich handeln koennte,
- * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
+ * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
  */
 
 function getHomematicType($instanz)
@@ -3938,10 +3711,15 @@ function getHomematicType($instanz)
 	return ($type);
 	}
 
-/* anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
+/*****************************************************
+ *
+ * HM_TYPE für FS20, FS20EX oder FHT Instanz feststellen
+ *
+ * anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
  * um welchen Typ von Gerät es sich handeln koennte,
- * es wird nur BUTTON, SWITCH, DIMMER, SHUTTER unterschieden
- */
+ * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
+ *
+ *******************************************************************/
 
 function getFS20Type($instanz)
 	{
@@ -4044,151 +3822,19 @@ function getFS20Type($instanz)
 	return ($type);
 	}
 
-function getHomematicDeviceType($instanz, $debug=false)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	$type=""; if ($debug) echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				if ($debug) echo "Funk-Tür-/Fensterkontakt\n";
-				$type="TYPE_CONTACT";
-				break;
-			case "PRESS_LONG":
-				if ($debug) echo "Taster 6fach (IP)\n";
-				$type="TYPE_BUTTON";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					if ($debug) echo "Taster 6fach\n";
-					$type="TYPE_BUTTON";
-					}
-				else
-					{
-					if ($debug) echo "Funk-Display-Wandtaster\n";
-					$type="TYPE_BUTTON";
-					}
-				break;
-			case "ACTUAL_HUMIDITY":
-                //print_r($homematic);
-				if ($debug) echo "Funk-Wandthermostat\n";
-				$type="TYPE_THERMOSTAT";
-				break;
-			case "ACTIVE_PROFILE":
-                //print_r($homematic);
-				if (array_search("VALVE_ADAPTION",$homematic) !== false)
-					{
-					if ($debug) echo "Stellmotor\n";
-					$type="TYPE_ACTUATOR";
-					}
-				else
-					{
-					if ($debug) echo "Wandthermostat (IP)\n";
-					$type="TYPE_THERMOSTAT";
-					}
-				break;
-			case "ACTUAL_TEMPERATURE":
-				if ($debug) echo "Funk-Heizkörperthermostat\n";
-				$type="TYPE_ACTUATOR";
-				break;
-		 	case "ILLUMINATION":
-			case "BRIGHTNESS":
-				if ($debug) echo "Funk-Bewegungsmelder\n";
-				$type="TYPE_MOTION";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					if ($debug) echo "Dimmer\n";
-					$type="TYPE_DIMMER";						
-					}
-				else
-					{
-					if ($debug) echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				if ($debug) echo "Funk-Schaltaktor 1-fach\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "BOOT":
-            	if ($homematic[1]=="CURRENT")
-                    {
-    				if ($debug) echo "Energiemessung\n";
-	    			$type="TYPE_METER_POWER";
-                    }
-                else
-                    {    
-				    if ($debug) echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				    $type="TYPE_SWITCH";
-                    }
-				break;
-			case "CURRENT":
-				if ($debug) echo "Energiemessung\n";
-				$type="TYPE_METER_POWER";
-				break;
-			case "HUMIDITY":
-				if ($debug) echo "Funk-Thermometer\n";
-				$type="TYPE_METER_TEMPERATURE";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					if ($debug) echo "Funkstatusregister\n";
-                    $type="TYPE_RSSI";
-					}
-				elseif ( ($homematic[1]=="DUTY_CYCLE") || ($homematic[1]=="DEVICE_IN_BOOTLOADER") )
-					{
-					if ($debug) echo "IP Funkstatusregister\n";
-                    $type="TYPE_RSSI";                    
-					}
-				elseif ($homematic[1]=="LOWBAT")
-                    {
-					if ($debug) echo "Funkstatusregister-Taster\n";
-					$type="TYPE_RSSI";
-                    }
-                else    
-					{
-					if ($debug) echo "IP Funk-Schaltaktor\n";
-					$type="TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				echo "FEHLER, Type unknown\n";
-				print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		echo "Fehler, Homematic Insatz noch angelegt, es gibt keine Children.\n";
-		}
-    $typeNew=$this->HomematicDeviceType($homematic);    
-    if ( ($type != $typeNew) || ($type == "") )
-        {
-        echo "FEHLER::$type::";
-        print_r($homematic);
-        }
-	return ($typeNew);
-	}
 
     /*********************************
      * 
-     * Homeematic Device Type Auswertung nur mehr an einer Stelle machen 
+     * Homematic Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
      *
      * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
-     * übergeben wird das Array das alle auch doppelte Eintraege hat.
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * VALVE_STATE                                  Stellmotor, (IP) Funk Stellmotor, TYPE_ACTUATOR
+     * ACTIVE_PROFILE oder WINDOW_OPEN_REPORTING    Wandthermostat, (IP) Funk Wandthermostat, TYPE_THERMOSTAT
+     * TEMPERATURE und HUMIDITY                     Temperatursensor, (IP) Funk Temperatursensor, TYPE_METER_TEMPERATURE
+     * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
+     * STATE
      *
      ****************************************/
 
@@ -4210,11 +3856,11 @@ function getHomematicDeviceType($instanz, $debug=false)
             //echo "Stellmotor gefunden.\n";
             if (array_search("ACTIVE_PROFILE",$registerNew) !== false) 
                 {
-                $result[1]="IP Funk Stellmotor\n";
+                $result[1]="IP Funk Stellmotor";
                 }
             else 
                 {
-                $result[1]="Funk Stellmotor\n";
+                $result[1]="Funk Stellmotor";
                 }                         
             $result[0]="Stellmotor";                               
             $result[2]="TYPE_ACTUATOR";
@@ -4224,11 +3870,11 @@ function getHomematicDeviceType($instanz, $debug=false)
             {
             if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
                 {
-                $result[1]="Funk Wandthermostat\n";
+                $result[1]="Funk Wandthermostat";
                 }
             else 
                 {
-                $result[1]="IP Funk Wandthermostat\n";
+                $result[1]="IP Funk Wandthermostat";
                 }
             $result[0] = "Wandthermostat";
             $result[2] = "TYPE_THERMOSTAT";
@@ -4236,7 +3882,7 @@ function getHomematicDeviceType($instanz, $debug=false)
         /*-------------------------------------*/
         elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
             {
-            $result[1] = "Funk Temperatursensor\n";
+            $result[1] = "Funk Temperatursensor";
             $result[0] = "Temperatursensor";
             $result[2] = "TYPE_METER_TEMPERATURE";            
             }                    
@@ -4247,11 +3893,11 @@ function getHomematicDeviceType($instanz, $debug=false)
             $anzahl=sizeof(array_keys($register,"PRESS_SHORT")); 
             if (array_search("INSTALL_TEST",$registerNew) !== false) 
                 {
-                $result[1]="Funk-Taster ".$anzahl."-fach\n";
+                $result[1]="Funk-Taster ".$anzahl."-fach";
                 }
             else 
                 {
-                $result[1]="IP Funk-Taster ".$anzahl."-fach\n";
+                $result[1]="IP Funk-Taster ".$anzahl."-fach";
                 }
             $result[0]="Taster ".$anzahl."-fach";
             $result[2]="TYPE_BUTTON";                                        
@@ -4275,45 +3921,53 @@ function getHomematicDeviceType($instanz, $debug=false)
                 if (array_search("ENERGY_COUNTER",$registerNew) !== false) 
                     {
                     $result[0] .= " mit Energiemesung";
-                    $result[1] .= " mit Energiemesung\n";
+                    $result[1] .= " mit Energiemesung";
                     }
-                else $result[1] .= "\n";
                 $result[2]="TYPE_SWITCH";     
                 }
             else 
                 {
                 $result[0] = "Tuerkontakt";
-                $result[1] = "Funk-Tuerkontakt\n";
+                $result[1] = "Funk-Tuerkontakt";
                 $result[2] = "TYPE_CONTACT";     
                 }
             }
         /*-------------------------------------*/
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
+            {
+            //print_r($registerNew);                
+            $result[0] = "Dimmer";
+            $result[1] = "Funk-Dimmer";
+            $result[2] = "TYPE_DIMMER";            
+            }                    
+        /*-------------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )/* Dimmer */
             {
-            $result[0] = "Dimmer";
-            $result[1] = "Funk-Dimmer\n";
-            $result[2] = "TYPE_DIMMER";            
+            //print_r($registerNew);                
+            $result[0] = "Rollladensteuerung";
+            $result[1] = "Funk-Rollladensteuerung";
+            $result[2] = "TYPE_SHUTTER";            
             }                    
         /*-------------------------------------*/
         elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
             {
             //print_r($registerNew);    
             $result[0] = "Bewegungsmelder";
-            $result[1] = "Funk-Bewegungsmelder\n";
+            $result[1] = "Funk-Bewegungsmelder";
             $result[2] = "TYPE_MOTION";             
             }
         elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* Bewegungsmelder */
             {
             $result[0] = "RSSI Wert";
-            if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert\n";
-            else $result[1] = "Funk RSSI Wert\n";
+            if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
+            else $result[1] = "Funk RSSI Wert";
             $result[2] = "TYPE_RSSI";             
             }            
         elseif ( array_search("CURRENT",$registerNew) !== false) /* Bewegungsmelder */
             {
             $result[0] = "Energiemessgeraet";
-            if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet\n";
-            else $result[1] = "IP Funk Energiemessgeraet\n";
+            if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
+            else $result[1] = "IP Funk Energiemessgeraet";
             $result[2] = "TYPE_METER_POWER";             
             }          
         else $found=false;
@@ -4321,10 +3975,37 @@ function getHomematicDeviceType($instanz, $debug=false)
         if ($found) 
             {
             if ($debug==false) return($result[2]);
-            else return ($result[0]);
+            elseif ($debug==2) return ($result[1]);
+			else return ($result[0]);
             }
         else return (false);
         }
+
+
+    /*********************************
+     *
+     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     ***********************************************/
+
+    function getHomematicDeviceType($instanz, $debug=false)
+	    {
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $homematic=array();
+    	foreach($cids as $cid)
+	    	{
+		    $homematic[]=IPS_GetName($cid);
+    		}
+    	return ($this->HomematicDeviceType($homematic));
+    	}
+
+    /*********************************
+     *
+     * gibt für eine FS20 Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     ***********************************************/
 
 function getFS20DeviceType($instanz)
 	{
@@ -4454,7 +4135,7 @@ function getFS20DeviceType($instanz)
 		if($HomInstanz == 0)
 		    {
 		    //die("Keine HomeMatic Socket Instanz gefunden!");
-		    $alleHM_Errors.="ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		    $alleHM_Errors.="  ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
 		    }
 		else
 		    {
@@ -4474,40 +4155,42 @@ function getFS20DeviceType($instanz)
 				    {
             		$ccu_name=IPS_GetName($id);
             		$alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";                        
-					$msgs = HM_ReadServiceMessages($id);
+					$msgs = @HM_ReadServiceMessages($id);
 					if($msgs === false)
 					    {
 						//die("Verbindung zur CCU fehlgeschlagen");
-					    $alleHM_Errors.="ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+					    $alleHM_Errors.="  ERROR: Verbindung zur CCU fehlgeschlagen!\n";
 					    }
+					if ($msgs != Null)
+						{
+						if(sizeof($msgs) == 0)
+						    {
+							//echo "Keine Servicemeldungen!\n";
+					   	    $alleHM_Errors.="OK, keine Servicemeldungen!\n";
+							}
 
-					if(sizeof($msgs) == 0)
-					    {
-						//echo "Keine Servicemeldungen!\n";
-				   	    $alleHM_Errors.="OK, keine Servicemeldungen!\n";
-						}
-
-					foreach($msgs as $msg)
-					    {
-			   		    if(array_key_exists($msg['Message'], $texte))
-							{
-      				  	    $text = $texte[$msg['Message']];
-		   				    }
-						else
-							{
-      	  				    $text = $msg['Message'];
-		        			}
-					    $HMID = GetInstanceIDFromHMID($msg['Address']);
-				    	if(IPS_InstanceExists($HMID))
-						 	{
-        					$name = IPS_GetLocation($HMID);
-					   	    }
-						else
-							{
-		      	  		    $name = "Gerät nicht in IP-Symcon eingerichtet";
-    						}
-			  			//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-					  	$alleHM_Errors.="  NACHRICHT : ".$name."  ".$msg['Address']."   ".$text." \n";
+						foreach($msgs as $msg)
+						    {
+				   		    if(array_key_exists($msg['Message'], $texte))
+								{
+      					  	    $text = $texte[$msg['Message']];
+		   					    }
+							else
+								{
+	      	  				    $text = $msg['Message'];
+			        			}
+						    $HMID = GetInstanceIDFromHMID($msg['Address']);
+					    	if(IPS_InstanceExists($HMID))
+							 	{
+        						$name = IPS_GetLocation($HMID);
+					   		    }
+							else
+								{
+			      	  		    $name = "Gerät nicht in IP-Symcon eingerichtet";
+    							}
+			  				//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
+						  	$alleHM_Errors.="  NACHRICHT : ".str_pad($name,60)."  ".$msg['Address']."   ".$text." \n";
+							}
 						}
 					}
 				}

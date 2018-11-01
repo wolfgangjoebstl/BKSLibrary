@@ -72,7 +72,7 @@
 		 */
 		function StoreEventConfiguration($configuration)
 			{
-			$configurationSort=$this->sortEventList($configuration);			
+			//$configurationSort=$this->sortEventList($configuration);			
 
 			// Build Configuration String
 			$configString = $this->Get_Configtype().' = array(';
@@ -175,8 +175,10 @@
 			{
 			$configuration = $this->Get_EventConfigurationAuto();
 			$result=array();
+            //echo "check ";
 			foreach ($configuration as $variableId=>$params)
 				{
+                //echo $variableId."  ";
 				switch ($type)
 					{
 					case 'Motion':
@@ -189,7 +191,7 @@
 							}
 						break;
 					default:
-						/* Modulname nicht bekannt, suche nach Gruppenname */
+						/* Modulname nicht bekannt, suche nach Gruppenname und gib die Mitglieder einer Gruppe aus */
 						if ($type!="")
 							{
 							$gruppen=explode(",",$params[1]);
@@ -468,8 +470,9 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
-				}
+                if ( function_exists('IPSDetectHumidityHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHumidityHandler_GetEventConfiguration();
+				else self::$eventConfigurationAuto = array();					
+				}					
 			return self::$eventConfigurationAuto;
 			}
 
@@ -611,8 +614,9 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();       /* <-------- change here */
-				}
+                if ( function_exists('IPSDetectMovementHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectMovementHandler_GetEventConfiguration();       /* <-------- change here */
+    			else self::$eventConfigurationAuto = array();					
+				}					
 			return self::$eventConfigurationAuto;
 			}
 
@@ -769,6 +773,10 @@
 					{
 					self::$eventConfigurationAuto = IPSDetectTemperatureHandler_GetEventConfiguration();       /* <-------- change here */
 					}
+				else
+					{
+					self::$eventConfigurationAuto = array();					
+					}						
 				}
 			return self::$eventConfigurationAuto;
 			}
@@ -896,14 +904,8 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				if ( function_exists('IPSDetectHeatControlHandler_GetEventConfiguration') )
-					{
-					self::$eventConfigurationAuto = IPSDetectHeatControlHandler_GetEventConfiguration();       /* <-------- change here */
-					}
-				else
-					{
-					self::$eventConfigurationAuto = array();					
-					}	
+				if ( function_exists('IPSDetectHeatControlHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatControlHandler_GetEventConfiguration();       /* <-------- change here */
+				else self::$eventConfigurationAuto = array();					
 				}
 			return self::$eventConfigurationAuto;
 			}
@@ -1010,21 +1012,86 @@
             $installedModules = $moduleManager->GetInstalledModules();
             //print_r($installedModules); 
     	    $WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');
-        	echo "\nWebportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
+        	//echo "\nWebportal EvaluateHardware Datenstruktur installieren in: ".$WFC10_Path." \n";
 	        $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
         	$ID=CreateCategory("World",  $categoryId_WebFrontAdministrator, 10);
-            echo "Topologie Datestruktur ist in $ID (World) abgelegt.\n";
-            $this->topology=get_Topology();
-    	    $this->topology["World"]["OID"]=$ID;
-        	foreach ( $this->topology as $category => $entry)
-	        	{
-		        if ( (isset($this->topology[$this->topology[$category]["Parent"]]["OID"]) == true) && ($category != "World") )
-			        {
-        			$parentID=$this->topology[$this->topology[$category]["Parent"]]["OID"];
-	        		$this->topology[$category]["OID"]=CreateCategory($category,  $parentID, 10);
-		        	$this->topology[$this->topology[$category]["Parent"]]["Children"][$category]=$category;
-			        }
-        		}
+            //echo "Topologie Datestruktur ist in $ID (World) abgelegt.\n";
+			if (function_exists("get_Topology") === false)
+				{
+				echo "Function get_Topology neu anlegen.\n";
+				$fileNameFull = $this->Get_ConfigFileName();
+				if (!file_exists($fileNameFull)) 
+					{
+					throw new IPSMessageHandlerException($fileNameFull.' could NOT be found!', E_USER_ERROR);
+					}
+				$fileContent = file_get_contents($fileNameFull, true);
+				$search1='$getTopology = array(';
+				$search2='return $getTopology;';
+				$pos1 = strpos($fileContent, $search1);
+				$pos2 = strpos($fileContent, $search2);
+
+				if ($pos1 === false or $pos2 === false) 
+					{
+					echo "================================================\n";
+					echo "Function get_Topology noch nicht im Config File angelegt. ".$this->Get_Configtype()." nicht gefunden. Neu schreiben.\n";
+					$comment=0; $posn=false;	/* letzte Klammer finden und danach einsetzen */
+					for ($i=0;$i<strlen($fileContent);$i++)
+						{
+						switch ($fileContent[$i])
+							{
+							/* comment : 0 ok 1 / erkannt 2 /* erkannt 3 // erkannt */
+							case '/':
+								if ( ($comment==2) && ($star==1) ) $comment=0;
+								elseif ($comment==1) $comment=3;
+								else $comment=1;
+								$star=0;
+							case '*':
+								if ($comment==1) $comment=2;
+								$star=1;	
+								break;
+							case '}':
+							if ($comment <2 ) $posn=$i;	
+							case chr(10):
+							case chr(13):
+								if ($comment==3) $comment=0;		
+							default:
+								$star=0;
+								break;
+							}		
+						}
+					// $posn = strrpos($fileContent, '}');  erkennt auch Klammern innerhalb von Kommentaren
+				
+					if ( $posn === false )
+						{
+						if (strlen($fileContent) > 6 )
+							{
+							$posn = strrpos($fileContent, '?>')-1;
+							echo "Weit und breit keine Klammer. Auf Pos $posn function einfügen.\n";
+							$configString="\n	 function get_Topology() {\n        ".'$getTopology'." = array(\n".'			"World" 			=>	array("Name" => "World","Parent"	=> "World"),'."\n         );\n       return ".'$getTopology'.";\n	}\n\n";
+							$fileContentNew = substr($fileContent, 0, $posn+1).$configString.substr($fileContent, $posn+1);
+							file_put_contents($fileNameFull, $fileContentNew);							
+							}
+						else throw new IPSMessageHandlerException('EventConfiguration File maybe empty !!!', E_USER_ERROR);
+						}
+					
+					}
+				$this->topology=array();
+				$this->topology["World"]["OID"]=$ID;				
+				}
+			else
+				{	
+				$this->topology=get_Topology();
+				$this->topology["World"]["OID"]=$ID;
+				foreach ( $this->topology as $category => $entry)
+	        		{
+					if ( (isset($this->topology[$this->topology[$category]["Parent"]]["OID"]) == true) && ($category != "World") )
+						{
+        				$parentID=$this->topology[$this->topology[$category]["Parent"]]["OID"];
+	        			$this->topology[$category]["OID"]=CreateCategory($category,  $parentID, 10);
+		        		$this->topology[$this->topology[$category]["Parent"]]["Children"][$category]=$category;
+				        }
+    	    		}
+				}
             //print_r($this->topology);
 	        parent::__construct();
 			}
@@ -1052,7 +1119,12 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				self::$eventConfigurationAuto = IPS_getDeviceTopology();
+				if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true ) self::$eventConfigurationAuto = IPSDetectDeviceHandler_GetEventConfiguration();
+				else 
+                    {
+                    echo "FEHLER: function IPSDetectDeviceHandler_GetEventConfiguration nicht vorhanden.\n";
+                    self::$eventConfigurationAuto = array();
+                    }
 				}
 			return self::$eventConfigurationAuto;
 			}
