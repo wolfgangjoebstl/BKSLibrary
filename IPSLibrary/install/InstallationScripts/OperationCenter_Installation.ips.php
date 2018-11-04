@@ -596,6 +596,8 @@ $startexec=microtime(true);
 	 *
 	 *		INIT Detect Movement Event Darstellung und Auswertung
 	 *
+	 * Auswertung mit DetectMovement/Testmovement, alle anderen mit Autosteuerung/Webfront_Control
+	 *
 	 ***************************************************/
 
 	/* Autosteuerung und Detectmovement verwenden folgendes Profil um die Event tabellen zu sortieren. */
@@ -639,6 +641,8 @@ $startexec=microtime(true);
 	 *
 	 *		INIT Autosteuerung Event Darstellung und Auswertung
 	 *
+	 * Auswertung mit Autosteuerung/WebfrontControl
+	 *
 	 ***************************************************/
 
 	if (isset ($installedModules["Autosteuerung"]))
@@ -655,10 +659,27 @@ $startexec=microtime(true);
 		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_Autosteuerung,0,"~HTMLBox",null,null,"");
 		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_Autosteuerung,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
+	    echo "===========================================\n";
+	    echo "Alexa Variablen für Webfront anlegen.\n";		
+
 		$categoryId_AutosteuerungAlexa    = CreateCategory('Alexa',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungAlexa, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsAS_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
-		$SchalterSortAS_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+		$TableEventsAlexa_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
+		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+	/********************************************************
+	 *
+	 *		INIT Geraete Darstellung und Auswertung
+	 *
+	 ***************************************************/
+
+	    echo "===========================================\n";
+	    echo "Device Management Variablen für Webfront anlegen.\n";		
+
+		$categoryId_DeviceManagement    = CreateCategory('DeviceManagement',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
+		$TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
+		$SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
 		
 	// ----------------------------------------------------------------------------------------------------------------------------

@@ -160,7 +160,7 @@
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 						
-			/* Create Category to store the HeatControl-Nachrichten */				
+			/* Get or Create Nachrichten Category to store the HeatControl-Nachrichten */				
 			$name="HeatControl-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==false)
@@ -171,7 +171,7 @@
 				IPS_SetInfo($vid, "this category was created by script IPSComponentHeatControl.");
 				}
 				
-			/* Create Category to store the HeatControl-Spiegelregister */	
+			/* Get or Create Auswertung Category to store the HeatControl-Spiegelregister */	
 			$name="HeatControl-Auswertung";
 			$HeatControlAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($HeatControlAuswertungID==false)
@@ -298,7 +298,9 @@
 						if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
 						$count++;
 						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status." | ".GetValue($mirrorPowerID)."   ".$power."\n";
+						echo "OID: ".$oid;
+						echo " Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status." | ";
+						echo GetValue($mirrorPowerID)."   ".$power."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
 					echo "Gruppe ".$group." hat neuen Status : ".$status." | ".$power."\n";

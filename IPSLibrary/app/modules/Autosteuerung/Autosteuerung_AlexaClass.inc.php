@@ -42,7 +42,7 @@ class AutosteuerungAlexaHandler
                 }    
         
             }
-        else $this->configAlexa=IPS_GetConfiguration($instances[0]);    
+        else $this->configAlexa=IPS_GetConfiguration($this->instances[0]);    
 		}
 
     public function getInstances()
@@ -70,6 +70,9 @@ class AutosteuerungAlexaHandler
 		        //foreach ($confStruct as $struct) print_r($struct);            
                 switch ($typ)
     	        	{
+					case "DeviceSpeaker":
+				        $id="SpeakerID";
+                        break;					
 	    	        case "DeviceGenericSwitch":
 		            case "DeviceLightSwitch":
 				        $id="PowerControllerID";
@@ -153,20 +156,41 @@ class AutosteuerungAlexaHandler
     	return ($alexaConfig);
         }
 
-    public function writeAlexaConfig($alexaConfig,$filter="")
+    public function writeAlexaConfig($alexaConfig, $filter="", $writeHtml=false,$debug=false)
         {
+		/* html Formatierung für Tabelle vorbereiten, Style customers schreiben */
+		$html="";
+		$html.="<style>";
+		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
+		$html.='#customers td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+		$html.='#customers tr:nth-child(even){background-color: #f2f2f2;}';
+		$html.='#customers tr:nth-child(odd){background-color: #e2e2e2;}';
+		$html.='#customers tr:hover {background-color: #ddd;}';
+		$html.='#customers th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
+		$html.="</style>";
+		
+		$index=0;					
         if ($filter == "")
             {   // standardausgabe, technisch orientiert
+			$html.='<table id="customers" >';
+			$html.="<tr><th>ID#</th><th>Name</th><th>Typ</th><th>Pfad</th></tr>";	
 	        foreach ($alexaConfig as $entry)
 		        {
-		        echo "     ".str_pad('"'.$entry["Name"].'"',40)."   ".str_pad($entry["Type"],20)."    ".$entry["Pfad"]."\n";
+		        if ($debug) echo "     ".str_pad('"'.$entry["Name"].'"',40)."   ".str_pad($entry["Type"],20)."    ".$entry["Pfad"]."\n";
+				$html.="<tr><td>".$index."</td><td>".$entry["Name"]."</td><td>".$entry["Type"]."</td><td>".$entry["Pfad"]."</td></tr>";
+				$index++;
 		        }
             }
         else
-            {
-                
+            {	// nur Ausgabe eines Sprachbefehls
+			$html.='<table id="customers" >';
+			$html.="<tr><th>ID#</th><th>Name</th></tr>";	
+			if ($debug)
+				{                 
                 switch ($filter)
                     {
+					case "DeviceSpeaker":
+                        break;						
       	            case "DeviceGenericSwitch":
                         break;
 	                case "DeviceLightSwitch":
@@ -184,6 +208,7 @@ class AutosteuerungAlexaHandler
                     case "DeviceLock":
 		    	        break;
                 	case "DeviceTemperatureSensor":
+
                         echo "Typische Fragen um einen Temperaturwert in einem Raum anzufragen:\n";
                         echo "   Alexa, wie ist die Temperatur im Badezimmer ?\n";
                         echo "   Alexa, wie ist der Status von Aussen ?\n";
@@ -192,20 +217,27 @@ class AutosteuerungAlexaHandler
                         echo "Befehl: Alexa, Setze die Temperatur im Badezimmer auf 22 Grad.\n";
     	        	    break;											
             	    default:
-                        echo "Fehler writeAlexaConfig: kenne den Identifier $typ in der Alexa Config noch nicht.\n";
+                        echo "Fehler writeAlexaConfig: kenne den Identifier $filter in der Alexa Config noch nicht.\n";
                         break;
                     }
+				}
 	        foreach ($alexaConfig as $entry)
 		        {
                 if ($entry["Type"]==$filter) 
 					{
-					print_r($entry);
-					echo "     ".str_pad('"'.$entry["Name"].'"',40)."\n";
+					if ($debug) print_r($entry);
+					if ($debug) echo "     ".str_pad($index,3)." ".str_pad('"'.$entry["Name"].'"',40)."\n";
+					$html.="<tr><td>".$index."</td><td>".$entry["Name"]."</td></tr>";	
+					$index++;
 					}                                    
-                }
-            }
-        }
+                }	// ende foreach  
+            }	// else filter
 
+		$html.="</table>";
+		if ($writeHtml==true) return($html);
+        }
+		
+		
 	}
 
 /*********************************************************************************************/

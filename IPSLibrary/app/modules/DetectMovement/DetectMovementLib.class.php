@@ -52,6 +52,8 @@
 				
 		abstract function Get_EventConfigurationAuto();
 		abstract function Set_EventConfigurationAuto($configuration);
+		
+		abstract function CreateMirrorRegister($variableId);
 
 		/**
 		 * @public
@@ -354,50 +356,50 @@
 			//echo "Register Event with VariableID:".$variableId."\n";
 			// Search Configuration
 			$found = false;
-				if (array_key_exists($variableId, $configurationAuto))
-					{
-					//echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
-					//echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-					$moduleParamsNew = explode(',', $moduleParams);
-					//print_r($moduleParamsNew);
-					$moduleClassNew  = $moduleParamsNew[0];
+			if (array_key_exists($variableId, $configurationAuto))
+				{
+				//echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
+				//echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+				$moduleParamsNew = explode(',', $moduleParams);
+				//print_r($moduleParamsNew);
+				$moduleClassNew  = $moduleParamsNew[0];
 
-					$params = $configurationAuto[$variableId];
-					//print_r($params);
-					for ($i=0; $i<count($params); $i=$i+3)
+				$params = $configurationAuto[$variableId];
+				//print_r($params);
+				for ($i=0; $i<count($params); $i=$i+3)
+					{
+					$moduleParamsCfg = $params[$i+2];
+					$moduleParamsCfg = explode(',', $moduleParamsCfg);
+					$moduleClassCfg  = $moduleParamsCfg[0];
+					// Found Variable and Module --> Update Configuration
+					//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+					/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
+					/*if ($moduleClassCfg=$moduleClassNew)
 						{
-						$moduleParamsCfg = $params[$i+2];
-						$moduleParamsCfg = explode(',', $moduleParamsCfg);
-						$moduleClassCfg  = $moduleParamsCfg[0];
-						// Found Variable and Module --> Update Configuration
-						//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-						/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-						/*if ($moduleClassCfg=$moduleClassNew)
-							{
-							$found = true;
-							$configurationAuto[$variableId][$i]   = $eventType;
-							$configurationAuto[$variableId][$i+1] = $componentParams;
-							$configurationAuto[$variableId][$i+2] = $moduleParams;
-							} */
 						$found = true;
 						$configurationAuto[$variableId][$i]   = $eventType;
-						if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-						if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
-						}
+						$configurationAuto[$variableId][$i+1] = $componentParams;
+						$configurationAuto[$variableId][$i+2] = $moduleParams;
+						} */
+					$found = true;
+					$configurationAuto[$variableId][$i]   = $eventType;
+					if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
+					if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
 					}
+				}
 
 			// Variable NOT found --> Create Configuration
 			if (!$found)
-					{
-				   //echo "Create Event."."\n";
-					$configurationAuto[$variableId][] = $eventType;
-					$configurationAuto[$variableId][] = $componentParams;
-					$configurationAuto[$variableId][] = $moduleParams;
-					}
+				{
+				//echo "Create Event."."\n";
+				$configurationAuto[$variableId][] = $eventType;
+				$configurationAuto[$variableId][] = $componentParams;
+				$configurationAuto[$variableId][] = $moduleParams;
+				}
 
-				$this->StoreEventConfiguration($configurationAuto);
-				$this->CreateEvent($variableId, $eventType);
-
+			$this->StoreEventConfiguration($configurationAuto);
+			$this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
+			$this->CreateMirrorRegister($variableId);
 		}
 
 		/**
@@ -509,6 +511,31 @@
 			if ($mirrorID===false) $mirrorID=$oid;
 			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
 			return($mirrorID);
+			}
+
+		public function CreateMirrorRegister($variableId)
+			{
+			$result=IPS_GetObject($variableId);
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+				}
+			else
+				{
+				$variablename=IPS_GetName($variableId);
+				}
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		
+
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,0,$this->Detect_DataID,10, '~Humidity', null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			return ($mirrorID);			
 			}
 
 		/**
@@ -662,6 +689,43 @@
 			return($mirrorID);
 			}
 			
+		public function CreateMirrorRegister($variableId)
+			{
+			$result=IPS_GetObject($variableId);
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+				}
+			elseif (IPS_GetName($variableId)=="Cam_Motion")					/* was ist mit den Kameras */
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);
+				}
+			else
+				{
+				$variablename=IPS_GetName($variableId);
+				}
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);		/* das sind die schnellen Register, ohne Delay */
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,0,$this->MoveAuswertungID,10, '~Motion', null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->motionDetect_DataID);		/* das sind die geglätteten Register mit Delay */
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,0,$this->motionDetect_DataID,10, '~Motion', null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			return ($mirrorID);			
+			}
 
 		/**
 		 *
@@ -816,6 +880,31 @@
 			return($mirrorID);
 			}
 
+		public function CreateMirrorRegister($variableId)
+			{
+			$result=IPS_GetObject($variableId);
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+				}
+			else
+				{
+				$variablename=IPS_GetName($variableId);
+				}
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
+
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,0,$this->Detect_DataID,10, '~Temperature', null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			return ($mirrorID);			
+			}
+
 		/**
 		 *
 		 * Die Gesamtauswertung_ Variablen erstellen 
@@ -943,6 +1032,41 @@
 			if ($mirrorID===false) $mirrorID=$oid;
 			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
 			return($mirrorID);
+			}
+
+		public function CreateMirrorRegister($variableId)			/* für DetectHeatControl */
+			{
+			$result=IPS_GetObject($variableId);
+			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
+			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+				{
+				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+				}
+			else
+				{
+				$variablename=IPS_GetName($variableId);
+				}
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
+			if ($mirrorID !== false) $powerID=@IPS_GetObjectIDByName($variablename."_Power",variablename); else $powerID=false;
+			if ( ($mirrorID===false) || ($powerID===false) )		
+				{	
+				/* Spiegelregister noch nicht erzeugt, manchmal wenn wenig Bewegung ist werden sie nicht rechtzeitig vor den Gruppenabfragen erzeugt */
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+				$variableLogID=CreateVariable($variablename,1,$this->Detect_DataID, 10, "~Intensity.100", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+				AC_SetLoggingStatus($archiveHandlerID,$variableLogID,true);
+				AC_SetAggregationType($archiveHandlerID,$variableLogID,0);      /* normaler Wwert */
+				$energyID=CreateVariable($variablename."_Energy",2,$variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
+				AC_SetLoggingStatus($archiveHandlerID,$energyID,true);
+				AC_SetAggregationType($archiveHandlerID,$energyID,0);      /* normaler Wwert */
+				$powerID=CreateVariable($variablename."_Power",2,$variableLogID,10, '~Power', null,false);
+				AC_SetLoggingStatus($archiveHandlerID,$powerID,true);
+				AC_SetAggregationType($archiveHandlerID,$powerID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				$timeID=CreateVariable($variablename."_Changetime",1,$variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+				if (GetValue($timeID) == 0) SetValue($timeID,time());
+				}
+			return ($mirrorID);			
 			}
 
 		/**
@@ -1139,6 +1263,9 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
+		public function CreateMirrorRegister($variableId)
+			{
+			}
 
 		/**
 		 *

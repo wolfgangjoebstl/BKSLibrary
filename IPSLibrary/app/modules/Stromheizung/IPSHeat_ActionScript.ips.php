@@ -30,13 +30,50 @@
 
 	include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 	
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_AlexaClass.inc.php");
+
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
+/******************************************************
+
+				INIT
+
+*************************************************************/
+
+$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+if (!isset($moduleManager)) 
+	{
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+	}
+
+$installedModules = $moduleManager->GetInstalledModules();
+
+$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+$configurationAutosteuerung = Autosteuerung_Setup();
+
+$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+
+$nachrichten=new AutosteuerungAlexa();
+$Alexa = new AutosteuerungAlexaHandler();
+$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
+
+	/*********************************************************************************************/
+	
 	$variableId   = $_IPS['VARIABLE'];
 	$value        = $_IPS['VALUE'];
 	$categoryName = IPS_GetName(IPS_GetParent($_IPS['VARIABLE']));
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
-	if ($_IPS['SENDER']=='WebFront') {
-		switch ($categoryName) {
+	if ($_IPS['SENDER']=='WebFront') 
+		{
+		switch ($categoryName) 
+			{
 			case 'Switches':
 				IPSHeat_SetValue($variableId, $value);
 				break;
@@ -48,11 +85,31 @@
 				break;
 			default:
 				trigger_error('Unknown Category '.$categoryName);
+			}
 		}
-
 	// ----------------------------------------------------------------------------------------------------------------------------
-	} else {
-	}
-
+	elseif ($_IPS['SENDER']=='VoiceControl')
+		{
+		$nachrichten->LogNachrichten("Alexa empfaengt von VoiceControl : ".$_IPS['VARIABLE']." ".$_IPS['SENDER']."  ".$_IPS['VALUE']." .");
+		switch ($categoryName) 
+			{
+			case 'Switches':
+				IPSHeat_SetValue($variableId, $value);
+				break;
+			case 'Groups':
+				IPSHeat_SetGroup($variableId, $value);
+				break;
+			case 'Programs':
+				IPSHeat_SetProgram($variableId, $value);
+				break;
+			default:
+				trigger_error('Unknown Category '.$categoryName);
+			}
+		}
+	else
+		{
+		}
+		
+		
     /** @}*/
 ?>
