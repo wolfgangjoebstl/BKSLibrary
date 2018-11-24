@@ -65,10 +65,13 @@ $register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
 
 	/*********************************************************************************************/
 	
-	$variableId   = $_IPS['VARIABLE'];
-	$value        = $_IPS['VALUE'];
-	$categoryName = IPS_GetName(IPS_GetParent($_IPS['VARIABLE']));
-	
+	if ($_IPS['SENDER']!='Execute') 
+		{
+		$variableId   = $_IPS['VARIABLE'];
+		$value        = $_IPS['VALUE'];
+		$categoryName = IPS_GetName(IPS_GetParent($_IPS['VARIABLE']));
+		}
+		
 	// ----------------------------------------------------------------------------------------------------------------------------
 	if ($_IPS['SENDER']=='WebFront') 
 		{
@@ -90,19 +93,22 @@ $register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
 	// ----------------------------------------------------------------------------------------------------------------------------
 	elseif ($_IPS['SENDER']=='VoiceControl')
 		{
-		$nachrichten->LogNachrichten("Alexa empfaengt von VoiceControl : ".$_IPS['VARIABLE']." ".$_IPS['SENDER']."  ".$_IPS['VALUE']." .");
 		switch ($categoryName) 
 			{
 			case 'Switches':
+				$nachrichten->LogNachrichten("Alexa/VoiceControl : Switch ".IPS_GetName($variableId)." (".$variableId.")   ".($value?"Ein":"Aus")."   ".$_IPS['VALUE']." .");
 				IPSHeat_SetValue($variableId, $value);
 				break;
 			case 'Groups':
+				$nachrichten->LogNachrichten("Alexa/VoiceControl : Group ".IPS_GetName($variableId)." (".$variableId.")   ".$_IPS['VALUE']." .");
 				IPSHeat_SetGroup($variableId, $value);
 				break;
 			case 'Programs':
+				$nachrichten->LogNachrichten("Alexa/VoiceControl : Programs ".IPS_GetName($variableId)." (".$variableId.")   ".$_IPS['VALUE']." .");
 				IPSHeat_SetProgram($variableId, $value);
 				break;
 			default:
+				$nachrichten->LogNachrichten("Alexa/VoiceControl : Unknown Category ".IPS_GetName($variableId)." (".$variableId.")   ".$_IPS['VALUE']." .");
 				trigger_error('Unknown Category '.$categoryName);
 			}
 		}

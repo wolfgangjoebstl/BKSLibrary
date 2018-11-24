@@ -48,7 +48,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			echo "Construct IPSComponentHeatSet_Homematic.\n";
+			//echo "Construct IPSComponentHeatSet_Homematic.\n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -88,7 +88,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet Homematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//echo "HeatSet Homematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncPosition($value, $this);

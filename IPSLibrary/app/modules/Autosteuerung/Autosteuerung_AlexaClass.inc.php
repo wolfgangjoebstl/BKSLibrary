@@ -62,7 +62,7 @@ class AutosteuerungAlexaHandler
 	    if ($this->countAlexa != 0) 
             {
         	$configStruct=json_decode($this->configAlexa);
-	        //print_r($configStruct);
+	        print_r($configStruct);
             foreach ($configStruct as $typ=>$conf)
                 {
         	    $confStruct=json_decode($conf);
@@ -71,6 +71,7 @@ class AutosteuerungAlexaHandler
                 switch ($typ)
     	        	{
 					case "DeviceSpeaker":
+                        /* Setze die Laustärke von Denon auf 10 */
 				        $id="SpeakerID";
                         break;					
 	    	        case "DeviceGenericSwitch":
@@ -88,7 +89,13 @@ class AutosteuerungAlexaHandler
 		    	        break;					
             		case "DeviceLightColor":
 	            		$id="ColorControllerID";
-		    	        break;						
+		    	        break;	
+                    case "DeviceLightExpert":
+                        /* Alexa stelle Wohnzimmerlicht auf weiss 
+                         * es werden gleich drei Parameter uebergeben 
+                         * Beispiel: {"ID":"18","Name":"Wohnzimmer Deckenlampe Zwei","PowerControllerID":30308,"BrightnessOnlyControllerID":56174,"ColorOnlyControllerID":12135}}   
+                         */
+                    	break;				
             		case "DeviceLightDimmer":
 	            		$id="BrightnessControllerID";
 		    	        break;	
@@ -99,6 +106,7 @@ class AutosteuerungAlexaHandler
 	                	$id="TemperatureSensorID";
     		            break;											
             		case "DeviceThermostat":
+                        /* Alexa Heizung auf 23 Grad, Alexa Heizung wärmer   */ 
 	            		$id="ThermostatControllerID";
     	    	        break;											
             		default:

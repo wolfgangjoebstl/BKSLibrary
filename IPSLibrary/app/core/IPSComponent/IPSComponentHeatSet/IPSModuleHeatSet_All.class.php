@@ -52,7 +52,7 @@
 			{
 			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 			if ($position>6) { $state=true; } else { $state=false; }
-			echo "iPSModuleHeatSet_All HandleEvent SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
+			//echo "iPSModuleHeatSet_All HandleEvent SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: SyncPosition mit Status '.($state?'On':'Off').' mit Wert '.$position);			
 			$componentParamsToSync = $componentToSync->GetComponentParams();
 			$deviceConfig          = IPSHeat_GetHeatConfiguration();
@@ -81,7 +81,7 @@
 		 */
 		public function SyncState($value, IPSComponentHeatSet $componentToSync) 
 			{
-			echo "HandleEvent: SyncState mit Wert ".$value."\n";
+			//echo "HandleEvent: SyncState mit Wert ".$value."\n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: SyncState mit Wert '.$value);
 			if ($value>6) { $state=true; } else {$state=false; }
 			$componentParamsToSync = $componentToSync->GetComponentParams();

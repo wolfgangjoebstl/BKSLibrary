@@ -84,13 +84,15 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatControl $module)
 			{
-			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			$valueInt=(integer)($value*100);			// Wert in Prozent, vom HomematicIP Register kommen nur Kommawerte als Float, anders bei Homematic hier nicht Multiplizieren
+			if ($valueInt > 100) $valueInt=100;
+			echo "HeatControl Message Handler für VariableID : ".$variable." mit Wert : ".$valueInt." (Originalwert:".$value.")\n";
+	   		IPSLogger_Dbg(__file__, 'HandleEvent: HeatControl Message Handler für VariableID '.$variable.' mit Wert '.$valueInt." (Originalwert:".$value.")");			
 			
 			$log=new HeatControl_Logging($variable);
-			$result=$log->HeatControl_LogValue($value);
+			$result=$log->HeatControl_LogValue($valueInt);
 			
-			$this->WriteValueRemote($value);
+			$this->WriteValueRemote($valueInt);
 			}
 			
 		/**

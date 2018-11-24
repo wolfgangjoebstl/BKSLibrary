@@ -345,7 +345,7 @@
 			$levelValue   = GetValue($levelId);
 			
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
-			echo "IPS class HeatManager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams."\n";
+			//echo "IPS class HeatManager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams."\n";
 
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
 

@@ -85,7 +85,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet HomematicIP Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			//echo "HeatSet HomematicIP Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet HomematicIP Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
 			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncPosition($value, $this);

@@ -1,5 +1,21 @@
 <?
-
+    /*
+     * This file is part of the IPSLibrary.
+     *
+     * The IPSLibrary is free software: you can redistribute it and/or modify
+     * it under the terms of the GNU General Public License as published
+     * by the Free Software Foundation, either version 3 of the License, or
+     * (at your option) any later version.
+     *
+     * The IPSLibrary is distributed in the hope that it will be useful,
+     * but WITHOUT ANY WARRANTY; without even the implied warranty of
+     * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     * GNU General Public License for more details.
+     *
+     * You should have received a copy of the GNU General Public License
+     * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+     */
+	 
 	/**@defgroup Stromheizung
 	 *
 	 * Script um elektrische Heizung nachzusteuern
@@ -202,7 +218,7 @@ Path=Visualization.Mobile.Stromheizung
 		echo "  Path          : ".$Retro_Path."\n";		
 		}
 		
-	$WFC10_Regenerate     = true;
+	$WFC10_Regenerate     = true;			// das Webfront im Konfigurator neu aufbauen
 	$mobile_Regenerate    = false;			
 			
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -397,6 +413,12 @@ Path=Visualization.Mobile.Stromheizung
 					}
 				break;
 			case 'IPSComponentHeatSet_Data':
+			case 'IPSComponentTuner_Denon':
+			case 'IPSComponentSwitch_RFS20':
+			case 'IPSComponentRGB_PhilipsHUE':
+			case 'IPSComponentDimmer_Homematic':
+			case 'IPSComponentSwitch_RMonitor':
+			case 'IPSComponentRGB_LW12':
 				break;					
 			default:
 				trigger_error('Unknown ComponentType '.$componentClass.' found for Heat or Light '.$deviceName.' cannot register.');			
@@ -406,9 +428,9 @@ Path=Visualization.Mobile.Stromheizung
 
 	/****************************************************************************
 	 *
-	 * Webfront Installation
+	 * Webfront Installation der Stromheiztung in der Autosteuerung
 	 *
-	 * jetzt vereinfacht impolementiert, spaeter vollstaendig und gleich machen
+	 * 
 	 *
 	 *****************************************************************************************/
 
@@ -464,8 +486,22 @@ Path=Visualization.Mobile.Stromheizung
 		
 		}
 
-	/* komplettes Webfront wie bei IPSLight aufbauen */ 
-			
+	/****************************************************************************
+	 *
+	 * Webfront Installation der Stromheizung
+	 *
+	 * komplettes Webfront wie bei IPSLight aufbauen 
+	 * 
+	 *
+	 *****************************************************************************************/
+
+	echo "\n";
+	echo "=====================================================\n";
+	echo "Webfront aufbauen in ".$WFC10_Path." :\n";
+	echo "\n";
+	print_r($webFrontConfig);
+	echo "\n";
+	
 	if ($WFC10_Enabled) 
 		{
 		/* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
@@ -474,9 +510,9 @@ Path=Visualization.Mobile.Stromheizung
 			{
 			EmptyCategory($categoryId_WebFront);
 			DeleteWFCItems($WFC10_ConfigId, $WFC10_TabPaneItem);				// HeatTPA
-			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* noch nicht klar für was das ist ? */
+			//DeleteWFCItems($WFC10_ConfigId, 'Light_TP');		/* eventuell alte Installationen von IPS_light wegraeumen */
 			}
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem,  $WFC10_TabPaneParent, $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);   // Tab Pane mit HeatTPA machen
 
 		$order = 10;
 		foreach($webFrontConfig as $tabName=>$tabData) {

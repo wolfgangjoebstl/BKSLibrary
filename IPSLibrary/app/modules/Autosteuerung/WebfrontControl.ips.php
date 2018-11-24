@@ -131,6 +131,7 @@ if ($_IPS['SENDER']=="Execute")
     echo "Alexa Configuration:\n";
     $alexaConfiguration=$Alexa->getAlexaConfig();
     //print_r($alexaConfiguration);
+    echo "Ausgabe DeviceTemperature:\n";
     $filter="DeviceTemperatureSensor";
     $Alexa->writeAlexaConfig($alexaConfiguration,$filter);
     $filter="DeviceThermostat";
