@@ -475,8 +475,9 @@ function DenonSetValue($item, $value, $vtype, $id, $webfrontID="", $debug=false,
 
 		//default: wenn keine Bedingung erfüllt ist
 		default:
-		// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
-
+			IPS_SetPosition($LinkID,1000);
+			// echo "kein neues DENON-Profil angelegt"; // zur Fehlersuche einkommentieren
+			break;
 		}
 
 	// Variablen-Wert updaten

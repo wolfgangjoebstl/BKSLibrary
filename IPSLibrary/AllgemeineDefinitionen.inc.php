@@ -1474,9 +1474,56 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		/************** Werte der Custom Components ****************************************************************************/
 
+        $alleComponentsWerte="";
 		if (isset($installedModules["CustomComponents"])==true)
 		   	{
-
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        	if (!isset($moduleManager)) 
+		        {
+        		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		        $moduleManager = new IPSModuleManager('CustomComponent',$repository);
+        		}
+        	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+        	$Category=IPS_GetChildrenIDs($CategoryIdData);
+            //$search=array('HeatControl','Auswertung');          // Aktuatoren in CustomComponents Daten suchen
+            //$search=array('HeatSet','Auswertung');
+            $search=array('*','Auswertung');
+            $result=array();
+            $power=array();
+        	foreach ($Category as $CategoryId)
+		        {
+        		//echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
+		        $Params = explode("-",IPS_GetName($CategoryId)); 
+        		$SubCategory=IPS_GetChildrenIDs($CategoryId);
+		        foreach ($SubCategory as $SubCategoryId)
+        			{
+                    if ( (isset($search) == false) || ( ( ($search[0]==$Params[0]) || ($search[0]=="*") ) && ( ($search[1]==$Params[1]) || ($search[1]=="*") ) ) )	
+                        {
+                        //echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
+                        $result[]=$SubCategoryId;
+		                $Values=IPS_GetChildrenIDs($SubCategoryId);
+                        foreach ($Values as $valueID)                
+                            {
+                            $Types = explode("_",IPS_GetName($valueID));
+                            switch ($Types[1])
+                                {
+                                case "Changetime":
+                                    echo "         * ".IPS_GetName($valueID)."   ".date("d.m.y H:i:s",GetValue($valueID))."\n";
+                                    break;
+                                case "Power":
+                                    $power[]=$valueID;
+                                default:
+                                    echo "         * ".IPS_GetName($valueID)."   ".GetValue($valueID)."\n";
+                                    break;
+                                }    
+                            }
+                        }
+        			//$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+		        	//$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["ORDER"]=IPS_GetObject($SubCategoryId)["ObjectPosition"];
+        			}
+		        }
+            $alleComponentsWerte .= "\nErfasste Werte in CustomComponents:\n";
+            $alleComponentsWerte .= getComponentValues($result,false);
 			}
 
 		/************** Detect Movement Motion Detect ****************************************************************************/
@@ -1638,13 +1685,13 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 	      {
 			$ergebnis=$einleitung.$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
 		           $ergebnisStatus.$ergebnisBewegung.$ergebnisGarten.$ergebnisSteuerung.$IPStatus.$energieverbrauch.$ergebnis_tabelle.
-					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleMotionWerte.$alleHeizungsWerte.$inst_modules;
+					  $ergebnistab_energie.$ergebnis_tagesenergie.$ergebnisOperationCenter.$alleComponentsWerte.$alleMotionWerte.$alleHeizungsWerte.$inst_modules;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$ergebnistab_energie.$energieverbrauch.$ergebnis_tabelle.$ergebnis_tagesenergie.$alleHeizungsWerte.
 			$ergebnisRegen.$guthaben.$cost.$internet.$statusverlauf.$ergebnisStrom.
-		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleMotionWerte.$inst_modules;
+		           $ergebnisStatus.$ergebnisBewegung.$ergebnisSteuerung.$ergebnisGarten.$ergebnisOperationCenter.$IPStatus.$alleComponentsWerte.$alleMotionWerte.$inst_modules;
 			}
 		}
   	echo ">>ENDE. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
@@ -2504,14 +2551,14 @@ function ReadAktuatorWerte()
 	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	
 	$alleWerte="";
-
+	$alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
+    
+    if (false) {
+	$pad=50;
 	$Homematic = HomematicList();
 	$FS20= FS20List();
 	$FHT = FHTList();
-
-	$pad=50;
-	$alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
-	$varname="VALVE_STATE";
+    $varname="VALVE_STATE";
 	foreach ($Homematic as $Key)
 		{
 		/* Alle Homematic Stellwerte ausgeben */
@@ -2542,6 +2589,10 @@ function ReadAktuatorWerte()
 			$alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 			}
 		}
+    }
+
+    if (function_exists('HomematicList')) $alleWerte.=getComponent(HomematicList(),"TYPE_ACTUATOR","String");
+    if (function_exists('FHTList')) $alleWerte.=getComponent(FHTList(),"TYPE_ACTUATOR","String");
 
 	return ($alleWerte);
 	}
@@ -2995,7 +3046,150 @@ function read_wfc()
 			}
 		}
 	}
-	
+
+/***********************************************************************************
+ *
+ * getComponents
+ *
+ * gleich wie installComponentsFull, nur ohne Regstrierung
+ *
+ ****************************************************************************************/    
+
+	function getComponent($Elements,$keywords, $write="Array")
+		{
+        $component=array(); $result="";
+		$detectmovement=false;
+		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+		$installedModules=$moduleManager->GetInstalledModules();
+		$remServer=array();
+		if (isset ($installedModules["RemoteAccess"]))
+			{
+			//echo "  Remote Access installiert, Variablen auch am VIS Server aufmachen.\n";
+			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
+			$remServer=ROID_List();
+			$status=RemoteAccessServerTable();
+			foreach ($remServer as $Name => $Server)
+				{
+				echo "    Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				//print_r($Server);
+				}							
+			}
+		
+		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
+		foreach ($Elements as $Key)
+			{
+			$count=0; $found=false;
+			if ( is_array($keywords) == true )
+				{
+				foreach ($keywords as $entry)
+					{
+					/* solange das Keyword uebereinstimmt ist alles gut */
+					if (isset($Key["COID"][$entry])==true) $count++; 
+					echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
+					}
+				if ( sizeof($keywords) == $count ) $found=true;
+				$keyword=$keywords[0];	
+				}	
+			else
+				{
+				if (isset($Key["COID"][$keywords])==true) $found=true; 
+				$keyword=$keywords; 
+				}	
+			
+			if ( (isset($Key["Device"])==true) && ($found==false) )
+				{
+				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
+				if ($Key["Device"] == $keyword)
+					{
+					$found=true; 
+					switch ($keyword)
+						{
+						case "TYPE_ACTUATOR":
+							if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
+							elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+							$detectmovement="HeatControl";
+							break;
+						case "TYPE_THERMOSTAT":
+							if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
+							if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
+							if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+							break;
+						default:	
+							echo "FEHLER: unknown keyword.\n";
+						}	
+					}
+				}
+						
+			switch (strtoupper($keyword))
+				{
+				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
+				case "SET_POINT_TEMPERATURE":
+				case "SET_TEMPERATURE":
+					$variabletyp=2; 		/* Float */
+					$index="HeatSet";
+					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+					$profile="~Temperature";
+					break;				
+				case "TEMERATUREVAR";			/* Temperatur auslesen */
+				case "TEMPERATURE":
+				case "ACTUAL_TEMPERATURE":
+					$detectmovement="Temperatur";				
+					$variabletyp=2; 		/* Float */
+					$index="Temperatur";
+					//$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+					$profile="~Temperature";
+					break;
+				case "POSITIONVAR":
+				case "VALVE_STATE": 
+					$detectmovement="HeatControl";
+					$variabletyp=2; 		/* Float */
+					$index="HeatControl";
+					$profile="~Valve.F";
+					break;
+				case "HUMIDITY":
+					$detectmovement="Feuchtigkeit";
+					$variabletyp=1; 		/* Integer */							
+					$index="Humidity";
+					$profile="Humidity";
+					break;
+				case "LEVEL":
+					$detectmovement="HeatControl";
+					$variabletyp=1; 		/* Integer */	
+					$index="HeatControl";
+					$profile="~Intensity.100";
+					break;
+				default:	
+					$variabletyp=0; 		/* Boolean */	
+					break;
+				}			
+			
+			if ($found)
+				{		
+				//echo "********** ".$Key["Name"]."\n";
+				//print_r($Key);
+				$oid=(integer)$Key["COID"][$keyword]["OID"];
+                $component[]=$oid;
+				$vartyp=IPS_GetVariable($oid);
+				if ($vartyp["VariableProfile"]!="")
+					{
+					$result .= "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					}
+				else
+					{
+					$result .= "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+					}
+				}   // ende found
+			} /* Ende foreach */
+
+        if ($write=="Array")
+            {
+            echo $result;
+            return ($component);
+            }     		
+        else return ($result);
+		}	
+
+
 /***********************************************************************************
  *
  * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
@@ -3324,12 +3518,75 @@ function read_wfc()
 				}
 			return ($result);
 			}
-		
+
+/*************************************************************************************
+ *
+ * alle OIDs die im Array von Component angeführt sind ausgeben
+ *
+ ************************************************************************************************/
+
+    function getComponentValues($component,$logs=true)
+        {
+        $result="";
+        $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    	$jetzt=time();
+	    $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt)); // letzter Tag 24:00
+        $endtime=$jetzt;
+	    $startday=$endtime-60*60*24*1; /* ein Tag */ 
+	    $startweek=$endtime-60*60*24*7; /* 7 Tage, Woche */                    
+  	    $startmonth=$endtime-60*60*24*30; /* 30 Tage, Monat */                    
+  	    $startyear=$endtime-60*60*24*360; /* 360 Tage, Jahr */                    
+        foreach ($component as $oid)
+            {   /* Vorwerte ermitteln */
+            $result .= "  ".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName($oid)." (".$oid.")  ";
+		    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startday, $endtime, 0);
+            if ($werte !== false)             
+                {
+                $count=sizeof($werte); $scale="Day";
+                if ($count==0)
+                    {
+    		        $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startweek, $endtime, 0);
+                    $count=sizeof($werte); $scale="Week";
+                    if ($count==0)
+                        {
+    	        	    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startmonth, $endtime, 0);
+                        $count=sizeof($werte); $scale="Month";
+                        if ($count==0)
+                            {
+        	        	    $werte = @AC_GetLoggedValues($archiveHandlerID, $oid, $startyear, $endtime, 0);
+                            $count=sizeof($werte); $scale="Year";
+                            }
+                        }    
+                    }
+	    	    $result .= $count." logged per ".$scale;
+                }
+            else $result .= "no logs available";    
+            if ($logs)
+                {
+        	    foreach($werte as $wert)
+						{
+						$result .= "\n     ".date("d.m.y H:i:s",$wert['TimeStamp'])."   ".number_format($wert['Value'], 2, ",", "" );
+						}
+                }        
+            $result .= "\n";
+            }
+        return ($result);    
+        }
+
+
+
+
 /******************************************************************
-
-Moudule und Klassendefinitionen
-
-******************************************************************/
+ *
+ * Module und Klassendefinitionen
+ *
+ * printrLibraries
+ * printrModules
+ * printModules
+ * printInstances
+ * getInstances
+ *
+ ******************************************************************/
 
 class ModuleHandling
 	{

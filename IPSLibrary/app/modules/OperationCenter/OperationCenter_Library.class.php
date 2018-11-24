@@ -95,11 +95,14 @@
  * getIPSLoggerErrors	aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
  * stripHTMLTags
  *
- * Klasse parsefile
+ * DeviceManagement
+ * ================
  *
+ * Klasse parsefile
+ * ================
  *
  * Klasse TimerHandling
- *
+ * =====================
  * Funktionen ausserhalb der Klassen
  *
  * move_camPicture
@@ -764,7 +767,7 @@ class OperationCenter
 				if ( $name != "Netplayer" ) { $deviceConfig[$name]=$config; }
 				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
 				}
-			$device="Denon"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
+			$device="DENON"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
 			$this->device_ping($deviceConfig, $device, $identifier);
 			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier);
 			}
@@ -1119,6 +1122,12 @@ class OperationCenter
 			if (isset ($config["NOK_HOURS"]))
 				{
 				$RebootID = CreateVariableByName($this->categoryId_RebootCtr, $device."_".$name, 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+				if (AC_GetLoggingStatus($this->archiveHandlerID,$RebootID) === false)
+					{ // nachtraeglich Loggingstatus setzen
+					AC_SetLoggingStatus($this->archiveHandlerID,$RebootID,true);
+					AC_SetAggregationType($this->archiveHandlerID,$RebootID,0);
+					IPS_ApplyChanges($this->archiveHandlerID);
+					}
 				$reboot_ctr = GetValue($RebootID);
 				$maxhours = $config["NOK_HOURS"];
 				if ($reboot_ctr != 0)
