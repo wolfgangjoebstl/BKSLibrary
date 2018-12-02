@@ -143,7 +143,7 @@ if ($_IPS['SENDER']=="Variable")
 	$value=GetValue($variableID);
 	$configuration = Autosteuerung_GetEventConfiguration();
 	/* eine Variablenaenderung ist aufgetreten */
-	IPSLogger_Dbg(__file__, 'Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
+	IPSLogger_Dbg(__file__, 'Autosteuerung, Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).') auf '.GetValueFormatted($variableID).'.');
 	$log_Autosteuerung->LogMessage('Variablenaenderung;'.$variableID.';'.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).'.');
 	$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 	if (array_key_exists($variableID, $configuration)) 
@@ -481,7 +481,7 @@ if ($_IPS['SENDER']=="Execute")
 	test();		/* gibt die IDs von Anwesenheitsimulation, Nachrichten Script und Nachrichten Input aus.\n";
 	
 	// testweise Sprache ausgeben */
-	tts_play(1,"Claudia, ich hab dich so lieb.",'',2);
+	//tts_play(1,"Claudia, ich hab dich so lieb.",'',2);
 	
 	echo "\nEingestellte Programme:\n\n";
 	$i=0;	// testwert um zu sehen wir die Programm reagieren

@@ -171,7 +171,13 @@
 		echo "Von einem anderen Script aus gestartet, Autostart Prozess beginnen.\n";
 		IPSLogger_Dbg(__file__, "Autostart: Script extern aufgerufen *****************  ");
 
-		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		if ($status==false)
+			{
+			$log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			$log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			}
+
 		IPS_SetEventActive($tim3ID,true);
 		SetValue($ScriptCounterID,1);
 		
@@ -185,7 +191,14 @@
 		{
 		echo "Von der Console aus gestartet, Autostart Prozess beginnen.\n";
 		print_r($processStart);
-		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		if ($status==false)
+			{
+			echo "Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration.\n";
+			$log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			$log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			}
+
 		IPS_SetEventActive($tim3ID,true);
 		SetValue($ScriptCounterID,1);
 		IPSLogger_Dbg(__file__, "Autostart: Script direkt aufgerufen ***********************************************");
@@ -207,7 +220,13 @@
 		echo "IPS Server fährt hoch, im Startup gestartet, Autostart Prozess beginnen.\n";
 		IPSLogger_Dbg(__file__, "Autostart: Script durch IPS Startup prozess aufgerufen *****************  ");
 
-		tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		$status=tts_play(1,"IP Symcon Visualisierung neu starten",'',2);
+		if ($status==false)
+			{
+			$log_OperationCenter->LogMessage(    'Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			$log_OperationCenter->LogNachrichten('Audio Ausgabe nicht möglich. Überprüfen sie die Instanzen in der Sprachsteuerung auf richtige Funktion/Konfiguration');
+			}
+
 		IPS_SetEventActive($tim3ID,true);
 		SetValue($ScriptCounterID,1);
 

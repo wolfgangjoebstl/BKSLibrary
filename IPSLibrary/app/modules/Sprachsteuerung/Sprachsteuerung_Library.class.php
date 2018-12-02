@@ -20,6 +20,7 @@
 
 	function tts_play($sk,$ansagetext,$ton,$modus)
  		{
+		$tts_status=true;
 		echo "Aufgerufen als Teil der Library der Sprachsteuerung.\n";
 		//echo "tts_play, Textausgabe, Soundkarte : ".$sk.".\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -182,11 +183,12 @@
 							echo "Tonwiedergabe auf Stopp stellen \n";
 							}
 						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
-						if (!$status) echo "Error";
+						if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
 						WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
 						echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
 						while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
-						WAC_Play($id_sk1_ton);
+						$status=@WAC_Play($id_sk1_ton);
+						if (!$status) { echo "Fehler WAC_play nicht ausführbar.\n"; $tts_status=false; }
 						}
 
 					//Script solange angehalten wie Sprachausgabe läuft
@@ -241,7 +243,8 @@
 			$monitor=array("Text" => $ansagetext);
 			$rpc->IPS_RunScriptEx($oid,$monitor);
 			}
-		
+
+		return ($tts_status);
  		}   //end function
 
 

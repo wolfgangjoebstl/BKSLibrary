@@ -4792,19 +4792,44 @@ function dirToArray2($dir)
 
 					if($ton != "" and $modus != 1)
 						{
-						WAC_Stop($id_sk1_ton);
-						WAC_SetRepeat($id_sk1_ton, false);
-						WAC_ClearPlaylist($id_sk1_ton);
-						WAC_AddFile($id_sk1_ton,$wav[$ton]);
-						WAC_Play($id_sk1_ton);
-						//solange in Schleife bleiben wie 1 = play
-						sleep(1);
-						$status = getvalue($id_sk1_ton_status);
-						while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+						if($ton_status == 1)
+							{
+							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+							WAC_Stop($id_sk1_ton);
+							WAC_SetRepeat($id_sk1_ton, false);
+							WAC_ClearPlaylist($id_sk1_ton);
+							}
+						if (isset($wav[$ton])==true)
+							{
+							WAC_AddFile($id_sk1_ton,$wav[$ton]);
+							echo "Check SoundID: ".$id_sk1_ton." Ton: ".$wav[$ton]." Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+							while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
+							WAC_Play($id_sk1_ton);
+							//solange in Schleife bleiben wie 1 = play
+							sleep(1);
+							$status = getvalue($id_sk1_ton_status);
+							while ($status == 1)	$status = getvalue($id_sk1_ton_status);
+							}						
 			 			}
 
 					if($ansagetext !="")
 						{
+						if($ton_status == 1)
+							{
+							/* Wenn Ton Wiedergabe auf Play steht dann auf Stopp druecken */
+							WAC_Stop($id_sk1_ton);
+							WAC_SetRepeat($id_sk1_ton, false);
+							WAC_ClearPlaylist($id_sk1_ton);
+							echo "Tonwiedergabe auf Stopp stellen \n";
+							}
+						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
+						if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
+						WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
+						echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+						while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
+						$status=@WAC_Play($id_sk1_ton);
+						if (!$status) { echo "Fehler WAC_play nicht ausführbar.\n"; $tts_status=false; }
+						
   						WAC_Stop($id_sk1_ton);
 						WAC_SetRepeat($id_sk1_ton, false);
 						WAC_ClearPlaylist($id_sk1_ton);

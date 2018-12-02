@@ -56,6 +56,9 @@ $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 $scriptIdiTunesSteuerung   = IPS_GetScriptIDByName('iTunes.ActionScript', $CategoryIdApp);
+$dataIdiTunes  = IPS_GetObjectIDByIdent('iTunes', $CategoryIdData);
+$options=IPS_GetChildrenIDs($dataIdiTunes);
+
 
 $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 
@@ -66,6 +69,8 @@ $NachrichtenID = $object_data->osearch("Nachricht");
 $NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
 $fatalerror=false;
+$debug=false;
+
 if (isset($NachrichtenScriptID))
 	{
 	$object3= new ipsobject($NachrichtenID);
@@ -91,11 +96,21 @@ if ($_IPS['SENDER'] == "Execute")
 	echo "Script wurde direkt aufgerufen.\n";
 	echo "\n";
 	echo "Category App           ID: ".$CategoryIdApp."\n";
-	echo "Category Data          ID: ".$CategoryIdData."\n";
+	echo "Category Data          ID: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData)."/".IPS_GetName(IPS_GetParent($CategoryIdData)).")\n";
+	echo "iTunes Data            ID: ".$dataIdiTunes."   (".IPS_GetName($dataIdiTunes)."/".IPS_GetName(IPS_GetParent($dataIdiTunes))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($dataIdiTunes))).")\n";
 	echo "Webfront Administrator ID: ".$categoryId_WebFront."     ".$WFC10_Path."\n";
 	echo "Nachrichten Script     ID: ".$NachrichtenScriptID."\n";
 	echo "Nachrichten      Input ID: ".$NachrichtenInputID."\n\n";
-		
+
+	$wert=true; $register="Fernsehen";
+	foreach ($options as $entry)
+		{
+		echo "    ".IPS_GetName($entry)."     ".GetValue($entry)."\n";
+		if ( IPS_GetName($entry)==$register ) SetValue($entry,$wert);
+		else SetValue($entry,!$wert);
+		}
+	print_r($config);
+			
 	echo "Fix Befehle für das Fernsehen mit VLC absetzen.\n";
 	if ( isset($config["iTunes"]["Fernsehen"])==true )
 		{
@@ -118,26 +133,26 @@ if ($_IPS['SENDER'] == "Execute")
 				print_r(json_decode($configCommand));
 				if (json_decode($configCommand)==Null) echo "keine json decodierung.\n";
 				}			
-		$Server=getHostAddress();
-		if ($Server=="")
-			{
-			IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);	
+			$Server=getHostAddress();
+			if ($Server=="")
+				{
+				if (!$debug) IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);	
+				}
+			else
+				{
+				echo "Verfügbare RemoteAccess Server:\n";
+				print_r($Server);		
+				$rpc = new JSONRPC($Server);
+				print_r($configTunes);
+				//$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
+				$monitorID=getMonitorID($rpc,$configTunes);
+				if ($monitorID !== false)
+					{
+					$monitor=array("VLC" => $configCommand);
+					if (!$debug) $rpc->IPS_RunScriptEx($monitorID,$monitor);					
+					}			
+				}
 			}
-		else
-			{
-			echo "Verfügbare RemoteAccess Server:\n";
-			print_r($Server);		
-			$rpc = new JSONRPC($Server);
-			print_r($configTunes);
-			//$rpc->IPS_ExecuteEX($configTunes["EXECUTE"], "", false, false, 1);  Remote Access von IPS_ExecuteEx funktioniert aus Sicherheitsgründen nicht mehr
-			$monitorID=getMonitorID($rpc,$configTunes);
-							if ($monitorID !== false)
-								{
-								$monitor=array("VLC" => $configCommand);
-								$rpc->IPS_RunScriptEx($monitorID,$monitor);					
-								}			
-			}
-		}
 		}
 
 	$log_iTunes->LogMessage("Script wurde direkt aufgerufen");
@@ -180,7 +195,7 @@ if ($_IPS['SENDER'] == "WebFront")
 					$Server=getHostAddress();	
 					if ($Server=="")
 						{
-						IPS_ExecuteEX($configCommand, $playlist, false, false, 1);	
+						if (!$debug) IPS_ExecuteEX($configCommand, $playlist, false, false, 1);	
 						}
 					else
 						{
@@ -190,7 +205,7 @@ if ($_IPS['SENDER'] == "WebFront")
 						if ($monitorID !== false)
 							{
 							$monitor=array("VLC" => $configCommand);
-							$rpc->IPS_RunScriptEx($monitorID,$monitor);					
+							if (!$debug) $rpc->IPS_RunScriptEx($monitorID,$monitor);					
 							}
 						}
 					}
@@ -200,6 +215,13 @@ if ($_IPS['SENDER'] == "WebFront")
 			break;
 		}		
 	SetValue($_IPS['VARIABLE'], $_IPS['VALUE']);
+	$wert=true;
+	foreach ($options as $entry)
+		{
+		//echo "    ".IPS_GetName($entry)."     ".GetValue($entry)."\n";
+		if ( ( IPS_GetName($entry)==IPS_GetName($_IPS['VARIABLE']) ) && ($_IPS['VALUE']) )SetValue($entry,$wert);
+		else SetValue($entry,!$wert);
+		}
 	}
 	
 	/***************************************************************************************************/

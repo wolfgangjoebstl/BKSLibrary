@@ -681,6 +681,7 @@ class AutosteuerungOperator
 
 	public function __construct()
 		{
+		//IPSLogger_Dbg(__file__, 'Construct Class AutosteuerungOperator.');
 		}
 
 	public function Anwesend()
@@ -690,26 +691,31 @@ class AutosteuerungOperator
 		
 		$logic=Autosteuerung_Anwesend();
 		$result=false;
+		$operator="";
 		foreach($logic as $type => $operation)
 			{
 			if ($type == "OR")
 				{
+				$operator.="OR";
 				foreach ($operation as $oid)
 					{
 					$result = $result || GetValueBoolean($oid);
+					$operator.=" ".IPS_GetName($oid);
 					//echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
 					}
 				}
 			if ($type == "AND")
 				{
+				$operator.=" AND";				
 				foreach ($operation as $oid)
 					{
 					$result = $result && GetValue($oid);
+					$operator.=" ".IPS_GetName($oid);
 					//echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
 					}
-				
 				}
 			}
+		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
 		return ($result);				
 		}
 
@@ -1724,6 +1730,7 @@ class Autosteuerung
 		
 	private function parseParameter($params,$result=array())
 		{
+		//print_r($params);
 		$size=count($params);
 		if ( $size > 1 )
 			{
@@ -2348,6 +2355,8 @@ class Autosteuerung
 				if (abs($result["STATUS"]-$oldvalue)<$dif) $result["SWITCH"]=false;
 				//print_r($result);
 				break;	
+			case "IFANDNOT":
+			case "IFORNOT":	
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
 				$cond=strtoupper($befehl[1]);
 				$result["COND"]=$cond;
@@ -2442,10 +2451,46 @@ class Autosteuerung
 							}
 					default:
 					  	/* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-						$checkId = $this->lightManager->GetSwitchIdByName($befehl[1]);		/* Light Manager ist context sensitive */
-						$statusCheck=$this->lightManager->GetValue($checkId);
-						$result["SWITCH"]=!$statusCheck;
-						echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+						$compare=explode("=",$befehl[1]);
+						$sizeBefehl=sizeof($compare);
+						//print_r($compare);
+						$checkId = $this->lightManager->GetSwitchIdByName($compare[0]);		/* Light Manager ist context sensitive */
+						if ($checkId == false)
+							{
+							$checkId = $this->lightManager->GetGroupIdByName($compare[0]);		/* Light Manager ist context sensitive */
+							if ($checkId == false)
+								{
+								if ($sizeBefehl>1)
+									{
+									$checkId = $this->lightManager->GetProgramIdByName($compare[0]);		/* Light Manager ist context sensitive */
+									if ($checkId !== false)
+										{
+										echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
+										$statusCheck = ($compare[1]==GetValueFormatted($checkId));
+										IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifnot: Program '.$compare[0]."   ".$compare[1].".vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
+										}
+									}
+								}
+							else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert von der Group	
+							}
+						else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert vom Switch	
+						if ($checkId !== false)
+							{
+							$result["SWITCH"]=!$statusCheck;
+							if ( strtoupper($befehl[0]) == "IFANDNOT" )
+								{
+								$result["SWITCH"]=$result["SWITCH"] && !$statusCheck;
+								}
+							else
+								{	
+								$result["SWITCH"]=!$statusCheck;
+								}
+							echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+							}
+						else 
+							{
+							echo "Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.\n";	
+							}
 						break;
 					}			
 				break;
