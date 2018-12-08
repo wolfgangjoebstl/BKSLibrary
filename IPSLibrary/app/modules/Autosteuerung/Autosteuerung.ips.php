@@ -143,7 +143,7 @@ if ($_IPS['SENDER']=="Variable")
 	$value=GetValue($variableID);
 	$configuration = Autosteuerung_GetEventConfiguration();
 	/* eine Variablenaenderung ist aufgetreten */
-	IPSLogger_Dbg(__file__, 'Autosteuerung, Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).') auf '.GetValueFormatted($variableID).'.');
+	IPSLogger_Dbg(__file__, 'Autosteuerung, Variablenaenderung von '.$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).') auf '.GetValueIfFormatted($variableID).'.');
 	$log_Autosteuerung->LogMessage('Variablenaenderung;'.$variableID.';'.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).'.');
 	$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 	if (array_key_exists($variableID, $configuration)) 

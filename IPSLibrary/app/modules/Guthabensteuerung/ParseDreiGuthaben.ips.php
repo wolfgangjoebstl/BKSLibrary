@@ -265,9 +265,12 @@ function parsetxtfile($fileconfig, $config)
 	{
 	global	$ausgeben,$ergebnisse,$speichern;
 
+    //echo "Parse Textfile :\n";
+    //print_r($config);
 	$verzeichnis=$fileconfig["DownloadDirectory"];
 	$nummer=$config["NUMMER"];
-	$typ=strtoupper($config["TYP"]);
+	if (isset($config["TYP"])) $typ=strtoupper($config["TYP"]);
+    else $typ="Drei";
 	//$startdatenguthaben=7;
 	$startdatenguthaben=0;
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
@@ -565,11 +568,48 @@ function parsetxtfile($fileconfig, $config)
 					$buffer = fgets($handle, 4096);
 					if ($ausgeben) echo $buffer;
 					$pos=strpos($buffer,",");       /* Eurozeichen laesst sich nicht finden */
-					$i=$pos;
-					while ( ( (is_numeric($buffer[$i]))  or ($buffer[$i]==",") ) && ($i != 0)) $i--;
-					//echo "***".$i."  ".$pos."\n";
-					$result5=trim(substr($buffer,$i,$pos-$i+3));
-					if ($ergebnisse) echo "*********Guthaben : ".$result5." \n<br>";
+                    $pos1=strpos($buffer,"€");
+                    $i=0;
+                    if ($pos1==false)           // kein Eurozeichen
+                        {
+                        if ($pos!=false)        // wenn Komma aber kein Eurozeichen
+                            {
+                            $i=$pos;
+                            $len=3;     // Komma plus zwei Kommastellen
+                            }
+                        }
+                    else                        // Eurozeichen gefunden 
+                        {
+                        if ($pos==false)        // wenn kein Komma aber Eurozeichen
+                            {
+                            $len=0;         
+                            if ($pos1<3) 
+                                { 
+                                $result5="0"; 
+                                $i=0; 
+                                if ($ergebnisse) echo "*********Guthaben : ".$result5." \n<br>";
+                                }
+                            else $i=--$pos1;
+                            $pos=$pos1;
+                            }
+                        else                    // Eurozeichen und Komma gefunden
+                            {
+                            echo "Eurozeichen und Komma gefunden.\n";
+                            $len=3;
+                            $i=$pos;
+                            }
+                        }
+                    if ($i>0)
+                        {
+	    				while ( ( (is_numeric($buffer[$i]))  or ($buffer[$i]==",") ) && ($i != 0)) 
+                            {
+                            $i--;
+				    	    //echo "***".$i."  ".$pos."\n";
+                            }
+                        echo "***".$i."  ".$pos."   ".$len."\n";
+					    $result5=trim(substr($buffer,$i,$pos-$i+$len));
+					    if ($ergebnisse) echo "*********Guthaben : ".$result5." \n<br>";
+                        }
 					}
 				}
 			if ($entgelte==true)

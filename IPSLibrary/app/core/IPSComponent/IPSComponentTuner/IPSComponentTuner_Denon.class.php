@@ -1,23 +1,13 @@
 <?
-	/**@addtogroup ipscomponent
-	 * @{
+	/*
+	 * @file          IPSComponentTuner_Denon.class.php
+	 * @author        Wolfgang JÃ¶bstl
 	 *
- 	 *
-	 * @file          IPSComponentRGB_Dummy.class.php
-	 * @author        Andreas Brauneis
-	 *
+     * Soll das Schalten des Denon Tuners aus IPSLight ermÃ¶glichen
+ 	 * Aufruf zum Beispiel Ã¼ber 'IPSComponentTuner_Denon,Denon-Wohnzimmer,Main Zone,Fernsehen'
 	 *
 	 */
 
-   /**
-    * @class IPSComponentRGB_Dummy
-    *
-    * Definiert ein IPSComponentRGB_Dummy Object, das ein Dummy IPSComponentRGB Object implementiert.
-    *
-    * @author Andreas Brauneis
-    * @version
-    *   Version 2.50.1, 06.11.2012<br/>
-    */
 
 	IPSUtils_Include ('IPSComponent.class.php', 'IPSLibrary::app::core::IPSComponent');
 
@@ -42,16 +32,18 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentRGB_Dummy Objektes
+		 * Initialisierung eines IPSComponentTuner_Denon Objektes
 		 *
 		 * @param integer $instanceId InstanceId des Dummy Devices
 		 */
-		public function __construct($TunerName,$ZoneName="Main Zine",$ChannelName="Radio") {
+		public function __construct($TunerName,$ZoneName="Main Zone",$ChannelName="Radio") 
+            {
 			$this->TunerName = $TunerName;
 			$this->ZoneName = $ZoneName;
 			$this->ChannelName = trim(strtoupper($ChannelName));
 			$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);
 			//echo "   DataCatID : ".$this->DataCatID."\n";
+            //echo "construct IPSComponentTuner_Denon mit ".$TunerName."  ".$ZoneName."   ".$ChannelName."  \n";
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			if (!isset($moduleManager))
 				{
@@ -74,8 +66,8 @@
 				$NachrichtenInputID=$object3->osearch("Input");
 				$this->log_Denon=new Logging("C:\Scripts\Log_Denon.csv",$NachrichtenInputID);
 				}
-			//$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.");
-			//$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.");
+			//$this->log_Denon->LogMessage("Script wurde Ã¼ber IPSLight aufgerufen.");
+			//$this->log_Denon->LogNachrichten("Script wurde Ã¼ber IPSLight aufgerufen.");
 
 			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DENONsteuerung\DENONsteuerung_Configuration.inc.php");
 			$configuration=Denon_Configuration();
@@ -98,7 +90,7 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 * @param integer $variable ID der auslösenden Variable
+		 * @param integer $variable ID der auslÃ¶senden Variable
 		 * @param string $value Wert der Variable
 		 * @param IPSModuleRGB $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
@@ -109,7 +101,7 @@
 		 * @public
 		 *
 		 * Funktion liefert String IPSComponent Constructor String.
-		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * String kann dazu benÃ¼tzt werden, das Object mit der IPSComponent::CreateObjectByParams
 		 * wieder neu zu erzeugen.
 		 *
 		 * @return string Parameter String des IPSComponent Object
@@ -123,14 +115,14 @@
 		 *
 		 * Zustand Setzen 
 		 *
-		 * @param boolean $power RGB Gerät On/Off
+		 * @param boolean $power RGB GerÃ¤t On/Off
 		 * @param integer $color RGB Farben (Hex Codierung)
 		 * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
 		 */
 		public function SetState($power, $level) {
-			//echo "Hurrah hier angekommen mit Parameter : ".$power."  ".$level."\n";
-			$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.".$power." ".$level);
-			$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
+			//echo "IPSComponentTuner_Denon SetState mit Parameter : ".($power?"Ein":"Aus")."  ".$level." und \"".$this->ChannelName."\"\n";
+			$this->log_Denon->LogMessage("Script wurde Ã¼ber IPSLight aufgerufen.".$power." ".$level);
+			$this->log_Denon->LogNachrichten("Script wurde Ã¼ber IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
 			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
 			$volumeID=IPS_GetObjectIDByName("MasterVolume",$this->DataCatID);
 			$MainZoneID=IPS_GetObjectIDByName("MainZonePower",$this->DataCatID);
@@ -154,12 +146,12 @@
 				sleep(1);
 				$inputsource=$this->GetChannels();
 				//print_r($inputsource);
-				//echo "   |".$this->ChannelName."|";
-				//echo "   ".$inputsource[$this->ChannelName]."\n";
+				
+				//echo "   \"".$this->ChannelName."\" wird in den ChannelNames des Denon Tuners gesucht. \n";
 				if (isset($inputsource[$this->ChannelName]))
-				   {
+				    {
 					sleep(1);
-				   //echo "Set Denon Input Source to ".$inputsource[$this->ChannelName]."\n";
+				    //echo "  Set Denon Input Source to ".$inputsource[$this->ChannelName]."\n";
 					DENON_InputSource($this->DenonSocketID, $this->ChannelName);
 					SetValue($InputSourceID,$inputsource[$this->ChannelName]);
 					}

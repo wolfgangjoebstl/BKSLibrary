@@ -119,7 +119,8 @@
 				{
 				//fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
 				fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");			
-				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
+				//fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");		// alte version vor Sep 2018
+				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Kundenzone'."\n");
 				fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["NUMMER"]."\n");
 				fwrite($handle2,'SET !ENCRYPTION NO'."\n");
 				fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");

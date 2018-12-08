@@ -1,50 +1,12 @@
 <?
 
-	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
-	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
+IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
-/******************************************************************************************/   
-/*                                                                                        */   
-/*                                        BKS01                                           */
-/*                                                                                        */
-/******************************************************************************************/
-
-   
+ 
 /* ObjectID Adresse vom send email server */
 
 $sendResponse = 30887; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
-
-
-/* Unterschiede getaktete und nicht getaktete Verbindung
-	bei Win8 noch nicht klar. DNS geht scheinbar lokal nicht, drum fixe IP Adresse angeben
-
-*/
-
-/* FS20 Adress-Schema */
-
- /* BKS (Burg Kreuzenstein Hausautomatisierung
-
-
- Stromheizung mit FHZ1300 (USB)
-
- nach Batterie einlegen Uhrzeit und Datum einstellen
-
- Hyst:  0,6 °C
- HC 1: 2412
- HC 2: 4141
- AG:    14
- UA:    21
-
-Hauscode:   2412 4141
-AZ Heizung:   						14 21
-	Zusatzheizung  				14 22
-	Router Stromversorgung  	14 11
-WZ Heizung:   						24 21
-	Schnell:   						24 21
-Keller Heizung:   				34 21
-	Zusatzheizung  				34 22
-	GBE Switch Stromversorgung 34 11
- */
 
 /* Heizung */
 
@@ -105,276 +67,12 @@ define("STAT_vonzuHauseweg",2);
 define("STAT_nichtzuHause",1);
 define("STAT_Abwesend",0);
 
-
-
-
-//echo IPS_GetName(0);
-if (IPS_GetName(0)=="LBG70")
-	{
-
-/******************************************************************************************/
-/*                                                                                        */
-/*                                        LBG70                                           */
-/*                                                                                        */
-/******************************************************************************************/
-
-
-function LogAnwesenheit_Configuration()
-	{
-	return array(
-			"VZB"    =>    30700,                                       /* Bewegungsmelder im VZ */
-			"AZB"    =>    54389,                                       /* Bewegungsmelder im AZ */
-			"WZB"    =>    11681,                                       /* Bewegungsmelder in der Kueche */
-			"BZT"    =>    25921,                                       /* Kontakt Badezimmertuere */
-			"EGT"    =>    41275,                                       /* Kontakt Eingangstuere */
-		         );
-	}
-
-	function LogAlles_Configuration() {
-		return array(
-			"AZ"    => array("Leistung"           	 => 190, 				/* zwei Radiatoren 110 Arbeitszimmer und 80 Gaestezimmer */
-							  "OID_PosHT80b"         => 54440,           /* OID Position vom Regler */
-  			              	  "OID_Zeit"           	 => 30741,
-  			              	  "OID_Energie"          => 34120,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
-  			              	  "OID_EnergieVortag"    => 38894,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 43184,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
-			              ),
-			"BZ"    => array("Leistung"           	 => 50, 					/* ein Radiator 50 */
-							  "OID_PosHT80b"         => 14642,           /* OID Position vom Regler */
-  			              	  "OID_Zeit"           	 => 46077,
-  			              	  "OID_Energie"          => 30563,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
-  			              	  "OID_EnergieVortag"    => 38725,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 41149,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
-			              ),
-			"SZ"    => array("Leistung"           	 => 140,					/* ein Radiator 70 doppelt aufgebaut */
-							  "OID_PosHT80b"         => 34186,           /* OID Position vom Regler */
-  			              	  "OID_Zeit"           	 => 56091,
-  			              	  "OID_Energie"          => 29754,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
-  			              	  "OID_EnergieVortag"    => 10710,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 22670,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
-			              ),
-			"WZ"    => array("Leistung"           	 => 170,   				/* zwei Radiatoren Kueche 70 und Essplatz 100 */
-							  "OID_PosHT80b"         => 27073,           /* OID Position vom Regler */
-  			              	  "OID_Zeit"           	 => 52403,
-  			              	  "OID_Energie"          => 46217,           /* Energieverbrauch Verlauf, ideal für Kurvendarstellung - Faktor egal */
-  			              	  "OID_EnergieVortag"    => 40178,           /* ein Wert pro Tag wird immer um 00:00 geschrieben */
-  			              	  "OID_EnergieTag"       => 47674,           /* summierter Tagesverbrauch, wird immer um 00:00 zurueckgesetzt, nur mehr zur Kompatibilität */
-			              ),
-			"TOTAL" => array("OID_Energie"          => 30163,
-  			              	  "OID_EnergieSumme"     => 43589,
-			              ),
-						);
-	}
-
-
-function LogAlles_Temperatur() {
-		return array(
-			"AZ-T"    => array(	"OID_Sensor"         => 39227,           /* OID Position vom Sensor im AZ */
-  			              		"OID_TempWert"    	=> 19253,           /* OID vom Spiegelregister, weil Wert um Mitternach nicht als VALUE_OLD abgehohlt werden kann */
-  			              		"Type"               => "Innen",
-			              ),
-			"BZ-T"    => array(	"OID_Sensor"         => 56634,           /* OID Position vom Sensor im BZ */
-								"OID_TempWert"    	=> 36041,           /* OID vom Spiegelregister */
-  			              		"Type"               => "Innen",
-			              ),
-			"SZ-T"    => array(	"OID_Sensor"         => 33694,           /* OID Position vom Sensor im SZ */
-  			              		"OID_TempWert"    	=> 42862,           /* OID vom Spiegelregister */
-  			              		"Type"               => "Innen",
-			              ),
-			"WZ-T"    => array(	"OID_Sensor"         => 17554,           /* OID Position vom Sensor im WZ */
-  			              		"OID_TempWert"    	=> 51550,           /* OID vom Spiegelregister */
-  			              		"Type"               => "Innen",
-			              ),
-			"AUSSEN-OST"  => array(	"OID_Sensor"    => 16433,           /* OID Position vom Sensor AUSSEN OST*/
-  			              		"OID_TempWert"    	=> 16765,           /* OID vom Spiegelregister, kann ruhig versteckt angeordnet werden, oder statt echtem Aussensensorwert */
-  			              		"Type"              => "Aussen",
-			              ),
-			"AUSSEN-WEST"  => array( "OID_Sensor"   => 22695,           /* OID Position vom Sensor AUSSEN WEST*/
-  			              		"OID_TempWert"    	=> 18688,           /* OID vom Spiegelregister, kann ruhig versteckt angeordnet werden, oder statt echtem Aussensensorwert */
-  			              		"Type"               => "Aussen",
-			              ),
-			"TOTAL"   => array(	"OID_TempWert_Aussen"    	=> 11477,   /* einfach Temperaturwerte von vorher zusammengezählt und richtig dividiert */
-			                    "OID_TempWert_Innen"    	=> 21157,
-			                    "OID_TempTagesWert_Aussen" => 34862,   /* Tageswerte sind immer der letzte Tag */
-			                    "OID_TempTagesWert_Innen"  => 29829,
-			              ),
-						);
-	}
-
-/* logAlles_Hostnames wurde in OperationCenter_config verlegt */
-
-/* Verbraucher */
-
-//define("ADR_ArbeitszimmerNetzwerk",37160);
-define("ADR_ArbeitszimmerNetzwerk",36225);   /* jetzt Homematic */
-define("ADR_ArbeitszimmerServer",25840);
-define("ADR_ArbeitszimmerVerstaerker",39136);
-//define("ADR_ArbeitszimmerComputer",21196);
-define("ADR_ArbeitszimmerComputer",55176);   /* jetzt Homematic */
-//define("ADR_ArbeitszimmerFestplatten",10020);
-define("ADR_ArbeitszimmerFestplatten",21427);   /* jetzt Homematic */
-define("ADR_WohnzimmerNetzwerk",24744);
-define("ADR_WohnzimmerXboxPS3",16013);
-define("ADR_WohnzimmerFernseherReceiver",47562);
-
-
-/* Lampen */
-
-define("ADR_GaestezimmerLampe",24122);
-define("ADR_WohnzimmerEckstehlampe",12828);
-define("ADR_WohnzimmerLampe",44267);
-//define("ADR_ArbeitszimmerLampe",40351);
-define("ADR_ArbeitszimmerLampe",34651);   /* jetzt Homematic */
-define("ADR_SchlafzimmerLampe",31970);
-define("ADR_SchlafzimmerKastenlampe",10987);
-
-$id_sound = 23225;
-$sendResponse = 43606; //ID einer SMTP Instanz angeben, um Rückmelde-Funktion zu aktivieren
-
-
-
-	/* verzeichnisse */
-	define("DIR_copyscriptsdropbox","C:/Users/Wolfgang/Dropbox/Privat/IP-Symcon/scripts-LBG/");
-
-	} /* ende besondere Konfig für LBG70 */
-	
-if (IPS_GetName(0)=="BKS01")
-	{
-	
-/******************************************************************************************/
-/*                                                                                        */
-/*                                        BKS01                                           */
-/*                                                                                        */
-/******************************************************************************************/
-	
-	function LogAlles_Configuration() {
-		return array(
-			"AZ"    => array("Leistung"           	 => 800, 				/* ein Radiator im Arbeitszimmer 800 Watt, 0.4m2 */
-								  "OID_Temp"             => 38610,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 32688,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 44482,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"KZ"    => array("Leistung"           	 => 1050, 				/* ein Radiator mit 600 Watt und im Technikraum ein weiterer mit 450 Watt, zusaetzlicher Radiator nur fuer Zusatzheizung */
-								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 10884,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 40345,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"WZ"    => array("Leistung"           	 => 450,					/* ein Radiator mit 450 Watt und 0.24m2 */
-								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 17661,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 28142,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"WZZ"   => array("Leistung"           	 => 2000,				/* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
-								  "OID_Temp"             => 41873,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 33800,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 43228,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"KZZ"   => array("Leistung"           	 => 800,				   /* ein Radiator mit entweder 1250 plus 750 Watt mit/ohne Umluft*/
-								  "OID_Temp"             => 13063,           /* zugehoeriger Temperatursensor, normalerweise im Regler berets eingebaut */
-								  "OID_PosHT80b"         => 39253,           /* OID Position vom Regler */
-								  "OID_Tageswert"        => 56994,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-			"TOTAL" => array("OID_Energie"          => 47684,           /* falsche OID, wird nicht verwendet !!! */
-  			              	  "OID_EnergieSumme"     => 58447,           /* falsche OID, wird nicht verwendet !!! */
-								  "OID_Tageswert"        => 24129,           /* OID Tageswert, jeden Tag um Mitternacht geschrieben */
-			              ),
-						);
-	}
-
-	function LogAlles_Temperatur() {
-		return array(       
-//			"AZ-T"    => array(	"OID_Sensor"         => 38610,           
-//  			              	  		"OID_Max"            => 53022
-//				              	  		"OID_Min"            => 32252 
-//  			              	  		"Type"               => "Innen",
-//			              ),
-//			"KZ-T"    => array(	"OID_Sensor"         => 13063,           
-//	 			              	  		"OID_Max"            => 59160  
-//  			              	  		"OID_Min"            => 52129
-//  			              	  		"Type"               => "Andere",
-//			              ),
-//			"WZ-T"    => array(	"OID_Sensor"         => 41873,       
-//  			              	  		"OID_Max"            => 34073 
-//  			              	  		"OID_Min"            => 24331 
-//  			              	  		"Type"               => "Innen",
-//			              ),
-//			"AUSSE2-T" => array( "OID_Sensor"         => 32563,           
-//  			              	  		"OID_Max"            => 22884 
-//  			              	  		"OID_Min"            => 15265 
-//  			              	  		"Type"               => "Aussen",
-//			              ),
-//			"WETTER-T" => array( "OID_Sensor"         => 31094,           
-//  			              	  		"OID_Max"            => 54386 
-//  			              	  		"OID_Min"            => 30234 
-//  			              	  		"Type"               => "Aussen",
-//			              ),
-//			"KELLER-T" => array(	"OID_Sensor"         => 48182,           
-//  			              	  		"OID_Max"            => 28619 
-//  			              	  		"OID_Min"            => 19040 
-//  			              	  		"Type"               => "Andere",
-//			              ),
-//			"WINGAR-T" => array(	"OID_Sensor"         => 29970, 
-//  			              	  		"OID_Max"            => 21658 
-//  			              	  		"OID_Min"            => 55650 
-//  			              	  		"Type"               => "Andere",
-//			              ),
-//			"KELLAG-T" => array(	"OID_Sensor"         => 58776,          
-//  			              	  		"OID_Max"            => 48777 
-//  			              	  		"OID_Min"            => 17535 
-//  			              	  		"Type"               => "Andere",
-//			              ),
-//			"TOTAL" 	=> array(	"OID_TempWert_Aussen"    	=> 21416 
-//			                     "OID_TempWert_Innen"    	=> 56688 
-//			                     "OID_TempTagesWert_Aussen" => 13320 
-//			                     "OID_TempTagesWert_Innen"  => 35271 
-//			              ), 
-						);
-	}
-
-	function LogAlles_Bewegung() {
-		return array(
-			"WZ"    	 => array(	"OID_Sensor"         => 35993,           /* OID Position vom Sensor im WZ */
-			                     "OID_Status"         => 57705,
-  			              	  		"Type"               => "Motion",
-			              ),
-			"KLA"     => array(	"OID_Sensor"         => 59021,           /* OID Position vom Sensor im Kellerabgang */
-			                     "OID_Status"         => 31481,
-  			              	  		"Type"               => "Motion",
-			              ),
-			"WG-T"    => array(	"OID_Sensor"         => 28444,           /* OID Position vom Sensor im WG */
-			                     "OID_Status"         => 18901,
-  			              	  		"Type"               => "State",
-			              ),
-			"KL-T"    => array(	"OID_Sensor"         => 24013,           /* OID Position vom Sensor im Keller */
-			                     "OID_Status"         => 22562,
-  			              	  		"Type"               => "State",
-			              ),
-			"TOTAL" 	=> array(	"OID_Bewegung"    	=> 14403,   /* einfach Bewegungswerte (Motion) oder verknuepft */
-										"OID_Alarm"    		=> 51833,   /* einfach Alarmwerte (State) oder verknuepft */
-										"OID_Status"    		=> 33827,   /* WirsindzuHause : Indikation ob wir zu Hause sind */
-			              ),
-						);
-	}
-
-
-
-	/******************************************************************/
-
-	/* verzeichnisse */
-	define("DIR_copyscriptsdropbox","c:/Users/wolfg_000/Dropbox/Privat/IP-Symcon/scripts-BKS/");
-	} /* ende besondere Konfig für BKS01 */
-
-/* obige Konfigurationen kann man langsam loeschen, da obsolet, beide Server wurden durch neuere Versionen ersetzt */
-
-
-/****************************************************************************************************/
-
-
-/**********************************************************************************************************************************************************/
-/* immer wenn eine Statusmeldung per email angefragt wird */
-
-
-/* wird später unter Allgemein gespeichert */
+/****************************************************************************************************
+ * immer wenn eine Statusmeldung per email angefragt wird 
+ *
+ * Ausgabe des Status für aktuelle und historische Werte
+ *
+ ****************************************************************************************/
 
 function send_status($aktuell, $startexec=0)
 	{
@@ -458,372 +156,13 @@ function send_status($aktuell, $startexec=0)
 	$ServerRemoteAccess="";
 	$SystemInfo="";
 
-/* -----------------------------------------------------------------------------------------------------------------
- *
- * es gibt noch Server spezifische Befehle, systematisch eliminieren
- *
- *=========================================================================================================================================
- *
- */
-	
-if (IPS_GetName(0)=="LBG70")
-	{
-
-	/***************  HEIZUNGSENERGIEVERBRAUCH LBG70 spezifisch ********/
-
-	if ($aktuell)
-	    {
-		$energieverbrauch="";
-		}
-	else
-		{
-		IPS_RunScript(35787);
-
-		$energieverbrauch="Heizenergieverbrauch der letzten Tage (bei ".GetValue(52478)." Euro pro kWh) :\n";
-		$energieverbrauch.="\nHeizenergieverbrauch (1/7/30/360) : ".number_format(GetValue(44839), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(33301), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(29148), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(16969), 2, ",", "" )." kWh";
-		$energieverbrauch.="\nHeizenergiekosten    (1/7/30/360) : ".number_format(GetValue(18976), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(34239), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(20687), 2, ",", "" )." / ";
-		$energieverbrauch.=number_format(GetValue(45647), 2, ",", "" )." Euro\n\n";
-		}
-
-	$cost="\n\nInternetkosten:\n".
-			"\nAufgeladen wurde bisher : ".GetValue(29162)." Euro".
-			"\nVerbraucht wurde bisher : ".GetValue(37190)." Euro".
-			"\nÄnderung heute          : ".GetValue(29370)." Euro\n";
-
-	$internet="Internet Erreichbarkeit:\n".
-			  "\nLBG70 Server  : ".GetValue(27549)." seit ".date("d.m.y H:i:s",GetValue(26654)).
-  			  "\nBKS01 Server  : ".GetValue(34955)." seit ".date("d.m.y H:i:s",GetValue(23044)).
-  			  "\nFirmentelefon : ".GetValue(30691)." seit ".date("d.m.y H:i:s",GetValue(11781)).
-  			  "\nPrivattelefon : ".GetValue(27870)." seit ".date("d.m.y H:i:s",GetValue(13224))."\n\n";
-
-	$statusverlauf="Verlauf Serverstatus:\n\n".
-	      GetValue(37381)."\n".
-	      GetValue(46979)."\n".
-	      GetValue(23626)."\n".
-	      GetValue(46922)."\n".
-			GetValue(49498)."\n".
-			GetValue(49200)."\n".
-	      GetValue(16415)."\n\n";
-
-	if ($aktuell)
-	    {
-		$ergebnis_tabelle="";
-		}
-	else
-		{
-		/* Energiewerte der Vortage als Zeitreihe */
-		$jetzt=time();
-		$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-		$starttime=$endtime-60*60*24*7;
-		$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 21762, $starttime, $endtime, 0);
-		$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
-		//print_r($werte);
-		//	echo "Werte Heizung:\n";
-		$vorigertag=date("d.m.Y",$jetzt);
-		$laufend=1;
-		$ergebnis_tabelle="Heizenergie der letzten Tage: \n".substr("\n                          ",0,12);
-		foreach($werte as $wert)
-			{
-			$zeit=$wert['TimeStamp']-60;
-			if (date("d.m.Y", $zeit)!=$vorigertag)
-			   {
-				$zeile["Datum"][$laufend] = date("D d.m", $zeit);
-				$zeile["Heizung"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
-				$ergebnis_tabelle.= substr($zeile["Datum"][$laufend]."            ",0,12);
-				$laufend+=1;
-				}
-			$vorigertag=date("d.m.Y",$zeit);
-			}
-		$anzahl=$laufend-1;
-		$laufend=0;
-		$ergebnis_tabelle.="\n";
-		//print_r($zeile);
-		while ($laufend<=$anzahl)
-			{
-			$ergebnis_tabelle.=substr($zeile["Heizung"][$laufend]."            ",0,12);
-			$laufend+=1;
-			//echo $ergebnis_tabelle."\n";
-			}
-		$ergebnis_tabelle.="\n\n";
-		}
-		/**********************************************/
-	}
-	
-if (IPS_GetName(0)=="BKS01")      /*  spezielle Routine für BKS01    */
-	{
-
-	if ($aktuell)   /* aktuelle Werte */
-		{
-		$aktheizleistung="Aktuelle Heizleistung: ".GetValue(34354)." W\n\n";
-		}
-	else              /* die vom Vortag */
-		{
-		$aktheizleistung="";
-		}
-
-	IPS_RunScript(48267);
-	IPS_RunScript(13352);
-	IPS_RunScript(32860);
-	IPS_RunScript(45023);
-	IPS_RunScript(41653);
-  	echo ">>Vorwertberechnung. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-
-	if (!$aktuell)       /* die Werte vom Vortag */
-		{
-		$ergebnis_tagesenergie="Heizungsenergiewerte Vortag: \n\n";
-		$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
-		foreach ($arr as $identifier=>$station)
-			{
-			$EnergieTagFinalID=$station["OID_Tageswert"];
-			$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($EnergieTagFinalID), 2, ",", "" )."kWh ";
-			}
-		$ergebnis_tagesenergie.="\n\n";
-		$ergebnis_tagesenergie.=   "1/7/30/360 : ".number_format(GetValue(35510), 0, ",", "" )."/"
-							  				    .number_format(GetValue(25496), 0, ",", "" )."/"
-											    .number_format(GetValue(54896), 0, ",", "" )."/"
-											    .number_format(GetValue(30229), 0, ",", "" )." kWh\n";
-		}
-	else        /* aktuelle Werte */
-		{
-		$ergebnis_tagesenergie="Heizungsnergiewerte Aktuell: \n\n";
-		$arr=LogAlles_Configuration();    /* Konfigurationsfile mit allen Variablen  */
-
-		$energieGesTagID = CreateVariableByName(53458,"Summe_EnergieTag", 2);
-		foreach ($arr as $identifier=>$station)
-			{
-			if ($identifier=="TOTAL")
-				{
-   				$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieGesTagID), 2, ",", "" )."kWh \n";
-				break;
-				}
-			$energieTagID = CreateVariableByName(53458, $identifier."_EnergieTag", 2);
-			$ergebnis_tagesenergie=$ergebnis_tagesenergie.$identifier.":".number_format(GetValue($energieTagID), 2, ",", "" )."kWh ";   /* Schoenes Ergebnis fuer email bauen */
-			}
-  		echo ">>Heizungswerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-		}
-	unset($identifier); // break the reference with the last element
-
-	/* Energiewerte der Vortage als Zeitreihe */
-	$jetzt=time();
-	$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-	$starttime=$endtime-60*60*24*9;
-
-	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 24129, $starttime, $endtime, 0);
-	$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2), "EnergieVS" => array("EnergieVS",0,1,2));
-	//$zeile = array("Datum" => array("Datum",0,1,2), "Heizung" => array("Heizung",0,1,2), "Datum2" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2));
-	$vorigertag=date("d.m.Y",$jetzt);
-	$laufend=1;
-	$ergebnis_tabelle=substr("                          ",0,12);
-	foreach($werte as $wert)
-			{
-			$zeit=$wert['TimeStamp']-60;
-			if (date("d.m.Y", $zeit)!=$vorigertag)
-			   {
-				$zeile["Datum"][$laufend] = date("D d.m", $zeit);
-				$zeile["Heizung"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
-				$ergebnis_tabelle.= substr($zeile["Datum"][$laufend]."            ",0,12);
-				$laufend+=1;
-				}
-			$vorigertag=date("d.m.Y",$zeit);
-			}
-
-	$werte = AC_GetLoggedValues(IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0], 13448, $starttime, $endtime, 0);
-	$vorigertag=date("d.m.Y",$jetzt);
-	$anzahl=$laufend-1;
-	$laufend=1;
-	$ergebnis_tabelle1=substr("                          ",0,12);
-	foreach($werte as $wert)
-			{
-			$zeit=$wert['TimeStamp']-60;
-			if (date("d.m.Y", $zeit)!=$vorigertag)
-			   {
-				$zeile["Datum2"][$laufend] = date("D d.m", $zeit);
-				$zeile["Energie"][$laufend] = number_format($wert['Value'], 2, ",", "" ) ." kWh";
-				$ergebnis_tabelle1.= substr($zeile["Datum2"][$laufend]."            ",0,12);
-				$laufend+=1;
-				}
-			$vorigertag=date("d.m.Y",$zeit);
-			}
-	$anzahl2=$laufend-1;
-	$laufend=0;
-	$ergebnis_tabelle.="\n";
-	//print_r($zeile);
-	while ($laufend<=$anzahl)
-		{
-		$ergebnis_tabelle.=substr($zeile["Heizung"][$laufend]."            ",0,12);
-		$laufend+=1;
-		//echo $ergebnis_tabelle."\n";
-		}
-	$ergebnis_tabelle1.="\n";
-	$laufend=0;
-	while ($laufend<=$anzahl2)
-		{
-		$ergebnis_tabelle1.=substr($zeile["Energie"][$laufend]."            ",0,12);
-		$laufend+=1;
-		//echo $ergebnis_tabelle."\n";
-		}
-	$ergebnistab_energie=$ergebnis_tabelle1."\n\n";
-	$ergebnistab_heizung=$ergebnis_tabelle."\n\n";
-
-  	echo ">>Vorwertberechnung Energie. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-
-	//print_r($zeile);
-
-	//echo"Keller:".GetValue(1);
-
-	$ergebnisTemperatur="\nAktuelle Temperaturwerte :\n\n";
-	$arr=LogAlles_Temperatur();    /* Konfigurationsfile mit allen Variablen  */
-
-	foreach ($arr as $identifier=>$station)
-		{
-		if ($identifier=="TOTAL")
-			{
-			break;
-			}
-		//echo $identifier;
-		$TempWertID = $station["OID_Sensor"];
-		$ergebnisTemperatur = $ergebnisTemperatur.$identifier." : ".number_format(GetValue($TempWertID), 2, ",", "" )."°C ";
-		}
-	unset($identifier); // break the reference with the last element
-
-	$ergebnisRegen="\n\nRegenmenge Vortag: ".number_format(GetValue(15200), 2, ",", "" )." mm\n";
-	$ergebnisRegen.=   "1/7/30/360 : ".number_format(GetValue(37587), 2, ",", "" )."/"
-							  				    .number_format(GetValue(10370), 2, ",", "" )."/"
-											    .number_format(GetValue(13883), 2, ",", "" )."/"
-											    .number_format(GetValue(10990), 2, ",", "" )." mm\n";
-
-	$ergebnisStrom="\n\nTages-Stromverbrauch Vortag: ".GetValue(13448)." kWh\n";
-	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(52252), 0, ",", "" )."/"
-							  				    .number_format(GetValue(35513), 0, ",", "" )."/"
-											    .number_format(GetValue(35289), 0, ",", "" )."/"
-											    .number_format(GetValue(51307), 0, ",", "" )." kWh\n";
-	$ergebnisStrom.=   "1/7/30/360 : ".number_format(GetValue(29903), 0, ",", "" )."/"
-							  				    .number_format(GetValue(44005), 0, ",", "" )."/"
-											    .number_format(GetValue(20129), 0, ",", "" )."/"
-											    .number_format(GetValue(47761), 0, ",", "" )." Euro\n";
-
-	$ergebnisStatus="\nAenderungsverlauf Internet Connectivity :\n\n";
-	$ergebnisStatus=$ergebnisStatus."Downtime Internet :".GetValue(49809)." min\n\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(51715)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(55372)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(52397)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(51343)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(29913)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(27604)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(30167)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(41813)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(11169)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(18739)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(39489)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(12808)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(13641)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(36734)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(46381)."\n";
-	$ergebnisStatus=$ergebnisStatus.GetValue(24490)."\n";
-
-	$ergebnisStatus.="\nDatenvolumen Down/Up : ".GetValue(32332)."/".GetValue(37701)." Mbyte\n";
-	$ergebnisStatus.=  " Down 7/30/30/30/360 : ".GetValue(32642)."/"
-															  .GetValue(49944)."/"
-															  .GetValue(49121)."/"
-															  .GetValue(17604)."/"
-															  .GetValue(12069)." Mbyte\n";
-	$ergebnisStatus.=  "   Up 7/30/30/30/360 : ".GetValue(39846)."/"
-															  .GetValue(46063)."/"
-															  .GetValue(45333)."/"
-															  .GetValue(50549)."/"
-															  .GetValue(21647)." MByte\n";
-
-	$ergebnisBewegung="\n\nVerlauf der Bewegungen:\n\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(38964)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(23869)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(16966)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(14097)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(14944)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(42042)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(39559)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(36666)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(30427)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(55972)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(57278)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(45148)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(21096)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(46545)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(25902)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(13726)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(22969)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(56534)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(59126)."\n";
-	$ergebnisBewegung=$ergebnisBewegung.GetValue(45878)."\n";
-
-
-	$ergebnisSteuerung="\n\nVerlauf der Steuerung:\n\n";
-	$baseId  = IPSUtil_ObjectIDByPath('Program.Steuerung.Nachrichtenverlauf-Steuerung');
-	$zeile1 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile01", 3);
-	$zeile2 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile02", 3);
-	$zeile3 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile03", 3);
-	$zeile4 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile04", 3);
-	$zeile5 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile05", 3);
-	$zeile6 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile06", 3);
-	$zeile7 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile07", 3);
-	$zeile8 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile08", 3);
-	$zeile9 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile09", 3);
-	$zeile10 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile10", 3);
-	$zeile11 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile11", 3);
-	$zeile12 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile12", 3);
-	$zeile13 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile13", 3);
-	$zeile14 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile14", 3);
-	$zeile15 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile15", 3);
-	$zeile16 = CreateVariableByName($baseId, "Nachricht_Steuerung_Zeile16", 3);
-
-	$ergebnisSteuerung.=GetValue($zeile1)."\n";
-	$ergebnisSteuerung.=GetValue($zeile2)."\n";
-	$ergebnisSteuerung.=GetValue($zeile3)."\n";
-	$ergebnisSteuerung.=GetValue($zeile4)."\n";
-	$ergebnisSteuerung.=GetValue($zeile5)."\n";
-	$ergebnisSteuerung.=GetValue($zeile6)."\n";
-	$ergebnisSteuerung.=GetValue($zeile7)."\n";
-	$ergebnisSteuerung.=GetValue($zeile8)."\n";
-	$ergebnisSteuerung.=GetValue($zeile9)."\n";
-	$ergebnisSteuerung.=GetValue($zeile10)."\n";
-	$ergebnisSteuerung.=GetValue($zeile11)."\n";
-	$ergebnisSteuerung.=GetValue($zeile12)."\n";
-	$ergebnisSteuerung.=GetValue($zeile13)."\n";
-	$ergebnisSteuerung.=GetValue($zeile14)."\n";
-	$ergebnisSteuerung.=GetValue($zeile15)."\n";
-	$ergebnisSteuerung.=GetValue($zeile16)."\n";
-
-	$BrowserExtAdr="http://".trim(GetValue(45252)).":82/";
-	$BrowserIntAdr="http://".trim(GetValue(33109)).":82/";
-	$IPStatus="\n\nIP Symcon Aufruf extern unter:".$BrowserExtAdr.
-	          "\nIP Symcon Aufruf intern unter:".$BrowserIntAdr."\n";
-
-	/* Werte die es in BKS nicht gibt zumindest setzen */
-	$guthaben=""; $cost=""; $internet=""; $statusverlauf=""; $energieverbrauch=""; $ergebnis_tabelle="";
-	echo "\n----------------------------------------------------\n";
-
-
-	}
-
-
-/************** das war spezielle Routine BKS01
- *
- *=========================================================================================================================================
- */
-
-
-
 /******************************************************************************************
-		
-Allgemeiner Teil, unabhängig von Hardware oder Server
-		
-******************************************************************************************/
-
-
+ *
+ * Allgemeiner Teil, unabhängig von Hardware oder Server
+ *
+ * zuerst aktuell dann historisch
+ *		
+ ******************************************************************************************/
 
 	if ($aktuell) /* aktuelle Werte */
 		{
@@ -833,6 +172,7 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		$alleHelligkeitsWerte="";
 		$alleStromWerte="";
 		$alleHeizungsWerte="";
+        $guthaben="";
 		
 		/******************************************************************************************
 		
@@ -1283,6 +623,56 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 
 		//echo $ServerRemoteAccess;
 
+    	/*****************************************************************************************
+		 *
+		 * Guthaben Verwaltung von Simkarten
+		 *
+		 *******************************************************************************/
+
+		if (isset($installedModules["Guthabensteuerung"])==true)
+			{
+			IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+
+			$guthabenid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+			$GuthabenConfig = get_GuthabenConfiguration();
+			//print_r($GuthabenConfig);
+			$guthaben="\nGuthabenstatus:\n";
+			foreach ($GuthabenConfig as $TelNummer)
+				{
+				if (strtoupper($TelNummer["STATUS"])=="ACTIVE")
+					{
+					$phone1ID = CreateVariableByName($guthabenid, "Phone_".$TelNummer["NUMMER"], 3);
+					$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
+					$guthaben .= "\n    ".GetValue($phone_Summ_ID);
+					}
+				}
+			$guthaben .= "\n\n";			
+			}
+		else
+			{
+			$guthaben="";
+			}
+        echo $guthaben;
+
+		$guthaben.="Ausgabe Status der aktiven SIM Karten :\n\n";
+        $guthaben.="    Nummer       Name                             letztes File von             letzte Aenderung Guthaben    letzte Aufladung\n";		
+        foreach ($GuthabenConfig as $TelNummer)
+			{
+			//print_r($TelNummer);
+			$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
+
+			$phone1ID = CreateVariableByName($parentid, "Phone_".$TelNummer["NUMMER"], 3);
+			$dateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
+			$ldateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_loadDate", 3);
+			$udateID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
+			$userID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
+			if (strtoupper($TelNummer["STATUS"])=="ACTIVE") 
+				{
+				$guthaben.="    ".$TelNummer["NUMMER"]."  ".str_pad(GetValue($userID),30)."  ".str_pad(GetValue($dateID),30)." ".str_pad(GetValue($udateID),30)." ".GetValue($ldateID)."\n";
+				}
+			//echo "Telnummer ".$TelNummer["NUMMER"]." ".$udateID."\n";
+			}
+         $guthaben.="\n";    
 
     	/*****************************************************************************************
 		 *
@@ -1308,12 +698,12 @@ Allgemeiner Teil, unabhängig von Hardware oder Server
 		if ($sommerzeit)
 	      {
 			$ergebnis=$einleitung.$ergebnisTemperatur.$ergebnisRegen.$ergebnisOperationCenter.$aktheizleistung.$alleHeizungsWerte.$ergebnis_tagesenergie.$alleTempWerte.
-			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo.$ergebnisErrorIPSLogger;
+			$alleHumidityWerte.$alleHelligkeitsWerte.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$guthaben.$SystemInfo.$ergebnisErrorIPSLogger;
 			}
 		else
 		   {
 			$ergebnis=$einleitung.$aktheizleistung.$ergebnis_tagesenergie.$ergebnisTemperatur.$alleTempWerte.$alleHumidityWerte.$alleHelligkeitsWerte.$alleHeizungsWerte.
-			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$SystemInfo.$ergebnisErrorIPSLogger;
+			$ergebnisOperationCenter.$alleMotionWerte.$alleStromWerte.$alleHM_Errors.$ServerRemoteAccess.$guthaben.$SystemInfo.$ergebnisErrorIPSLogger;
 		   }
 	  	echo ">>Ende aktuelle Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
@@ -1783,18 +1173,18 @@ define("ADR_Programs",'C:/Program Files (x86)/');
 /******************************************************************/
 
 function writeLogEventClass($event,$class)
-{
+    {
 
-/* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File
+    /* call with writelogEvent("Beschreibung")  writes to Log_Event.csv File
 
-*/
+    */
 
 	if (!file_exists("C:\Scripts\Log_Events.csv"))
 		{
-      $handle=fopen("C:\Scripts\Log_Events.csv", "a");
-	   fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
-      fclose($handle);
-	   }
+        $handle=fopen("C:\Scripts\Log_Events.csv", "a");
+	    fwrite($handle, date("d.m.y H:i:s").";Eventbeschreibung\r\n");
+        fclose($handle);
+	    }
 
 	$handle=fopen("C:\Scripts\Log_Events.csv","a");
 	$ausgabewert=date("d.m.y H:i:s").";".$event;
@@ -1807,40 +1197,61 @@ function writeLogEventClass($event,$class)
 		SetValue(24829,$ausgabewert);
 		}
 	else
-	   {
+	    {
 		SetValue(44647,$ausgabewert);
 		}
 	fclose($handle);
-}
+    }
 
+
+/*****************************************************************
+ *
+ * vereint getValue und GetValueFormatted
+ * Nachdem getValueFormatted immer einen Fehler ausgibt wenn die Variable keine Formattierung unterstützt wird halt vorher abgefragt
+ *
+ ************************************************************************/
+
+function GetValueIfFormatted($oid)
+    {
+   	$variabletyp=IPS_GetVariable($oid);
+	if ($variabletyp["VariableProfile"]!="")
+		{
+	    $result=GetValueFormatted($oid);
+		}
+	else
+	   	{
+		$result=GetValue($oid);
+		}
+    return ($result);    
+    }
 
 /******************************************************************/
 
 function CreateVariableByName($id, $name, $type)
-{
+    {
 
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
     global $IPS_SELF;
     $vid = @IPS_GetVariableIDByName($name, $id);
     if($vid === false)
-    {
+        {
         $vid = IPS_CreateVariable($type);
         IPS_SetParent($vid, $id);
         IPS_SetName($vid, $name);
         IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
-    }
+        }
     return $vid;
-}
+    }
 
 /******************************************************************/
 
 function CreateVariableByName2($name, $type,$profile,$action,$visible)
-{
+    {
     $id=IPS_GetParent($_IPS['SELF']);
     $vid = @IPS_GetVariableIDByName($name, $id);
     if($vid === false)
-    {
+        {
         $vid = IPS_CreateVariable($type);
         IPS_SetParent($vid, $id);
         IPS_SetName($vid, $name);
@@ -1854,9 +1265,9 @@ function CreateVariableByName2($name, $type,$profile,$action,$visible)
             IPS_SetVariableCustomAction($vid,$action);
         }
         IPS_SetHidden($vid,!$visible);
-    }
+        }
     return $vid;
-}
+    }
 
 /************************************
  *

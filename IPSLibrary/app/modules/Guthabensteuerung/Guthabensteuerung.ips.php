@@ -129,9 +129,15 @@ if ($_IPS['SENDER']=="TimerEvent")
 				}
 			else
 				{
-				IPS_RunScript($ParseGuthabenID);
-				$filedate=date ("d.m.Y H:i:s.", filemtime($GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt") );				
-				$note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+				IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
+                $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+                if (file_exists($fileName)==true)
+                    {
+                    $fileMTimeDatei=filemtime($fileName);   // Liefert Datum und Uhrzeit der letzten Dateiänderung
+				    $filedate=date ("d.m.Y H:i:s.", $fileMTimeDatei);
+				    $note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                    }
+                else $note="File ".$fileName." does not exists.";
 				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
 
 				SetValue($ScriptCounterID,0);
@@ -233,9 +239,9 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Category Data ID            : ".$CategoryIdData."\n";
 	echo "Category App ID             : ".$CategoryIdApp."\n";
 
-	echo "Verzeichnis für Macros    :".$GuthabenAllgConfig["MacroDirectory"]."\n";
-	echo "Verzeichnis für Ergebnisse:".$GuthabenAllgConfig["DownloadDirectory"]."\n";
-	echo "Verzeichnis für Mozilla exe :".$firefox."\n\n";
+	echo "Verzeichnis für Macros :     ".$GuthabenAllgConfig["MacroDirectory"]."\n";
+	echo "Verzeichnis für Ergebnisse : ".$GuthabenAllgConfig["DownloadDirectory"]."\n";
+	echo "Verzeichnis für Mozilla exe: ".$firefox."\n\n";
 	
 	//print_r($phone);
 	
