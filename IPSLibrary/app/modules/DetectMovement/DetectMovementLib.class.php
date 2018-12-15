@@ -55,14 +55,27 @@
 		
 		abstract function CreateMirrorRegister($variableId);
 
+		private $installedModules, $log_OperationCenter;
+		
 		/**
 		 * @public
 		 *
-		 * Initialisierung des IPSLight_Manager Objektes
+		 * Initialisierung des DetectHandler Objektes, abstract class, this construc will be called after undividual one
 		 *
 		 */
 		public function __construct()
 			{
+			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			if (!isset($moduleManager))
+				{
+				IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+				$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+				}
+			$CategoryIdData=$moduleManager->GetModuleCategoryID('data');
+			$this->installedModules = $moduleManager->GetInstalledModules();
+			$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
+			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 			}
 
 		/**

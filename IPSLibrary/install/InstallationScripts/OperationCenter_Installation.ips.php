@@ -667,6 +667,20 @@ $startexec=microtime(true);
 		$TableEventsAlexa_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungAlexa,0,"~HTMLBox",null,null,"");
 		$SchalterSortAlexa_ID=CreateVariable("Tabelle sortieren",1, $categoryId_AutosteuerungAlexa,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
+	    echo "===========================================\n";
+	    echo "Zusammenfassung Taster anzeigen.\n";		
+
+		$categoryId_AutosteuerungButton    = CreateCategory('ButtonTasks',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_AutosteuerungButton, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
+		$TableEventsButton_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungButton,0,"~HTMLBox",null,null,"");
+
+	    echo "===========================================\n";
+	    echo "Zusammenfassung Timer anzeigen.\n";		
+
+		$categoryId_AutosteuerungSimulation    = CreateCategory('TimerSimulation',   $CategoryIdData, 150);
+        IPS_SetHidden($categoryId_AutosteuerungSimulation, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
+		$TableEventsButton_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungSimulation,0,"~HTMLBox",null,null,"");
+
 	/********************************************************
 	 *
 	 *		INIT Geraete Darstellung und Auswertung
@@ -695,6 +709,8 @@ $startexec=microtime(true);
             {
             CreateLinkByDestination('Alexa', $categoryId_AutosteuerungAlexa,    $categoryId_WebFront,  80);		
             CreateLinkByDestination('Autosteuerung', $categoryId_Autosteuerung,    $categoryId_WebFront,  80);		
+            CreateLinkByDestination('TasterDarstellung', $categoryId_AutosteuerungButton,    $categoryId_WebFront,  80);		
+            CreateLinkByDestination('TimerSimulation', $categoryId_AutosteuerungSimulation,    $categoryId_WebFront,  80);		
             }
 		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);

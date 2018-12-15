@@ -286,6 +286,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 				{
 				if (isset($scene["TYPE"]))
 					{
+                    if ( (isset($scene["STATUS"])) && (strtoupper($scene["STATUS"])=="DISABLED") )
+                        {
+                        /* Schalter ist deaktiviert, nichts tun */    
+                        }
+                    else
+                        {                        
 					$statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
 					AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
 					AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
@@ -452,7 +458,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 								$simulation->LogNachrichten('Befehl Timer aktiv, '.$text.' Timer gesetzt auf '.date("D d.m.Y H:i",($auto->now+$scene["EVENT_DURATION"]*60)));
 								}	
 							}  /* ende switch */
-						}	/* ende ifelse AWS */		
+						}	/* ende ifelse AWS */	
+                        }   /* ende Status aktiv */	
 					}   /* ende isset Type */		
 				} /* end of foreach */
 				break;

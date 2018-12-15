@@ -728,6 +728,20 @@ class AutosteuerungOperator
  *
  * Routinen zur Evaluierung der Befehlsketten
  *
+ *      getFunctions
+ *      isitdark, isitlight, isitsleep, isitwakeup, isitawake, isithome, isitmove, isitalarm, isitheatday
+ *      getDaylight
+ *      switichingTimes
+ *      timeright
+ *      setNewValue, setNewValueIfDif
+ *      trimCommand
+ *
+ *      ParseCommand, parseName, parseParameter, parseValue,
+ *
+ *      EvaluateCommand, evalCom_IFDIF, evalCom_LEVEL, ControlSwitchLevel
+ *
+ *      ExecuteCommand,  
+ *
  **************************************************************************************************************/
 
 
@@ -764,7 +778,7 @@ class Autosteuerung
 	
 	/***********************
 	 *
-	 * es wird innerhalb von data.modules.Autosteuerung dei Kategorie Ansteuerung erstellt und dort pro 
+	 * es wird innerhalb von data.modules.Autosteuerung die Kategorie Ansteuerung erstellt und dort pro 
 	 * im Config File angelegter Applikation ein Eintrag erstellt. Derzeit unterstützt:
 	 *
 	 * Anwesenheitserkennung, Alarmanlage, Stromheizung
@@ -1170,6 +1184,64 @@ class Autosteuerung
 			}	
 		return ($timeright);	
 		}	
+
+function statusAnwesenheitSimulation($html=false)
+    {
+    $text=""; 
+    if ($html) $cr="<br>";
+    else $cr="\n"; 
+	$text .= "Eingestellte Anwesenheitssimulation:".$cr.$cr;
+    $scenes=Autosteuerung_GetScenes();    
+	foreach($scenes as $scene)
+		{
+		if (isset($scene["TYPE"]))
+			{
+			if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+				{		
+				$text .= "  Anwesenheitssimulation Szene : ".$scene["NAME"].$cr;
+				}
+			else
+				{		
+				$text .= "  Timer Szene : ".$scene["NAME"].$cr;
+				}
+			}
+		$switch = $this->timeright($scene);	
+		$text .= "      Schaltet jetzt : ".($switch ? "Ja":"Nein").$cr;
+		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
+		$actualTimes = $this->switchingTimes($scene);
+		//echo "Evaluierte Schaltzeiten:\n";	
+		//print_r($actualTimes);
+		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
+			{
+			//echo "   Schaltzeit ".$sindex."\n";
+			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
+			$actualTimeStartHour = $actualTimeStart[0];
+			$actualTimeStartMinute = $actualTimeStart[1];
+			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
+			$actualTimeStopHour = $actualTimeStop[0];
+			$actualTimeStopMinute = $actualTimeStop[1];
+			$text .= "      Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+			}
+		$now = time();
+		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
+		if (isset($scene["EVENT_IPSLIGHT"]))
+			{
+			$text .= "      Objekt : ".$scene["EVENT_IPSLIGHT"].$cr;
+			//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+         	}
+         else
+            {
+      		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	   		{
+	      		$text .= "      Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"].$cr;
+   	      		//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+      	   		}	
+			}
+    	}
+    return ($text);        
+    }
 
 	/***************************************
 	 *

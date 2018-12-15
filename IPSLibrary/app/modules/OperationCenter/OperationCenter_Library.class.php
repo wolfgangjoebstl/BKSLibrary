@@ -20,10 +20,17 @@
 /*********************************************************************************************/
 /*********************************************************************************************/
 /*                                                                                           */
-/*                              Functions                                                    */
+/*                              Functions   , Klassendefinitionen                            */
 /*                                                                                           */
 /*********************************************************************************************/
-/*********************************************************************************************/
+/*********************************************************************************************
+ *
+ * OperationCenter
+ * DeviceManagement
+ * parsefile
+ * TimerHandling
+ *
+ */
 
 
 
@@ -87,7 +94,7 @@
  * HardwareStatus
  *
  * Verwenden gemeinsames Array $HomematicSerialNumberList:
- * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweterbar ist
+ * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweiterbar ist
  * addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
  * writeHomematicSerialNumberList	Ausgabe der Liste
  * getHomematicDeviceList
@@ -95,8 +102,6 @@
  * getIPSLoggerErrors	aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
  * stripHTMLTags
  *
- * DeviceManagement
- * ================
  *
  * Klasse parsefile
  * ================
@@ -117,13 +122,12 @@
 class OperationCenter
 	{
 
-	var $CategoryIdData       	= 0;
-	var $categoryId_SysPing   	= 0;
-	var $categoryId_RebootCtr 	= 0;
-	var $categoryId_Access 		= 0;	
-	var $archiveHandlerID     	= 0;
-	var $subnet               	= "";
-	var $log_OperationCenter  	= array();
+	private $log_OperationCenter;
+
+	private $CategoryIdData, $categoryId_SysPing,$categoryId_RebootCtr,$categoryId_Access,$archiveHandlerID;
+	
+    var $subnet               	= "";
+
 	var $mactable             	= array();
 	var $oc_Configuration     	= array();
 	var $oc_Setup			    = array();			/* Setup von Operationcenter, Verzeichnisse, Konfigurationen */
@@ -2774,6 +2778,23 @@ class OperationCenter
 			
 	}  /* ende class OperationCenter*/
 
+/********************************************************************************************************
+ *
+ * DeviceManagement
+ * ================ 
+ *
+ * HardwareStatus
+ * getHomematicSerialNumberList
+ * addHomematicSerialList_Typ
+ * addHomematicSerialList_RSSI
+ * addHomematicSerialList_DetectMovement
+ * writeHomematicSerialNumberList
+ * tableHomematicSerialNumberList
+ *
+ *
+ * HomematicFehlermeldungen
+ *
+ **************************************************************************************************************************/
 
 class DeviceManagement
 	{
@@ -4208,6 +4229,61 @@ function getFS20DeviceType($instanz)
     	}
 
     } /* ende class DeviceManagement */
+
+/*********************************************************************************************
+ *
+ *
+ ***********************************************************************************************/
+
+class statusDisplay
+	{
+
+    private $CategoryIdData,$categoryId_TimerSimulation,$archiveHandlerID;
+ 	private $log_OperationCenter;
+
+	private $installedModules     	= array();          // koennte man auch static mit einer abstracten Klasse für alle machen
+	
+	
+	/**
+	 * @public
+	 *
+	 * Initialisierung des OperationCenter Objektes
+	 *
+	 */
+	public function __construct()
+		{
+
+		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+
+		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+		if (!isset($moduleManager))
+			{
+			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+			$moduleManager = new IPSModuleManager('OperationCenter',$repository);
+			}
+		$this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
+		$this->installedModules = $moduleManager->GetInstalledModules();
+
+		$this->categoryId_TimerSimulation    	= IPS_GetCategoryIDByName('TimerSimulation',$this->CategoryIdData);
+
+		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
+		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+		}
+
+    function getCategory()
+        {
+
+        return ($this->categoryId_TimerSimulation);
+
+
+        }
+
+    } // ende class statusDisplay        
+		
+/****************************************************************************************************************/
+
 
 
 /********************************************************************************************
