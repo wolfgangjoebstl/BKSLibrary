@@ -64,7 +64,7 @@
 				}
 			}
 		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-		$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+		$scriptIdSprachsteuerung   = @IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
 		if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
 		
 		/* Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist. */
@@ -189,6 +189,15 @@
 						while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
 						$status=@WAC_Play($id_sk1_ton);
 						if (!$status) { echo "Fehler WAC_play nicht ausführbar.\n"; $tts_status=false; }
+						
+  						WAC_Stop($id_sk1_ton);
+						WAC_SetRepeat($id_sk1_ton, false);
+						WAC_ClearPlaylist($id_sk1_ton);
+						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
+						if (!$status) echo "Error";
+		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
+		     			echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
+						WAC_Play($id_sk1_ton);						
 						}
 
 					//Script solange angehalten wie Sprachausgabe läuft

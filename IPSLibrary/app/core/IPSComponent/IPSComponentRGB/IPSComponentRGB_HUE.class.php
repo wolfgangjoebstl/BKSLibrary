@@ -195,13 +195,22 @@
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
          */
-		public function SetState($power, $color, $level) 
+		public function SetState($power, $color, $level, $ambience=false) 
 			{
+			//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."    ".$ambience."    \n";
 			if (!$power) 
 				{
 				HUE_SetValue($this->lampOID, "STATE",$power);
 				} 
-			else 
+			elseif ($ambience)
+				{
+				HUE_SetValue($this->lampOID, "STATE",$power);
+				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
+				HUE_SetValue($this->lampOID, "COLOR_TEMPERATURE",$color);
+				//echo "Level:".$level."\n";				
+				
+				}
+			else	    
 				{
 				$rotDec = (($color >> 16) & 0xFF);
 				$gruenDec = (($color >> 8) & 0xFF);
@@ -214,10 +223,13 @@
 				$values = $this->calculateXY($color_array, $modelID);
 			  
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
-				$level = round($level * 2.55);
+				$level = round($level * 2.54);
 				$cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
+				//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."      \n";
 				HUE_SetValue($this->lampOID, "STATE",$power);
+				//echo "IPSComponentRGB_HUE SetState mit  Color ".dechex($color)." \n";
 				HUE_SetValue($this->lampOID, "COLOR",$color);
+				//echo "IPSComponentRGB_HUE SetState mit Level ".$level."      \n";
 				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
 				}
 		}

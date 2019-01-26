@@ -30,7 +30,11 @@
 	 *
 	 * Für jede Variable die gelogged wird erfolgt ein Eintrag ins config File IPSMessageHandler_Configuration
 	 * Es wird ein Event erzeugt dass bei Änderung der Variable HandleEvent mit VariableID udn Wert aufruft.
-	 *
+     *
+     * Unterschied zu IPSComponentSwitch_RHomematic:
+	 *   __construct
+     *      zusaetzliche Variablen für instanceID und SupportsonTime
+     *      Verbiegen des DutyCycle Error Handlers um nicht Erreichbarkeits Events etc abzufangen
 	 *
 	 ****************************************/
 
@@ -243,9 +247,10 @@
 			{
 			$result=GetValueFormatted($this->variable);
 			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Neuer Wert fuer ".$this->variablename." ist ".GetValueFormatted($this->variable)."\n";
+			//echo "Neuer Wert fuer ".$this->variablename." ist ".GetValueFormatted($this->variable)."\n";
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
+			//echo "done.\n";
 			}
 
 		public function GetComponent() {

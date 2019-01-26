@@ -710,7 +710,7 @@ class RemoteAccess
 		{
 		$status=$this->RemoteAccessServerTable();
 
-		echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):\n";
+		/* Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben) */
 		$remServer=$this->get_listofROIDs();
 		$struktur=array();
 		foreach ($remServer as $Name => $Server)

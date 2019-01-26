@@ -62,6 +62,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 			switch (Getvalue($TimeSlotReadID))
 				{
 				case "15":  /* Auto */
+					$amis->writeEnergySumme($meter);
+					break;
 				case "14":  /* Auto */
 				case "13":  /* Auto */
 				case "12":  /* Auto */

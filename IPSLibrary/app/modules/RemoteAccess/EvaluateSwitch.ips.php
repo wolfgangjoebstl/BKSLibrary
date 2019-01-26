@@ -7,36 +7,58 @@
  */
 
 	Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
-/******************************************************
+    /******************************************************
 
 				INIT
 
-*************************************************************/
+    *************************************************************/
 
 	// max. Scriptlaufzeit definieren
 	ini_set('max_execution_time', 2000);    /* sollte man am Ende wieder zurückstellen, gilt global */
 	set_time_limit(120);
 	$startexec=microtime(true);
-	$donotregister=false; $i=0; $maxi=600;
 
 	/***************** INSTALLATION **************/
 
-	echo "Update Konfiguration und register Events\n";
+	echo "Update Switch configuration and register Events\n";
 
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
+	/******************************************** Schalter  *****************************************/
+
+	echo "***********************************************************************************************\n";
+	echo "Switch Handler wird ausgeführt. Macht bereits install CustomCompnents, DetectMovement und RemoteAccess mit !\n";
+	echo "\n";
+	echo "Homematic, HomematicIP und FS20 Switche werden registriert.\n";
+    echo "\n";
+	if (function_exists('HomematicList'))
+		{
+        /* die Homematic Switche werden installiert, Routine übernimmt install CustomComponents, DetectMovement und RemoteAccess */
+		$struktur1=installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');				/* Homematic Switche */
+	    echo "***********************************************************************************************\n";
+		$struktur2=installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');			    /* HomemeaticIP Switche */
+	    echo "***********************************************************************************************\n";        
+        $struktur3=installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,');
+		}
+	echo "***********************************************************************************************\n";
+    print_r($struktur1);
+    print_r($struktur2);
+    print_r($struktur3);
+
+if (false)
+    {
+	$donotregister=false; $i=0; $maxi=600;
 	/* Folgende Variablen werden von Evaluate Hardware erstellt */
 	$Homematic = HomematicList();
 	$FHT = FHTList();
 	$FS20= FS20List();
-
-	/******************************************** Schalter  *****************************************/
 
     $componentName="IPSComponentSwitch_Remote";
     $componentHomematicName="IPSComponentSwitch_Remote";
@@ -203,8 +225,8 @@
 				echo "   FS20 Switch mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}
-
-	print_r($struktur);
+    
+    print_r($struktur);
 	foreach ($struktur as $server => $entries)
 		{
 		//echo $remServer[$server]["Name"].":\n";
@@ -218,5 +240,6 @@
 				}
 			}
 		}
+    }    
 	
 ?>

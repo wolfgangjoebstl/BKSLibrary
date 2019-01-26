@@ -1,6 +1,33 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+
 /*****************************************************************************************************
+ *
+ * Übersicht verwendete Klassen
+ *   AutosteuerungHandler zum Anlegen der Konfigurationszeilen im config File
+ *   AutosteuerungConfiguration, abstract class für:
+ *       AutosteuerungConfigurationAlexa 
+ *       AutosteuerungConfigurationHandler
+ *   AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung) 
+ *    Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind. 
+ *
+ *
  *
  * Autosteuerung_class ist eine Sammlung aus unterschiedlichen Klassen:
  *
@@ -30,7 +57,7 @@
  *    AutosteuerungOperator für Funktionen die zum Betrieb notwendig sind (zB Anwesenheitsberechnung)
  *          Anwesend()
  *
- *    Autosteuerung sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
+ *    Autosteuerung class sind die Funktionen die für die Evaluierung der Befehle im Konfigfile notwendig sind.
  *       getFunctions
  *       isitdark(), isitlight(), isitsleep(), isitwakeup(), isitawake(), isithome(), isitmove(),isitalarm()
  *       isitheatday(),
@@ -42,7 +69,7 @@
  *
  *       EvaluateCommand, evalCom_IFDIF, evalCom_LEVEL, ControlSwitchLevel
  *
- *       ExecuteCommand, 
+ *       ExecuteCommand, availableModuleDevice, switchObject, switch
  *
  *
  *    AutosteuerungFunktionen
@@ -728,8 +755,8 @@ class AutosteuerungOperator
  *
  * Routinen zur Evaluierung der Befehlsketten
  *
- *      getFunctions
- *      isitdark, isitlight, isitsleep, isitwakeup, isitawake, isithome, isitmove, isitalarm, isitheatday
+ *      getFunctions			welche AutosteuerungsFunktionen sind aktiviert
+ *      isitdark, isitlight, isitsleep, isitwakeup, isitawake, isithome, isitmove, isitalarm, isitheatday	aktuellen Zustand feststellen und ausgeben
  *      getDaylight
  *      switichingTimes
  *      timeright
@@ -740,7 +767,9 @@ class AutosteuerungOperator
  *
  *      EvaluateCommand, evalCom_IFDIF, evalCom_LEVEL, ControlSwitchLevel
  *
- *      ExecuteCommand,  
+ *      ExecuteCommand, 
+ *
+ *      GetColor 
  *
  **************************************************************************************************************/
 
@@ -763,6 +792,10 @@ class Autosteuerung
 	
 	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
 	var $CategoryId_SchalterAnwesend, $CategoryId_SchalterAlarm;
+
+    var $scriptId_Autosteuerung;
+
+    var $AnwesenheitssimulationID;                             // für Anwesenheitssimulation, Category
 
 	var $CategoryId_Stromheizung;
 	var $CategoryId_Wochenplan;
@@ -817,7 +850,7 @@ class Autosteuerung
 		$this->CategoryIdApp      				= $moduleManager->GetModuleCategoryID('app');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
 
-		$scriptId  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
+		$this->scriptId_Autosteuerung  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
 
 		$object_data= new ipsobject($this->CategoryIdData);
 		$object_app= new ipsobject($this->CategoryIdApp);
@@ -848,7 +881,7 @@ class Autosteuerung
 		else
 			{	
 			$this->CategoryId_SchalterAnwesend	= IPS_GetObjectIDByName("SchalterAnwesend",$this->CategoryId_Anwesenheit);
-			}		
+			}
 		$this->CategoryId_Alarm			= @IPS_GetObjectIDByName("Alarmanlage",$this->CategoryId_Ansteuerung);
 		if ($this->CategoryId_Alarm === false)
 			{
@@ -858,6 +891,8 @@ class Autosteuerung
 			{	
 			$this->CategoryId_SchalterAlarm	= IPS_GetObjectIDByName("SchalterAlarmanlage",$this->CategoryId_Alarm);
 			}
+       
+        $this->AnwesenheitssimulationID = @IPS_GetObjectIDByName("Anwesenheitssimulation",$this->CategoryId_Ansteuerung);
 			
 		/* Modulliste erstellen */
 		//echo "  g:(".memory_get_usage()." Byte).";
@@ -899,6 +934,7 @@ class Autosteuerung
 								
 		if ( isset($this->installedModules["IPSLight"] ) )
 			{	
+			include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");						
 			$this->lightManager = new IPSLight_Manager();
 	
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
@@ -917,7 +953,15 @@ class Autosteuerung
 			}									
 		}
 
-	/* welche AutosteuerungsFunktionen sind aktiviert */
+	/* welche AutosteuerungsFunktionen sind aktiviert:
+     * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den Status zurückmelden
+     * Bekannt sind derzeit
+     *  GutenMorgenWecker, Anwesenheitserkennung, Alarmanlage, Stromheizung, Alexa
+     *
+     * wird dann von den einzelnen Routinen isitawake etc. ausgewertet
+     *
+     *
+     */
 
 	public function getFunctions($function="All")
 		{
@@ -975,10 +1019,13 @@ class Autosteuerung
 	 * Befehle für die Zeitperiodenerkennung
 	 *
 	 * dark/light abhängig vom Daylight
-	 * 
-	 * geplant Anwesend/Alarm von Erkennung und Awake/Sleep vom Gutenmorgenwecker
+	 * sleep, wakeup, awake vom GutenMorgenWecker
+     * home/move von Anwesenheitserkennung
+	 * geplant Anwesend/Alarm von Erkennung
 	 *
 	 *****************************************************************/
+
+	/* es ist dunkel draussen */
 
 	public function isitdark()
 		{
@@ -992,6 +1039,8 @@ class Autosteuerung
 			return(false);
 			}
 		}
+
+	/* es ist hell draussen */
 	
 	public function isitlight()
 		{
@@ -1005,6 +1054,8 @@ class Autosteuerung
 			return(false);
 			}
 		}
+
+	/* GutenMorgenWecker steht auf Schlafen */
 
 	public function isitsleep()
 		{
@@ -1020,6 +1071,8 @@ class Autosteuerung
 			}	
 		}
 
+	/* GutenMorgenWecker steht auf Aufwachen */
+
 	public function isitwakeup()
 		{
 		$functions=self::getFunctions();
@@ -1033,6 +1086,8 @@ class Autosteuerung
 			return (false);	/* default awake */	
 			}	
 		}
+
+	/* GutenMorgenWecker steht auf Munter */
 
 	public function isitawake()
 		{
@@ -1048,6 +1103,8 @@ class Autosteuerung
 			}		
 		}
 
+	/* Anwesenheitserkennung steht auf zu Hause */
+
 	public function isithome()
 		{
 		$functions=self::getFunctions();
@@ -1061,6 +1118,8 @@ class Autosteuerung
 			return (true);	/* default away */	
 			}		
 		}
+
+	/* Anwesenheitserkennung steht auf Bewegung */
 
 	public function isitmove()
 		{
@@ -1076,6 +1135,8 @@ class Autosteuerung
 			}		
 		}
 
+	/* Alarmanlage eingeschaltet */
+
 	public function isitalarm()
 		{
 		$functions=self::getFunctions();
@@ -1089,6 +1150,8 @@ class Autosteuerung
 			return (true);	/* default away */	
 			}		
 		}
+		
+	/* laut Wochenplan wird heute geheizt ? */	
 		
 	public function isitheatday()
 		{
@@ -1114,6 +1177,8 @@ class Autosteuerung
 			}	
 		}		
 
+	/* gibt die Sonnenauf- und -untergangszeiten aus */
+
 	public function getDaylight()
 		{
 		$result["Sunrise"]=$this->sunrise;
@@ -1123,7 +1188,7 @@ class Autosteuerung
 		return $result;
 		}
 
-	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll */
+	/* Auswertung der Angaben in den Szenen, Berechnung der Werte für sunrise und sunset */
 
 	public function switchingTimes($scene)
 		{
@@ -1140,6 +1205,8 @@ class Autosteuerung
 			}
 		return($actualTimes);
 		}
+		
+	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll */		
 		
 	public function timeright($scene)
 		{
@@ -1185,63 +1252,160 @@ class Autosteuerung
 		return ($timeright);	
 		}	
 
-function statusAnwesenheitSimulation($html=false)
-    {
-    $text=""; 
-    if ($html) $cr="<br>";
-    else $cr="\n"; 
-	$text .= "Eingestellte Anwesenheitssimulation:".$cr.$cr;
-    $scenes=Autosteuerung_GetScenes();    
-	foreach($scenes as $scene)
-		{
-		if (isset($scene["TYPE"]))
+    /****************************************************
+     *
+     * Konfiguration der Anwesenheitsliste ausgeben
+     *
+     ********************************************************************/
+
+    public function statusAnwesenheitSimulation($html=false)
+        {
+        $text=""; 
+        if ($html) $cr="<br>";
+        else $cr="\n"; 
+    	$text .= "Eingestellte Anwesenheitssimulation:".$cr.$cr;
+        $scenes=Autosteuerung_GetScenes();    
+    	foreach($scenes as $scene)
+	    	{
+		    if (isset($scene["TYPE"]))
+			    {
+    			if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+	    			{		
+		    		$text .= "  Anwesenheitssimulation Szene : ".$scene["NAME"].$cr;
+			    	}
+    			else
+	    			{		
+		    		$text .= "  Timer Szene : ".$scene["NAME"].$cr;
+			    	}
+    			}
+	    	$switch = $this->timeright($scene);	
+		    $text .= "      Schaltet jetzt : ".($switch ? "Ja":"Nein").$cr;
+    		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
+	    	$actualTimes = $this->switchingTimes($scene);
+		    //echo "Evaluierte Schaltzeiten:\n";	
+    		//print_r($actualTimes);
+	    	for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
+		    	{
+			    //echo "   Schaltzeit ".$sindex."\n";
+    			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
+	    		$actualTimeStartHour = $actualTimeStart[0];
+		    	$actualTimeStartMinute = $actualTimeStart[1];
+			    $actualTimeStop = explode(":",$actualTimes[$sindex][1]);
+    			$actualTimeStopHour = $actualTimeStop[0];
+	    		$actualTimeStopMinute = $actualTimeStop[1];
+		    	$text .= "      Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			    $timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+    			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+	    		}
+		    $now = time();
+    		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
+	    	if (isset($scene["EVENT_IPSLIGHT"]))
+		    	{
+			    $text .= "      Objekt : ".$scene["EVENT_IPSLIGHT"].$cr;
+    			//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+             	}
+             else
+                {
+          		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+          	   		{
+	          		$text .= "      Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"].$cr;
+   	      	    	//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+      	   		    }	
+    			}
+        	}
+        return ($text);        
+        }
+
+    /**********************************************
+     *
+     * getScenes
+     *
+     * Liest die AWS/TIMER Konfiguration aus, filtert auf die AWS Events, oder Eingabe
+     *
+     ********************************************************/
+
+    public function getScenes($filter="AWS")
+        {
+        $result=array();
+        $scenes=Autosteuerung_GetScenes();    
+	    foreach($scenes as $scene)
+		    {
+    		if (isset($scene["TYPE"]))
+	    		{
+		    	if ( ($filter=="") || ($filter=="") || ( strtoupper($scene["TYPE"]) == $filter ) )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+			    	{		
+        		    if (isset($scene["EVENT_IPSLIGHT"]))
+		        	    {
+           	      		$result[$scene["EVENT_IPSLIGHT"]]=$scene["EVENT_CHANCE"];
+                     	}
+                     else
+                        {
+              	    	if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	           	    	{
+        	      		    $result[$scene["EVENT_IPSLIGHT_GRP"]]=$scene["EVENT_CHANCE"];
+                  	   		}	
+	    	        	}
+                    }
+                }
+            }
+        return($result);
+        }
+
+    public function getScenesById()
+        {
+        $result=array();
+        $scenes=Autosteuerung_GetScenes();    
+    	foreach($scenes as $Id => $scene)
+	    	{
+		    if (isset($scene["TYPE"]))
+			    {
+    			//if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+	    			{		
+            		if (isset($scene["EVENT_IPSLIGHT"]))
+		            	{
+       	      	    	$result[$Id]=$scene["EVENT_CHANCE"];
+                 	    }
+                     else
+                        {
+                  		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+      	               		{
+        	          		$result[$Id]=$scene["EVENT_CHANCE"];
+              	   	    	}	
+    		        	}
+                    }
+                }
+            }
+        return($result);
+        }    
+
+    function getChancesById($Id)
+        {
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	    $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+    	$CategoryIdDataOC = $moduleManager->GetModuleCategoryID('data');
+        $CategoryId_TimerSimulation    	= IPS_GetCategoryIDByName('TimerSimulation',$CategoryIdDataOC);
+    
+        $result=false;
+        $scenes=Autosteuerung_GetScenes();    
+    	if (isset($scenes[$Id]["TYPE"]))
 			{
-			if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+			//if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
 				{		
-				$text .= "  Anwesenheitssimulation Szene : ".$scene["NAME"].$cr;
-				}
-			else
-				{		
-				$text .= "  Timer Szene : ".$scene["NAME"].$cr;
-				}
-			}
-		$switch = $this->timeright($scene);	
-		$text .= "      Schaltet jetzt : ".($switch ? "Ja":"Nein").$cr;
-		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
-		$actualTimes = $this->switchingTimes($scene);
-		//echo "Evaluierte Schaltzeiten:\n";	
-		//print_r($actualTimes);
-		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
-			{
-			//echo "   Schaltzeit ".$sindex."\n";
-			$actualTimeStart = explode(":",$actualTimes[$sindex][0]);
-			$actualTimeStartHour = $actualTimeStart[0];
-			$actualTimeStartMinute = $actualTimeStart[1];
-			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
-			$actualTimeStopHour = $actualTimeStop[0];
-			$actualTimeStopMinute = $actualTimeStop[1];
-			$text .= "      Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-			$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
-			}
-		$now = time();
-		//include(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/IPSLight/IPSLight.inc.php");
-		if (isset($scene["EVENT_IPSLIGHT"]))
-			{
-			$text .= "      Objekt : ".$scene["EVENT_IPSLIGHT"].$cr;
-			//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
-         	}
-         else
-            {
-      		if (isset($scene["EVENT_IPSLIGHT_GRP"]))
-      	   		{
-	      		$text .= "      Objektgruppe : ".$scene["EVENT_IPSLIGHT_GRP"].$cr;
-   	      		//IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
-      	   		}	
-			}
-    	}
-    return ($text);        
-    }
+        		if (isset($scenes[$Id]["EVENT_IPSLIGHT"]))
+		        	{
+       	      		$result=$scenes[$Id]["EVENT_CHANCE"];
+                 	}
+                 else
+                    {
+              		if (isset($scenes[$Id]["EVENT_IPSLIGHT_GRP"]))
+      	           		{
+        	      		$result=$scenes[$Id]["EVENT_CHANCE"];
+              	   		}	
+		        	}
+                }
+            }
+        return($result);
+        }
 
 	/***************************************
 	 *
@@ -1411,10 +1575,11 @@ function statusAnwesenheitSimulation($html=false)
 		 */
 		$parges=array();
 		//$this->log->LogMessage("ParseParameter.");
-		$params2=$params[2];
+		$params2=$this->trimCommand($params[2]);
 		$commands = explode(';', $params2);
+        //print_r($commands);
 		$Kommando=0;
-		echo "   ParseCommand Gesamter Befehl : ".$this->trimCommand($params2)."\n";
+		echo "   ParseCommand Gesamter Befehl : ".$params2."\n";
 		foreach ($commands as $command)
 			{
 			$Kommando++;
@@ -1739,10 +1904,11 @@ function statusAnwesenheitSimulation($html=false)
 					if ($command[0]=="ON") 				{ $switch=true; }	
 					if ($command[0]=="OFF") 			{ $switch=true; }
 					if ($command[0]=="ON#COLOR") 		{ $switch=true; }
-					if ($command[0]=="OFF#COLOR") 	{ $switch=true; }
+					if ($command[0]=="OFF#COLOR") 		{ $switch=true; }
 					if ($command[0]=="ON#LEVEL") 		{ $switch=true; }
-					if ($command[0]=="OFF#LEVEL") 	{ $switch=true; }
+					if ($command[0]=="OFF#LEVEL") 		{ $switch=true; }
 					}								
+				/* default Schaltbefehl einfügen einmal herausnehmen, es wird nur geschaltet wenn definitiv gefordert 
 				if ($switch == false )
 					{
 					$count++;
@@ -1756,13 +1922,14 @@ function statusAnwesenheitSimulation($html=false)
 						$parges[$Kommando][$count][]="ON";
 						$parges[$Kommando][$count][]="true";	// wird im nächsten Schritt umgewandelt, hier wird eine Eingabe simuliert
 						}
-					}				
+					}	*/				
 				$parges[$Kommando][0][]="SOURCE";		/* Die Quelle des Befehls dokumentieren */
 				$parges[$Kommando][0][]=$params[0];		/* OnUpdate oder OnChange  */
 				$parges[$Kommando][0][]=$status;			/* der aktuelle Wert des auslösenden Objektes, default false */
 				ksort($parges[$Kommando]);
 				}
-			}		/* foreach alle Strichpunkt Befehle durchgehen. Leere befgehle werden uebersprungen */
+			}		/* foreach alle Strichpunkt Befehle durchgehen. Leere Befehle werden uebersprungen */
+			
 		/* parges in richtige Reihenfolge bringen , NAME muss an den Anfang, es können auch Sortierinfos an den Anfang gepackt werden */
 		if ($simulate==true) 
 			{
@@ -1773,7 +1940,7 @@ function statusAnwesenheitSimulation($html=false)
 		}
 
 	/*
-	 * Wenn der Name der IPSLight Variablen keine IPS Light Vartiable aber vielleicht ein vordefinierter Wert ist, die OID der bekannten Variable zurückmelden
+	 * Wenn der Name der IPSLight Variablen keine IPS Light Variable aber vielleicht ein vordefinierter Wert ist, die OID der bekannten Variable zurückmelden
 	 */
 		
 	private function parseName($name)
@@ -1849,6 +2016,71 @@ function statusAnwesenheitSimulation($html=false)
 			}	
 		return($value);
 		}
+	
+	/* überprüft IPSHeat, IPSLight auf den Namen und gibt ID, Wert, Typ und Modul zurück */
+
+	function getIdByName($lightName)
+		{
+		$result=array();
+		if ( isset($this->installedModules["Stromheizung"] ) )
+			{
+			$switchId = @$this->heatManager->GetSwitchIdByName($lightName);
+			$groupId = @$this->heatManager->GetGroupIdByName($lightName);
+			$programId = @$this->heatManager->GetProgramIdByName($lightName);
+			//echo "IPSHeat Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+			if ($switchId)
+				{
+				$result["ID"]=$switchId;
+				$result["TYP"]="Switch";
+				$result["MODULE"]="IPSHeat";
+				}
+			elseif ($groupId)
+				{	
+				$result["ID"]=$groupId;
+				$result["TYP"]="Group";
+				$result["MODULE"]="IPSHeat";
+				}
+			elseif ($programId)
+				{	
+				$result["ID"]=$programId;
+				$result["TYP"]="Program";
+				$result["MODULE"]="IPSHeat";
+				}
+			}
+		if ( (isset($this->installedModules["IPSLight"])) && (sizeof($result)==0))
+			{
+			$lightManager = new IPSLight_Manager();
+			$switchId = @$lightManager->GetSwitchIdByName($lightName);
+			$groupId = @$lightManager->GetGroupIdByName($lightName);
+			$programId = @$lightManager->GetProgramIdByName($lightName);
+			//echo "IPSLight Switch ".$switchId." Group ".$groupId." Program ".$programId."\n";
+			if ($switchId)
+				{
+				$result["ID"]=$switchId;
+				$result["TYP"]="Switch";
+				$result["MODULE"]="IPSLight";
+				}
+			elseif ($groupId)
+				{	
+				$result["ID"]=$groupId;
+				$result["TYP"]="Group";
+				$result["MODULE"]="IPSLight";
+				}
+			elseif ($programId)
+				{	
+				$result["ID"]=$programId;
+				$result["TYP"]="Program";
+				$result["MODULE"]="IPSLight";
+				}
+			}
+		if (sizeof($result)==0)
+			{
+			echo "Fehler getIdByName, Name of ID not found.\n"; 
+			}
+		
+		return($result);	
+
+		}
 
 	/*********************************************************************************************************
 	 *
@@ -1891,6 +2123,7 @@ function statusAnwesenheitSimulation($html=false)
 
 	public function EvaluateCommand($befehl,array &$result,$simulate=false)
 		{
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug, für EchoControl Loadspeaker Ausgabe verwendet
 		//$this->log->LogMessage("EvaluateCommand : ".json_encode($befehl));		
 		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
 		$Befehl0=trim(strtoupper($befehl[0]));	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
@@ -1907,23 +2140,21 @@ function statusAnwesenheitSimulation($html=false)
 			case "COMMAND":	/* befehl für Module oder Device */
 				$result[$Befehl0]=$befehl[1];
 				break;
+			case "LOUDSPEAKER":			/* wenn echocontrol installiert ist kann auch auf einem Amazon Gerät ausgegeben werden. macht nicht tts_play */
+                /* Plausibilitätscheck gleich hier durchführen, wenn keine EchoControl installiert ist bei tts_play als default bleiben */
+                $echos=$modulhandling->getInstances('EchoRemote');
+               // echo "  Check if ".$befehl[1]." is im Amazon Echo Loudspeaker Array von ".json_encode($echos)."\n";
+                if (in_array((integer)$befehl[1],$echos)) $result[$Befehl0]=$befehl[1];
+				break;
 			case "NAME":		/* Default IPSLight identifier, kann aber auch etwas anderes sein, wenn Module definiert ist */
 				$result["NAME"]=$befehl[1];
-				if (isset($result["MODULE"])==false) $result["MODULE"]="IPSLight";
-				if ($result["MODULE"]=="IPSLight")
+				$ergebnis=$this->getIdByName($result["NAME"]);
+				if (isset($ergebnis["ID"]))
 					{
-					$resultID=@IPS_GetVariableIDByName($result["NAME"],$this->switchCategoryId);
-					if ($resultID === false) 
-						{
-						echo "      ".$result["NAME"]." ist kein IPSLight Switch.\n";
-						$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
-						$result["VALUE"]=$this->lightManager->GetValue($switchId);					
-						}	
-					else
-						{	
-						$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"]);
-						$result["VALUE"]=$this->lightManager->GetValue($switchId);
-						}
+					if (isset($result["MODULE"])==false) $result["MODULE"]=$ergebnis["MODULE"];
+					$switchId = $ergebnis["ID"];
+					$result["VALUE"]=GetValue($switchId);					
+					//echo "   Befehl NAME, Wert OID von ".$result["NAME"]." : ".$switchID." mit Wert wie bisher : ".$result["VALUE"]." \n";	
 					}	
 				break;
 				
@@ -1931,19 +2162,14 @@ function statusAnwesenheitSimulation($html=false)
 			case "ON#LEVEL":
 				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));
 				$name_ext="#".ucfirst(strtolower(strtoupper(substr($befehl[0],strpos($befehl[0],"#")+1,10))));
-				$resultID=@IPS_GetVariableIDByName($result["NAME"].$name_ext,$this->switchCategoryId);
-				if ($resultID === false) 
+				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
+				if (isset($ergebnis["ID"]))				
 					{
-					echo "      ".$result["NAME"].$name_ext." ist kein IPSLight Switch.\n";
-					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
-				
-					}
-				else
-					{	
-					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"].$name_ext);
-					$result["VALUE".$result["NAME_EXT"]]=$this->lightManager->GetValue($switchId);
+					$switchId = $ergebnis["ID"];
+					$result["VALUE".$result["NAME_EXT"]]=GetValue($switchId);					
 					//echo "   Befehl ON#LEVEL, Wert OID von ".$result["NAME"].$name_ext." : ".$resultID." mit Wert bisher : ".$result["VALUE".$result["NAME_EXT"]]." \n";	
 					}						
+
 			case "ON":
 				if ( ($result["STATUS"] !== false) || ($result["SOURCE"] == "ONUPDATE") )   
 					{
@@ -1976,6 +2202,13 @@ function statusAnwesenheitSimulation($html=false)
 								$result["ON"]="FALSE";
 								}
 							break;
+                        case "START":
+                        case "NEXT":
+                        case "PREV":
+                        case "END":
+                            /* für die IPSLight/Heat Programmabarbeitung, bekannten Wert übernehmen */
+                            $result["ON"]=$value_on;
+                            break;
 						default:
 							$result["ON"]="TRUE";
 							$result["VALUE_ON"]=self::parseValue($befehl[1],$result);
@@ -2093,19 +2326,12 @@ function statusAnwesenheitSimulation($html=false)
 				$result["DIM#ADD"]=(integer)$befehl[1];
 				$result["NAME_EXT"]="#LEVEL";
 				$name_ext="#Level";
-				$resultID=@IPS_GetVariableIDByName($result["NAME"].$name_ext,$this->switchCategoryId);
-				if ($resultID === false) 
+				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
+				if (isset($ergebnis["ID"]))				
 					{
-					echo "      ".$result["NAME"].$name_ext." ist kein IPSLight Switch.\n";
-					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
-					}
-				else
-					{
+					$switchId = $ergebnis["ID"];
 					$result["ON"]="TRUE";
-					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"].$name_ext);
-					//$result["VALUE".$result["NAME_EXT"]]=$this->lightManager->GetValue($switchId)+$result["DIM#ADD"];
-					//if ( $result["VALUE".$result["NAME_EXT"]] > 100 ) { $result["VALUE".$result["NAME_EXT"]]=100; }
-					$result["VALUE_ON"]=($this->lightManager->GetValue($switchId))+$result["DIM#ADD"];	
+					$result["VALUE_ON"]=GetValue($switchId)+$result["DIM#ADD"];	
 					if ( $result["VALUE_ON"] > 100 ) { $result["VALUE_ON"]=100; }
 					IPSLogger_Dbg(__file__, 'Autosteuerung Befehl DIM#ADD:'.$result["DIM#ADD"].'. Alter Wert: '.$this->lightManager->GetValue($switchId).' Neuer Wert '.$result["VALUE_ON"]);					
 					}					
@@ -2114,16 +2340,12 @@ function statusAnwesenheitSimulation($html=false)
 				$result["DIM#SUB"]=(integer)$befehl[1];
 				$result["NAME_EXT"]="#LEVEL";
 				$name_ext="#Level";
-				$resultID=@IPS_GetVariableIDByName($result["NAME"].$name_ext,$this->switchCategoryId);
-				if ($resultID === false) 
+				$ergebnis=$this->getIdByName($result["NAME"].$name_ext);
+				if (isset($ergebnis["ID"]))				
 					{
-					echo "      ".$result["NAME"].$name_ext." ist kein IPSLight Switch.\n";
-					$switchId = $this->lightManager->GetGroupIdByName($result["NAME"]);
-					}
-				else
-					{	
-					$switchId = $this->lightManager->GetSwitchIdByName($result["NAME"].$name_ext);
-					$result["VALUE_ON"]=$this->lightManager->GetValue($switchId)-$result["DIM#SUB"];	
+					$switchId = $ergebnis["ID"];
+					$result["ON"]="TRUE";
+					$result["VALUE_ON"]=GetValue($switchId)-$result["DIM#SUB"];	
 					if ( $result["VALUE_ON"] < 0 ) { $result["VALUE_ON"]=0; }
 					}					
 				break;					
@@ -2760,7 +2982,20 @@ function statusAnwesenheitSimulation($html=false)
 
 	/***************************************
 	 *
-	 * hier wird der Befehl umgesetzt:
+	 * hier wird der Befehl umgesetzt. Abhängig von "MODULE" werden die Funktionen unterschiedlich umgesetzt
+     * Folgende Module sind aktuell implementiert
+     *  IPSLight, IPSHeat
+     *  SamsungTV
+     *  für die anderen Namen wird nachgeschaut ob das Modul installiert ist
+     *      HarmonyHub
+     *      SamsungTizen
+     *      DenonAVRHTTP
+     *
+     * Implementierung IPSLight/IPSHeat
+     *      Es wird entweder "OID" oder "NAME" für das TARGET übergeben
+     *      Rückmeldung ist "COMMAND" mit einem passenden Befehl zum Rückgängig machen wenn Delay ausgewählt wurde
+     *          und $ergebnis mit dem Resultat des Schaltbefehls, am Ende der Routine mit "COMMENT" übergeben
+     *      Wenn Name gesetzt ist wird OID nachtraeglich ermittelt, verwendet für Sprachausgabe #Ziel#
 	 *    benötigt IPSLight, Schalten ist eine eigene Funktion - erfolgt abhängig von if Auswertung
 	 *    geht aber auch mit einem OID Wert
 	 *
@@ -2776,7 +3011,7 @@ function statusAnwesenheitSimulation($html=false)
 
 	public function ExecuteCommand($result,$simulate=false)
 		{
-		//echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
+		echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
@@ -2789,13 +3024,13 @@ function statusAnwesenheitSimulation($html=false)
 		 */
 		switch ($result["MODULE"])
 			{
+			/******
+			 *
+			 *  hier wird zuerst geschaltet
+			 *
+			 *****************/
+			case "IPSHeat":     // Heat wird in switchObject anders behandeln als Light
 			case "IPSLight":
-				/******
-				 *
-				 *  hier wird zuerst geschaltet
-				 *
-				 *****************/
-
 				if (isset($result["OID"]) == true)
 					{
 					IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
@@ -2814,7 +3049,117 @@ function statusAnwesenheitSimulation($html=false)
 					else 
 						{
 						$name=$result["NAME"];
-						}			
+						}
+                	$ergebnisTyp=$this->getIdByName($result["NAME"]);
+                    if (isset($ergebnisTyp["ID"]))
+                        {   /* Der Name ist in IPSHeat oder IPSLight bekannt */
+                        switch ($ergebnisTyp["TYP"])
+                            {
+                            case "Switch":
+      					    	if (isset($result["NAME_EXT"])==true)
+		      				    	{
+				      			    IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
+    						       	$result["IPSLIGHT"]=$result["NAME_EXT"];						
+          							if ($result["MODULE"]=="IPSLight") $result["OID"] = $this->lightManager->GetSwitchIdByName($name);
+                                    else $result["OID"] = $this->heatManager->GetSwitchIdByName($name);
+		          					$value=GetValue($result["OID"]);
+			    	      			if ($result["IPSLIGHT"]=="#COLOR") 	{	$command.='$lightManager->SetRGB('.$result["OID"].",".$value.");"; }	
+				    		      	if ($result["IPSLIGHT"]=="#LEVEL") 	{	$command.='$lightManager->SetValue('.$result["OID"].",".$value.");"; }	
+      				    			if ($result["IPSLIGHT"]=="None") 	{	$command.='SetValue('.$result["OID"].",".$value.");"; }	
+		      			    		$command.="IPSLogger_Dbg(__file__, 'Delay abgelaufen von ".$name."');";
+				      		    	$result["COMMAND"]=$command;
+						      	    $ergebnis .= self::switchObject($result,$simulate);	
+          							//echo "**** Aufruf Switch Ergebnis command \"".$result["IPSLIGHT"]."\"   ".str_replace("\n","",$command)."\n";										
+	    	      					}
+		    		      		else
+			    			      	{	 				
+      			    				IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
+		      		    			$command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
+          							if ($result["MODULE"]=="IPSLight") 
+                                        {
+                                        $command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
+                                        $result["OID"] = $this->lightManager->GetSwitchIdByName($name);
+                                        }
+                                    else 
+                                        {
+                                        $command.="IPSHeat_SetSwitchByName(\"".$name."\", false);\n";
+                                        $result["OID"] = $this->heatManager->GetSwitchIdByName($name);
+                                        }					
+				      	    		$result["COMMAND"]=$command;
+						          	$result["IPSLIGHT"]="Switch";
+      							    $ergebnis .= self::switchObject($result,$simulate);
+    		       					}                            
+                               break;   
+                           case "Group":
+			    		        IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
+                                if ($result["MODULE"]=="IPSLight") 
+                                    {
+      				    			$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
+                                    $result["OID"] = $this->lightManager->GetGroupIdByName($name);
+                                    }
+                                else 
+                                    {
+       				    			$command.="IPSHeat_SetGroupByName(\"".$name."\", false);\n";
+                                    $result["OID"] = $this->heatManager->GetGroupIdByName($name);                                					
+                                    }
+	  				    		$result["COMMAND"]=$command;
+		  				    	$result["IPSLIGHT"]="Group";	
+			   				    $ergebnis .= self::switchObject($result,$simulate);	
+                                break;                            
+                          case "Program":
+	    				        IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
+                          	    echo "Hier ist die IPSLight/Heat Programm-Abarbeitung. Ergebnistyp: \n"; print_r($ergebnisTyp);
+                                if ($result["MODULE"]=="IPSLight") $result["OID"] = $this->lightManager->GetProgramIdByName($name);
+                                else $result["OID"] = $this->heatManager->GetProgramIdByName($name);
+				    			if (isset($result["ON"]))
+					    			{
+						    		switch (strtoupper($result["ON"]))
+							    		{
+								    	case "START":
+                                           if ($ergebnisTyp["MODULE"]=="IPSHeat")
+                                                {
+   									    	    $command.="IPSHeat_SetProgramName(\"".$name."\",0);\n";
+					    					    if ($simulate==false) IPSHeat_SetProgramName($name,0);	
+                                                }
+                                           else     
+                                                {
+   									    	    $command.="IPSLight_SetProgramName(\"".$name."\",0);\n";
+					    					    if ($simulate==false) IPSLight_SetProgramName($name,0);	
+                                                }
+    											break;										
+	    								case "NEXT":
+                                           if ($ergebnisTyp["MODULE"]=="IPSHeat")
+                                                { 
+												echo "IPSHeat_SetProgramNextByName($name).\n";                                       
+    	    									$command.="IPSHeat_SetProgramName(\"".$name."\",0);\n";
+			    		    					if ($simulate==false) IPSHeat_SetProgramNextByName($name);
+                                                }
+                                           else     
+                                                {
+   									    	    $command.="IPSLight_SetProgramName(\"".$name."\",0);\n";
+					    					    if ($simulate==false) IPSLight_SetProgramNextByName($name);	
+                                                }
+				    							break;
+				    					case "END":
+					    				case "PREV":
+						    			default:
+							    			break;
+								    	}
+                                    }    
+	    					    $result["COMMAND"]=$command;
+    		    				$result["IPSLIGHT"]="Program";									
+	    						//print_r($result);
+                                break;                                
+                           default:
+                                break;
+                            }
+                        }
+                    else
+                        {
+						/* Name nicht bekannt */
+						$result["IPSLIGHT"]="None";
+                        }    
+                    /*
 					$resultID=@IPS_GetVariableIDByName($name,$this->switchCategoryId);
 					if ($resultID==false)
 						{
@@ -2824,10 +3169,10 @@ function statusAnwesenheitSimulation($html=false)
 							$resultID=@IPS_GetVariableIDByName($name,$this->prgCategoryId);
 							if ($resultID==false)
 								{
-								/* Name nicht bekannt */
+
 								$result["IPSLIGHT"]="None";
 								}
-							else /* Wert ist ein Programm */
+							else 
 								{
 								IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
 								$command.="IPSLight_SetProgramNextByName(\"".$name."\");\n";
@@ -2835,11 +3180,12 @@ function statusAnwesenheitSimulation($html=false)
 								$result["IPSLIGHT"]="Program";
 								if ($simulate==false)
 									{
+                                    echo "Hier ist die IPSLight Programmabarbeitung.\n";
 									IPSLight_SetProgramNextByName($name);
 									}
 								}
 							}
-						else   /* Wert ist eine Gruppe */
+						else   
 							{
 							IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
 							$command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
@@ -2848,7 +3194,7 @@ function statusAnwesenheitSimulation($html=false)
 							$ergebnis .= self::switchObject($result,$simulate);			   	 	
 							}
 						}
-					else     /* Wert ist ein Schalter oder Wert eines Schalters */
+					else     
 						{
 						if (isset($result["NAME_EXT"])==true)
 							{
@@ -2872,8 +3218,9 @@ function statusAnwesenheitSimulation($html=false)
 							$result["IPSLIGHT"]="Switch";
 							$ergebnis .= self::switchObject($result,$simulate);
 							}			
-						}   /* Ende Wert ist ein Schalter */
-					} /* Ende entweder NAME oder OID ist gesetzt */
+						}   
+                */ 
+					} 
 				else
 					{
 					}
@@ -2970,6 +3317,7 @@ function statusAnwesenheitSimulation($html=false)
 				break;	
 			default:
 				/* nachschauen ob das gesuchte Modul überhaupt installiert ist */
+				echo "Fehler, ".$result["MODULE"]." nicht bekannt.\n";
 				$instanzID=$this->availableModuleDevice($result["MODULE"],$result["DEVICE"]);				
 				if ($instanzID !== false)
 					{
@@ -3050,59 +3398,11 @@ function statusAnwesenheitSimulation($html=false)
 					$part2=substr($result["SPEAK"],$start+$pos+$len+2);
 					switch ($var)
 						{
+                        case "ZIEL":
+                            $wert=$this->getSpeakWert($result["OID"],GetValue($result["OID"]));
+                            break;
 						case "WERT":
-							$typObj=IPS_GetObject($result["SOURCEID"])["ObjectType"];
-							$formWert="";
-							echo "Speak Wert ".$result["STATUS"]." von ID ".$result["SOURCEID"]." vom Typ ".$typObj."   (";
-							//Objekt-Typ (0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link)
-							switch ($typObj)
-								{
-								case 0: echo "Kategorie"; break;
-								case 1: echo "Instanz"; break;
-								case 2: 
-									echo "Variable->"; 
-									$typWert=IPS_GetVariable($result["SOURCEID"])["VariableType"];
-									switch ($typWert)
-										{
-										case 0: echo "Boolean"; break;
-										case 1: echo "Integer"; break;
-										case 2: echo "Float"; break;
-										case 3: echo "String"; break;
-										default:  echo "unknown"; break;
-										}
-									$formWert=IPS_GetVariable($result["SOURCEID"])["VariableProfile"].IPS_GetVariable($result["SOURCEID"])["VariableCustomProfile"];										
-									break;
-								case 3: echo "Skript"; break;
-								case 4: echo "Ereignis"; break;
-								case 5: echo "Medie"; break;
-								case 6: echo "link"; break;
-								default:  echo "unknown"; break;
-								}
-							if ($typObj==2)
-								{
-								/* Sprachausgabe einer Variable	*/
-								if ($formWert == "") echo ")\n";	
-								else echo "   Profil ".$formWert." , formatiert \"".GetValueFormatted($result["SOURCEID"])."\")\n";
-								if ($typWert==2)
-									{
-									/* vom Typ Float */
-									$temperatur=$result["STATUS"];
-									$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10);
-									}
-								else $wert=$result["STATUS"];
-								switch ($formWert)
-									{
-									case "~Temperature":
-									case "Temperatur":
-										$wert.=" Grad";
-										break;
-									default: 
-										$wert = GetValueFormatted($result["SOURCEID"]);
-										break;
-									}																				
-								//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
-								}
-							else $wert="Achtung Fehler, Wert ist keine Variable";
+                            $wert=$this->getSpeakWert($result["SOURCEID"],$result["STATUS"]);
 							break;
 						case "WERTBOOL":
 							if ( (IPS_GetVariable($result["SOURCEID"])["VariableType"])==2)
@@ -3137,10 +3437,20 @@ function statusAnwesenheitSimulation($html=false)
 				{
 				if ( ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) ) &&  (self::getFunctions("SilentMode")["VALUE"] != 1) )
 					{
-					echo "  Es wird gesprochen : ".$result["SPEAK"]."\n";
-					if ($simulate==false)
-						{													
-						tts_play(1,$result["SPEAK"],'',2);
+                    //print_r($result);
+					if ( isset($result["LOUDSPEAKER"]) )
+						{
+						echo "   Es wird am Amazon Echo ".IPS_GetName($result["LOUDSPEAKER"])." gesprochen : ".$result["SPEAK"]."\n";
+						if ($simulate==false) 
+                            {
+                            //EchoRemote_TextToSpeech($result["LOUDSPEAKER"], $result["SPEAK"]);
+                            tts_play($result["LOUDSPEAKER"],$result["SPEAK"],'',2); //tts_play kann mehrere Lautsprecher
+                            }
+                        }																																																					
+					else
+                        { 
+					    echo "  Es wird am Default Lautsprecher gesprochen : ".$result["SPEAK"]."\n";                            
+                        if ($simulate==false) tts_play(1,$result["SPEAK"],'',2);
 						}
 					}	
 				}
@@ -3148,6 +3458,64 @@ function statusAnwesenheitSimulation($html=false)
 		$result["COMMENT"]=$ergebnis;			
 		return ($result);							
 		}
+
+    private function getSpeakWert($oid, $value)   
+        {
+		$typObj=IPS_GetObject($oid)["ObjectType"];
+		$formWert="";
+		echo "Speak Wert ".$value." von OID ".$oid." (".IPS_GetName($oid).") vom Typ ".$typObj."   (";
+		//Objekt-Typ (0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link)
+		switch ($typObj)
+			{
+								case 0: echo "Kategorie"; break;
+								case 1: echo "Instanz"; break;
+								case 2: 
+									echo "Variable->"; 
+									$typWert=IPS_GetVariable($oid)["VariableType"];
+									switch ($typWert)
+										{
+										case 0: echo "Boolean"; break;
+										case 1: echo "Integer"; break;
+										case 2: echo "Float"; break;
+										case 3: echo "String"; break;
+										default:  echo "unknown"; break;
+										}
+									$formWert=IPS_GetVariable($oid)["VariableProfile"].IPS_GetVariable($oid)["VariableCustomProfile"];										
+									break;
+								case 3: echo "Skript"; break;
+								case 4: echo "Ereignis"; break;
+								case 5: echo "Medie"; break;
+								case 6: echo "link"; break;
+								default:  echo "unknown"; break;
+			}
+		if ($typObj==2)
+								{
+								/* Sprachausgabe einer Variable	*/
+								if ($formWert == "") echo ")\n";	
+								else echo "   Profil ".$formWert." , formatiert \"".GetValueFormatted($oid)."\")\n";
+								if ($typWert==2)
+									{
+									/* vom Typ Float */
+									$temperatur=$value;
+									$wert=floor($temperatur)." Komma ".floor(($temperatur-floor($temperatur))*10);
+									}
+								else $wert=$value;
+								switch ($formWert)
+									{
+									case "~Temperature":
+									case "Temperatur":
+										$wert.=" Grad";
+										break;
+									default: 
+										$wert = GetValueFormatted($oid);
+										break;
+									}																				
+								//echo "   ".$var." Pos : ".$pos." Len ".$len."\n";
+								}
+		else $wert="Achtung Fehler, Wert ist keine Variable";
+            
+        return ($wert);
+        }
 
 	private function availableModuleDevice($module,$device)
 		{
@@ -3179,7 +3547,7 @@ function statusAnwesenheitSimulation($html=false)
 
 	/***************************************
 	 *
-	 * hier wird geschaltet 
+	 * hier wird geschaltet. Funktion funktioniert für Modul IPSLight und IPSHeat
 	 *
 	 * abhängig von IF Befehlsauswertung, also nur wenn SWITCH true ist
 	 *
@@ -3192,6 +3560,7 @@ function statusAnwesenheitSimulation($html=false)
 	 
 	private function switchObject($result,$simulate=false)
 		{
+        //echo "SwitchObject : \n"; print_r($result);
 		$ergebnis="";
 		IPSLogger_Dbg(__file__, 'SwitchObject :  '.json_encode($result));	
 		if ($result["SWITCH"]===true)
@@ -3202,10 +3571,18 @@ function statusAnwesenheitSimulation($html=false)
 				if ($result["ON"]=="FALSE")
 					{
 					if ($simulate==false)			/* Bei simulate nicht schalten */
-						{					
-						if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],false);  }
-						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
-						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }												
+						{
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }
+                        elseif ($result["MODULE"]=="IPSLight")
+                            {
+						    if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],false);  }
+						    if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
+                            }
+                        else												
+                            {
+						    if ($result["IPSLIGHT"]=="Group")  	{	IPSHeat_SetGroupByName($result["NAME"],false);  }
+						    if ($result["IPSLIGHT"]=="Switch") 	{	IPSHeat_SetSwitchByName($result["NAME"],false); }
+                            }
 						}
 					else $ergebnis .= "Set Switch, Group or Value auf false.\n";
 					}	
@@ -3213,13 +3590,27 @@ function statusAnwesenheitSimulation($html=false)
 					{
 					if ($simulate==false)			/* Bei simulate nicht schalten */
 						{					
-						if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],true); }
-						if ($result["IPSLIGHT"]=="Switch")	{	IPSLight_SetSwitchByName($result["NAME"],true); } 
-						if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->lightManager->SetRGB($result["OID"], $result["VALUE_ON"]); }	
-						if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->lightManager->SetValue($result["OID"], $result["VALUE_ON"]); }	
-						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],true); }													
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],true); }
+                        elseif ($result["MODULE"]=="IPSLight")
+                            {                          
+    						if ($result["IPSLIGHT"]=="Group")  	{	IPSLight_SetGroupByName($result["NAME"],true); }
+	    					if ($result["IPSLIGHT"]=="Switch")	{	IPSLight_SetSwitchByName($result["NAME"],true); } 
+		    				if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->lightManager->SetRGB($result["OID"], $result["VALUE_ON"]); }	
+			    			if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->lightManager->SetValue($result["OID"], $result["VALUE_ON"]); }	
+                            }
+                        else
+                            {
+    						if ($result["IPSLIGHT"]=="Group")  	{	IPSHeat_SetGroupByName($result["NAME"],true); }
+	    					if ($result["IPSLIGHT"]=="Switch")	{	IPSHeat_SetSwitchByName($result["NAME"],true); } 
+		    				if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->heatManager->SetRGB($result["OID"], $result["VALUE_ON"]); }	
+			    			if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->heatManager->SetValue($result["OID"], $result["VALUE_ON"]); }	
+                            }    
 						}
-					else $ergebnis .= "Set Switch, Group or Value auf true und Level auf Wert.\n";	
+					else 
+                        {
+                        if (isset($result["NAME"])) $ergebnis .= "Set ".$result["NAME"]." (".$result["IPSLIGHT"].") Switch, Group or Value auf true und Level auf Wert (ON).\n";
+                        else $ergebnis .= "Set ".$result["OID"]." (".$result["IPSLIGHT"].") Switch, Group or Value auf true und Level auf Wert (ON).\n";
+                        }
 					}
 				}	
 			if (isset($result["OFF"])==true)
@@ -3229,9 +3620,17 @@ function statusAnwesenheitSimulation($html=false)
 					{
 					if ($simulate==false)			/* Bei simulate nicht schalten */
 						{	
-						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
-						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
-						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }														
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }	
+                        elseif ($result["MODULE"]=="IPSLight")
+                            {                           
+						    if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],false); }
+						    if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],false); }
+                            }
+                        else												
+                            {
+						    if ($result["IPSLIGHT"]=="Group")  	{	IPSHeat_SetGroupByName($result["NAME"],false);  }
+						    if ($result["IPSLIGHT"]=="Switch") 	{	IPSHeat_SetSwitchByName($result["NAME"],false); }
+                            }                            
 						}
 					else $ergebnis .= "Set Switch, Group or Value auf false.\n";
 					}
@@ -3239,21 +3638,32 @@ function statusAnwesenheitSimulation($html=false)
 					{
 					if ($simulate==false)			/* Bei simulate nicht schalten */
 						{	
-						if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
-						if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],true); }
-						if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->lightManager->SetRGB($result["OID"], $result["VALUE_OFF"]); }
-						if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->lightManager->SetValue($result["OID"], $result["VALUE_OFF"]); }						
-						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }															
+						if ($result["IPSLIGHT"]=="None") 	{	SetValue($result["OID"],false); }
+                        elseif ($result["MODULE"]=="IPSLight")
+                            {
+                            if ($result["IPSLIGHT"]=="Group") 	{	IPSLight_SetGroupByName($result["NAME"],true); }
+						    if ($result["IPSLIGHT"]=="Switch") 	{	IPSLight_SetSwitchByName($result["NAME"],true); }
+						    if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->lightManager->SetRGB($result["OID"], $result["VALUE_OFF"]); }
+						    if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->lightManager->SetValue($result["OID"], $result["VALUE_OFF"]); }						
+                            }
+                        else
+                            {
+    						if ($result["IPSLIGHT"]=="Group")  	{	IPSHeat_SetGroupByName($result["NAME"],true); }
+	    					if ($result["IPSLIGHT"]=="Switch")	{	IPSHeat_SetSwitchByName($result["NAME"],true); } 
+		    				if ($result["IPSLIGHT"]=="#COLOR") 	{	$this->heatManager->SetRGB($result["OID"], $result["VALUE_OFF"]); }	
+			    			if ($result["IPSLIGHT"]=="#LEVEL") 	{	$this->heatManager->SetValue($result["OID"], $result["VALUE_OFF"]); }	
+                            }															
 						}
-					else $ergebnis .= "Set Switch, Group or Value auf true und Level auf Wert.\n";	
+					else $ergebnis .= "Set ".$result["NAME"]." Switch, Group or Value auf true und Level auf Wert (OFF).\n";	
 					}
 				}
 			}
+        echo "SwitchObject Ergebnis : "; print_r($ergebnis);
 		return($ergebnis);		
 		}
 
 	/*************************************************************************/
-	/* bereits obsolet, da nur für IPSLight funktioniert */
+	/* bereits obsolet, da nur für IPSLight funktioniert 
 	private function switchIPSLight($result,$simulate=false)
 		{	
 		if ($simulate==false)
@@ -3331,8 +3741,177 @@ function statusAnwesenheitSimulation($html=false)
 			}
 		return($result);		
 		}
+    */
 
-	function GetColor($Colorname) 
+    /* Zusammenfassung der Befehle die nach der execute Funktion kommen */
+
+	public function timerCommand($result,$simulate=false)
+		{
+        echo "Aufruf timerCommand mit :".json_encode($result)."\n";
+		/********************
+		 *
+		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
+		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
+		 * 
+		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
+		 *
+		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
+		 *
+		 ***************************************************************/					
+		if ($result["SWITCH"]===true)
+			{
+			if (isset($result["DIM"])==true)
+				{
+				echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
+				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
+				$time=(integer)($result["DIM#TIME"]/10);
+				$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", $this->CategoryIdApp);
+			
+				$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
+				$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
+				$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
+				$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
+				$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
+				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
+                echo "===================\n".$befehl."\n===================\n";
+				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
+				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
+				if ($simulate==false)
+					{
+					setDimTimer($result["NAME"],$time,$befehl);
+					}
+				}
+			if (isset($result["DELAY"])==true)
+				{
+				if ($result["DELAY"]>0)
+					{
+					echo "Execute Command Delay, Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
+					//print_r($result);
+					if ($simulate==false)
+						{
+						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+						}
+					}	
+				}
+			}	
+
+        }
+
+    /* Vereinfachung der Timeransteuerung in der AWS */    
+
+    public function switchAWS($switch, $scene)
+        {
+        $status=false;
+		$statusID  = CreateVariable($scene["NAME"]."_Status",  1, $this->AnwesenheitssimulationID, 0, "AusEin",null,null,""  );            
+		$counterID = CreateVariable($scene["NAME"]."_Counter", 1, $this->AnwesenheitssimulationID, 0, "",null,null,""  );            		
+		if ( strtoupper($scene["TYPE"]) == "AWS" )  $text="AWS für ";
+        else $text="TIMER für ";
+        if ($switch)
+            {
+            /* IPS_Light einschalten. timer schaltet selbsttaetig wieder aus */
+			SetValue($statusID,true);            
+									if (isset($scene["EVENT_IPSLIGHT"]))
+										{
+										$text.='IPSLight Switch '.$scene["EVENT_IPSLIGHT"].' einschalten. ';
+										$this->log->LogMessage($text.json_encode($scene));
+										IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], true);
+										$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetSwitchByName("'.$scene["EVENT_IPSLIGHT"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer für IPSLight Schalter '.$scene["EVENT_IPSLIGHT"].' wurde abgeschlossen.");';
+										}
+									else
+										{
+										if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+											{
+											$text.='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"].' einschalten. ';
+											$this->log->LogMessage($text.json_encode($scene));
+											IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], true);
+											$command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSLight_SetGroupByName("'.$scene["EVENT_IPSLIGHT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer AWS Script für IPSLight Schalter '.$scene["EVENT_IPSLIGHT_GRP"].' wurde abgeschlossen.");';
+											}
+										}
+                                    $status=$this->getEventTimerStatus($scene["NAME"]);     // keine Textausgabe wenn Timer bereits gesetzt    
+									if ($scene["EVENT_CHANCE"]==100)
+										{
+										//echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
+										setEventTimer($scene["NAME"],$this->timeStop-$this->now,$command);
+                                        $text.=' Timer gesetzt auf '.date("D d.m.Y H:i",($this->timeStop));
+										}
+									else
+										{
+										SetValue($counterID,$scene["EVENT_DURATION"]);
+										setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60,$command);
+                                        $text.=' Timer gesetzt auf '.date("D d.m.Y H:i",($this->now+$scene["EVENT_DURATION"]*60));
+										}
+									$this->log->LogMessage('Befehl aktiv, '.$text);
+            }
+        else
+            { 
+            /* IPS_Light ausschalten. */
+			SetValue($statusID,false);                             
+
+								if (isset($scene["EVENT_IPSLIGHT"]))
+									{
+									$text.='IPSLight Switch '.$scene["EVENT_IPSLIGHT"].' ausgeschaltet.';
+									$this->log->LogMessage($text.json_encode($scene));
+									IPSLight_SetSwitchByName($scene["EVENT_IPSLIGHT"], false);
+									}
+								else
+									{
+									if (isset($scene["EVENT_IPSLIGHT_GRP"]))
+										{
+										$text.='IPSLight Group '.$scene["EVENT_IPSLIGHT_GRP"].'ausgeschaltet.';								
+										$log_Autosteuerung->LogMessage($text.json_encode($scene));								
+										IPSLight_SetGroupByName($scene["EVENT_IPSLIGHT_GRP"], false);
+										}
+									}
+								//SetValue($StatusAnwesendZuletztID,false);	
+            }
+        if ($status) return("");
+        else return($text);
+        }   
+
+    function setEventTimer($name,$delay,$command)
+	    {
+    	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
+	    IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
+    	$now = time();
+	    $EreignisID = @IPS_GetEventIDByName($name."_EVENT",  $this->CategoryIdApp);
+    	if ($EreignisID === false)
+	    	{ //Event nicht gefunden > neu anlegen
+		    $EreignisID = IPS_CreateEvent(1);
+    		IPS_SetName($EreignisID,$name."_EVENT");
+	    	IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+		    }
+    	IPS_SetEventActive($EreignisID,true);
+	    IPS_SetEventCyclic($EreignisID, 1, 0, 0, 0, 0,0);
+    	/* EreignisID, 0 kein Datumstyp:  tägliche Ausführung,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+	    /* EreignisID, 1 einmalig,0 keine Auswertung, 0 keine Auswertung, 0 keine Auswertung, 0 Einmalig IPS_SetEventCyclicTimeBounds für Zielzeit */
+    	IPS_SetEventCyclicTimeBounds($EreignisID,$now+$delay,0);
+	    IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
+    	IPS_SetEventScript($EreignisID,$command);
+	    }
+
+    function getEventTimerStatus($name)
+	    {
+        $result=false;
+    	$EreignisID = @IPS_GetEventIDByName($name."_EVENT", $this->CategoryIdApp);
+        //echo "Timer ID : ".$EreignisID."   (".IPS_GetName($EreignisID)."/".IPS_GetName(IPS_GetParent($EreignisID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($EreignisID))).")\n";
+        if ($EreignisID !== false)
+            {
+            $status=IPS_GetEvent($EreignisID);
+            //print_r($status);
+            //echo $status["EventActive"]."   ".date("Y-m-d H:i:s",$targetTime)."   ".$status["CyclicDateFrom"]["Day"].".".$status["CyclicDateFrom"]["Month"].".".$status["CyclicDateFrom"]["Year"]." ".$status["CyclicTimeFrom"]["Hour"].":".$status["CyclicTimeFrom"]["Minute"].":".$status["CyclicTimeFrom"]["Second"]."\n";
+            $targetTime=strtotime($status["CyclicDateFrom"]["Day"].".".$status["CyclicDateFrom"]["Month"].".".$status["CyclicDateFrom"]["Year"]." ".$status["CyclicTimeFrom"]["Hour"]
+                .":".$status["CyclicTimeFrom"]["Minute"].":".$status["CyclicTimeFrom"]["Second"]);
+            if ( ($status["EventActive"]==true) && (time()<=$targetTime) ) $result=true;
+            else $result=false;    
+            }
+        return($result);
+        }
+
+
+    /* Umsetzung von Farbennamen in den Hexcode */     
+
+	public function GetColor($Colorname) 
 		{
 		$Colorname=strtolower($Colorname);
 		$Colors  =  ARRAY( 
@@ -4076,7 +4655,10 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			}
 		return($fatalerror);	
 		}	
-		
+
+	/* nur den Wochenplan um eins weiterschieben. Variable ist der Inputwert für den letzten Eintrag
+	 * die Links mit den aktuellen Datum werden in einer anderen Routine gemacht.
+	 */	
 	function ShiftforNextDay($message=0)
 		{
 		if ($this->nachrichteninput_Id != "Ohne")
@@ -4093,6 +4675,240 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 				}
 			}		
 		}
+
+	/* Es gibt aus, Ein und Profil 2 bis 5
+	 *
+	 * Profil 2: nur Freitage, wenn zu Hause
+	 * Profil 3: nur Freitage plus 1, wenn zu Hause plus 1 Tag Vorwärmzeit
+	 * Profil 4  nur Freitage plus 2, wenn zu Hause plus 2 Tag Vorwärmzeit
+	 * Profil 5 nur Arbeitstage
+	 */
+	function getStatusfromProfile($profile=0)
+		{
+		$status=false;
+
+		$result0=$this->EvaluateAutoStatus(0);
+		$result1=$this->EvaluateAutoStatus(1);
+		$result2=$this->EvaluateAutoStatus(2);
+
+		switch ($profile)
+			{
+			case 0:
+				$status=false;
+				break;
+			case 1:
+				$status=true;
+				break;
+			case 2:
+				if ($result0["Arbeitstag"]=="Freitag") $status=true;
+				else $status=false;
+				break;
+			case 3:
+				if ($result0["Arbeitstag"]=="Freitag") $status=true;
+				elseif ($result1["Arbeitstag"]=="Freitag") $status=true;
+				else $status=false;
+				break;
+			case 4:
+				if ($result0["Arbeitstag"]=="Freitag") $status=true;
+				elseif ($result1["Arbeitstag"]=="Freitag") $status=true;
+				elseif ($result2["Arbeitstag"]=="Freitag") $status=true;
+				else $status=false;
+				break;
+			case 5:
+				if ($result0["Arbeitstag"]=="Arbeitstag") $status=true;
+				else $status=false;
+				break;
+			default:
+				echo "Profil $profile unbekannt.\n";
+				break;
+			}
+		return ($status);
+		}
+	
+	/* Unterstützung für Shift for next day
+	 *
+	 */		
+	function EvaluateAutoStatus($time=0)
+		{
+		//echo "    EvaluateAutoStatus:\n";
+		$result=array();
+		if ($time==0) $time=(time()+16*24*60*60);
+		elseif ($time<15) $time=(time()+(16+$time)*24*60*60);
+		$wochentag=date("D",$time);
+		$feiertag=$this->feiertag($time,"W");		// gibt zurück Arbeitstag, Wochenende oder Name des Feiertages 
+		echo "     ".date("D d.m.Y",$time)."    Wochentag: ".$wochentag."    Status: ".$feiertag."\n";
+		switch ($wochentag)
+			{
+			case "Mon":
+			case "Tue":
+			case "Wed":
+			case "Thu":
+			case "Fri":
+			case "Sat":
+			case "Sun":
+				$result["Wochentag"]=$wochentag;
+			  	break;
+			default:
+				echo "FEHLER: Wochentag nicht bekannt ...\n";
+				break;	
+			}
+		switch ($feiertag)
+			{
+			case "Arbeitstag":
+				$result["Arbeitstag"]="Arbeitstag";
+				$result["Feiertag"]="";
+				break;
+			case "Wochenende": 
+				$result["Arbeitstag"]="Freitag";
+				$result["Feiertag"]="";
+				break;
+			default:			// benannte Feiertage
+				$result["Arbeitstag"]="Freitag";
+				$result["Feiertag"]=$feiertag;
+				break;
+			}	
+		return ($result);
+		}
+		
+	/** 
+	 * Ermittle Feiertage, Arbeitstage und Wochenenden von einem Datum 
+	 * 
+	 * @param $datum als String im Format Y-m-d oder als Timestamp
+	 * @param string $bundesland<br>
+	 *    B   = Burgenland<br>
+	 *    K   = Kärnten<br>
+	 *    NOE = Niederösterreich<br>
+	 *    OOE = Oberösterreich<br>
+	 *    S   = Salzburg<br>
+	 *    ST  = Steiermark<br>
+	 *    T   = Tirol<br>
+	 *    V   = Vorarlberg<br>
+	 *    W   = Wien
+	 * @return 'Arbeitstag', 'Wochenende' oder Name des Feiertags als String
+	 */ 
+	function feiertag ($datum, $bundesland='')
+		{ 
+	    $bundesland = strtoupper($bundesland);
+    	if (is_object($datum))
+    		{
+			//echo "Timestamp Object: ".$datum."\n";
+        	$datum = date("Y-m-d", $datum);
+    		}
+		elseif (is_integer($datum))
+			{
+			//echo "Timestamp Integer: ".$datum."\n";	
+			$datum = date("Y-m-d", $datum);
+			}
+    	$datum = explode("-", $datum); 
+		//print_r($datum);
+		$datum[1] = str_pad($datum[1], 2, "0", STR_PAD_LEFT); 
+    	$datum[2] = str_pad($datum[2], 2, "0", STR_PAD_LEFT); 
+
+	    if (!checkdate($datum[1], $datum[2], $datum[0])) return false; 
+
+	    $datum_arr = getdate(mktime(0,0,0,$datum[1],$datum[2],$datum[0])); 
+
+	    $easter_d = date("d", easter_date($datum[0])); 
+    	$easter_m = date("m", easter_date($datum[0])); 
+
+	    $status = 'Arbeitstag'; 
+    	if ($datum_arr['wday'] == 0 || $datum_arr['wday'] == 6) $status = 'Wochenende'; 
+
+	    if ($datum[1].$datum[2] == '0101')
+    		{ 
+        	return 'Neujahr'; 
+   			}
+	    elseif ($datum[1].$datum[2] == '0106')
+    		{ 
+        	return 'Heilige Drei Könige'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '0319' && ($bundesland == 'K' || $bundesland == 'ST' || $bundesland == 'T' || $bundesland == 'V'))
+    		{ 
+	        return 'Josef'; 
+    		} 
+	    elseif ($datum[1].$datum[2] == $easter_m.$easter_d)
+    		{ 
+	        return 'Ostersonntag'; 
+    		}
+		elseif ($datum[1].$datum[2] == date("md",mktime(0,0,0,$easter_m,$easter_d+1,$datum[0])))
+    		{ 
+	        return 'Ostermontag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == date("md",mktime(0,0,0,$easter_m,$easter_d+39,$datum[0])))
+    		{ 
+	        return 'Christi Himmelfahrt'; 
+    		}
+	    elseif ($datum[1].$datum[2] == date("md",mktime(0,0,0,$easter_m,$easter_d+49,$datum[0])))
+    		{ 
+	        return 'Pfingstsonntag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == date("md",mktime(0,0,0,$easter_m,$easter_d+50,$datum[0])))
+    		{ 
+	        return 'Pfingstmontag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == date("md",mktime(0,0,0,$easter_m,$easter_d+60,$datum[0])))
+    		{ 
+	        return 'Fronleichnam'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '0501')
+    		{ 
+	        return 'Erster Mai'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '0504' && $bundesland == 'OOE')
+    		{ 
+	        return 'Florian'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '0815')
+    		{ 
+	        return 'Mariä Himmelfahrt'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '0924' && $bundesland == 'S')
+    		{ 
+	        return 'Rupertitag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1010' && $bundesland == 'K')
+    		{ 
+	        return 'Tag der Volksabstimmung'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1026')
+    		{ 
+	        return 'Nationalfeiertag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1101')
+    		{ 
+	        return 'Allerheiligen'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1111' && $bundesland == 'B')
+    		{ 
+	        return 'Martini'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1115' && ($bundesland == 'NOE' || $bundesland == 'W'))
+    		{ 
+	        return 'Leopoldi'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1208')
+    		{ 
+	        return 'Mariä Empfängnis'; 
+		    }
+	    elseif ($datum[1].$datum[2] == '1224')
+		    { 
+        	return 'Heiliger Abend'; 
+		    }	
+	    elseif ($datum[1].$datum[2] == '1225')
+    		{ 
+	        return 'Christtag'; 
+    		}
+	    elseif ($datum[1].$datum[2] == '1226')
+    		{ 
+	        return 'Stefanitag'; 
+    		}
+		else
+		    { 
+        	return $status; 
+		    } 
+		}
+
+		
 
 	function SetupKalender($type=1,$profile="AusEin")
 		{
@@ -4146,6 +4962,13 @@ function setEventTimer($name,$delay,$command)
 	IPS_SetEventCyclicDateBounds($EreignisID,$now+$delay,0);
 	IPS_SetEventScript($EreignisID,$command);
 	}
+
+function getEventTimerStatus($name)
+	{
+	$EreignisID = @IPS_GetEventIDByName($name."_EVENT", IPS_GetParent($_IPS['SELF']));
+    echo "Timer ID : ".$EreignisID."\n";
+
+    }
 
 /*  setEventTimer($scene["NAME"],$scene["EVENT_DURATION"]*60)                                */
 
@@ -4285,7 +5108,7 @@ function iTunesSteuerung($params,$status,$variableID,$simulate=false)
  *
  *	GutenMorgenwecker
  *
- *	steht als Platzhalter hier, da eine eigene Applikation. Derzeit fallen uns noch keine Sonderfunktionen ein.
+ *	Sonderfunktion für Status, könnte eigentlich gleich sein, da die Abfrage ob der Wecker aktiv ist bereits in Autosteuerung erfolgt ist.
  *
  * 	in Autosteurung, Autosteuerung_GetEventConfiguration() steht die Konfiguration. Aufgrund einer Variablenänderung
  *  oder einem Update der Ereignisvariable wird eine Applikation, wie diese oder eine Funktion aufgerufen.
@@ -4300,9 +5123,9 @@ function iTunesSteuerung($params,$status,$variableID,$simulate=false)
 
 function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
 	{
-	IPSLogger_Dbg(__file__, 'Aufruf Routine GutenMorgenWecker mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	IPSLogger_Inf(__file__, 'Aufruf Routine GutenMorgenWecker mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);   // kommt nicht so oft vor, kann einen Level höher sein im Logfile
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
-	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */	
+	//$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */	
 	$parges=$auto->ParseCommand($params,$status,$simulate);
 	/* nun sind jedem Parameter Befehle zugeordnet die nun abgearbeitet werden, Kommando fuer Kommando */
 	$command=array(); $entry=1;	
@@ -4321,6 +5144,7 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
 				}	
 			} /* Ende foreach Befehl */
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+        $ergebnis=$auto->timerCommand($result,$simulate);
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);	
@@ -4386,59 +5210,61 @@ function Status($params,$status,$variableID,$simulate=false)
 				{
 				default:
 					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
-					//echo "                  ".json_encode($command[$entry])."\n";
+					echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n";
 					break;
 				}	
 			} /* Ende foreach Befehl */
+        //echo "        Aufruf Befehl ExecuteCommand mit : ".json_encode($command[$entry])."\n";            
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
+        $ergebnis=$auto->timerCommand($result,$simulate);
 		//print_r($command[$entry]);
-			
-		/********************
-		 *
-		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
-		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
-		 * 
-		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
-		 *
-		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
-		 *
-		 ***************************************************************/					
-		if ($result["SWITCH"]===true)
+		$entry++;			
+		} /* Ende foreach Kommando */
+	unset ($auto);							/* Platz machen im Speicher */		
+	return($command);
+	}
+
+/*********************************************************************************************
+ *  StatusParallel
+ *
+ *  testweise die einzelnen Befehle als eigene Threads aufrufen
+ *
+ *********************************************************************************************/
+
+function StatusParallel($params,$status,$variableID,$simulate=false)
+	{
+	global $speak_config;
+	
+	IPSLogger_Dbg(__file__, 'Aufruf Routine StatusParallel mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+	
+	$parges=$auto->ParseCommand($params,$status,$simulate);
+	//print_r($parges);
+	$command=array(); $entry=1;	
+	foreach ($parges as $kom => $Kommando)
+		{
+		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
+		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
+	
+		foreach ($Kommando as $num => $befehl)
 			{
-			if (isset($result["DIM"])==true)
+			switch (strtoupper($befehl[0]))
 				{
-				echo "**********Execute Command Dim mit Level : ".$result["DIM#LEVEL"]." und Time : ".$result["DIM#TIME"]." Ausgangswert : ".$result["VALUE_ON"]." für OID ".$result["OID"]."\n";
-				$value=(integer)(($result["DIM#LEVEL"]-$result["VALUE_ON"])/10);
-				$time=(integer)($result["DIM#TIME"]/10);
-				$EreignisID = @IPS_GetEventIDByName($result["NAME"]."_EVENT_DIM", IPS_GetParent($_IPS["SELF"]));
-			
-				$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-				$befehl.='$value=$lightManager->GetValue('.$result["OID"].')+'.$value.";\n";
-				$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
-				$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
-				$befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
-				if ($simulate==false)
-					{
-					setDimTimer($result["NAME"],$time,$befehl);
-					}
-				}
-			if (isset($result["DELAY"])==true)
-				{
-				if ($result["DELAY"]>0)
-					{
-					echo "Execute Command Delay, Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
-					//print_r($result);
-					if ($simulate==false)
-						{
-						setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
-						}
-					}	
-				}
-			}	
+				default:
+					$auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+					//echo "       Evaluate $befehl[0] : ".json_encode($command[$entry])."\n";
+					break;
+				}	
+			} /* Ende foreach Befehl */
+		echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n\n";			
+        /* für die beiden folgenden Befehle ein eigenes script starten, Übergabe wie bei Alexa */
+        $request['REQUEST']=json_encode($command[$entry]);      // Übergabe von mehrstufigen Arrays nicht möglich, Übergabe daher serialisiert
+        $request['MODULE']="Autosteuerung";
+        //echo "Aufruf Execute mit RunScriptEx und script : ".$auto->scriptId_Autosteuerung."  ".json_encode($request)."\n";
+        //print_r($request);
+        IPS_RunScriptEx($auto->scriptId_Autosteuerung, $request);
 		$entry++;			
 		} /* Ende foreach Kommando */
 	unset ($auto);							/* Platz machen im Speicher */		
@@ -4490,19 +5316,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 				}	
 			} /* Ende foreach Befehl */
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
-		
-		if (isset($result["DELAY"])==true)
-			{
-			if ($result["DELAY"]>0)
-				{
-				echo ">>>Ergebnis ExecuteCommand, DELAY.\n";			
-				print_r($result);
-				if ($simulate==false)
-					{
-					setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
-					}
-				}
-			}
+        $ergebnis=$auto->timerCommand($result,$simulate);
 		$entry++;			
 		} /* Ende foreach Kommando */
 		
@@ -4621,7 +5435,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 		
 		if ($simulate) echo $result["COMMENT"]."\n";
 		//else $nachrichtenVent->LogNachrichten("Erg: ".$result["COMMENT"]);
-		
+        $ergebnis=$auto->timerCommand($result,$simulate);		
 		//print_r($command[$entry]);	
 
 		/********************
@@ -4633,7 +5447,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 		 *
 		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
 		 *
-		 ***************************************************************/					
+							
 		if ($result["SWITCH"]===true)
 			{
 			if (isset($result["DIM"])==true)
@@ -4651,7 +5465,6 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
 				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
 				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
 				if ($simulate==false)
 					{
 					setDimTimer($result["NAME"],$time,$befehl);
@@ -4669,7 +5482,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 						}
 					}
 				}
-			}	
+			}	*/
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);
@@ -4721,7 +5534,7 @@ function Alexa($params,$status,$request,$simulate=false)
 		$result=$auto->ExecuteCommand($command[$entry],$simulate);
 		
 		if ($simulate) echo "Bislang erhaltene Kommentare : ".$result["COMMENT"]."\n";
-
+        $ergebnis=$auto->timerCommand($result,$simulate);
 		/********************
 		 *
 		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
@@ -4731,7 +5544,7 @@ function Alexa($params,$status,$request,$simulate=false)
 		 *
 		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
 		 *
-		 ***************************************************************/					
+		 ************************************************
 		if ($result["SWITCH"]===true)
 			{
 			if (isset($result["DIM"])==true)
@@ -4749,7 +5562,6 @@ function Alexa($params,$status,$request,$simulate=false)
 				$befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
 				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
 				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
-				/* Timer wird insgesamt 10 mal aufgerufen, d.h. increment ist Differenz aktueller Wert zu Zielwert. Zeit zwischen den Timeraufrufen ist delay durch 10 */		
 				if ($simulate==false)
 					{
 					setDimTimer($result["NAME"],$time,$befehl);
@@ -4767,7 +5579,7 @@ function Alexa($params,$status,$request,$simulate=false)
 						}
 					}
 				}
-			}	
+			}	*/
 		$entry++;			
 		} /* Ende foreach Kommando */
 	return($command);

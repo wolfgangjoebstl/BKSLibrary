@@ -1,4 +1,20 @@
 <?
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */    
 
 	/**@defgroup 
 	 * @ingroup 
@@ -13,12 +29,23 @@
 	 *  Version 2.50.44, 07.08.2014<br/>
 	 **/
 
+/******************************************************
+ *
+ * AMIS, abgeleitet vom Siemens AMIS Zähler. Routine liest AMIS Zähler,
+ * Homematic Register aber auch normale Register zB aus RemoteAccess aus
+ * und verarbeitet sie.
+ * Als neue Funktion gibt es auch eine Mathematische Summenfunktion
+ *
+ **************************************************************/
 
 /******************************************************
-
-				INIT
-
-*************************************************************/
+ *
+ *				INIT
+ *
+ * Die AMIS zähler können über den IPS integrierten Cutter oder über eine
+ * im PHP erstellte Routine ausgelesen werden.
+ *
+ *************************************************************/
 
 $cutter=true;
 
@@ -60,7 +87,8 @@ $cutter=true;
 	 * 
 	 **************************/
 	
- 	read_wfc();	
+	$wfcHandling = new WfcHandling();		
+    $wfcHandling->read_wfc();
 	
 	echo "\n\n";
 	$WebfrontConfigID=array();
@@ -302,7 +330,15 @@ $cutter=true;
 		
 	/******************* 
 	 * 
-	 *				Variable Definition 
+	 *				Variable Definition aus dem Config File auslesen
+	 *
+	 *	zwei Config Functions:  
+	 * 	get_MeterConfiguration()
+	 *		get_AmisConfiguration (alt, ergänzend, mit STATUS kann die Ablesung defaultmäßig ein und ausgeschaltet werden) 
+	 *
+	 * es gibt mehrer TYPEs of Meters: HOMEMATIC, REGISTER, AMIS und SUMME
+	 *   Homematic ist das Energieregister der Homeatic Serie, Register ein Wert von RemoteAccess, AMIS die Auslesunmg des AMIS Zählers 
+	 *   und SUMME eine kalkulatorische Berechnung immer dann wenn sich ein Wert aendert. 
 	 *
 	 ************************************************/
 	
@@ -409,6 +445,32 @@ $cutter=true;
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
 			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";			
 			}	
+
+		/*********************** aus mehreren Werten eine Berechnung anstellen */
+			
+		if (strtoupper($meter["TYPE"])=="SUMME")
+			{
+			/* Variable ID selbst bestimmen */
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($variableID,'~Electricity');
+			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
+			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
+			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
+			IPS_ApplyChanges($archiveHandlerID);
+			
+			//$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+	      
+			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
+			
+			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$variableID]["NAME"]="Wirkenergie";
+			$webfront_links[$meter["TYPE"]][$meter["NAME"]][$LeistungID]["NAME"]="Wirkleistung";			
+			}				
 			
 		/************************** und ein AMIS Zähler mit dem auslesen über die serielle Schnittstelle */	
 											

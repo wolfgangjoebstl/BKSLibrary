@@ -22,6 +22,8 @@
      * Definiert ein IPSComponentSwitch_RHomematic Object, das ein IPSComponentSwitch Object für Homematic implementiert.
      *
      * Wird von IPSLight oder IPSHeat aufgerufen und schaltet einen lokalen Homematic Schalter. 
+	  * oder wird über den Messagehandler aufgerufen, wenn sich ein Status aendert
+	  *
      *  construct übernimmt Parameter aus Konfiguration von IPSLight/IPSHeat und CustomComponent
      *  HandleEvent schreibt auf externe Logging Server und synchronisiert den lokalen Status (syncState)
      *  SetState und GetState schalten die lokale Instanz
@@ -29,7 +31,8 @@
      * Auftrennung der unterschiedlichen Klassen und Module:
      *  IPSComponentSwitch_Homematic    Standard ohne Extras, das ist die Grudnfunktionalitaet
      *  IPSComponentSwitch_XHomematic   Schaltet eine Remote Variable ohne remote Logging
-     *  IPSComponentSwitch_RHomematic   Schaltet eine lokale Homemeatic Variable mit remote Logging     
+     *  IPSComponentSwitch_RHomematic   Schaltet eine lokale Homemeatic Variable mit remote Logging 
+     *  IPSComponentSwitch_Remote       Ändert eine lokale Variable mit remote Logging    
      *
      * Die RemoteAccessClass muss immer mit IPSLight zusammenpassen. Auch der Aufruf von construct.
      * Anstelle von IPSComponentSwitch_Remote sollte die spezielle Remote Homematic Klasse IPSComponentSwitch_RHomematic verwendet werden.
@@ -68,7 +71,8 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
-	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+	IPSUtils_Include ('IPSComponentSwitch_Remote.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');		// für Switch_Logging		
 		
 	IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");
 
@@ -77,7 +81,8 @@
 		private $instanceId;
 		private $supportsOnTime;
 		private $remServer;	                /* Erweiterung zur Homematic Switch Class */
-        private $ErrorHandlerAltID	;       /* ErrorHandler alt für Abfangen des Duty Cycle Events */
+		private $ErrorHandlerAltID	;       /* ErrorHandler alt für Abfangen des Duty Cycle Events */
+		private $remoteOID;
 	
 		/**
 		 * @public
@@ -89,17 +94,20 @@
 		 * @param integer $supportsOnTime spezifiziert ob das Homematic Device eine ONTIME unterstützt
 		 */
 		public function __construct($var1, $instanceId=false, $supportsOnTime=true) 
+			{
+			echo "Construct IPSComponentSwitch_RHomematic mit \"".$var1."\"   \"".$instanceId."\"   \"".$supportsOnTime."\"\n";
+      	if (($instanceId===false) || ($instanceId==""))  
+      		{
+         	$this->instanceId   = IPSUtil_ObjectIDByPath($var1);
+            $this->remoteOID    = "";
+            }
+         else 
             {
-            if ($instanceId===false) 
-                {
-                $this->instanceId   = IPSUtil_ObjectIDByPath($var1);
-                $this->RemoteOID    = "";
-                }
-            else 
-                {
-                $this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
-    			$this->RemoteOID    = $var1;
-                }
+            //$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
+    			//$this->RemoteOID    = $var1;
+				$this->instanceId     = IPSUtil_ObjectIDByPath($var1);
+    			$this->remoteOID    = $instanceId;
+            }
 			$this->supportsOnTime = $supportsOnTime;
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -113,13 +121,13 @@
 				{								
 				$this->remServer	  = array();
 				}
-            /* verbiegen des Error Handlers um Duty Cycle Events abzufangen, der alte Error_Handler wird als Variable zu AllgemeneDefinitionen zwischengespeichert */    
+   		/* verbiegen des Error Handlers um Duty Cycle Events abzufangen, der alte Error_Handler wird als Variable zu AllgemeneDefinitionen zwischengespeichert */    
         	$mManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         	$AllgemeineDefId     = IPS_GetObjectIDByName('AllgemeineDefinitionen',$mManager->GetModuleCategoryID('data'));
-            $this->ErrorHandlerAltID = CreateVariableByName($AllgemeineDefId, "ErrorHandler", 3);
-            $alter_error_handler = set_error_handler("AD_ErrorHandler");
-            SetValue($this->ErrorHandlerAltID,$alter_error_handler);                			
-		}
+         $this->ErrorHandlerAltID = CreateVariableByName($AllgemeineDefId, "ErrorHandler", 3);
+         $alter_error_handler = set_error_handler("AD_ErrorHandler");
+         SetValue($this->ErrorHandlerAltID,$alter_error_handler);                			
+			}
 
 		/**
 		 * @public
@@ -132,27 +140,29 @@
 		 * @param IPSModuleSwitch $module Module Object an das das aufgetretene Event weitergeleitet werden soll
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
-            {
-			//echo "IPSComponentSwitch_RHomematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-	   		IPSLogger_Dbg(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
-                
+      	{
+			echo "IPSComponentSwitch_RHomematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+	   	IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+       
 			$module->SyncState($value, $this);
 
 			$log=new Switch_Logging($variable);
+			//echo "Logging.\n";
 			$result=$log->Switch_LogValue();
-			
+			//echo "Logging Done !\n";
 			if ( ($this->remoteOID != Null) && ($this->remoteOID != "") )
-			    {
+				{
+				echo "Remote Server bearbeiten : ".$this->remoteOID."\n";
 				$params= explode(';', $this->remoteOID);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
 					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            	if (count($para)==2)
-   	            		{
+					if (count($para)==2)
+						{
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
-						   	{
+							{
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Server : ".$Server." Remote OID: ".$roid."\n";

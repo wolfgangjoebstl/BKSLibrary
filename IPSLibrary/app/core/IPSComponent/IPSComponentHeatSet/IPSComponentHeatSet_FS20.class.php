@@ -95,7 +95,7 @@
 			if (isset ($this->installedmodules["Stromheizung"])) 
 				{
 				//IPSUtils_Include ('Stromheizung_Configuration.inc.php', 'IPSLibrary::config::modules::Stromheizung');
-				$module->SyncPosition($value, $this);
+				$module->SyncSetTemp($value, $this);
 				}
 						
 			$log=new HeatSet_Logging($variable);		/* zweite Variable ist optional und wäre der Variablenname wenn er nicht vom Parent Namen abgeleitet werden soll */

@@ -188,7 +188,10 @@
 	/* Abkuerzer, keine Kategorie in Data erstellt sondern gleich in Visualisation die Originalwerte abgelegt - funktioniert nicht da Inhalt geloescht wird bei Installation 
 	 * in Visualization werden nur Links angelegt
 	 */
-	
+
+	$TestLinkID=CreateVariable("htmlTestTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
+	$FrameLinkID=CreateVariable("htmlFrameTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
+		
 		// definition: CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 	$WebLinkID=CreateVariable("FavouriteWebLinks",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	echo $WFC10_Path."\n";
@@ -198,46 +201,103 @@
 	$linkConfig=WebLinks_Configuration();
 	$html="";
 	//$html.='<iFrame>';
-	$html.='<style> a:link    {color: green; background-color: transparent; text-decoration: none; }
-                   a:visited {color: pink;  background-color: transparent; text-decoration: none; }
-                   a:hover   {color: red;   background-color: transparent; text-decoration: underline; }
-                   a:active  {color: yellow;background-color: transparent; text-decoration: underline; } </style>'; 
-	$html.='<table>';
-    $html.="<th> <tr> <td> Bezeichnung des Link </td> <td> Lokales LAN </td> <td> Internet </td> </tr> </th>";
+	$html="";
+	$html.="<style>";
+	$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 14px; color:black; border-collapse: separate; width: 100%; }';
+	$html.='#customers td {border_left: 4px solid #0; padding: 8px; }';
+	$html.='#customers th {border: 1px solid #ddd; padding: 8px; }';
+	$html.='#customers tr:nth-child(even){background-color: #f2f2f2;}';
+	$html.='#customers tr:nth-child(odd){background-color: #e2e2e2;}';
+	$html.='#customers tr:hover {background-color: Silver;}';
+	$html.='#customers th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color:Olive; color: white; }';
+	
+	$html.='a:link    {color: green; background-color: transparent; text-decoration: none; }';
+	$html.='a:visited {color: darkgreen;  background-color: transparent; text-decoration: none; }';
+	$html.='a:hover   {color: red;   background-color: transparent; text-decoration: underline; }';
+	$html.='a:active  {color: yellow;background-color: transparent; text-decoration: underline; }';
+	
+	$html.='beautiful {} ';
+	$html.="</style>";	
+	$html.='<table id="customers">';
+	$html.="<tr> <th> Bezeichnung des Link </th> <th> Lokales LAN </th> <th> Internet </th> </tr>";
 	$rows=0;$columns=0;
 	foreach ($linkConfig as $index => $config)
 		{
-		$html.='<tr>';
+		//$html.='<tr>';
 		$col=0;
 		echo "    Weblinks Konfigurationen für ".$index." bearbeiten.\n";
 		switch (strtoupper($index))
 			{
 			case "WEBLINKS":
-                echo "      Modul WEBLINKS:\n";
+         	echo "      ---Modul WEBLINKS:\n";
 				foreach ($config as $entry)
 					{
 					print_r($entry);
 					if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
 					if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
-                    if (isset($entry["TYPE"])==false) $entry["TYPE"]="extern";
+               if (isset($entry["TYPE"])==false) $entry["TYPE"]="extern";
 					$html.='<tr> <td>'.$entry["NAME"].'</td> <td> ';
-                    if ($entry["TYPE"]=="extern") $html .= "</td> <td>";
-                    $html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> </tr>';
+               if ($entry["TYPE"]=="extern") 
+						{
+						$html .= "</td> <td>";
+               	$html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> </tr>';
+						}
+					else
+						{	
+               	$html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> ';
+						$html .= '<td> </td> </tr>';
+						}
 					}
 				break;
 			case "CAMERAS":
 				if (isset ($installedModules["IPSCam"]))
 					{
-                    echo "      Modul CAMERAS:\n";
-                	IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+               echo "      ---Modul CAMERAS:\n";
+             	IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
 					IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
 					$camConfig = IPSCam_GetConfiguration();
 					foreach ($camConfig as $idx=>$data) 
 						{
-						print_r($data);
+						//print_r($data);
 						$result=explode(",",$data[IPSCAM_PROPERTY_COMPONENT]);
 						$html.='<tr> <td>'.$data["Type"].' '.$data["Name"].'</td> <td> </td> <td> <a href="'.'http://'.$result[1].'" target="_blank">'.$data[IPSCAM_PROPERTY_NAME].'</a> </td> </tr>';
-						}			
+						}		
+					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
+					}			
+				break;
+			case "CCUS":
+            echo "      ---Modul CCUS:\n";
+				$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+				$modulhandling->printInstances('HomeMatic Socket'); 
+				$CCUs=$modulhandling->getInstances('HomeMatic Socket');
+				$countCCU = sizeof($CCUs);
+				//echo "Es gibt insgesamt ".$countCCU." Homematic-Socket Instanzen.\n";
+				foreach ($CCUs as $CCU)
+					{
+					$configCCU=IPS_GetConfiguration($CCU);
+					//echo "Konfiguration für CCU ".$CCU." (".IPS_GetName($CCU).") : ".$configCCU."\n";
+					$configStruct=json_decode($configCCU,true);	// Ergebnis als Array speichern
+					//print_r($configStruct);
+					//echo "   Host IP-Adresse : ".$configStruct["Host"]."\n";
+					$html.='<tr> <td>'.IPS_GetName($CCU).'</td>  <td> <a href="'.'http://'.$configStruct["Host"].'" target="_blank">'.IPS_GetName($CCU).'</a> </td> <td> </td></tr>';					
+					}	
+				$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
+				break;
+			case "DENONS":
+				if (isset ($installedModules["DENONsteuerung"]))
+					{
+               echo "      ---Modul DENONsteuerung:\n";
+					IPSUtils_Include ("DENONsteuerung_Configuration.inc.php",  "IPSLibrary::config::modules::DENONsteuerung");
+					$denonConfig = Denon_Configuration();
+					foreach ($denonConfig as $idx=>$data) 
+						{
+						if ( (isset($data["TYPE"])) && (strtoupper($data["TYPE"])=="DENON") )
+							{  
+							echo "            ".$idx." :    ".$data["IPADRESSE"]."\n";
+							$html.='<tr> <td>'.$data["NAME"].'</td>  <td> <a href="'.'http://'.$data["IPADRESSE"].'" target="_blank">'.$idx.'</a> </td> <td> </td></tr>';					
+							}
+						}
+					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
 					}			
 				break;
 			default:
@@ -297,7 +357,8 @@
 
 		// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
 		CreateLinkByDestination("Weblinks", $WebLinkID, $categoryId_WebFrontAdministrator,  10,"");
-
+		CreateLinkByDestination("FrameTest", $FrameLinkID, $categoryId_WebFrontAdministrator,  100,"");		
+		CreateLinkByDestination("JavaTest", $TestLinkID, $categoryId_WebFrontAdministrator,  1000,"");
 		}
 
 /********************************************************************/

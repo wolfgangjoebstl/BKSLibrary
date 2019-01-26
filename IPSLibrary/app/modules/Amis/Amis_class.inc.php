@@ -22,6 +22,9 @@
 
 		var $parentid=0;
 		var $archiveHandlerID=0;
+		
+		var $MeterConfig;
+		
 		/**
 		 * @public
 		 *
@@ -32,6 +35,7 @@
 			{
 			$this->parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+			$this->MeterConfig = get_MeterConfiguration();
 			}
 
 
@@ -239,25 +243,10 @@
 
 					if ( isset($meter["OID"]) == true )
 						{
-						$OID  = $meter["OID"];
-						$cids = IPS_GetChildrenIDs($OID);
-						if (sizeof($cids) == 0) 
-							{
-							$OID = IPS_GetParent($OID);
-							$cids = IPS_GetChildrenIDs($OID);
-							}
-						echo "OID der passenden Homematic Register selbst bestimmen. Wir sind auf ".$OID." (".IPS_GetName($OID).")\n";
-						//print_r($cids);
-						foreach($cids as $cid)
-							{
-			      			$o = IPS_GetObject($cid);
-			      			if($o['ObjectIdent'] != "")
-			         			{
-			         			if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-			         			if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-			        			}
-			    			}
-		      			echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+						$result  = $this->getHomematicRegistersfromOID($meter["OID"]);
+						$HMenergieID  = $result["HM_EnergieID"];
+						$HMleistungID = $result["HM_LeistungID"];							
+						echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
 						}
 					else
 						{
@@ -312,22 +301,9 @@
 
 				if ( isset($meter["OID"]) == true )
 					{
-					$OID  = $meter["OID"];
-					$cids = IPS_GetChildrenIDs($OID);
-					if (sizeof($cids) == 0)		/* vielleicht schon das Energy Register angegeben, mal eine Eben höher schauen */ 
-						{
-						$OID = IPS_GetParent($OID);
-						$cids = IPS_GetChildrenIDs($OID);
-						}					
-					foreach($cids as $cid)
-						{
-						$o = IPS_GetObject($cid);
-						if($o['ObjectIdent'] != "")
-							{
-						 	if ( $o['ObjectName'] == "POWER" ) { $HMleistungID=$o['ObjectID']; }
-							if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $HMenergieID=$o['ObjectID']; }
-							}
-						}
+					$result  = $this->getHomematicRegistersfromOID($meter["OID"]);
+					$HMenergieID  = $result["HM_EnergieID"];
+					$HMleistungID = $result["HM_LeistungID"];	
 					echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
 					}
 				else
@@ -344,6 +320,10 @@
 					$energievorschub=$energie;
 					SetValue($OffsetID,$offset);
 					}
+				if ($energievorschub>10)       /* verbrauchte Energie in einem 15 Minutenintervall ist realsitisch maximal 2 kWh, 10kWh abfragen   */
+					{   /* Unplausibilitaet ebenfalls behandeln */
+					$energievorschub=0;
+					}		
 				SetValue($Homematic_WirkergieID,$energie);
 				$energie_neu=GetValue($EnergieID)+$energievorschub;
 				SetValue($EnergieID,$energie_neu);
@@ -354,6 +334,56 @@
 				}
 			return ($homematicAvailable);
 			}
+			
+		/* OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
+		 */
+				
+		function getHomematicRegistersfromOID($oid)
+			{
+			$result=false;
+			$cids = IPS_GetChildrenIDs($oid);
+			if (sizeof($cids) == 0)		/* vielleicht schon das Energy Register angegeben, mal eine Eben höher schauen */ 
+				{
+				$oid = IPS_GetParent($oid);
+				$cids = IPS_GetChildrenIDs($oid);
+				}					
+			foreach($cids as $cid)
+				{
+				$o = IPS_GetObject($cid);
+				if($o['ObjectIdent'] != "")
+					{
+				 	if ( $o['ObjectName'] == "POWER" ) { $result["HM_LeistungID"]=$o['ObjectID']; }
+					if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $result["HM_EnergieID"]=$o['ObjectID']; }
+					}
+				}
+			return ($result);
+			}	
+			
+			
+		function getRegistersfromOID($oid,$MConfig=array())
+			{
+			$result=false;
+			if (sizeof($MConfig)==0) 
+				{
+				//echo "Array ist leer. Default Config nehmen.\n";
+				$MConfig=$this->MeterConfig;
+				}
+			foreach ($MConfig as $identifier => $meter)
+				{
+				if ( isset($meter["OID"]) == true )
+					{
+					if ($meter["OID"]==$oid) 
+						{
+						//$catID=IPS_GetCategoryIDByName($meter["NAME"], $this->parentid);
+						$catID=IPS_GetVariableIDByName($meter["NAME"], $this->parentid);
+						$result["EnergieID"]=IPS_GetVariableIDByName("Wirkenergie", $catID);
+						$result["LeistungID"]=IPS_GetVariableIDByName("Wirkleistung", $catID);
+						echo "    gefunden : ".$oid." in ".$identifier." und Kategorie ".$catID." (".IPS_GetName($catID).") \n";
+						}				
+					}
+				}
+			return ($result);				
+			}																																																																																																																																																																																																																																																				
 
 		/************************************************************************************************************************
  		 *
@@ -395,6 +425,54 @@
 				SetValue($EnergieID,$energie);
 				SetValue($LeistungID,$leistung);
 				echo "  Werte aus dem Register : ".$energie." kWh  ".GetValue($HMenergieID)." W\n";
+				}
+			return ($registerAvailable);
+			}
+
+		/************************************************************************************************************************
+ 		 *
+		 * Script MomentanwerteAbfragen wird minuetlich aufgerufen. Diese Routine kommt alle 15 Minuten dran.
+ 		 * Nur die SUMMEN Energiewerte bearbeiten, ignoriert andere Typen
+ 		 *
+ 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+		 *
+		 *****************************************************************************************************************************/
+		 
+		function writeEnergySumme($meter)		/* nur einen Wert aus der Config ausgeben */
+			{
+			$registerAvailable=false;
+			$energie=0;
+			$leistung=0;
+
+			if (strtoupper($meter["TYPE"])=="SUMME")
+				{
+				$registerAvailable=true;
+				echo "Werte von : ".$meter["NAME"]."\n";
+			      
+				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+
+				if ( isset($meter["Calculate"]) == true )
+					{
+					$calculate = explode(",",$meter["Calculate"]);
+					echo "  die folgenden Register werden zusammengezählt:\n";
+					print_r($calculate);
+					foreach ($calculate as $oid)
+						{
+						$result=$this->getRegistersfromOID($oid);
+						$energie+=GetValue($result["EnergieID"]);
+						$leistung+=GetValue($result["LeistungID"]);
+						echo "Energie : ".$energie." Leistung : ".$leistung."\n"; 
+						}
+						
+					}
+				$leistungVergleich=($energie-GetValue($EnergieID))*4;
+
+				SetValue($EnergieID,$energie);
+				SetValue($LeistungID,$leistung);
+				echo "  Neue Werte : ".$energie." kWh  ".$leistung." kW    Zum Vergleich : ".$leistungVergleich." kW\n"; 
 				}
 			return ($registerAvailable);
 			}

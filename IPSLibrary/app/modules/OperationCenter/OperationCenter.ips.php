@@ -682,7 +682,7 @@ if ($_IPS['SENDER']=="Variable")
  * 1 Router auslesen starten
  * 2 Webcam Files zusammenräumen
  * 3 Router auswerten, wird von 1 gestartet
- * 4 Sysping alle geräte, alle 60 Minuten
+ * 4 Sysping alle Geräte, alle 60 Minuten
  * 5 automatisches Update der App Routinen, immer am 12. des Monats
  * 6 Scripts auf Dropbox kopieren
  * 7 File Status kopieren

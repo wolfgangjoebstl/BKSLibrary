@@ -46,20 +46,22 @@ foreach ($MeterConfig as $meter)
 	echo "Create Variableset for :".$meter["NAME"]." \n";
 	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	/* ID von Wirkenergie bestimmen */
-	if (strtoupper($meter["TYPE"])=="AMIS")
+	switch (strtoupper($meter["TYPE"]))
 		{
-		$AmisID = CreateVariableByName($ID, "AMIS", 3);
-		$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
-		//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-		//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
-		}
-	if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-		{
-		$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		}
-	if (strtoupper($meter["TYPE"])=="REGISTER")
-		{
-		$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		case "AMIS":
+			$AmisID = CreateVariableByName($ID, "AMIS", 3);
+			$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+			//$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+			//$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+			break;
+		case "HOMEMATIC":
+		case "REGISTER":
+		case "SUMME": 
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+			break;
+		default:
+			echo "Fehler, Type noch nicht bekannt.\n";
+			break;	
 		}
 
 	$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
@@ -164,17 +166,17 @@ if ($_IPS['SENDER'] == "Execute")
 	foreach ($MeterConfig as $meter)
 		{
 		echo"-------------------------------------------------------------\n";
-		echo "Create Variableset for :".$meter["NAME"]." \n";
+		echo "Create Variableset for : ".$meter["NAME"]." \n";
 
 		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		if ($meter["TYPE"]=="Homematic")
-	   		{
-			/* Variable ID selbst bestimmen */
-		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	   		}
+		if (isset($meter["WirkenergieID"]) == true )	 
+			{ 
+			$variableID = $meter["WirkenergieID"]; 
+			}
 		else
-		   	{
-			if (isset($meter["WirkenergieID"]) == true ) { $variableID = $meter["WirkenergieID"]; }
+			{
+			/* Variable ID selbst festlegen */
+		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			}
 		
 		$vorwert=0;

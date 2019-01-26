@@ -1,5 +1,37 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
+	 
+	 /***********************************************
+	  *
+	  * verschiedene Routinen udn Definitionen die von allen Modulen benötigt werden können
+	  * 
+	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
+	  * GetInstanceIDFromHMID
+	  * writeLogEvent
+	  * writeLogEventClass
+	  * GetValueIfFormatted
+	  *
+	  *
+	  *
+	  *
+	  ****************************************************************/
+
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
    
@@ -2297,208 +2329,51 @@ function checkProcess($processStart)
 
 /************************************************************************************/
 
-function write_wfc($input,$indent)
-	{
-	if (sizeof($input) > 0)
-		{
-		foreach ($input as $index => $entry)
-			{
-			if ( $index != "." )
-				{
-				echo $indent.$entry["."]."\n";
-				write_wfc($entry,$indent."   ");
-				}
-			}
-		}	
-	}
 
-/************************************************************************************/
-
-function search_wfc($input,$search,$tree)
-	{
-	$result="";
-	if (sizeof($input) > 0)
-		{
-		foreach ($input as $index => $entry)
-			{
-			if ( $index != "." )
-				{
-				//echo $tree.".".$index."\n";
-				if ($entry["."] == $search) 
-					{ 
-					//echo "search_wfc: ".$search." gefunden in Tree : ".$tree.".\n"; 
-					return($tree.".");
-					}
-				else 
-					{	
-					$result=search_wfc($entry,$search,$tree.".".$index);
-					if ( $result != "") { return($result); }
-					}
-				}
-			}
-		}
-	else 
-		{
-		//echo "Search Array Size ".sizeof($input)."\n";
-		}
-	return($result);						
-	}
-
-/************************************************************************************/
-
-function read_wfc()
-	{
-	//echo "\n";
-	$WebfrontConfigID=array();
-	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
-	foreach ($alleInstanzen as $instanz)
-		{
-		$result=IPS_GetInstance($instanz);
-		$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-		//echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
-		If (true)	/* Debug der aktuellen detaillierten Einträge */
-			{
-			//echo "    ".IPS_GetConfiguration($instanz)."\n";
-			$config=json_decode(IPS_GetConfiguration($instanz));
-			$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
-			//print_r($config);
-		
-			$ItemList = WFC_GetItems($instanz);
-			$wfc_tree=array();
-			foreach ($ItemList as $entry)
-				{
-				if ($entry["ParentID"] != "")
-					{
-					//echo "WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
-					$result = search_wfc($wfc_tree,$entry["ParentID"],"");
-					//echo "search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
-					if ($result == "")
-						{
-						$wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
-						$wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
-						$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-						//echo "-> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-						}
-					else
-						{
-						$tree=explode(".",substr($result,1,strlen($result)-2));
-						if ($tree) 
-							{
-						 	//print_r($tree); 
-							if ($tree[0]=="")
-								{
-								$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-								//echo "-> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
-								}
-							else	
-								{
-								//echo "Tiefe : ".sizeof($tree)." \n";
-								switch (sizeof($tree))
-									{
-									case 1:
-										$wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-										//echo "-> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-										break;
-									case 2:
-										$wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-										//echo "-> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-										break;
-									case 3:
-										$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-										//echo "-> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-										break;
-									case 4:
-										$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-										//echo "-> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
-										break;
-									default:
-										echo "Fehler, groessere Tiefe als programmiert.\n";																		
-									}
-								}								
-							}	
-						}						
-					/* Routine sucht nach ParentID Eintrag, schreibt Struktur mit unter der dieser Eintrag gefunden wurde */
-					/*$found="";
-					foreach ($wfc_tree as $key => $wfc_entry)
-						{
-						$skey=$wfc_entry["."]; 
-						echo $skey." ".sizeof($wfc_entry)." : ";
-						foreach ($wfc_entry as $index => $result)
-							{
-							if ($result["."] == $entry["ParentID"]) 
-								{ 
-								$found=$result["."]; 
-								$fkey=$skey; 
-								echo "-> ".$fkey."/".$found." found.\n";break;
-								}
-							}
-						}
-					if ($found != "")
-						{	
-						//print_r($wfc_tree);
-						echo "Create : ".$fkey."/".$entry["ParentID"]."/".$entry["ID"]."\n";
-						$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]=array();
-						$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
-						}
-					*/
-					}
-				else
-					{
-					//echo "WFC Eintrag:    ".$entry["ID"]." (Eintrag)\n";
-					}
-				}
-			echo "\n================ WFC Tree ".IPS_GetName($instanz)."=====\n";	
-			//print_r($wfc_tree);
-			write_wfc($wfc_tree,"");	
-			//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-			/* alle Instanzen dargestellt */
-			//echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-			//print_r($result);
-			}
-		}
-	}
 
 /***********************************************************************************
  *
  * getComponents
  *
- * gleich wie installComponentsFull, nur ohne Regstrierung
+ * gleich wie installComponentsFull, nur ohne Registrierung
  *
  ****************************************************************************************/    
 
 	function getComponent($Elements,$keywords, $write="Array")
 		{
-        $component=array(); $result="";
+        $component=array(); $install=array(); $result="";
 		$detectmovement=false;
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedModules=$moduleManager->GetInstalledModules();
-		$remServer=array();
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			//echo "  Remote Access installiert, Variablen auch am VIS Server aufmachen.\n";
-			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
-			$remServer=ROID_List();
-			$status=RemoteAccessServerTable();
-			foreach ($remServer as $Name => $Server)
-				{
-				echo "    Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-				//print_r($Server);
-				}							
-			}
 		
 		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
 		foreach ($Elements as $Key)
 			{
-			$count=0; $found=false;
+			$count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
 			if ( is_array($keywords) == true )
 				{
 				foreach ($keywords as $entry)
 					{
 					/* solange das Keyword uebereinstimmt ist alles gut */
-					if (isset($Key["COID"][$entry])==true) $count++; 
-					echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
+                    if (strpos($entry,"!")===false)
+                        {
+                        $max++;
+					    if (isset($Key["COID"][$entry])==true) $count++; 
+    					//echo "    Ueberpruefe  ".$entry."    ".$count."/".$max."\n";
+                        }
+                    elseif  (strpos($entry,"!")==0)
+                        {
+                        $maxNo++;
+                        $entry1=substr($entry,1);
+                        if (isset($Key["COID"][$entry1])==true) $countNo++;
+    					//echo "    Ueberpruefe  NICHT ".$entry1."    ".$countNo."/".$maxNo." \n";
+                        }
 					}
-				if ( sizeof($keywords) == $count ) $found=true;
+				if ( ($max == $count) && ($countNo == 0) ) 
+                    { 
+                    $found=true;
+                    //echo "**gefunden\n";
+                    }
 				$keyword=$keywords[0];	
 				}	
 			else
@@ -2530,7 +2405,7 @@ function read_wfc()
 						}	
 					}
 				}
-						
+
 			switch (strtoupper($keyword))
 				{
 				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
@@ -2569,17 +2444,32 @@ function read_wfc()
 					$index="HeatControl";
 					$profile="~Intensity.100";
 					break;
+				case "STATE":
+					$variabletyp=0; 		/* Boolean */	
+					$index="Schalter";
+					$profile="Switch";
+					break;
 				default:	
 					$variabletyp=0; 		/* Boolean */	
 					break;
 				}			
 			
 			if ($found)
-				{		
+				{
+                if (isset($installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
 				//echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
-                $component[]=$oid;
+                $component[]=(integer)$oid;
+                $install[$Key["Name"]]["COID"]=(integer)$oid;
+                $install[$Key["Name"]]["OID"]=(integer)$Key["OID"];
+                $install[$Key["Name"]]["KEY"]=$keyword;
+					 $install[$Key["Name"]]["TYP"]=$variabletyp;
+					 $install[$Key["Name"]]["INDEX"]=$index;
+					 $install[$Key["Name"]]["PROFILE"]=$profile;					 
+                $install[$Key["Name"]]["DETECTMOVEMENT"]=$detectmovement;
+					 
+
 				$vartyp=IPS_GetVariable($oid);
 				if ($vartyp["VariableProfile"]!="")
 					{
@@ -2592,12 +2482,20 @@ function read_wfc()
 				}   // ende found
 			} /* Ende foreach */
 
-        if ($write=="Array")
+        switch ($write)
             {
-            echo $result;
-            return ($component);
-            }     		
-        else return ($result);
+            case "Array":
+                echo $result;
+                return ($component);
+                break;
+            case "Install":
+                echo $result;
+                return ($install);
+                break;
+            default:
+                return ($result);
+                break;
+            }
 		}	
 
 
@@ -2704,160 +2602,94 @@ function read_wfc()
 		
 	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
 		{
-		$detectmovement=false;
+		$donotregister=false; $i=0; $maxi=600;		// Notbremse
+		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 		$installedModules=$moduleManager->GetInstalledModules();
+
+		/* Erreichbarkeit Remote Server nur einmal ermitteln */
 		$remServer=array();
 		if (isset ($installedModules["RemoteAccess"]))
 			{
-			echo "  Remote Access installiert, Variablen auch am VIS Server aufmachen.\n";
-			IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
-			$remServer=ROID_List();
-			$status=RemoteAccessServerTable();
-			foreach ($remServer as $Name => $Server)
+			IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");			
+			$remote=new RemoteAccess();
+			$status=$remote->RemoteAccessServerTable();
+			$text=$remote->writeRemoteAccessServerTable($status);
+         	$remServer=$remote->get_listofROIDs();
+            if ($text!="")
+                {
+		    	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        \n";
+                echo $text;
+    			echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):   \n";
+	    		echo $remote->write_listofROIDs();
+                }
+	
+			$struktur=$remote->get_StructureofROID();
+			echo "Struktur Server :             \n";
+			foreach ($struktur as $Name => $Eintraege)
 				{
-				echo "    Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-				//print_r($Server);
-				}							
+				echo "   ".$Name." für Schalter hat ".sizeof($Eintraege)." Eintraege \n";
+				//print_r($Eintraege);
+				foreach ($Eintraege as $Eintrag) echo "      ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
+				}						
 			}
-		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		
-		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
-		foreach ($Elements as $Key)
-			{
-			$count=0; $found=false;
-			if ( is_array($keywords) == true )
+		/* einheitliche Routine verwenden, Formattierung Ergebnis für Install */    
+		$result=getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/            
+        //print_r($result);
+		echo "Resultat verarbeiten:\n";
+        foreach ($result as $IndexName => $entry)
+      	    {
+			$oid=$entry["COID"];
+			$vartyp=IPS_GetVariable($oid);
+			if ($vartyp["VariableProfile"]!="")
 				{
-				foreach ($keywords as $entry)
-					{
-					/* solange das Keyword uebereinstimmt ist alles gut */
-					if (isset($Key["COID"][$entry])==true) $count++; 
-					echo "    Ueberpruefe  ".$entry."    ".$count."/".sizeof($keywords)."\n";
-					}
-				if ( sizeof($keywords) == $count ) $found=true;
-				$keyword=$keywords[0];	
-				}	
+				echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+				}
 			else
 				{
-				if (isset($Key["COID"][$keywords])==true) $found=true; 
-				$keyword=$keywords; 
-				}	
-			
-			if ( (isset($Key["Device"])==true) && ($found==false) )
-				{
-				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
-				if ($Key["Device"] == $keyword)
-					{
-					$found=true; 
-					switch ($keyword)
-						{
-						case "TYPE_ACTUATOR":
-							if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
-							elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
-							$detectmovement="HeatControl";
-							break;
-						case "TYPE_THERMOSTAT":
-							if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
-							if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
-							if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
-							break;
-						default:	
-							echo "FEHLER: unknown keyword.\n";
-						}	
-					}
+				echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 				}
-						
-			switch (strtoupper($keyword))
+			/* check, es sollten auch alle Quellvariablen gelogged werden */
+			if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
 				{
-				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
-				case "SET_POINT_TEMPERATURE":
-				case "SET_TEMPERATURE":
-					$variabletyp=2; 		/* Float */
-					$index="HeatSet";
-					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-					$profile="~Temperature";
-					break;				
-				case "TEMERATUREVAR";			/* Temperatur auslesen */
-				case "TEMPERATURE":
-				case "ACTUAL_TEMPERATURE":
-					$detectmovement="Temperatur";				
-					$variabletyp=2; 		/* Float */
-					$index="Temperatur";
-					//$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-					$profile="~Temperature";
-					break;
-				case "POSITIONVAR":
-				case "VALVE_STATE": 
-					$detectmovement="HeatControl";
-					$variabletyp=2; 		/* Float */
-					$index="HeatControl";
-					$profile="~Valve.F";
-					break;
-				case "HUMIDITY":
-					$detectmovement="Feuchtigkeit";
-					$variabletyp=1; 		/* Integer */							
-					$index="Humidity";
-					$profile="Humidity";
-					break;
-				case "LEVEL":
-					$detectmovement="HeatControl";
-					$variabletyp=1; 		/* Integer */	
-					$index="HeatControl";
-					$profile="~Intensity.100";
-					break;
-				default:	
-					$variabletyp=0; 		/* Boolean */	
-					break;
-				}			
-			
-			if ($found)
-				{		
-				//echo "********** ".$Key["Name"]."\n";
-				//print_r($Key);
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$vartyp=IPS_GetVariable($oid);
-				if ($vartyp["VariableProfile"]!="")
+				/* Wenn variable noch nicht gelogged automatisch logging einschalten */
+				AC_SetLoggingStatus($archiveHandlerID,$oid,true);
+				AC_SetAggregationType($archiveHandlerID,$oid,0);
+				IPS_ApplyChanges($archiveHandlerID);
+				echo "       Variable ".$oid." Archiv logging für Register aktiviert.\n";
+				}
+   		    $detectmovement=$entry["DETECTMOVEMENT"];
+			if ($detectmovement !== false)
+				{
+				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+				switch ($detectmovement)
 					{
-					echo "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
+					case "HeatControl":					
+						$DetectHeatControlHandler = new DetectHeatControlHandler();						
+						$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+						break;
+					case "Feuchtigkeit":
+						$DetectHumidityHandler = new DetectHumidityHandler();		
+						$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+						break;
+					case "Temperatur":
+						$DetectTemperatureHandler = new DetectTemperatureHandler();						
+						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+						break;
+					default:
+						break;
+					}		
+				}
+			$variabletyp=$entry["TYP"];
+			$index= $entry["INDEX"];
+			$profile=$entry["PROFILE"];					 
+			if (isset ($installedModules["RemoteAccess"]))
+				{
+				if ($donotregister==false)
 					{
-					echo "  ".str_pad($Key["Name"]."/".$keyword,50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-
-				/* check, es sollten auch alle Quellvariablen gelogged werden */
-				if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
-					{
-					/* Wenn variable noch nicht gelogged automatisch logging einschalten */
-					AC_SetLoggingStatus($archiveHandlerID,$oid,true);
-					AC_SetAggregationType($archiveHandlerID,$oid,0);
-					IPS_ApplyChanges($archiveHandlerID);
-					echo "Variable ".$oid." Archiv logging für Register aktiviert.\n";
-					}
-				if ( (isset ($installedModules["DetectMovement"])) && ($detectmovement !== false) )
-					{
-					IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-					IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-					switch ($detectmovement)
-						{
-						case "HeatControl":					
-							$DetectHeatControlHandler = new DetectHeatControlHandler();						
-							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-							break;
-						case "Feuchtigkeit":
-							$DetectHumidityHandler = new DetectHumidityHandler();		
-							$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-							break;
-						case "Temperatur":
-							$DetectTemperatureHandler = new DetectTemperatureHandler();						
-							$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-							break;
-						default:
-							break;
-						}		
-					}										
-				if (isset ($installedModules["RemoteAccess"]))
-					{					
+					$i++; if ($i>$maxi) { $donotregister=true; }											
 					$parameter="";
 					foreach ($remServer as $Name => $Server)
 						{
@@ -2866,20 +2698,23 @@ function read_wfc()
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-							$result=RPC_CreateVariableByName($rpc, (integer)$Server[$index], $Key["Name"], $variabletyp);
+							$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 							$parameter.=$Name.":".$result.";";
+							$struktur[$Name][$result]["Status"]=true;
+							$struktur[$Name][$result]["Hide"]=false;
+							$struktur[$Name][$result]["newName"]=$Key["Name"];							
 							}						}	
 					$messageHandler = new IPSMessageHandler();
 					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$Key["OID"].','.$parameter,$InitModule);
-					echo "    Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",".$parameter."\",\"".$InitModule."\"\n";
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule);
+					echo "    Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$entry["OID"].",".$parameter."\",\"".$InitModule."\"\n";
 					}
 				else
 					{
@@ -2890,11 +2725,12 @@ function read_wfc()
 					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
 					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",".$Key["OID"].",",$InitModule);
-					echo "    Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$Key["OID"].",\",\"".$InitModule."\"\n";
+					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule);
+					echo "    Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$entry["OID"].",\",\"".$InitModule."\"\n";
 					}			
 				}
-			} /* Ende foreach */		
+			} /* Ende foreach */
+        return ($struktur);
 		}	
 
 /***********************************************************************************
@@ -2984,18 +2820,374 @@ function read_wfc()
         return ($result);    
         }
 
+/******************************************************************
+ *
+ * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
+ * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reeicht der Link.
+ *
+ *
+ *
+ ******************************************************************/
 
+class WfcHandling
+	{
+    
+    private $WFC10_ConfigId, $WebfrontConfigID;
 
+	public function __construct($debug=false)
+		{
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	    echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
+    	$WebfrontConfigID=array();
+	    $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+    	foreach ($alleInstanzen as $instanz)
+	    	{
+		    $result=IPS_GetInstance($instanz);
+    		$this->WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+	    	echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
+    		}
+	    echo "\n";        
+        }
+
+    private function write_wfc($input,$indent,$level)
+	    {
+    	if ((sizeof($input) > 0) && ($level>0) )
+	    	{
+		    foreach ($input as $index => $entry)
+			    {
+    			if ( $index != "." )
+	    			{
+		    		echo $indent.$entry["."]."\n";
+			    	$this->write_wfc($entry,$indent."   ",($level-1));
+				    }
+    			}
+	    	}	
+    	}
+
+/************************************************************************************/
+
+    private function search_wfc($input,$search,$tree)
+	    {
+    	$result="";
+	    if (sizeof($input) > 0)
+		    {
+    		foreach ($input as $index => $entry)
+	    		{
+		    	if ( $index != "." )
+			    	{
+				    //echo $tree.".".$index."\n";
+    				if ($entry["."] == $search) 
+	    				{ 
+		    			//echo "search_wfc: ".$search." gefunden in Tree : ".$tree.".\n"; 
+			    		return($tree.".");
+				    	}
+    				else 
+	    				{	
+		    			$result=$this->search_wfc($entry,$search,$tree.".".$index);
+			    		if ( $result != "") { return($result); }
+				    	}
+    				}
+	    		}
+		    }
+    	else 
+	    	{
+		    //echo "Search Array Size ".sizeof($input)."\n";
+    		}
+	    return($result);						
+	    }
+
+/************************************************************************************/
+
+    public function read_wfc($level=10,$debug=false)
+	    {
+    	//echo "\n";
+        $resultWebfront=array();
+	    $WebfrontConfigID=array();
+    	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+	    foreach ($alleInstanzen as $instanz)
+		    {
+    		$result=IPS_GetInstance($instanz);
+	    	$WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+		    //echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+    		if (true)	/* false if debug Auslesen der aktuellen detaillierten Einträge pro Webfront Configurator */
+    			{
+	    		//echo "    ".IPS_GetConfiguration($instanz)."\n";
+		    	//$config=json_decode(IPS_GetConfiguration($instanz));
+			    //$config->Items = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+    			//print_r($config);
+		
+	    		$ItemList = WFC_GetItems($instanz);
+                //print_r($ItemList);
+		    	$wfc_tree=array(); $root="";
+                for ($i=0;$i<5;$i++)        // mehrere Durchläufe
+                    {
+                    $count=0;
+    			    foreach ($ItemList as $entry)
+	    			    {
+    	    			if ($entry["ParentID"] != "")
+	    	    			{
+                            /* Liste der Einträge ist flat es gibt immer einen entry und einen parent */
+		    		    	//echo "   WFC Eintrag:    ".$entry["ParentID"]." (Parent)  ".$entry["ID"]." (Eintrag)\n";
+    			    		$result = $this->search_wfc($wfc_tree,$entry["ParentID"],"");
+	    			    	//echo "  search_wfc: ".$entry["ParentID"]." mit Ergebnis \"".$result."\"  ".substr($result,1,strlen($result)-2)."\n";
+		    			    if ($result == "")
+			    			    {
+                                if ( ($root != "") && ($entry["ParentID"]==$root) ) /* parent not found, unclear if root */
+                                    {
+    					    	    $wfc_tree[$entry["ParentID"]][$entry["ID"]]=array();
+	    					        $wfc_tree[$entry["ParentID"]]["."]=$entry["ParentID"];
+		    				        $wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    			    			    if ($debug) echo "   Root -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                    $count++;
+                                    }
+		    		    		}
+			    		    else
+				    		    {
+    				    		$tree=explode(".",substr($result,1,strlen($result)-2));
+	    				    	if ($tree) 
+		    				    	{
+			    			 	    //print_r($tree); 
+    				    			if ($tree[0]=="")
+	    				    			{
+		    				    		$wfc_tree[$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+			    				    	if ($debug) echo "   -> ".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";						
+                                        $count++;
+				    				    }
+    				    			else	
+	    				    			{
+		    				    		//echo "Tiefe : ".sizeof($tree)." \n";
+			    				    	switch (sizeof($tree))
+				    				    	{
+					    				    case 1:
+						    				    $wfc_tree[$tree[0]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    							    			if ($debug) echo "   -> ".$tree[0].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    							    		break;
+		    							    case 2:
+			    							    $wfc_tree[$tree[0]][$tree[1]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    			    							if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    			    						break;
+		    			    				case 3:
+			    			    				$wfc_tree[$tree[0]][$tree[1]][$tree[2]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+				    			    			if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+					    			    		break;
+						    			    case 4:
+							    			    $wfc_tree[$tree[0]][$tree[1]][$tree[2]][$tree[3]][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    								    		if ($debug) echo "   -> ".$tree[0].".".$tree[1].".".$tree[2].".".$tree[3].".".$entry["ParentID"].".".$entry["ID"]." not found - Create.\n";
+                                                $count++;
+	    								    	break;
+    	    								default:
+	    	    								echo "Fehler, groessere Tiefe als programmiert.\n";																		
+		    	    						}
+			    	    				}								
+				    	    		}	
+					    	    }						
+        					/* Routine sucht nach ParentID Eintrag, schreibt Struktur mit unter der dieser Eintrag gefunden wurde */
+	        				/*$found="";
+		        			foreach ($wfc_tree as $key => $wfc_entry)
+			        			{
+				        		$skey=$wfc_entry["."]; 
+					        	echo $skey." ".sizeof($wfc_entry)." : ";
+						        foreach ($wfc_entry as $index => $result)
+							        {
+    							    if ($result["."] == $entry["ParentID"]) 
+    	    							{ 
+	    	    						$found=$result["."]; 
+		    	    					$fkey=$skey; 
+			    	    				echo "-> ".$fkey."/".$found." found.\n";break;
+				    	    			}
+					    	    	}
+    					    	}
+    	    				if ($found != "")
+	    	    				{	
+		    	    			//print_r($wfc_tree);
+			    	    		echo "Create : ".$fkey."/".$entry["ParentID"]."/".$entry["ID"]."\n";
+				    	    	$wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]=array();
+					    	    $wfc_tree[$fkey][$entry["ParentID"]][$entry["ID"]]["."]=$entry["ID"];
+    					    	}
+	    				    */
+    		    			}
+	    		    	else        // Root Eintrag, parent ist leer
+		    		    	{
+                            if ($root=="") 
+                                {
+			    		        echo "WFC Root Eintrag (nicht mehr als einer pro Configurator):    ".$entry["ID"]." (Eintrag)\n";
+                                $root=$entry["ID"];
+                                }
+                            elseif ($root != $entry["ID"]) echo "******* mehrere Root Eintraege !!\n"; 
+                            else {} // alles ok   
+    				    	}
+	    			    }   // ende foreach, alle Konfiguratoren abgeschlossen
+                    //echo "*************".$count."\n";
+                    } //ende for 2x
+                $webfront=IPS_GetName($instanz);   
+		    	echo "\n================ WFC Tree ".$webfront."=====\n";	
+			    //print_r($wfc_tree);
+                $resultWebfront[$webfront]=$wfc_tree;
+    			$this->write_wfc($wfc_tree,"",$level);	
+	    		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		    	/* alle Instanzen dargestellt */
+			    //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+    			//print_r($result);
+	    		}   // ende debug
+		    }       // ende foreach
+        return ($resultWebfront);    
+    	}   // ende function
+
+    public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope)
+        {
+		if ( isset($this->WebfrontConfigID[$scope]) )
+			{
+	        echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFrontAdministrator." für den Webfront Configurator ".$scope."\n";
+         	$WFC10_ConfigId=$this->WebfrontConfigID[$scope];
+	        if (array_key_exists("Auswertung",$webfront_links) ) 
+    	        {
+        	    /* Kein Name für den Pane definiert */
+            	$tabItem="Default";
+	    		//echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";            
+    	        $this->createSplitPane($WFC10_ConfigId,$webfront_links,$tabItem,$WFC10_TabPaneItem."Item",$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope);
+        	    }
+	        else
+    	        {
+				$order=10;    
+    			foreach ($webfront_links as $Name => $webfront_group)
+	    		    {
+		    		/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
+				     * Der Name für die Felder wird selbst erfunden.
+    				 */
+
+	                echo "\n**** erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+			    	$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, $order);
+				    EmptyCategory($categoryId_WebFrontTab);   
+            	    echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
+
+		    		$tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
+    	            $this->deletePane($WFC10_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
+
+	                if (array_key_exists("Auswertung",$webfront_group) ) 
+    	                {
+    				    echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
+            	        $this->createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+                	    }
+	                else
+    	                {
+        			    foreach ($webfront_group as $SubName => $webfront_subgroup)
+	        		        {                    
+                	        /* noch eine Zwischenebene an Tabs einführen */
+                    	    echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+				            $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+				            EmptyCategory($categoryId_WebFrontSubTab);   
+        	                echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+	
+    	        			$tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+        	                $this->deletePane($WFC10_ConfigId, $tabSubItem);              /* Spuren von vormals beseitigen */
+	
+	                		echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
+    	                    CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+
+				            echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+    	                    $this->createSplitPane($WFC10_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator");    
+        	                }
+            	        }    
+					$order += 10;	
+    				}  // ende foreach
+         	   }       
+            }
+		else
+			{	
+			echo "Webfron ConfiguratorID unbekannt.\n";
+			}
+		}
+
+    /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
+
+    private function createSplitPane($WFC10_ConfigId, $webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator")
+        {
+        echo "  createSplitPane mit Name ".$Name." Als Pane ".$tabItem." in ".$WFC10_TabPaneItem." im Konfigurator ".$WFC10_ConfigId." verwendet Kategorie ".$categoryId_WebFrontSubTab."\n";
+
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
+		echo "  Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
+
+			echo "   **** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
+			/* @param integer $WFCId ID des WebFront Konfigurators
+			 * @param string $ItemId Element Name im Konfigurator Objekt Baum
+			 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
+			 * @param integer $Position Positionswert im Objekt Baum
+			 * @param string $Title Title
+			 * @param string $Icon Dateiname des Icons ohne Pfad/Erweiterung
+			 * @param integer $Alignment Aufteilung der Container (0=horizontal, 1=vertical)
+			 * @param integer $Ratio Größe der Container
+			 * @param integer $RatioTarget Zuordnung der Größenangabe (0=erster Container, 1=zweiter Container)
+			 * @param integer $RatioType Einheit der Größenangabe (0=Percentage, 1=Pixel)
+	 		 * @param string $ShowBorder Zeige Begrenzungs Linie
+			 */
+			//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,    0,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
+
+            print_r($webfront_group);    
+			foreach ($webfront_group as $Group => $webfront_link)
+				{
+				foreach ($webfront_link as $OID => $link)
+					{
+					/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+			 		 * Auswertung kommt nach links und Nachrichten nach rechts
+			 		 */	
+                    
+					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+					if ($Group=="Auswertung")
+				 		{
+                        if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
+                            {
+				 		    echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
+						    CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                            }
+				 		}
+				 	if ($Group=="Nachrichten")
+				 		{
+                        if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
+                            {
+    				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
+	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
+                            }
+						}
+					} // ende foreach
+                }  // ende foreach  
+        }
+
+    private function deletePane($WFC10_ConfigId, $tabItem)
+        {
+			if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
+			 	{
+				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") löscht TabItem : ".$tabItem."\n";
+				DeleteWFCItems($WFC10_ConfigId, $tabItem);
+				}
+			else
+				{
+				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+				}	
+			IPS_ApplyChanges ($WFC10_ConfigId);   /* wenn geloescht wurde dann auch uebernehmen, sonst versagt das neue Anlegen ! */
+        }
+
+    }   // ende class
 
 /******************************************************************
  *
  * Module und Klassendefinitionen
  *
- * printrLibraries
- * printrModules
- * printModules
- * printInstances
- * getInstances
+ * __construct	 		speichert bereits alle Libraries und Module bereits in Klassenvariablen ab
+ *   printrLibraries	gibt die gespeicherte Variable für die Library aus
+ *   printrModules		gibt die gespeicherte Variable für die Module aus, alle Module für alle Libraries
+ *   printModules		Alle Module die einer bestimmten Library zugeordnet sind als echo ausgeben
+ *   printInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben
+ *   getInstances		Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
+ *   get_string_between($input,'{','}')		Unterstützungsfunktion um den json_decode zu unterstützen
+ *
  *
  ******************************************************************/
 
@@ -3004,10 +3196,11 @@ class ModuleHandling
 	
 	private $libraries;	// array mit Liste der Namen und GUIDs von Libraries 
 	private $modules;	// array mit Liste der Namen und GUIDs von Modules 
+	private $debug;
 	
-	public function __construct()
+	public function __construct($debug=false)
 		{
-		$debug=false;
+		$this->debug=$debug;
 		if ($debug) echo "Alle Bibliotheken mit GUID ausgeben:\n";
 		foreach(IPS_GetLibraryList() as $guid)
 			{
@@ -3046,7 +3239,8 @@ class ModuleHandling
 		}
 
 
-	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben */
+	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
+     */
 	public function printModules($input)
 		{
 		$input=trim($input);
@@ -3081,7 +3275,8 @@ class ModuleHandling
 			}
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben */
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben 
+     */
 	public function printInstances($input)
 		{
 		$input=trim($input);
@@ -3104,14 +3299,15 @@ class ModuleHandling
 		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben */
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben 
+     */
 	public function getInstances($input)
 		{
 		$input=trim($input);
 		$key=$this->get_string_between($input,'{','}');
 		if (strlen($key)==36) 
 			{
-			echo "Gültige GUID mit ".$key."\n";
+			if ($this->debug) echo "Gültige GUID mit ".$key."\n";
 			$instances=IPS_GetInstanceListByModuleID($input);
 			}
 		else
@@ -3126,7 +3322,9 @@ class ModuleHandling
 			}		
 		return ($instances);
 		}
-		
+
+    /* Strukturen die nicht unbedingt jeson encoded sind von ihren {} Klammern befreien
+     */	
 	private function get_string_between($string, $start, $end)
 		{
 		$string = ' ' . $string;
@@ -3136,9 +3334,38 @@ class ModuleHandling
 		$len = strpos($string, $end, $ini) - $ini;
 		return substr($string, $ini, $len);
 		}	
+
+    /* Config einer Instanz oder einem array aus Instanzen ausles und bestimmte Variablen der Konfiguration als array mitgeben
+     * Filterfunktion für Konfiguration
+     */
+	public function selectConfiguration($id,$select=false)
+		{
+        $result=array();
+		if (is_array($id)) 
+			{
+			echo "Bereits ein array.\n";
+			$ida=$id;
+			}
+		else $ida[0]=$id;
+		foreach ($ida as $id1)
+			{
+            $config=IPS_GetConfiguration($id1);     /* alle Instanzen durchgehen */
+            $configStruct=json_decode($config);
+            if ( ($select===false) or !(is_array($select)) ) $result[$id1]=$configStruct;
+            else    /* select ist ein Array */
+                {
+                foreach ($select as $entry)
+                    {
+                    if (isset($configStruct->$entry)) $result[$id1][$entry]=$configStruct->$entry;
+                    }
+			    //echo ">>>>>> ".$id1."\n";
+			    //print_r($select);
+                }
+			}
+        return ($result);    
+		} /* ende function */
+
 	}
-
-
 
 
 /******************************************************************

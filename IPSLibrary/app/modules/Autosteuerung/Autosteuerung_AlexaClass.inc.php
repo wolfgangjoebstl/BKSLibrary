@@ -62,11 +62,16 @@ class AutosteuerungAlexaHandler
 	    if ($this->countAlexa != 0) 
             {
         	$configStruct=json_decode($this->configAlexa);
-	        print_r($configStruct);
+	        //print_r($configStruct);
             foreach ($configStruct as $typ=>$conf)
                 {
+                if ($conf=="") 
+                    {
+                    echo "Fehler, kein Parameter.\n";
+                    $conf="[]";
+                    }
         	    $confStruct=json_decode($conf);
-                //echo "    ".$typ."    ".$conf."\n";
+                //echo "Bearbeite    ".$typ."    ".$conf."\n";
 		        //foreach ($confStruct as $struct) print_r($struct);            
                 switch ($typ)
     	        	{
@@ -93,8 +98,9 @@ class AutosteuerungAlexaHandler
                     case "DeviceLightExpert":
                         /* Alexa stelle Wohnzimmerlicht auf weiss 
                          * es werden gleich drei Parameter uebergeben 
-                         * Beispiel: {"ID":"18","Name":"Wohnzimmer Deckenlampe Zwei","PowerControllerID":30308,"BrightnessOnlyControllerID":56174,"ColorOnlyControllerID":12135}}   
+                         * Beispiel: {"ID":"18","Name":"Wohnzimmer Deckenlampe Zwei","PowerControllerID":xxxx,"BrightnessOnlyControllerID":xxxx,"ColorOnlyControllerID":xxx}}   
                          */
+        	            $id="PowerControllerID";                         
                     	break;				
             		case "DeviceLightDimmer":
 	            		$id="BrightnessControllerID";
@@ -108,14 +114,18 @@ class AutosteuerungAlexaHandler
             		case "DeviceThermostat":
                         /* Alexa Heizung auf 23 Grad, Alexa Heizung wärmer   */ 
 	            		$id="ThermostatControllerID";
-    	    	        break;											
+    	    	        break;	
+            		case "EmulateStatus":
+                        /* neue Funktion ??? */
+                        break;										
             		default:
                         echo "Fehler: kenne den Identifier $typ in der Alexa Config noch nicht.\n";
                         echo "    ".$typ."    ".$conf."\n";
 		    	        break;
                     } 
             	foreach ($confStruct as $struct) 
-	            	{                       
+	            	{
+                    print_r($struct);                       
                     if ($this->countAlexa > 0)
                         {   // lokal Alexa
                         $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server

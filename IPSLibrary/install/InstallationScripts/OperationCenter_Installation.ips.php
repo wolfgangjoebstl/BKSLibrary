@@ -38,7 +38,7 @@
 	 *
 	 *************************************************************/
 
-$startexec=microtime(true);
+    $startexec=microtime(true);     /* Laufzeitmessung */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
@@ -691,11 +691,28 @@ $startexec=microtime(true);
 	    echo "Device Management Variablen für Webfront anlegen.\n";		
 
 		$categoryId_DeviceManagement    = CreateCategory('DeviceManagement',   $CategoryIdData, 150);
-        IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
+		IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
 		$SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
 		
+	/********************************************************
+	 *
+	 *		INIT HUE Geraete Darstellung und Bedienung vom HUE Modul 
+	 *
+	 ***************************************************/
+		
+	$modulhandling = new ModuleHandling();
+	$HUE=$modulhandling->getInstances('HUEBridge');	
+	$countHue = sizeof($HUE);
+	echo "Es gibt insgesamt ".$countHue." SymCon Hue Instanzen.\n";
+	if ($countHue>0)
+		{
+		$configHue=IPS_GetConfiguration($modulhandling->getInstances("HUEBridge")[0]);
+		echo "   ".$configHue."\n";
+		$categoryId_Hue = CreateCategoryPath('Hardware.HUE');		
+		}
+				
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -712,6 +729,7 @@ $startexec=microtime(true);
             CreateLinkByDestination('TasterDarstellung', $categoryId_AutosteuerungButton,    $categoryId_WebFront,  80);		
             CreateLinkByDestination('TimerSimulation', $categoryId_AutosteuerungSimulation,    $categoryId_WebFront,  80);		
             }
+		if ($countHue>0)	CreateLinkByDestination('HUE', $categoryId_Hue,    $categoryId_WebFront,  120);			
 		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);

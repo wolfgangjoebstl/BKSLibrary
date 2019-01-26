@@ -28,6 +28,9 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+    $noinstall=false;        /* keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
+    $startexec=microtime(true);     /* Laufzeitmessung */
+
 /*******************************
  *
  * Initialisierung, Modul Handling Vorbereitung
@@ -106,7 +109,7 @@
 	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
 	echo "Evaluate Hardware hat die ScriptID                  ".$scriptIdEvaluateHardware." \n";
 	IPS_RunScriptWait($scriptIdEvaluateHardware);
-	echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet.\n";
+	echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
 /*******************************
  *
@@ -118,7 +121,7 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	echo "\n";
-	echo "Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
+	echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
 	/* Webfront GUID herausfinden */
  	//read_wfc();	
@@ -398,7 +401,8 @@
 	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
-	//print_r($webfront_links);
+	
+    echo "Array webfront_Links als Input für die Webfront Erstellung: \n"; print_r($webfront_links);
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -412,7 +416,8 @@
 
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+		echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
+        
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
@@ -421,7 +426,8 @@
 		@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
 
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-		echo "Webfront TabPane mit Parameter : ".$WFC10_ConfigId." ".$WFC10_TabPaneItem." ".$WFC10_TabPaneParent." ".$WFC10_TabPaneOrder." ".$WFC10_TabPaneIcon."\n";
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:HouseTPA,Parent:".$WFC10_TabPaneParent.",Order:".$WFC10_TabPaneOrder."Name:,Icon:HouseRemote\n";        
+ 		echo "Webfront SubTabPane mit Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:HouseTPA,Order:20,Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
 		CreateWFCItemTabPane   ($WFC10_ConfigId, "HouseTPA", $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, "", "HouseRemote");    /* macht das Haeuschen in die oberste Leiste */
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, "HouseTPA",  20, $WFC10_TabPaneName, $WFC10_TabPaneIcon);  /* macht die zweite Zeile unter Haeuschen, mehrere Anzeigemodule vorsehen */
 
@@ -431,7 +437,7 @@
 		echo "\nWebportal Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
 		IPS_SetHidden($categoryId_WebFrontAdministrator,true);
-		
+
 		foreach ($webfront_links as $Name => $webfront_group)
 		   {
 			/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
@@ -615,6 +621,8 @@
 	 *
 	 ****************************************************************************************************************/
 
+if ($noinstall==false)
+    {
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
@@ -812,6 +820,24 @@
 			}     /* isset OperationCenter */
 		}     /* isset IPSCam */
 
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Switches
+	 *
+	 ****************************************************************************************************************/
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Switch Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
+	echo "\n";
+	echo "Homematic Switche werden registriert.\n";
+	if (function_exists('HomematicList'))
+		{
+		//installComponentFull(HomematicList(),"STATE",'IPSComponentSensor_RHomematic','IPSModuleSwitch_IPSHeat,');				/* Switche */
+		} 
+ 	
+
+
 	/****************************************************************************************************************
 	 *
 	 *                                      Temperature
@@ -824,7 +850,7 @@
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
 	if (function_exists('HomematicList'))
 		{
-		installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');				/* Tempoertursensoren und Homematic Thermostat */
+		installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');				/* Temperatursensoren und Homematic Thermostat */
 		installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');		/* HomematicIP Thermostat */
 		} 
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
@@ -898,7 +924,9 @@
 		}
 
 	echo "***********************************************************************************************\n";
-	
+    
+    }  // ende noinstall
+
 	/****************************************************************************************************************
 	 *
 	 *                                      Functions

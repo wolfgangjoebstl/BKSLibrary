@@ -206,8 +206,12 @@ Path=Visualization.Mobile.Stromheizung
 	if ($Mobile_Enabled==true)
 		{	
 		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+		$mobile_PathOrder     = $moduleManager->GetConfigValueInt('PathOrder', 'Mobile');
+		$mobile_PathIcon      = $moduleManager->GetConfigValue('PathIcon', 'Mobile');		
 		echo "Mobile \n";
-		echo "  Path          : ".$Mobile_Path."\n";		
+		echo "  Path          : ".$Mobile_Path."\n";
+		echo "  TabPaneIcon   : ".$mobile_PathIcon."\n";
+		echo "  TabPaneOrder  : ".$mobile_PathOrder."\n";				
 		}
 
 	$Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
@@ -260,6 +264,11 @@ Path=Visualization.Mobile.Stromheizung
 			case IPSHEAT_TYPE_RGB:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~HexColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+				break;
+			case IPSHEAT_TYPE_AMBIENT:
+				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'ColorTemperatureSelect.Hue',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
 				break;
 			case IPSHEAT_TYPE_SET:
@@ -385,7 +394,7 @@ Path=Visualization.Mobile.Stromheizung
 				else 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSLight,');
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
 					}
 				break;	
 			case 'IPSComponentHeatSet_Homematic':
@@ -409,13 +418,14 @@ Path=Visualization.Mobile.Stromheizung
 				else 
 					{
 					$moduleManager->LogHandler()->Log('Register OnChangeEvent vor Homematic Instance='.$instanceId);
-					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleSwitch_IPSHeat,');
+					$messageHandler->RegisterOnChangeEvent($variableId, $component, 'IPSModuleHeatSet_All,');
 					}
 				break;
 			case 'IPSComponentHeatSet_Data':
 			case 'IPSComponentTuner_Denon':
 			case 'IPSComponentSwitch_RFS20':
-			case 'IPSComponentRGB_PhilipsHUE':
+			case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
+			case 'IPSComponentRGB_HUE':			
 			case 'IPSComponentDimmer_Homematic':
 			case 'IPSComponentSwitch_RMonitor':
 			case 'IPSComponentRGB_LW12':
@@ -497,10 +507,9 @@ Path=Visualization.Mobile.Stromheizung
 
 	echo "\n";
 	echo "=====================================================\n";
-	echo "Webfront aufbauen in ".$WFC10_Path." :\n";
+	echo "Webfront Administrator aufbauen in ".$WFC10_Path." :\n";
 	echo "\n";
-	print_r($webFrontConfig);
-	echo "\n";
+	//print_r($webFrontConfig);	echo "\n";
 	
 	if ($WFC10_Enabled) 
 		{
@@ -553,7 +562,126 @@ Path=Visualization.Mobile.Stromheizung
 			}
 		}
 
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// User Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
 
+	echo "\n";
+	echo "=====================================================\n";
+	echo "Webfront User aufbauen in ".$WFC10User_Path." :\n";
+	echo "\n";
+	
+	if ($WFC10User_Enabled) {
+		$categoryId_WebFrontUser                = CreateCategoryPath($WFC10User_Path);
+		/* in der normalen Viz Darstellung verstecken */
+		IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
+		EmptyCategory($categoryId_WebFrontUser);
+		echo "================= ende empty categories \ndelete ".$WFC10User_TabPaneItem."\n";	
+		DeleteWFCItems($WFC10User_ConfigId, $WFC10User_TabPaneItem);
+		echo "================= ende delete ".$WFC10User_TabPaneItem."\n";			
+		echo " CreateWFCItemTabPane : ".$WFC10User_ConfigId. " ".$WFC10User_TabPaneItem. " ".$WFC10User_TabPaneParent. " ".$WFC10User_TabPaneOrder. " ".$WFC10User_TabPaneName. " ".$WFC10User_TabPaneIcon."\n";
+		CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem,  $WFC10User_TabPaneParent, $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
+		echo "================ende create Tabitem \n";
+		$webFrontConfig = IPSHeat_GetWebFrontUserConfiguration();
+		$order = 10;
+		foreach($webFrontConfig as $tabName=>$tabData) {
+			echo "================create ".$tabName."\n";
+			$tabCategoryId	= CreateCategory($tabName, $categoryId_WebFrontUser, $order);
+			foreach($tabData as $WFCItem) {
+				$order = $order + 10;
+				switch($WFCItem[0]) {
+					case IPSHEAT_WFCSPLITPANEL:
+						CreateWFCItemSplitPane ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order,$WFCItem[3],$WFCItem[4],(int)$WFCItem[5],(int)$WFCItem[6],(int)$WFCItem[7],(int)$WFCItem[8],$WFCItem[9]);
+						break;
+					case IPSHEAT_WFCCATEGORY:
+						$categoryId	= CreateCategory($WFCItem[1], $tabCategoryId, $order);
+						CreateWFCItemCategory ($WFC10User_ConfigId, $WFCItem[1], $WFCItem[2]/*Parent*/,$order, $WFCItem[3]/*Name*/,$WFCItem[4]/*Icon*/, $categoryId, 'false');
+						break;
+					case IPSHEAT_WFCGROUP:
+					case IPSHEAT_WFCLINKS:
+						$categoryId = IPS_GetCategoryIDByName($WFCItem[2], $tabCategoryId);
+						if ($WFCItem[0]==IPSHEAT_WFCGROUP) {
+							$categoryId = CreateDummyInstance ($WFCItem[1], $categoryId, $order);
+						}
+						$links      = explode(',', $WFCItem[3]);
+						$names      = $links;
+						if (array_key_exists(4, $WFCItem)) {
+							$names = explode(',', $WFCItem[4]);
+						}
+						foreach ($links as $idx=>$link) {
+							$order = $order + 1;
+							CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $categoryId, $order);
+						}
+						break;
+					default:
+						trigger_error('Unknown WFCItem='.$WFCItem[0]);
+			   }
+			}
+		}
+	}
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Mobile Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+	
+	echo "\n";
+	echo "=====================================================\n";
+	echo "Webfront Mobile aufbauen in ".$Mobile_Path." :\n";
+	echo "\n";
+		
+	if ($Mobile_Enabled ) {
+		$mobileId  = CreateCategoryPath($Mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
+		if ($mobile_Regenerate) {
+			EmptyCategory($mobileId);
+		}
+		$order = 10;
+		foreach (IPSHeat_GetMobileConfiguration() as $roomName=>$roomData) {
+			if (is_array($roomData)) {
+				$roomId	= CreateCategory($roomName, $mobileId, $order);
+				foreach($roomData as $roomItem) {
+					$order = $order + 10;
+					switch($roomItem[0]) {
+						case IPSHEAT_WFCGROUP:
+						case IPSHEAT_WFCLINKS:
+							$instanceId = $roomId;
+							if ($roomItem[0]==IPSHEAT_WFCGROUP) {
+								$instanceId = CreateDummyInstance ($roomItem[1], $roomId, $order);
+							}
+							$links      = explode(',', $roomItem[2]);
+							$names      = $links;
+							if (array_key_exists(3, $roomItem)) {
+								$names = explode(',', $roomItem[3]);
+							}
+							foreach ($links as $idx=>$link) {
+								$order = $order + 1;
+								CreateLinkByDestination($names[$idx], getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $instanceId, $order);
+							}
+							break;
+						 
+						default:
+							trigger_error('Unknown RoomItem='.$roomItem[0]);
+				   }
+				}
+			} else {
+				$links = explode(',', $roomData);
+				foreach ($links as $link) {
+					CreateLink($link, getVariableId($link,$categoryIdSwitches,$categoryIdGroups,$categoryIdPrograms), $mobileId, $order);
+					$order = $order + 10;
+				}
+			}
+		}
+	}
+
+
+
+	/****************************************************************************
+	 *
+	 * Andere Routinen
+	 *
+	 *  
+	 * 
+	 *
+	 *****************************************************************************************/
 	
 	if (false)
 		{  /* bereits bei Custom Components implementiert */

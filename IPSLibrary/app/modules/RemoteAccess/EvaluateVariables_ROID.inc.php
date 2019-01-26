@@ -66,48 +66,54 @@ function GuthabensteuerungList() { return array(
          "Typ" => 3, 
          "Order" => "120", 
              	),
+"Phone_06601735751" => array(
+         "OID" => 27446, 
+         "Name" => "Phone_06601735751", 
+         "Typ" => 3, 
+         "Order" => "122", 
+             	),
 
       );}
 
 function AmisStromverbrauchList() { return array(
+"Arbeitszimmer_Wirkenergie" => array(
+         "OID" => 18943, 
+         "Name" => "Arbeitszimmer_Wirkenergie", 
+         "Typ"      => 2, 
+         "Profile"  => "~Electricity", 
+         "Order"    => "100", 
+             	),
+"Arbeitszimmer_Wirkleistung" => array(
+         "OID" => 19680, 
+         "Name" => "Arbeitszimmer_Wirkleistung", 
+         "Typ"      => 2, 
+         "Profile"  => "~Power", 
+         "Order"    => "101", 
+             	),
 "Wohnzimmer_Wirkenergie" => array(
          "OID" => 23399, 
          "Name" => "Wohnzimmer_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "100", 
+         "Order"    => "102", 
              	),
 "Wohnzimmer_Wirkleistung" => array(
          "OID" => 31445, 
          "Name" => "Wohnzimmer_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
-         "Order"    => "101", 
+         "Order"    => "103", 
              	),
 "Wohnzimmer-Effektlicht_Wirkenergie" => array(
          "OID" => 14352, 
          "Name" => "Wohnzimmer-Effektlicht_Wirkenergie", 
          "Typ"      => 2, 
          "Profile"  => "~Electricity", 
-         "Order"    => "102", 
+         "Order"    => "104", 
              	),
 "Wohnzimmer-Effektlicht_Wirkleistung" => array(
          "OID" => 17352, 
          "Name" => "Wohnzimmer-Effektlicht_Wirkleistung", 
-         "Typ"      => 2, 
-         "Profile"  => "~Power", 
-         "Order"    => "103", 
-             	),
-"Arbeitszimmer-Netzwerk_Wirkenergie" => array(
-         "OID" => 35875, 
-         "Name" => "Arbeitszimmer-Netzwerk_Wirkenergie", 
-         "Typ"      => 2, 
-         "Profile"  => "~Electricity", 
-         "Order"    => "104", 
-             	),
-"Arbeitszimmer-Netzwerk_Wirkleistung" => array(
-         "OID" => 50977, 
-         "Name" => "Arbeitszimmer-Netzwerk_Wirkleistung", 
          "Typ"      => 2, 
          "Profile"  => "~Power", 
          "Order"    => "105", 

@@ -37,7 +37,9 @@ Switch ($_IPS['SENDER'])
 	Case "TimerEvent":
 	Case "Execute":
 		$kalender=new AutosteuerungStromheizung();
-		$kalender->ShiftforNextDay();
+		$oid=IPS_GetVariableIDByName("AutoFill",$kalender->getWochenplanID());		// OID von Profilvariable für Autofill
+		$value=$kalender->getStatusfromProfile(GetValue($oid));
+		$kalender->ShiftforNextDay($value);
 		$kalender->UpdateLinks($kalender->getWochenplanID());
 		$kalender->UpdateLinks($categoryIdTab);		
 		break;	

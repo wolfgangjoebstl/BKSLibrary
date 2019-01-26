@@ -1,12 +1,12 @@
 <?
 
-/* eingefuegt von den timer Events beim Schalten von IPSLight Switches */
+/* eingefuegt von den timer Events beim Schalten von Stromheizung Switches */
 
-include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-$lightManager = new IPSLight_Manager();
-$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+$lightManager = new IPSHeat_Manager();
+$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
 $switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
 $groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
 $prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);	
@@ -23,6 +23,11 @@ if ( isset($installedModules["Sprachsteuerung"]) === true )
 	{
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
 	}
+
+if ( isset($installedModules["IPSLight"]) === true )
+	{
+    include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+	}    
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');

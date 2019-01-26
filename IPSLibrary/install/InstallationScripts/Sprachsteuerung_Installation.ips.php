@@ -11,6 +11,8 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+    $testAusgabe=false;
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Sprachsteuerung\Sprachsteuerung_Configuration.inc.php");
 
@@ -33,7 +35,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Sprachsteuerung');
-	echo "\nSprachsteuerung Version : ".$ergebnis;
+	echo "\nSprachsteuerung Version : ".$ergebnis."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -41,7 +43,20 @@
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	//echo $inst_modules;
+	
+	if (isset($installedModules["OperationCenter"]))
+		{
+		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+		IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');		
+		$subnet="10.255.255.255";
+		$OperationCenter=new OperationCenter($subnet);		
+		//echo "Modul OperationCenter ist installiert.\n";
+		$results=$OperationCenter->SystemInfo();
+		$result=trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," ")));
+		$Version=explode(".",$result)[2];
+		echo "Win10 Betriebssystemversion : ".$Version."\n";
+		}
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Init
@@ -55,6 +70,8 @@
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
 	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"SpeakTPA");
+	$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"SystemTP");    
 
 	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
 	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
@@ -72,6 +89,51 @@
 	$Nachricht_inputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 
 	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+    $scriptIdAction            = IPS_GetScriptIDByName('Sprachsteuerung_Actionscript', $CategoryIdApp);
+
+    echo "ScriptId Spachsteuerung ".$scriptIdSprachsteuerung." Action ".$scriptIdAction." und Nachrichten Input ".$Nachricht_inputID."\n";
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Data
+	// ----------------------------------------------------------------------------------------------------------------------------
+
+    $pname="Test";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 1, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 1, "Test", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
+
+	$modulhandling = new ModuleHandling();
+	$echos=$modulhandling->getInstances('EchoRemote');
+
+    $pname="Echo-Speaker";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		//IPS_SetVariableProfileValues($pname, 1, 1, 1); //PName, Minimal, Maximal, Schrittweite
+		echo "Profil ".$pname." erstellt;\n";
+		}
+	$color=0x113c1e; $inc=4;
+	IPS_SetVariableProfileAssociation($pname, 1, "Default", "",($color+$inc)  ); //P-Name, Value, Assotiation, Icon, Color
+	foreach ($echos as $echo)
+		{
+		IPS_SetVariableProfileAssociation($pname, $echo, IPS_GetName($echo), "",($color+$inc) ); //P-Name, Value, Assotiation, Icon, Color
+		$inc *= 2;
+		}
+
+
+	$categoryId_Auswertungen    = CreateCategory('Auswertungen',   $CategoryIdData, 20);
+    //CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
+	$TestnachrichtID = CreateVariable("Testnachricht",3,$categoryId_Auswertungen, 0, "",$scriptIdAction,null,""  );
+    $ButtonID=CreateVariable("Button",0,$categoryId_Auswertungen, 10, "Test",$scriptIdAction,null,""  );
+    $SelectID=CreateVariable("SelectSpeaker",1,$categoryId_Auswertungen, 20, "Echo-Speaker",$scriptIdAction,null,""  );
 
 	//$listinstalledmodules=IPS_GetModuleList();
 	//print_r($listinstalledmodules);
@@ -110,14 +172,15 @@
 			}
 		}
 	ksort($pair);
-	echo "\nAlle verwendeten Module:\n";
+	$usedModules="\nAlle verwendeten Module:\n";
 	foreach($pair as $key=>$guid)
 		{
-		echo "   ".$key." = ".$guid."\n";
+		$usedModules.="   ".$key." = ".$guid."\n";
 		}
+	//echo $usedModules;	
 
 
-	echo "Alle SmartHome Module:\n";
+	echo "\n\nAlle SmartHome Module:\n";
 	print_r(IPS_GetInstanceListByModuleID("{3F0154A4-AC42-464A-9E9A-6818D775EFC4}"));
 
 	echo "Alle Mediaplayermodule:\n";
@@ -126,6 +189,7 @@
 		{
 		echo "    ".$oid."  (".IPS_GetName($oid).")\n";
 		}
+	echo "\n".IPS_GetName($oid)." Konfiguration : \n";	
 	$result=IPS_GetConfigurationForm($oid);		
 	print_r($result);
 	echo "--------------------\n";
@@ -220,16 +284,76 @@
 	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
 	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
 	
+	/*******************************
+	 *
+	 * Links für Webfront identifizieren
+	 *
+	 *
+	 *
+	 ********************************/
+
+	$webfront_links=array(
+		"AmazonEcho" => array(
+			"Auswertung" => array(
+				$TestnachrichtID => array(
+						"NAME"				=> "Sprachausgabe",
+						"ORDER"				=> 10,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),
+				$ButtonID => array(
+						"NAME"				=> "Test",
+						"ORDER"				=> 20,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),	   
+				$SelectID => array(
+						"NAME"				=> "Select Loudspeaker",
+						"ORDER"				=> 30,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),							
+					),
+			"Nachrichten" => array(
+				$Nachricht_inputID => array(
+						"NAME"				=> "Nachrichten",
+						"ORDER"				=> 10,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),
+						),					
+					),	
+				); 
+					
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
 	
+    $wfcHandling = new WfcHandling();
+
 	if ($WFC10_Enabled)
 		{
-		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
-		echo "  Kategorie Sprachsteuerung installiert : ".$categoryId_WebFront."  (".IPS_GetName($categoryId_WebFront).")\n"; 
+		echo "====================================================================================\n";		
+        $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "Webportal Administrator installiert in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
+        echo "Webportal Administrator installieren in: ".$WFC10_Path." \n";
+		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+
+  		//echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
+        //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+        
+        
+        $wfcHandling->setupWebfront($webfront_links,$WFC10_TabPaneParent,$categoryId_WebFrontAdministrator,"Administrator");
+
+        /*
+        echo "  Kategorie Sprachsteuerung installiert : ".$categoryId_WebFront."  (".IPS_GetName($categoryId_WebFront).")\n"; 
 		CreateLinkByDestination("Nachrichtenverlauf", $Nachricht_inputID,    $categoryId_WebFront,  20);
+        */
 		}
 
 	if ($WFC10User_Enabled)
@@ -253,7 +377,20 @@
 
 		}
 
-/***************************************************************************************/
-
+    /* test, Sprachausgabe
+     *
+     ***************************************************************************************/
+    if ($testAusgabe)     
+        {
+        echo "\n\n--------Test Sprachsteuerungsausgabe:-----------\n";
+        tts_play(1,'Sprachsteuerung Modul und Library installiert.','',2);
+        tts_play(1,'Test Default Lautsprecher','',2);
+        $modulhandling = new ModuleHandling();
+        $echos=$modulhandling->getInstances('EchoRemote');
+        foreach ($echos as $echo)
+            {
+            tts_play($echo,'Test Echo '.IPS_GetName($echo).' Lautsprecher','',2);
+            }
+        }
 
 ?>

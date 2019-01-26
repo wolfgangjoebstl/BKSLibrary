@@ -27,6 +27,7 @@
  *
  * OperationCenter
  * DeviceManagement
+ * statusDisplay
  * parsefile
  * TimerHandling
  *
@@ -162,7 +163,7 @@ class OperationCenter
 		$this->categoryId_SysPing    	= CreateCategory('SysPing',       	$this->CategoryIdData, 200);
 		$this->categoryId_RebootCtr  	= CreateCategory('RebootCounter', 	$this->CategoryIdData, 210);
 		$this->categoryId_Access  		= CreateCategory('AccessServer', 	$this->CategoryIdData, 220);
-		$this->categoryId_SysInfo  	= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
+		$this->categoryId_SysInfo  		= CreateCategory('SystemInfo', 		$this->CategoryIdData, 230);
 		
 		//echo "Subnet ".$this->subnet."   ".$subnet."\n";		
 		$this->mactable=$this->create_macipTable($this->subnet);
@@ -992,7 +993,7 @@ class OperationCenter
 	 * liest systeminfo aus und speichert die relevanten Daten als Register
 	 *
 	 */
-	 function SystemInfo()
+	 function SystemInfo($debug=false)
 	 	{
 
 		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
@@ -1039,7 +1040,7 @@ class OperationCenter
 					}
 				}  /* ende strlen */
 			}
-		echo "Ausgabe direkt:\n".$PrintLines."\n";		
+		if ($debug) echo "Ausgabe direkt:\n".$PrintLines."\n";		
 
 		//print_r($results);
 		//print_r($results2);
@@ -1090,7 +1091,7 @@ class OperationCenter
 			case "15063": $Codename="Creators Update (Redstone 2)"; break;
 			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
 			case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
-			case "17713": $Codename="Fall 2018 Update (Redstone 5)"; break;			
+			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			
 			default: $Codename=$Version[2];break;
 			}			
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1140,8 +1141,8 @@ class OperationCenter
 						{
 						if (isset ($config["REBOOTSWITCH"]))
 							{
-							echo $device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
 							$SwitchName = $config["REBOOTSWITCH"];
+							echo $device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht. Reboot ".$SwitchName." !\n";
 							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
 							IPSLight_SetSwitchByName($SwitchName,false);
 							sleep(2);
@@ -1151,8 +1152,17 @@ class OperationCenter
 							}
 						else
 							{
-							$this->log_OperationCenter->LogMessage($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");
-							$this->log_OperationCenter->LogNachrichten($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");							
+                            if ($reboot_ctr<100)
+                                {   /* die ersten 100 Stunden, Nachricht jede Stunde ausgeben, dann nur mehr einmal am Tag */
+							    $this->log_OperationCenter->LogMessage($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");
+							    $this->log_OperationCenter->LogNachrichten($device."_".$name." wird seit ".$reboot_ctr." Stunden nicht erreicht.");							
+                                }
+                            elseif (($reboot_ctr%24)==0)
+                                {
+                                $days=round($reboot_ctr/24,0);
+							    $this->log_OperationCenter->LogMessage($device."_".$name." wird seit ".$days." Tagen nicht erreicht.");
+							    $this->log_OperationCenter->LogNachrichten($device."_".$name." wird seit ".$days." Tagen nicht erreicht.");                                
+                                }
 							}	
 						}
 					else
@@ -4239,10 +4249,11 @@ class statusDisplay
 	{
 
     private $CategoryIdData,$categoryId_TimerSimulation,$archiveHandlerID;
- 	private $log_OperationCenter;
+
+ 	private $log_OperationCenter, $auto;           // class declarations
 
 	private $installedModules     	= array();          // koennte man auch static mit einer abstracten Klasse für alle machen
-	
+	private $ScriptsUsed = array();                     // alle Skripts für dieses Modul
 	
 	/**
 	 * @public
@@ -4264,21 +4275,58 @@ class statusDisplay
 		$this->CategoryIdData=$moduleManager->GetModuleCategoryID('data');
 		$this->installedModules = $moduleManager->GetInstalledModules();
 
+		$app_oid=$moduleManager->GetModuleCategoryID()."\n";
+		$oid_children=IPS_GetChildrenIDs($app_oid);
+		$result=array();
+		//echo "  Alle Skript Files :\n";
+		foreach($oid_children as $oid)
+			{
+			$result[IPS_GetName($oid)]=$oid;
+			//echo "      OID : ".$oid." Name : ".IPS_GetName($oid)."\n";
+			}
+		$this->ScriptsUsed=$result;
+
 		$this->categoryId_TimerSimulation    	= IPS_GetCategoryIDByName('TimerSimulation',$this->CategoryIdData);
 
 		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+
+        //$moduleManagerAS = new IPSModuleManager('Autosteuerung',$repository);
+        //print_r($this->installedModules);
+        if (isset($this->installedModules["Autosteuerung"])) echo "Module Autosteuerung installiert.\n";
+        $this->auto=new Autosteuerung();
+
 		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		}
 
     function getCategory()
         {
-
         return ($this->categoryId_TimerSimulation);
-
-
         }
+
+    function initSlider()
+        {
+        $variables=$this->auto->getScenes();
+        foreach ($variables as $id => $value)
+            {
+            /* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
+            $variableID=CreateVariable($id,1,$this->categoryId_TimerSimulation,100,"~Intensity.100",$this->ScriptsUsed["OperationCenter"],null,"");
+            SetValue($variableID,$value);
+            }
+        }
+
+    /**************************************************************
+     *
+     * schreibt den Status der AWS in die Tabelle vom OperationCenter
+     *
+     **********************************************************************/
+
+    function setStatus()
+        {
+        $oid=IPS_GetVariableIDByName("TableEvents",$this->categoryId_TimerSimulation);
+        SetValue($oid,$this->auto->statusAnwesenheitSimulation(true));
+        }    
 
     } // ende class statusDisplay        
 		
@@ -4733,7 +4781,8 @@ function dirToArray2($dir)
  * Ausgabe von Ton für Sprachansagen, kommt noch einmal in der Sprachsteuerungslibrary vor 
  * beide functions sind gleich gestellt.
  *
- *  sk    soundkarte   es gibt immer nur 1, andere kann man implementieren
+ *  sk    soundkarte   es gibt immer nur 1, andere bis 9 kann man implementieren
+ *        größer 9 ist eine ID einer EchoControl Instanz (Amazon Echo Geräte)
  *
  * 	modus == 1 ==> Sprache = on / Ton = off / Musik = play / Slider = off / Script Wait = off
  * 	modus == 2 ==> Sprache = on / Ton = on / Musik = pause / Slider = off / Script Wait = on
@@ -4743,51 +4792,55 @@ function dirToArray2($dir)
  *
  *************************************************************/
 
-	function tts_play($sk,$ansagetext,$ton,$modus)
+	function tts_play($sk,$ansagetext,$ton,$modus,$debug=false)
  		{
-		echo "Aufgerufen als Teil der Library des OperationCenter.\n";
+		$tts_status=true;		
+		$sprachsteuerung=false; $remote=false;
+
+		if ($debug) echo "Aufgerufen als Teil der Library des OperationCenter.\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager))
 			{
 			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
 			}
-		$sprachsteuerung=false;
-		$knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
 		$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-		foreach ($knownModules as $module=>$data)
+		if (isset($installedModules["Sprachsteuerung"]) ) 
 			{
-			$infos   = $moduleManager->GetModuleInfos($module);
-			if (array_key_exists($module, $installedModules))
+			$sprachsteuerung=true;
+			IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");					
+			$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+			$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+			$config=Sprachsteuerung_Configuration();
+			if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) && ($sk<10) ) 
+                { 
+                $remote=true; 
+                $url=$config["RemoteAddress"]; 
+                $oid=$config["ScriptID"]; 
+                }					
+
+			$object_data= new ipsobject($CategoryIdData);
+			$object_app= new ipsobject($CategoryIdApp);
+
+			$NachrichtenID = $object_data->osearch("Nachricht");
+			$NachrichtenScriptID  = $object_app->osearch("Nachricht");
+			if ($debug) echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
+
+			if (isset($NachrichtenScriptID))
 				{
-				if ($module=="Sprachsteuerung") 
-					{
-					$sprachsteuerung=true;
-					$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-					$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-					$object_data= new ipsobject($CategoryIdData);
-					$object_app= new ipsobject($CategoryIdApp);
-
-					$NachrichtenID = $object_data->osearch("Nachricht");
-					$NachrichtenScriptID  = $object_app->osearch("Nachricht");
-					echo "Nachrichten gibt es auch : ".$NachrichtenID ."  (".IPS_GetName($NachrichtenID).")   ".$NachrichtenScriptID." \n";
-
-					if (isset($NachrichtenScriptID))
-						{
-						$object3= new ipsobject($NachrichtenID);
-						$NachrichtenInputID=$object3->osearch("Input");
-						$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
-						$log_Sprachsteuerung->LogNachrichten("Sprachsteuerung: Ausgabe von \"".$ansagetext."\"");
-						}
-					}
+				$object3= new ipsobject($NachrichtenID);
+				$NachrichtenInputID=$object3->osearch("Input");
+				$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+				if ($sk<10) $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk mit \"".$ansagetext."\"");
+				else $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk (".IPS_GetName($sk).") mit \"".$ansagetext."\"");
 				}
 			}
-		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+		$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');           // App Kategorie der Sprachsteuerung
 		$scriptIdSprachsteuerung   = @IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
 		if ($scriptIdSprachsteuerung==false) $sprachsteuerung=false;
-		if ($sprachsteuerung==true)
+		if ( ($sprachsteuerung==true) && ($remote==false) )
 			{
+			if ($debug) echo "Sprache lokal ausgeben.\n";			
 			$id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
 			$id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
 			$id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
@@ -4896,15 +4949,22 @@ function dirToArray2($dir)
 							WAC_Stop($id_sk1_ton);
 							WAC_SetRepeat($id_sk1_ton, false);
 							WAC_ClearPlaylist($id_sk1_ton);
-							echo "Tonwiedergabe auf Stopp stellen \n";
+							if ($debug) echo "Tonwiedergabe auf Stopp stellen \n";
 							}
 						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) { echo "Error Erzeugung Sprachfile gescheitert.\n"; $tts_status=false; }
 						WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
-						echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
-						while (@WAC_Next($id_sk1_ton)==true) { echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; }
+						if ($debug) echo "Check SoundID: ".$id_sk1_ton." Ton: ".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav  Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n";
+						while (@WAC_Next($id_sk1_ton)==true) 
+							{ 
+							if ($debug) echo " Playlistposition : ".WAC_GetPlaylistPosition($id_sk1_ton)."/".WAC_GetPlaylistLength($id_sk1_ton)."\n"; 
+							}
 						$status=@WAC_Play($id_sk1_ton);
-						if (!$status) { echo "Fehler WAC_play nicht ausführbar.\n"; $tts_status=false; }
+						if (!$status) 
+							{ 
+							if ($debug) echo "Fehler WAC_play nicht ausführbar.\n"; 
+							$tts_status=false; 
+							}
 						
   						WAC_Stop($id_sk1_ton);
 						WAC_SetRepeat($id_sk1_ton, false);
@@ -4912,35 +4972,40 @@ function dirToArray2($dir)
 						$status=TTS_GenerateFile($id_sk1_tts, $ansagetext, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav",39);
 						if (!$status) echo "Error";
 		     			WAC_AddFile($id_sk1_ton, IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav");
-		     			echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
+		     			if ($debug) echo "---------------------------".IPS_GetKernelDir()."media/wav/sprache_sk1_" . $sk1_counter . ".wav\n";
 						WAC_Play($id_sk1_ton);
 						}
 
-					//Script solange anghalten wie Sprachausgabe läuft
+					//Script solange anhalten wie Sprachausgabe läuft
 					if($modus != 1)
 						{
-						sleep(1);
-						$status = GetValueInteger($id_sk1_ton_status);
-						while ($status == 1)	$status = GetValueInteger($id_sk1_ton_status);
+						if (GetValueInteger($id_sk1_ton_status) == 1) echo "Noch warten bis Status des Ton Moduls ungleich 1 :";
+						while (GetValueInteger($id_sk1_ton_status) == 1)
+							{												
+							sleep(1);
+							if ($debug) echo ".";
+							}
+						if ($debug) echo "\nLänge der Playliste : ".WAC_GetPlaylistLength($id_sk1_ton)." Position : ".WAC_GetPlaylistPosition($id_sk1_ton)."\n";														
 						}
 
 			 		if($modus == 3)
 						{
 						$musik_vol = GetValueInteger($id_sk1_musik_vol);
-		   				for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
-		      				{
+						for ($musik_vol=1; $musik_vol<=$merken; $musik_vol++)
+		   				{
 							WAC_SetVolume ($id_sk1_musik, $musik_vol);
 							$slider = 3000; //Zeit des Sliders in ms
 							if($merken>0) $warten = $slider/$merken; else $warten = 0;
 							IPS_Sleep($warten);
-      						}
-      					}
+							}
+    					}
 					if($modus == 2)
 						{
 						if($musik_status == 1)
 							{
 							/* wenn der Musikplayer läuft, diesen auf Pause setzen */
 							WAC_Pause($id_sk1_musik);
+							if ($debug) echo "Musikwiedergabe auf Pause stellen \n";							
 							}
 						}
 					break;
@@ -4948,11 +5013,27 @@ function dirToArray2($dir)
 				//---------------------------------------------------------------------
 
 				//Hier können weitere Soundkarten eingefügt werden
-				//case '2':
-				//entsprechende Werte bitte anpassen
+				case '2':
+					echo "Fehler: Soundkarte 2 nicht definiert.\n";
+					break;
+				default:
+                    $modulhandling = new ModuleHandling($debug);
+                    $echos=$modulhandling->getInstances('EchoRemote');
+                    if (in_array($sk,$echos)) EchoRemote_TextToSpeech($sk, $ansagetext);
+				    break;				
 
 				}  //end switch
-			} //endif	
+			} //endif	sprachsteuerungs Modul richtig konfiguriert
+			
+		if ( ($sprachsteuerung==true) && ($remote==true) )
+			{
+			if ($debug)echo "Sprache remote auf ".$url." ausgeben. verwende Script mit OID : ".$oid."\n";
+			$rpc = new JSONRPC($url);
+			$monitor=array("Text" => $ansagetext);
+			$rpc->IPS_RunScriptEx($oid,$monitor);
+			}
+
+		return ($tts_status);
  	}   //end function
 
 /***************************************************

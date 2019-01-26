@@ -71,6 +71,14 @@ if ($tim1ID==false)
 	}
 IPS_SetEventActive($tim1ID,true);
 
+/* DeviceManger muss immer installuert werden, wird in Timer als auch RunScript und Execute verwendet */
+if (isset($installedModules["OperationCenter"])) 
+    {
+    $DeviceManager = new DeviceManagement();
+    echo $DeviceManager->HomematicFehlermeldungen();
+    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
+    }
+
 /******************************************************
  *
  *				Aufruf von EXECUTE oder RUNSCRIPT
@@ -90,14 +98,6 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 	
 	echo "\n================================================================================================\n";
 	echo "Von der Konsole aus gestartet.\n";
-
-    if (isset($installedModules["OperationCenter"])) 
-        {
-        $DeviceManager = new DeviceManagement();
-        echo $DeviceManager->HomematicFehlermeldungen();
-	    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
-        }
-
 	echo "\n================================================================================================\n";
 	echo "Auflistung der angeschlossenen Geräte nach Seriennummern. Es gibt insgesamt ".sizeof($serials).".\n";		
 	print_r($serials);

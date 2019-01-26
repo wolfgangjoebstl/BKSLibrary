@@ -91,7 +91,7 @@
 			//echo "HeatSet Homematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
 			
-			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncPosition($value, $this);
+			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this);
 			
 			$log=new HeatSet_Logging($variable);
 			$result=$log->HeatSet_LogValue($value);
@@ -109,18 +109,12 @@
 		 */
 		public function SetState($power, $level)
 			{
-			if (!$power) 
-				{
-				$setlevel=6;
-				}
-			else
-				{
-				$setlevel=$level;
-				}	
-			
+			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States	
+			$setlevel=$level;
 			if ($this->rpcADR==Null)
 				{
-				//echo "   IPSComponent HeatSet_Homematic SetState mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+				//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
 				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
 			else

@@ -36,12 +36,12 @@
 		 */
 		public function __construct($var1=null,$var2=null,$var3=null)
 			{
-			echo "construct IPSModuleHeatSet_All with parameter ".$var1."  ".$var2."  ".$var3."\n";
+			if ($var1 != null) echo "construct IPSModuleHeatSet_All with parameter ".$var1."  ".$var2."  ".$var3."\n";
 			//$this->instanceId = IPSUtil_ObjectIDByPath($instanceId);
 			//$this->movementId = $movementId;
 			}
 	
-			/**
+		/**
 		 * @public
 		 *
 		 * Ermöglicht die Synchronisation der aktuellen Position der Beschattung
@@ -51,9 +51,9 @@
 		public function SyncPosition($position, IPSComponentHeatSet $componentToSync) 
 			{
 			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
-			if ($position>6) { $state=true; } else { $state=false; }
-			//echo "iPSModuleHeatSet_All HandleEvent SyncPosition mit Status ".($state?'On':'Off')." mit Wert ".$position."\n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: SyncPosition mit Status '.($state?'On':'Off').' mit Wert '.$position);			
+            if ($position>6) { $state=true; } else { $state=false; }  // state automatisch anhand Position setzen
+			echo "IPSModuleHeatSet_All HandleEvent SyncPosition mit Wert ".$position."\n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: SyncPosition mit Wert '.$position);			
 			$componentParamsToSync = $componentToSync->GetComponentParams();
 			$deviceConfig          = IPSHeat_GetHeatConfiguration();
 			foreach ($deviceConfig as $deviceIdent=>$deviceData) 
@@ -62,12 +62,48 @@
 				$componentParamsConfig = $componentConfig->GetComponentParams();
 				$componentParamsConfig1=(string)explode(",",$componentParamsConfig)[1];
 				$componentParamsToSync1=(string)explode(",",$componentParamsToSync)[1];
-				//echo "Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
-				if ($componentParamsConfig1==$componentParamsToSync1) 
+				echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
+				if ( ($componentParamsConfig1==$componentParamsToSync1) && ($componentParamsConfig1!="") )
 					{
-					//echo "Parameter to Sync found : $componentParamsToSync1 \n";
+					echo "Parameter to Sync found : $componentParamsToSync1 \n";
 					$lightManager = new IPSHeat_Manager();
 					$lightManager->SynchronizePosition($deviceIdent, $state, $position);				
+					}
+				}
+			}
+
+		/**
+		 * @public
+		 *
+		 * Ermöglicht die Synchronisation der aktuellen Stelltemperatur des Thermostaten
+         * in der Configuration muss neben dem Wert immer auch eine OID übergeben werden, anhand dieser kann synchronisiert werden
+		 *
+		 * @param string $position Aktuelle Position der Beschattung (Wertebereich 0-100)
+		 */
+		public function SyncSetTemp($position, IPSComponentHeatSet $componentToSync) 
+			{
+			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+			//if ($position>6) { $state=true; } else { $state=false; }  // state nicht automatisch setzen
+			//echo "IPSModuleHeatSet_All HandleEvent SyncSetTemp mit Status ".($state?'On':'Off')." und TempWert ".$position."\n";
+			//IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetTemp mit Status '.($state?'On':'Off').' und TempWert '.$position);			
+			echo "IPSModuleHeatSet_All HandleEvent SyncSetTemp mit TempWert ".$position."\n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetTemp mit TempWert '.$position);			
+			$componentParamsToSync = $componentToSync->GetComponentParams();
+            //print_r($componentParamsToSync);
+			$deviceConfig          = IPSHeat_GetHeatConfiguration();
+			foreach ($deviceConfig as $deviceIdent=>$deviceData) 
+				{
+				$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
+				$componentParamsConfig = $componentConfig->GetComponentParams();
+				$componentParamsConfig1=(string)explode(",",$componentParamsConfig)[1];
+				$componentParamsToSync1=(string)explode(",",$componentParamsToSync)[1];
+				//echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
+				if ( ($componentParamsConfig1==$componentParamsToSync1)  && ($componentParamsConfig1!="") )
+					{
+					echo "Parameter to Sync found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
+                    IPSLogger_Inf(__file__,"SyncSetTemp Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
+					$lightManager = new IPSHeat_Manager();
+					$lightManager->SynchronizeSetTemp($deviceIdent, $position);				
 					}
 				}
 			}

@@ -265,37 +265,83 @@ Path=Visualization.Mobile.iTunes
 	 *
 	 *
 	 * funktioniert für jeden beliebigen Vartiablennamen, zumindest ein/aus Schalter wird angelegt
+	 * [Auswertung] [ANchrichten] für Administrator Splitpane Links und rechts, User TabPane nur mit links
+	 * [Name] oder [Name][Subname] kann vorher gesetzt werden
 	 *
+	 * Startpunkt ist ein TabPane auf der Hauptleiste oder einer Subleiste, definiert mit dem ini File und den 
+	 *    Variablen $WFC10_TabPaneItem und $WFC10_TabPaneParent. Bei der Hauptleiste sollte nur ein Icon angegeben werden.
+	 *    es kann aber auch bei einer bestehenden Hauptleiste untergemietet werden
 	 *
 	 ********************************/
 
 	echo "\n";
 	echo "===================================================\n";
-	echo "Konfiguration ausgeben:\n";
+	echo "Konfiguration aus iTunes_Configuration ausgeben:\n";
 	$config=iTunes_Configuration();
 	print_r($config);
 
 	$webfront_links=array();
-	foreach ($config["iTunes"] as $name => $entry)
-		{
-		if (isset($entry["NAME"])==false) $entry["NAME"]=$name;
-		if (isset($entry["PROFILE"])==false) $entry["PROFILE"]="";
-		$AutosteuerungID = CreateVariable($entry["NAME"], 1, $categoryId_iTunes, 1, $entry["PROFILE"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-		$webfront_links[$AutosteuerungID]["TAB"]="iTunes";
-		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
-		$webfront_links[$AutosteuerungID]["OID_R"]=$iTunes_NachrichtenInput;	
-		$webfront_links[$AutosteuerungID]["NAME"]=$entry["NAME"];
-		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=true;
-		$webfront_links[$AutosteuerungID]["USER"]=true;
-		$webfront_links[$AutosteuerungID]["MOBILE"]=true;
-		}
-		
-	echo "Webfront Visualisierungskonfiguration ausgeben:\n";		
-	print_r($webfront_links);
+    if (isset($config["Media"]))
+        {
+        $order=10;            
+    	foreach ($config["Media"] as $name => $entry)
+	    	{
+		    if (isset($entry["NAME"])==false) $entry["NAME"]=$name;
+    		if (isset($entry["PROFILE"])==false) $entry["PROFILE"]="";
+            $tabname="Media";
+	    	$AutosteuerungID = CreateVariable($entry["NAME"], 1, $categoryId_iTunes, 1, $entry["PROFILE"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+		    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["TAB"]="iTunes";
+		    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["NAME"]=$entry["NAME"];
+            $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ORDER"]=$order;
+
+    		$webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["ADMINISTRATOR"]=true;
+	    	$webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["USER"]=true;
+		    $webfront_links[$tabname]["Auswertung"][$AutosteuerungID]["MOBILE"]=true;
+            $order+=10;
+		    }
+    	$webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["NAME"]="Nachrichten";
+	    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ORDER"]=10;            
+
+	    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["ADMINISTRATOR"]=true;        
+	    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["USER"]=false;        
+	    $webfront_links[$tabname]["Nachrichten"][$iTunes_NachrichtenInput]["MOBILE"]=false;        
+        }
+    if ( (isset($config["Alexa"])) && isset($installedModules["iTunesSteuerung"]) )         // Modul und Config müssen passen
+        {
+        if (isset($entry["NAME"])==false) $entry["NAME"]="Alexa";            
+        $categoryId_Alexa  = CreateCategory("Alexa", $CategoryIdData, 20); 
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        $echos=$modulhandling->getInstances('EchoRemote');
+        echo "Alexa Echo Geräte anlegen.\n";
+        foreach ($echos as $echo)
+            {
+            $name=IPS_GetName($echo);
+            echo "   ".$echo."  (".$name.")";
+            if ($name=="Dieses Gerät")
+                {
+                echo "   ->   eigene IP Symcon Instanz nicht visualisieren.";    
+                }
+            else
+                {    /* es werden derzeit nur Index, NAME und ORDER ausgewertet */
+                $order=10;                        
+                $webfront_links["Alexa"][$name]["Auswertung"][$echo]["NAME"]=$name;        
+            	$webfront_links["Alexa"][$name]["Auswertung"][$echo]["ADMINISTRATOR"]=true;
+	            $webfront_links["Alexa"][$name]["Auswertung"][$echo]["USER"]=false;
+        		$webfront_links["Alexa"][$name]["Auswertung"][$echo]["MOBILE"]=false;                  
+                $webfront_links["Alexa"][$name]["Auswertung"][$echo]["ORDER"]=$order;
+                $order+=10;
+                }
+            echo "\n";    
+            }
+        }
+
+	echo "Webfront Visualisierungskonfiguration ausgeben:\n"; print_r($webfront_links);
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Administrator Installation
+     *
+     * Algorithmen siehe auch CustomComponent_Installation 
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	 
@@ -309,58 +355,246 @@ Path=Visualization.Mobile.iTunes
 		 *
 		 */
 		
-		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "====================================================================================\n";		
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+        $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
+		echo "Webportal Administrator im Webfront Konfigurator ID ".$WFC10_ConfigId." installiert in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
+
+		/*************************************
+		 * Ordnung machen, hat sicher bereits das CustomComponent_Installation Modul bereits erledigt */
+
+		  //Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+		  //CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		  //@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
+		  //@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
+
+		/*************************************/
+
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
-
-		/*************************************/
-
-		/* Ordnung machen, hat sicher irgendein anderes Modul bereits erledigt */
-		//CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
-		//@WFC_UpdateVisibility ($WFC10_ConfigId,"root",false	);				
-		//@WFC_UpdateVisibility ($WFC10_ConfigId,"dwd",false	);
-
-		/*************************************/
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:".$WFC10_TabPaneOrder.",Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
+		echo "***** Tabpane ".$WFC10_TabPaneItem." erzeugen in ".$WFC10_TabPaneParent."\n";
+        CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);    /* macht den Notenschlüssel in die oberste Leiste */
 
 		/* Neue Tab für diese untergeordnete Anzeigen schaffen */
-		echo "\nWebportal Administrator.iTunes Steuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
+		echo "Webportal Administrator.iTunes Steuerung Datenstruktur installieren in: ".$WFC10_Path." \n";
 		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
-		EmptyCategory($categoryId_WebFrontAdministrator);
+		//EmptyCategory($categoryId_WebFrontAdministrator);
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
 
 		/*************************************/
 
-		/* TabPaneItem anlegen, etwas kompliziert geloest */
-		$tabItem = $WFC10_TabPaneItem.$WFC10_TabItem;
-		if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
-		 	{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  löscht TabItem : ".$tabItem."\n";
-			DeleteWFCItems($WFC10_ConfigId, $tabItem);
-			}
-		else
-			{
-			echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).")  TabItem : ".$tabItem." nicht mehr vorhanden.\n";
-			}	
-		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem : ".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
-		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+        if (array_key_exists("Auswertung",$webfront_links) ) 
+            {
 
-		$tabs=array();
-		foreach ($webfront_links as $OID => $webfront_link)
-			{
-			$tabs[$webfront_link["TAB"]]=$webfront_link["TAB"];
-			}
-		echo "Folgende Tabs werden erstellt:\n";
-		print_r($tabs);
+            }
+        else
+            {    
+    		foreach ($webfront_links as $Name => $webfront_group)
+	    	    {
+		    	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
+			     * Der Name für die Felder wird selbst erfunden.
+    			 */
+
+                echo "\n**** iTunes Visualization, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+		    	$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, 10);
+			    EmptyCategory($categoryId_WebFrontTab);   
+                echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
+
+	    		$tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
+                deletePane($WFC10_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
+
+                if (array_key_exists("Auswertung",$webfront_group) ) 
+                    {
+    			    echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
+                    createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+                    }
+                else
+                    {
+        		    foreach ($webfront_group as $SubName => $webfront_subgroup)
+	        	        {                    
+                        /* noch eine Zwischenebene an Tabs einführen */
+                        echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+			            $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+			            EmptyCategory($categoryId_WebFrontSubTab);   
+                        echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+
+            			$tabSubItem = $WFC10_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+                        deletePane($WFC10_ConfigId, $tabSubItem);              /* Spuren von vormals beseitigen */
+
+                		echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
+                        CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+
+			            echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+                        createSplitPane($WFC10_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"Administrator");    
+                        }
+                    }    
+    			}  // ende foreach
+            }    
+		}
+
+	/*----------------------------------------------------------------------------------------------------------------------------
+	 *
+	 * WebFront User Installation
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
+	 
+	if ( ($WFC10User_Enabled) )
+		{
+		/* Kategorien werden angezeigt, eine allgemeine für alle Daten in der Visualisierung schaffen */
+
+		echo "====================================================================================\n";
+		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
+		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installiert in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
+
+        /*************************************
+         * Ordnung machen wahrscheinlich schon in custom_components erledigt */
+		  //CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
+		  //@WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
+          //@WFC_UpdateVisibility ($WFC10User_ConfigId,"dwd",false	);
 		
-		$i=0;
-		foreach ($tabs as $tab)
-			{
-			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
-			$categoryIdLeft  = CreateCategory('Left',  $categoryIdTab, 10);
-			$categoryIdRight = CreateCategory('Right', $categoryIdTab, 20);
-			echo "Splitpane erzeugen in $WFC10_TabPaneItem:\n";
+		/* Neue Tab für untergeordnete Anzeigen wie eben LocalAccess und andere schaffen */
+		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10User_ConfigId.",Item:".$WFC10User_TabPaneItem.",Parent:".$WFC10User_TabPaneParent.",Order:".$WFC10User_TabPaneOrder."Name:".$WFC10User_TabPaneName.",Icon:".$WFC10User_TabPaneIcon."\n";        
+		echo "***** Tabpane ".$WFC10User_TabPaneItem." erzeugen in ".$WFC10User_TabPaneParent."\n";        
+		CreateWFCItemTabPane   ($WFC10User_ConfigId,  $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);     /* macht den Notenschlüssel in die oberste Leiste */
+
+		$categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
+		IPS_SetHidden($categoryId_WebFrontUser,true);
+		
+		foreach ($webfront_links as $Name => $webfront_group)
+		   {
+			$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontUser, 10);
+			EmptyCategory($categoryId_WebFrontTab);
+			echo "Kategorien erstellt, Main für ".$Name." : ".$categoryId_WebFrontTab."\n";
+
+			$tabItem = $WFC10User_TabPaneItem.$Name;
+            deletePane($WFC10User_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
+
+            if (array_key_exists("Auswertung",$webfront_group) ) 
+                {
+			    echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
+                createSplitPane($WFC10User_ConfigId,$webfront_group,$Name,$tabItem,$WFC10User_TabPaneItem,$categoryId_WebFrontTab,"User");
+                }
+            else
+                {
+    		    foreach ($webfront_group as $SubName => $webfront_subgroup)
+	    	        {                    
+                    /* noch eine Zwischenebene an Tabs einführen */
+                    echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+			        $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+			        EmptyCategory($categoryId_WebFrontSubTab);   
+                    echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+
+        			$tabSubItem = $WFC10User_TabPaneItem.$Name.$SubName;				/* Netten eindeutigen Namen berechnen */
+                    deletePane($WFC10User_ConfigId, $tabSubItem);              /* Spuren von vormals beseitigen */
+
+            		echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
+                    CreateWFCItemTabPane   ($WFC10User_ConfigId, $tabItem, $WFC10User_TabPaneItem,  $WFC10User_TabPaneOrder, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
+
+			        echo "Webfront ".$WFC10User_ConfigId." erzeugt TabItem :".$tabSubItem." in ".$tabItem."\n"; 
+                    createSplitPane($WFC10User_ConfigId,$webfront_subgroup,$SubName,$tabSubItem,$tabItem,$categoryId_WebFrontSubTab,"User");    
+                    }
+                }    
+			}
+		}
+	else
+	   {
+	   /* User not enabled, alles loeschen 
+	    * leider weiss niemand so genau wo diese Werte gespeichert sind. Schuss ins Blaue mit Fehlermeldung, da Variablen gar nicht definiert isnd
+		*/
+	   DeleteWFCItems($WFC10User_ConfigId, "HouseTPU");
+       $categoryId_WebFrontUser         = CreateCategoryPath($WFC10User_Path);
+	   EmptyCategory($categoryId_WebFrontUser);
+	   }
+
+	if ( ($Mobile_Enabled) )
+		{
+		echo "\nWebportal Mobile installieren: \n";
+		$categoryId_MobileWebFront         = CreateCategoryPath($Mobile_Path);
+		IPS_SetHidden($categoryId_MobileWebFront,false);	/* mus dargestellt werden, sonst keine Anzeige am Mobiltelefon */	
+			
+		foreach ($webfront_links as $Name => $webfront_group)
+		   {
+			$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_MobileWebFront, 10);
+			EmptyCategory($categoryId_WebFrontTab);
+			echo "Kategorien erstellt, Main für ".$Name." : ".$categoryId_WebFrontTab."\n";
+
+            if (array_key_exists("Auswertung",$webfront_group) ) 
+                {
+    			foreach ($webfront_group as $Group => $webfront_link)
+	    			 {
+		    		foreach ($webfront_link as $OID => $link)
+			    		{
+				    	echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+					    if ($Group=="Auswertung")
+				 		    {
+    				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
+	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontTab,  20);
+		    		 		}
+			    		}
+    			    }
+                }
+            else
+                {
+    		    foreach ($webfront_group as $SubName => $webfront_subgroup)
+	    	        {                    
+                    /* noch eine Zwischenebene an Tabs einführen */
+                    echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+			        $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
+			        EmptyCategory($categoryId_WebFrontSubTab);   
+                    echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
+        			foreach ($webfront_subgroup as $Group => $webfront_link)
+	    			    {
+		    		    foreach ($webfront_link as $OID => $link)
+			    		    {
+				    	    echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+					        if ($Group=="Auswertung")
+				 		        {
+    				 		    echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontSubTab."\n";
+	    					    CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontSubTab,  20);
+		    		 		    }   
+    			    		}
+        			    }
+
+                    }
+                }        
+			}
+		}
+	else
+	   {
+	   /* Mobile not enabled, alles loeschen */
+	   }
+
+	if ($Retro_Enabled)
+		{
+		echo "\nWebportal Retro installieren: \n";
+		$categoryId_RetroWebFront         = CreateCategoryPath($Retro_Path);
+		}
+	else
+	   {
+	   /* Retro not enabled, alles loeschen */
+	   }
+
+	 
+	 
+	 
+	 
+	 
+	 
+	ReloadAllWebFronts();
+
+
+/****************************************************************************************************************/
+
+    /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
+
+    function createSplitPane($WFC10_ConfigId, $webfront_group, $Name, $tabItem, $WFC10_TabPaneItem,$categoryId_WebFrontSubTab,$scope="Administrator")
+        {
+
+		$categoryIdLeft  = CreateCategory('Left',  $categoryId_WebFrontSubTab, 10);
+		$categoryIdRight = CreateCategory('Right', $categoryId_WebFrontSubTab, 20);
+		echo "Kategorien erstellt, SubSub install for Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n"; 
+
+			echo "**** Splitpane $tabItem erzeugen in $WFC10_TabPaneItem:\n";
 			/* @param integer $WFCId ID des WebFront Konfigurators
 			 * @param string $ItemId Element Name im Konfigurator Objekt Baum
 			 * @param string $ParentId Übergeordneter Element Name im Konfigurator Objekt Baum
@@ -373,59 +607,52 @@ Path=Visualization.Mobile.iTunes
 			 * @param integer $RatioType Einheit der Größenangabe (0=Percentage, 1=Pixel)
 	 		 * @param string $ShowBorder Zeige Begrenzungs Linie
 			 */
-			//CreateWFCItemSplitPane ((integer)$WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    (integer)($WFC10_TabOrder+$i) ,     $tab, '', '1' /*Vertical*/, '40' /*Width*/, '0' /*Target=Pane1*/, '0' /*UsePixel*/, 'true');
-			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i, $WFC10_TabPaneItem,(integer)$WFC10_TabOrder+$i,$tab,"",1,40,0,0,true);
-			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
-			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Right',  $tabItem.$i,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);
+			//CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
+			CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,    0,     $Name,     "", 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Left',   $tabItem,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
+			CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.'_Right',  $tabItem,   20, '', '', $categoryIdRight  /*BaseId*/, 'false' /*BarBottomVisible*/);            
 
-			echo "Kategorien erstellt, Main: ".$categoryIdTab." Install Left: ".$categoryIdLeft. " Right : ".$categoryIdRight."\n";
-			$i++;
-			
-			foreach ($webfront_links as $OID => $webfront_link)
+			foreach ($webfront_group as $Group => $webfront_link)
 				{
-				if ($webfront_link["ADMINISTRATOR"]==true)
+				foreach ($webfront_link as $OID => $link)
 					{
-					if ($webfront_link["TAB"]==$tab)
-						{
-						echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdLeft."\n";
-						CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
-						if ( isset( $webfront_link["OID_R"]) == true )
-							{
-							CreateLinkByDestination("Nachrichtenverlauf", $webfront_link["OID_R"],    $categoryIdRight,  20);
-							}
+					/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+			 		 * Auswertung kommt nach links und Nachrichten nach rechts
+			 		 */					
+					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+					if ($Group=="Auswertung")
+				 		{
+                        if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
+                            {
+				 		    echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdLeft."\n";
+						    CreateLinkByDestination($link["NAME"], $OID,    $categoryIdLeft,  $link["ORDER"]);
+                            }
+				 		}
+				 	if ($Group=="Nachrichten")
+				 		{
+                        if ( (($scope=="Administrator") && $link["ADMINISTRATOR"]) || (($scope=="User") && $link["USER"]) || (($scope=="Mobile") && $link["MOBILE"]) )
+                            {
+    				 		echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryIdRight."\n";
+	    					CreateLinkByDestination($link["NAME"], $OID,    $categoryIdRight,  $link["ORDER"]);
+                            }
 						}
-					}
-				} 
+					} // ende foreach
+                }  // ende foreach  
+        }
 
-			}  
-
-
-		ReloadAllWebFronts();
-
-		}
-
-	/*----------------------------------------------------------------------------------------------------------------------------
-	 *
-	 * WebFront User Installation
-	 *
-	 * ----------------------------------------------------------------------------------------------------------------------------*/
-	 
-	 
-	 
-	 
-	 
-	 
-	 
-
-
-
-/****************************************************************************************************************/
-
-
-
-
-
-
+    function deletePane($WFC10_ConfigId, $tabItem)
+        {
+			if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
+			 	{
+				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") löscht TabItem : ".$tabItem."\n";
+				DeleteWFCItems($WFC10_ConfigId, $tabItem);
+				}
+			else
+				{
+				echo "Webfront ".$WFC10_ConfigId." (".IPS_GetName($WFC10_ConfigId).") TabItem : ".$tabItem." nicht mehr vorhanden.\n";
+				}	
+			IPS_ApplyChanges ($WFC10_ConfigId);   /* wenn geloescht wurde dann auch uebernehmen, sonst versagt das neue Anlegen ! */
+        }
 
 
 /****************************************************************************************************************/
