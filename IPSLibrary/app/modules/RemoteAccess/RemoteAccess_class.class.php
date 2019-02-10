@@ -24,13 +24,17 @@
 	 *
 	 * Um Zeit zu sparen werden nur die mit Logging enable und im Status Active konfigurierten Server angesprochen
 	 *
-	 * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
+	 * getRemoteServer()
+     *
+     * Die Struktur der Remote Server wird vorab erfasst und gespeichert um Zeit zu sparen
 	 * abgespeichert wird als Includefile das regelmaessig erzeugt wird
 	 * Routinen um Ihre Daten im Incliudefile zu speichern
 	 *     add_Guthabensteuerung()
 	 *     add_Amis()
 	 *     add_Sysinfo()
 	 *     add_Remoteserver(array)    legt function ROID_List() an
+     *     write_includeFile()
+     *     read_includeFile()
 	 *
 	 * Server_ping()	ermittelt die Erreichbarkeit aller Server in der Liste und gibt sie als Array aus
 	 *
@@ -119,7 +123,9 @@ class RemoteAccess
 	public function add_Amis()
 		{
 		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-		$MeterConfig = get_MeterConfiguration();
+        IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');        
+        $Amis = new Amis();           
+		$MeterConfig = $Amis->getMeterConfig();
 
 		$this->includefile.="\n".'function AmisStromverbrauchList() { return array('."\n";
 		$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
@@ -411,8 +417,11 @@ class RemoteAccess
 	/**
 	 * @public
 	 *
-	 * das Include File schreiben
-	 *
+	 * das Include File das in der class gespeichert ist abschliuessen und als File EvaluateVariables_ROID.inc.php schreiben
+     *
+     * erstellt function ROID_List() über die OIDs auf den remote Servern und die lokalen OIDs
+     *  in function SysInfoList(), function AmisStromverbrauchList() und function GuthabensteuerungList()
+     *
 	 *
 	 */
 	public function write_includeFile()
@@ -424,6 +433,14 @@ class RemoteAccess
         	throw new Exception('Create File '.$filename.' failed!');
     		}
 		}
+
+	/**
+	 * @public
+	 *
+	 * das Include File EvaluateVariables_ROID.inc.php lesen und als string ausgeben
+	 *
+	 *
+	 */
 
 	public function read_includeFile()
 		{
@@ -1057,7 +1074,7 @@ class RemoteAccess
 		$print="";
 		foreach ($remServer as $Name => $RemoteServer)
 			{
-			$print.="   ".$RemoteServer["Name"]."   ".$RemoteServer["Url"]."    ".($RemoteServer["Status"] ? 'Ja' : 'Nein')."\n";
+			$print.="   ".str_pad($RemoteServer["Name"],16)." ".str_pad($RemoteServer["Url"],88)." ".($RemoteServer["Status"] ? 'Ja' : 'Nein')."\n";
 			}
 		return($print);
 		}

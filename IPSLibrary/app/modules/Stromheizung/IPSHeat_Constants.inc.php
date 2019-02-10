@@ -32,19 +32,19 @@
 	define ('IPSHEAT_GROUPS',				1);
 	define ('IPSHEAT_TYPE',					2);
 	define ('IPSHEAT_COMPONENT',			3);
-	define ('IPSHEAT_POWERCIRCLE',		4);
+	define ('IPSHEAT_POWERCIRCLE',			4);
 	define ('IPSHEAT_POWERWATT',			5);
-	define ('IPSHEAT_ACTIVATABLE',		6);
+	define ('IPSHEAT_ACTIVATABLE',			6);
 	define ('IPSHEAT_PROGRAMON',			7);
 	define ('IPSHEAT_PROGRAMOFF',			8);
-	define ('IPSHEAT_PROGRAMLEVEL',		9);
+	define ('IPSHEAT_PROGRAMLEVEL',			9);
 	define ('IPSHEAT_PROGRAMRGB',			10);
-	define ('IPSHEAT_DESCRIPTION',		99);
+	define ('IPSHEAT_DESCRIPTION',			99);
 		
 	define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
-	define ('IPSHEAT_WFCCATEGORY',		'WFCCategory');
-	define ('IPSHEAT_WFCGROUP',			'WFCGroup');
-	define ('IPSHEAT_WFCLINKS',			'WFCLinks');
+	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
+	define ('IPSHEAT_WFCGROUP',				'WFCGroup');
+	define ('IPSHEAT_WFCLINKS',				'WFCLinks');
 
 	// Supported Device Types
 	define ('IPSHEAT_TYPE_SWITCH',			'Switch');
@@ -58,7 +58,7 @@
 	define ('IPSHEAT_DEVICE_LEVEL',			'#Level');
 	define ('IPSHEAT_DEVICE_AMBIENCE',		'#ColTemp');
 	define ('IPSHEAT_DEVICE_TEMPERATURE',	'#Temp');
-
+	define ('IPSHEAT_DEVICE_MODE',			'#Mode');
 
 	/** @}*/
 ?>

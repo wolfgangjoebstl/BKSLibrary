@@ -26,22 +26,42 @@
 		}
 	$categoryIdTab         = CreateCategoryPath($Mobile_Path.".Stromheizung");
 
-/*********************************************************************************************/
+	$kalender=new AutosteuerungStromheizung();
+
+/********************************************************************************************
+ *
+ * Activity Script für die HeatControl
+ *
+ *  übernimmt das Setzen von Variablen
+ *  verschiebt einmal am Tag den Wochenplan für den Einsatz der Heizung
+ *
+ **********************************************/
 
 Switch ($_IPS['SENDER'])
     {
 	Case "WebFront":
+        //echo "Select";
 		/* vom Webfront aus gestartet */
-		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+        $variableID=$_IPS['VARIABLE'];
+        $oid=$kalender->getAutoFillID();
+        switch ($variableID)
+            {
+            case $oid:
+				//echo "SetAutoFill $oid ".$_IPS['VALUE']."  \n";
+                $kalender->setAutoFill($_IPS['VALUE']);
+                break;
+            default:
+        		SetValue($variableID,$_IPS['VALUE']);
+                break;
+            }    
 		break;
 	Case "TimerEvent":
 	Case "Execute":
-		$kalender=new AutosteuerungStromheizung();
 		$oid=IPS_GetVariableIDByName("AutoFill",$kalender->getWochenplanID());		// OID von Profilvariable für Autofill
 		$value=$kalender->getStatusfromProfile(GetValue($oid));
-		$kalender->ShiftforNextDay($value);
-		$kalender->UpdateLinks($kalender->getWochenplanID());
-		$kalender->UpdateLinks($categoryIdTab);		
+		$kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
+		$kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
+		$kalender->UpdateLinks($categoryIdTab);		                            /* Upodate Links for Mobility Webfront */
 		break;	
 	default:
 		$kalender=new AutosteuerungStromheizung();	

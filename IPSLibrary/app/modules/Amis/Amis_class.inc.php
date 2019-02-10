@@ -17,6 +17,20 @@
 	 */    
 
 
+    /************************************
+     *
+     * Zusammenfassung der mit Energieberechnung verwandten Funktionen
+     * behandelt Homematic Energiemessgeräte und den AMIS Zähler
+     *
+     * configurePort
+     * sendReadCommandAmis
+     * writeEnergyHomematics
+     * writeEnergyHomematic
+     *
+     *
+     *
+     ********************************************************************/
+
 	class Amis {
 
 
@@ -35,8 +49,31 @@
 			{
 			$this->parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$this->MeterConfig = get_MeterConfiguration();
+			$this->MeterConfig = $this->getMeterConfig();
 			}
+
+        /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
+         *
+         */
+
+        public function getMeterConfig()
+            {
+            $result=array();
+            foreach (get_MeterConfiguration() as $index => $config)
+                {
+                //echo "Bearbeite Zähler $index.\n"; print_r($config);
+                if ( (isset($config["Status"])) && ( (strtoupper($config["Status"])=="DISABLED") || (strtoupper($config["Status"])=="DEACTIVATED") ) )
+                    {
+                    /* Deaktivierte Energiezähler aus der Konfig nehmen */
+                    }
+                else
+                    {                    
+                    $result[$index]=$config;
+                    }
+                }
+
+            return ($result);
+            }
 
 
 		/*  

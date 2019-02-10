@@ -89,26 +89,37 @@ imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
  if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
+    $variableID=$_IPS['VARIABLE'];
+    switch ($variableID)
+        {
+        case ($vid):
+        	switch ($_IPS['VALUE'])
+		        {
+        		case "5":	/* Monitor off/on */
+		        	controlMonitor("off",$configuration);
+        			break;
+                case "4":   /* Topologie */
+        			SetValue($StartPageTypeID,3);
+    	        case "3":  	/* Bildschirmschoner */
+        			SetValue($StartPageTypeID,1);
+		        	break;
+        		case "2":  	/* Wetterstation */
+		        	SetValue($StartPageTypeID,2);
+        			break;
+        		case "1":  	/* Full Screen ein */
+		        case "0":  	/* Full Screen aus */
+			        controlMonitor("FullScreen",$configuration);
+        			//IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
+		        	break;
+		        }
+            SetValue($variableID,$_IPS['VALUE']);                
+            break;
 
-	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
+        default:
+           	SetValue($variableID,$_IPS['VALUE']);
+            break;
+        }    
 
-	switch ($_IPS['VALUE'])
-		{
-		case "4":	/* Monitor off/on */
-			controlMonitor("off",$configuration);
-			break;
-		case "3":  	/* Bildschirmschoner */
-			SetValue($StartPageTypeID,1);
-			break;
-		case "2":  	/* Wetterstation */
-			SetValue($StartPageTypeID,2);
-			break;
-		case "1":  	/* Full Screen ein */
-		case "0":  	/* Full Screen aus */
-			controlMonitor("FullScreen",$configuration);
-			//IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
-			break;
-		}
 	}
 
 SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
@@ -121,6 +132,14 @@ SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 	echo "\nKonfigurationseinstellungen:\n";
 	print_r($configuration);
 
+	$pname="StartpageControl";
+    echo "Variable SwitchScreen mit Profil \"$pname\" hat OID: $vid \n";
+	if (IPS_VariableProfileExists($pname) == true)  //Var-Profil erstellen     
+		{
+        $profile=IPS_GetVariableProfile($pname)["Associations"];
+        foreach ($profile as $index => $profil) echo "  ".$index."  ".$profil["Value"]."  ".$profil["Name"]."\n";
+        //print_r($profile);
+        }
 	echo "Switch on Monitor, look for :".$configuration["Directories"]["Scripts"].'nircmd.exe'."\n"; 
 	IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);	
 	
@@ -206,7 +225,11 @@ function StartPageWrite($PageType)
 		}
 	else
 		{
-		if ($PageType==2)
+        if ($PageType==3)
+			{
+
+            }
+		elseif ($PageType==2)
 			{
 			//echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
 			$wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';

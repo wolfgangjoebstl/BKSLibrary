@@ -42,7 +42,6 @@
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-
 		echo 'ModuleManager Variable not set --> Create "default" ModuleManager';
 		$moduleManager = new IPSModuleManager('Startpage',$repository);
 	}
@@ -64,6 +63,7 @@
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("Startpage.inc.php",      "IPSLibrary::app::modules::Startpage");
 
 /*******************************
  *
@@ -186,8 +186,30 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    /* Uebersicht ist die Variable für die Darstellung der Seite 
+     * Startpagetype wird von der Startpage Write Funktion verwendet verwendet
+     */
+
 	$StartPageTypeID = CreateVariableByName($CategoryIdData, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
+	$variableIdStartpageHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,null,"");
+
+
+	/* 
+	 * Variablen für die Topologiedarstellung generieren, abgeleitet vom Webfront des IPSModuleManagerGUI 
+	 *
+	 */
+
+	$variableIdStatus        = CreateVariable(STARTPAGE_VAR_ACTION,      3 /*String*/,  $CategoryIdData, 10, '',  null,   'View1', '');
+	$variableIdModule        = CreateVariable(STARTPAGE_VAR_MODULE,      3 /*String*/,  $CategoryIdData, 20, '',  null,   '', '');
+	$variableIdInfo          = CreateVariable(STARTPAGE_VAR_INFO,        3 /*String*/,  $CategoryIdData, 30, '',  null,   '', '');
+	$variableIdHTML          = CreateVariable(STARTPAGE_VAR_HTML,        3 /*String*/,  $CategoryIdData, 40, '~HTMLBox', null,   '<iframe frameborder="0" width="100%" height="600px"  src="../user/Startpage/StartpageTopology.php"</iframe>', 'Information');
+
+	SetValue($variableIdStatus,'View1');
+
+	/* 
+	 * Variable zum Umschalten der Bildschirme generieren 
+	 *    SwitchScreen hat das Profil StartpageControl
+	 */
 
 	$name="SwitchScreen";
 	$vid = @IPS_GetVariableIDByName($name,$CategoryIdData);
@@ -200,25 +222,34 @@
         echo "Variable erstellt;\n";
     	}
 	$pname="StartpageControl";
-	if (IPS_VariableProfileExists($pname) == false)
+	if (IPS_VariableProfileExists($pname) == false)  //Var-Profil erstellen     
 		{
-	   //Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+        }
+    else
+        {       // Profil kann sich bei Erweiterungen ändern 
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, 4, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
 		IPS_SetVariableProfileAssociation($pname, 0, "Explorer", "", 0xc0c0c0); //P-Name, Value, Assotiation, Icon, Color=grau
   		IPS_SetVariableProfileAssociation($pname, 1, "FullScreen", "", 0x00f0c0); //P-Name, Value, Assotiation, Icon, Color
   		IPS_SetVariableProfileAssociation($pname, 2, "Station", "", 0xf040f0); //P-Name, Value, Assotiation, Icon, Color
   		IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
-		IPS_SetVariableProfileAssociation($pname, 4, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil erstellt;\n";
+		IPS_SetVariableProfileAssociation($pname, 4, "Topologie", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 5, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color        
+		echo "Profil $pname erstellt;\n";
 		}
 	IPS_SetVariableCustomProfile($vid, $pname); // Ziel-ID, P-Name
 
-	// Add Scripts, they have auto install
+	/* 
+	 * Add Scripts, they have auto install
+	 * am Ende der SwitchScreen Variable auch Startpage_Schreiben als CustomAction zuweisen
+	 * 
+	 */
+	
 	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage_copyfiles', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdStartpage, 8*60*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 	IPS_RunScript($scriptIdStartpage);
+	
 	$scriptIdStartpageWrite   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdStartpageWrite, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 	IPS_RunScript($scriptIdStartpageWrite);
@@ -260,7 +291,7 @@
 		echo "       Create ID ".$tabItem." in ".$WFC10_TabPaneParent.".\n";
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   $WFC10_TabPaneParent,   $WFC10_TabPaneOrder, '', $WFC10_TabPaneIcon, $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
-		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFront,  10);
+		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  10);
 		CreateLinkByDestination('Ansicht', $vid,    $categoryId_WebFront,  20);
 		}
 
@@ -295,7 +326,7 @@
 		$tabItem = $WFC10User_TabPaneItem.$WFC10User_TabItem;	
 		CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneParent,   $WFC10User_TabPaneOrder, '', $WFC10User_TabPaneIcon, $categoryId_WebFrontUser   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
-		CreateLinkByDestination('Uebersicht', $variableIdHTML,    $categoryId_WebFrontUser,  10);
+		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFrontUser,  10);
 		CreateLinkByDestination('Ansicht', $vid,    $categoryId_WebFrontUser,  20);
 		}
 	else

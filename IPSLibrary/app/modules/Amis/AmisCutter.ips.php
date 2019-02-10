@@ -15,6 +15,8 @@
 */
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 /******************************************************
 
@@ -36,8 +38,8 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 $arhid = $archiveHandlerID[0];
 //echo $arhid."\n";
 
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-$MeterConfig = get_MeterConfiguration();
+$Amis = new Amis();
+$MeterConfig = $Amis->getMeterConfig();
 //print_r($MeterConfig);
 
 $configPort=array();

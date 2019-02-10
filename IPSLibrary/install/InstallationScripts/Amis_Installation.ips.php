@@ -342,11 +342,14 @@ $cutter=true;
 	 *
 	 ************************************************/
 	
+	$Amis = new Amis();
+
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 
-	$MeterConfig = get_MeterConfiguration();
-	
+	//$MeterConfig = get_MeterConfiguration();
+	$MeterConfig = $Amis->getMeterConfig();
+
 	$MeterReadDefault=true;
 	if ( function_exists("get_AmisConfiguration") )
 		{
@@ -363,8 +366,7 @@ $cutter=true;
 	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
 	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "Zaehlt",$scriptIdAmis,$MeterReadDefault,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */		
 	SetValue($MeterReadID,$MeterReadDefault);
-	
-	$Amis = new Amis();
+
 	
 	/* Links für Webfront identifizieren 
 	 *  Struktur [Tab] [Left, Right] [LINKID] ["NAME"]="Name"
@@ -884,7 +886,8 @@ $cutter=true;
 	   }
 
 
-
+    echo "=================================================================\n";
+    echo "AMIS Installation erfolgreich abgeschlossen.\n";
 
 
 

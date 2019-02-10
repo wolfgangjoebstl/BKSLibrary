@@ -1,130 +1,74 @@
 <?
 
 /*
-	 * @defgroup Startpage
+	 * @defgroup Startpage Include
 	 *
-	 * Script zur Ansteuerung der Startpage
+	 * Include Script zur Ansteuerung der Startpage
 	 *
 	 *
-	 * @file          Startpage.ips.php
+	 * @file          Startpage.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
-
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) 
-		{
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager('Startpage',$repository);
-		}
-
-/***************************************************************************************************
+/* alter Inhalt von startpage.inc.php ist jetzt im startpage_copyfiles.ips.php file enthalten
  *
- *  Bilderverzeichnis initialisieren 
- *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
  *
- *******************************/
-
-	$configuration=startpage_configuration();
-	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
-	$picturedir=IPS_GetKernelDir()."webfront\\user\\pictures\\";
-	
-	$file=array();
-	$handle=opendir ($bilderverzeichnis);
-	$i=0;
-	while ( false !== ($datei = readdir ($handle)) )
-		{
-		if ( $datei != "." && $datei != ".." && $datei != "Thumbs.db" && (is_dir($bilderverzeichnis.$datei)==false) ) 
-			{
-			$i++;
- 			$file[$i]=$datei;
-			}
-		}
-	closedir($handle);
-
-	$check=array();
-	$handle=opendir ($picturedir);
-	while ( false !== ($datei = readdir ($handle)) )
-		{
-		if ($datei != "." && $datei != ".." && $datei != "Thumbs.db") 
-			{
-			$check[$datei]=true;
-			}
-		}
-	closedir($handle);
-
-
-	foreach ($file as $filename)
-		{
-		if ( isset($check[$filename]) == true )
-			{
-			$check[$filename]=false;
-			//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
-			}
-		if ( is_file($bilderverzeichnis.$filename)==true )
-			{	
-			echo "copy from ".$bilderverzeichnis.$filename." to ".$picturedir.$filename."\n";	
-			copy($bilderverzeichnis.$filename,$picturedir.$filename);
-			}
-		}
-
-	echo "Verzeichnis für Anzeige auf Startpage:\n";	
-	$i=0;
-	foreach ($check as $filename => $delete)
-		{
-		if ($delete == true)
-			{
-			echo "Datei ".$filename." wird gelöscht.\n";
-			}
-		else
-			{
-			echo "   ".$filename."\n";
-			$i++;		
-			}	
-		}	
-	echo "insgesamt ".$i." Dateien.\n";
-
-/**************************************************************************************************************************
  *
- *   Netplayer, derzeit deaktiviert
+ *
  *
  */
-  
-include_once IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\NetPlayer\NetPlayer.inc.php";
 
-if (false)
-	{
-	NetPlayer_Power(true);
-	$value=0;   /* MP3 Player */
-	$value=1;   /* Radio */
-	NetPlayer_SetSource($value);
-	
-	/* einmal aufrufen, damit Radiosenderliste übernommen wird */
-	NetPlayer_NavigateRadioForward(NP_COUNT_RADIOVARIABLE);
-	
-	$radioName = array();
-	$profileData   = IPS_GetVariableProfile('NetPlayer_RadioList');
-	$associations  = $profileData['Associations'];
-	foreach ($associations as $idx=>$association)
-		{
-		echo "Radiosender : ".$idx." ".$association['Name']."\n";
-		//print_r($association);
-	   if ($association['Value']==$value)
-			{
-	      $radioName = $association['Name'];
-	   	}
-	   }
-	$radioList = NetPlayer_GetRadioList();
-	$radioUrl  = $radioList[$radioName];
-	NetPlayer_PlayRadio($radioUrl, $radioName);
-	echo "Es spielt jetzt ".$radioName." von ".$radioUrl."\n";
+	// Confguration Property Definition
+
+	/* das sind die Variablen die in der data.Startpage angelegt werden soll */
+
+	define ('STARTPAGE_VAR_ACTION',				'Action');
+	define ('STARTPAGE_VAR_MODULE',				'Module');
+	define ('STARTPAGE_VAR_INFO',				'Info');
+	define ('STARTPAGE_VAR_HTML',				'HTML');
+
+	define ('STARTPAGE_ACTION_OVERVIEW',			'Overview');
+	define ('STARTPAGE_ACTION_UPDATES',			'Updates');
+	define ('STARTPAGE_ACTION_LOGS',				'Logs');
+	define ('STARTPAGE_ACTION_LOGFILE',			'LogFile');
+	define ('STARTPAGE_ACTION_MODULE',				'Module');
+	define ('STARTPAGE_ACTION_WIZARD',				'Wizard');
+	define ('STARTPAGE_ACTION_NEWMODULE',			'NewModule');
+	define ('STARTPAGE_ACTION_STORE',				'Store');
+	define ('STARTPAGE_ACTION_STOREANDINSTALL',	'StoreAndInstall');
+
+
+	IPSUtils_Include ("IPSLogger.inc.php",                      "IPSLibrary::app::core::IPSLogger");
+
+	/**
+	 * Setz eine bestimmte Seite in der Startpage
+	 *
+	 * @param string $action Action String
+	 * @param string $module optionaler Module String
+	 * @param string $info optionaler Info String
+	 */
+	function Startpage_SetPage($action, $module='', $info='') {
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId), $module);
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO, $baseId), $info);
+		$typeId = IPS_GetObjectIDByName("Startpagetype", $baseId);
+		return ($typeId);		
 	}
-//NetPlayer_Power(false);
+
+	/**
+	 * Refresh der Startpage
+	 *
+	 */
+	function Startpage_Refresh() {
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+		$variableIdHTML = IPS_GetObjectIDByIdent(STARTPAGE_VAR_HTML, $baseId);
+		SetValue($variableIdHTML, GetValue($variableIdHTML));
+	}
+
+
 
 ?>

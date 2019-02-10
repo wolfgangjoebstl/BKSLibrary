@@ -509,6 +509,9 @@
 	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox',null,null,"");
 
+	$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+	$HomematicInventory = CreateVariable("HomematicInventory",   3 /*String*/,  $CategoryIdHomematicInventory, 60 , '~HTMLBox',null,null,"");
+
 	$homematic=HomematicList();
 	$seriennumernliste=array();
 	foreach ($homematic as $instance => $entry)
@@ -698,7 +701,7 @@
 		
 	/********************************************************
 	 *
-	 *		INIT HUE Geraete Darstellung und Bedienung vom HUE Modul 
+	 *		INIT HUE Module Geraete Darstellung und Bedienung vom HUE Modul 
 	 *
 	 ***************************************************/
 		
@@ -713,6 +716,54 @@
 		$categoryId_Hue = CreateCategoryPath('Hardware.HUE');		
 		}
 				
+	/********************************************************
+	 *
+	 *		INIT HM Inventory Homematic Geraete Darstellung 
+	 *
+	 ***************************************************/
+		
+	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
+	$countHMI = sizeof($HMIs);
+	echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+	if ($countHMI>0)
+		{		
+		/* Webfront Darstellung erfolgt im User Verzeichnis, dieses erstellen */
+		$Verzeichnis="user/OperationCenter/Homematics/";
+		$Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
+		$Verzeichnis = str_replace('\\','/',$Verzeichnis);
+		if ( is_dir ( $Verzeichnis ) == false ) mkdirtree($Verzeichnis);
+		
+		foreach ($HMIs as $HMI)
+			{
+			$configHMI=IPS_GetConfiguration($HMI);
+			echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
+			echo $configHMI."\n";
+			$configStruct=json_decode($configHMI,true);
+			//print_r($configStruct);
+			$aktVerzeichnis=IPS_GetProperty($HMI,"OutputFile");
+			$neuVerzeichnis=$Verzeichnis.$HMI.'/HM_inventory.html';
+			if ( is_dir ( $Verzeichnis.$HMI.'/' ) == false ) 
+				{
+				echo "Verzeichnis $neuVerzeichnis existiert noch nicht. Daher erstellen:\n";
+				mkdirtree($Verzeichnis.$HMI.'/');
+				}
+			echo "Ausgabe Speicher Verzeichnis :".$aktVerzeichnis."\n";
+			if ( $aktVerzeichnis != $neuVerzeichnis)
+				{
+				echo "Verzeichnis auf Webfront verschieben. In das Verzeichnis ".$neuVerzeichnis."\n";
+				IPS_SetProperty($HMI,"OutputFile",$neuVerzeichnis);
+				IPS_ApplyChanges($HMI);
+				}
+			HMI_CreateReport($HMI);			
+			}
+		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+		$HomematicInventory = IPS_GetVariableIdByName("HomematicInventory",$CategoryIdHomematicInventory);
+
+		/* html 5 erlaubt nur mehr die Angabe eines iframes in pixel */
+		$html='<iframe frameborder="0" width="100%" height="800px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
+		SetValue($HomematicInventory,$html);						
+		}
+																		
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -734,8 +785,17 @@
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
-		CreateLinkByDestination('HomematicErreichbarkeit', $CategoryIdHomematicErreichbarkeit,    $categoryId_WebFront,  100);
-		CreateLinkByDestination('HomematicGeraeteliste', $CategoryIdHomematicGeraeteliste,    $categoryId_WebFront,  110);
+
+		$categoryId_Hardware = CreateCategory("Hardware",  $categoryId_WebFront, 20);
+		CreateLinkByDestination('HomematicErreichbarkeit', $CategoryIdHomematicErreichbarkeit,    $categoryId_Hardware,  100);		// Link auf eine Kategorie, daher neues Tab
+		CreateLinkByDestination('HomematicGeraeteliste', $CategoryIdHomematicGeraeteliste,    $categoryId_Hardware,  110);
+		CreateLinkByDestination('HomematicInventory', $CategoryIdHomematicInventory,    $categoryId_Hardware,  120);
+	
+		/* Zusammenräumen, alte Ordnung eliminieren */
+		$linkId=@IPS_GetLinkIDByName('HomematicErreichbarkeit', $categoryId_WebFront);
+		if ($linkId) IPS_DeleteLink($linkId); 
+		$linkId=@IPS_GetLinkIDByName('HomematicGeraeteliste', $categoryId_WebFront);
+		if ($linkId) IPS_DeleteLink($linkId); 
 		}
 
 	if ($WFC10User_Enabled)

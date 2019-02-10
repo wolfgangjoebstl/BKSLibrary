@@ -27,6 +27,18 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
+
+	/**************************************************************
+	 *
+	 *  Zuerst wird für jedes Gerät, Gruppe, Programm die benötigten Spiegelregister erstellt.
+	 *  das heisst für einen Dimmer auch ein Objekt für den Level oder bei einem Thermostat auch ein Objekt für die Temperatur und den Mode  
+	 *
+	 *
+	 *
+	 *
+	 *
+	 **************************************************************/
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -72,6 +84,28 @@
 	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");	
 
+/*******************************
+ *
+ * Variablen Profile Vorbereitung
+ *
+ ********************************/
+
+	/* erweiterte Betriebsarten des Thermostat, vereinheitlicht über alle Typen  */
+	$pname="mode.HM";
+	if (IPS_VariableProfileExists($pname) == false)
+		{			//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
+		
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
@@ -245,6 +279,7 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	$idx = 10;
 	$lightConfig = IPSHeat_GetHeatConfiguration();
+	print_r($lightConfig);
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
 		$deviceType = $deviceData[IPSHEAT_TYPE];
@@ -273,7 +308,8 @@ Path=Visualization.Mobile.Stromheizung
 				break;
 			case IPSHEAT_TYPE_SET:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
-				$tempId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 2 /*Float*/, $categoryIdSwitches,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+				$tempId  = CreateVariable($deviceName.IPSHEAT_DEVICE_TEMPERATURE, 2 /*Float*/, $categoryIdSwitches,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+				$modeId  = CreateVariable($deviceName.IPSHEAT_DEVICE_MODE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'mode.HM', $scriptIdActionScript, false, 'Title');
 				break;
 			default:
 				trigger_error('Unknown DeviceType '.$deviceType.' found for Heat or Light '.$devicename);
@@ -295,7 +331,8 @@ Path=Visualization.Mobile.Stromheizung
 				{
 				case IPSHEAT_TYPE_SET:
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
-					$tempId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 2 /*Float*/, $categoryIdGroups,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+					$tempId  = CreateVariable($groupName.IPSHEAT_DEVICE_TEMPERATURE, 2 /*Float*/, $categoryIdGroups,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
+					$modeId  = CreateVariable($groupName.IPSHEAT_DEVICE_MODE, 1 /*Integer*/, $categoryIdGroups,  $idx, 'mode.HM', $scriptIdActionScript, false, 'Title');
 					break;
 				default:
 					$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
@@ -385,6 +422,7 @@ Path=Visualization.Mobile.Stromheizung
 					}			
 				break;	
 			case 'IPSComponentSwitch_Homematic';
+			case 'IPSComponentSwitch_RHomematic';
 				$instanceId = IPSUtil_ObjectIDByPath($componentParams[1]);
 				$variableId = @IPS_GetObjectIDByIdent('STATE', $instanceId);
 				if ($variableId===false) 
@@ -424,9 +462,11 @@ Path=Visualization.Mobile.Stromheizung
 			case 'IPSComponentHeatSet_Data':
 			case 'IPSComponentTuner_Denon':
 			case 'IPSComponentSwitch_RFS20':
+			case 'IPSComponentSwitch_Value':
 			case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
 			case 'IPSComponentRGB_HUE':			
 			case 'IPSComponentDimmer_Homematic':
+			case 'IPSComponentShutter_XHomematic':			
 			case 'IPSComponentSwitch_RMonitor':
 			case 'IPSComponentRGB_LW12':
 				break;					
@@ -571,7 +611,8 @@ Path=Visualization.Mobile.Stromheizung
 	echo "Webfront User aufbauen in ".$WFC10User_Path." :\n";
 	echo "\n";
 	
-	if ($WFC10User_Enabled) {
+	if ($WFC10User_Enabled) 
+		{
 		$categoryId_WebFrontUser                = CreateCategoryPath($WFC10User_Path);
 		/* in der normalen Viz Darstellung verstecken */
 		IPS_SetHidden($categoryId_WebFrontUser, true); //Objekt verstecken	
@@ -629,7 +670,8 @@ Path=Visualization.Mobile.Stromheizung
 	echo "Webfront Mobile aufbauen in ".$Mobile_Path." :\n";
 	echo "\n";
 		
-	if ($Mobile_Enabled ) {
+	if ($Mobile_Enabled ) 
+		{
 		$mobileId  = CreateCategoryPath($Mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
 		if ($mobile_Regenerate) {
 			EmptyCategory($mobileId);

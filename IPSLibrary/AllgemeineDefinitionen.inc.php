@@ -409,7 +409,9 @@ function send_status($aktuell, $startexec=0)
 
 			$amisdataID  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-			$MeterConfig = get_MeterConfiguration();
+	        IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis'); 
+            $Amis = new Amis();           
+			$MeterConfig = $Amis->getMeterConfig();
 
 			foreach ($MeterConfig as $meter)
 				{
@@ -758,7 +760,8 @@ function send_status($aktuell, $startexec=0)
 			/* nur machen wenn AMIS installiert */
 			IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');		
 			IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-			$MeterConfig = get_MeterConfiguration();
+            $Amis = new Amis();           
+			$MeterConfig = $Amis->getMeterConfig();
 			
 			$ergebnistab_energie="";
 			
@@ -1636,32 +1639,42 @@ function summestartende2($starttime, $endtime, $increment_var, $estimate, $archi
 	return $ergebnis;
 	}
 
-/******************************************************************/
+/*****************************************************************
+ * 
+ * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
+ *
+ **/
 
 function mkdirtree($directory)
 	{
-   $directory = str_replace('\\','/',$directory);
+	$directory = str_replace('\\','/',$directory);
 	$directory=substr($directory,0,strrpos($directory,'/')+1);
 	//$directory=substr($directory,strpos($directory,'/'));
-	while (!is_dir($directory))
+	$i=0;
+	while ((!is_dir($directory)) && ($i<20) )
 		{
+		$i++;
+		echo "mkdirtree: erzeuge Verzeichnis $directory \n"; 		
 		$newdir=$directory;
-		while (!is_dir($newdir))
+		while ( (!is_dir($newdir)) && ($i<20) )
 			{
+			$i++;
 			//echo "es gibt noch kein ".$newdir."\n";
 			if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
 			if ($pos==false) break;
 			$newdir=substr($newdir,0,$pos);
-			echo "Mach :".$newdir."\n";
+			echo "   Mach : ".$newdir."\n";
 			try
 				{
 				@mkdir($newdir);
 				}
 			catch (Exception $e) { echo "."; }
-			echo "Verzeichnis ".$newdir." erzeugt.\n";
+			if (is_dir($newdir)) echo "     Verzeichnis ".$newdir." erzeugt.\n";
 			}
 		if ($pos==false) break;
 		}
+	if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
+		
 	}
 
 /******************************************************************/
@@ -2638,8 +2651,9 @@ function checkProcess($processStart)
 		$result=getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/            
         //print_r($result);
 		echo "Resultat verarbeiten:\n";
-        foreach ($result as $IndexName => $entry)
+        foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
       	    {
+            //echo "----> $IndexName:\n"; print_r($entry);                  
 			$oid=$entry["COID"];
 			$vartyp=IPS_GetVariable($oid);
 			if ($vartyp["VariableProfile"]!="")
@@ -2706,7 +2720,7 @@ function checkProcess($processStart)
 							$parameter.=$Name.":".$result.";";
 							$struktur[$Name][$result]["Status"]=true;
 							$struktur[$Name][$result]["Hide"]=false;
-							$struktur[$Name][$result]["newName"]=$Key["Name"];							
+							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
 							}						}	
 					$messageHandler = new IPSMessageHandler();
 					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
@@ -3196,6 +3210,7 @@ class ModuleHandling
 	
 	private $libraries;	// array mit Liste der Namen und GUIDs von Libraries 
 	private $modules;	// array mit Liste der Namen und GUIDs von Modules 
+	private $functions;
 	private $debug;
 	
 	public function __construct($debug=false)
@@ -3238,7 +3253,18 @@ class ModuleHandling
 		print_r($this->modules);
 		}
 
-
+	/* Alle Libraries als echo ausgeben 
+     */
+	public function printLibraries()
+		{
+		echo "Alle geladenen Bibliotheken auflisten:\n";		
+		foreach($this->libraries as $index => $library)
+			{
+			//print_r($module);
+			echo "   ".str_pad($index,35)."    ".$library."\n";
+			}
+		}
+		
 	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
      */
 	public function printModules($input)
@@ -3321,6 +3347,31 @@ class ModuleHandling
 			else $instances=array();	
 			}		
 		return ($instances);
+		}
+
+	public function getFunctions($lookup="")
+		{
+		if ($lookup=="") $alleFunktionen = IPS_GetFunctionList(0);
+		else
+			{
+			$alleFunktionen = array();
+			$functions = IPS_GetFunctionList(0);
+			foreach ($functions as $function)
+				{
+				$pos=strpos($function,"_");
+				if ($pos) 
+					{
+					$funcName=substr($function,$pos+1);
+					$funcModul=substr($function,0,$pos);
+					if ($funcModul==$lookup) 
+						{
+						echo "   ".str_pad($funcModul,10)."   ".$funcName."   \n";
+						$alleFunktionen[]=$function;
+						}
+					}
+				}	
+			}
+		return ($alleFunktionen);
 		}
 
     /* Strukturen die nicht unbedingt jeson encoded sind von ihren {} Klammern befreien

@@ -6,11 +6,19 @@
 	 * Script zur Ansteuerung der Startpage, Kopiert die Bilddateien in das Webfront
 	 *
 	 *
-	 * @file          Startpage.ips.php
+	 * @file          Startpage_copyfiles.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
 */
+
+
+/*
+ *
+ *
+ *
+ *
+ */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
@@ -25,11 +33,17 @@
  *
  *  INITIALISIERUNG
  *
+ *
+ *  Bilderverzeichnis initialisieren 
+ *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
+ *
  *****************************/
+ 
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 
 	$configuration=startpage_configuration();
 	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
+
 	$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
 	mkdirtree($picturedir);
 
@@ -99,8 +113,11 @@ foreach ($file as $filename)
 		$check[$filename]=false;
 		//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
 		}
-	//echo "copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
-	copy($bilderverzeichnis.$filename,$picturedir.$filename);
+	if ( is_file($bilderverzeichnis.$filename)==true )
+		{	
+		//echo "copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
+		copy($bilderverzeichnis.$filename,$picturedir.$filename);
+		}
 	}
 
 echo "Verzeichnis für Anzeige auf Startpage:\n";	

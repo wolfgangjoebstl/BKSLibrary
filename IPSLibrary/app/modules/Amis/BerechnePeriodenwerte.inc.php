@@ -16,6 +16,7 @@
 
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
+IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 /************************************************************
 
@@ -28,10 +29,12 @@ ini_set('max_execution_time', 400);
 $display=false;       /* alle Eintraege auf der Console ausgeben */
 //$display=true;
 
+$Amis = new Amis();
+
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 $archiveHandlerID = $archiveHandlerID[0];
 
-$MeterConfig = get_MeterConfiguration();
+$MeterConfig = $Amis->getMeterConfig();
 
 $Tag=1;
 $Monat=1;

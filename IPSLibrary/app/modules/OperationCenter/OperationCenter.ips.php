@@ -639,8 +639,9 @@ if ($_IPS['SENDER']=="Execute")
 		/* html Tabellen der Energieregister und Historien ebenfalls updaten */
 		IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 		IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
-		$MeterConfig = get_MeterConfiguration();				
+			
 		$amis=new Amis();
+		$MeterConfig = getMeterConfig();
 		$dataOID=$amis->getAMISDataOids();
 		$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
 		$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
@@ -858,8 +859,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 				/* html Tabellen der Energieregister und Historien ebenfalls updaten */
 				IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 				IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
-				$MeterConfig = get_MeterConfiguration();				
 				$amis=new Amis();
+				$MeterConfig = $amis->getMeterConfig();
 				$dataOID=$amis->getAMISDataOids();
 				$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
 				$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);

@@ -260,19 +260,20 @@
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   	echo "Profil ".$pname." erstellt;\n";
 		}
-	$pname="AusEinP1P2P3P4";
+	$pname="AusEinAutoP1P2P3P4";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 	   	//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-	   	IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+	   	IPS_SetVariableProfileValues($pname, 0, 6, 1); //PName, Minimal, Maximal, Schrittweite
 	   	IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
   	   	IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 2, "Profil 1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 3, "Profil 2", "", 0x3ec127); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 4, "Profil 3", "", 0x5ea147); //P-Name, Value, Assotiation, Icon, Color
-  	   	IPS_SetVariableProfileAssociation($pname, 5, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x615c6e); //P-Name, Value, Assotiation, Icon, Color             
+  	   	IPS_SetVariableProfileAssociation($pname, 3, "Profil 1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 4, "Profil 2", "", 0x3ec127); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 5, "Profil 3", "", 0x5ea147); //P-Name, Value, Assotiation, Icon, Color
+  	   	IPS_SetVariableProfileAssociation($pname, 6, "Profil 4", "", 0x7ea167); //P-Name, Value, Assotiation, Icon, Color
   	   	//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
 	   	echo "Profil ".$pname." erstellt;\n";
 		}
@@ -497,7 +498,8 @@
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);				
 				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;
-				$oid=CreateVariable("AutoFill",1,$vid, 1000,'AusEinP1P2P3P4',$scriptIdWebfrontControl,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
+				$oid=CreateVariable("AutoFill",1,$vid, 1000,'AusEinAutoP1P2P3P4',$scriptIdHeatControl,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
+				$descrID=CreateVariable("Beschreibung",3,$vid, 1010,'',null,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
 								
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				

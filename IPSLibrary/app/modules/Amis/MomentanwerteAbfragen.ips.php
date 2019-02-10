@@ -22,6 +22,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
 IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
+
 /******************************************************
  *
  *			INIT
@@ -30,15 +31,15 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
 
-IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-$MeterConfig = get_MeterConfiguration();
+$amis=new Amis();
+$MeterConfig = $amis->getMeterConfig();
 //print_r($MeterConfig);
 
 /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 $MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 $TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-$amis=new Amis();
+
 
 /******************************************************
  *

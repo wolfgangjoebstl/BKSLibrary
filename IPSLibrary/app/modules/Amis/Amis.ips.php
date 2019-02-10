@@ -44,8 +44,7 @@ else
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	IPSUtils_Include ('Amis_Configuration.inc.php', 'IPSLibrary::config::modules::Amis');
-	$MeterConfig = get_MeterConfiguration();
+	$MeterConfig = $amis->getMeterConfig();
 	//print_r($MeterConfig);
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
@@ -156,9 +155,6 @@ else
 		//echo "\nZählerkonfiguration: \n";
 		//print_r($meter);
 		}
-
-
-	$MeterConfig = get_MeterConfiguration();
 
 	echo "\nGenereller Meter Read eingeschaltet:".GetvalueFormatted($MeterReadID)."\n";
 	if (isset($AmisReadMeterID)==true)

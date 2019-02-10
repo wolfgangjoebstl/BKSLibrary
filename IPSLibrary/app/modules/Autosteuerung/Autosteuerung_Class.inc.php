@@ -2283,7 +2283,7 @@ class Autosteuerung
 						{
 						if ( (strpos($command,"{") !==false) and (strpos($command,"}") !==false) ) { echo "Subcommand to evaluate found.\n"; }
 						if (strpos($command,"#") === false) { $command.="#Level"; } 
-						echo "!!!! not numeric. Adapted Variablename (".$command."), can be Heat or Light. Check Heat first.\n";
+						//echo "!!!! not numeric. Adapted Variablename (".$command."), can be Heat or Light. Check Heat first.\n";
 						if ($this->heatManager != Null)
 							{
 							$switchID = $this->heatManager->GetSwitchIdByName($command);	
@@ -2588,8 +2588,8 @@ class Autosteuerung
 							if ( self::isitheatday() == false )
 								{
 								$result["SWITCH"]=false;
-								echo 'Autosteuerung Befehl if: Nicht Schalten,kein Heiztag '."\n";
-								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten,kein Heiztag ');
+								echo 'Autosteuerung Befehl if:heatday ergibt  Nicht Schalten,kein Heiztag '."\n";
+								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:heatday ergibt Nicht Schalten,kein Heiztag ');
 								}
 							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
 								{
@@ -4595,6 +4595,10 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		if ($this->zeile[$i]) CreateLinkByDestination(date("D d",time()+(($i-1)*24*60*60)), $this->zeile[$i], $linkCategory,  (($i*10)+100));		
 		}
 
+    /* unter linkCategory werden Links auf die einzelnen Zeilen des Wochenplans erstellt
+     * der Name der Links ist aufsteigend beginnend mit dem aktuellen Tag
+     */
+
 	function UpdateLinks($linkCategory)
 		{
 		for ($i=1;$i<17;$i++)
@@ -4605,10 +4609,34 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 				}
 			}		
 		}
+
+    /* sucht die Variable Wochenplan im Nachrichtenspeicher/Wochenplan*/    
 		
 	function getWochenplanID()
 		{	
 		return(@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id));
+		}
+	
+    function getAutoFillID()
+		{	
+		return(@IPS_GetObjectIDByName("AutoFill",$this->getWochenplanID()));
+		}
+
+	function writeWochenplan()
+		{
+        $wochenplanID=$this->getWochenplanID();	
+		echo "Wochenplan ID : ".$wochenplanID."   ".IPS_GetName($wochenplanID)."\n";
+        $childIDs=IPS_GetChildrenIDs($wochenplanID);
+        foreach ($childIDs as $childID) 
+            {
+            if ( (IPS_GetObject($childID)["ObjectType"])==6)
+                {
+                $targetID=IPS_GetLink($childID)["TargetID"];
+                echo "    ".$targetID."   ".IPS_GetName($childID);
+                echo "   ".(GetValue($targetID)?"Ein":"Aus");
+                echo "\n";
+                }
+            }
 		}
 
 	/************************
@@ -4676,6 +4704,42 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			}		
 		}
 
+    function setAutoFill($value)
+        {
+        $oid=$this->getAutoFillID();		// OID von Profilvariable für Autofill
+        $descrID=IPS_GetVariableIDByName("Beschreibung",$this->getWochenplanID());		// OID von Profilvariable für Autofill
+        $text="";
+        //echo "Einstellung Werte $oid ".GetValue($oid)."  ".GetValueFormatted($oid)."  --> neuer Wert : ".$value."\n";
+        switch ($value)
+            {
+            case 0:
+                $text="Nächster Tag immer AUS";
+                break;
+            case 1:
+                $text="Nächster Tag immer EIN";
+                break;
+            case 2:
+                $text="Nächster Tag gleich wie die Woche davor";
+                break;
+            case 3:
+                $text="An allen Freitagen auf EIN";
+                break;
+            case 4:
+                $text="An allen Freitagen und einen Tag davor auf EIN";
+                break;
+            case 5:
+                $text="An allen Freitagen und zwei Tage davor auf EIN";
+                break;
+            case 6:
+                $text="An allen Arbeitstagen auf EIN";
+                break;
+            default:
+                $value=0;
+            }    
+        SetValue($oid,$value);
+        SetValue($descrID,$text);
+        }
+
 	/* Es gibt aus, Ein und Profil 2 bis 5
 	 *
 	 * Profil 2: nur Freitage, wenn zu Hause
@@ -4693,28 +4757,31 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 
 		switch ($profile)
 			{
-			case 0:
+			case 0:     // Aus
 				$status=false;
 				break;
-			case 1:
+			case 1:     // Ein
 				$status=true;
 				break;
-			case 2:
+            case 2:     // Auto
+                $status=GetValue($this->zeile[7]);           // Wert vor einer Woche
+                break;
+			case 3:     // Profil 1
 				if ($result0["Arbeitstag"]=="Freitag") $status=true;
 				else $status=false;
 				break;
-			case 3:
+			case 4:     // Profil 2
 				if ($result0["Arbeitstag"]=="Freitag") $status=true;
 				elseif ($result1["Arbeitstag"]=="Freitag") $status=true;
 				else $status=false;
 				break;
-			case 4:
+			case 5:     // Profil 3
 				if ($result0["Arbeitstag"]=="Freitag") $status=true;
 				elseif ($result1["Arbeitstag"]=="Freitag") $status=true;
 				elseif ($result2["Arbeitstag"]=="Freitag") $status=true;
 				else $status=false;
 				break;
-			case 5:
+			case 6:     // Profil 4
 				if ($result0["Arbeitstag"]=="Arbeitstag") $status=true;
 				else $status=false;
 				break;
