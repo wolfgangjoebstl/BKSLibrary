@@ -723,8 +723,9 @@ class RemoteAccess
 		return ($print);
 		}
 
-	public function get_StructureofROID()
+	public function get_StructureofROID($key="")
 		{
+		if ($key=="") $key="Schalter";
 		$status=$this->RemoteAccessServerTable();
 
 		/* Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben) */
@@ -735,7 +736,7 @@ class RemoteAccess
 			echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 			if ( $status[$Name]["Status"] == true )
 				{
-				$id=(integer)$Server["Schalter"];
+				$id=(integer)$Server[$key];
 				$rpc = new JSONRPC($Server["Adresse"]);	
 				$children=$rpc->IPS_GetChildrenIDs($id);
 				$struktur[$Name]=array();			
@@ -783,10 +784,15 @@ class RemoteAccess
 				{
 				$struktur[$oid]=$rpc->IPS_GetName($oid);
 				}		
-			echo "RPC_CreateVariableByName, Struktur nicht übergeben, wird neu ermitteln.\n";
+			//echo "    RPC_CreateVariableByName, Struktur nicht übergeben, wird neu ermitteln.\n";
 			//echo "Struktur :\n";
 			//print_r($struktur);
 			}
+		else
+			{
+			//echo "    RPC_CreateVariableByName, Struktur übergeben.\n";
+			//print_r($struktur);
+			}					
 		foreach ($struktur as $oid => $oname)
 			{
 			if ( isset($oname["Name"]) )
@@ -794,7 +800,7 @@ class RemoteAccess
 				if ($name==$oname["Name"]) 
 					{
 					$result=$name;$vid=$oid;
-					echo "     Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
+					echo "     RPC_CreateVariableByName, Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
 					}
 				}
 			else
@@ -802,7 +808,7 @@ class RemoteAccess
 				if ($name==$oname) 
 					{
 					$result=$name;$vid=$oid;
-					echo "      Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
+					echo "      RPC_CreateVariableByName, Variable ".$name." bereits als ".$vid." angelegt, keine weiteren Aktivitäten.\n";					
 					}
 				}			
 			//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
@@ -813,7 +819,7 @@ class RemoteAccess
 			$rpc->IPS_SetParent($vid, $id);
 			$rpc->IPS_SetName($vid, $name);
 			$rpc->IPS_SetInfo($vid, "this variable was created by script. ");
-			echo "   Variable ".$name." auf Server als ".$vid." neu erzeugt.\n";
+			echo "  --> Variable ".$name." auf Server als ".$vid." neu erzeugt.\n";
 			}
 		//echo "Fertig mit ".$vid."\n";
 		return $vid;

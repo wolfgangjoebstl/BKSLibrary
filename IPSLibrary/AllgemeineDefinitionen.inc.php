@@ -2340,24 +2340,107 @@ function checkProcess($processStart)
 	return($processStart);
 	}
 
-/************************************************************************************/
+/***********************************************************************************
+ *
+ * Die Komplette Installation von Compnents in einer Klasse zusammenfassen
+ *
+ *
+ *
+ *
+ *********************************************************************************************/
 
+class ComponentHandling
+    {
 
+    private $archiveHandlerID, $installedModules, $debug;
+    private $remote, $messageHandler;
+    private $congigMessage;
+
+	public function __construct($debug=false)
+        {
+        $this->debug=$debug;
+        $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+		$this->installedModules=$moduleManager->GetInstalledModules();
+		if (isset ($this->installedModules["RemoteAccess"]))
+			{
+			IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");			
+			$this->remote=new RemoteAccess();
+            }
+	    $this->messageHandler = new IPSMessageHandler();
+        $this->configMessage=IPSMessageHandler_GetEventConfiguration();
+        }
+
+    public function listOfRemoteServer()
+        {
+		$remServer=array();
+		if (isset ($this->installedModules["RemoteAccess"]))
+			{
+			$status=$this->remote->RemoteAccessServerTable();
+			$text=$this->remote->writeRemoteAccessServerTable($status);
+        	$remServer=$this->remote->get_listofROIDs();
+	        if ($text!="")
+    	        {
+		       	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        \n";
+            	echo $text;
+    			echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):   \n";
+		    	echo $this->remote->write_listofROIDs();
+        	        }
+            }
+        return($remServer);
+        } 
+
+    public function getStructureofROID($keyword)
+        {
+        $struktur=array();
+		if (isset ($this->installedModules["RemoteAccess"]))
+			{        
+			$struktur=$this->remote->get_StructureofROID($keyword);
+            if ((sizeof($struktur))>0)
+                {
+    			echo "Struktur Server ausgeben:             \n";
+	    		foreach ($struktur as $Name => $Eintraege)
+		    		{
+			    	echo "   ".$Name." für Schalter hat ".sizeof($Eintraege)." Eintraege \n";
+				    //print_r($Eintraege);
+    				foreach ($Eintraege as $Eintrag) echo "      ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
+                    }
+				}           
+            }
+        return($struktur);
+        }
+
+    public function registerEvent($oid,$update,$component,$module)
+        {
+		//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		//$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+        $change=false;
+        if (isset($this->configMessage[$oid])) 
+            {
+            //echo "   -> gefunden:\n";
+            $compare=$this->configMessage[$oid];
+            if ( ($compare[0] != $update) || ($compare[1] != $component) || ($compare[2] != $module) ) $change = true;
+            }
+        if ($change)
+            {
+		    $this->messageHandler->RegisterEvent($oid,$update,$component,$module);
+		    echo "    Event $oid registriert mit \"$update\",\"$component\",\"$module\"\n";
+            }
+        else echo "    Event $oid ist bereits korrekt registriert-\n";    
+        }
 
 /***********************************************************************************
  *
- * getComponents
+ * getComponent
  *
- * gleich wie installComponentsFull, nur ohne Registrierung
  *
  ****************************************************************************************/    
 
 	function getComponent($Elements,$keywords, $write="Array")
 		{
         $component=array(); $install=array(); $result="";
-		$detectmovement=false;
-		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-		$installedModules=$moduleManager->GetInstalledModules();
+	    $detectmovement=false; $profile="";
 		
 		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
 		foreach ($Elements as $Key)
@@ -2428,7 +2511,11 @@ function checkProcess($processStart)
 					$index="HeatSet";
 					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
 					$profile="~Temperature";
-					break;				
+					break;	
+				case "CONTROL_MODE":
+					$variabletyp=1; 		/* Integer */
+					$index="Mode";
+                    break;                    			
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
 				case "ACTUAL_TEMPERATURE":
@@ -2469,7 +2556,7 @@ function checkProcess($processStart)
 			
 			if ($found)
 				{
-                if (isset($installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
+                if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
 				//echo "********** ".$Key["Name"]."\n";
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
@@ -2477,9 +2564,9 @@ function checkProcess($processStart)
                 $install[$Key["Name"]]["COID"]=(integer)$oid;
                 $install[$Key["Name"]]["OID"]=(integer)$Key["OID"];
                 $install[$Key["Name"]]["KEY"]=$keyword;
-					 $install[$Key["Name"]]["TYP"]=$variabletyp;
-					 $install[$Key["Name"]]["INDEX"]=$index;
-					 $install[$Key["Name"]]["PROFILE"]=$profile;					 
+			    $install[$Key["Name"]]["TYP"]=$variabletyp;
+				$install[$Key["Name"]]["INDEX"]=$index;
+				$install[$Key["Name"]]["PROFILE"]=$profile;					 
                 $install[$Key["Name"]]["DETECTMOVEMENT"]=$detectmovement;
 					 
 
@@ -2511,8 +2598,32 @@ function checkProcess($processStart)
             }
 		}	
 
+/***********************************************************************************
+ *
+ * getKeyword
+ *
+ * aus dem Ergebnis von getComponent nur den Index herausholen, soll für alle Eintraege gleich sein 
+ *
+ ****************************************************************************************/    
+
+	function getKeyword($result)
+		{
+		$keyword="";
+		//print_r($result);	
+		foreach ($result as $entry)
+			{
+			if ($keyword=="") $keyword = $entry["INDEX"];
+			else
+				{
+				if ($keyword!=$entry["INDEX"]) echo "Fehler, unterschiedliche index erkannt, nicht eindeutig.\n";
+				}
+			}
+		return ($keyword);
+		}
 
 /***********************************************************************************
+ *
+ * DEPRECIATED
  *
  * verwendet von CustomComponents, RemoteAccess und EvaluateHeatControl zum schnellen Anlegen der Variablen
  * ist auch in der Remote Access Class angelegt und kann direkt aus der Klasse aufgerufen werden.
@@ -2553,14 +2664,17 @@ function checkProcess($processStart)
 				//print_r($Key);
 				$oid=(integer)$Key["COID"][$keyword]["OID"];
 				$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
-				else
-					{
-					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-					}
+                if ($this->debug)
+                    {
+    				if ($variabletyp["VariableProfile"]!="")
+	    				{
+		    			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+			    		}
+				    else
+					    {
+    					echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+	    				}
+                    }    
 				if ( isset ($parameter[$oid]) )
 					{
 					echo "  Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
@@ -2616,136 +2730,115 @@ function checkProcess($processStart)
 	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
 		{
 		$donotregister=false; $i=0; $maxi=600;		// Notbremse
-		$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-		$installedModules=$moduleManager->GetInstalledModules();
+        $struktur=array();          // Ergbenis, behandelte Objekte
 
-		/* Erreichbarkeit Remote Server nur einmal ermitteln */
-		$remServer=array();
-		if (isset ($installedModules["RemoteAccess"]))
-			{
-			IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
-			IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modules::RemoteAccess");			
-			$remote=new RemoteAccess();
-			$status=$remote->RemoteAccessServerTable();
-			$text=$remote->writeRemoteAccessServerTable($status);
-         	$remServer=$remote->get_listofROIDs();
-            if ($text!="")
-                {
-		    	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        \n";
-                echo $text;
-    			echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):   \n";
-	    		echo $remote->write_listofROIDs();
-                }
-	
-			$struktur=$remote->get_StructureofROID();
-			echo "Struktur Server :             \n";
-			foreach ($struktur as $Name => $Eintraege)
-				{
-				echo "   ".$Name." für Schalter hat ".sizeof($Eintraege)." Eintraege \n";
-				//print_r($Eintraege);
-				foreach ($Eintraege as $Eintrag) echo "      ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
-				}						
-			}
-		/* einheitliche Routine verwenden, Formattierung Ergebnis für Install */    
-		$result=getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/            
-        //print_r($result);
-		echo "Resultat verarbeiten:\n";
-        foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
-      	    {
-            //echo "----> $IndexName:\n"; print_r($entry);                  
-			$oid=$entry["COID"];
-			$vartyp=IPS_GetVariable($oid);
-			if ($vartyp["VariableProfile"]!="")
-				{
-				echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-				}
-			else
-				{
-				echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-				}
-			/* check, es sollten auch alle Quellvariablen gelogged werden */
-			if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
-				{
-				/* Wenn variable noch nicht gelogged automatisch logging einschalten */
-				AC_SetLoggingStatus($archiveHandlerID,$oid,true);
-				AC_SetAggregationType($archiveHandlerID,$oid,0);
-				IPS_ApplyChanges($archiveHandlerID);
-				echo "       Variable ".$oid." Archiv logging für Register aktiviert.\n";
-				}
-   		    $detectmovement=$entry["DETECTMOVEMENT"];
-			if ($detectmovement !== false)
-				{
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				switch ($detectmovement)
-					{
-					case "HeatControl":					
-						$DetectHeatControlHandler = new DetectHeatControlHandler();						
-						$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-						break;
-					case "Feuchtigkeit":
-						$DetectHumidityHandler = new DetectHumidityHandler();		
-						$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-						break;
-					case "Temperatur":
-						$DetectTemperatureHandler = new DetectTemperatureHandler();						
-						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-						break;
-					default:
-						break;
-					}		
-				}
-			$variabletyp=$entry["TYP"];
-			$index= $entry["INDEX"];
-			$profile=$entry["PROFILE"];					 
-			if (isset ($installedModules["RemoteAccess"]))
-				{
-				if ($donotregister==false)
-					{
-					$i++; if ($i>$maxi) { $donotregister=true; }											
-					$parameter="";
-					foreach ($remServer as $Name => $Server)
-						{
-						//echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-						if ( $status[$Name]["Status"] == true )
-							{
-							$rpc = new JSONRPC($Server["Adresse"]);
-							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-							$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
-							$rpc->IPS_SetVariableCustomProfile($result,$profile);
-							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-							$parameter.=$Name.":".$result.";";
-							$struktur[$Name][$result]["Status"]=true;
-							$struktur[$Name][$result]["Hide"]=false;
-							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
-							}						}	
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		/* einheitliche Routine verwenden, Formattierung Ergebnis für Install */   
+		echo "Passende Geraeteregister suchen:\n"; 
+		$result=$this->getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/
+		if ( (sizeof($result))>0)											/* gibts ueberhaupt etwas zu tun */
+			{		
+			$keyword=$this->getKeyword($result);
+		
+			/* Erreichbarkeit Remote Server nur einmal pro Aufruf ermitteln */
+			$remServer=$this->listOfRemoteServer();
+            $struktur=$this->getStructureofROID($keyword);
 
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule);
-					echo "    Event ".$oid." registriert mit \"OnChange\",\"".$InitComponent.",".$entry["OID"].",".$parameter."\",\"".$InitModule."\"\n";
+			echo "Resultat für gefundene Geraeteregister verarbeiten:\n";
+        	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
+      	    	{
+	            //echo "----> $IndexName:\n"; print_r($entry);                  
+				$oid=$entry["COID"];
+				$vartyp=IPS_GetVariable($oid);
+                if ($this->debug)
+                    {                
+    				if ($vartyp["VariableProfile"]!="")
+	    				{
+		    			echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+			    		}
+				    else
+					    {
+    					echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+	    				}
+                    }    
+				/* check, es sollten auch alle Quellvariablen gelogged werden */
+				if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
+					{
+					/* Wenn variable noch nicht gelogged automatisch logging einschalten */
+					AC_SetLoggingStatus($this->archiveHandlerID,$oid,true);
+					AC_SetAggregationType($this->archiveHandlerID,$oid,0);
+					IPS_ApplyChanges($this->archiveHandlerID);
+					echo "       Variable ".$oid." (".IPS_GetName($oid)."), Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
 					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule);
-					echo "    Event ".$oid."registriert mit \"OnChange\",\"".$InitComponent.",".$entry["OID"].",\",\"".$InitModule."\"\n";
-					}			
-				}
-			} /* Ende foreach */
+				if ($donotregister==false)      /* Notbremse, oder generell deaktivierbares registrieren */
+					{                    
+	   		        $detectmovement=$entry["DETECTMOVEMENT"];
+    				if ($detectmovement !== false)
+	    				{
+		    			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+			    		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+				    	switch ($detectmovement)
+					    	{
+						    case "HeatControl":					
+							    $DetectHeatControlHandler = new DetectHeatControlHandler();						
+    							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						break;
+		    				case "Feuchtigkeit":
+			    				$DetectHumidityHandler = new DetectHumidityHandler();		
+				    			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+					    		break;
+						    case "Temperatur":
+    							$DetectTemperatureHandler = new DetectTemperatureHandler();						
+	    						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+		    					break;
+			    			default:
+				    			break;
+					    	}		
+					    }
+    				$variabletyp=$entry["TYP"];
+	    			$index= $entry["INDEX"];
+		    		$profile=$entry["PROFILE"];					 
+			    	if (isset ($this->installedModules["RemoteAccess"]))
+				    	{
+						$i++; if ($i>$maxi) { $donotregister=true; }	        /* Notbremse */										
+						$parameter="";
+						foreach ($remServer as $Name => $Server)
+							{
+							//echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+							if ( $status[$Name]["Status"] == true )
+								{
+								$rpc = new JSONRPC($Server["Adresse"]);
+								/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
+								$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
+								$rpc->IPS_SetVariableCustomProfile($result,$profile);
+								$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+								$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+								$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+								$parameter.=$Name.":".$result.";";
+								$struktur[$Name][$result]["Status"]=true;
+								$struktur[$Name][$result]["Hide"]=false;
+								//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
+								}						
+							}	
+						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+						$this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule);
+						}
+					else
+						{
+						/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+						echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule);
+						}			
+					}           /* ende donotregister */
+				} /* Ende foreach */
+			}
+		else 
+			{
+			echo "    -> keine gefunden.\n";
+			}				
         return ($struktur);
 		}	
+
+    } // endof class ComponentHandling
 
 /***********************************************************************************
  *
@@ -2833,6 +2926,8 @@ function checkProcess($processStart)
             }
         return ($result);    
         }
+
+
 
 /******************************************************************
  *

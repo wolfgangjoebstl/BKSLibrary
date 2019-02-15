@@ -412,6 +412,8 @@
 	 *
 	 ****************************************************************************************************************/
 
+    $componentHandling=new ComponentHandling();
+
 	$DetectTemperatureHandler = new DetectTemperatureHandler();
 	echo "\n";
 	echo "***********************************************************************************************\n";
@@ -699,171 +701,17 @@
 
 	if (function_exists('HomematicList'))
 		{
-		installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
-		installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');
 		}
 		
-	if (false) {	
-	$Homematic = HomematicList();
-	$keyword="VALVE_STATE";
-	foreach ($Homematic as $Key)
+	echo "\n";
+	echo "FHT80b Heat Control Actuator werden registriert.\n";
+	if (function_exists('FHTList'))
 		{
-		/* alle Actuatoren Positionswerte ausgeben, 
-		 * Homematic Stellmotoren haben VALVE_STATE als aktuellen Ventilwert,  
-		 * HomematicIP Stellmotoren haben LEVEL als aktuellen Ventilwert
-		 */
-		if (isset($Key["COID"][$keyword])==true)
-			{
-			if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
-			else $oid=(integer)$Key["COID"][$keyword]["OID"];			
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			else
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			
-			$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-
-			if (isset ($installedModules["RemoteAccess"]))
-				{
-				//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-				}
-			else
-				{
-				/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-				$messageHandler = new IPSMessageHandler();
-				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl_All');
-				}
-
-			}  /* Ende isset Heatcontrol */
-		} /* Ende foreach */
-	} /***************** ende false */
-
-	$FHT = FHTList();
-	$keyword="PositionVar";
-	foreach ($FHT as $Key)
-		{
-		/* alle Actuatoren Positionswerte ausgeben */
-		if (isset($Key["COID"][$keyword])==true)
-			{
-			$oid=(integer)$Key["COID"][$keyword]["OID"];
-	     	$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			else
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
-				}
-			
-			$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
-
-			if (isset ($installedModules["RemoteAccess"]))
-				{
-				//echo "Remote Access installiert, Gruppen Variablen auch am VIS Server aufmachen.\n";
-				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-				}
-			else
-				{
-				/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-				$messageHandler = new IPSMessageHandler();
-				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_Homematic,1,2,3','IPSModuleHeatControl_All');
-				}
-
-			}  /* Ende isset HeatControl */
-		} /* Ende foreach */
-
-
-
-
-	if (false) {
-	
-	if (isset ($installedModules["RemoteAccess"]))
-		{
-		echo "\n";
-		echo "Remote Access installiert, Gruppen Variable für Feuchtighkeit auch am VIS Server aufmachen.\n";
-		echo "Für die Erzeugung der einzelnen Variablen am Remote Server rufen sie dazu die entsprechende Remote Access Routine auf ! \n";
-		IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
-		$remServer=ROID_List();
-		foreach ($remServer as $Name => $Server)
-			{
-			$rpc = new JSONRPC($Server["Adresse"]);
-			$ZusammenfassungID[$Name]=RPC_CreateCategoryByName($rpc, (integer)$Server["ServerName"], "Zusammenfassung");
-			}
-
-
-		$groups=$DetectHumidityHandler->ListGroups('Feuchtigkeit');
-		foreach($groups as $group=>$name)
-			{
-			if (($group != "") | ($group != " "))
-				{
-				echo "\n";
-				echo "Gruppe ".$group." behandeln.\n";
-				$config=$DetectHumidityHandler->ListEvents($group);
-				$status=(integer)0;
-				$count=0;
-				foreach ($config as $oid=>$params)
-					{
-					$status+=GetValue($oid);
-					$count++;
-					echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-					}
-				if ($count>0) { $status=$status/$count; }
-				$statusint=(integer)$status;
-				echo "Gruppe ".$group." hat neuen Feuchtigkeitsmittelwert : ".$statusint."\n";
-				/* letzte Variable noch einmal aktivieren damit der Speicherort gefunden werden kann */
-				$logHum=new Feuchtigkeit_Logging($oid);
-				//print_r($logHum);
-				$class=$logHum->GetComponent($oid);
-				//echo "Letzte Variable hat OID :".$logHum->variableLogID."\n"; /* EreignisID gibt es bei Temperatur nicht, anderen Wert holen und im selben Verzeichnis den Summenspeicher anlegen */
-				$statusID=CreateVariable2("Gesamtauswertung_".$group,1,IPS_GetParent(intval($logHum->variableLogID)),900,"~Humidity");  /* 0 .. Boolean 1..Integer 2..Float 3..String */
-				/* auch die Archivierung einsetzen */
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
-				AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
-				SetValue($statusID,$statusint);
-
-				$parameter="";
-				foreach ($remServer as $Name => $Server)
-					{
-					$rpc = new JSONRPC($Server["Adresse"]);
-					$result=RPC_CreateVariableByName($rpc, $ZusammenfassungID[$Name], "Gesamtauswertung_".$group, 1);
-   					$rpc->IPS_SetVariableCustomProfile($result,"~Humidity");
-					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-					$parameter.=$Name.":".$result.";";
-					}
-				echo "Summenvariable Gesamtauswertung_".$group." auf den folgenden Remoteservern angelegt Name:OID ".$parameter."\n";
-				$messageHandler = new IPSMessageHandler();
-   				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				$messageHandler->CreateEvent($statusID,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-				$messageHandler->RegisterEvent($statusID,"OnChange",'IPSComponentSensor_Feuchtigkeit,'.$parameter,'IPSModuleSensor_Feuchtigkeit,1,2,3');
-				echo "Event ".$statusID." mit Parameter ".$parameter." wurde als Gesamtauswertung_".$group." registriert.\n";
-				}
-		   }
+		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
 		}
-
-		} /* iffalse */
-
-
 
 
 

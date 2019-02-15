@@ -104,16 +104,18 @@
 		 *
 		 * Zustand Setzen
 		 *
+		 * 
+		 *
 		 * @param integer $power Geräte Power
 		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
 		 */
 		public function SetState($power, $level)
 			{
-			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States	
-			$setlevel=$level;
+			if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States	
+			//$setlevel=$level;
 			if ($this->rpcADR==Null)
 				{
-				//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+				echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
                 IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
 				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
@@ -124,6 +126,53 @@
 				$rpc->HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
 			}
+
+		/**
+		 * @public
+		 *
+		 * Temperatur Setzen
+		 *
+		 * @param integer $power Geräte Power
+		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
+		 */
+		public function SetLevel($power, $level)
+			{
+			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States	
+			$setlevel=$level;
+			if ($this->rpcADR==Null)
+				{
+				//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetLevel von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
+				}
+			else
+				{
+				//echo "   IPSComponent HeatSet_Homematic SetState mit folgenden Parametern rpc Adresse:".$this->rpcADR."und Level ".$level." Power ".($power?'On':'Off')." \n";
+				$rpc = new JSONRPC($this->rpcADR);
+				$rpc->HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
+				}
+			}
+
+		public function SetMode($power, $mode)
+			{
+			if ($mode<2) 		// nur Automatisch und Manuell weitergeben
+				{
+				$setMode=$mode;
+				if ($this->rpcADR==Null)
+					{
+					//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+            	    IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetLevel von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')); 
+					HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
+					}
+				else
+					{
+					//echo "   IPSComponent HeatSet_Homematic SetState mit folgenden Parametern rpc Adresse:".$this->rpcADR."und Level ".$level." Power ".($power?'On':'Off')." \n";
+					$rpc = new JSONRPC($this->rpcADR);
+					$rpc->HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
+					}
+				}	
+			}
+
 
 		/**
 		 * @public

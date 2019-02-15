@@ -135,6 +135,37 @@
 				}
 			}
 
+		public function SetLevel($power, $level)
+			{
+			//echo "     Component HeatSet_FS20 SetState Adresse:".$this->rpcADR."und Level ".$level." Power ".($power?'On':'Off')." \n";
+			$setlevel=$level;
+			if ($this->rpcADR==Null)
+				{
+				FHT_SetTemperature($this->instanceId,  $setlevel);
+				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				//echo "           Befehl FHT_SetTemperature(".$this->instanceId.", ".$setlevel.") ausfuehren.\n";
+				$rpc->FHT_SetTemperature((integer)$this->instanceId, (float)$setlevel);
+				}
+			}
+
+		public function SetMode($power, $mode)
+			{
+			$setMode=$mode;
+			if ($this->rpcADR==Null)
+				{
+				FHT_SetMode($this->instanceId,  $setMode);
+				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				//echo "           Befehl FHT_SetTemperature(".$this->instanceId.", ".$setlevel.") ausfuehren.\n";
+				$rpc->FHT_SetMode((integer)$this->instanceId,(integer)$setMode);
+				}
+			}
+			
 		/**
 		 * @public
 		 *

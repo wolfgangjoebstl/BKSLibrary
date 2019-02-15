@@ -20,9 +20,10 @@
 	 * Version 2.50.1, 31.01.2012<br/>
 	 */
 
-	IPSUtils_Include ("IPSLight.inc.php",          "IPSLibrary::app::modules::IPSLight");
-	IPSUtils_Include ("IPSHeat.inc.php",          "IPSLibrary::app::modules::Stromheizung");
 	IPSUtils_Include ('IPSModuleSwitch.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSwitch');
+
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 
 	class IPSModuleSwitch_IPSHeat extends IPSModuleSwitch {
 
@@ -35,38 +36,46 @@
 		 */
 		public function SyncState($state, IPSComponentSwitch $componentToSync) 
 			{
-			//IPSLogger_Inf(__file__, 'IPSModuleSwitch_IPSHeat, SyncState');
-			$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
-			echo "   IPSModuleSwitch_IPSHeat SyncState (".$componentParamsToSync[1].")\n";
-			$deviceConfig          = IPSLight_GetLightConfiguration();
-			foreach ($deviceConfig as $deviceIdent=>$deviceData) 
-				{
-				$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSLIGHT_COMPONENT]);
-				//$componentParamsConfig = $componentConfig->GetComponentParams();
-				$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-				if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+			if (isset($installedModules["Stromheizung"]) )
+				{			
+				IPSUtils_Include ("IPSLight.inc.php",          "IPSLibrary::app::modules::IPSLight");
+				IPSUtils_Include ("IPSHeat.inc.php",          "IPSLibrary::app::modules::Stromheizung");
+
+				//IPSLogger_Inf(__file__, 'IPSModuleSwitch_IPSHeat, SyncState');
+				$componentParamsToSync = explode(",",$componentToSync->GetComponentParams());
+				echo "   IPSModuleSwitch_IPSHeat SyncState (".$componentParamsToSync[1].")\n";
+				$deviceConfig          = IPSLight_GetLightConfiguration();
+				foreach ($deviceConfig as $deviceIdent=>$deviceData) 
 					{
-					$lightManager = new IPSLight_Manager();
-					$lightManager->SynchronizeSwitch($deviceIdent, $state);
-					$heatManager = new IPSHeat_Manager();
-					$heatManager->SynchronizeSwitch($deviceIdent, $state);
+					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSLIGHT_COMPONENT]);
+					//$componentParamsConfig = $componentConfig->GetComponentParams();
+					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
+					if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+						{
+						$lightManager = new IPSLight_Manager();
+						$lightManager->SynchronizeSwitch($deviceIdent, $state);
+						$heatManager = new IPSHeat_Manager();
+						$heatManager->SynchronizeSwitch($deviceIdent, $state);
+						}
 					}
-				}
-			/* ganze IPSHeat Konfiguration laden */	
-			$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();			
-			foreach ($deviceHeatConfig as $deviceIdent=>$deviceData) 
-				{
-				$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
-				$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-				//echo "    Compare ".$componentParamsConfig."\n";
-				if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+				/* ganze IPSHeat Konfiguration laden */	
+				$deviceHeatConfig          = IPSHeat_GetHeatConfiguration();			
+				foreach ($deviceHeatConfig as $deviceIdent=>$deviceData) 
 					{
-					echo "IPSModuleSwitch_IPSHeat SyncState synchronize Heatswitch ".$deviceIdent." mit ".$state."\n";
-					$heatManager = new IPSHeat_Manager();
-					$heatManager->SynchronizeSwitch($deviceIdent, $state);
-					}
-				}			
-			}
+					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
+					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
+					//echo "    Compare ".$componentParamsConfig."\n";
+					if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+						{
+						echo "IPSModuleSwitch_IPSHeat SyncState synchronize Heatswitch ".$deviceIdent." mit ".$state."\n";
+						$heatManager = new IPSHeat_Manager();
+						$heatManager->SynchronizeSwitch($deviceIdent, $state);
+						}
+					}			
+				}  // ende if
+			}	
 
 
 	}

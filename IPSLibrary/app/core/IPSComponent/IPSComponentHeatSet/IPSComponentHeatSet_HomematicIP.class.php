@@ -99,7 +99,10 @@
 		/**
 		 * @public
 		 *
-		 * Zustand Setzen
+		 * Zustand Setzen, aufgeteilt in SetState, SetLevel und SetMode
+		 * abhängig vom Typ des Thermostats werden die Funktionen unterschiedlich interpretiert
+		 *
+		 * Ein/Aus setzt die Temperatur bei Aus auf 6 Grad, Rückwärts
 		 *
 		 * @param integer $power Geräte Power
 		 * @param integer $level Wert für Dimmer Einstellung (Wertebereich 0-100)
@@ -107,8 +110,8 @@
 		public function SetState($power, $level)
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States
-			$setlevel=$level;				
+			if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States
+			//$setlevel=$level;				
 			if ($this->rpcADR==Null)
 				{
 				//echo "   IPSComponent HeatSet_HomematicIP SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
@@ -121,6 +124,44 @@
 				$rpc->HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
 				}	
 			}
+
+		public function SetLevel($power, $level)				// gleich wie bei Level, verwendet für Temperatur
+			{
+			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
+			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States
+			$setlevel=$level;				
+			if ($this->rpcADR==Null)
+				{
+				//echo "   IPSComponent HeatSet_HomematicIP SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP SetTemp von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+				HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
+				}
+			else
+				{
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP rpc->SetTemp von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+				$rpc = new JSONRPC($this->rpcADR);
+				$rpc->HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
+				}	
+			}
+
+		public function SetMode($power, $mode)
+			{
+			$setMode=$mode;
+			if ($this->rpcADR==Null)
+				{
+				//echo "   IPSComponent HeatSet_HomematicIP SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')); 
+				HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
+				}
+			else
+				{
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP rpc->SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')); 
+				$rpc = new JSONRPC($this->rpcADR);
+				$rpc->HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
+				}	
+			}
+
+
 
 		/**
 		 * @public

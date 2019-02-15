@@ -37,8 +37,9 @@ $startexec=microtime(true);
 if ($_IPS['SENDER']=="Execute")
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+	$messageHandler = new IPSMessageHandler();
  	$eventlist = IPSMessageHandler_GetEventConfiguration();
-	
+	echo "===================================================================\n";	
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)
 		{
@@ -51,6 +52,20 @@ if ($_IPS['SENDER']=="Execute")
 			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
 			}
 		}
+	echo "===================================================================\n";	
+	echo "Execute registered Events ".sizeof($eventlist)." Eintraege : \n";
+	foreach ($eventlist as $oid => $data)
+		{
+		if (IPS_ObjectExists($oid))
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+			$messageHandler->HandleEvent($oid, GetValue($oid));
+			}
+		else
+			{
+			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+			}
+		}		
 	}
 	
 if ($_IPS['SENDER']=="TimerEvent")
@@ -67,7 +82,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 
  	//$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
  	$eventlist = IPSMessageHandler_GetEventConfiguration();
-	
+	echo "===================================================================\n";
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)
 		{
