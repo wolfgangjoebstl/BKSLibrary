@@ -837,7 +837,7 @@ if ($noinstall==false)
 	if (function_exists('HomematicList'))
 		{
 		//installComponentFull(HomematicList(),"STATE",'IPSComponentSensor_RHomematic','IPSModuleSwitch_IPSHeat,');				/* Switche */
-        $componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,'); 				/* Homematic Switche */
+        $struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,'); 				/* Homematic Switche */
 	    echo "***********************************************************************************************\n";
 		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');			    /* HomemeaticIP Switche */       
         print_r($struktur1);            // Ausgabe RemoteAccess Variablen

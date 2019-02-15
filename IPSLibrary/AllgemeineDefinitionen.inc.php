@@ -2545,12 +2545,14 @@ class ComponentHandling
 					$profile="~Intensity.100";
 					break;
 				case "STATE":
+				case "STATUSVARIABLE":
 					$variabletyp=0; 		/* Boolean */	
 					$index="Schalter";
 					$profile="Switch";
 					break;
 				default:	
 					$variabletyp=0; 		/* Boolean */	
+					echo "************Kenne ".strtoupper($keyword)." nicht.\n";
 					break;
 				}			
 			
@@ -2801,23 +2803,19 @@ class ComponentHandling
 				    	{
 						$i++; if ($i>$maxi) { $donotregister=true; }	        /* Notbremse */										
 						$parameter="";
-						foreach ($remServer as $Name => $Server)
+						foreach ($remServer as $Name => $Server)        /* es werden nur erreichbare Server behandelt */
 							{
-							//echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-							if ( $status[$Name]["Status"] == true )
-								{
-								$rpc = new JSONRPC($Server["Adresse"]);
-								/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-								$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
-								$rpc->IPS_SetVariableCustomProfile($result,$profile);
-								$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-								$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-								$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-								$parameter.=$Name.":".$result.";";
-								$struktur[$Name][$result]["Status"]=true;
-								$struktur[$Name][$result]["Hide"]=false;
-								//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
-								}						
+							$rpc = new JSONRPC($Server["Adresse"]);
+							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
+							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
+							$rpc->IPS_SetVariableCustomProfile($result,$profile);
+							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+							$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+							$parameter.=$Name.":".$result.";";
+							$struktur[$Name][$result]["Status"]=true;
+							$struktur[$Name][$result]["Hide"]=false;
+							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
 							}	
 						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
 						$this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule);
