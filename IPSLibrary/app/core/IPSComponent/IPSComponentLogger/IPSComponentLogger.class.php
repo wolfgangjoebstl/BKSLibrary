@@ -188,9 +188,10 @@ class Logging
 			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			//echo "  Kategorien im Datenverzeichnis Custom Components:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			echo "  Kategorien im Datenverzeichnis Custom Components: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($vid==0) $vid = CreateCategory($name,$categoryIdData, 10);
 			$this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
 			$this->zeile2  = CreateVariable("Zeile02",3,$vid, 20 );
 			$this->zeile3  = CreateVariable("Zeile03",3,$vid, 30 );
@@ -207,7 +208,6 @@ class Logging
 			$this->zeile14 = CreateVariable("Zeile14",3,$vid, 140 );
 			$this->zeile15 = CreateVariable("Zeile15",3,$vid, 150 );
 			$this->zeile16 = CreateVariable("Zeile16",3,$vid, 160 );
-			
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert zusaetzlich ein Motion Log fuehren */
