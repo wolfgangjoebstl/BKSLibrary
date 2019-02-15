@@ -191,7 +191,7 @@ class Logging
 			echo "  Kategorien im Datenverzeichnis Custom Components: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==0) $vid = CreateCategory($name,$categoryIdData, 10);
+			if ($vid==0) $vid = CreateCategory($name,$CategoryIdData, 10);
 			$this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
 			$this->zeile2  = CreateVariable("Zeile02",3,$vid, 20 );
 			$this->zeile3  = CreateVariable("Zeile03",3,$vid, 30 );
