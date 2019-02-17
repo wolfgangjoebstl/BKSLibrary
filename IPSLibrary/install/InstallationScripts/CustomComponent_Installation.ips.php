@@ -623,6 +623,8 @@
 
 if ($noinstall==false)
     {
+	$commentField="zuletzt Konfiguriert von CustomComponent_Installation um ".date("h:i am d.m.Y ").".";
+
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
@@ -837,16 +839,16 @@ if ($noinstall==false)
 	if (function_exists('HomematicList'))
 		{
 		//installComponentFull(HomematicList(),"STATE",'IPSComponentSensor_RHomematic','IPSModuleSwitch_IPSHeat,');				/* Switche */
-        $struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,'); 				/* Homematic Switche */
+        $struktur1=$componentHandling->installComponentFull(HomematicList(),["STATE","INHIBIT","!ERROR"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField); 				/* Homematic Switche */
 	    echo "***********************************************************************************************\n";
-		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,');			    /* HomemeaticIP Switche */       
+		$struktur2=$componentHandling->installComponentFull(HomematicList(),["STATE","SECTION","PROCESS"],'IPSComponentSwitch_RHomematic','IPSModuleSwitch_IPSHeat,',$commentField);			    /* HomemeaticIP Switche */       
         print_r($struktur1);            // Ausgabe RemoteAccess Variablen
         print_r($struktur2);
         }
 	if (function_exists('FS20List'))
 		{
 	    echo "***********************************************************************************************\n";        
-        $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,');
+        $struktur3=$componentHandling->installComponentFull(FS20List(),"StatusVariable",'IPSComponentSwitch_RFS20','IPSModuleSwitch_IPSHeat,',$commentField);
         print_r($struktur3);
 		}
 	echo "***********************************************************************************************\n"; 	
@@ -864,13 +866,13 @@ if ($noinstall==false)
 	echo "Homematic Temperatur Sensoren werden registriert.\n";
 	if (function_exists('HomematicList'))
 		{
-		$componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');				/* Temperatursensoren und Homematic Thermostat */
-		$componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');		/* HomematicIP Thermostat */
+		$componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
+		$componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
 		} 
 	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
 	if (function_exists('FHTList'))
 		{
-		$componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,');
+		$componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
 		} 	
 
 	/****************************************************************************************************************
@@ -885,7 +887,7 @@ if ($noinstall==false)
 	echo "Homematic Humidity Sensoren werden registriert.\n";
 	if (function_exists('HomematicList'))
 		{
-		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,');
+		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
 		} 			
 		
 	/****************************************************************************************************************
@@ -900,15 +902,15 @@ if ($noinstall==false)
 	echo "Homematic Heat Control Actuator werden registriert.\n";
 	if (function_exists('HomematicList'))
 		{
-		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
-		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$commentField);
+		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All',$commentField);
 		} 			
 	echo "\n";
 	echo "FHT80b Heat Control Actuator werden registriert.\n";
 	if (function_exists('FHTList'))
 		{
 		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
-		$componentHandling->installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All',$commentField);
 		}
 
 	echo "***********************************************************************************************\n";
@@ -927,17 +929,17 @@ if ($noinstall==false)
 		{
 		//installComponentFull(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
 		//installComponentFull(HomematicList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
-		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
-		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All');
+		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All',$commentField);
+		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);
 
-        $componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),["CONTROL_MODE","WINDOW_OPEN_REPORTING"],'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
-	    $componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),["CONTROL_MODE","!VALVE_STATE"],'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All');
+        $componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),["CONTROL_MODE","WINDOW_OPEN_REPORTING"],'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All',$commentField);
+	    $componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),["CONTROL_MODE","!VALVE_STATE"],'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);
 		} 	
 	if ( (function_exists('FHTList')) && (sizeof(FHTList())>0) )
 		{
     	echo "\n";
 	    echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
-		$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);
 		}
 
 	echo "***********************************************************************************************\n";

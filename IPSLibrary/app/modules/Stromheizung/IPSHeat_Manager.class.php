@@ -1005,6 +1005,54 @@
 			IPSHeat_AfterSynchronizeSwitch($switchId, $deviceLevel);
 		}
 
+		/* ----------------------------------------------------------------------------------------------------------------------------
+         * wird derzeit nur von der Funktion SyncSetMode in IPSModuleHeatset_All aufgerufen
+         * SyncSettemp ist der Zustands Synchronizer des configurierten Moduls (IPSModule_HeatSet_All) in der Routine HandleEvent des configurierten Components
+         * Die Routine SyncSettemp geht die ganze IPSHeat_GetHeatConfiguration() Konfiguration durch und findet dann anhand der selben OID den abzugleichenden Eintrag
+         * es wird der zweite Eintrag, die OID, verglichen.
+         * zusätzlich wird geprüft ob statt der Synchronisierung (also Übernahme des Status aller Mitglieder einer Gruppe in den Gruppenstatus)
+         * das Setzen des Wertes für alle Mitglieder der Gruppe erforderlich ist : [IPSHEAT_ACTIVATABLE] der Geräte Config ist true
+         *
+         * der Temperatur Sollwert von einem Homematic Thermostat oder eines anderen Geraetes wird, wenn er sich geändert hat, in die Spiegelvariable von IPSHeat übernommen
+         */
+		public function SynchronizeSetMode($switchName, $deviceLevel) {
+			IPSLogger_Trc(__file__, 'Received StateChange from Heat '.$switchName.', Mode='.$deviceLevel);
+			$switchId    = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
+			$levelId     = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_MODE, $this->switchCategoryId);
+
+			$lightConfig = IPSHeat_GetHeatConfiguration();
+			$deviceType  = $lightConfig[$switchName][IPSHEAT_TYPE];
+			
+			if (isset($lightConfig[$switchName][IPSHEAT_ACTIVATABLE]) && $lightConfig[$switchName][IPSHEAT_ACTIVATABLE]) $updatelevel=true; else $updatelevel=false;
+
+			echo "HeatManager class, SynchronizeSetMode , do Synchronize Mode Change from Light/Heat \"".$switchName."\", Mode=".$deviceLevel."   UpdateLevel=".($updatelevel?"Ja":"Nein")."\n";
+			if (IPSHeat_BeforeSynchronizeSwitch($switchId, $deviceLevel)) {
+				echo "Vergleiche Wert von ".$levelId." (".IPS_GetName($levelId).") ".GetValue($levelId)." mit ".$deviceLevel.".\n";
+				if (GetValue($levelId)<>$deviceLevel) {
+                    echo "   -> Wert hat sich geändert.\n";
+					//IPSLogger_Inf(__file__, 'Synchronize StateChange from Light '.$switchName.', State='.($deviceState?'On':'Off').', Level='.$deviceLevel);
+					//SetValue($switchId, $deviceState);
+					IPSLogger_Inf(__file__, 'Synchronize Change from Light/Heat '.$switchName.', Mode='.$deviceLevel);
+					SetValue($levelId, $deviceLevel);
+					if ($updatelevel)		// die Temperatur in der Gruppe synchronisieren, wenn so parametriert
+						{
+						//echo "Update Level in all Thermostats of Group : ".($lightConfig[$switchName][IPSHEAT_GROUPS])."\n";
+						$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
+						foreach ($groups as $groupName) 
+							{
+							//echo "  SetAllSwitchesByGroup Temperaturwert für  ".$groupName.IPSHEAT_DEVICE_LEVEL."\n";
+							$groupId  = IPS_GetVariableIDByName($groupName.IPSHEAT_DEVICE_MODE, $this->groupCategoryId);
+							$this->SetGroup($groupId, $deviceLevel);			// alle Level Werte einer Gruppe updaten
+							}						
+						}
+                    else $this->SynchronizeGroupsBySwitch($switchId);		// Schalter synchronisieren anhand switchID, macht keinen Unterschied wenn LevelID verwendet wird
+					$this->SynchronizeProgramsBySwitch($switchId);
+				}
+			}
+			IPSHeat_AfterSynchronizeSwitch($switchId, $deviceLevel);
+		}
+
+
 		// ----------------------------------------------------------------------------------------------------------------------------
 		public function SynchronizeDimmer($switchName, $deviceState, $deviceLevel) {
 			IPSLogger_Trc(__file__, 'Received StateChange from Light '.$switchName.', State='.$deviceState.', Level='.$deviceLevel);

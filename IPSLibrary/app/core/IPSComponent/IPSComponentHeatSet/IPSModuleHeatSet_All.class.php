@@ -107,6 +107,39 @@
 					}
 				}
 			}
+
+		/**
+		 * @public
+		 *
+		 * Ermöglicht die Synchronisation der aktuellen Betriebsart des Thermostaten
+         * in der Configuration muss neben dem Wert immer auch eine OID übergeben werden, anhand dieser kann synchronisiert werden
+		 *
+		 * @param string $position Aktuelle Position der Beschattung (Wertebereich 0-100)
+		 */
+		public function SyncSetMode($position, IPSComponentHeatSet $componentToSync) 
+			{
+			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+			echo "IPSModuleHeatSet_All HandleEvent SyncSetMode mit Wert ".$position."\n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetMode mit Wert '.$position);			
+			$componentParamsToSync = $componentToSync->GetComponentParams();
+            print_r($componentParamsToSync);
+			$deviceConfig          = IPSHeat_GetHeatConfiguration();
+			foreach ($deviceConfig as $deviceIdent=>$deviceData) 
+				{
+				$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
+				$componentParamsConfig = $componentConfig->GetComponentParams();
+				$componentParamsConfig1=(string)explode(",",$componentParamsConfig)[1];
+				$componentParamsToSync1=(string)explode(",",$componentParamsToSync)[1];
+				//echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
+				if ( ($componentParamsConfig1==$componentParamsToSync1)  && ($componentParamsConfig1!="") )
+					{
+					echo "Parameter to Sync found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
+                    IPSLogger_Inf(__file__,"SyncSetTemp Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
+					$lightManager = new IPSHeat_Manager();
+					$lightManager->SynchronizeSetMode($deviceIdent, $position);				
+					}
+				}
+			}
 	
 		/**
 		 * @public

@@ -2411,7 +2411,7 @@ class ComponentHandling
         return($struktur);
         }
 
-    public function registerEvent($oid,$update,$component,$module)
+    public function registerEvent($oid,$update,$component,$module,$commentField)
         {
 		//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		//$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
@@ -2420,14 +2420,31 @@ class ComponentHandling
             {
             //echo "   -> gefunden:\n";
             $compare=$this->configMessage[$oid];
-            if ( ($compare[0] != $update) || ($compare[1] != $component) || ($compare[2] != $module) ) $change = true;
+            if ( ($compare[0] != $update) || ($compare[1] != $component) || ($compare[2] != $module) ) 
+				{
+				$change = true;
+				echo "    Event $oid neu konfigurieren mit \"$update\",\"$component\",\"$module\"\n";
+				}
             }
+		else 
+			{
+			$change = true;
+			echo "    Event $oid neu registrieren mit \"$update\",\"$component\",\"$module\"\n";
+			}
         if ($change)
             {
 		    $this->messageHandler->RegisterEvent($oid,$update,$component,$module);
-		    echo "    Event $oid registriert mit \"$update\",\"$component\",\"$module\"\n";
+		    //echo "    Event $oid registriert mit \"$update\",\"$component\",\"$module\"\n";
+			$eventName = $update.'_'.$oid;
+			$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
+			$eventId   = @IPS_GetObjectIDByIdent($eventName, $scriptId);
+			if ($eventId) 
+				{
+				echo "    Event $eventName mit Kommentarfeld versehen.EventId $eventId gefunden.\n";
+				IPS_SetInfo($eventId,$commentField);
+				}
             }
-        else echo "    Event $oid ist bereits korrekt registriert-\n";    
+        else echo "    Event $oid ist bereits korrekt mit \"$update\",\"$component\",\"$module\" registriert.\n";    
         }
 
 /***********************************************************************************
@@ -2445,6 +2462,7 @@ class ComponentHandling
 		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
 		foreach ($Elements as $Key)
 			{
+			//echo " getComponent Entry: \n"; print_r($Key); 
 			$count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
 			if ( is_array($keywords) == true )
 				{
@@ -2513,8 +2531,9 @@ class ComponentHandling
 					$profile="~Temperature";
 					break;	
 				case "CONTROL_MODE":
+				case "TARGETMODEVAR":				
 					$variabletyp=1; 		/* Integer */
-					$index="Mode";
+					$index="HeatSet";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
                     break;                    			
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
@@ -2550,6 +2569,9 @@ class ComponentHandling
 					$index="Schalter";
 					$profile="Switch";
 					break;
+				case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
+				case "TYPE_ACTUATOR":
+					break;	
 				default:	
 					$variabletyp=0; 		/* Boolean */	
 					echo "************Kenne ".strtoupper($keyword)." nicht.\n";
@@ -2729,7 +2751,7 @@ class ComponentHandling
  *
  ****************************************************************************************/
 		
-	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule)
+	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule, $commentField="")
 		{
 		$donotregister=false; $i=0; $maxi=600;		// Notbremse
         $struktur=array();          // Ergbenis, behandelte Objekte
@@ -2818,13 +2840,13 @@ class ComponentHandling
 							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
 							}	
 						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-						$this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule);
+						$this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule,$commentField);
 						}
 					else
 						{
 						/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
 						echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule);
+						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule,$commentField);
 						}			
 					}           /* ende donotregister */
 				} /* Ende foreach */
