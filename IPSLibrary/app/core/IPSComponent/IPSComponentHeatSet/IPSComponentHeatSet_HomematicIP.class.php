@@ -85,7 +85,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet HomematicIP Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "HeatSet HomematicIP Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet HomematicIP Message Handler für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.$value);			
 			
 			if ( (IPS_GetName($variable))=="CONTROL_MODE")
@@ -100,7 +100,7 @@
 				$result=$log->HeatSet_LogValue($value);
 				}
 			
-			$this->WriteValueRemote($value);
+			$this->WriteValueRemote($value);    /* schreibt alle Remote Server an die in $this->RemoteOID stehen, Format Kurzname:ROID; */
 			}
 			
 		/**

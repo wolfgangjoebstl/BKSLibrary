@@ -88,14 +88,21 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			//echo "HeatSet Homematic Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			echo "HeatSet Homematic Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+
+			if ( (IPS_GetName($variable))=="CONTROL_MODE")
+				{
+				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetMode($value, $this);
+				}
+			else
+				{			
+			    if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this);
 			
-			if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this);
-			
-			$log=new HeatSet_Logging($variable);
-			$result=$log->HeatSet_LogValue($value);
-			
+			    $log=new HeatSet_Logging($variable);
+			    $result=$log->HeatSet_LogValue($value);
+                }
+
 			$this->WriteValueRemote($value);  /* schreibt alle Remote Server an die in $this->RemoteOID stehen, Format Kurzname:ROID; */
 			}
 

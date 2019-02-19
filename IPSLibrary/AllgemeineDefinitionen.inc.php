@@ -2520,6 +2520,7 @@ class ComponentHandling
 					}
 				}
 
+            $indexNameExt="";
 			switch (strtoupper($keyword))
 				{
 				case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
@@ -2533,7 +2534,8 @@ class ComponentHandling
 				case "CONTROL_MODE":
 				case "TARGETMODEVAR":				
 					$variabletyp=1; 		/* Integer */
-					$index="HeatSet";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
+					$index="HeatSet";
+                    $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
                     break;                    			
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
@@ -2592,7 +2594,7 @@ class ComponentHandling
 				$install[$Key["Name"]]["INDEX"]=$index;
 				$install[$Key["Name"]]["PROFILE"]=$profile;					 
                 $install[$Key["Name"]]["DETECTMOVEMENT"]=$detectmovement;
-					 
+				$install[$Key["Name"]]["INDEXNAMEEXT"]=$indexNameExt;	 
 
 				$vartyp=IPS_GetVariable($oid);
 				if ($vartyp["VariableProfile"]!="")
@@ -2820,7 +2822,8 @@ class ComponentHandling
 					    }
     				$variabletyp=$entry["TYP"];
 	    			$index= $entry["INDEX"];
-		    		$profile=$entry["PROFILE"];					 
+		    		$profile=$entry["PROFILE"];
+                    $indexNameExt=$entry["INDEXNAMEEXT"];
 			    	if (isset ($this->installedModules["RemoteAccess"]))
 				    	{
 						$i++; if ($i>$maxi) { $donotregister=true; }	        /* Notbremse */										
@@ -2829,7 +2832,7 @@ class ComponentHandling
 							{
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
-							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName, $variabletyp,$struktur[$Name]);
+							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName.$IndexNameExt, $variabletyp,$struktur[$Name]);
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
