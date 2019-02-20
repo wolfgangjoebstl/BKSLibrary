@@ -938,8 +938,11 @@ if ($noinstall==false)
 	if ( (function_exists('FHTList')) && (sizeof(FHTList())>0) )
 		{
     	echo "\n";
-	    echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+	    echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		
+        //installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
 		$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);
+        
+        $componentHandling->installComponentFull(FHTList(),"TargetModeVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);          
 		}
 
 	echo "***********************************************************************************************\n";

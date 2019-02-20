@@ -141,9 +141,10 @@
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+					//echo "WriteValueRemote Wert :".$val." Anzahl ",count($para)." \n";
 					if (count($para)==2)
 						{
+                        //echo "WriteValueRemote Wert :".$val." Anzahl ",count($para)." \n";
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 							{

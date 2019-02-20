@@ -1262,7 +1262,8 @@ function GetValueIfFormatted($oid)
 
 /******************************************************************/
 
-function CreateVariableByName($id, $name, $type)
+
+function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0)
     {
 
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
@@ -1274,6 +1275,9 @@ function CreateVariableByName($id, $name, $type)
         $vid = IPS_CreateVariable($type);
         IPS_SetParent($vid, $id);
         IPS_SetName($vid, $name);
+		IPS_SetPosition ($vid, $position);
+        if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
+    	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
         IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
         }
     return $vid;
@@ -2531,11 +2535,12 @@ class ComponentHandling
 					//$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
 					$profile="~Temperature";
 					break;	
-				case "CONTROL_MODE":
-				case "TARGETMODEVAR":				
+				case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
+				case "TARGETMODEVAR":				// Thermostat FHT
 					$variabletyp=1; 		/* Integer */
 					$index="HeatSet";
                     $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
+                    $profile="Mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
                     break;                    			
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
@@ -2823,7 +2828,7 @@ class ComponentHandling
     				$variabletyp=$entry["TYP"];
 	    			$index= $entry["INDEX"];
 		    		$profile=$entry["PROFILE"];
-                    $indexNameExt=$entry["INDEXNAMEEXT"];
+                    $IndexNameExt=$entry["INDEXNAMEEXT"];
 			    	if (isset ($this->installedModules["RemoteAccess"]))
 				    	{
 						$i++; if ($i>$maxi) { $donotregister=true; }	        /* Notbremse */										

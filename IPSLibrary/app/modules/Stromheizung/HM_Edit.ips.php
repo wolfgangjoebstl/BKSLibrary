@@ -3,66 +3,85 @@ include "HM_Heizung_Funktionen.ips.php";
 include "hmxml.inc.php";
 include "HM_Heizung_Konfig.ips.php";
 
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Stromheizung',$repository);
+		}
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	// Add Scripts
+	$scriptIdActionScript  = IPS_GetScriptIDByName('HM_Edit', $CategoryIdApp);
+  	$HMXML_DataPath='Program.IPSLibrary.data.hardware.IPSHomematic.ThermostatConfig';
+   	$categoryId_hmxml = CreateCategoryPath($HMXML_DataPath);
+    $categoryId_control=CreateCategory("Control",$categoryId_hmxml,10);
+
+    echo "Kategorie HMXML : $categoryId_hmxml ,   Control : $categoryId_control ,  Action Script ID : $scriptIdActionScript  \n";
+
+  	$WFE_LinkPath='Visualization.WebFront.Administrator.OperationCenter.Thermostate';
+    $categoryId_wfe = CreateCategoryPath($WFE_LinkPath);
 
 $dayArray = array("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY");
-$parentID=IPS_GetParent ($_IPS['SELF']);
 
-$HM_Zimmer_Auswahl_id=CreateVariableByName($parentID, "HM_Edit_Zimmer_Auswahl", 1, Profil_anlegen("HM_Heizung_Auswahl"), "HMeditZimmerAuswahl", 1);
-IPS_SetVariableCustomAction($HM_Zimmer_Auswahl_id, $_IPS['SELF']);
 
-$Praesenz_Profil_Auswahl_id=CreateVariableByName($parentID, "HM_Edit_Präsenz_Profil", 1, "Praesenz", "HMeditPraesenzProfil", 2);
-IPS_SetVariableCustomAction($Praesenz_Profil_Auswahl_id, $_IPS['SELF']);
 
-$Profil_Wochentage_id= CreateVariableByName($parentID, "HM_Edit_Wochentag_Auswahl", 1, "HM_Heizung_Wochentag", "HMeditWochentagAuswahl", 3);
-IPS_SetVariableCustomAction($Profil_Wochentage_id, $_IPS['SELF']);
+$HM_Zimmer_Auswahl_id=CreateVariableByName($categoryId_control, "HM_Edit_Zimmer_Auswahl", 1, Profil_anlegen("HM_Heizung_Auswahl"), "HMeditZimmerAuswahl", 1);
+IPS_SetVariableCustomAction($HM_Zimmer_Auswahl_id, $scriptIdActionScript);
 
-$Profil_Slot_Auswahl_id= CreateVariableByName($parentID, "HM_Edit_TagesProfil_Slot_Auswahl", 1, "HM_Heizung_Slot", "HMeditTagesProfilSlotAuswahl", 4);
-IPS_SetVariableCustomAction($Profil_Slot_Auswahl_id, $_IPS['SELF']);
+$Praesenz_Profil_Auswahl_id=CreateVariableByName($categoryId_control, "HM_Edit_PrÃ¤senz_Profil", 1, "Praesenz", "HMeditPraesenzProfil", 2);
+IPS_SetVariableCustomAction($Praesenz_Profil_Auswahl_id, $scriptIdActionScript);
 
-$TagesProfil_edit_Anzeige_id = CreateVariableByName($parentID, "HM_Edit_Tagesprofil_Anzeige_html", 3, "~HTMLBox", "HMeditTagesProfilAnzeigehtml", 5);
+$Profil_Wochentage_id= CreateVariableByName($categoryId_control, "HM_Edit_Wochentag_Auswahl", 1, "HM_Heizung_Wochentag", "HMeditWochentagAuswahl", 3);
+IPS_SetVariableCustomAction($Profil_Wochentage_id, $scriptIdActionScript);
 
-$WochenProfil_edit_Anzeige_id=CreateVariableByName($parentID, "HM_Edit_WochenProfil_Anzeige_html", 3, "~HTMLBox", "HMeditWochenProfilAnzeigehtml", 6);
+$Profil_Slot_Auswahl_id= CreateVariableByName($categoryId_control, "HM_Edit_TagesProfil_Slot_Auswahl", 1, "HM_Heizung_Slot", "HMeditTagesProfilSlotAuswahl", 4);
+IPS_SetVariableCustomAction($Profil_Slot_Auswahl_id, $scriptIdActionScript);
 
-$WochenProfil_Daten_edit_id=CreateVariableByName($parentID, "HM_Edit_WochenProfil_Daten", 3, "~String", "HMeditWochenProfilDaten", 7);
+$TagesProfil_edit_Anzeige_id = CreateVariableByName($categoryId_control, "HM_Edit_Tagesprofil_Anzeige_html", 3, "~HTMLBox", "HMeditTagesProfilAnzeigehtml", 5);
 
-$Temp_edit_id=CreateVariableByName($parentID, "HM_Edit_+1°C_-1°C", 1, "HM_Heizung_Temperatur_Edit", "HMeditTemp", 8);
-IPS_SetVariableCustomAction($Temp_edit_id, $_IPS['SELF']);
+$WochenProfil_edit_Anzeige_id=CreateVariableByName($categoryId_control, "HM_Edit_WochenProfil_Anzeige_html", 3, "~HTMLBox", "HMeditWochenProfilAnzeigehtml", 6);
 
-$Zeit_edit_id=CreateVariableByName($parentID, "HM_Edit_+10min_-10min", 1, "HM_Heizung_Zeit_Edit", "HMeditZeit", 9);
-IPS_SetVariableCustomAction($Zeit_edit_id, $_IPS['SELF']);
+$WochenProfil_Daten_edit_id=CreateVariableByName($categoryId_control, "HM_Edit_WochenProfil_Daten", 3, "~String", "HMeditWochenProfilDaten", 7);
 
-$Slot_add_del_id=CreateVariableByName($parentID, "HM_Edit_Slot_add_del", 1, "HM_Heizung_Slot_add_del", "HMeditSlot", 10);
+$Temp_edit_id=CreateVariableByName($categoryId_control, "HM_Edit_+1Â°C_-1Â°C", 1, "HM_Heizung_Temperatur_Edit", "HMeditTemp", 8);
+IPS_SetVariableCustomAction($Temp_edit_id, $scriptIdActionScript);
+
+$Zeit_edit_id=CreateVariableByName($categoryId_control, "HM_Edit_+10min_-10min", 1, "HM_Heizung_Zeit_Edit", "HMeditZeit", 9);
+IPS_SetVariableCustomAction($Zeit_edit_id, $scriptIdActionScript);
+
+$Slot_add_del_id=CreateVariableByName($categoryId_control, "HM_Edit_Slot_add_del", 1, "HM_Heizung_Slot_add_del", "HMeditSlot", 10);
 IPS_SetVariableCustomAction($Slot_add_del_id, $_IPS['SELF']);
 
-$Wochenprofil_speichern_id=CreateVariableByName($parentID, "HM_Edit_Profil_speichern", 1, "HM_Heizung_Profil_speichern", "HMeditProfilspeichern", 11);
-IPS_SetVariableCustomAction($Wochenprofil_speichern_id, $_IPS['SELF']);
+$Wochenprofil_speichern_id=CreateVariableByName($categoryId_control, "HM_Edit_Profil_speichern", 1, "HM_Heizung_Profil_speichern", "HMeditProfilspeichern", 11);
+IPS_SetVariableCustomAction($Wochenprofil_speichern_id, $scriptIdActionScript);
 
-$Profil_uebertragen_show_id= CreateVariableByName($parentID, "HM_Edit_Profil_übertragen", 1, "HM_heizung_Profil_uebertragen", "HMeditProfiluebertragen", 12);
-IPS_SetVariableCustomAction($Profil_uebertragen_show_id, $_IPS['SELF']);
+$Profil_uebertragen_show_id= CreateVariableByName($categoryId_control, "HM_Edit_Profil_Ã¼bertragen", 1, "HM_heizung_Profil_uebertragen", "HMeditProfiluebertragen", 12);
+IPS_SetVariableCustomAction($Profil_uebertragen_show_id, $scriptIdActionScript);
 
-$Tagesprofil_kopieren_id= CreateVariableByName($parentID, "HM_Edit_Tragesprofil_kopieren", 1, "HM_Heizung_Wochentag", "HMeditTagesProfilkopieren", 13);
-IPS_SetVariableCustomAction($Tagesprofil_kopieren_id, $_IPS['SELF']);
+$Tagesprofil_kopieren_id= CreateVariableByName($categoryId_control, "HM_Edit_Tragesprofil_kopieren", 1, "HM_Heizung_Wochentag", "HMeditTagesProfilkopieren", 13);
+IPS_SetVariableCustomAction($Tagesprofil_kopieren_id, $scriptIdActionScript);
 
-$Wochenprofil_uebernehmen_von_id =  CreateVariableByName($parentID, "HM_Edit_Wochenprofil_übernehmen_von", 1, "HM_Heizung_Auswahl", "HMeditWochenProfiluebernehmen", 14);
-IPS_SetVariableCustomAction($Wochenprofil_uebernehmen_von_id, $_IPS['SELF']);
+$Wochenprofil_uebernehmen_von_id =  CreateVariableByName($categoryId_control, "HM_Edit_Wochenprofil_Ã¼bernehmen_von", 1, "HM_Heizung_Auswahl", "HMeditWochenProfiluebernehmen", 14);
+IPS_SetVariableCustomAction($Wochenprofil_uebernehmen_von_id, $scriptIdActionScript);
 
-$Wochenprofil_uebernehmen_von_Praesenz_Profil_id =  CreateVariableByName($parentID, "HM_Edit_Wochenprofil_übernehmen_von_Praesenz_Profil", 1, "Praesenz", "HMeditWochenProfiluebernehmenPraesenz", 15);
-IPS_SetVariableCustomAction($Wochenprofil_uebernehmen_von_Praesenz_Profil_id, $_IPS['SELF']);
-
+$Wochenprofil_uebernehmen_von_Praesenz_Profil_id =  CreateVariableByName($categoryId_control, "HM_Edit_Wochenprofil_Ã¼bernehmen_von_Praesenz_Profil", 1, "Praesenz", "HMeditWochenProfiluebernehmenPraesenz", 15);
+IPS_SetVariableCustomAction($Wochenprofil_uebernehmen_von_Praesenz_Profil_id, $scriptIdActionScript);
 
 //***************************************************************************************************************************************
 //SetLinkByName($parentID, $name, $targetID, $position)
 //SetKatByName($parentID, $name, $ident, $position)
 
-$KatID=SetKatByName($HM_Edit_Wfe_ID, "Zeitplan - Editieren - Anzeige links oben", "", 1);
+$KatID=SetKatByName($categoryId_wfe, "Zeitplan - Editieren - Anzeige links oben", "", 1);
 SetLinkByName($KatID, "Zimmer Auswahl", $HM_Zimmer_Auswahl_id, 1);
-SetLinkByName($KatID, "Präsenz Profil Auswahl", $Praesenz_Profil_Auswahl_id, 2);
+SetLinkByName($KatID, "PrÃ¤senz Profil Auswahl", $Praesenz_Profil_Auswahl_id, 2);
 SetLinkByName($KatID, "Wochenprofil", $WochenProfil_edit_Anzeige_id, 3);
 
-$KatID=SetKatByName($HM_Edit_Wfe_ID, "Zeitplan - Editieren - Anzeige links unten", "", 2);
+$KatID=SetKatByName($categoryId_wfe, "Zeitplan - Editieren - Anzeige links unten", "", 2);
 SetLinkByName($KatID, "Zimmer Auswahl", $TagesProfil_edit_Anzeige_id, 1);
 
-$KatID=SetKatByName($HM_Edit_Wfe_ID, "Zeitplan - Editieren - Anzeige rechts", "", 3);
+$KatID=SetKatByName($categoryId_wfe, "Zeitplan - Editieren - Anzeige rechts", "", 3);
 $DumID=SetDummyByName($KatID, "Editieren", "", 1);
 SetLinkByName($DumID, "Wochentag", $Profil_Wochentage_id, 1);
 SetLinkByName($DumID, "Zeit-Slot", $Profil_Slot_Auswahl_id, 2);
@@ -71,13 +90,13 @@ SetLinkByName($DumID, "Zeit", $Zeit_edit_id, 4);
 SetLinkByName($DumID, "Temperatur", $Temp_edit_id, 5);
 SetLinkByName($DumID, "ZeitSlot", $Slot_add_del_id, 6);
 SetLinkByName($KatID, "Profil speichern", $Wochenprofil_speichern_id, 2);
-SetLinkByName($KatID, "Profil übertragen", $Profil_uebertragen_show_id, 3);
+SetLinkByName($KatID, "Profil Ã¼bertragen", $Profil_uebertragen_show_id, 3);
 
-$Dum_uebertragenID=SetDummyByName($KatID, "Profil übertragen / Profil übernehmen", "", 4);
+$Dum_uebertragenID=SetDummyByName($KatID, "Profil Ã¼bertragen / Profil Ã¼bernehmen", "", 4);
 SetLinkByName($Dum_uebertragenID, "Tragesprofil kopieren nach", $Tagesprofil_kopieren_id, 1);
 SetDummyByName($Dum_uebertragenID, chr(127), "", 2);
-SetDummyByName($Dum_uebertragenID, "Wochenprofil übernehmen von", "", 3);
-SetLinkByName($Dum_uebertragenID, "Präsenz", $Wochenprofil_uebernehmen_von_Praesenz_Profil_id, 4);
+SetDummyByName($Dum_uebertragenID, "Wochenprofil Ã¼bernehmen von", "", 3);
+SetLinkByName($Dum_uebertragenID, "PrÃ¤senz", $Wochenprofil_uebernehmen_von_Praesenz_Profil_id, 4);
 SetLinkByName($Dum_uebertragenID, "Wochenprofil", $Wochenprofil_uebernehmen_von_id, 5);
 
 
@@ -87,7 +106,7 @@ Foreach ($Zimmer as $key=> $Raum)
    $id = @IPS_GetCategoryIDByName ($Raum, IPS_GetParent ($parentID));
    if($id != false)
 		{
-		$IPS_HM_Wochenprofil[$key]=@IPS_GetObjectIDByIdent ("HMWochenprofilDaten", $id);  // id der Variable für die gespeicherten Wochenprofile mit Präsenz
+		$IPS_HM_Wochenprofil[$key]=@IPS_GetObjectIDByIdent ("HMWochenprofilDaten", $id);  // id der Variable fÃ¼r die gespeicherten Wochenprofile mit PrÃ¤senz
 		$IPS_HM_aktives_PraesenzProfil_Heizung[$key]=@IPS_GetObjectIDByIdent ("HMPraesenzProfilAuswahl", $id);
 		$HM_Heizung_WochenProfil_Anzeige_html_ID[$key]=@IPS_GetObjectIDByIdent ("HMWochenprofilhtml", $id);;
 		 }
@@ -99,13 +118,13 @@ if ($_IPS['SENDER']=='WebFront')
 
 	If ($_IPS['VARIABLE']==$Wochenprofil_speichern_id)
 		{
-		If (GetValue($Wochenprofil_speichern_id)==1) // Es liegen Änderungen zum speichern vor
+		If (GetValue($Wochenprofil_speichern_id)==1) // Es liegen Ã„nderungen zum speichern vor
 		   {
-		   // Teste Integrität der Tagesprofile
-		   If (HM_WochenTempProfil_prüfen($WochenProfil_Daten_edit_id) == "OK")
+		   // Teste IntegritÃ¤t der Tagesprofile
+		   If (HM_WochenTempProfil_prÃ¼fen($WochenProfil_Daten_edit_id) == "OK")
 		      {
 		      // echo "Alles OK !!";
-		      // nur wenn editiertes Wochenprofil zur aktuellen (Heizungs)Präsenz passt, dann übertrage das Profil auch an das Thermostat
+		      // nur wenn editiertes Wochenprofil zur aktuellen (Heizungs)PrÃ¤senz passt, dann Ã¼bertrage das Profil auch an das Thermostat
 			   If (GetValue($IPS_HM_aktives_PraesenzProfil_Heizung[GetValue($HM_Zimmer_Auswahl_id)])==GetValue($Praesenz_Profil_Auswahl_id))  
 					{
 					If ($HM_Typ[GetValue($HM_Zimmer_Auswahl_id)]=="HM-TC-IT-WM-W-EU")
@@ -131,19 +150,19 @@ if ($_IPS['SENDER']=='WebFront')
 						$ProfilDaten= unserialize(GetValue($IPS_HM_Wochenprofil[GetValue($HM_Zimmer_Auswahl_id)]));
 						SetValue($WochenProfil_Daten_edit_id, serialize(@$ProfilDaten[GetValueFormatted($Praesenz_Profil_Auswahl_id)]));
 
-				      SetValue($WochenProfil_edit_Anzeige_id, HM_WochenTempProfil_html($WochenProfil_Daten_edit_id, GetValue($Profil_Wochentage_id)));
+				        SetValue($WochenProfil_edit_Anzeige_id, HM_WochenTempProfil_html($WochenProfil_Daten_edit_id, GetValue($Profil_Wochentage_id)));
 
 
 						$tmp=(unserialize(Getvalue($WochenProfil_Daten_edit_id)));
 						$day=GetValue($Profil_Wochentage_id);
 						SetValue($TagesProfil_edit_Anzeige_id, HM_TagesTempProfil_html($tmp[$dayArray[$day]], GetValue($Profil_Slot_Auswahl_id)));
-						SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurücksetzen
+						SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurÃ¼cksetzen
 						
 						SetValue($HM_Heizung_WochenProfil_Anzeige_html_ID[GetValue($HM_Zimmer_Auswahl_id)], HM_WochenTempProfil_html($WochenProfil_Daten_edit_id));
 						
 					   }
 					 }
-					 else // Wenn aktives PräsenzProfil nicht dem editierten Profil entspricht, dann wird nicht zm Thermostat übertragen sondern nur abgespeichert
+					 else // Wenn aktives PrÃ¤senzProfil nicht dem editierten Profil entspricht, dann wird nicht zm Thermostat Ã¼bertragen sondern nur abgespeichert
 					 {
 					 If ($HM_Typ[GetValue($HM_Zimmer_Auswahl_id)]=="HM-TC-IT-WM-W-EU")
 					   {
@@ -163,12 +182,12 @@ if ($_IPS['SENDER']=='WebFront')
 					 $tmp=(unserialize(Getvalue($WochenProfil_Daten_edit_id)));
 					 $day=GetValue($Profil_Wochentage_id);
 					 SetValue($TagesProfil_edit_Anzeige_id, HM_TagesTempProfil_html($tmp[$dayArray[$day]], GetValue($Profil_Slot_Auswahl_id)));
-					 SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurücksetzen
+					 SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurÃ¼cksetzen
     				 }
     		    }
 		     else
 				{
-				echo HM_WochenTempProfil_prüfen($WochenProfil_Daten_edit_id);
+				echo HM_WochenTempProfil_prÃ¼fen($WochenProfil_Daten_edit_id);
 				}
           }
   		 }
@@ -184,7 +203,7 @@ if ($_IPS['SENDER']=='WebFront')
 		Case $Praesenz_Profil_Auswahl_id:
 			  //33994*[Gewerke\Heizung\Zeitplan - Editieren\HM_Edit_Zimmer_Auswahl]*/
 
-			If (GetValue($HM_Zimmer_Auswahl_id)== 0) // Zurücksetzen
+			If (GetValue($HM_Zimmer_Auswahl_id)== 0) // ZurÃ¼cksetzen
 			   {
 			   SetValue($Profil_Slot_Auswahl_id,1);
 			   SetValue($Profil_Wochentage_id,0);
@@ -194,7 +213,7 @@ if ($_IPS['SENDER']=='WebFront')
             $str .= "<tr  align='center' height=25> <td width=25%>  </td><td width=25%> </td><td width=25%> </td><td width=25%> </td></tr></table>";
             SetValue($TagesProfil_edit_Anzeige_id, $str);
 				SetValue($WochenProfil_edit_Anzeige_id,"");
-				SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurücksetzen
+				SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurÃ¼cksetzen
 				}
 
 			If (GetValue($HM_Zimmer_Auswahl_id)> 0)
@@ -209,7 +228,7 @@ if ($_IPS['SENDER']=='WebFront')
 		         $str .= "<tr  align='center' height=25> <td width=25%>  </td><td width=25%> </td><td width=25%> </td><td width=25%> </td></tr></table>";
 	            SetValue($TagesProfil_edit_Anzeige_id, $str);
 					SetValue($WochenProfil_edit_Anzeige_id,"");
-					SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurücksetzen
+					SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurÃ¼cksetzen
    			   }
 				   else
 					{
@@ -217,7 +236,7 @@ if ($_IPS['SENDER']=='WebFront')
 					$tmp=(unserialize(Getvalue($WochenProfil_Daten_edit_id)));
 					$day=GetValue($Profil_Wochentage_id);
 					SetValue($TagesProfil_edit_Anzeige_id, HM_TagesTempProfil_html($tmp[$dayArray[$day]], GetValue($Profil_Slot_Auswahl_id)));
-					SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurücksetzen
+					SetValue($Wochenprofil_speichern_id,0);  // Speicher Button zurÃ¼cksetzen
 					}
 				}
 
@@ -261,7 +280,7 @@ if ($_IPS['SENDER']=='WebFront')
 
             SetValue($Wochenprofil_speichern_id,1);  // Speicher Button freigeben
 
-				If ($Slot< count($tmp[$dayArray[$day]]['EndTimes'])) // Verhindert dass die Zeit des letzten Slots geändert wird (ist immer 24:00)
+				If ($Slot< count($tmp[$dayArray[$day]]['EndTimes'])) // Verhindert dass die Zeit des letzten Slots geÃ¤ndert wird (ist immer 24:00)
 					{
 					If ($Slot==1)
 					   {
@@ -360,7 +379,7 @@ if ($_IPS['SENDER']=='WebFront')
 				 }
 		 break;
 
-		 Case $Temp_edit_id:	//36633*[Gewerke\Heizung\Zeitplan - Editieren\HM_Edit_+1°C_-1°C]*/
+		 Case $Temp_edit_id:	//36633*[Gewerke\Heizung\Zeitplan - Editieren\HM_Edit_+1Â°C_-1Â°C]*/
 
 			If (GetValue($HM_Zimmer_Auswahl_id)!=0)
 			   {
@@ -373,7 +392,7 @@ if ($_IPS['SENDER']=='WebFront')
 
 	         Switch (GetValue($Temp_edit_id))
 				   {
-				   Case 1: // -1°C min
+				   Case 1: // -1Â°C min
 
 				      If (($Temperatur-1)>=4.99)
 							{
@@ -385,7 +404,7 @@ if ($_IPS['SENDER']=='WebFront')
 							}
 		   	   break;
 
-			   	Case 2: // -0.1°C min
+			   	Case 2: // -0.1Â°C min
 						If (($Temperatur-0.1)>4.9)
 							{
 							$Temperatur=$Temperatur-0.1;
@@ -396,7 +415,7 @@ if ($_IPS['SENDER']=='WebFront')
 							}
 			      break;
 
-				   Case 3: // +0.1°C min
+				   Case 3: // +0.1Â°C min
 				      If (($Temperatur+0.1)<30.1)
 							{
 							$Temperatur=$Temperatur+0.1;
@@ -407,7 +426,7 @@ if ($_IPS['SENDER']=='WebFront')
 							}
 			      break;
 
-				   Case 4: // +1°C min
+				   Case 4: // +1Â°C min
 				      If (($Temperatur+1)<=30.01)
 							{
 							$Temperatur=$Temperatur+1;
@@ -435,9 +454,9 @@ if ($_IPS['SENDER']=='WebFront')
 				  	 Switch (GetValue($Slot_add_del_id))
 				      {
 
-						Case 1:   // ZeitSlot löschen
+						Case 1:   // ZeitSlot lÃ¶schen
 
-							If ($Slots >1)  // letzter TimeSlot darf nicht gelöscht werden
+							If ($Slots >1)  // letzter TimeSlot darf nicht gelÃ¶scht werden
 							   {
 								array_splice($tmp[$dayArray[$day]]['EndTimes'], $Slot-1, 1);
          	         	array_splice($tmp[$dayArray[$day]]['Values'], $Slot-1, 1);
@@ -457,9 +476,9 @@ if ($_IPS['SENDER']=='WebFront')
 				   	 break;
 
 
-					    Case 2:   // ZeitSlot anfügen
+					    Case 2:   // ZeitSlot anfÃ¼gen
 
-							If ($Slots <24)  // max 24 TimeSlots zulässig
+							If ($Slots <24)  // max 24 TimeSlots zulÃ¤ssig
 							   {
 								array_splice($tmp[$dayArray[$day]]['EndTimes'], $Slots, 0, "24:00");
          	         	array_splice($tmp[$dayArray[$day]]['Values'], $Slots, 0, "17");
@@ -514,7 +533,7 @@ if ($_IPS['SENDER']=='WebFront')
 	            If (GetValue($Wochenprofil_uebernehmen_von_id)!=0)
 			   		{
                   $ProfilDaten= unserialize(GetValue($IPS_HM_Wochenprofil[GetValue($Wochenprofil_uebernehmen_von_id)])); // Wochenprofil holen
-				      $tmp=@$ProfilDaten[GetValueFormatted($Wochenprofil_uebernehmen_von_Praesenz_Profil_id)]; // Wochenprofil passend zur gewünschten Praesenz
+				      $tmp=@$ProfilDaten[GetValueFormatted($Wochenprofil_uebernehmen_von_Praesenz_Profil_id)]; // Wochenprofil passend zur gewÃ¼nschten Praesenz
          			SetValue($WochenProfil_Daten_edit_id,serialize($tmp));
 
 
@@ -560,4 +579,8 @@ if ($_IPS['SENDER']=='Variable')
 //echo $_IPS['VARIABLE'];
 
 //print_r($Tages_Profil);
+
+
+
+
 ?>

@@ -5,7 +5,7 @@ include "hmxml.inc.php";
 
 //******************************************************************************
 
-If ($_IPS['SENDER'] == "Execute")  // manuelles Ausführen zur Instalation
+If ($_IPS['SENDER'] == "Execute")  // manuelles AusfÃ¼hren zur Instalation
 	{
 	Foreach ($Zimmer as $key=> $Raum)
 	      {
@@ -26,7 +26,7 @@ If ($_IPS['SENDER'] == "Execute")  // manuelles Ausführen zur Instalation
 
 //*****************************************************************************
 
-If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigger
+If ($_IPS['SENDER'] != "Execute") // AusfÃ¼hrung erfolgt Ã¼ber WebFrond oder Tigger
 	{
 	$gefunden="";
 	$HM_Raum=  IPS_GetObject(IPS_GetParent($_IPS['VARIABLE']))['ObjectName'];
@@ -68,7 +68,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 				Case 'WebFront':
      			  // ****************************
-	           // Aktion für Variable Modus
+	           // Aktion fÃ¼r Variable Modus
 	           // ****************************
 				  if (@$_IPS['VARIABLE'] == $HM_Modus_ID)
 						{
@@ -93,7 +93,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 						}
 
 				 //********************************************************************
-	   	    // wird Temperatur im Webfrond geändert  ... nur bei neuem Thermostat
+	   	    // wird Temperatur im Webfrond geÃ¤ndert  ... nur bei neuem Thermostat
 				 //********************************************************************
 
 				 //if (@$_IPS['VARIABLE'] == IPS_GetObjectIDByIdent ("SET_TEMPERATURE", $IPS_HM_DeviceID[$key]))
@@ -103,7 +103,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 				//	  }
 
 				 //**********************************
-				 // Profil auswählen / setzen
+				 // Profil auswÃ¤hlen / setzen
 				 //**********************************
 					if ($_IPS['VARIABLE'] == $HM_Praesenz_Profil_Auswahl_ID)
 					   {
@@ -141,7 +141,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 
 		  		 //**********************************
-	 			 // Aktion für Wochenprofil auslesen
+	 			 // Aktion fÃ¼r Wochenprofil auslesen
   				 //**********************************
                if ($_IPS['VARIABLE'] == $HM_Wochenprofil_auslesen_ID)
 					   {
@@ -175,7 +175,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 							 }
 							else
 							 {
-							 SetValue($HM_Praesenz_Profil_Auswahl_ID, -1);  // IPS kennt (noch) keine Profile für das HM
+							 SetValue($HM_Praesenz_Profil_Auswahl_ID, -1);  // IPS kennt (noch) keine Profile fÃ¼r das HM
 							 }
 						 
 						 if (GetValue($HM_Wochenprofil_speichern_ID)==1)  /// ausgelesenes Profil wird gespeichert in Profilvariable "Normal"
@@ -191,7 +191,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 			 Case 'Variable':
  				  //**********************************
-				  //Aktion für Anzeige Wochenprofil
+				  //Aktion fÃ¼r Anzeige Wochenprofil
 				  //**********************************
 				  if ($_IPS['VARIABLE'] == $HM_Heizung_Wochenprofil_ID)
 					  {
@@ -213,7 +213,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 				Case 'WebFront':
      			  // ****************************
-	           // Aktion für Variable Modus
+	           // Aktion fÃ¼r Variable Modus
 	           // ****************************
 				  if (@$_IPS['VARIABLE'] == $HM_Modus_ID)
 						{
@@ -238,7 +238,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 						}
 
        		   //**********************************
- 				   // Profil auswählen / setzen
+ 				   // Profil auswÃ¤hlen / setzen
 				   //**********************************
 					if ($_IPS['VARIABLE'] == $HM_Praesenz_Profil_Auswahl_ID)
 					   {
@@ -262,7 +262,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 					      {
 							If ($Profile[array_keys($Profile)[0]] == $P[0] and
                          $Profile[array_keys($Profile)[1]] == $P[1] and
-                         $Profile[array_keys($Profile)[2]] == $P[2])    // stimmen die in IPS gespeicherten Profile mit dem aus dem HM Device überein ?
+                         $Profile[array_keys($Profile)[2]] == $P[2])    // stimmen die in IPS gespeicherten Profile mit dem aus dem HM Device Ã¼berein ?
                          
                          {
 								 SetValue($HM_Wochenprofil_speichern_ID,0); // Speicherbutton sperren
@@ -323,7 +323,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 		  	    Case 'WebFront':
 					//**********************************
-					// Aktion für Variable Modus
+					// Aktion fÃ¼r Variable Modus
 					//**********************************
 					if (@$_IPS['VARIABLE'] == $HM_Modus_ID)
 						{
@@ -349,7 +349,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 	      	      break;
 				  	   }
 					//**********************************
-					// Profil auswählen / setzen
+					// Profil auswÃ¤hlen / setzen
 					//**********************************
 				  if ($_IPS['VARIABLE'] == $HM_Praesenz_Profil_Auswahl_ID)
 					   {
@@ -385,7 +385,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 
 
 					//**********************************
-					// Aktion für Wochenprofil auslesen
+					// Aktion fÃ¼r Wochenprofil auslesen
 				   //**********************************
                if ($_IPS['VARIABLE'] == $HM_Wochenprofil_auslesen_ID)
 					   {
@@ -419,7 +419,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 							 }
 							else
 							 {
-							 SetValue($HM_Praesenz_Profil_Auswahl_ID, -1);  // IPS kennt (noch) keine Profile für das HM
+							 SetValue($HM_Praesenz_Profil_Auswahl_ID, -1);  // IPS kennt (noch) keine Profile fÃ¼r das HM
 							 }
 
 						 if (GetValue($HM_Wochenprofil_speichern_ID)==1)  /// ausgelesenes Profil wird gespeichert in Profilvariable "Normal"
@@ -436,7 +436,7 @@ If ($_IPS['SENDER'] != "Execute") // Ausführung erfolgt über WebFrond oder Tigge
 			  Case 'Variable':
 
 				  //**********************************
-				  //Aktion für AnNzeige Wochenprofil ... für neues und altes Thermostat
+				  //Aktion fÃ¼r AnNzeige Wochenprofil ... fÃ¼r neues und altes Thermostat
   				  //**********************************
 
 				  if ($_IPS['VARIABLE'] == $HM_Heizung_Wochenprofil_ID)

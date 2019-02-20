@@ -70,6 +70,7 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 	 ****************************************************************************************************************/
 
     $componentHandling=new ComponentHandling();
+    $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateHeatControl um ".date("h:i am d.m.Y ").".";
 
 	echo "\n";
 	echo "***********************************************************************************************\n";
@@ -79,11 +80,11 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		{
 		echo "\n";
 		echo "Homematic Heat Control Actuator werden registriert.\n";
-		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$commentField);
 
 		echo "\n";
 		echo "HomematicIP Heat Control Actuator werden registriert.\n";
-		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All');		
+		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_HomematicIP','IPSModuleHeatControl_All',$commentField);		
 		//installComponentFull(HomematicList(),"VALVE_STATE",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All,1,2,3');					
 		} 			
 
@@ -94,14 +95,14 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		//installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
 		echo "\n";
 		echo "FHT80b Heat Control Actuator werden registriert.\n";		
-		$componentHandling->installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All');
+		$componentHandling->installComponentFull(FHTList(),"PositionVar",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All',$commentField);
 		}
 
 	echo "***********************************************************************************************\n";
 
 	/****************************************************************************************************************
 	 *
-	 *                                      Heat Control Set Temperature
+	 *                                      Heat Set Temperature (Thermostate an der Wand)
 	 *
 	 ****************************************************************************************************************/
 
@@ -114,11 +115,11 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		{
 		echo "\n";
 		echo "Homematic Heat Set Werte aus den Thermostaten werden registriert.\n";
-		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All',$commentField);
 
 		echo "\n";
 		echo "HomematicIP Heat Set Werte aus den Thermostaten werden registriert.\n";
-		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All');		
+		$componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),"TYPE_THERMOSTAT",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);		
 		//installComponentFull(HomematicList(),array("SET_TEMPERATURE","WINDOW_OPEN_REPORTING"),'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
 		//installComponentFull(HomematicList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
 		} 	
@@ -130,14 +131,14 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		echo "\n";
 		echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		
 		//installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
-		$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);
 		}
 
 	echo "***********************************************************************************************\n";
 
 	/****************************************************************************************************************
 	 *
-	 *                                      Heat Control Mode
+	 *                                      Heat Set Thermostat Control Mode (manuell, Auto etc.)
 	 *
 	 ****************************************************************************************************************/
 
@@ -150,11 +151,21 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		{
 		echo "\n";
 		echo "Homematic Control Mode Werte aus den Thermostaten werden registriert.\n";
-		//installComponentFull(selectProtocol("Funk",HomematicList()),"CONTROL_MODE",'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All');
+        $componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),["CONTROL_MODE","WINDOW_OPEN_REPORTING"],'IPSComponentHeatSet_Homematic','IPSModuleHeatSet_All',$commentField);
 
 		echo "\n";
 		echo "HomematicIP Control Mode Werte aus den Thermostaten werden registriert.\n";
-		//installComponentFull(selectProtocol("IP",HomematicList()),"CONTROL_MODE",'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All');		
-;
+	    $componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),["CONTROL_MODE","!VALVE_STATE"],'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);
 		} 
+
+	if ( (function_exists('FHTList')) && (sizeof(FHTList())>0) )
+		{
+    	echo "\n";
+	    echo "FHT80b Heat Set Werte aus den Thermostaten werden registriert.\n";		
+        $componentHandling->installComponentFull(FHTList(),"TargetModeVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);        
+        //installComponentFull(FHTList(),"TargetTempVar",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All');
+		//$componentHandling->installComponentFull(FHTList(),"TYPE_THERMOSTAT",'IPSComponentHeatSet_FS20','IPSModuleHeatSet_All',$commentField);
+		}
+
+
 ?>

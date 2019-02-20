@@ -87,7 +87,7 @@
 			//echo "IPSModuleHeatSet_All HandleEvent SyncSetTemp mit Status ".($state?'On':'Off')." und TempWert ".$position."\n";
 			//IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetTemp mit Status '.($state?'On':'Off').' und TempWert '.$position);			
 			echo "IPSModuleHeatSet_All HandleEvent SyncSetTemp mit TempWert ".$position."\n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetTemp mit TempWert '.$position);			
+			IPSLogger_Dbg(__file__, 'IPSModuleHeatSet_All HandleEvent: SyncSetTemp mit TempWert '.$position);			
 			$componentParamsToSync = $componentToSync->GetComponentParams();
             //print_r($componentParamsToSync);
 			$deviceConfig          = IPSHeat_GetHeatConfiguration();
@@ -100,7 +100,7 @@
 				//echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
 				if ( ($componentParamsConfig1==$componentParamsToSync1)  && ($componentParamsConfig1!="") )
 					{
-					echo "Parameter to Sync found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
+					echo "   Parameter to Sync in Heat/Light Configuration found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
                     IPSLogger_Inf(__file__,"SyncSetTemp Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
 					$lightManager = new IPSHeat_Manager();
 					$lightManager->SynchronizeSetTemp($deviceIdent, $position);				

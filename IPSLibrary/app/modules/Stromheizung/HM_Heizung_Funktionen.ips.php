@@ -21,14 +21,14 @@ Function HM_WochenTempProfil_html($ID_tempProfile, $day_hl=99)
 		}
 		
 	$bgcolor[1]='#0101DF'; // #3399CC'; // kalt <= 15
-	$bgcolor[2]='#01DF3A'; // #33CC66'; // Absenktemperatur grün <= 17
+	$bgcolor[2]='#01DF3A'; // #33CC66'; // Absenktemperatur grÃ¼n <= 17
 	$bgcolor[3]='#D7DF01'; // #FFCC66'; // Komforttemperatur <=23
-	$bgcolor[4]='#DF0101'; // #FF3366'; // heiß >23
+	$bgcolor[4]='#DF0101'; // #FF3366'; // heiÃŸ >23
 
 	$bgcolor_hl[1]='#08088A'; // #339966'; // kalt <= 15
-	$bgcolor_hl[2]='#088A29'; // #009966'; // Absenktemperatur grün <= 17
+	$bgcolor_hl[2]='#088A29'; // #009966'; // Absenktemperatur grÃ¼n <= 17
 	$bgcolor_hl[3]='#868A08'; // #FF9966'; // Komforttemperatur <=23
-	$bgcolor_hl[4]='#8A0808'; // #FF33FF'; // heiß >23
+	$bgcolor_hl[4]='#8A0808'; // #FF33FF'; // heiÃŸ >23
 
 
 
@@ -59,7 +59,7 @@ Function HM_WochenTempProfil_html($ID_tempProfile, $day_hl=99)
 							{
 							$temp[$day][]=3;
 							}
-							else   // heiß
+							else   // heiÃŸ
 								{
 								$temp[$day][]=4;
 								}
@@ -88,7 +88,7 @@ Function HM_WochenTempProfil_html($ID_tempProfile, $day_hl=99)
 		$str .="<tr height=25> <td>". $dayArray_germ[$daykey] ."</td>";
 		Foreach ($times[$day] as $key => $time)
 			{
-			If ($day_hl<>$daykey) // wurde Wochentag mit übergeben (0=Mo, 1=Di ... 99=kein Wochentag vorgegeben)
+			If ($day_hl<>$daykey) // wurde Wochentag mit Ã¼bergeben (0=Mo, 1=Di ... 99=kein Wochentag vorgegeben)
 			   {
 			   $str .="<td colspan=". ($time/5) ." bgcolor=". $bgcolor[$temp[$day][$key]] ."> </td>";
 				}
@@ -104,10 +104,10 @@ Function HM_WochenTempProfil_html($ID_tempProfile, $day_hl=99)
    $str .= "<table border=0 cellpadding=3 cellspacing=5 width=100% align='center'>";
 	$str .= "<tr height=25 > ";
 	$str .= "<td width=8% align='left'> Index: </td>";
-	$str .= "<td width=23% bgcolor= $bgcolor[1] align='center'> <= 15°C</td>";
-   $str .= "<td width=23% bgcolor= $bgcolor[2] align='center'> 15.1°C - 17°C </td>";
-   $str .= "<td width=23% bgcolor= $bgcolor[3] align='center'> 17.1°C - 22°C </td>";
-   $str .= "<td width=23% bgcolor= $bgcolor[4] align='center'> > 22°C </td>";
+	$str .= "<td width=23% bgcolor= $bgcolor[1] align='center'> <= 15Â°C</td>";
+   $str .= "<td width=23% bgcolor= $bgcolor[2] align='center'> 15.1Â°C - 17Â°C </td>";
+   $str .= "<td width=23% bgcolor= $bgcolor[3] align='center'> 17.1Â°C - 22Â°C </td>";
+   $str .= "<td width=23% bgcolor= $bgcolor[4] align='center'> > 22Â°C </td>";
 
 	$str .="</table>";
 	return $str;
@@ -125,24 +125,24 @@ Function HM_TagesTempProfil_html($Tages_Profil, $slot_hl=99)
 			 $SollWert = number_format( $Tages_Profil['Values'][$key], 1,",",".");
 			 If ($key<>$slot_hl-1)
 				 {
-				 $str .= "<tr  align='center' height=25> <td width=25%> Slot " .($key+1) ."</td><td width=25%> $start </td><td width=25%> $EndTime </td><td width=25%> $SollWert °C</td></tr>";
+				 $str .= "<tr  align='center' height=25> <td width=25%> Slot " .($key+1) ."</td><td width=25%> $start </td><td width=25%> $EndTime </td><td width=25%> $SollWert Â°C</td></tr>";
 				 }
 				else
 				 {
-				 $str .= "<tr  bgcolor=#1A2B3C align='center' height=25> <td width=25%> Slot " .($key+1) ."</td><td width=25%> $start </td><td width=25%> $EndTime </td><td width=25%> $SollWert °C</td></tr>";
+				 $str .= "<tr  bgcolor=#1A2B3C align='center' height=25> <td width=25%> Slot " .($key+1) ."</td><td width=25%> $start </td><td width=25%> $EndTime </td><td width=25%> $SollWert Â°C</td></tr>";
 				 }
 			 $start=$EndTime;
 			 }
 
 	$str .= "</table>";
 
-	// Auswahl-Zeit-Slot in Webfront Anzeige auf Anzahl der belegten Slots im HM WT beschränken
+	// Auswahl-Zeit-Slot in Webfront Anzeige auf Anzahl der belegten Slots im HM WT beschrÃ¤nken
 	IPS_SetVariableProfileValues ("HM_Heizung_Slot", 1 , $key+1 , 1 );
 
 	return $str;
 	}
 
-Function HM_WochenTempProfil_prüfen($ID_tempProfile)
+Function HM_WochenTempProfil_prÃ¼fen($ID_tempProfile)
 	{
 	$Ergebnis="OK";
 	$dayArray = array("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY");
@@ -166,31 +166,6 @@ Function HM_WochenTempProfil_prüfen($ID_tempProfile)
 	 return $Ergebnis;
 	}
 
-/**************************
-    Variable anlegen
-***************************/
-
-//0	Legt eine Variable vom Typ Boolean an
-//1	Legt eine Variable vom Typ Integer an
-//2	Legt eine Variable vom Typ Float an
-//3	Legt eine Variable vom Typ String an
-
-
-function CreateVariableByName($parentID, $name, $type, $profile, $ident, $position)
-    {
-        $vid = @IPS_GetVariableIDByName($name, $parentID);
-        if($vid === false)
-        {
-            $vid = IPS_CreateVariable($type);
-            IPS_SetParent($vid, $parentID);
-            IPS_SetName($vid, $name);
-				IPS_SetPosition ($vid, $position);
-            IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
-            if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
-				if($ident !=="") {IPS_SetIdent ($vid , $ident );}
-			}
-	  	  return $vid;
-    }
 
 
 /**************************
@@ -216,16 +191,16 @@ function SetKatByName($parentID, $name, $ident, $position)
 /**************************
     Timer anlegen
 ***************************/
-//0	Legt ein “ausgelöstes” Ereignis an
-//1	Legt ein “zyklisches” Ereignis an
+//0	Legt ein Â“ausgelÃ¶stesÂ” Ereignis an
+//1	Legt ein Â“zyklischesÂ” Ereignis an
 
 function SetTimerByName($parentID, $name, $ausloeser)
     {
      $eid = @IPS_GetEventIDByName($name, $parentID);
      if($eid === false)
         {
-            $eid = IPS_CreateEvent(0);                  //Ausgelöstes Ereignis
-				IPS_SetEventTrigger($eid, 1, $ausloeser);        //Bei Änderung von Variable mit ID 15754
+            $eid = IPS_CreateEvent(0);                  //AusgelÃ¶stes Ereignis
+				IPS_SetEventTrigger($eid, 1, $ausloeser);        //Bei Ã„nderung von Variable mit ID 15754
 				IPS_SetParent($eid, $parentID);         //Ereignis zuordnen
             IPS_SetName($eid, $name);
             IPS_SetInfo($eid, "this timer was created by script #".$_IPS['SELF']);
@@ -296,7 +271,7 @@ Function Profil_anlegen($Profil)
 			   {
 			   Foreach ($Associations as $ass)
 			         {
-			         IPS_SetVariableProfileAssociation ( $Profil , $ass['Value'] , "", "", 0 ); // zunächst alle Assosiationen löschen
+			         IPS_SetVariableProfileAssociation ( $Profil , $ass['Value'] , "", "", 0 ); // zunÃ¤chst alle Assosiationen lÃ¶schen
 			         }
             IPS_SetVariableProfileAssociation($Profil,0, " ", "", -1);  // erste Assosiation =0
 
@@ -328,7 +303,7 @@ Function Profil_anlegen($Profil)
 	}
 
 /*****************************************************************************
-   	      Funktionen für Raumsteuerung
+   	      Funktionen fÃ¼r Raumsteuerung
 *****************************************************************************/
 
 Function Set_Praesenz_Profil($Raum, $Profil )
@@ -440,7 +415,7 @@ Function Raumsteuerung_HM_CC_RT_DN($Count)
 		SetLinkByName($HM_Wfe_ID[$Count], "Profil Auswahl", $HM_Praesenz_Profil_Auswahl_ID, 7);
 		SetLinkByName($HM_Wfe_ID[$Count], "Wochenprofil", $HM_Heizung_WochenProfil_Anzeige_html_ID, 8);
 		SetLinkByName($HM_Wfe_ID[$Count], "Wochenprofil speichern", $HM_Wochenprofil_speichern_ID, 9);
-		// Aktion bei Temperaturänderung hinterlegen
+		// Aktion bei TemperaturÃ¤nderung hinterlegen
 //		If (IPS_GetVariable(IPS_GetObjectIDByIdent ("SET_TEMPERATURE", $IPS_HM_DeviceID[$Count]))['VariableCustomAction'] != $_IPS['SELF'])
 //			{
 //			IPS_SetVariableCustomAction (IPS_GetObjectIDByIdent ("SET_TEMPERATURE", $IPS_HM_DeviceID[$Count]), $_IPS['SELF'] );

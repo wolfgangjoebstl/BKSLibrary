@@ -476,9 +476,17 @@ Path=Visualization.Mobile.Stromheizung
 			}
 		}
 
+	/***********************************************************************************************
+	 * Register Data area for Thermostat Configuration Handling 
+	 *
+     ***************************************************************************************************/
+
+	$HMXML_DataPath='Program.IPSLibrary.data.hardware.IPSHomematic.ThermostatConfig';
+	$categoryId_hmxml = CreateCategoryPath($HMXML_DataPath);
+
 	/****************************************************************************
 	 *
-	 * Webfront Installation der Stromheiztung in der Autosteuerung
+	 * Webfront Installation der Stromheizung in der Autosteuerung
 	 *
 	 * 
 	 *

@@ -427,7 +427,7 @@
 		 * @public
 		 *
 		 * Setzt den Wert einer Thermostat Variable anhand der zugehörigen ID.
-		 * Möglich sind aktuell die Erweiterungen #Temp und #Mode
+		 * Möglich sind aktuell Switch und die Erweiterungen #Temp und #Mode
 		 * 
 		 * Verwendet wurde bisher auch #Level - wurde auf #Temp geändert
          * das Automatische Schalten von State anhand von Level wurde deaktiviert. Das sind jetzt jeweils unabhängige Funktionen.
@@ -479,7 +479,7 @@
 					if (GetValue($tempId) < 6)   { $value = 6; }
 					SetValue($tempId, $value);
 
-					//echo "   SetHeat Berechnung für Component ".null." mit den Werten : ".(GetValue($switchId)?'On, Level='.GetValue($levelId):'Off, Level='.GetValue($levelId))."\n";
+					//echo "   Set Heat/Light $configName ".(GetValue($switchId)?'On, Level='.GetValue($tempId):'Off').". Mode=".GetValue($modeId)."\n";
 					//print_r($component);
 			
 					IPSLogger_Inf(__file__, 'Set Heat/Light '.$configName.' '.($switchValue?'On, Level='.$tempValue:'Off'));
@@ -501,8 +501,8 @@
 					IPSHeat_AfterSwitch($switchId, $switchValue);
 					break;
 				case $switchId:			
-					echo "   IPSHeatManager:SetHeat für Schalter aufgerufen. Ändere von aktuell ".($switchValue?"Ein":"Aus")." auf ".($value?"Ein":"Aus")."\n";
-					IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId):'Off'));
+					//echo "   IPSHeatManager:SetHeat für Schalter aufgerufen. Ändere von aktuell ".($switchValue?"Ein":"Aus")." auf ".($value?"Ein, Temp=".GetValue($tempId):"Aus").". Mode = ".GetValue($modeId)."\n";
+					IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Temp='.GetValue($tempId):'Off').' Mode='.GetValue($modeId));
 					SetValue($switchId, $value);
 
 					if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
@@ -704,12 +704,16 @@
 				}
 			else
 				{	
+				//echo "         SynchronizeGroupsBySwitch ".$switchId."   \"".$lightConfig[$switchName][IPSHEAT_GROUPS]."\"\n";
 				$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
 				foreach ($groups as $groupName) 
 					{
-					//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
-					$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
-					$this->SynchronizeGroup($groupId);
+					if ($groupName != "")
+						{
+						//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
+						$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
+						$this->SynchronizeGroup($groupId);
+						}
 					}
 				}	
 			}
@@ -972,7 +976,7 @@
 		public function SynchronizeSetTemp($switchName, $deviceLevel) {
 			IPSLogger_Trc(__file__, 'Received StateChange from Light '.$switchName.', Level='.$deviceLevel);
 			$switchId    = IPS_GetVariableIDByName($switchName, $this->switchCategoryId);
-			$levelId     = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_LEVEL, $this->switchCategoryId);
+			$levelId     = IPS_GetVariableIDByName($switchName.IPSHEAT_DEVICE_TEMPERATURE, $this->switchCategoryId);
 
 			$lightConfig = IPSHeat_GetHeatConfiguration();
 			$deviceType  = $lightConfig[$switchName][IPSHEAT_TYPE];
@@ -994,7 +998,7 @@
 						foreach ($groups as $groupName) 
 							{
 							//echo "  SetAllSwitchesByGroup Temperaturwert für  ".$groupName.IPSHEAT_DEVICE_LEVEL."\n";
-							$groupId  = IPS_GetVariableIDByName($groupName.IPSHEAT_DEVICE_LEVEL, $this->groupCategoryId);
+							$groupId  = IPS_GetVariableIDByName($groupName.IPSHEAT_DEVICE_TEMPERATURE, $this->groupCategoryId);
 							$this->SetGroup($groupId, $deviceLevel);			// alle Level Werte einer Gruppe updaten
 							}						
 						}

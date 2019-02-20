@@ -3,16 +3,16 @@
 	 * @{
 	 *
  	 *
-	 * @file          IPSComponentHeatControl_Homematic.class.php
+	 * @file          IPSComponentHeatSet_FS20.class.php
 	 * @author        Wolfgang Jöbstl und Andreas Brauneis
 	 *
 	 *
 	 */
 
    /**
-    * @class IPSComponentHeatControl_Data
+    * @class IPSComponentHeatSet_FS20
     *
-    * Definiert ein IPSComponentHeatControl_Data Object, das ein IPSComponentHeatControl Object für Homematic implementiert.
+    * Definiert ein IPSComponentHeatSet_FS20 Object, das ein IPSComponentHeatSet Object für FS20 implementiert.
     *
     */
 
@@ -81,7 +81,7 @@
 		 * Function um Events zu behandeln, diese Funktion wird vom IPSMessageHandler aufgerufen, um ein aufgetretenes Event 
 		 * an das entsprechende Module zu leiten.
 		 *
-		 *
+		 * Anhand des Variablennamen wird entschieden ob es sich um eine Temperatur oder um den Mode handelt. Workaround mit _ im Variablennamen bei RemoteAccess !
 		 *
 		 * @param integer $variable ID der auslösenden Variable
 		 * @param string $value Wert der Variable
@@ -89,9 +89,14 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet FS20 Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet FS20 Message Handler für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.$value);			
-			if ( (IPS_GetName($variable))=="CONTROL_MODE")
+            $variableName=IPS_GetName($variable);
+			echo "HeatSet FS20 Message Event Handler für VariableID : ".$variable.' ('.$variableName.") mit Wert : ".$value." \n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet FS20 Message Event Handler für VariableID '.$variable.' ('.$variableName.') mit Wert '.$value);			
+            $NameandExt=explode("_",$variableName);
+            If (isset($NameandExt[1])) $NameExt=$NameandExt[1]; else $NameExt="";
+
+            /* bei RemoteAccess Variablen ist der Name nicht entscheidend. */
+			if ( ($variableName=="Soll Modus") || ($NameExt=="Mode"))
 				{
 				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetMode($value, $this);
 				}
