@@ -120,7 +120,7 @@
 			{
 			IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
 			echo "IPSModuleHeatSet_All HandleEvent SyncSetMode mit Wert ".$position."\n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: SyncSetMode mit Wert '.$position);			
+			IPSLogger_Inf(__file__, 'HandleEvent: SyncSetMode mit Wert '.$position);			
 			$componentParamsToSync = $componentToSync->GetComponentParams();
             print_r($componentParamsToSync);
 			$deviceConfig          = IPSHeat_GetHeatConfiguration();

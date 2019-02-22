@@ -2009,50 +2009,13 @@ function ReadAktuatorWerte()
 		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 		}
 	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	
+	$componentHandling=new ComponentHandling();
+
 	$alleWerte="";
 	$alleWerte.="\n\nAktuelle Heizungs-Aktuatorenwerte direkt aus den HW-Registern:\n\n";
     
-    if (false) {
-	$pad=50;
-	$Homematic = HomematicList();
-	$FS20= FS20List();
-	$FHT = FHTList();
-    $varname="VALVE_STATE";
-	foreach ($Homematic as $Key)
-		{
-		/* Alle Homematic Stellwerte ausgeben */
-		if ( (isset($Key["COID"][$varname])==true) )
-			{
-			/* alle Stellwerte der Thermostate */
-			//print_r($Key);
-
-			$oid=(integer)$Key["COID"][$varname]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			else
-				{
-				$alleWerte.=str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			}
-		}
-
-	foreach ($FHT as $Key)
-		{
-		/* alle FHT Temperaturwerte ausgeben */
-		if (isset($Key["COID"]["PositionVar"])==true)
-		   {
-	      	$oid=(integer)$Key["COID"]["PositionVar"]["OID"];
-			$alleWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-			}
-		}
-    }
-
-    if (function_exists('HomematicList')) $alleWerte.=getComponent(HomematicList(),"TYPE_ACTUATOR","String");
-    if (function_exists('FHTList')) $alleWerte.=getComponent(FHTList(),"TYPE_ACTUATOR","String");
+    if (function_exists('HomematicList')) $alleWerte.=$componentHandling->getComponent(HomematicList(),"TYPE_ACTUATOR","String");
+    if (function_exists('FHTList')) $alleWerte.=$componentHandling->getComponent(FHTList(),"TYPE_ACTUATOR","String");
 
 	return ($alleWerte);
 	}
@@ -2540,7 +2503,7 @@ class ComponentHandling
 					$variabletyp=1; 		/* Integer */
 					$index="HeatSet";
                     $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
-                    $profile="Mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
+                    $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
                     break;                    			
 				case "TEMERATUREVAR";			/* Temperatur auslesen */
 				case "TEMPERATURE":
@@ -2838,6 +2801,7 @@ class ComponentHandling
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
 							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName.$IndexNameExt, $variabletyp,$struktur[$Name]);
+							//echo "     Setze Profil direkt noch einmal auf $profile da es hier immer Probleme gibt ...\n";							
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);

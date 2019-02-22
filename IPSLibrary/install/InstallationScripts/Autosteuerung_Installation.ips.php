@@ -17,6 +17,8 @@
  *
  ********************************/
 
+    $startexec=microtime(true);     /* Laufzeitmessung */
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -290,24 +292,32 @@
  *
  * funktioniert für jeden beliebigen Vartiablennamen, zumindest ein/aus Schalter wird angelegt
  *
+ * Folgende Gruppen können in Autosteuerung_SetSwitches() definiert werden:
+ *
+ *    Anwesenheitssimulation, Anwesenheitserkennung, Alarmanlage,  Ventilatorsteuerung, GutenMorgenWecker, SilentMode, Stromheizung, Alexa
+ *
+ * Für jede dieser Gruppen kann festgelegt werden ob es ein Eigenes Tab gibt oder die Informationen auf einer Seite zusammengefasst werden.
  *
  ********************************/
 
 	$AutoSetSwitches = Autosteuerung_SetSwitches();
-	$register=new AutosteuerungHandler($scriptIdAutosteuerung);
+    //print_r($AutoSetSwitches);
+    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
 	$webfront_links=array();
+
 	foreach ($AutoSetSwitches as $AutoSetSwitch)
 		{
 		// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "-------------------------------------------------------\n";
-		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."\n";
+		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
 		$webfront_links[$AutosteuerungID]["OID_L"]=$AutosteuerungID;
 		/* Spezialfunktionen hier abarbeiten, default am Ende des Switches */
-		switch (strtoupper($AutoSetSwitch["NAME"]))
+    	switch (strtoupper($AutoSetSwitch["NAME"]))
 			{
 			case "ANWESENHEITSERKENNUNG":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Erkennung'));            
 				echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
 				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
@@ -349,7 +359,7 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-				break;										
+                break;										
 			case "GUTENMORGENWECKER":
 				echo "   Variablen für GutenMorgenWecker in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";		
 	   			// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')					
@@ -455,22 +465,13 @@
 				//print_r($EventInfos);
 				break;
 			case "VENTILATORSTEUERUNG":	
-				echo "   Variablen für Ventilatorsteuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
+                echo "   Variablen für Ventilatorsteuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";	
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')		
 				$TemperaturID = CreateVariable("Temperatur", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				break;
 			case "ANWESENHEITSSIMULATION":
-				$webfront_links[$AutosteuerungID]["TAB"]="Anwesenheit";
-				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
-					{
-					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
-					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
-						{
-						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
-						}
-					else $webfront_links[$AutosteuerungID]["TABNAME"]='Schaltbefehle'; 						
-					}
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Schaltbefehle'));
 				$categoryId_Schaltbefehle = CreateCategory('Schaltbefehle-Anwesenheitssimulation',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
@@ -482,16 +483,7 @@
 				 * Neue Funktion befüllt die Tabelle automatisch. Es gibt eine eigene Klasse für diese Funktion: AutosteuerungStromheizung
 				 * der Heizungsregler funktioniert in der Klasse AutosteuerungRegler
 				 */
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
-				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
-					{
-					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
-					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
-						{
-						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
-						}
-					else $webfront_links[$AutosteuerungID]["TABNAME"]='Wochenplan'; 						
-					}
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Wochenplan'));
 				$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
 				$kalender=new AutosteuerungStromheizung();
 				$kalender->SetupKalender(0,"~Switch");	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
@@ -509,7 +501,8 @@
 			case "GARTENSTEUERUNG":
 				if ( isset( $installedModules["Gartensteuerung"] ) == true )
 					{
-					$moduleManagerGS = new IPSModuleManager('Gartensteuerung',$repository);
+                    $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Gartensteuerung'));                        
+                    $moduleManagerGS = new IPSModuleManager('Gartensteuerung',$repository);
 					$CategoryIdDataGS     = $moduleManagerGS->GetModuleCategoryID('data');
 					$object2= new ipsobject($CategoryIdDataGS);
 					$object3= new ipsobject($object2->osearch("Nachricht"));
@@ -528,47 +521,18 @@
 						CreateLinkByDestination(IPS_GetName($SubCategoryId), $SubCategoryId,    $AutosteuerungID,  10);
 						}					
 					echo "****Modul Gartensteuerung konfiguriert und erkannt.\n";
-					$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
-					if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )
-						{
-						echo "****OwnTab eingestellt.\n";
-						$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];
-						if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
-							{
-							$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];
-							}
-						else $webfront_links[$AutosteuerungID]["TABNAME"]='Gartensteuerung'; 						
-						}
 					}
-				break;		
+                break;		
 			case "ALEXA":
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";	/* Default Tabname, alle im gleichen Tab */
-				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
-					{
-					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
-					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
-						{
-						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
-						}
-					else $webfront_links[$AutosteuerungID]["TABNAME"]='Alexa'; 						
-					}
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Alexa'));            
 				$categoryId_Alexa = CreateCategory('Nachrichten-Alexa',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');	
 				$webfront_links[$AutosteuerungID]["OID_R"]=$vid;											/* Darstellung rechts im Webfront */				
 				$alexa=new AutosteuerungAlexa();	
-				break;
+                break;
 			case "CONTROL":
-				$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";	/* Default Tabname, alle im gleichen Tab */
-				if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
-					{
-					$webfront_links[$AutosteuerungID]["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
-					if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
-						{
-						$webfront_links[$AutosteuerungID]["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
-						}
-					else $webfront_links[$AutosteuerungID]["TABNAME"]='Alexa'; 						
-					}
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Control'));             
 				$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Control, 0,'',null,'');	
@@ -586,6 +550,8 @@
 		}
 	echo "-------------------------------------------------------\n";		
 	//print_r($AutoSetSwitches);
+    //print_r($webfront_links);
+
 
 	/*
    $AutosteuerungID = CreateVariable("Ventilatorsteuerung", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );  
@@ -600,14 +566,16 @@
 	 * war schon einmal ausgeklammert, wird aber intuitiv von der Install Routine erwartet dass auch die Events registriert werden
 	 *
 	 */
-	echo "\nProgramme für Schalter registrieren nach OID des Events.\n";
+	echo "\nProgramme für Schalter registrieren nach OID des Events.  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
-		echo "Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
+		echo "   Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
 		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
 		}
+
+
 
 	/******************************************************
 	 *
@@ -652,6 +620,20 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+    if (isset($installedModules["Stromheizung"])==true)
+	    {
+	    IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
+	    IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
+    	}
+    else
+	    {
+    	// Confguration Property Definition
+	    define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
+    	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
+	    define ('IPSHEAT_WFCGROUP',			'WFCGroup');
+	    define ('IPSHEAT_WFCLINKS',			'WFCLinks');
+	    }
+
 	echo "\nWebfront Konfiguration für Administrator User usw, geordnet nach data.OID  \n";
 	print_r($webfront_links);
 	$tabs=array();
@@ -673,8 +655,9 @@
 		 */
 		
 		$categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-		echo "====================================================================================\n";		
-		echo "\nWebportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
+		echo "====================================================================================\n";
+        echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+		echo "Webportal Administrator Kategorie im Webfront Konfigurator ID ".$WFC10_ConfigId." installieren in: ". $categoryId_AdminWebFront." ".IPS_GetName($categoryId_AdminWebFront)."\n";
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
 		CreateWFCItemCategory  ($WFC10_ConfigId, 'Admin',   "roottp",   10, IPS_GetName(0).'-Admin', '', $categoryId_AdminWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 		
@@ -706,12 +689,15 @@
 		echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$WFC10_TabPaneItem." in ".$WFC10_TabPaneParent."\n";
 		CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);
 
+        /* Abgleich mit der neuen Webfront Tabelle, leider zwei Tabellen, die zu koordinieren sind. */
+        $webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration()["Administrator"];
+
 		$i=0;
 		foreach ($tabs as $tab)
 			{
-			$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
-			$categoryIdLeft  = CreateCategory($tabItem.$i.'_Left',  $categoryIdTab, 10);
-			$categoryIdRight = CreateCategory($tabItem.$i.'_Right', $categoryIdTab, 20);
+			//$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
+			//$categoryIdLeft  = CreateCategory($tabItem.$i.'_Left',  $categoryIdTab, 10);
+			//$categoryIdRight = CreateCategory($tabItem.$i.'_Right', $categoryIdTab, 20);
 
 			//CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem.$i,           $WFC10_TabPaneItem,    $WFC10_TabOrder+$i,     $tab, '', 1 /*Vertical*/, 40 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 			//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem.$i.'_Left',   $tabItem.$i,   10, '', '', $categoryIdLeft   /*BaseId*/, 'false' /*BarBottomVisible*/);
@@ -725,7 +711,31 @@
 					{
 					if ($webfront_link["TAB"]==$tab)
 						{
-						echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   ".$categoryIdLeft."\n";
+                        echo "\n---------------------------------------\n";
+						echo $tab." CreateLinkByDestination : ".$webfront_link["NAME"]."   ".$OID."   \n";
+						$categoryIdTab  = CreateCategory($tab,  $categoryId_WebFrontAdministrator, 100);
+                        if (isset($webFrontConfiguration[$tab])) 
+                            {
+                            echo "Webfront Config vorhanden.\n"; 
+                            //print_r($webFrontConfiguration[$tab]); 
+                            echo "\n";
+                            $order=0;
+                            foreach ($webFrontConfiguration[$tab] as $WFCItem) 
+                                {
+                                print_r($WFCItem); 
+				                $order = $order + 10;
+				                switch($WFCItem[0]) 
+					                {
+					                case IPSHEAT_WFCSPLITPANEL:
+                                    	//$categoryIdPanel  = CreateCategory($WFCItem[1],  $categoryIdTab, 100);
+						                break;
+					                case IPSHEAT_WFCCATEGORY:
+										if (strpos($WFCItem[1],'_Left')) $categoryIdLeft  = CreateCategory($WFCItem[1],  $categoryIdTab, 10);
+			                            if (strpos($WFCItem[1],'_Right'))$categoryIdRight = CreateCategory($WFCItem[1], $categoryIdTab, 20);
+                                        break;
+                                    }
+                                }
+                            }
 						CreateLinkByDestination($webfront_link["NAME"], $OID,    $categoryIdLeft,  10);
 						if ( isset( $webfront_link["OID_R"]) == true )
 							{
@@ -752,20 +762,8 @@
 	 *
 	 *****************************************************************************/
 
-if (isset($installedModules["Stromheizung"])==true)
-	{
-	IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");
-	IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");
-	}
-else
-	{
-	// Confguration Property Definition
-	define ('IPSHEAT_WFCSPLITPANEL',		'WFCSplitPanel');
-	define ('IPSHEAT_WFCCATEGORY',			'WFCCategory');
-	define ('IPSHEAT_WFCGROUP',			'WFCGroup');
-	define ('IPSHEAT_WFCLINKS',			'WFCLinks');
-	}
-			
+if (true) {
+
 	$webFrontConfiguration = Autosteuerung_GetWebFrontConfiguration();
 	if ($WFC10_Enabled) 
 		{
@@ -820,7 +818,7 @@ else
 						break;
 					default:
 						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   	}
+			   	    }
 				}
 			}
 		}
@@ -847,7 +845,8 @@ else
 
 		$categoryId_UserWebFront=CreateCategoryPath("Visualization.WebFront.User");
 		echo "====================================================================================\n";
-		echo "\nWebportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
+		echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
+        echo "Webportal User Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in: ". $categoryId_UserWebFront." ".IPS_GetName($categoryId_UserWebFront)."\n";
 		CreateWFCItemCategory  ($WFC10User_ConfigId, 'User',   "roottp",   0, IPS_GetName(0).'-User', '', $categoryId_UserWebFront   /*BaseId*/, 'true' /*BarBottomVisible*/);
 
 		@WFC_UpdateVisibility ($WFC10User_ConfigId,"root",false	);				
@@ -902,7 +901,7 @@ else
 		{
 		$categoryId_MobileWebFront=CreateCategoryPath("Visualization.Mobile");
 		echo "====================================================================================\n";		
-		echo "\n";
+		echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 		echo "Webportal Mobile Kategorie im Webfront Konfigurator ID ".$WFC10User_ConfigId." installieren in der Kategorie ". $categoryId_MobileWebFront." (".IPS_GetName($categoryId_MobileWebFront).")\n";
 		echo "Webportal Mobile.Autosteuerung Datenstruktur installieren in: ".$Mobile_Path." \n";
 		$categoryId_WebFrontMobile         = CreateCategoryPath($Mobile_Path);
@@ -954,7 +953,7 @@ else
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
 	echo "\n======================================================\n";
-	echo "Webportal User für IPS Light installieren: ";
+	echo "Webportal User für IPS Light installieren:  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.";
 	echo "\n======================================================\n\n";
 	
 	$moduleManagerLight = new IPSModuleManager('IPSLight');
@@ -1059,12 +1058,13 @@ else
 
 	ReloadAllWebFronts(); /* es wurde das Autosteuerung Webfront komplett geloescht und neu aufgebaut, reload erforderlich */
 		
-	echo "================= ende webfront installation \n";
+	echo "================= ende webfront installation. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 
 
 
 /***************************************************************************************/
 
+}
 
 	
 ?>

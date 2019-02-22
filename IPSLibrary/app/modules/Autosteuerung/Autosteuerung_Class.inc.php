@@ -2282,7 +2282,8 @@ class Autosteuerung
 					if ( is_string($command) )
 						{
 						if ( (strpos($command,"{") !==false) and (strpos($command,"}") !==false) ) { echo "Subcommand to evaluate found.\n"; }
-						if (strpos($command,"#") === false) { $command.="#Level"; } 
+						//if (strpos($command,"#") === false) { $command.="#Level"; } 
+						if (strpos($command,"#") === false) { $command.="#Temp"; }
 						//echo "!!!! not numeric. Adapted Variablename (".$command."), can be Heat or Light. Check Heat first.\n";
 						if ($this->heatManager != Null)
 							{
@@ -5071,11 +5072,11 @@ function setDimTimer($name,$delay,$command)
 
 
 
-function Anwesenheit($params,$status,$variableID,$simulate=false)
+function Anwesenheit($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	global $AnwesenheitssimulationID;
 
-	IPSLogger_Dbg(__file__, 'Aufruf Routine Anwesenheit mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	IPSLogger_Inf(__file__, 'Aufruf Routine Anwesenheit mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	$parges=$auto->ParseCommand($params,$status,$simulate);
@@ -5137,9 +5138,9 @@ function Anwesenheit($params,$status,$variableID,$simulate=false)
  *
  **********************************************************************************************/
 
-function iTunesSteuerung($params,$status,$variableID,$simulate=false)
+function iTunesSteuerung($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
-	IPSLogger_Dbg(__file__, 'Aufruf Routine MediaSteuerung mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	IPSLogger_Inf(__file__, 'Aufruf Routine MediaSteuerung mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	//echo "  i:(".memory_get_usage()." Byte).";
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	//echo "  a:(".memory_get_usage()." Byte).";
@@ -5188,7 +5189,7 @@ function iTunesSteuerung($params,$status,$variableID,$simulate=false)
  *
  *******************************************************************************************************/
 
-function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
+function GutenMorgenWecker($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	IPSLogger_Inf(__file__, 'Aufruf Routine GutenMorgenWecker mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);   // kommt nicht so oft vor, kann einen Level höher sein im Logfile
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
@@ -5242,11 +5243,11 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false)
  *
  ************************************************************************************************/
 
-function Status($params,$status,$variableID,$simulate=false)
+function Status($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	global $speak_config;
 	
-	IPSLogger_Dbg(__file__, 'Aufruf Routine Status mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	if ($wertOpt=="") IPSLogger_Inf(__file__, 'Aufruf Routine Status mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -5298,11 +5299,11 @@ function Status($params,$status,$variableID,$simulate=false)
  *
  *********************************************************************************************/
 
-function StatusParallel($params,$status,$variableID,$simulate=false)
+function StatusParallel($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	global $speak_config;
 	
-	IPSLogger_Dbg(__file__, 'Aufruf Routine StatusParallel mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	IPSLogger_Inf(__file__, 'Aufruf Routine StatusParallel mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
@@ -5344,7 +5345,7 @@ function StatusParallel($params,$status,$variableID,$simulate=false)
  *
  *********************************************************************************************/
 
-function statusRGB($params,$status,$variableID,$simulate=false)
+function statusRGB($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
    /* allerlei Spielereien mit einer RGB Anzeige */
 
@@ -5354,7 +5355,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on:true,off:false,timer:dawn-23:45',),       			*/
    /* array('OnChange','StatusRGB',   'ArbeitszimmerLampe,on:true,off:false,if:xxxxxx',),       				*/
 
-	IPSLogger_Dbg(__file__, 'Aufruf Routine StatusRGB mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+	IPSLogger_Inf(__file__, 'Aufruf Routine StatusRGB mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	$parges=$auto->ParseCommand($params,$status,$simulate);
@@ -5394,7 +5395,7 @@ function statusRGB($params,$status,$variableID,$simulate=false)
 
 /*********************************************************************************************/
 
-function SwitchFunction($params,$status,$variableID,$simulate=false)
+function SwitchFunction($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	
 	global $params2,$speak_config;
@@ -5437,7 +5438,7 @@ function SwitchFunction($params,$status,$variableID,$simulate=false)
  *
  *************************************************************************************************/
 
-function Ventilator2($params,$status,$variableID,$simulate=false)
+function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 	{
 	global $speak_config;
 	global $log_Autosteuerung;
@@ -5458,7 +5459,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
 	 * neuen Wert gleichzeitig schreiben
 	 */
 	$oldValue=$auto->setNewValue($variableID,$status);	
-	IPSLogger_Dbg(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status.' der Variable '.$variableID.' alter Wert war : '.$oldValue);
+	if ($wertOpt=="") IPSLogger_Inf(__file__, 'Aufruf Routine Heatcontrol mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status.' der Variable '.$variableID.' alter Wert war : '.$oldValue);
 	
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
@@ -5564,7 +5565,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false)
  *
  *************************************************************************************************/
 
-function Alexa($params,$status,$request,$simulate=false)
+function Alexa($params,$status,$request,$simulate=false,$wertOpt="")
 	{
 	$auto=new Autosteuerung(); 						/* um Auto Klasse auch in der Funktion verwenden zu können */
 	$parges=$auto->ParseCommand($params,$status,$simulate);
@@ -5831,6 +5832,30 @@ function parseParameter($params,$result=array())
 		}
 	return($result);
 	}
+
+/********************************************************************************************
+ *
+ * Zuordnung webfrontLink in einer Zeile
+ *
+ *
+ *
+ ***************************************************************************/
+
+
+function defineWebfrontLink($AutoSetSwitch, $default)
+    {
+    $webfront_link["TAB"]="Autosteuerung";
+	if ( isset( $AutoSetSwitch["OWNTAB"] ) == true )				/* es ist doch ein Tab konfiguriert, kann immer noch der selbe sein */
+	    {
+		$webfront_link["TAB"]=$AutoSetSwitch["OWNTAB"];	/* Default Tab Name ueberschreiben */
+		if ( isset( $AutoSetSwitch["TABNAME"] ) == true )
+			{
+			$webfront_link["TABNAME"]=$AutoSetSwitch["TABNAME"];		/* und wenn gewuenscht auch noch einen speziellen namen dafür vergeben */
+			}
+		else $webfront_link["TABNAME"]=$default; 						
+		}
+    return ($webfront_link);
+    }
 
 
 /*********************************************************************************************/

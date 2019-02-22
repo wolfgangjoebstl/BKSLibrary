@@ -91,10 +91,11 @@
 			{
             $variableName=IPS_GetName($variable);
 			echo "HeatSet FS20 Message Event Handler für VariableID : ".$variable.' ('.$variableName.") mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet FS20 Message Event Handler für VariableID '.$variable.' ('.$variableName.') mit Wert '.$value);			
+			IPSLogger_Inf(__file__, 'HandleEvent: HeatSet FS20 Message Event Handler für VariableID '.$variable.' ('.$variableName.') mit Wert '.$value);			
             $NameandExt=explode("_",$variableName);
             If (isset($NameandExt[1])) $NameExt=$NameandExt[1]; else $NameExt="";
 
+			IPSLogger_Inf(__file__, "HandleEvent: vergleiche $variableName oder $NameExt.");
             /* bei RemoteAccess Variablen ist der Name nicht entscheidend. */
 			if ( ($variableName=="Soll Modus") || ($NameExt=="Mode"))
 				{

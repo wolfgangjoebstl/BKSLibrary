@@ -182,13 +182,20 @@ if ($_IPS['SENDER']=="Variable")
 		$log_Autosteuerung->LogMessage('  erkannter Befehl dafür'.json_encode($params));
 
 		$wert=$params[1];
+        if (strpos($wert,"+"))
+            {   // es gibt einen Zusatzparameter beim Modul
+            $wertparam=explode("+",$wert);
+            $wert = $wertparam[0];
+            $wertOpt=$wertparam[1];
+            }
+        else $wertOpt="";
 		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
 		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
 		switch ($wert)    {
 			/*********************************************************************************************/
 			case "iTunes":
 			case "Media":
-				$status=iTunesSteuerung($params,$value,$variableID,false);
+				$status=iTunesSteuerung($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl der App Media wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
@@ -196,7 +203,7 @@ if ($_IPS['SENDER']=="Variable")
 				$functions=$auto->getFunctions();
 				if ( (isset($functions["GutenMorgenWecker"]["VALUE"])) && ($functions["GutenMorgenWecker"]["VALUE"] > 0) )
 					{
-					$status=GutenMorgenWecker($params,$value,$variableID,false);
+					$status=GutenMorgenWecker($params,$value,$variableID,false,$wertOpt);
 					$log_Autosteuerung->LogMessage('Befehl der App GutenMorgenWecker wurde ausgeführt : '.json_encode($status));
 					}
 				else $log_Autosteuerung->LogMessage('Befehl der App GutenMorgenWecker wurde nicht ausgeführt, Wecker steht auf Aus.'); 	
@@ -204,27 +211,27 @@ if ($_IPS['SENDER']=="Variable")
 			/*********************************************************************************************/
 			case "Anwesenheit":
 				$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
-				$status=Anwesenheit($params,$value,$variableID,false);
+				$status=Anwesenheit($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl der App Anwesenheit wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
 		   case "Ventilator1":
-		      Ventilator1($params,$value,$variableID,false);
+		      Ventilator1($params,$value,$variableID,false,$wertOpt);
 				//Ventilator($params,$value);				
 		      break;
 			/*********************************************************************************************/
 		   case "Parameter":
-		      Parameter($params,$value,$variableID,false);
+		      Parameter($params,$value,$variableID,false,$wertOpt);
 		      break;
 			/*********************************************************************************************/
 			case "Ventilator":
 			case "HeatControl":
 			case "Heizung":
-				Ventilator2($params,$value,$variableID,false);
+				Ventilator2($params,$value,$variableID,false,$wertOpt);
 				break;
 			/*********************************************************************************************/
 		   case "Status":
-				$status=Status($params,$value,$variableID,false);
+				$status=Status($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;		   
 		   case "StatusParallel":           
@@ -234,16 +241,16 @@ if ($_IPS['SENDER']=="Variable")
 				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				$status=StatusParallel($params,$value,$variableID,false);
+				$status=StatusParallel($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl StatusParallel wurde ausgeführt : '.json_encode($status));
 				break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
-		      statusRGB($params,$value,$variableID,false);
+		      statusRGB($params,$value,$variableID,false,$wertOpt);
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
-				SwitchFunction($params,$value,$variableID,false);
+				SwitchFunction($params,$value,$variableID,false,$wertOpt);
 		      break;
 			/*********************************************************************************************/
 		   case "Custom":
