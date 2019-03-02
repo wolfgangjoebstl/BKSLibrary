@@ -100,8 +100,8 @@
 				//echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
 				if ( ($componentParamsConfig1==$componentParamsToSync1)  && ($componentParamsConfig1!="") )
 					{
-					echo "   Parameter to Sync in Heat/Light Configuration found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
-                    IPSLogger_Inf(__file__,"SyncSetTemp Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
+					echo "   SyncSetTemp Parameter to Sync in Heat/Light Configuration found : $deviceIdent with $position because $componentParamsToSync1 in \"$componentParamsToSync\"\n";
+                    IPSLogger_Inf(__file__,"IPSModuleHeatSet_All SyncSetTemp Parameter to Sync found for $deviceIdent with $position because $componentParamsToSync1 is in \"$componentParamsToSync\"");
 					$lightManager = new IPSHeat_Manager();
 					$lightManager->SynchronizeSetTemp($deviceIdent, $position);				
 					}
@@ -133,8 +133,8 @@
 				//echo "   Comparing \"$componentParamsConfig1\" with target \"$componentParamsToSync1\"\n";	/* nur die OID vergleichen reicht, sonst gibt es Probleme mit RemoteAccess Daten */
 				if ( ($componentParamsConfig1==$componentParamsToSync1)  && ($componentParamsConfig1!="") )
 					{
-					echo "Parameter to Sync found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
-                    IPSLogger_Inf(__file__,"SyncSetTemp Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
+					echo "SyncSetMode, Parameter to Sync found : $deviceIdent $componentParamsToSync1 in \"$componentParamsToSync\"\n";
+                    IPSLogger_Inf(__file__,"SyncSetMode, Parameter to Sync found for $deviceIdent because $componentParamsToSync1 is in \"$componentParamsToSync\"");
 					$lightManager = new IPSHeat_Manager();
 					$lightManager->SynchronizeSetMode($deviceIdent, $position);				
 					}

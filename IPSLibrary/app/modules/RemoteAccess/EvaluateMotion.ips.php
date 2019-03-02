@@ -111,7 +111,24 @@ echo "\n";
 	 *  Homematic
 	 *
 	 */
+
+    $componentHandling=new ComponentHandling();
+    $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateMotion um ".date("h:i am d.m.Y ").".";
+
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Bewegungsmelder Handler wird ausgeführt.\n";
 	
+	if (function_exists('HomematicList'))
+		{
+		echo "\n";
+		echo "    Homematic Bewegungsmelder werden registriert.\n";
+		//$components=$componentHandling->getComponent(HomematicList(),"MOTION"); print_r($components);
+		$componentHandling->installComponentFull(HomematicList(),"MOTION",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
+		} 
+	
+if (false)
+	{
 	echo "******* Alle Homematic Bewegungsmelder ausgeben.\n";
 	$keyword="MOTION";
 	foreach ($Homematic as $Key)
@@ -169,7 +186,7 @@ echo "\n";
 				}
 			}
 		}
-
+    }
 	/*
 	 *  FS20
 	 *
@@ -187,7 +204,7 @@ echo "\n";
 		   	   {
 		   	   if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
 		   	      {
-				   	echo "Bewegungsmelder : ".$Key["Name"]." OID ".$Key["OID"]."\n";
+				   	echo "   Bewegungsmelder : ".$Key["Name"]." OID ".$Key["OID"]."\n";
 
       				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 		  	      	$variabletyp=IPS_GetVariable($oid);

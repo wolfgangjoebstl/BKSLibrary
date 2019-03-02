@@ -26,6 +26,8 @@
  *	
  */
 
+$ExecuteExecute=false;
+
 /******************************************************
  *
  *				INIT
@@ -87,9 +89,10 @@ if (isset($installedModules["OperationCenter"]))
  *
  *************************************************************/
 
-echo "Aufruf gestartet von : ".$_IPS['SENDER']."\n";
-if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
+
+if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $ExecuteExecute )
 	{
+	echo "Aufruf gestartet von : ".$_IPS['SENDER']."\n";
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
 	$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -451,11 +454,12 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
                 //echo "Typen und Geräteerkennung durchführen.\n";
                 if (isset($installedModules["OperationCenter"])) 
                     {
-                    $type   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
-                    $typedev= $DeviceManager->getHomematicDeviceType($instanz);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+                    $type    = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
+                    $typedev = $DeviceManager->getHomematicDeviceType($instanz);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ aus */
+					$HMDevice= $DeviceManager->getHomematicHMDevice($instanz);
 					echo "  ".str_pad($type,15)."   $typedev \n";
                     }
-                else { $typedev=""; $type=""; }
+                else { $typedev=""; $type=""; $HMDevice=""; }
 				$result=explode(":",IPS_GetProperty($instanz,'Address'));
 				if ($type<>"") 
 					{
@@ -467,7 +471,11 @@ if ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") )
 					$includefile.="\n         ".'"Device" => "'.$typedev.'", ';
 					$summary[$typedev][]=IPS_GetName($instanz);
 					}
-					
+				if ($HMDevice<>"") 
+					{
+					$includefile.="\n         ".'"HMDevice" => "'.$HMDevice.'", ';
+					}
+										
 				$includefile.="\n         ".'"COID" => array(';
 				$cids = IPS_GetChildrenIDs($instanz);
 				//print_r($cids);

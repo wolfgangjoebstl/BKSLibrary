@@ -1263,9 +1263,9 @@ function GetValueIfFormatted($oid)
 /******************************************************************/
 
 
-function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0)
+function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
     {
-
+    //echo "Position steht auf $position.\n";
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
     global $IPS_SELF;
@@ -1275,11 +1275,12 @@ function CreateVariableByName($id, $name, $type, $profile="", $ident="", $positi
         $vid = IPS_CreateVariable($type);
         IPS_SetParent($vid, $id);
         IPS_SetName($vid, $name);
-		IPS_SetPosition ($vid, $position);
-        if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
-    	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
         IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
         }
+	IPS_SetPosition($vid, $position);
+    if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
+  	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
+    if($action!=0) { IPS_SetVariableCustomAction($vid,$action); }
     return $vid;
     }
 
@@ -2416,7 +2417,7 @@ class ComponentHandling
 
 /***********************************************************************************
  *
- * getComponent
+ * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
  *
  *
  ****************************************************************************************/    
@@ -2425,7 +2426,15 @@ class ComponentHandling
 		{
         $component=array(); $install=array(); $result="";
 	    $detectmovement=false; $profile="";
+		$totalfound=false;
 		
+		if ( is_array($keywords) )
+			{
+			echo "Passende Geraeteregister suchen für ";
+			foreach ($keywords as $entry) echo $entry." ";
+			echo ":\n";
+			}
+		else echo "Passende Geraeteregister suchen für $keywords :\n";
 		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
 		foreach ($Elements as $Key)
 			{
@@ -2452,14 +2461,14 @@ class ComponentHandling
 					}
 				if ( ($max == $count) && ($countNo == 0) ) 
                     { 
-                    $found=true;
+                    $found=true; $totalfound=true;
                     //echo "**gefunden\n";
                     }
 				$keyword=$keywords[0];	
 				}	
 			else
 				{
-				if (isset($Key["COID"][$keywords])==true) $found=true; 
+				if (isset($Key["COID"][$keywords])==true) { $found=true; $totalfound=true; }
 				$keyword=$keywords; 
 				}	
 			
@@ -2468,7 +2477,8 @@ class ComponentHandling
 				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
 				if ($Key["Device"] == $keyword)
 					{
-					$found=true; 
+					echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
+					$found=true; $totalfound=true;
 					switch ($keyword)
 						{
 						case "TYPE_ACTUATOR":
@@ -2481,12 +2491,19 @@ class ComponentHandling
 							if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
 							if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
 							break;
+						case "TYPE_CONTACT":
+							if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";
+							$detectmovement="Contact";
+							break;							
 						default:	
 							echo "FEHLER: unknown keyword.\n";
 						}	
 					}
 				}
-
+			/* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
+			 * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+			 * index="Bewegung"
+			 */
             $indexNameExt="";
 			switch (strtoupper($keyword))
 				{
@@ -2499,6 +2516,7 @@ class ComponentHandling
 					$profile="~Temperature";
 					break;	
 				case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
+				case "SET_POINT_MODE":
 				case "TARGETMODEVAR":				// Thermostat FHT
 					$variabletyp=1; 		/* Integer */
 					$index="HeatSet";
@@ -2514,19 +2532,19 @@ class ComponentHandling
 					//$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
 					$profile="~Temperature";
 					break;
-				case "POSITIONVAR":
-				case "VALVE_STATE": 
-					$detectmovement="HeatControl";
-					$variabletyp=2; 		/* Float */
-					$index="HeatControl";
-					$profile="~Valve.F";
-					break;
 				case "HUMIDITY":
 					$detectmovement="Feuchtigkeit";
 					$variabletyp=1; 		/* Integer */							
 					$index="Humidity";
 					$profile="Humidity";
 					break;
+		        case "POSITIONVAR":
+				case "VALVE_STATE": 
+					$detectmovement="HeatControl";
+					$variabletyp=2; 		/* Float */
+					$index="HeatControl";
+					$profile="~Valve.F";
+					break;					
 				case "LEVEL":
 					$detectmovement="HeatControl";
 					$variabletyp=1; 		/* Integer */	
@@ -2541,10 +2559,23 @@ class ComponentHandling
 					break;
 				case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
 				case "TYPE_ACTUATOR":
+					break;
+				case "MOTION":
+					$detectmovement="Motion";
+					$variabletyp=0; 		/* Boolean */					
+					$index="Bewegung";
+					$profile="Motion";
 					break;	
+				case "CONTACT":
+					$detectmovement="Contact";
+					$keyword="STATE";
+					$variabletyp=0; 		/* Boolean */					
+					$index="Bewegung";
+					$profile="Motion";
+					break;
 				default:	
 					$variabletyp=0; 		/* Boolean */	
-					echo "************Kenne ".strtoupper($keyword)." nicht.\n";
+					//echo "************Kenne ".strtoupper($keyword)." nicht.\n";
 					break;
 				}			
 			
@@ -2575,7 +2606,7 @@ class ComponentHandling
 					}
 				}   // ende found
 			} /* Ende foreach */
-
+		if (!$totalfound) echo "************Kenne ".strtoupper($keyword)." nicht.\n";
         switch ($write)
             {
             case "Array":
@@ -2727,7 +2758,7 @@ class ComponentHandling
         $struktur=array();          // Ergbenis, behandelte Objekte
 
 		/* einheitliche Routine verwenden, Formattierung Ergebnis für Install */   
-		echo "Passende Geraeteregister suchen:\n"; 
+		//echo "Passende Geraeteregister suchen:\n"; 
 		$result=$this->getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/
 		if ( (sizeof($result))>0)											/* gibts ueberhaupt etwas zu tun */
 			{		
@@ -2784,6 +2815,14 @@ class ComponentHandling
     							$DetectTemperatureHandler = new DetectTemperatureHandler();						
 	    						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;
+						    case "Motion":
+    							$DetectMovementHandler = new DetectMovementHandler();						
+	    						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+		    					break;		
+						    case "Contact":
+    							$DetectMovementHandler = new DetectMovementHandler();						
+	    						$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+		    					break;															
 			    			default:
 				    			break;
 					    	}		

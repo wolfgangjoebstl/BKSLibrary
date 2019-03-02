@@ -298,6 +298,34 @@
 
 	/******************************************************
 	 *
+	 *  Webfront zusammenräumen
+	 *
+	 *******************************************************/
+	
+    if (isset($installedModules["IPSLight"])==true)
+	    {  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+    	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	    $pos=strpos($WFC10_Path,"OperationCenter");
+    	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
+	    $categoryId_WebFront = CreateCategoryPath($ipslight_Path);
+    	IPS_SetPosition($categoryId_WebFront,998);
+	    IPS_SetHidden($categoryId_WebFront,true);
+	    echo "   Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	    }
+
+    if (isset($installedModules["IPSPowerControl"])==true)
+	    {  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
+	    $WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
+	    $pos=strpos($WFC10_Path,"OperationCenter");
+	    $ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
+	    $categoryId_WebFront = CreateCategoryPath($ipslight_Path);
+	    IPS_SetPosition($categoryId_WebFront,997);
+	    IPS_SetHidden($categoryId_WebFront,true);
+	    echo "   Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
+	    }
+
+	/******************************************************
+	 *
 	 *			INIT, Webcams FTP Folder auslesen und auswerten
 	 *				Auch die Datenstruktur für den CamOverview und den Snapshot Overview hier erstellen
 	 *				Webfront siehe weiter unten
@@ -721,6 +749,29 @@
 	 *		INIT HM Inventory Homematic Geraete Darstellung 
 	 *
 	 ***************************************************/
+    
+    /* Config des Homematic inventory creators für die Formattierung der Homematic tabellen 
+        0 - HM address (default)
+        1 - HM device type
+        2 - HM channel type
+        3 - IPS device name
+        4 - HM device name	                                            */
+
+	$pname="SortTableHomematic";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Adresse", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "DeviceType", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "ChannelType", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 4, "IPSDeviceName", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
 		
 	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
 	$countHMI = sizeof($HMIs);
@@ -733,9 +784,12 @@
 		$Verzeichnis = str_replace('\\','/',$Verzeichnis);
 		if ( is_dir ( $Verzeichnis ) == false ) mkdirtree($Verzeichnis);
 		
+		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+				
 		foreach ($HMIs as $HMI)
 			{
 			$configHMI=IPS_GetConfiguration($HMI);
+			echo "\n-----------------------------------\n";
 			echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
 			echo $configHMI."\n";
 			$configStruct=json_decode($configHMI,true);
@@ -754,16 +808,17 @@
 				IPS_SetProperty($HMI,"OutputFile",$neuVerzeichnis);
 				IPS_ApplyChanges($HMI);
 				}
-			HMI_CreateReport($HMI);			
+			$CategoryIdHomematicCCU=CreateCategory("HomematicInventory_".$HMI,$CategoryIdHomematicInventory,$order+5);
+			// function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
+			$HomematicInventory = CreateVariableByName($CategoryIdHomematicCCU,IPS_GetName($HMI),3,"~HTMLBox","",$order+5);		// String
+			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptIdOperationCenter);		// String
+            $html='<iframe frameborder="0" width="100%" height="4000px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
+			//HMI_CreateReport($HMI);	SetValue($HomematicInventory,$html);			
+			$order +=10;
 			}
-		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-		$HomematicInventory = IPS_GetVariableIdByName("HomematicInventory",$CategoryIdHomematicInventory);
-
-		/* html 5 erlaubt nur mehr die Angabe eines iframes in pixel */
-		$html='<iframe frameborder="0" width="100%" height="800px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
-		SetValue($HomematicInventory,$html);						
 		}
-																		
+	
+																																
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------

@@ -156,7 +156,9 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 		echo "\n";
 		echo "HomematicIP Control Mode Werte aus den Thermostaten werden registriert.\n";
 	    $componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),["CONTROL_MODE","!VALVE_STATE"],'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);
-		} 
+	    $componentHandling->installComponentFull(selectProtocol("IP",HomematicList()),["SET_POINT_MODE","!VALVE_STATE"],'IPSComponentHeatSet_HomematicIP','IPSModuleHeatSet_All',$commentField);
+		}
+		 
 
 	if ( (function_exists('FHTList')) && (sizeof(FHTList())>0) )
 		{

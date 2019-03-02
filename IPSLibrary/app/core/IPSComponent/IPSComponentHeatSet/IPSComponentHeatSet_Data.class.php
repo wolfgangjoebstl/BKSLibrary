@@ -112,15 +112,8 @@
 		 */
 		public function SetState($power, $level)
 			{
-			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
-			if (!$power) 
-				{
-				$setlevel=6;
-				}
-			else
-				{
-				$setlevel=$level;
-				}	
+			echo "    IPSComponentHeatSet_Data SetState RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Level ".$level." Power ".$power." \n";
+            if (isset ($this->installedmodules["Stromheizung"])) $module->SyncState($power, $this); 
 			if ($this->rpcADR==Null)
 				{
 				/* Dummyobjekt, es gibt nichts zu setzen. Die IPS Heat Register reichen aus */
@@ -128,7 +121,48 @@
 			else
 				{
 				$rpc = new JSONRPC($this->rpcADR);
-				$rpc->SetValue($this->instanceId, $setlevel);
+				$rpc->SetValue($this->instanceId, $power);
+				}
+			}
+
+		public function SetLevel($power, $level)
+			{
+			echo "    IPSComponentHeatSet_Data SetLevel RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Level ".$level." Power ".$power." \n";
+            if (isset ($this->installedmodules["Stromheizung"])) 
+                {
+                $module = new IPSModuleHeatSet_All();
+                $module->SyncSetTemp($level, $this);                	
+                }
+			if ($this->rpcADR==Null)
+				{
+				/* Dummyobjekt, es gibt nichts zu setzen. Die IPS Heat Register reichen aus 
+                   Nachdem es aber keine Hardware Geräte Register gibt die dann über Handle Event wieder rück synchronisiert werden,
+                   diesen Teil auch gleich hier machen.
+                 */  
+				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				$rpc->SetValue($this->instanceId, $level);
+				}
+			}
+
+		public function SetMode($power, $mode)
+			{
+			echo "    IPSComponentHeatSet_Data SetMode RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Mode ".$mode." bei Power ".$power." \n";
+            if (isset ($this->installedmodules["Stromheizung"])) 
+				{
+                $module = new IPSModuleHeatSet_All();
+				$module->SyncSetMode($mode, $this);
+				} 
+			if ($this->rpcADR==Null)
+				{
+				/* Dummyobjekt, es gibt nichts zu setzen. Die IPS Heat Register reichen aus */
+				}
+			else
+				{
+				$rpc = new JSONRPC($this->rpcADR);
+				$rpc->SetValue($this->instanceId, $mode);
 				}
 			}
 

@@ -33,12 +33,7 @@ IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationC
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
-if ($_IPS['SENDER']=="WebFront")
-	{   /* vom Webfront aus gestartet */
-	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
-	}
-else
-    {    /*  hier ganz normal weitermachen, Abfrage steht nur am Anfang um sich die Initialisierungszeiten und Meldungen zu sparen */
+$ExecuteExecute=false;  	$debug=false;	// keine Echo Ausgaben
 
 /******************************************************
 
@@ -69,35 +64,6 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
 
 	/******************************************************
 	 *
-	 *  Webfront zusammenräumen
-	 *
-	 *******************************************************/
-	
-if (isset($installedModules["IPSLight"])==true)
-	{  /* das IPSLight Webfront ausblenden, es bleibt nur die Glühlampe stehen */
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-	$pos=strpos($WFC10_Path,"OperationCenter");
-	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSLight";
-	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-	IPS_SetPosition($categoryId_WebFront,998);
-	IPS_SetHidden($categoryId_WebFront,true);
-	echo "   Administrator Webfront IPSLight auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
-	}
-
-if (isset($installedModules["IPSPowerControl"])==true)
-	{  /* das IPSPower<Control Webfront ausblenden, es bleibt nur die Glühlampe stehen */
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-	$pos=strpos($WFC10_Path,"OperationCenter");
-	$ipslight_Path=substr($WFC10_Path,0,$pos)."IPSPowerControl";
-	$categoryId_WebFront = CreateCategoryPath($ipslight_Path);
-	IPS_SetPosition($categoryId_WebFront,997);
-	IPS_SetHidden($categoryId_WebFront,true);
-	echo "   Administrator Webfront IPSPowerControl auf : ".$ipslight_Path." mit OID : ".$categoryId_WebFront."\n";
-	}
-
-
-	/******************************************************
-	 *
 	 * INIT, Timer, sollte eigentlich in der Install Routine sein
 	 *			
 	 *		MoveCamFiles				, alle 150 Sec
@@ -107,14 +73,14 @@ if (isset($installedModules["IPSPowerControl"])==true)
 
 if (isset ($installedModules["IPSCam"]))
 	{
-	echo "Modul IPSCam ist installiert.\n";
-	echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
+	//echo "Modul IPSCam ist installiert.\n";
+	//echo "   Timer 150 Sekunden aktivieren um Camfiles wegzuschlichten.\n";
 	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
 	IPS_SetEventActive($tim2ID,true);
 	}
 else
 	{
-	echo "Modul IPSCam ist NICHT installiert.\n";
+	//echo "Modul IPSCam ist NICHT installiert.\n";
 	$tim2ID = @IPS_GetEventIDByName("MoveCamFiles", $scriptId);
 	if ($tim2ID > 0)  {	IPS_SetEventActive($tim2ID,false);  }
 	}
@@ -151,7 +117,7 @@ $OperationCenterSetup  = OperationCenter_SetUp();
 	else
 	   {
 	   //print_r(IPS_GetVariableProfile($pname));
-	   echo "Profile \"MByte\" vorhanden.\n";
+	   //echo "Profile \"MByte\" vorhanden.\n";
 	   }
 
 
@@ -182,10 +148,52 @@ $OperationCenterSetup  = OperationCenter_SetUp();
         }
     $ExecuteRefreshRSSI=GetValue($ExecuteRefreshID);    
 
+/* Homematic Inventory Tabelle sortieren
+ *
+ ********************************************************************************************/
+
+	$modulhandling = new ModuleHandling();
+	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
+	$countHMI = sizeof($HMIs);
+	//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+    $ActionButton=array();
+	if ($countHMI>0)
+        {
+		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+		foreach ($HMIs as $HMI)
+            {
+			$CategoryIdHomematicCCU=IPS_GetCategoryIdByName("HomematicInventory_".$HMI,$CategoryIdHomematicInventory);
+            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
+   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
+
+            $ActionButton[$SortInventoryId]["HMI"]=$HMI;
+            $ActionButton[$SortInventoryId]["HtmlBox"]=$HomematicInventoryId;
+            }            
+        }
+
 /*********************************************************************************************/
 
+if ($_IPS['SENDER']=="WebFront")
+	{
+	/* vom Webfront aus gestartet */
+    $variableId=$_IPS['VARIABLE'];
+	SetValue($variableId,$_IPS['VALUE']);
+    //echo "Taste gedrückt. $variableId ".IPS_GetName($variableId)."\n";
+    if (array_key_exists($variableId,$ActionButton))
+        { 
+        $HMI=$ActionButton[$variableId]["HMI"];
+        $HomematicInventoryId=$ActionButton[$variableId]["HtmlBox"];
+        //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
+        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
+        IPS_ApplyChanges($HMI);
+        HMI_CreateReport($HMI);
+        SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
+        }
+    }
 
-if ($_IPS['SENDER']=="Execute")
+/*********************************************************************************************/
+
+if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
@@ -519,7 +527,6 @@ if ($_IPS['SENDER']=="Execute")
 			$host          = $router["IPADRESSE"];
 			$community     = "public";                                                                         // SNMP Community
 			$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-			$debug         = false;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
 			$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
@@ -729,7 +736,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$host          = $router["IPADRESSE"];
 					$community     = "public";                                                                         // SNMP Community
 					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
 					$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
 					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
@@ -947,7 +953,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		   break;
 		}
 	}
-}       /* Abfrage Webfront Aktualisierung else Ende */
+
 
 
 

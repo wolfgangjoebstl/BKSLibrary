@@ -705,21 +705,22 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
 
 class AutosteuerungOperator 
 	{
+	
+	private $logicAnwesend;
 
 	public function __construct()
 		{
 		//IPSLogger_Dbg(__file__, 'Construct Class AutosteuerungOperator.');
+		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+			
+		$this->logicAnwesend=Autosteuerung_Anwesend();
 		}
 
 	public function Anwesend()
 		{
-		
-		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-		
-		$logic=Autosteuerung_Anwesend();
 		$result=false;
 		$operator="";
-		foreach($logic as $type => $operation)
+		foreach($this->logicAnwesend as $type => $operation)
 			{
 			if ($type == "OR")
 				{
@@ -745,6 +746,36 @@ class AutosteuerungOperator
 		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
 		return ($result);				
 		}
+		
+	public function getLogicAnwesend()
+		{
+		$result=false;
+		$operator="";		
+		foreach($this->logicAnwesend as $type => $operation)
+			{
+			if ($type == "OR")
+				{
+				$operator.="OR";
+				foreach ($operation as $oid)
+					{
+					$result = $result || GetValueBoolean($oid);
+					$operator.=" ".IPS_GetName($oid);
+					echo "Operation OR for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." Result : ".$result."\n";
+					}
+				}
+			if ($type == "AND")
+				{
+				$operator.=" AND";				
+				foreach ($operation as $oid)
+					{
+					$result = $result && GetValue($oid);
+					$operator.=" ".IPS_GetName($oid);
+					echo "Operation AND for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." ".$result."\n";
+					}
+				}
+			}
+		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein")."\n";
+		}			
 
 	} /* ende class */
 
@@ -2858,6 +2889,8 @@ class Autosteuerung
 		{
 		/* Defaultwerte bestimmen, festlegen */
 		$ergebnis="";
+        if (isset($result["NAME"]) ) $ergebnis.=$result["NAME"]." ";  
+        $ergebnisLang="ControlSwitchLevel ";
 		$ControlModeHeat=true;	/* Regler fuer Heizen ist Default */
 		$threshold=1;
 		$nofrost=6;		
@@ -2968,7 +3001,7 @@ class Autosteuerung
 			if (isset($result["ON"]) == true) $ergebnis .= " ON:".$result["ON"];
 			if (isset($result["OFF"]) == true) $ergebnis .= " OFF:".$result["OFF"];	
 			
-			IPSLogger_Dbg(__file__, $ergebnis);
+			IPSLogger_Inf(__file__, $ergebnisLang." für ".$ergebnis."    ".json_encode($result));
 	
 			}
 		else
@@ -5491,8 +5524,8 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 		if ($simulate) echo $command[$entry]["COMMENT"]."\n";
 		else 
 			{
-			if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],0,100));
-			if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten("Com: ".substr($command[$entry]["COMMENT"],100));
+			if (strlen($command[$entry]["COMMENT"])>4) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
+			if (strlen($command[$entry]["COMMENT"])>104) $nachrichtenVent->LogNachrichten(substr($command[$entry]["COMMENT"],100));
 			}
 		//if (strlen($command[$entry]["COMMENT"])>4) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],0,100));
 		//if (strlen($command[$entry]["COMMENT"])>140) $log_Autosteuerung->LogNachrichten(substr($command[$entry]["COMMENT"],140));	
@@ -5836,8 +5869,9 @@ function parseParameter($params,$result=array())
 /********************************************************************************************
  *
  * Zuordnung webfrontLink in einer Zeile
- *
- *
+ * es werden $webfront_link["TAB"] und $webfront_link["TABNAME"] beschrieben
+ * es bleibt bei TAB Autosteurung wenn kein OWNTAB definiert ist.
+ * bei OWNTAB wird TAB auf einen neuen eigenen TAB gesetzt und ein neuer Name dafür definiert, sonst wird der per Default übergebene verwednet
  *
  ***************************************************************************/
 

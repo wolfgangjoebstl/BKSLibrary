@@ -54,16 +54,17 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
  *
  ********************************************************************************************/
  
-$setup = Autosteuerung_Setup();
-if ( isset($setup["LogDirectory"]) == false )
-	{
-	$setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
-	}	
-$object_data= new ipsobject($CategoryIdData);		/* IPSComponentLogger class zum Suchen und Ausgeben von Objekten, hier parent object ID in der Klasse speichern */
-$NachrichtenID = $object_data->osearch("Nachrichtenverlauf");	/* Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben */
-$object3= new ipsobject($NachrichtenID);
-$NachrichtenInputID=$object3->osearch("Input");
-$log_Autosteuerung=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
+    $setup = Autosteuerung_Setup();
+    if ( isset($setup["LogDirectory"]) == false ) $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+
+	$NachrichtenIDAuto=IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
+    $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
+    $log_Autosteuerung=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");
+
+    $NachrichtenIDAnwe=IPS_GetCategoryIDByName("Nachrichtenverlauf-AnwesenheitErkennung",$CategoryIdData);
+    $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAnwe);
+    $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitserkennung;");
+
 
 /* wird jetzt in der jeweiligen Klasse gemacht: 
 $NachrichtenID = $object_data->osearch("Schaltbefehle");	// Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben 
@@ -303,8 +304,13 @@ if ($_IPS['SENDER']=="TimerEvent")
 		{
 		case $timerAufrufID:
 			/* alle 5 Minuten aufrufen */
-			$StatusAnwesend=$operate->Anwesend();		
-			SetValue($StatusAnwesendID,$StatusAnwesend );
+			$StatusAnwesend=$operate->Anwesend();
+            if ($StatusAnwesend<>GetValue($StatusAnwesendID))
+                {
+                $log_Anwesenheitserkennung->LogMessage('Änderung Status Anwesenheit auf '.($StatusAnwesend?"Anwesend":"Abwesend"));
+                $log_Anwesenheitserkennung->LogNachrichten('Änderung Status Anwesenheit auf '.($StatusAnwesend?"Anwesend":"Abwesend"));                    
+			    SetValue($StatusAnwesendID,$StatusAnwesend );
+                }
 			$Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);
 	
 			if ( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) )) 

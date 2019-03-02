@@ -133,13 +133,14 @@
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
+    $componentHandling=new ComponentHandling();
+    $commentField="zuletzt Konfiguriert von DetectMovement EvaluateMotion um ".date("h:i am d.m.Y ").".";
 
 	/****************************************************************************************************************
 	 *                                                                                                    
 	 *                                      Movement
 	 *
 	 ****************************************************************************************************************/
-
 
 	$DetectMovementHandler = new DetectMovementHandler();
 	
@@ -150,15 +151,21 @@
 	/* nur die Detect Movement Funktion registrieren */
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
-	if (isset ($installedModules["RemoteAccess"]))
+	echo "***********************************************************************************************\n";
+	echo "Bewegungsmelder Handler wird ausgeführt.\n";
+	
+	if (function_exists('HomematicList'))
 		{
-		echo "!!! Achtung, rufen sie für Install der einzelnen Geraete die entsprechende Remote Access Routine auf .... \n";
-		}
-	else
-		{
-		echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
-		}
-
+		echo "\n";
+		echo "Homematic Bewegungsmelder werden registriert.\n";
+		//$components=$componentHandling->getComponent(HomematicList(),"MOTION"); print_r($components);
+		$componentHandling->installComponentFull(HomematicList(),"MOTION",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
+		//$components=$componentHandling->getComponent(HomematicList(),"TYPE_CONTACT"); print_r($components);		
+		$componentHandling->installComponentFull(HomematicList(),"TYPE_CONTACT",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
+		} 
+		
+if (false)
+	{
 	if (function_exists('HomematicList'))
 		{
 		echo "\n";
@@ -212,7 +219,18 @@
 				}
 			}
 		}
-		
+	}  // ende false
+
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		echo "!!! Achtung, rufen sie für Install der einzelnen Geraete die entsprechende Remote Access Routine auf .... \n";
+		}
+	else
+		{
+		echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
+		}
+	echo "\n";
+			
 	if (function_exists('FS20List'))
 		{
 		echo "\n";
@@ -574,6 +592,7 @@
 	 ****************************************************************************************************************/
 
 	$DetectHumidityHandler = new DetectHumidityHandler();
+	
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt.\n";
@@ -693,6 +712,7 @@
 	 ****************************************************************************************************************/
 
 	$DetectHeatControlHandler = new DetectHeatControlHandler();
+	
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "HeatControl Handler wird ausgeführt.\n";

@@ -2819,6 +2819,7 @@ class DeviceManagement
 	var $installedModules     	= array();
 	
 	var $HomematicSerialNumberList	= array();
+	var $HomematicAddressesList	= array();
 	
 	/**
 	 * @public
@@ -2861,6 +2862,7 @@ class DeviceManagement
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}
         $this->getHomematicSerialNumberList();
+		$this->HomematicAddressesList=$this->getHomematicAddressList();
 		}
 		
 /****************************************************************************************************************/
@@ -3310,6 +3312,61 @@ class DeviceManagement
 		$this->HomematicSerialNumberList=$serienNummer;
 		return ($serienNummer);
 		}
+
+	/********************************************************************
+	 *
+	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mitd em DeviceTyp aus HM Inventory 
+     * wird bei construct bereits gestartet als gemeinsames Datenobjekt
+	 *
+	 *****************************************************************************/
+
+	function getHomematicAddressList($debug=false)
+		{
+		$modulhandling = new ModuleHandling();
+		$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
+		$countHMI = sizeof($HMIs);
+
+		$addresses=array();
+		if ($countHMI>0)
+			{
+			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+			foreach ($HMIs as $HMI)
+				{
+				$configHMI=IPS_GetConfiguration($HMI);
+				if ($debug)
+					{
+					echo "\n-----------------------------------\n";
+					echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
+					echo $configHMI."\n";
+					}
+	            $childrens=IPS_GetChildrenIDs($HMI);
+    	        if (isset($childrens[0]))
+        	        {
+            	    //print_r($childrens);
+                	//echo GetValue($childrens[0]);
+	                $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
+    	            //print_r($result);
+        	        foreach ($HomeMaticEntries as $HomeMaticEntry)
+            	        {
+                	    if (isset($HomeMaticEntry["HM_address"])) 
+                    	    {
+	                        if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
+							$addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
+    	                    //print_r($HomeMaticEntry);
+        	                }
+            	        }
+                	}
+	            else echo "HM Inventory, Abspeicherung in einer variable wurde nicht konfiguriert\n";    
+				}					
+			}
+		if ($debug)
+			{
+			echo "Ausgabe Adressen versus DeviceType für insgesamt ".sizeof($addresses)." Instanzen (Geräte/Kanäle).\n";	
+			print_r($addresses);
+			}
+		return($addresses);
+		}
+
 
 	/********************************************************************
 	 *
@@ -4040,6 +4097,18 @@ function getFS20Type($instanz)
     	return ($this->HomematicDeviceType($homematic));
     	}
 
+    /*********************************
+     *
+     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
+     *
+     ***********************************************/
+	 		
+	function getHomematicHMDevice($instanz, $debug=false)
+		{
+		if (isset($this->HomematicAddressesList[IPS_GetProperty($instanz,"Address")]) ) return($this->HomematicAddressesList[IPS_GetProperty($instanz,"Address")]);
+		else return("");
+		}	
+		
     /*********************************
      *
      * gibt für eine FS20 Instanz/Kanal eines Gerätes den Typ aus
@@ -4805,7 +4874,7 @@ function dirToArray2($dir)
 			$moduleManager = new IPSModuleManager('Sprachsteuerung',$repository);
 			}
 		$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
-		if (isset($installedModules["Sprachsteuerung"]) ) 
+		if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
 			{
 			$sprachsteuerung=true;
 			IPSUtils_Include ("Sprachsteuerung_Configuration.inc.php","IPSLibrary::config::modules::Sprachsteuerung");					

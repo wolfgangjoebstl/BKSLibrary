@@ -1365,10 +1365,10 @@ class TestMovement
 	 *
 	 *******************************/
 	
-	public function __construct($debug) 
+	public function __construct($debug=false) 
 		{	
 		$this->debug=$debug;
-		if ($debug) echo "TestMovement Construct, zusätzliche Checks bei der Eventbearbeitung:\n";
+		if ($debug) echo "TestMovement Construct, Debug Mode, zusätzliche Checks bei der Eventbearbeitung:\n";
 
 		/* Autosteuerung */
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
@@ -1387,6 +1387,18 @@ class TestMovement
 		
 		if ($debug) 
 			{
+			if (false)
+				{
+				echo "Liste Motion Devices, Bewegungsmelder Geräte:\n";
+				//print_r($this->motionDevice);
+				foreach ($this->motionDevice as $key => $status) echo "    ".$key."  ".IPS_GetName($key)."/".IPS_GetName(IPS_GetParent($key))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($key)))."\n";
+				echo "Liste Switch Devices, Schalter Geräte:\n";
+				//print_r($this->switchDevice);
+				foreach ($this->switchDevice as $key => $status) echo "    ".$key."  ".IPS_GetName($key)."/".IPS_GetName(IPS_GetParent($key))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($key)))."\n";
+				echo "Liste Button Devices, Taster Geräte:\n";
+				//print_r($this->buttonDevice);
+				foreach ($this->buttonDevice as $key => $status) echo "    ".$key."  ".IPS_GetName($key)."/".IPS_GetName(IPS_GetParent($key))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($key)))."\n";
+				}
 			echo "\n============================================================\n";
 			echo "CustomComponents MessageHandler Events auslesen:\n";
 			}		
@@ -1418,6 +1430,19 @@ class TestMovement
 		else $heatcontrol_config=array();
 
 		$delete=0;			// mitzaehlen wieviele events geloescht werden muessen 
+
+		/* EventList erzeugen, Folgende tabelleneintraege gibt es bereits in der Grundausstattung 
+		 *   OID Objekt OID vom IP Symcon Event
+		 *   Name des IP Symcon Events
+		 *   OID des auslösendes Registers, eigentlichem Event
+		 *   Fehler eventueller Eintrag wenn etwas nicht stimmt
+		 *   Pfad des auslösenden Registers
+		 *   NameEvent Name des auslösenden Registers 
+		 *   Instanz sollte der Parent des auslösenden registers eine Instanz sein, diese hier anführen. ZB Homematic Device
+		 *   Typ, wird in der Tabelle als Funktion ausgegeben, Wenn das auslösende Register in einer der detectMovement Konfigurationen steht, hier einen entsprechenden Eintrag machen
+		 *
+		 *
+		 */
 
 		$i=0;
 		$eventlist=array();

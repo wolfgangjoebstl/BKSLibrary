@@ -318,7 +318,7 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
-	$profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion");
+	$profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion","mode.HM");
 	foreach ($profilname as $pname)
 		{
 		if (IPS_VariableProfileExists($pname) == false)
@@ -362,6 +362,18 @@
 					IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
 					IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
 					break;
+				case "mode.HM";
+					IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+					IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+					IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+					IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+					IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+					IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+					IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+					IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
+					//echo "Profil ".$pname." erstellt;\n";
+					break;					
 				default:
 					break;
 				}
