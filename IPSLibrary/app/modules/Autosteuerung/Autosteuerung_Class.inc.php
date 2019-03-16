@@ -699,7 +699,7 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  *
  * Routinen für den Betrieb
  *
- * derzeit nur Ermittlung von Anwesend
+ * derzeit nur für Ermittlung von Anwesenheit
  *
  **************************************************************************************************************/
 
@@ -715,6 +715,13 @@ class AutosteuerungOperator
 			
 		$this->logicAnwesend=Autosteuerung_Anwesend();
 		}
+
+    /*
+     * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
+     * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 5 Minuten aufgerufen.
+     *
+     *
+     */
 
 	public function Anwesend()
 		{
@@ -746,7 +753,11 @@ class AutosteuerungOperator
 		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
 		return ($result);				
 		}
-		
+	
+    /* das ist die passende Debug Funktion zu Anwesend()
+     * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
+     *
+     */ 
 	public function getLogicAnwesend()
 		{
 		$result=false;
@@ -774,8 +785,69 @@ class AutosteuerungOperator
 					}
 				}
 			}
-		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein")."\n";
+		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Anwesenheit":"Abwesend")."\n";
 		}			
+
+    /*
+     * bearbeitet die Geofency Informationen wenn Geofency Hooks installiert wurden
+     * alles soweit möglich automatisiert herausfinden
+     * die geofency Adressen auch gleich mit Archivierung setzen damit grafische Auswertungen ebenfalls möglich sind.
+     */
+    function getGeofencyInformation()
+        {
+        $geofencyAddresses=array();
+	    $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+    	//$modulhandling->printLibraries();
+	    echo "\n";
+
+    	//$modulhandling->printModules('Misc Modules');
+	    $modulhandling->printInstances('Geofency');
+    	$Geofencies=$modulhandling->getInstances('Geofency');
+        if (sizeof($Geofencies)>0)
+            {
+            foreach ($Geofencies as $Geofency)
+                {
+                /*sollte nur ein Modul sein und unter dem Modul verschiedene Geräte */
+                $devices=IPS_GetChildrenIDs($Geofency);
+                if (sizeof($devices)>0) 
+                    {
+                    foreach ($devices as $device)
+                        {
+                        echo "Instanz $Geofency (".IPS_GetName($Geofency).") mit Gerät $device (".IPS_GetName($device).").\n";
+                        $childrens=IPS_GetChildrenIDs($device);
+                        $foundAdresse=0;
+                        foreach ($childrens as $children)
+                            {
+                            if (IPS_GetVariable($children)["VariableType"]==0) 
+                                {
+                                if ($foundAdresse==0) 
+                                    {
+                                    $foundAdresse=$children;
+                                    $geofencyAddresses[$foundAdresse]=IPS_GetName($foundAdresse);
+                                    }
+                                else echo "**Fehler, zwei Adressen gefunden.\n";
+                                }
+                            //echo "    ".$children." (".IPS_GetName($children).")  ".IPS_GetVariable($children)["VariableType"]."\n";
+                            }
+                        if ($foundAdresse) echo "    ".$foundAdresse." (".IPS_GetName($foundAdresse).")  \n";
+                        }
+                    //print_r($devices);
+            	    echo "\n";
+                    }
+                }
+            }
+        print_r($geofencyAddresses);
+
+        $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+        foreach ($geofencyAddresses as $geofencyAddress => $Address)
+            {
+            echo "Archive Handler setzen für Variable $geofencyAddress. \n";
+    		AC_SetLoggingStatus($archiveHandlerID,$geofencyAddress,true);
+	    	AC_SetAggregationType($archiveHandlerID,$geofencyAddress,0);      /* normaler Wwert */
+            }
+        IPS_ApplyChanges($archiveHandlerID);
+        return($geofencyAddresses);
+        }
 
 	} /* ende class */
 
@@ -2036,7 +2108,8 @@ class Autosteuerung
 					}
 				else
 					{
-					$value=($result["red"]*128+$result["green"])*128+$result["blue"];
+					//$value=($result["red"]*128+$result["green"])*128+$result["blue"];
+					$value=($result["red"]*256+$result["green"])*256+$result["blue"];		// richtig multipliziert, shift 8 Bits
 					}	
 				//echo "Hexdec Umwandlung : ".$value."   ".dechex($value)."\n";
 				}
@@ -2913,7 +2986,7 @@ class Autosteuerung
 			$setTemp=(float)$result["SETPOINT"];
 						
 			IPSLogger_Dbg(__file__, 'Function ControlSwitchLevel Aufruf mit Wert: '.json_encode($result));
-			$ergebnis .= "T ".$actTemp." SP ".$setTemp." NF ".$nofrost." T ".$threshold." IF:".($result["SWITCH"]?"ON":"OFF")." Vnow:".($result["VALUE"]?"ON":"OFF");
+			$ergebnis .= "T ".number_format($actTemp,2)." SP ".$setTemp." NF ".$nofrost." T ".$threshold." IF:".($result["SWITCH"]?"ON":"OFF")." Vnow:".($result["VALUE"]?"ON":"OFF");
 			if (isset($result["ON"]) == true) $ergebnis .= " ON: ".$result["ON"];
 			if (isset($result["OFF"]) == true) $ergebnis .= " OFF ".$result["OFF"];
 			

@@ -6,6 +6,7 @@ ini_set('memory_limit', '-1');
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+IPSUtils_Include ('Startpage.inc.php', 'IPSLibrary::app::modules::Startpage');
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 //IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
@@ -90,24 +91,24 @@ imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
 	{
 	/* vom Webfront aus gestartet */
     $variableID=$_IPS['VARIABLE'];
-    switch ($variableID)
+    switch ($variableID)          // Value formatted : Explorer Fullscreen Station Picture Topologoe Off
         {
         case ($vid):
         	switch ($_IPS['VALUE'])
 		        {
-        		case "5":	/* Monitor off/on */
+        		case "5":	/* Monitor off/on, Off */
 		        	controlMonitor("off",$configuration);
         			break;
-                case "4":   /* Topologie */
+                case "4":   /* Topologie, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,3);
-    	        case "3":  	/* Bildschirmschoner */
+    	        case "3":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
 		        	break;
-        		case "2":  	/* Wetterstation */
+        		case "2":  	/* Wetterstation, Station */
 		        	SetValue($StartPageTypeID,2);
         			break;
-        		case "1":  	/* Full Screen ein */
-		        case "0":  	/* Full Screen aus */
+        		case "1":  	/* Full Screen ein, Fullscreen */
+		        case "0":  	/* Full Screen aus, Explorer */
 			        controlMonitor("FullScreen",$configuration);
         			//IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);
 		        	break;
@@ -191,26 +192,8 @@ function StartPageWrite($PageType)
 
 	/* html file schreiben, Anfang Style für alle gleich */
 
-	$wert='<style>';
-    $wert.='kopf { background-color: red; height:120px;  }';        // define element selectors
-    $wert.='strg { height:280px; color:black; background-color: #c1c1c1; font-size: 12em; }';
-    $wert.='innen { color:black; background-color: #ffffff; height:100px; font-size: 80px; }';
-    $wert.='aussen { color:black; background-color: #c1c1c1; height:100px; font-size: 80px; }';
-    $wert.='temperatur { color:black; height:100px; font-size: 28px; align:center; }';
-    $wert.='infotext { color:white; height:100px; font-size: 12px; }';
-	 $wert.='#nested { border-collapse: collapse; border: 2px solid white; background-color: #f1f1f1; width: auto;  }';
-    $wert.='#nested td { border: 1px solid white; }';		  
-    $wert.='#temp td { background-color:#ffefef; }';                // define ID Selectors
-    $wert.='#imgdisp { border-radius: 8px;  max-width: 100%; height: auto;  }';
-    $wert.='#startpage { border-collapse: collapse; border: 2px dotted white; width: 100%; }';
-    $wert.='#startpage td { border: 1px dotted DarkSlateGrey; }';	 
-    $wert.='.container { width: auto; height: auto; max-height:95%; max-width: 100% }';
-    $wert.='.image { opacity: 1; display: block; width: auto; height: auto; max-height: 90%; max-width: 80%; object-fit: contain; transition: .5s ease; backface-visibility: hidden; padding: 5px }';
-    $wert.='.middle { transition: .5s ease; opacity: 0; position: absolute; top: 90%; left: 30%; transform: translate(-50%, -50%); -ms-transform: translate(-50%, -50%) }';
-    $wert.='.container:hover .image { opacity: 0.8; }';             // define classes
-    $wert.='.container:hover .middle { opacity: 1; }';
-    $wert.='.text { background-color: #4CAF50; color: white; font-size: 16px; padding: 16px 32px; }';
-    $wert.='</style>';
+	$wert="";
+    $wert.= writeStartpageStyle();
 
 	if ( $noweather==true )
 		{
@@ -225,7 +208,7 @@ function StartPageWrite($PageType)
 		}
 	else
 		{
-        if ($PageType==3)
+        if ($PageType==3)           // Topologie
 			{
 
             }
@@ -266,6 +249,7 @@ function StartPageWrite($PageType)
 			$wert.='<td><table id="nested"><tr><td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
 			$wert.='<td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
 			$wert.='<tr><td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            $wert.=additionalTableLines($configuration["Display"]);
 			$wert.='<tr id="temp"><td><temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C<br>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td>';
 			$wert.='<td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
 			$wert.='<tr id="temp"><td><temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td>';
@@ -273,59 +257,15 @@ function StartPageWrite($PageType)
   			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td>';
   			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
   			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td>';
-  			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr></table>';
+  			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr>';
+            $wert.=bottomTableLines($configuration["Display"]);
+            $wert.='</table>';
             }
         }    
 	return $wert;
 	}
 
-function controlMonitor($status,$configuration)
-	{
-	/* aus Konfiguration lernen ob Remote oder lokal zu schalten ist */
-	$lokal=true;
-	if (isset($configuration["Monitor"]["Remote"]) == true )
-		{
-		if ( ( strtoupper($configuration["Monitor"]["Remote"])=="ACTIVE" ) && ( isset ($configuration["Monitor"]["Address"]) ) ) $lokal=false; 
-		$url=$configuration["Monitor"]["Address"];
-		$oid=$configuration["Monitor"]["ScriptID"];
-		}
-	if ($lokal)
-		{	/* Remote Config nicht ausreichen, lokal probieren */ 
-		switch ($status)
-			{
-			case "on":
-				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
-				break;
-			case "off":
-				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "monitor off", false, false, 1);
-				break;
-			case "FullScren":
-			default:
-				IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, 1);
-				break;
-			}	
-		}
-	else
-		{	/* remote ansteuern */
-		$rpc = new JSONRPC($url);
-		switch ($status)
-			{
-			case "on":
-				$monitor=array("Monitor" => "on");
-				$rpc->IPS_RunScriptEx($oid,$monitor);
-				break;
-			case "off":
-				$monitor=array("Monitor" => "off");
-				$rpc->IPS_RunScriptEx($oid,$monitor);
-				break;
-			case "FullScren":
-			default:
-				$monitor=array("Monitor" => "FullScreen");
-				$rpc->IPS_RunScriptEx($oid,$monitor);
-				break;
-			}			
-		}																
-	}
+
 
 
 ?>

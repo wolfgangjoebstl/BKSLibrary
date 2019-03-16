@@ -2606,7 +2606,7 @@ class ComponentHandling
 					}
 				}   // ende found
 			} /* Ende foreach */
-		if (!$totalfound) echo "************Kenne ".strtoupper($keyword)." nicht.\n";
+		if (!$totalfound) echo "************Kenne ".json_encode($keywords)." nicht.\n";
         switch ($write)
             {
             case "Array":

@@ -44,6 +44,8 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+	
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -62,8 +64,8 @@
 	echo " Status ".$ergebnis."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "  IPSModulManager Version : ".$ergebnis."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
-	echo "  OperationCenter Version : ".$ergebnis."\n";
+	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
+	echo "  OperationCenter Version : ".$ergebnisVersion."\n";
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -73,6 +75,17 @@
 		}
 	//echo $inst_modules;
 	
+	$Heute=time();
+	//$HeuteString=date("jnY_Hi",$Heute);
+	$HeuteString=date("jnY",$Heute);
+	echo "Heute  Datum ".$HeuteString."\n";
+	
+	if (isset ($installedModules["OperationCenter"])) 
+		{
+		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");
+		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
+		}
+		
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * Evaluierung starten
@@ -772,7 +785,7 @@
 		IPS_SetVariableProfileAssociation($pname, 5, "DeviceName", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
-		
+	$order=1000;	
 	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
 	$countHMI = sizeof($HMIs);
 	echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
@@ -1093,7 +1106,10 @@
 			
 		}
 
-
+	if (isset ($installedModules["OperationCenter"])) 
+		{
+		$log_Install->LogMessage("Install Module OperationCenter abgeschlossen.");
+		}
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Local Functions

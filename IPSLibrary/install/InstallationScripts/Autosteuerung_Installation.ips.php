@@ -304,6 +304,9 @@
     //print_r($AutoSetSwitches);
     $register=new AutosteuerungHandler($scriptIdAutosteuerung);
 	
+	$setup = Autosteuerung_Setup();
+    if ( isset($setup["LogDirectory"]) == false ) $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+	
     /* verschiedene Loggingspeicher initialisieren, damit kein Fehler wenn nicht installiert wegen Konfiguration aber referenziert da im Code */
     $categoryId_NachrichtenAuto    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$inputAuto = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAuto, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */
@@ -315,8 +318,8 @@
 
 	$categoryId_Schaltbefehle = CreateCategory('Schaltbefehle-Anwesenheitssimulation',   $CategoryIdData, 20);
     $inputSchalt=CreateVariable("Schaltbefehle",3,$categoryId_Schaltbefehle, 0,'',null,'');
-    $categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
-    $inputWoche=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);
+    //$categoryId_Wochenplan = CreateCategory('Wochenplan-Stromheizung',   $CategoryIdData, 20);
+    //$inputWoche=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);							// nicht generieren, wird erst später von den Routinen erstellt
     $categoryId_Alexa = CreateCategory('Nachrichten-Alexa',   $CategoryIdData, 20);
     $inputAlexa=CreateVariable("Nachrichten",3,$categoryId_Alexa, 0,'',null,'');
 	$categoryId_Control = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
@@ -341,7 +344,9 @@
 			{
 			case "ANWESENHEITSERKENNUNG":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Erkennung'));            
-				echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
+				
+                /* Setup Standard Variables */
+                echo "   Variablen für Anwesenheitserkennung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
 				$StatusAnwesendID=CreateVariable("StatusAnwesend",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				$StatusAnwesendZuletztID=CreateVariable("StatusAnwesendZuletzt",0, $AutosteuerungID,0,"~Presence",null,null,"");
 				IPS_SetHidden($StatusAnwesendZuletztID,true);
@@ -349,17 +354,32 @@
 				AC_SetLoggingStatus($archiveHandlerID,$StatusAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusAnwesendID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-				
+
 				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
 				else $StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
-
+				IPS_ApplyChanges($archiveHandlerID);				
+                
+                /* Geofency Variables */
+                $operate=new AutosteuerungOperator();
+                $geofencies=$operate->getGeofencyInformation();    
+                if (sizeof($geofencies)>0)
+                    {
+                    $order=100;
+                    foreach ($geofencies as $geofency => $Address)
+                        {
+                        CreateLinkByDestination("Geofency-".IPS_GetName($geofency), $geofency,    $AutosteuerungID, $order);
+                        $order+=10;
+                        }
+                    }
+                $operate=new AutosteuerungOperator();
+                $geofencies=$operate->getGeofencyInformation();
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {
     				$webfront_links[$AutosteuerungID]["OID_R"]=$inputAnwe;				
+                    /* mehr Informationen anzeigen, wenn wir einen eigenen Tab haben. */
                     }
 				break;
 			case "ALARMANLAGE":
@@ -503,16 +523,22 @@
 				 * der Heizungsregler funktioniert in der Klasse AutosteuerungRegler
 				 */
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Wochenplan'));
+				echo "    AutosteuerungRegler initialisieren.\n";
 				$kalender=new AutosteuerungStromheizung();
+				echo "    Wochenkalender neu aufsetzen.\n";
 				$kalender->SetupKalender(0,"~Switch");	/* Kalender neu aufsetzen, alle Werte werden geloescht, immer bei Neuinstallation */
-				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
-				$oid=CreateVariable("AutoFill",1,$vid, 1000,'AusEinAutoP1P2P3P4',$scriptIdHeatControl,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
-				$descrID=CreateVariable("Beschreibung",3,$vid, 1010,'',null,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
-								
+				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$categoryId_Wochenplan = IPS_getCategoryIdByName('Wochenplan-Stromheizung',   $CategoryIdData);
+				$inputWoche=IPS_GetVariableIDByName("Wochenplan",$categoryId_Wochenplan);				
+				echo "    noch ein paar Variablen dazu in $inputWoche anlegen. Action Script $scriptIdHeatControl\n";
+				$oid=CreateVariable("AutoFill",1,$inputWoche, 1000,'AusEinAutoP1P2P3P4',$scriptIdHeatControl,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
+				$descrID=CreateVariable("Beschreibung",3,$inputWoche, 1010,'',null,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
+				echo "    und eine neue Kategorie in $CategoryIdData.\n";				
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');
-				$simulation=new AutosteuerungRegler();													
+				$simulation=new AutosteuerungRegler();
+				echo "    webfrontlinks noch setzen und fertig.\n";													
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {                
 	    			$webfront_links[$AutosteuerungID]["OID_R"]=$inputWoche;

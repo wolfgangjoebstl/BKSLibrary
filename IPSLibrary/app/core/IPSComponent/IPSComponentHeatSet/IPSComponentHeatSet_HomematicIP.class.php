@@ -48,6 +48,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
+            echo "IPSComponentHeatSet_HomematicIP, construct, $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -74,10 +75,14 @@
 			$instances=array();
 			foreach (HomematicList() as $instanceHM)
 				{
-				//echo $instanceHM["OID"]."  ".$instanceHM["HMDevice"]."\n";
-				$instances[$instanceHM["OID"]]=$instanceHM["HMDevice"];
+                if ( (isset($instanceHM["OID"])) && (isset($instanceHM["HMDevice"])) )
+                    {
+				    //echo $instanceHM["OID"]."  ".$instanceHM["HMDevice"]."\n";
+				    $instances[$instanceHM["OID"]]=$instanceHM["HMDevice"];
+                    }
 				}
-			if (isset($instances[$this->instanceId]) ) 
+            //print_r($instances);    
+            if (isset($instances[$this->instanceId]) ) 
 				{
 				//echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
 				//echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	

@@ -265,7 +265,7 @@
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
 
 			SetValue($switchId, $value);
-			IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($value?'On':'Off'));
+			IPSLogger_Inf(__file__, 'Turn Heat/Light SetSwitch '.$configName.' '.($value?'On':'Off'));
 
 			if (IPSHeat_BeforeSwitch($switchId, $value)) {
 				$component->SetState($value);
@@ -319,7 +319,7 @@
 			SetValue($variableId, $value);
 
 			$switchValue  = GetValue($switchId);
-			IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId):'Off'));
+			IPSLogger_Inf(__file__, 'Turn Heat/Light SetDimmer '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId):'Off'));
 
 			if (IPSHeat_BeforeSwitch($switchId, $switchValue)) {
 				$component->SetState(GetValue($switchId), GetValue($levelId));
@@ -364,16 +364,18 @@
 				SetValue($switchId, true);
 			}
 			$switchValue  = GetValue($switchId);
-			IPSLogger_Inf(__file__, 'Turn Heat/Light '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off'));
+			IPSLogger_Inf(__file__, 'Turn Heat/Light SetRGB '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off')."  RGB Wert : ".dechex(GetValue($colorId))."   ".$componentParams);
 
 			if (IPSHeat_BeforeSwitch($switchId, $switchValue)) {
 				$component->SetState(GetValue($switchId), GetValue($colorId), GetValue($levelId));
 			}
 			IPSHeat_AfterSwitch($switchId, $switchValue);
 
+			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGB Synchronize Groups for $switchId if ".($syncGroups?"Ein":"Aus"));
 			if ($syncGroups) {
 				$this->SynchronizeGroupsBySwitch($switchId);
 			}
+			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGB Synchronize Programs for $switchId if ".($syncPrograms?"Ein":"Aus"));
 			if ($syncPrograms) {
 				$this->SynchronizeProgramsBySwitch ($switchId);
 			}

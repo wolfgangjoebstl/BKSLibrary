@@ -3333,7 +3333,7 @@ class DeviceManagement
 			foreach ($HMIs as $HMI)
 				{
 				$configHMI=IPS_GetConfiguration($HMI);
-				if ($debug)
+				if ($debug)             // no information available in configuration wether creation of report as variable is activated
 					{
 					echo "\n-----------------------------------\n";
 					echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
@@ -3345,16 +3345,23 @@ class DeviceManagement
             	    //print_r($childrens);
                 	//echo GetValue($childrens[0]);
 	                $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
-    	            //print_r($result);
-        	        foreach ($HomeMaticEntries as $HomeMaticEntry)
-            	        {
-                	    if (isset($HomeMaticEntry["HM_address"])) 
-                    	    {
-	                        if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
-							$addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
-    	                    //print_r($HomeMaticEntry);
-        	                }
-            	        }
+                    if ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) )
+                        {
+            	        foreach ($HomeMaticEntries as $HomeMaticEntry)
+                	        {
+                    	    if (isset($HomeMaticEntry["HM_address"])) 
+                        	    {
+	                            if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
+					    		$addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
+    	                        //print_r($HomeMaticEntry);
+        	                    }
+            	            }
+                        }
+                    else 
+                        {
+                        echo "HMI_CreateReport wurde noch nicht aufgerufen oder HM Inventory Instanz ist falsch konfiguriert.\n";   
+                        HMI_CreateReport($HMI);                     
+                        }                    
                 	}
 	            else echo "HM Inventory, Abspeicherung in einer variable wurde nicht konfiguriert\n";    
 				}					
