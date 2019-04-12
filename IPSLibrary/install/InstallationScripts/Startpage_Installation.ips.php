@@ -67,13 +67,13 @@
 
 /*******************************
  *
- * Initialisierung für Monitor On/Off Befehle. Scripts verwenden wenn im Pfad ein Blank vorkommt.
+ * Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
  *
  ********************************/
 
-	echo "\n";
+	echo "\n\n";
 	echo "Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";
-	echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC.\n";
+	echo "   Schreibe Batchfile zum automatischen Start und Stopp von VLC.\n";
 
 	$verzeichnis="C:/scripts/";
 	$unterverzeichnis="process/";
@@ -93,7 +93,7 @@
 	fwrite($handle2,'pause'."\r\n");
 	fclose($handle2);
 
-	echo "Schreibe Batchfile zum automatischen Stopp von VLC.\n";
+	echo "  Schreibe Batchfile zum automatischen Stopp von VLC.\n";
 	$handle2=fopen($verzeichnis.$unterverzeichnis."kill_vlc.bat","w");
 	fwrite($handle2,'c:/Windows/System32/taskkill.exe /im vlc.exe');
 	fwrite($handle2,"\r\n");
@@ -255,7 +255,115 @@
 	IPS_RunScript($scriptIdStartpageWrite);
 
 	IPS_SetVariableCustomAction($vid, $scriptIdStartpageWrite);
-	
+
+/*******************************
+ *
+ * Initialisierung für OpenWeatherMap
+ *
+ ********************************/
+ 
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+	//$modulhandling->printLibraries();
+	echo "\n";
+	$modulhandling->printModules('IPSymconOpenWeatherMap');	
+	$OWDs=$modulhandling->getInstances('OpenWeatherData');
+	echo "\n"; 
+	if (sizeof($OWDs)>0)
+		{
+		echo "Modul OpenWeatherMap ist installiert.\n";
+		if (sizeof($OWDs)>1) echo "ACHTUNG: Zuviele OpenWeatherMap Instanzen sind installiert !\n";
+
+	    $categoryId_OpenWeather = CreateCategory('OpenWeather',   $CategoryIdData, 2000);
+
+		$WFC10_OW_Path=	"Visualization.WebFront.Administrator.Weather.OpenWeather";									
+		$categoryId_OW_WebFront         = CreateCategoryPath($WFC10_OW_Path);
+
+		$WFC10_OW_TabPaneItem="OpenWeatherTPA";$WFC10_OW_TabItem=""; $WFC10_OW_TabPaneParent="TPWeather"; $WFC10_OW_TabPaneOrder=100; $WFC10_OW_TabPaneName="OpenWeather"; $WFC10_OW_TabPaneIcon="Cloudy";
+		DeleteWFCItems($WFC10_ConfigId, $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem);
+		//CreateWFCItemTabPane      ($WFC10_ConfigId, $WFC10_OW_TabPaneItem, $WFC10_OW_TabPaneParent,  $WFC10_OW_TabPaneOrder, $WFC10_OW_TabPaneName, $WFC10_OW_TabPaneIcon);
+		//CreateWFCItemExternalPage ($WFC10_ConfigId, $WFC10_TabPaneItem.$WFC10_TabItem, $WFC10_TabPaneItem, $WFC10_TabOrder, $WFC10_TabName, $WFC10_TabIcon, "user\/IPSWeatherForcastAT\/Weather.php", 'false' /*BarBottomVisible*/);
+		//CreateWFCItemCategory  ($WFC10_ConfigId, $WFC10_OW_TabPaneItem.$WFC10_OW_TabItem,   $WFC10_OW_TabPaneItem,   $WFC10_OW_TabPaneOrder, '', $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+		CreateWFCItemCategory  ($WFC10_ConfigId, $WFC10_OW_TabPaneItem,   $WFC10_OW_TabPaneParent,   $WFC10_OW_TabPaneOrder, $WFC10_OW_TabPaneName, $WFC10_OW_TabPaneIcon, $categoryId_OW_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
+
+		EmptyCategory($categoryId_OW_WebFront);
+		IPS_SetHidden($categoryId_OW_WebFront, true); 		/* in der normalen Viz Darstellung verstecken */	
+		//CreateLinkByDestination('Openweather', $categoryId_OpenWeather,    $categoryId_OW_WebFront,  10);
+
+		$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+		//$modulhandling->printLibraries();
+		echo "\n";
+		$modulhandling->printModules('IPSymconOpenWeatherMap');	
+		$OWDs=$modulhandling->getInstances('OpenWeatherData');
+		echo "\n";
+		$i=1; $find="Zusammenfassung"; $gefunden=false;
+		foreach ($OWDs as $OWD)
+			{
+			echo "Instanz $i: ".$OWD."   ".IPS_GetName($OWD)."\n";
+			$childrens=IPS_GetChildrenIDs($OWD);
+			foreach($childrens as $children)
+				{
+				//echo "Vergleiche ".IPS_GetName($children)."\n";
+				if ( (strpos(IPS_GetName($children),$find)) !== false ) $gefunden=$children;
+				}
+			$i++;
+			}
+		echo "Html Box ist : $gefunden \n";
+		//CreateLinkByDestination("OpenWeather", $gefunden, $categoryId_WebFrontAdministrator,  1000,"");	
+		CreateLinkByDestination('Openweather', $gefunden,    $categoryId_OW_WebFront,  10);
+		echo "\n";
+
+		CreateProfile_Count        ('IPSWeatherForcastAT_Temp',  null, null,  null,     null, " °C", null);
+
+		// Create Variables
+		$LastRefreshDateTime     = CreateVariable("LastRefreshDateTime",    3 /*String*/,  $categoryId_OpenWeather,  10,  '',  null, '');
+		$LastRefreshTime         = CreateVariable("LastRefreshTime",        3 /*String*/,  $categoryId_OpenWeather,  20,  '',  null, '');
+		$TodaySeaLevel           = CreateVariable("SeaLevel",               1 /*Integer*/, $categoryId_OpenWeather,  30,  null,       null, 0);
+		$TodayAirHumidity        = CreateVariable("AirHumidity",            3 /*String*/,  $categoryId_OpenWeather,  40,  '',  null, '');
+		$TodayWind               = CreateVariable("Wind",                   3 /*String*/,  $categoryId_OpenWeather,  50,  '',  null, '');
+
+		$TodayDayOfWeek          = CreateVariable("TodayDay",               3 /*String*/,  $categoryId_OpenWeather,  100,  '',  null, '');
+		$TodayTempCurrent        = CreateVariable("TodayTempCurrent",       2, $categoryId_OpenWeather,  110,  'OpenWeatherMap.Temperatur',       null, 0);
+		$TodayTempMin            = CreateVariable("TodayTempMin",           2, $categoryId_OpenWeather,  120,  'OpenWeatherMap.Temperatur',       null, 0);
+		$TodayTempMax            = CreateVariable("TodayTempMax",           2, $categoryId_OpenWeather,  130,  'OpenWeatherMap.Temperatur',       null, 0);
+		$TodayIcon               = CreateVariable("TodayIcon",              3 /*String*/,  $categoryId_OpenWeather,  140,  '',  null, '');
+		$TodayTextShort          = CreateVariable("TodayForecastLong",      3 /*String*/,  $categoryId_OpenWeather,  150,  '',  null, '');
+		$TodayTextLong           = CreateVariable("TodayForecastShort",     3 /*String*/,  $categoryId_OpenWeather,  160,  '',  null, '');
+
+		$Forecast1DayOfWeek       = CreateVariable("TomorrowDay",           3 /*String*/,  $categoryId_OpenWeather,  200,  '',  null, '');
+		$Forecast1TempMin         = CreateVariable("TomorrowTempMin",       2, $categoryId_OpenWeather,  210,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast1TempMax         = CreateVariable("TomorrowTempMax",       2, $categoryId_OpenWeather,  220,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast1TextShort       = CreateVariable("TomorrowForecastLong",  3 /*String*/,  $categoryId_OpenWeather,  230,  '',  null, '');
+		$Forecast1TextLong        = CreateVariable("TomorrowForecastShort", 3 /*String*/,  $categoryId_OpenWeather,  240,  '',  null, '');
+		$Forecast1Icon            = CreateVariable("TomorrowIcon",          3 /*String*/,  $categoryId_OpenWeather,  250,  '',  null, '');
+
+		$Forecast2DayOfWeek       = CreateVariable("Tomorrow1Day",          3 /*String*/,  $categoryId_OpenWeather,  300,  '',  null, '');
+		$Forecast2TempMin         = CreateVariable("Tomorrow1TempMin",      2, $categoryId_OpenWeather,  310,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast2TempMax         = CreateVariable("Tomorrow1TempMax",      2, $categoryId_OpenWeather,  320,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast2TextShort       = CreateVariable("Tomorrow1ForecastLong", 3 /*String*/,  $categoryId_OpenWeather,  330,  '',  null, '');
+		$Forecast2TextLong        = CreateVariable("Tomorrow1ForecastShort",3 /*String*/,  $categoryId_OpenWeather,  340,  '',  null, '');
+		$Forecast2Icon            = CreateVariable("Tomorrow1Icon",         3 /*String*/,  $categoryId_OpenWeather,  350,  '',  null, '');
+
+		$Forecast3DayOfWeek       = CreateVariable("Tomorrow2Day",          3 /*String*/,  $categoryId_OpenWeather,  400,  '',  null, '');
+		$Forecast3TempMin         = CreateVariable("Tomorrow2TempMin",      2, $categoryId_OpenWeather,  410,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast3TempMax         = CreateVariable("Tomorrow2TempMax",      2, $categoryId_OpenWeather,  420,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast3TextShort       = CreateVariable("Tomorrow2ForecastLong", 3 /*String*/,  $categoryId_OpenWeather,  430,  '',  null, '');
+		$Forecast3TextLong        = CreateVariable("Tomorrow2ForecastShort",3 /*String*/,  $categoryId_OpenWeather,  440,  '',  null, '');
+		$Forecast3Icon            = CreateVariable("Tomorrow2Icon",         3 /*String*/,  $categoryId_OpenWeather,  450,  '',  null, '');
+
+		$Forecast4DayOfWeek       = CreateVariable("Tomorrow3Day",          3 /*String*/,  $categoryId_OpenWeather,  500,  '',  null, '');
+		$Forecast4TempMin         = CreateVariable("Tomorrow3TempMin",      2, $categoryId_OpenWeather,  510,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast4TempMax         = CreateVariable("Tomorrow3TempMax",      2, $categoryId_OpenWeather,  520,  'OpenWeatherMap.Temperatur',       null, 0);
+		$Forecast4TextShort       = CreateVariable("Tomorrow3ForecastLong", 3 /*String*/,  $categoryId_OpenWeather,  530,  '',  null, '');
+		$Forecast4TextLong        = CreateVariable("Tomorrow3ForecastShort",3 /*String*/,  $categoryId_OpenWeather,  540,  '',  null, '');
+		$Forecast4Icon            = CreateVariable("Tomorrow3Icon",         3 /*String*/,  $categoryId_OpenWeather,  550,  '',  null, '');
+
+        /* create Highcharts Meteogram for better Weather Overview */
+
+       	$variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Meteo.php" </iframe>', 'Graph');
+        CreateLinkByDestination('Meteogram', $variableIdMeteoChartHtml,    $categoryId_OW_WebFront,  10);
+
+		}
+
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------

@@ -290,6 +290,7 @@ function parsetxtfile($fileconfig, $config)
 			echo "Aufruf von parsetxtfile mit folgender Config: ".$config["NAME"]." / ".$config["NUMMER"]." (".$config["PASSWORD"].")  -> ".$config["TARIF"]."   ";
 			if ($typ=="DREI") echo "Drei prepaid oder postpaid Karte.\n";
 			else echo "Alternative erkannt, UPC.\n";
+            if ($ergebnisse) echo "==========================================================================================================================\n";
 			//print_r($config);
 			}
 		
@@ -467,7 +468,7 @@ function parsetxtfile($fileconfig, $config)
 				$result7=trim(substr($buffer,$pos+4,200));
 				$pos1=strpos($result7,".")+1;
 				$pos2=strpos(substr($result7,$pos1),".")+1;
-				echo "*** erstes bis : ".$result7."   ".$pos."  ".$pos1."  ".$pos2."\n";
+				if ($ergebnisse) echo "*** erstes bis : ".$result7."   ".$pos."  ".$pos1."  ".$pos2."\n";
 				if ( ($pos1) && ($pos2) )
 					{
 					$result7=substr($result7,0,$pos1+$pos2+4);
@@ -594,7 +595,7 @@ function parsetxtfile($fileconfig, $config)
                             }
                         else                    // Eurozeichen und Komma gefunden
                             {
-                            echo "Eurozeichen und Komma gefunden.\n";
+                            //if ($ergebnisse) echo "*** Eurozeichen und Komma gefunden.\n";
                             $len=3;
                             $i=$pos;
                             }
@@ -606,7 +607,7 @@ function parsetxtfile($fileconfig, $config)
                             $i--;
 				    	    //echo "***".$i."  ".$pos."\n";
                             }
-                        echo "***".$i."  ".$pos."   ".$len."\n";
+                        //if ($ergebnisse) echo "***".$i."  ".$pos."   ".$len."\n";
 					    $result5=trim(substr($buffer,$i,$pos-$i+$len));
 					    if ($ergebnisse) echo "*********Guthaben : ".$result5." \n<br>";
                         }
@@ -742,7 +743,7 @@ function parsetxtfile($fileconfig, $config)
 				$restvolumen=$ticketvolumen-$verbrauchtesvolumen;
 				$result6=" von ".$result4g." sind ".$restvolumen." MB frei";
 				}
-			echo "Restvolumen ist : ".$restvolumen." MB \n";
+			if ($ergebnisse) echo "Restvolumen ist : ".$restvolumen." MB \n";
 			$bisherVolumen=GetValue($phone_Volume_ID);
 			SetValue($phone_Volume_ID,$restvolumen);
 			if (($bisherVolumen-$restvolumen)>0)
@@ -814,7 +815,7 @@ function parsetxtfile($fileconfig, $config)
 		}
 	else
 		{
-		$ergebnis="Handle nicht definiert\n";
+		$ergebnis="Handle nicht definiert. Kein Ergebnis des Macroscripts erhalten.\n";
  		$phone1ID = CreateVariableByName($parentid, "Phone_".$nummer, 3);
   		$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_Summary", 3);
     	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$nummer."_User", 3);

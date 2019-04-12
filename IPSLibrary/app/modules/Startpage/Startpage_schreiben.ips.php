@@ -84,7 +84,7 @@ imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width
 imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
 
 
-/**************************************** PROGRAM *********************************************************/
+/**************************************** PROGRAM WEBFRONT *********************************************************/
 
 
  if ($_IPS['SENDER']=="WebFront")
@@ -101,6 +101,7 @@ imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
         			break;
                 case "4":   /* Topologie, new one with picture drawing of geographical position*/
         			SetValue($StartPageTypeID,3);
+					break;
     	        case "3":  	/* Bildschirmschoner, Picture */
         			SetValue($StartPageTypeID,1);
 		        	break;
@@ -123,9 +124,16 @@ imagejpeg($image_p, $picturedir."SmallPics/".$datei, 60);
 
 	}
 
+/* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
+
+aggregateOpenWeather();		
+
+/* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
+
 SetValue($variableIdHTML,StartPageWrite(GetValue($StartPageTypeID)));
 
 
+/**************************************** PROGRAM EXECUTE *********************************************************/
 
  if ($_IPS['SENDER']=="Execute")
 	{
@@ -159,37 +167,70 @@ function StartPageWrite($PageType)
 	
 	global $temperatur, $innentemperatur, $file, $showfile, $configuration, $maxcount;
 
-	$noweather=false;
-	$todayID = @IPS_GetObjectIDByName("Program",0);
-	$todayID = @IPS_GetObjectIDByName("IPSLibrary",$todayID);
-	$todayID = @IPS_GetObjectIDByName("data",$todayID);
-	$todayID = @IPS_GetObjectIDByName("modules",$todayID);
-	$todayID = @IPS_GetObjectIDByName("Weather",$todayID);
-	$todayID = @IPS_GetObjectIDByName("IPSWeatherForcastAT",$todayID);
-	if ($todayID == false)
+	/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
+	$Config=configWeather($configuration);
+	//print_r($Config);
+	$noweather=!$Config["Active"];
+	if ($Config["Source"]=="WU")
 		{
-		//echo "weatherforecast nicht installiert.\n";
-		$noweather=true;
+		$todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
+		if ($todayID == false)
+			{
+			//echo "weatherforecast nicht installiert.\n";
+			$noweather=true;
+			}
+		else
+			{
+			$today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+			$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+			$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+			$tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+			$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+			$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+			$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+			$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+			$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+			$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+			$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+			$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+
+			$todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
+			}
 		}
-	else
+	else			/* nicht Weather Wunderground, daher Openwewather */
 		{
-		$today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-		$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-		$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-		$tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-		$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-		$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-		$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-		$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-		$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-		$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-		$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-		$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+		$todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");		
+		if ($todayID == false)
+			{
+			//echo "weatherforecast nicht installiert.\n";
+			$noweather=true;
+			}
+		else
+			{
+			//echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
+			$todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
+			$today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+			$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+			$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+			$tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
+			$tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+			$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+			$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+			$tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
+			$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+			$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+			$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+			$tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
+			$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+			$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+			$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+			$tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
+			$tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
+			$tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
+			$tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
+			}		
 		}
 		
-	/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
-	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=true; } }
-
 	/* html file schreiben, Anfang Style für alle gleich */
 
 	$wert="";
@@ -210,7 +251,7 @@ function StartPageWrite($PageType)
 		{
         if ($PageType==3)           // Topologie
 			{
-
+			//echo "Topologiedarstellung fehlt noch.\n";
             }
 		elseif ($PageType==2)
 			{
@@ -241,23 +282,41 @@ function StartPageWrite($PageType)
 				}
 			//echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";            	                
 			$wert.='<table id="startpage">';
+			if ($todayDate!="") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
+			else { $tableSpare=''; $colspan=""; }
 			//$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
 			//$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
 			$wert.='<tr><td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
 			$wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
 			$wert.='</div></td>';
-			$wert.='<td><table id="nested"><tr><td> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-			$wert.='<td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-			$wert.='<tr><td><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
-            $wert.=additionalTableLines($configuration["Display"]);
-			$wert.='<tr id="temp"><td><temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C<br>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td>';
-			$wert.='<td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
-			$wert.='<tr id="temp"><td><temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td>';
-			$wert.='<td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
-  			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td>';
-  			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
-  			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td>';
-  			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr>';
+			$wert.='<td><table id="nested">';
+			$wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+			$wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+			$wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            $wert.= '<tr>'.additionalTableLines($configuration["Display"],$colspan).'</tr>';
+//			$wert.='<tr id="temp"><td><temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C<br>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td>';
+//			$wert.='<td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
+//			$wert.='<tr id="temp"><td><temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td>';
+//			$wert.='<td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
+//			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td>';
+//			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
+//			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td>';
+//			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr>';
+			if ($todayDate=="")
+				{
+				$wert.= tempTableLine($todayTempMin, $todayTempMax, $today);
+				$wert.= tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow);
+				$wert.= tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1);
+				$wert.= tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2);
+				}
+			else
+				{
+				$wert.= tempTableLine($todayTempMin, $todayTempMax, $today,$todayDate);
+				$wert.= tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow, $tomorrowDate);
+				$wert.= tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1, $tomorrow1Date);
+				$wert.= tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2, $tomorrow2Date);
+				}
+			$wert.='</table></td></tr>';
             $wert.=bottomTableLines($configuration["Display"]);
             $wert.='</table>';
             }
@@ -265,7 +324,22 @@ function StartPageWrite($PageType)
 	return $wert;
 	}
 
-
+function tempTableLine($TempMin, $TempMax, $imageSrc, $date="")
+	{
+	$wert="";
+	if ($date=="")
+		{
+		$wert.='<tr id="temp"><td><temperatur>'.number_format($TempMin, 1, ",", "" ).'°C<br>'.number_format($TempMax, 1, ",", "" ).'°C</temperatur></td>';
+		$wert.='<td align="center"> <img src="'.$imageSrc.'" alt="Heute" > </td></tr>';	
+		}
+	else	
+		{
+		$wert.='<tr id="temp"><td><datum>'.$date.'</datum></td>';
+		$wert.='<td><temperatur>'.number_format($TempMin, 1, ",", "" ).'°C<br>'.number_format($TempMax, 1, ",", "" ).'°C</temperatur></td>';
+		$wert.='<td align="center"> <img src="'.$imageSrc.'" alt="Heute" > </td></tr>';			
+		}
+	return ($wert);
+	}
 
 
 ?>

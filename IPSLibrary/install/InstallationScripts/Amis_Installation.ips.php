@@ -573,7 +573,8 @@ $cutter=true;
 			
 			/* dann erst die Struktur zum Abspeichern anlegen */
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
-			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
+			$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0, "Zaehlt");   /* 0 Boolean 1 Integer 2 Float 3 String */
 			//$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 

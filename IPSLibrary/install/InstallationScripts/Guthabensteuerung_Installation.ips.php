@@ -101,7 +101,7 @@
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
 	$archiveHandlerID = $archiveHandlerID[0];
 	
-	$phoneID=array();
+	$phoneID=array();           // wird für die Links im Webfront verwendet, nur die aktiven SIM Karten bekommen einen Link
 	$i=0;
 	foreach ($GuthabenConfig as $TelNummer)
 		{

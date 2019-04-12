@@ -125,7 +125,9 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
 					}
 				else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
-				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
+				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
+
+			    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
 				}
 			else
 				{
@@ -144,7 +146,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 				//IPS_SetScriptTimer($_IPS['SELF'], 0);
 				IPS_SetEventActive($tim2ID,false);
 				}
-			SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);				
 			break;
 		default:
 			break;
@@ -309,7 +310,7 @@ if ($_IPS['SENDER']=="Execute")
 		$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
     	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
 		$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
-		echo "\n".$TelNummer["NUMMER"]." ".GetValue($phone_User_ID)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
+		echo "\n".$TelNummer["NUMMER"]." ".str_pad($TelNummer["STATUS"],10)."  ".str_pad(GetValue($phone_User_ID),40)." : ".GetValue($phone_Volume_ID)."MB und kummuliert ".GetValue($phone_VolumeCumm_ID)."MB \n";
 		if (AC_GetLoggingStatus($archiveHandlerID, $phone_VolumeCumm_ID)==false)
 		   {
 		   echo "Werte wird noch nicht gelogged.\n";

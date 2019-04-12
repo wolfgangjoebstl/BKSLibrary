@@ -1266,9 +1266,10 @@ function GetValueIfFormatted($oid)
 function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
     {
     //echo "Position steht auf $position.\n";
+    //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
-    global $IPS_SELF;
+    //global $IPS_SELF;
     $vid = @IPS_GetVariableIDByName($name, $id);
     if($vid === false)
         {

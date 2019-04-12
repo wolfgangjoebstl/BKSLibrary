@@ -706,14 +706,106 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
 class AutosteuerungOperator 
 	{
 	
-	private $logicAnwesend;
+	private $logicAnwesend;			// die überarbeitete Konfiguration
+	private $motionDetect_DataID;	// hier sind die verzoegerten Spiegelvariablen gespeichert 
 
 	public function __construct()
 		{
 		//IPSLogger_Dbg(__file__, 'Construct Class AutosteuerungOperator.');
+		
+		/* Verzoegerte Motion Detection Variablen im Modul DetectMovement finden */
+		$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+		$installedmodules=$moduleManager->GetInstalledModules();
+		if (isset ($installedmodules["DetectMovement"]))
+			{
+			$moduleManagerDM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
+			$CategoryIdDataDM     = $moduleManagerDM->GetModuleCategoryID('data');
+			$this->motionDetect_DataID=@IPS_GetObjectIDByName("Motion-Detect",$CategoryIdDataDM);
+			}
+				
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-			
-		$this->logicAnwesend=Autosteuerung_Anwesend();
+		$configAnwesend=Autosteuerung_Anwesend();
+		$config=array();
+		if (isset($configAnwesend["Config"])==false) $configAnwesend["Config"]["Delayed"]=false;
+		if (isset($configAnwesend["Config"]["Delayed"])==false) $configAnwesend["Config"]["Delayed"]=false;
+		
+		//print_r($configAnwesend);
+		foreach($configAnwesend as $type => $operation)
+			{
+			switch ($type)
+				{
+				case "OR":
+				case "AND":
+					echo "Type $type erkannt.\n";
+					foreach ($operation as $index => $oid)
+						{
+						$name=IPS_GetName($index);
+						$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
+						echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
+						if (is_array($oid)) 
+							{
+							//$config[$type][$index] = $oid;
+							$newPos="x";
+							foreach ($oid as $pos => $entry) 
+								{
+								//echo "     $pos => $entry\n";
+								
+								/* Achtung mit Typecast, ein Vergleich eines Strings mit einer Zahl führt dazu das der String in eine Zahl umgerechnet wird 
+								$position=(string)$pos;
+								if ($position == "x") 
+									{
+									echo "STRANGE == Funktion : x erkannt.\n";
+									if ($pos == "y") echo "STRANGE == Funktion : y erkannt.\n";			// DAS IST STRANGE !!!!! es wird sowohl x und y erkannt beim selben Wert
+									} */
+								if ($pos === "x") 
+									{
+									//echo "x erkannt : $pos mit $entry\n";
+									$config[$type][$index][$pos] = $entry;
+									}
+								elseif ($pos === "y") 
+									{
+									//echo "y erkannt : $pos mit $entry\n";
+									$config[$type][$index][$pos] = $entry;
+									}
+								elseif ( ($pos === 0) || ($pos === 1) )
+									{
+									echo "0/1 erkannt : $pos wird zu $newPos mit $entry\n";
+									$config[$type][$index][$newPos] = $entry;
+									if ($newPos =="x") $newPos="y";
+									}
+								else 
+									{
+									echo "alle anderen uebernehmen : $pos mit $entry\n";
+									$config[$type][$index][$pos] = $entry;
+									}	
+								}
+							if ($DataID>0) $config[$type][$index]["Delayed"]=$DataID;     
+							}
+						else
+							{  /* add default entry and remove old one */
+							//unset($configAnwesend[$type][$index]);
+							echo " --> kein Array, Topology hinzufuegen.\n";
+							$config[$type][$oid]=["x" => 0,"y" => 0];
+							}
+						}
+					unset($operation);
+					break;
+				default:
+					echo "Index unbekannt, $type erkannt.\n";
+					$config[$type]=$operation;
+					break;
+				}
+				
+			}
+		$this->logicAnwesend=$config;
+		
+		}
+
+	/* Ausgabe der privaten Config Variable, das ist die Config aus dem include File in ein allgemeines Format gebracht */
+
+	public function getConfig()
+		{
+		return($this->logicAnwesend);
 		}
 
     /*
@@ -726,26 +818,43 @@ class AutosteuerungOperator
 	public function Anwesend()
 		{
 		$result=false;
+		$delayed = $this->logicAnwesend["Config"]["Delayed"];
 		$operator="";
 		foreach($this->logicAnwesend as $type => $operation)
 			{
 			if ($type == "OR")
 				{
 				$operator.="OR";
-				foreach ($operation as $oid)
+				foreach ($operation as $oid=>$topology)
 					{
-					$result = $result || GetValueBoolean($oid);
-					$operator.=" ".IPS_GetName($oid);
+					if ( (isset($topology["Delayed"])) && ($delayed) ) 
+						{
+						$result = $result || GetValueBoolean($topology["Delayed"]);
+						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
+						}
+					else 
+						{
+						$result = $result || GetValueBoolean($oid);
+						$operator.=" ".IPS_GetName($oid);
+						}
 					//echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
 					}
 				}
 			if ($type == "AND")
 				{
 				$operator.=" AND";				
-				foreach ($operation as $oid)
+				foreach ($operation as $oid=>$topology)
 					{
-					$result = $result && GetValue($oid);
-					$operator.=" ".IPS_GetName($oid);
+					if ( (isset($topology["Delayed"])) && ($delayed) ) 
+						{
+						$result = $result && GetValue($topology["Delayed"]);
+						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
+						}
+					else 
+						{
+						$result = $result && GetValue($oid);
+						$operator.=" ".IPS_GetName($oid);
+						}
 					//echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
 					}
 				}
@@ -760,32 +869,50 @@ class AutosteuerungOperator
      */ 
 	public function getLogicAnwesend()
 		{
-		$result=false;
-		$operator="";		
+		$delayed = $this->logicAnwesend["Config"]["Delayed"];
+		$result=false; $resultDelayed=false;
+		$operator="";
+		$topologyStatus=array();	
 		foreach($this->logicAnwesend as $type => $operation)
 			{
 			if ($type == "OR")
 				{
 				$operator.="OR";
-				foreach ($operation as $oid)
+				//print_r($operation);
+				foreach ($operation as $oid=>$topology)
 					{
-					$result = $result || GetValueBoolean($oid);
-					$operator.=" ".IPS_GetName($oid);
-					echo "Operation OR for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." Result : ".$result."\n";
+					$result1=GetValueBoolean($oid);
+					$result = $result || $result1;
+					
+					if (isset($topology["Delayed"])) $resultDelayed1 = GetValueBoolean($topology["Delayed"]);
+					else $resultDelayed1 = false; 
+					$resultDelayed = $resultDelayed || $resultDelayed1;
+					
+					if ( (isset($topology["Delayed"])) && ($delayed) ) $operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
+					else $operator.=" ".IPS_GetName($oid);
+					
+					echo "Operation OR for OID : ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)." (".$oid.") ".($result1?"Anwesend":"Abwesend")."  ".($resultDelayed1?"Anwesend":"Abwesend")." Result : ".($result+$resultDelayed)."   [".$topology["x"].",".$topology["y"]."]\n";
+					$topologyStatus[$topology["y"]][$topology["x"]]["Status"]=(integer)GetValueBoolean($oid);
+					if (isset($topology["Delayed"])) $topologyStatus[$topology["y"]][$topology["x"]]["Status"]+=(integer)GetValueBoolean($topology["Delayed"]);
+					if (isset($topology["ShortName"])) $topologyStatus[$topology["y"]][$topology["x"]]["ShortName"]=$topology["ShortName"];
 					}
 				}
 			if ($type == "AND")
 				{
 				$operator.=" AND";				
-				foreach ($operation as $oid)
+				foreach ($operation as $oid=>$topology)
 					{
 					$result = $result && GetValue($oid);
 					$operator.=" ".IPS_GetName($oid);
-					echo "Operation AND for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." ".$result."\n";
+					echo "Operation AND for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." ".$result."   [".$topology["x"].",".$topology["y"]."]\n";
+					$topologyStatus[$topology["y"]][$topology["x"]]["Status"]=(integer)GetValueBoolean($oid);
+					if (isset($topology["Delayed"])) $topologyStatus[$topology["y"]][$topology["x"]]["Status"]+=(integer)GetValueBoolean($topology["Delayed"]);
+					if (isset($topology["ShortName"])) $topologyStatus[$topology["y"]][$topology["x"]]["ShortName"]=$topology["ShortName"];
 					}
 				}
 			}
 		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Anwesenheit":"Abwesend")."\n";
+		return ($topologyStatus);
 		}			
 
     /*
