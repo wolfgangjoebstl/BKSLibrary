@@ -374,6 +374,10 @@
                         $order+=10;
                         }
                     }
+					
+				/* einfache Visualisierung der Bewegungswerte, testweise */
+				$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AutosteuerungID, 1010, '~HTMLBox');
+
                 $operate=new AutosteuerungOperator();
                 $geofencies=$operate->getGeofencyInformation();
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */

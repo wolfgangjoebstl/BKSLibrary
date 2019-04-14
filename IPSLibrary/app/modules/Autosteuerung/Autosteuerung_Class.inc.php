@@ -739,11 +739,11 @@ class AutosteuerungOperator
 					echo "Type $type erkannt.\n";
 					foreach ($operation as $index => $oid)
 						{
-						$name=IPS_GetName($index);
-						$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
-						echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
 						if (is_array($oid)) 
 							{
+							$name=IPS_GetName($index);
+							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
+							echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
 							//$config[$type][$index] = $oid;
 							$newPos="x";
 							foreach ($oid as $pos => $entry) 
@@ -785,6 +785,9 @@ class AutosteuerungOperator
 							{  /* add default entry and remove old one */
 							//unset($configAnwesend[$type][$index]);
 							echo " --> kein Array, Topology hinzufuegen.\n";
+							$name=IPS_GetName($oid);
+							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
+							echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
 							$config[$type][$oid]=["x" => 0,"y" => 0];
 							}
 						}
@@ -914,6 +917,45 @@ class AutosteuerungOperator
 		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Anwesenheit":"Abwesend")."\n";
 		return ($topologyStatus);
 		}			
+
+	/*
+	 * die Topologischen Werte für die ANzeige des Status verwenden, derzeit Anzeige als simple Tabelle, gibt aber schon einen grundsätzlichen Überblick
+	 *
+	 *
+	 */
+	public function writeTopologyTable($topology)
+		{
+		ksort($topology);
+		$html="";
+		$html.="<style>";
+		$html.="#anwesenheit { border-collapse: collapse; border: 1px solid #ddd;   }";
+		$html.="#anwesenheit td, #anwesenheit th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
+		$html.="</style>";
+		$html.="<table id=anwesenheit>";
+		$maxx=1;
+		foreach ($topology as $y => $line)	foreach ($line as $x => $status) {if ($x > $maxx) $maxx=$x; }
+
+		foreach ($topology as $y => $line)
+			{
+			$html.="<tr>";
+			for ($i=1;$i<=$maxx;$i++)
+				{
+				$text=$i;
+				if (isset($line[$i]["ShortName"])) $text=$line[$i]["ShortName"];
+				if (isset($line[$i]["Status"])) 
+					{
+					if ($line[$i]["Status"]==2) $html.='<td bgcolor="00FF00"> '.$text.' </td>'; 
+					elseif ($line[$i]["Status"]==1) $html.='<td bgcolor="00FFFF"> '.$text.' </td>';			
+					else $html.='<td bgcolor="0000FF"> '.$text.' </td>';
+					}
+				else $html.='<td bgcolor="FFFFFF"> '.$text.' </td>';
+				}
+			$html.="</tr>";
+			}
+		$html.="</table>";		
+		return ($html);
+		}
+
 
     /*
      * bearbeitet die Geofency Informationen wenn Geofency Hooks installiert wurden

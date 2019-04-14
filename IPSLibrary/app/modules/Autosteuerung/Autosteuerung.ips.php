@@ -95,6 +95,8 @@ $AnwesenheitserkennungID = IPS_GetObjectIDByName("Anwesenheitserkennung",$catego
 $StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitserkennungID);
 $StatusAnwesendZuletztID=IPS_GetObjectIDByName("StatusAnwesendZuletzt",$AnwesenheitserkennungID);
 
+$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
+
 /* wichtigste Parameter vorbereiten */
 
 $configuration = Autosteuerung_GetEventConfiguration();
@@ -312,8 +314,14 @@ if ($_IPS['SENDER']=="TimerEvent")
 			    SetValue($StatusAnwesendID,$StatusAnwesend );
                 }
 			$Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);
-	
-			if ( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) )) 
+			
+			/* Kurzüberblick als Tabelle machen über Bewegnung in den Räumen */
+			$topology = $operate->getLogicAnwesend();
+			$html=$operate->writeTopologyTable($topology);
+			SetValue($StatusTableMapHtml,$html);
+				
+			$AWSFunktionStatus=( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) ));
+			if ( $AWSFunktionStatus ) 
 				{
 				//Anwesenheitssimulation aktiv, bedeutet ein (1) oder auto (2), bei auto wird bei Anwesenheit nicht simuliert
 				//echo "\nAnwesenheitssimulation eingeschaltet. \n";
@@ -357,7 +365,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 						 * wird alle 5 Minuten aufgerufen. Egal ob Register bereits vorher eingeschaltet wurde.
 						 *
 						 */
-						if ( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($operate->Anwesend()==false) ) ) 
+						if ( $AWSFunktionStatus ) 
  							{
 							SetValue($StatusAnwesendZuletztID,true);
 							$switch = $auto->timeright($scene);
