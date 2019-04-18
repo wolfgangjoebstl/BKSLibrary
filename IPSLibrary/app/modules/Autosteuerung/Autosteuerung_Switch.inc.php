@@ -5,7 +5,7 @@
 include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
-$lightManager = new IPSHeat_Manager();
+$heatManager = new IPSHeat_Manager();
 $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
 $switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
 $groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
@@ -27,6 +27,7 @@ if ( isset($installedModules["Sprachsteuerung"]) === true )
 if ( isset($installedModules["IPSLight"]) === true )
 	{
     include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+	$lightManager = new IPSLight_Manager();
 	}    
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');

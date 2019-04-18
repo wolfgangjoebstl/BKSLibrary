@@ -142,7 +142,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
       	    {
 			echo "IPSComponentSwitch_RHomematic Message Handler für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
-	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' (".IPS_GetName($variable).") mit Wert '.($value?"Ein":"Aus"));			
+	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
        
 			$module->SyncState($value, $this);
 

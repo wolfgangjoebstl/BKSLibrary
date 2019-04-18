@@ -908,7 +908,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 	    		$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
 		    	SetValue($UpdateErreichbarkeit,time());
                 }
-		    $OperationCenter->getHomematicDeviceList();			
+		    //$OperationCenter->getHomematicDeviceList();	// wrong reference to Class
+            $DeviceManager->getHomematicDeviceList();  		
 			break;		
 		case $tim10ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");

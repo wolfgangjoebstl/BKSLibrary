@@ -114,7 +114,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			//echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			IPSLogger_Inf(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
 			$log=new Temperature_Logging($variable);
 			$result=$log->Temperature_LogValue();
