@@ -713,50 +713,43 @@ if ($_IPS['SENDER']=="TimerEvent")
 			**********************************************************/
 			foreach ($OperationCenterConfig['ROUTER'] as $router)
 				{
-                if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
-                    {
-
-                    }
-                else
-                    {                    
-				    echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
-				    //print_r($router);
-                    switch strtoupper(($router["TYP"]))
-                        {                    
-				        case 'MR3420':
-                        case 'B2368':
-        					IPS_ExecuteEX($OperationCenterSetup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
-		        			//IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
-				        	SetValue($ScriptCounterID,1);
-        					IPS_SetEventActive($tim3ID,true);
-		        			IPSLogger_Dbg(__file__, "Router ".$router['TYP']." ".$router['NAME']." Auswertung gestartet.");
-                            break;
-				        case 'RT1900ac')
-        					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
-		        			if ($router_categoryId==false)
-				        	    {
-                                $router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                                IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
-                                IPS_SetParent($router_categoryId,$CategoryIdData);
-                                }
-                            $host          = $router["IPADRESSE"];
-                            $community     = "public";                                                                         // SNMP Community
-                            $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-                            $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
-                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-                            $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
-                            IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
-                            break;
-                        case 'MBRN3000':
-    					    $OperationCenter->write_routerdata_MBRN3000($router);
-                            break;
-				        }   /* ende switch */
-                    }   /* ende if active */
+				echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+				//print_r($router);
+				if ($router['TYP']=='MR3420')
+					{
+					/* und gleich ausprobieren */
+					IPS_ExecuteEX($OperationCenterSetup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+					//IPS_ExecuteEX(ADR_Programs."Mozilla Firefox/firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+					SetValue($ScriptCounterID,1);
+					IPS_SetEventActive($tim3ID,true);
+					IPSLogger_Dbg(__file__, "Router MR3420 Auswertung gestartet.");
+					}
+				if ($router['TYP']=='RT1900ac')
+					{
+					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+					if ($router_categoryId==false)
+					   {
+						$router_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+						IPS_SetName($router_categoryId, "Router_".$router['NAME']); // Kategorie benennen
+						IPS_SetParent($router_categoryId,$CategoryIdData);
+						}
+					$host          = $router["IPADRESSE"];
+					$community     = "public";                                                                         // SNMP Community
+					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+					$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
+					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
+					$snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+					IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
+					}
+				if ($router['TYP']=='MBRN3000')
+				   {
+					$OperationCenter->write_routerdata_MBRN3000($router);
+				   }
 				} /* Ende foreach */
 			break;
 		
@@ -915,8 +908,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 	    		$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*String*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp');
 		    	SetValue($UpdateErreichbarkeit,time());
                 }
-		    //$OperationCenter->getHomematicDeviceList();	// wrong reference to Class
-            $DeviceManager->getHomematicDeviceList();  		
+		    $OperationCenter->getHomematicDeviceList();			
 			break;		
 		case $tim10ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance");

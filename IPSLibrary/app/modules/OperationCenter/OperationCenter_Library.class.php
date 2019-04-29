@@ -1312,11 +1312,7 @@ class OperationCenter
 	 */
 	function write_routerdata_MR3420($router)
 		{
-        if (isset($router["DownloadDirectory"])) $downloadDir=$router["DownloadDirectory"];
-        else $downloadDir = $this->oc_Setup["DownloadDirectory"];
-
-	    $verzeichnis=$downloadDir."report_router_".$router['TYP']."_".$router['NAME']."_files/";
-        echo "Aufruf write_routerdata_MR3420 , Datei in $verzeichnis : \n";            
+	   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_files/";
 		if ( is_dir ( $verzeichnis ))
 			{
 			echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";

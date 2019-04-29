@@ -95,20 +95,19 @@
 		 */
 		public function __construct($var1, $instanceId=false, $supportsOnTime=true) 
 			{
-			//echo "Construct IPSComponentSwitch_RHomematic mit \"".$var1."\"   \"".$instanceId."\"   \"".$supportsOnTime."\"\n";
-			if (($instanceId===false) || ($instanceId==""))  
-				{
-				$this->instanceId   = IPSUtil_ObjectIDByPath($var1);
-				$this->remoteOID    = "";
-				//echo "    InstanceID war nicht definiert, hier festgelegt mit ".$this->instanceId ." \n";
-				}
-			else 
-				{
-				//$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
+			echo "Construct IPSComponentSwitch_RHomematic mit \"".$var1."\"   \"".$instanceId."\"   \"".$supportsOnTime."\"\n";
+      	if (($instanceId===false) || ($instanceId==""))  
+      		{
+         	$this->instanceId   = IPSUtil_ObjectIDByPath($var1);
+            $this->remoteOID    = "";
+            }
+         else 
+            {
+            //$this->instanceId     = IPSUtil_ObjectIDByPath($instanceId);
     			//$this->RemoteOID    = $var1;
 				$this->instanceId     = IPSUtil_ObjectIDByPath($var1);
     			$this->remoteOID    = $instanceId;
-            	}
+            }
 			$this->supportsOnTime = $supportsOnTime;
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -143,7 +142,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
       	    {
 			echo "IPSComponentSwitch_RHomematic Message Handler für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
-	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
+	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' (".IPS_GetName($variable).") mit Wert '.($value?"Ein":"Aus"));			
        
 			$module->SyncState($value, $this);
 
@@ -207,12 +206,11 @@
 		 */
 		public function SetState($value, $onTime=false) 
             {
-            //echo "Aufruf SetState fuer ".$this->instanceId." (".IPS_GetName($this->instanceId).") mit Wert ".($value ? "true":"false")." und Ontime Wert ".($onTime ?:"false")."   \n";
+            echo "Aufruf SetState fuer ".$this->instanceId." (".IPS_GetName($this->instanceId).") mit Wert ".($value ? "true":"false")." und Ontime Wert ".($onTime ?:"false")."   \n";
    			if ($onTime!==false and $value and $this->supportsOnTime===true) HM_WriteValueFloat($this->instanceId, "ON_TIME", $onTime);  
-			$state=@HM_WriteValueBoolean($this->instanceId, "STATE", $value);
+			$state=HM_WriteValueBoolean($this->instanceId, "STATE", $value);
             if ($state==false)
                 {
-				echo "Aufruf SetState fuer ".$this->instanceId." (".IPS_GetName($this->instanceId).") mit Wert ".($value ? "true":"false")." und Ontime Wert ".($onTime ?:"false")."   \n";
                 echo "Fehler beim Setzen des Homematic Registers. 5 Sekunden warten. ".date("H:i:s")."\n";
                 sleep(5);   /* 5 Sekunde warten und noch einmal */
     			$state=HM_WriteValueBoolean($this->instanceId, "STATE", $value);
@@ -251,24 +249,13 @@
 
         public function updateStatusGroup($instanceID)
             {
-            /* ganze IPSHeat oder IPSLight Konfiguration durchgehen und HomematicInstanz suchen */
-    	    if (function_exists("IPSHeat_GetHeatConfiguration")) 
-				{
-				$lightConfig  = IPSHeat_GetHeatConfiguration();
-	            $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
-    	        $switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-        	    $groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-            	$programCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId); 
-				}
-    	    else 
-				{
-				$lightConfig  = IPSLight_GetLightConfiguration();
-            	$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
-        	    $switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
-    	        $groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
-	            $programCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId); 
-				}
-
+            $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
+            $switchCategoryId  = IPS_GetObjectIDByIdent('Switches', $baseId);
+            $groupCategoryId   = IPS_GetObjectIDByIdent('Groups', $baseId);
+            $programCategoryId = IPS_GetObjectIDByIdent('Programs', $baseId);        
+	
+            /* ganze IPSLight Konfiguration durchgehen und HomematicInstanz suchen */
+    	    $lightConfig  = IPSLight_GetLightConfiguration();
             //print_r($lightConfig);
             foreach ($lightConfig as $switchName=>$deviceData) 
                 {
@@ -279,10 +266,10 @@
                     if ($componentConfig[1]==$instanceID)
                         {
                         $homematicID=IPS_GetVariableIDByName('STATE', $componentConfig[1]);
-                        //echo "    ".$switchId."  (".IPS_GetName($switchId).") Wert ".(GetValue($switchId)?"Ein":"Aus")."  Homematic Wert : ".(GetValue($homematicID)?"Ein":"Aus")."  \n";
+                        echo "    ".$switchId."  (".IPS_GetName($switchId).") Wert ".(GetValue($switchId)?"Ein":"Aus")."  Homematic Wert : ".(GetValue($homematicID)?"Ein":"Aus")."  \n";
                         if ( GetValue($switchId) != GetValue($homematicID) ) 
                             {
-                            //echo "                 --> Wert angepasst.\n";
+                            echo "                 --> Wert angepasst.\n";
                             SetValue($switchId, GetValue($homematicID));
                             }
                         }

@@ -197,20 +197,18 @@
          */
 		public function SetState($power, $color, $level, $ambience=false) 
 			{
-			//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."  Typ ".($ambience?"Ambience":"RGB")."    \n";
+			//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."    ".$ambience."    \n";
 			if (!$power) 
 				{
 				HUE_SetValue($this->lampOID, "STATE",$power);
 				} 
 			elseif ($ambience)
 				{
-				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
-				$level = round($level * 2.54);
-
 				HUE_SetValue($this->lampOID, "STATE",$power);
 				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
 				HUE_SetValue($this->lampOID, "COLOR_TEMPERATURE",$color);
 				//echo "Level:".$level."\n";				
+				
 				}
 			else	    
 				{

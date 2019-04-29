@@ -2,7 +2,14 @@
 
 /* eingefuegt von den timer Events beim Schalten von Stromheizung Switches */
 
+include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
+$lightManager = new IPSHeat_Manager();
+$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
+$switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
+$groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
+$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);	
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager)) 
@@ -20,20 +27,7 @@ if ( isset($installedModules["Sprachsteuerung"]) === true )
 if ( isset($installedModules["IPSLight"]) === true )
 	{
     include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-	$lightManager = new IPSLight_Manager();
-    $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.IPSLight');
 	}    
-
-if ( isset($installedModules["Stromheizung"]) === true )
-	{
-    include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");        
-    $heatManager = new IPSHeat_Manager();
-    $baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
-    }
-
-$switchCategoryId 	= IPS_GetObjectIDByIdent('Switches', $baseId);
-$groupCategoryId   	= IPS_GetObjectIDByIdent('Groups', $baseId);
-$prgCategoryId   		= IPS_GetObjectIDByIdent('Programs', $baseId);	
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
