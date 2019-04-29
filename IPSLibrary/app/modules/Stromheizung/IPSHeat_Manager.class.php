@@ -545,9 +545,13 @@
 				if ($groupName == $groupNameLong) IPSLogger_Trc(__file__, "Ignore ".($value?'On':'Off')." forHeatGroup '$groupName' (not allowed)");
                 else IPSLogger_Trc(__file__, "Ignore ".$value." forHeatGroup '$groupNameLong' (not allowed)");
 			} else {
-				SetValue($groupId, $value);
-				if ($groupName == $groupNameLong) IPSLogger_Inf(__file__, "Turn HeatGroup '$groupName' ".($value?'On':'Off'));
-                else IPSLogger_Inf(__file__, "Set HeatGroup '$groupNameLong' to $value");
+                if (GetValue($groupId) != $value)
+                    {
+                    /* nur aktiv den Wert setzen wenn er unterschiedlich ist, reduziert die Anzahl der LogMeldungen und es wird übersichtlicher */
+    				SetValue($groupId, $value);
+				    if ($groupName == $groupNameLong) IPSLogger_Inf(__file__, "Turn HeatGroup '$groupName' ".($value?'On':'Off'));
+                    else IPSLogger_Inf(__file__, "Set HeatGroup '$groupNameLong' to $value");
+                    }
 				$this->SetAllSwitchesByGroup($groupId);
                 
                 /* check ob andere Gruppen auch dieser Gruppe angehören, wie bei SetHeat */
