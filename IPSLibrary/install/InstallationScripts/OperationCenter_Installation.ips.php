@@ -214,7 +214,7 @@
             {
     		echo "  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 	    	//print_r($router);
-            switch strtoupper(($router["TYP"]))
+            switch (strtoupper($router["TYP"]))
                 {
 			    case 'MR3420':
                     echo "      iMacro Command-File für Router Typ MR3420 wird hergestellt.\n";
