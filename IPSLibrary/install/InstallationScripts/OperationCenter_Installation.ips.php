@@ -29,6 +29,28 @@
 	 **/
 
 
+	/* OperationCenter_Installation
+	 *
+	 * Script immer ähnlich aufgebaut.
+	 *
+	 * Init	includes, installed Modules
+	 * Hardware Evaluierung, nur auf die aktuellsten Hardware Objekte aufbauen
+	 * Webfront Config einlesen, OperationCenter hat keinen eigenen Tab, könnte man noch dazu geben, Webfront Tabs kommen immer bei den anderen bestehenden Tabs unter
+	 * Init Timer
+	 * INIT, iMacro Router auslesen
+	 * INIT, Nachrichtenspeicher
+	 * INIT, TraceRouteSpeicher
+	 * INIT, SystemInfo
+	 * Webfront Vorbereitung
+	 * Webfront zusammenräumen
+	 * INIT, Webcams 
+	 *
+	 *
+	 * WebFront Installation
+	 *
+	 *
+	 */
+
 	/******************************************************
 	 *
 	 * INIT, Init
@@ -86,9 +108,16 @@
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}
 		
+	$subnet="10.255.255.255";
+	$OperationCenter=new OperationCenter($subnet);
+	//$OperationCenterConfig = $OperationCenter->oc_Configuration;			// alter zugriff direkt auf die Config Variable
+	$OperationCenterConfig = $OperationCenter->getConfiguration();
+	$OperationCenterSetup = $OperationCenter->getSetup();
+	
+	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Evaluierung starten
+	 * Hardware Evaluierung starten, auf Fertigstellung warten
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
@@ -115,6 +144,8 @@
 	/******************************************************
 	 *
 	 * Webfront Config einlesen
+	 *
+	 * nicht so wichtig, Subtabs bei anderen Programmen verwenden
 	 *
 	 *************************************************************/    
 
@@ -193,6 +224,8 @@
 	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
 	
 	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
+	
+	$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
   		
 	/******************************************************
 
@@ -200,10 +233,8 @@
 
 	*************************************************************/
 
-	$OperationCenterConfig = OperationCenter_Configuration();
-	$OperationCenterSetup = OperationCenter_Setup();
-	//print_r($OperationCenterConfig);
-	echo "\nRouter Erstellung der iMacro Programmierung:\n";
+	echo "\nRouter Erstellung der iMacro Programmierung, Vorbereitung Tab für SNMP basierte Geräte :\n";
+	$routerSnmpLinks=array();
 	foreach ($OperationCenterConfig['ROUTER'] as $router)
 		{
         if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
@@ -213,6 +244,8 @@
         else
             {
     		echo "  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+        	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+		    if ($router_categoryId==false) 	$router_categoryId = CreateCategory("Router_".$router['NAME'],$CategoryIdData,10);       // Kategorie anlegen
 	    	//print_r($router);
             switch (strtoupper($router["TYP"]))
                 {
@@ -278,6 +311,24 @@
                 //SetValue($ScriptCounterID,1);
                 //IPS_SetEventActive($tim3ID,true);
                 }
+			if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") ) 
+				{
+				/* eine SNMP basierte Auswertung erstellen, da es viele Daten in kurzer Auflösung gibt eine eigene Kategorie unter Router erstellen */
+				$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       // Kategorie anlegen
+				$routerSnmpLinks[$router_categoryId]["ID"] = $routerFastPoll_categoryId;
+				$results=IPS_GetChildrenIDs($routerFastPoll_categoryId);
+				foreach ($results as $result)
+					{
+					$nameWithTags=IPS_GetName($result);
+					$nametags=explode("_",$nameWithTags);
+					if ( (isset($nametags[2])) && ($nametags[2]=="speed") )
+						{
+						print_r($nametags);
+						IPS_SetHidden($result,false);
+						}
+					else IPS_SetHidden($result,true);	// alle anderen variablen werden als Hilfsvariablen betrachtet und versteckt 	
+					}
+				}
 			}
 		}
 
@@ -381,7 +432,8 @@
 
 	/******************************************************
 	 *
-	 *			INIT, Webcams FTP Folder auslesen und auswerten
+	 *			INIT, Webcams 
+	 *				FTP Folder auslesen und auswerten
 	 *				Auch die Datenstruktur für den CamOverview und den Snapshot Overview hier erstellen
 	 *				Webfront siehe weiter unten
 	 *
@@ -484,9 +536,6 @@
 
 	echo "===========================================\n";
 	echo "Sysping Variablen anlegen.\n";
-	$subnet="10.255.255.255";
-	$OperationCenter=new OperationCenter($subnet);
-	$OperationCenterConfig = $OperationCenter->oc_Configuration;
 
 	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
 
@@ -874,9 +923,29 @@
 		}
 	
 																																
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+	/* ----------------------------------------------------------------------------------------------------------------------------
+	 * WebFront Installation
+	 *
+	 * ungefilterte Standard-Darstellung vom Ordner Visualization/OperationCenter, kein eigener Tab
+	 * im Ordner OperationCenter gibt es einen Link auf das ganze Data des OperationCenters und einzelne spezielle Links zu Sonderthemen
+	 * es wird bereits begonnen, einzelne Untergruppen zu bilden
+	 *
+	 *	OperationCenter
+	 *	Alexa
+	 * 	Autosteuerung
+	 *	Tasterdarstellung
+	 *	Timersimulation
+	 *	HUE
+	 *	DetectMovement
+	 * 	Nachrichtenverlauf
+	 *	SystemInfo
+	 *	Tracerouteverlauf
+	 *
+	 *	Untergruppen
+	 *		Hardware
+	 *
+	 *
+	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	
 	if ($WFC10_Enabled)
 		{
@@ -896,11 +965,22 @@
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 
-		$categoryId_Hardware = CreateCategory("Hardware",  $categoryId_WebFront, 20);
+		/* für Hardware */
+		$categoryId_Hardware = CreateCategory("Hardware",  $categoryId_WebFront, 40);
 		CreateLinkByDestination('HomematicErreichbarkeit', $CategoryIdHomematicErreichbarkeit,    $categoryId_Hardware,  100);		// Link auf eine Kategorie, daher neues Tab
 		CreateLinkByDestination('HomematicGeraeteliste', $CategoryIdHomematicGeraeteliste,    $categoryId_Hardware,  110);
 		CreateLinkByDestination('HomematicInventory', $CategoryIdHomematicInventory,    $categoryId_Hardware,  120);
 	
+		/* für Router */
+		if (sizeof($routerSnmpLinks)>0)
+			{
+			$categoryId_Router = CreateCategory("Router",  $categoryId_WebFront, 20);
+			foreach ($routerSnmpLinks as $routerSnmpLink)
+				{
+				CreateLinkByDestination($router['NAME']."_".$router['TYP']."_".$router['MANUFACTURER'], $routerSnmpLink["ID"],    $categoryId_Router,  100);		// Link auf eine Kategorie, daher neues Tab
+				}
+			}
+
 		/* Zusammenräumen, alte Ordnung eliminieren */
 		$linkId=@IPS_GetLinkIDByName('HomematicErreichbarkeit', $categoryId_WebFront);
 		if ($linkId) IPS_DeleteLink($linkId); 

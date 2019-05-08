@@ -34,7 +34,7 @@
 			IPSLogger_Inf(__file__, 'StartpageTopology_Receiver mit Wert '.$action.' und Ergebnis '.$result);			
 		}
 	echo "was here";
-	Startpage_Refresh();
+	StartpageOverview_Refresh();
 
 
 	/** @}*/

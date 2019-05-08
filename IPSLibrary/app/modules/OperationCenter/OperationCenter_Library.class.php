@@ -192,6 +192,22 @@ class OperationCenter
 		
 /****************************************************************************************************************/
 
+    public function getSetup()
+        {
+        return ($this->oc_Setup);
+        }
+
+    public function getConfiguration()
+        {
+        return ($this->oc_Configuration);
+        }
+
+    public function getCategoryIdData()
+        {
+        return ($this->CategoryIdData);
+        }
+
+
 	/**
 	 * @public
 	 *

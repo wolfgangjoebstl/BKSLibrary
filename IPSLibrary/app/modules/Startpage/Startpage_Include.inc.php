@@ -55,8 +55,6 @@
      * StartPageWrite
      * tempTableLine
      *
-     * Startpage_SetPage
-     * Startpage_Refresh
      * writeStartpageStyle
      * findIcon
      * findeVarSerie
@@ -64,9 +62,11 @@
      * additionalTableLines
      * bottomTableLines
      *
-     *
+     * Andere Funktionen, ausserhalb der Klasse
+	 *
      * controlMonitor
-     *
+     * Startpage_SetPage
+     * Startpage_Refresh*
      */
 
 	class StartpageHandler 
@@ -338,35 +338,6 @@
 				$wert.='<td align="center"> <img src="'.$imageSrc.'" alt="Heute" > </td></tr>';			
 				}
 			return ($wert);
-			}
-		
-		
-		
-			/**
-			 * Setz eine bestimmte Seite in der Startpage
-			 *
-			 * @param string $action Action String
-			 * @param string $module optionaler Module String
-			 * @param string $info optionaler Info String
-			 */
-			function Startpage_SetPage($action, $module='', $info='') {
-				$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-		
-				SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);
-				SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId), $module);
-				SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO, $baseId), $info);
-				$typeId = IPS_GetObjectIDByName("Startpagetype", $baseId);
-				return ($typeId);		
-			}
-		
-			/**
-			 * Refresh der Startpage
-			 *
-			 */
-			function Startpage_Refresh() {
-				$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-				$variableIdHTML = IPS_GetObjectIDByIdent(STARTPAGE_VAR_HTML, $baseId);
-				SetValue($variableIdHTML, GetValue($variableIdHTML));
 			}
 		
 		    function writeStartpageStyle()
@@ -808,7 +779,7 @@
 				}
 
 		// ------------------------------------------------------------------------
-		// CreateDateUTC
+		// CreateDateUTC, hier in der Klasse noch einmal definiert, gibt es in IPSHighcharts.inc
 		//    Erzeugen des DateTime Strings für Highchart-Config
 		//    IN: $timeStamp = Zeitstempel
 		//    OUT: Highcharts DateTime-Format als UTC String ... Date.UTC(1970, 9, 27, )
@@ -912,6 +883,51 @@
 		    		break;
 				}			
 			}																
-		}		
+		}
+
+	/*************************************************************************************************/
+
+	/**
+	 * Setz eine bestimmte Seite in der Startpage
+	 *
+	 * @param string $action Action String
+	 * @param string $module optionaler Module String
+	 * @param string $info optionaler Info String
+	 */
+	function Startpage_SetPage($action, $module='', $info='') {
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId), $action);
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_MODULE, $baseId), $module);
+		SetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_INFO, $baseId), $info);
+		$typeId = IPS_GetObjectIDByName("Startpagetype", $baseId);
+		return ($typeId);		
+		}
+			
+	/**
+	 * Refresh der Startpage
+	 *
+	 */
+	function Startpage_Refresh() 
+		{
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+		$variableIdHTML = IPS_GetObjectIDByIdent(STARTPAGE_VAR_HTML, $baseId);
+		SetValue($variableIdHTML, GetValue($variableIdHTML));
+		}
+
+    function StartpageOverview_Refresh()
+        {
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.WebLinks');
+		$variableIdHTML = IPS_GetObjectIDByIdent("htmlFrameTable", $baseId);
+		SetValue($variableIdHTML, GetValue($variableIdHTML));
+        }        
+
+    function StartpageTopology_Refresh()
+        {
+		$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.WebLinks');
+		$variableIdHTML = IPS_GetObjectIDByIdent("htmlCanvasTable", $baseId);
+		SetValue($variableIdHTML, GetValue($variableIdHTML));
+        }        
+
+
 		
 ?>

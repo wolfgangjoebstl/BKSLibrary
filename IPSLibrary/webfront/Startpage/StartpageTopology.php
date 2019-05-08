@@ -39,7 +39,6 @@
 			function trigger_button(action, module, info) {
 				var id         = $(this).attr("id");
 
-				//window.alert("Taste gedrückt");
 				$.ajax({type: "POST",
 						url: "/user/Startpage/StartpageTopology_Receiver.php",
 						data: "id="+id+"&action="+action+"&module="+module+"&info="+info});
@@ -124,7 +123,7 @@
 		<?php
 			switch($action) {
 				case 'View1':
-					echo 'Hallo, hier ist View1 mit Temperaturwerten<br> ';
+					echo 'Hallo, hier ist View1 mit Temperaturwerten -check<br> ';
 					$Werte=IPS_GetChildrenIDs(22334);
 					foreach ($Werte as $Wert) echo "   ".$Wert."  ".IPS_GetName($Wert)."   ".GetValue($Wert)."<br>";
 					SetValue(35191,"View1 gedrueckt");
@@ -143,7 +142,8 @@
 					foreach ($modules as $name => $module) echo "   ".$name."  ".$module."<br>";					
 					break;
 				case 'View4':
-					echo "Hallo, hier ist View4";				
+					echo "Hallo, hier ist View4 mit der aktuellen Uhrzeit:<br>";
+					echo 'Es ist heute '.date("D.m.Y H:i:s").' Refresh ?';  					
 					break;
 				case 'View5':
 					echo "Hallo, hier ist View5";				
