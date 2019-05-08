@@ -63,8 +63,10 @@
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
-	IPSUtils_Include ("Startpage.inc.php",      "IPSLibrary::app::modules::Startpage");
-
+	
+	IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+	IPSUtils_Include ('Startpage_Library.inc.php', 'IPSLibrary::app::modules::Startpage');
+	
 /*******************************
  *
  * Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
