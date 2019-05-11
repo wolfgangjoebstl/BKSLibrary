@@ -110,7 +110,7 @@
 		<a href="#" onClick=trigger_button('View4','','')>View4</a> |
 		<a href="#" onClick=trigger_button('View5','','')>View5</a>
 		<?php
-			IPSUtils_Include ("Startpage.inc.php", "IPSLibrary::app::modules::Startpage");
+			IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
 
 			$baseId  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 			$action  = GetValue(IPS_GetObjectIDByIdent(STARTPAGE_VAR_ACTION, $baseId));

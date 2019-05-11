@@ -65,7 +65,7 @@
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	
 	IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
-	IPSUtils_Include ('Startpage_Library.inc.php', 'IPSLibrary::app::modules::Startpage');
+	IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 	
 /*******************************
  *

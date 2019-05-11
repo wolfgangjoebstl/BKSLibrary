@@ -3,6 +3,7 @@
 /*
 
 Itunes Ansteuerung und Ueberwachung, macht ein kleines Lautsprechersymbol im Webfront, oben in der Schnellauswahl
+Übernimmt auch das Install des Netplayers, da dieser mittlerweile etwas buggy geworden ist.
 
 Modifiziert auf IPS Library und kleine Anpassungen von Wolfgang Joebstl
 
@@ -67,6 +68,16 @@ $moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+	$moduleManagerNP = new IPSModuleManager('NetPlayer');
+
+	IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");
+	IPSUtils_Include ("IPSMessageHandler.class.php",     "IPSLibrary::app::core::IPSMessageHandler");
+	IPSUtils_Include ("NetPlayer_Constants.inc.php",     "IPSLibrary::app::modules::NetPlayer");
+	IPSUtils_Include ("NetPlayer_Configuration.inc.php", "IPSLibrary::config::modules::NetPlayer");
+
+	$CategoryIdDataNP     = $moduleManagerNP->GetModuleCategoryID('data');
+	$CategoryIdAppNP      = $moduleManagerNP->GetModuleCategoryID('app');
+	$CategoryIdHw       = CreateCategoryPath('Hardware.NetPlayer');
 
 /*******************************
  *
@@ -308,8 +319,13 @@ Path=Visualization.Mobile.iTunes
         }
     if ( (isset($config["Alexa"])) && isset($installedModules["iTunesSteuerung"]) )         // Modul und Config müssen passen
         {
-        if (isset($entry["NAME"])==false) $entry["NAME"]="Alexa";            
-        $categoryId_Alexa  = CreateCategory("Alexa", $CategoryIdData, 20); 
+        $order=20;            
+    	foreach ($config["Alexa"] as $name => $entry)
+			{
+        	if (isset($entry["NAME"])==false) $config["Alexa"]["NAME"]="Alexa";            
+			}
+		if (isset($config["Alexa"]["NAME"])==false) $config["Alexa"]["NAME"]="Alexa"; 	 
+        $categoryId_Alexa  = CreateCategory("Alexa", $CategoryIdData, $order); 
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
         $echos=$modulhandling->getInstances('EchoRemote');
         echo "Alexa Echo Geräte anlegen.\n";
@@ -323,18 +339,37 @@ Path=Visualization.Mobile.iTunes
                 }
             else
                 {    /* es werden derzeit nur Index, NAME und ORDER ausgewertet */
-                $order=10;                        
-                $webfront_links["Alexa"][$name]["Auswertung"][$echo]["NAME"]=$name;        
-            	$webfront_links["Alexa"][$name]["Auswertung"][$echo]["ADMINISTRATOR"]=true;
-	            $webfront_links["Alexa"][$name]["Auswertung"][$echo]["USER"]=false;
-        		$webfront_links["Alexa"][$name]["Auswertung"][$echo]["MOBILE"]=false;                  
-                $webfront_links["Alexa"][$name]["Auswertung"][$echo]["ORDER"]=$order;
+                $order=100;                        
+	            $tabname="Alexa";
+                $webfront_links[$tabname][$name]["Auswertung"][$echo]["NAME"]=$name;        
+            	$webfront_links[$tabname][$name]["Auswertung"][$echo]["ADMINISTRATOR"]=true;
+	            $webfront_links[$tabname][$name]["Auswertung"][$echo]["USER"]=false;
+        		$webfront_links[$tabname][$name]["Auswertung"][$echo]["MOBILE"]=false;                  
+                $webfront_links[$tabname][$name]["Auswertung"][$echo]["ORDER"]=$order;
                 $order+=10;
                 }
             echo "\n";    
             }
         }
+    if ( (isset($config["NetPlayer"])) && isset($installedModules["NetPlayer"]) )
+		{
+        $order=30;            
+    	foreach ($config["NetPlayer"] as $name => $entry)
+			{
+        	if (isset($entry["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer";            
+			}
+		if (isset($config["NetPlayer"]["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer"; 	 
+		$NetPlayerID  = $CategoryIdDataNP;
+	    $tabname="NetPlayer";
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["TAB"]="NetPlayer";
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["NAME"]=$config["NetPlayer"]["NAME"];
+        $webfront_links[$tabname]["Auswertung"][$NetPlayerID]["ORDER"]=$order;
 
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["ADMINISTRATOR"]=true;
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["USER"]=true;
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["MOBILE"]=true;
+		}
+	
 	echo "Webfront Visualisierungskonfiguration ausgeben:\n"; print_r($webfront_links);
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -403,17 +438,42 @@ Path=Visualization.Mobile.iTunes
 	    		$tabItem = $WFC10_TabPaneItem.$Name;				/* Netten eindeutigen Namen berechnen */
                 deletePane($WFC10_ConfigId, $tabItem);              /* Spuren von vormals beseitigen */
 
+				//print_r($webfront_group);
                 if (array_key_exists("Auswertung",$webfront_group) ) 
                     {
-    			    echo "Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
-                    createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+  			    	echo "**Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
+					if (array_key_exists("Nachrichten",$webfront_group) )
+						{
+                    	createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
+						}
+					else
+						{	
+	                    //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    
+						foreach ($webfront_group as $Group => $webfront_link)
+							{
+							foreach ($webfront_link as $OID => $link)
+								{
+								/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
+						 		 * Auswertung kommt nach links und Nachrichten nach rechts
+						 		 */	
+								//echo $OID."  "; print_r($link);				
+								echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
+								if ($Group=="Auswertung")
+							 		{
+			 						echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
+									CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontTab,  $link["ORDER"]);						
+									CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,   $WFC10_TabPaneOrder, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+									}
+								}
+							}
+						}
                     }
                 else
                     {
         		    foreach ($webfront_group as $SubName => $webfront_subgroup)
 	        	        {                    
                         /* noch eine Zwischenebene an Tabs einführen */
-                        echo "\n  **** iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
+                        echo "\n  **iTunes Visualization, erstelle Sub Kategorie ".$SubName." in ".$categoryId_WebFrontTab.".\n";
 			            $categoryId_WebFrontSubTab         = CreateCategory($SubName,$categoryId_WebFrontTab, 10);
 			            EmptyCategory($categoryId_WebFrontSubTab);   
                         echo "Kategorien erstellt, Sub install for ".$SubName." : ".$categoryId_WebFrontSubTab." in ".$categoryId_WebFrontTab." Kategorie Inhalt geloescht.\n";
@@ -574,13 +634,218 @@ Path=Visualization.Mobile.iTunes
 	   /* Retro not enabled, alles loeschen */
 	   }
 
-	 
-	 
-	 
-	 
-	 
-	 
 	ReloadAllWebFronts();
+
+/****************************************************************************************************************
+ *
+ *  Übernommen vom Netplayer, war nicht mehr richtig programmiert
+ *
+ ****************************************************************************************************************/
+
+
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Program Installation
+	// ----------------------------------------------------------------------------------------------------------------------------
+
+	echo "\n";
+	echo "--- Create NetPlayer -------------------------------------------------------------------\n";
+	echo "\n";
+	
+
+	// Scripts
+	$actionScriptId = IPS_GetScriptIDByName('NetPlayer_ActionScript',  $CategoryIdAppNP);
+	$eventScriptId  = IPS_GetScriptIDByName('NetPlayer_EventScript',   $CategoryIdAppNP);
+
+	// Controls
+	CreateProfile_Associations ('NetPlayer_Category',    array('Root'));
+	CreateProfile_Associations ('NetPlayer_CDAlbumList', array('...'));
+	CreateProfile_Associations ('NetPlayer_CDAlbumNav',  array('<<','>>'));
+	CreateProfile_Associations ('NetPlayer_CDTrackList', array('...'));
+	CreateProfile_Associations ('NetPlayer_CDTrackList2', array('xx', 'yyy'));
+	CreateProfile_Associations ('NetPlayer_CDTrackNav',  array('<<','>>'));
+	CreateProfile_Associations ('NetPlayer_RadioList',   array('...'));
+	CreateProfile_Associations ('NetPlayer_RadioNav',    array('<<','>>'));
+	CreateProfile_Associations ('NetPlayer_Control',     array('Play','Pause','Stop','<<','>>'));
+	CreateProfile_Associations ('NetPlayer_Source',      array('CD Player','Radio Player'));
+
+	// MP3 Player
+	$mp3PlayerInstanceId     = CreateInstance("CDPlayer", $CategoryIdDataNP, "{485D0419-BE97-4548-AA9C-C083EB82E61E}",1000);
+	$categoryId       = CreateVariable("Category",        1 /*Integer*/,  $CategoryIdDataNP, 150 , 'NetPlayer_Category', $actionScriptId, 0);
+	$cdCategoryNameId = CreateVariable("CategoryName",    3 /*String*/,  $mp3PlayerInstanceId, 10 , '~TextBox', null/*NoAS*/, "");
+	$cdIdxId          = CreateVariable("DirectoryIdx",    1 /*Integer*/, $mp3PlayerInstanceId, 20 , '',         null/*NoAS*/,  0);
+	$cddirectoryPath  = CreateVariable("DirectoryPath",   3 /*String*/,  $mp3PlayerInstanceId, 30 , '~TextBox');
+	$cddirectoryName  = CreateVariable("DirectoryName",   3 /*String*/,  $mp3PlayerInstanceId, 40 , '~TextBox');
+	$cdTrackListHtmlId= CreateVariable("TrackListHtml",   3 /*String*/,  $mp3PlayerInstanceId, 50 , '~HTMLBox');
+	$cdTrackIdxId     = CreateVariable("TrackIdx",        1 /*Integer*/, $mp3PlayerInstanceId, 60 , '',         null/*NoAS*/, 0);
+
+	// WebRadio
+	$webRadioInstanceId     = CreateInstance("RadioPlayer", $CategoryIdDataNP, "{485D0419-BE97-4548-AA9C-C083EB82E61E}",1010);
+	$radioNameId     = CreateVariable("Name", 3 /*String*/,   $webRadioInstanceId, 10 , '~TextBox');
+	$radioUrlId      = CreateVariable("Url",  3 /*String*/,   $webRadioInstanceId, 20 , '~TextBox');
+	$radioIdxId      = CreateVariable("Idx",  1 /*Integer*/,  $webRadioInstanceId, 30 , '', null/*NoAS*/, 0);
+
+	$powerId               = CreateVariable("Power",           0 /*Boolean*/,  $CategoryIdDataNP, 100 , '~Switch', $actionScriptId, 0);
+	$sourceId              = CreateVariable("Source",          1 /*Integer*/,  $CategoryIdDataNP, 110 , 'NetPlayer_Source', $actionScriptId, 0 /*CD*/);
+	$controlId             = CreateVariable("Control",         1 /*Integer*/,  $CategoryIdDataNP, 120 , 'NetPlayer_Control', $actionScriptId, 2 /*Stop*/);
+	$albumId               = CreateVariable("Album",           3 /*String*/,   $CategoryIdDataNP, 130, '');
+	$interpretId           = CreateVariable("Interpret",       3 /*String*/,   $CategoryIdDataNP, 140, '');
+	$categoryId            = CreateVariable("Category",        1 /*Integer*/,  $CategoryIdDataNP, 150 , 'NetPlayer_Category', $actionScriptId, 0);
+	$cdAlbumNavId          = CreateVariable("CDAlbumNav",      1 /*Integer*/,  $CategoryIdDataNP, 160 , 'NetPlayer_CDAlbumNav', $actionScriptId, -1);
+	$cdAlbumListId         = CreateVariable("CDAlbumList",     1 /*Integer*/,  $CategoryIdDataNP, 170 , 'NetPlayer_CDAlbumList', $actionScriptId, -1);
+	$cdTrackNavId          = CreateVariable("CDTrackNav",      1 /*Integer*/,  $CategoryIdDataNP, 180 , 'NetPlayer_CDTrackNav', $actionScriptId, -1);
+	$cdTrackListId         = CreateVariable("CDTrackList",     1 /*Integer*/,  $CategoryIdDataNP, 190 , 'NetPlayer_CDTrackList', $actionScriptId, -1);
+	$radioNavId            = CreateVariable("RadioNav",        1 /*Integer*/,  $CategoryIdDataNP, 200 , 'NetPlayer_RadioNav', $actionScriptId, -1);
+	$radioListId           = CreateVariable("RadioList",       1 /*Integer*/,  $CategoryIdDataNP, 210 , 'NetPlayer_RadioList', $actionScriptId,-1);
+	$controlTypeId         = CreateVariable("ControlType",     1 /*Integer*/,  $CategoryIdDataNP, 300 , '', null, 0);
+	$remoteControlId       = CreateVariable("RemoteControl",   3 /*String*/,   $CategoryIdDataNP, 310 , '~HTMLBox', null, '<iframe frameborder="0" width="100%" src="../user/NetPlayer/NetPlayer_MP3Control.php" height=255px </iframe>');
+	$mobileControlId       = CreateVariable("MobileControl",   3 /*String*/,   $CategoryIdDataNP, 320 , '~HTMLBox', null, '<iframe frameborder="0" width="100%" src="../user/NetPlayer/NetPlayer_Mobile.php" height=1000px </iframe>');
+
+    echo "SetVariableConstant Netplayer ID Constants.\n";
+
+	// Register Variable Constants
+	SetVariableConstant ("NP_ID_CDCATEGORYNAME",  $cdCategoryNameId,       'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDDIRECTORYPATH", $cddirectoryPath,        'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDDIRECTORYNAME", $cddirectoryName,        'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDDIRECTORYIDX",  $cdIdxId,                'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDTRACKLISTHTML", $cdTrackListHtmlId,      'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDTRACKIDX",      $cdTrackIdxId,           'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+
+	SetVariableConstant ("NP_ID_RADIONAME",       $radioNameId,            'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_RADIOURL",        $radioUrlId,             'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_RADIOIDX",        $radioIdxId,             'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+
+	SetVariableConstant ("NP_ID_POWER",           $powerId,                'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_REMOTECONTROL",   $remoteControlId,        'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_MOBILECONTROL",   $mobileControlId,        'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CONTROLTYPE",     $controlTypeId,          'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ('"NP_ID_CDALBUM"',       $albumId,                'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDINTERPRET",     $interpretId,            'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+
+	SetVariableConstant ("NP_ID_CATEGORYLIST",    $categoryId,             'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDALBUMLIST",     $cdAlbumListId,          'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDALBUMNAV",      $cdAlbumNavId,           'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ('"NP_ID_CDTRACKLIST"',   $cdTrackListId,          'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_CDTRACKNAV",      $cdTrackNavId,           'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_RADIOLIST",       $radioListId,            'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_RADIONAV",        $radioNavId,             'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ("NP_ID_SOURCE",          $sourceId,               'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+	SetVariableConstant ('"NP_ID_CONTROL"',       $controlId,              'NetPlayer_IDs.inc.php', 'IPSLibrary::app::modules::NetPlayer');
+
+    echo "Installation of Components:\n";
+
+	// Installation of Components
+	IPSUtils_Include ("NetPlayer_Constants.inc.php",     "IPSLibrary::app::modules::NetPlayer");
+	IPSUtils_Include ("NetPlayer_Configuration.inc.php", "IPSLibrary::config::modules::NetPlayer");
+
+	$params = explode(',',NETPLAYER_COMPONENT);
+	if ($params[0] == 'IPSComponentPlayer_Mediaplayer') {
+        print_r($params);
+	    if (!is_numeric($params[1])) {
+	        $pathItems = explode('.',$params[1]);
+	        $mediaPlayerName = $pathItems[count($pathItems)-1];
+	        unset($pathItems[count($pathItems)-1]);
+	        $path = implode('.', $pathItems);
+			$categoryId  = CreateCategoryPath($path);
+
+			// Create MediaPlayer
+            echo "Create Media Player $mediaPlayerName in Category $categoryId . Soundcards available :\n";
+			$Position=0;
+   		    //$mediaPlayerInstanceId   = CreateMediaPlayer($mediaPlayerName, $categoryId, $Position);
+			$MediaPlayerInstanceId = CreateInstance($mediaPlayerName, $categoryId, "{2999EBBB-5D36-407E-A52B-E9142A45F19C}",$Position);
+			echo "   Mediaplayer Instance created : $MediaPlayerInstanceId \n"; 
+			//$SoundCards = WAC_GetDevices($MediaPlayerInstanceId);
+			$result = Array();
+			$forms=IPS_GetConfigurationForm($MediaPlayerInstanceId);
+			$forms=utf8_encode($forms);			
+			$json = json_decode($forms);
+			echo "   Ergebnis json_decode ConfigurationForm ";
+		    switch (json_last_error()) 
+				{
+        		case JSON_ERROR_NONE:
+		            echo ' - No errors';
+			        break;
+		        case JSON_ERROR_DEPTH:
+		            echo ' - Maximum stack depth exceeded';
+			        break;
+		        case JSON_ERROR_STATE_MISMATCH:
+		            echo ' - Underflow or the modes mismatch';
+			        break;
+		        case JSON_ERROR_CTRL_CHAR:
+		            echo ' - Unexpected control character found';
+		    	    break;
+		        case JSON_ERROR_SYNTAX:
+		            echo ' - Syntax error, malformed JSON';
+		        	break;
+		        case JSON_ERROR_UTF8:
+		            echo ' - Malformed UTF-8 characters, possibly incorrectly encoded';
+		        	break;
+		        default:
+		            echo ' - Unknown error';
+		        	break;
+		    	}
+			echo "\n";
+			
+/*			$jsonIterator = new RecursiveIteratorIterator(new RecursiveArrayIterator(json_decode($json, TRUE)),RecursiveIteratorIterator::SELF_FIRST);
+			foreach ($jsonIterator as $key => $val) {
+			    if(is_array($val)) {
+      		  		echo "$key:\n";
+    			} else {
+        			echo "$key => $val\n";
+    			}
+			}  */
+			
+			foreach($json->elements as $element)
+				{
+				if(isset($element->name) && ($element->name == "Device"))
+					{
+					foreach($element->options as $option)
+						$result[] = $option->label;
+					}
+				}
+			$SoundCards=$result;
+			echo "Soundcards:\n";
+			print_r($SoundCards);
+			foreach ($SoundCards as $Idx=>$SoundCard) 
+				{
+				if ($SoundCard <> "No sound") {
+				Debug ("Set Soundcard $SoundCard");
+				//WAC_SetDeviceID($MediaPlayerInstanceId, $Idx);
+				
+				$searchByName = function($properties, $name) {
+					foreach($properties as $property) {
+						if($property->name == $name) {
+							return $property->value;
+						}
+					}
+				};
+		
+				foreach($json->elements as $element)
+					{
+					if(isset($element->name) && ($element->name == "Device"))
+						{
+						$option = $element->options[$Idx];
+						IPS_SetProperty($MediaPlayerInstanceId, 'DeviceNum', $searchByName($option->value, 'DeviceNum'));
+						IPS_SetProperty($MediaPlayerInstanceId, 'DeviceDriver', $searchByName($option->value, 'DeviceDriver'));
+						IPS_SetProperty($MediaPlayerInstanceId, 'DeviceName', $searchByName($option->value, 'DeviceName'));
+						}
+					}	
+				}
+			}
+			echo "Set Update interval:\n";
+			WAC_SetUpdateInterval($MediaPlayerInstanceId, 1);
+			IPS_ApplyChanges($MediaPlayerInstanceId);
+			
+            echo "   Media Player Instance created : $MediaPlayerInstanceId \n";
+   		    $mediaPlayerTitel        = IPS_GetVariableIDByName('Titel', $MediaPlayerInstanceId);
+
+   		    // Register Message Handler
+            echo "Register Message Handler :\n";
+			IPSMessageHandler::RegisterOnChangeEvent($mediaPlayerTitel/*Var*/, 'IPSComponentPlayer_MediaPlayer,'.$MediaPlayerInstanceId, 'IPSModulePlayer_NetPlayer');
+	    }    
+	}
+
+
+
 
 
 /****************************************************************************************************************/
@@ -614,11 +879,13 @@ Path=Visualization.Mobile.iTunes
 
 			foreach ($webfront_group as $Group => $webfront_link)
 				{
+				//print_r($webfront_link );
 				foreach ($webfront_link as $OID => $link)
 					{
 					/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
 			 		 * Auswertung kommt nach links und Nachrichten nach rechts
-			 		 */					
+			 		 */	
+					//echo $OID."  "; print_r($link);				
 					echo "  bearbeite Link ".$Name.".".$Group.".".$link["NAME"]." mit OID : ".$OID."\n";
 					if ($Group=="Auswertung")
 				 		{

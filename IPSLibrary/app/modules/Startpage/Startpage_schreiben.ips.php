@@ -7,7 +7,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.p
 
 IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
-IPSUtils_Include ('Startpage_Library.inc.php', 'IPSLibrary::app::modules::Startpage');
+IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
 $parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 //IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */

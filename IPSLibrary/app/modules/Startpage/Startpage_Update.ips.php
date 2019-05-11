@@ -16,7 +16,7 @@
 	IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
 
 	IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
-	IPSUtils_Include ('Startpage_Library.inc.php', 'IPSLibrary::app::modules::Startpage');
+	IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
 
 

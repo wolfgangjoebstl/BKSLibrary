@@ -5,7 +5,7 @@
 	 *
 	 */
 
-	IPSUtils_Include ("Startpage.inc.php", "IPSLibrary::app::modules::Startpage");
+	IPSUtils_Include ("Startpage_Include.inc.php", "IPSLibrary::app::modules::Startpage");
 	IPSUtils_Include ("Startpage.class.php", "IPSLibrary::app::modules::Startpage");
 	
 	IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
