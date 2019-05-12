@@ -337,7 +337,7 @@ class SNMP_OperationCenter
 				$parentID=IPS_GetParent($obj->ips_var);					
 				$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),$parentID);/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
 				$ips_varc=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_chg"),$parentID); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
-				$ips_vars=@IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_speed"),$parentID); /* Der Diff-Wert zwischen letzter und dieser Ablesung */
+				$ips_vars=@IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_speed"),$parentID); /* Der Diff-Wert zwischen letzter und dieser Ablesung mal 8 pro Sekunde => Bit/s */
 				if ($ips_vars==false)
 					{
 					$ips_vars = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */

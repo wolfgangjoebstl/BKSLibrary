@@ -1321,11 +1321,55 @@ class OperationCenter
 /****************************************************************************************************************/
 
 	/**
+	 * sZusammenfassung der ActionButtons der class OperationCenter
+	 *
+	 * derzeit sind es die ActionButtons der SNMP Router Erfassung
+	 *
+	 */
+	
+	function get_ActionButton()
+		{	
+		$actionButton=array();
+		
+		foreach ($this->oc_Configuration['ROUTER'] as $router)
+			{
+	        if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
+	            {
+	
+	            }
+	        else
+	            {
+				//echo "get_ActionButton: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";				
+	        	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$this->CategoryIdData);
+			    if ($router_categoryId !== false)
+					{
+		            switch (strtoupper($router["TYP"]))
+	    	            {
+				        case 'B2368':
+			        	case 'RT1900AC':
+							//print_r($router);
+							if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
+								{	
+								$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);				// FastPoll Kategorie anlegen
+								$SchalterFastPoll_ID=@IPS_GetObjectIDByName("SNMP Fast Poll",$fastPollId);		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+								$actionButton[$SchalterFastPoll_ID]["ActivateTimer"]=true;
+								}
+	                    	break;
+						}          // ende switch
+	                }
+				}
+			}
+		return($actionButton);
+		}
+
+	/**
 	 * schreibt die gestrigen Download/Upload und Total Werte von einem MR3430 Router
+	 * dazu wird das von imacro eingelesene Textfile geparsed
 	 *
 	 * Werte werden aus dem vorher ausgelesenem html file verzeichnis ausgewertet
 	 *
 	 */
+	 
 	function write_routerdata_MR3420($router)
 		{
         if (isset($router["DownloadDirectory"])) $downloadDir=$router["DownloadDirectory"];
@@ -1374,7 +1418,7 @@ class OperationCenter
 				}
 		  	SetValue($ByteID,$MBytes);
 			}
-	   $verzeichnis=$router["DownloadDirectory"]."report_router_".$router['TYP']."_".$router['NAME']."_Statistics_files/";
+	   	$verzeichnis=$downloadDir."report_router_".$router['TYP']."_".$router['NAME']."_Statistics_files/";
 		if ( is_dir ( $verzeichnis ))
 			{
 			echo "Auswertung Dateien aus Verzeichnis : ".$verzeichnis."\n";
@@ -1457,7 +1501,7 @@ class OperationCenter
 		if ($pos!=false)
 			{
 			$result1=substr($result,$pos,6);       /*  Period  */
-	   	$result=substr($result,$pos+7,1500);
+	   		$result=substr($result,$pos+7,1500);
 			$result1=$result1.";".trim(substr($result,20,20));    /* Connection Time  */
 			$result=substr($result,140,1500);
 			$result1=$result1.";".trim(substr($result,20,40));    /* Upload */
@@ -1557,6 +1601,61 @@ class OperationCenter
 			$ergebnis["Fehler"]="Daten vom Router sind im falschen Format";
 			}
 		return $ergebnis;
+		}
+
+	/*
+	 *  Routerdaten vom MBRN3000 auslesen, wird vom OperationCenter ausgelesen., eigentlicher AusleseModus wird hier bestimmt
+	 *  --> derzeit nicht verwendet
+	 *
+	 */
+
+	function read_routerdata_MBRN3000($router)
+		{
+		 /* siehe write_router weiter oben....   */
+		
+		}
+
+	/*
+	 *  Routerdaten vom MR3420 auslesen, wird vom OperationCenter ausgelesen., eigentlicher AusleseModus wird hier bestimmt
+	 *  --> derzeit nicht verwendet
+	 *
+	 */
+
+	function read_routerdata_MR3420($router)
+		{
+		IPS_ExecuteEX($this->oc_Setup["FirefoxDirectory"]."firefox.exe", "imacros://run/?m=router_".$router['TYP']."_".$router['NAME'].".iim", false, false, 1);
+		}
+
+	/*
+	 *  Routerdaten vom B2368 auslesen, wird vom OperationCenter ausgelesen., eigentlicher AusleseModus wird hier bestimmt
+	 *  
+	 *
+	 */
+
+	function read_routerdata_B2368($router_categoryId, $host, $community, $binary, $debug=false)
+		{
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);							
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.1.0", "wan0_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.1.0", "wan0_ifOutOctets", "Counter32");
+        $snmp->update(false,"wan0_ifInOctets","wan0_ifOutOctets");  
+		}
+
+	/*
+	 *  Routerdaten vom RT1900AC auslesen, wird vom OperationCenter ausgelesen., eigentlicher AusleseModus wird hier bestimmt
+	 *  
+	 *
+	 */
+
+	function read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug=false)
+		{
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
+        $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
 		}
 
 	/*
@@ -2841,6 +2940,8 @@ class DeviceManagement
 	var $HomematicSerialNumberList	= array();
 	var $HomematicAddressesList	= array();
 	
+	var $HMIs = array();							/* Zusammenfassung aller Homatic Inventory module */
+	
 	/**
 	 * @public
 	 *
@@ -2883,6 +2984,9 @@ class DeviceManagement
 			}
         $this->getHomematicSerialNumberList();
 		$this->HomematicAddressesList=$this->getHomematicAddressList();
+		
+		$modulhandling = new ModuleHandling();
+		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
 		}
 		
 /****************************************************************************************************************/
@@ -3332,19 +3436,43 @@ class DeviceManagement
 		$this->HomematicSerialNumberList=$serienNummer;
 		return ($serienNummer);
 		}
-
+	
+	/*
+	 * Zusammenfassung aller ActionButtons in dieser Klasse
+	 *
+	 */
+	 
+	function get_ActionButton()
+		{
+		$countHMI = sizeof($this->HMIs);
+		//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
+	    $ActionButton=array();
+		if ($countHMI>0)
+	        {
+			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
+			foreach ($this->HMIs as $HMI)
+	            {
+				$CategoryIdHomematicCCU=IPS_GetCategoryIdByName("HomematicInventory_".$HMI,$CategoryIdHomematicInventory);
+	            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
+	   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
+	
+	            $ActionButton[$SortInventoryId]["HMI"]=$HMI;
+	            $ActionButton[$SortInventoryId]["HtmlBox"]=$HomematicInventoryId;
+	            }            
+	        }
+		return($ActionButton);
+		}
+		
 	/********************************************************************
 	 *
-	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mitd em DeviceTyp aus HM Inventory 
+	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mit dem DeviceTyp aus HM Inventory 
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
 	 *
 	 *****************************************************************************/
 
 	function getHomematicAddressList($debug=false)
 		{
-		$modulhandling = new ModuleHandling();
-		$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
-		$countHMI = sizeof($HMIs);
+		$countHMI = sizeof($this->HMIs);
 
 		$addresses=array();
 		if ($countHMI>0)
@@ -4658,11 +4786,11 @@ class TimerHandling
 			IPS_SetEventCyclic($timID,0,1,0,0,1,$sekunden);      /* alle 150 sec */
 			//IPS_SetEventActive($tim2ID,true);
 			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
-			echo "   Timer Event ".$name." neu angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+			echo "   Timer Event ".$name." neu angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
 			}
 		else
 			{
-			echo "   Timer Event ".$name." bereits angelegt. Timer 150 sec ist noch nicht aktiviert.\n";
+			echo "   Timer Event ".$name." bereits angelegt. Timer $sekunden sec ist noch nicht aktiviert.\n";
 			IPS_SetEventCyclicTimeFrom($timID,0,2,0);  /* damit die Timer hintereinander ausgeführt werden */
 			//IPS_SetEventActive($tim2ID,true);
 			}

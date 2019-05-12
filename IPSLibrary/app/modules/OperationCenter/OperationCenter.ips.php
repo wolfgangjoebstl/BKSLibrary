@@ -104,9 +104,6 @@ $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475
 
 $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
-$OperationCenterConfig = OperationCenter_Configuration();
-$OperationCenterSetup  = OperationCenter_SetUp();
-
 	$pname="MByte";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
@@ -135,7 +132,11 @@ $OperationCenterSetup  = OperationCenter_SetUp();
 
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
-    $DeviceManager = new DeviceManagement();
+	
+	$OperationCenterConfig = $OperationCenter->getConfiguration();
+	$OperationCenterSetup = $OperationCenter->getSetup();
+    
+	$DeviceManager = new DeviceManagement();
 
 /* Homematic RSSI Werte auslesen
  *
@@ -150,28 +151,12 @@ $OperationCenterSetup  = OperationCenter_SetUp();
         }
     $ExecuteRefreshRSSI=GetValue($ExecuteRefreshID);    
 
-/* Homematic Inventory Tabelle sortieren
- *
- ********************************************************************************************/
+	/* gemeinsame Behandlung von ActionButtons aus den verschiedenen Klassen
+ 	 *
+ 	 *******************************************************************************************/	
 
-	$modulhandling = new ModuleHandling();
-	$HMIs=$modulhandling->getInstances('HM Inventory Report Creator');		
-	$countHMI = sizeof($HMIs);
-	//echo "Es gibt insgesamt ".$countHMI." SymCon Homematic Inventory Instanzen. Entspricht üblicherweise der Anzahl der CCUs.\n";
-    $ActionButton=array();
-	if ($countHMI>0)
-        {
-		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-		foreach ($HMIs as $HMI)
-            {
-			$CategoryIdHomematicCCU=IPS_GetCategoryIdByName("HomematicInventory_".$HMI,$CategoryIdHomematicInventory);
-            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
-   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
-
-            $ActionButton[$SortInventoryId]["HMI"]=$HMI;
-            $ActionButton[$SortInventoryId]["HtmlBox"]=$HomematicInventoryId;
-            }            
-        }
+	$ActionButton=$OperationCenter->get_ActionButton();
+	$ActionButton+=$DeviceManager->get_ActionButton();
 
 /*********************************************************************************************/
 
@@ -181,16 +166,34 @@ if ($_IPS['SENDER']=="WebFront")
     $variableId=$_IPS['VARIABLE'];
 	SetValue($variableId,$_IPS['VALUE']);
     //echo "Taste gedrückt. $variableId ".IPS_GetName($variableId)."\n";
-    if (array_key_exists($variableId,$ActionButton))
-        { 
-        $HMI=$ActionButton[$variableId]["HMI"];
-        $HomematicInventoryId=$ActionButton[$variableId]["HtmlBox"];
-        //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
-        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
-        IPS_ApplyChanges($HMI);
-        HMI_CreateReport($HMI);
-        SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
-        }
+	switch ($variableId)
+		{
+		case 0:
+			break;
+		default:	
+		    if (array_key_exists($variableId,$ActionButton))
+		        {
+				if (isset($ActionButton[$variableId]["HMI"]))
+					{
+					/* Homematic Inventory Tabelle sortieren
+ 					 *
+ 					 ********************************************************************************************/					
+			        $HMI=$ActionButton[$variableId]["HMI"];
+			        $HomematicInventoryId=$ActionButton[$variableId]["HtmlBox"];
+			        //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
+			        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
+			        IPS_ApplyChanges($HMI);
+			        HMI_CreateReport($HMI);
+			        SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
+					}
+				if (isset($ActionButton[$variableId]["ActivateTimer"]))
+					{
+					if (GetValue($variableId)) IPS_SetEventActive($tim12ID,true);
+					else IPS_SetEventActive($tim12ID,false);
+					}
+				}	
+			break;
+		}
     }
 
 /*********************************************************************************************/
@@ -727,7 +730,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 					if (isset($router["COMMUNITY"])) $community     = $router["COMMUNITY"]; 
 					else $community     = "public";				    //print_r($router);
                     $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-					if ($router_categoryId !== false)
+					
+					if ($router_categoryId !== false)		// wenn in Install noch nicht angelegt, auch hier im Timer ignorieren
 						{
 	                    switch (strtoupper($router["TYP"]))
 	                        {                    
@@ -739,31 +743,12 @@ if ($_IPS['SENDER']=="TimerEvent")
 			        			IPSLogger_Dbg(__file__, "Router ".$router['TYP']." ".$router['NAME']." Auswertung gestartet.");
 	                            break;
 	                        case 'B2368':
-								$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.1.0", "wan0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.1.0", "wan0_ifOutOctets", "Counter32");
-	                            $snmp->update(false,"wan0_ifInOctets","wan0_ifOutOctets");															
-								/*
-								$filterLine=array();
-	                            $filterCol=array(		// kopiere die Spalten die enthalten sein sollen von columns
-	                                "8" => "ifOperStatus",
-	                                "10" => "ifnOctets",
-	                                "16" => "ifOutOctests",
-	                                        );
-								$result=$snmp->getifTable("1.3.6.1.2.1.2", $filterLine, $filterCol);
-								*/
+								$OperationCenter->read_routerdata_B2368($router_categoryId, $host, $community, $binary, $debug);
 								IPSLogger_Dbg(__file__, "Router B2368 Auswertung abgeschlossen.");
 								break;							
 					        case 'RT1900AC':
-	                            $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-	                            $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
-	                            IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
+								$OperationCenter->read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug);
+					            IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
 	                            break;
 	                        case 'MBRN3000':
 	    					    $OperationCenter->write_routerdata_MBRN3000($router);
@@ -997,21 +982,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 	                        {                    
 	                        case 'B2368':
 								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
-	                            $snmp=new SNMP_OperationCenter($fastPollId, $host, $community, $binary, $debug);							
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.1.0", "wan0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.1.0", "wan0_ifOutOctets", "Counter32");
-	                            $snmp->update(false,"wan0_ifInOctets","wan0_ifOutOctets");  
+								$OperationCenter->read_routerdata_B2368($fastPollId, $host, $community, $binary, $debug);
 	                            break;
 					        case 'RT1900AC':
 								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
-	                            $snmp=new SNMP_OperationCenter($fastPollId, $host, $community, $binary, $debug);
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.8", "wlan0_ifInOctets", "Counter32");
-	                            $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.8", "wlan0_ifOutOctets", "Counter32");
-	                            $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+								$OperationCenter->read_routerdata_RT1900AC($fastPollId, $host, $community, $binary, $debug);
 	                            break;
 							default:
 								echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";

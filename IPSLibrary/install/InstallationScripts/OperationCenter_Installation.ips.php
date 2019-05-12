@@ -51,6 +51,8 @@
 	 *
 	 */
 
+	$debug=false;
+	
 	/******************************************************
 	 *
 	 * INIT, Init
@@ -64,7 +66,9 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+	
 	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+	IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	
@@ -97,14 +101,16 @@
 		}
 	//echo $inst_modules;
 	
+	/* Logging der Installation */
 	$Heute=time();
 	//$HeuteString=date("jnY_Hi",$Heute);
-	$HeuteString=date("jnY",$Heute);
-	echo "Heute  Datum ".$HeuteString."\n";
+	//$HeuteString=date("jnY",$Heute);			// j Tag ohne führende Nullen, n Monat ohne führende Nullen
+	$HeuteString=date("dmY",$Heute);
+	echo "Heute  Datum ".$HeuteString." für das Logging der OperationCenter Installion.\n";
 	
 	if (isset ($installedModules["OperationCenter"])) 
 		{
-		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");
+		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefastt
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}
 		
@@ -124,7 +130,7 @@
 	$CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
 	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
 	echo "\n";
-	echo "Die Scripts sind auf               ".$CategoryIdAppEH."\n";
+	echo "Die EvaluateHardware Scripts sind in App auf               ".$CategoryIdAppEH."\n";
 	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	IPS_RunScriptWait($scriptIdEvaluateHardware);
 	echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
@@ -229,7 +235,7 @@
   		
 	/******************************************************
 
-				INIT, iMacro Router auslesen
+				INIT, iMacro basierende und SNMP unterstützende Router vorbereiten
 
 	*************************************************************/
 
@@ -247,6 +253,12 @@
         	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
 		    if ($router_categoryId==false) 	$router_categoryId = CreateCategory("Router_".$router['NAME'],$CategoryIdData,10);       // Kategorie anlegen
 	    	//print_r($router);
+
+			$host          = $router["IPADRESSE"];
+			if (isset($router["COMMUNITY"])) $community     = $router["COMMUNITY"]; 
+			else $community     = "public";				 
+            $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+								
             switch (strtoupper($router["TYP"]))
                 {
 			    case 'MR3420':
@@ -275,7 +287,14 @@
                     fclose($handle2);
                     break;
 		        case 'B2368':
-                    echo "      iMacro Command-File für Router Typ B2368 wird hergestellt.\n";
+                	echo "      SNMP Abfrage für Router Typ ".$router['TYP']." wird hergestellt.\n";				
+					$OperationCenter->read_routerdata_B2368($router_categoryId, $host, $community, $binary, $debug);
+					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
+					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
+						{	
+						$OperationCenter->read_routerdata_B2368($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
+						}			
+                    echo "      iMacro Command-File für Router Typ ".$router['TYP']." wird hergestellt.\n";
                     $handle2=fopen($OperationCenterSetup["MacroDirectory"]."router_".$router['TYP']."_".$router['NAME'].".iim","w");
                     fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
                     fwrite($handle2,'TAB T=1'."\n");
@@ -308,15 +327,24 @@
                     fwrite($handle2,'TAB CLOSE'."\n");
                     fclose($handle2);          
                     break;          
+		        case 'RT1900AC':
+					$OperationCenter->read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug);
+					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
+					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
+						{	
+						$OperationCenter->read_routerdata_RT1900AC($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
+						}						
+					break;					
                 //SetValue($ScriptCounterID,1);
                 //IPS_SetEventActive($tim3ID,true);
                 }
 			if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") ) 
 				{
 				/* eine SNMP basierte Auswertung erstellen, da es viele Daten in kurzer Auflösung gibt eine eigene Kategorie unter Router erstellen */
-				$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       // Kategorie anlegen
-				$routerSnmpLinks[$router_categoryId]["ID"] = $routerFastPoll_categoryId;
-				$results=IPS_GetChildrenIDs($routerFastPoll_categoryId);
+                echo "      SNMP Highspeed Abfrage für Router Typ ".$router['TYP']." wird hergestellt.\n";
+				$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);				// FastPoll Kategorie anlegen
+				$routerSnmpLinks[$router_categoryId]["ID"] = $routerFastPoll_categoryId;					// für Webfront Darstellung, die Links sammeln
+				$results=IPS_GetChildrenIDs($fastPollId);
 				foreach ($results as $result)
 					{
 					$nameWithTags=IPS_GetName($result);
@@ -328,6 +356,8 @@
 						}
 					else IPS_SetHidden($result,true);	// alle anderen variablen werden als Hilfsvariablen betrachtet und versteckt 	
 					}
+				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,0,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+					
 				}
 			}
 		}

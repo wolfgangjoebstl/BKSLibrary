@@ -292,7 +292,7 @@ Path=Visualization.Mobile.iTunes
 	print_r($config);
 
 	$webfront_links=array();
-    if (isset($config["Media"]))
+    if (isset($config["Media"]))			// war früher in der Config iTunes
         {
         $order=10;            
     	foreach ($config["Media"] as $name => $entry)
@@ -369,7 +369,11 @@ Path=Visualization.Mobile.iTunes
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["USER"]=true;
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["MOBILE"]=true;
 		}
-	
+	if (isset($config["iTunesSteuerung"]))			// war früher in der Config iTunes
+        {
+		/* damit kann man iTunes fernsteuern */
+		
+		}
 	echo "Webfront Visualisierungskonfiguration ausgeben:\n"; print_r($webfront_links);
 	
 	/*----------------------------------------------------------------------------------------------------------------------------
