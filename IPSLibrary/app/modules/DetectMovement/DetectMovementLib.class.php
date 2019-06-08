@@ -27,6 +27,7 @@
      * DetectMovementHandler extends DetectHandler
      * DetectTemperatureHandler extends DetectHandler
      * DetectHeatControlHandler extends DetectHandler
+     * DetectDeviceHandler extends DetectHandler	 
      *
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
@@ -38,6 +39,15 @@
 	 *	CreateEvent
 	 *	sortEventList
 	 *	registerEvent
+	 *
+	 *
+	 * DetectDeviceHandler extends with
+	 *	__construct
+	 *	Get_Configtyp, Get_ConfigFileName, Get_Topology		gemeinsame (self) Konfigurations Variablen
+	 * 	Get_EventConfigurationAuto, Set_EventConfigurationAuto
+	 *	CreateMirrorRegister
+	 *	evalTopology
+	 *
 	 *
      **********************************************/
 

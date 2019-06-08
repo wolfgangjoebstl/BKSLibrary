@@ -23,6 +23,8 @@
  * Define Files und Array function notwendig
  *
  * wird regelmaessig taeglich um 1:10 aufgerufen. macht nicht nur ein Inventory der gesamten verbauten Hardware sondern versucht auch die Darstellung als Topologie
+ *
+ * Verwendet wenn installiert auch die Module OperationCenter und DetectMovement
  *	
  */
 
@@ -48,6 +50,7 @@ if (!isset($moduleManager))
 	$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
 	}
 $installedModules = $moduleManager->GetInstalledModules();
+
 if (isset($installedModules["DetectMovement"]))
     {
     IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
@@ -55,12 +58,24 @@ if (isset($installedModules["DetectMovement"]))
     $Handler = new DetectDeviceHandler();
     }
 
+/* DeviceManger muss immer installuert werden, wird in Timer als auch RunScript und Execute verwendet */
+
 if (isset($installedModules["OperationCenter"])) 
     {
     IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+
+    $DeviceManager = new DeviceManagement();
+    echo $DeviceManager->HomematicFehlermeldungen();
+    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
     }
 
 //print_r($installedModules); 
+
+/******************************************************
+ *
+ *				TIMER Konfiguration
+ *
+ *************************************************************/
 
 $tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
 if ($tim1ID==false)
@@ -72,14 +87,6 @@ if ($tim1ID==false)
 	IPS_SetEventCyclicTimeFrom($tim1ID,1,10,0);  /* immer um 01:10 */
 	}
 IPS_SetEventActive($tim1ID,true);
-
-/* DeviceManger muss immer installuert werden, wird in Timer als auch RunScript und Execute verwendet */
-if (isset($installedModules["OperationCenter"])) 
-    {
-    $DeviceManager = new DeviceManagement();
-    echo $DeviceManager->HomematicFehlermeldungen();
-    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
-    }
 
 /******************************************************
  *
@@ -175,9 +182,37 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 
 /******************************************************
  *
- *				TIMER
+ *				TIMER Routine
  *
  * keine else mehr, immer ausführen, das heisst jeden Tag ein neues Inventory erstellen
+ *
+ * erstellt mehrere Informationen
+ *      include File für die PhP Runtime in IP-Symcon
+ *      include File für das user/webfront, Darstellung als Topologie
+ *
+ * im PHP Ip Symcon Runtime include File sind folgende Functionen, arrays:
+ *      Liste der Homematic Sockets: function HomematicInstanzen()
+ *          enthält die Konfiguration der CCU als json encode
+ *      Liste der FHT Geräte: function FHTList() 
+ *      Liste der F20EX Geräte: function FS20EXList()
+ *      Liste der FS20 Geräte: function FS20List()
+ *      Liste der Homematic Geräte/Kanäle:  HomematicList()
+ *      Liste der Homematic Konfiguration:  getHomematicConfiguration()
+ *          Beispiel "Badezimmer-Taster:3" => array("MEQ1084617",3,HM_PROTOCOL_BIDCOSRF,HM_TYPE_BUTTON),
+ *
+ * parallel werden folgende Informationen gesammelt
+ *      Liste der Homematic Geräte mit Konfiguration: function getHomematicConfiguration()
+ *      Liste der Homematic Geräte nach Seriennummern
+ *
+ * wenn $installedModules auch "DetectMovement" enthält:
+ *      werden alle Geräte ind er EvaluateHardware_Configuration der Tabelle registriert
+ *      zwei Tabellen:
+ *          get_Topology() für die einfache Darstellung der Topologie mit NameOrt und Parent
+ *          IPSDetectDeviceHandler_GetEventConfiguration() für die Funktion mit Objekt 1,2,3 (Standardroutine)
+ *              Topology, NameOrt, Funktion : NameOrt kommt aus der obigen Topologie Tabelle, Funktion ist eine Gruppe wie Licht, Wärme, Feuchtigkeit
+ *
+ * mit getHomematicConfiguration() werden die Homematic Geräte/Kanäle verschiedenen Typen zugeordnet:
+ *      TYPE_BUTTON, TYPE_CONTACT, TYPE_ACTUATOR, TYPE_MOTION, TYPE_METER_TEMPERATURE, TYPE_SWITCH, TYPE_METER_POWER, TYPE_THERMOSTAT, TYPE_DIMMER, 
  *
  *************************************************************/
 
@@ -190,11 +225,13 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	$summary=array();		/* eine Zusammenfassung nach Typen erstellen */
 	
 	//$includefile='<?'."\n".'$fileList = array('."\n";
-	$includefile='<?'."\n";
+
+	$includefile    = '<?'."\n";             // für die php IP Symcon Runtime
+	$includefileHTML= '<?'."\n";             // für die php user/webfront Runtime    
 
 	/************************************
 	 *
-	 *  Zuerst wenn vorhanden die Homematic Sockets auflisten, dann kommen die geräte dran
+	 *  Zuerst wenn vorhanden die Homematic Sockets auflisten, dann kommen die Geräte dran
      *  damit kann die Konfiguration der CCU Anknüpfung wieder hergestellt werden
      *  CCU Sockets werden als function HomematicInstanzen() dargestellt
 	 *
@@ -621,18 +658,19 @@ if (isset($installedModules["DetectMovement"]))
     echo "=======================================================================\n";
 	echo "Jetzt in den einzelnen Katgorien die Links hineinsortieren :\n";
     echo "\n";
-    echo "Noch einmal Ausgabe der nun erfolgreich registrierten Topologie Eintraege:";
+    echo "Noch einmal Ausgabe der nun erfolgreich registrierten Topologie Eintraege:\n";
 	$configurationAuto = $Handler->Get_EventConfigurationAuto();
 	//$result=$Handler->sortEventList($configurationAuto);
 	foreach ($configurationAuto as $oid => $entry) 
 		{ 
-		echo "     ".$oid."    ".IPS_GetName($oid)."   ".$entry[0]."  ".$entry[1]."   ".$entry[2]."  \n"; 
+		echo "     ".$oid."    ".str_pad(IPS_GetName($oid),40)."   ".str_pad($entry[0],20)."  ".str_pad($entry[1],30)."   ".$entry[2]."  \n"; 
 		}
 
 	if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true )
 		{
 	    $topology=$Handler->Get_Topology();
     	print_r($topology);
+        $topologyPlusLinks=$topology;
 		foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
 			{
 			$name=IPS_GetName($index);
@@ -655,12 +693,14 @@ if (isset($installedModules["DetectMovement"]))
 						if ($size > 0) 
 							{	/* ein Gewerk, vorne einsortieren */
 							echo "erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-							CreateLinkByDestination($name, $index, $oid, 10);						
+							CreateLinkByDestination($name, $index, $oid, 10);	
+                            $topologyPlusLinks[$place]["OBJECT"][$index]=$name;
 							}
 						else
 							{	/* eine Instanz, dient nur der Vollstaendigkeit */
 							echo "erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
 							CreateLinkByDestination($name, $index, $oid, 1000);						
+                            $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
 							}
 						}
 					}
@@ -670,7 +710,9 @@ if (isset($installedModules["DetectMovement"]))
 		}
     else "FEHLER, function IPSDetectDeviceHandler_GetEventConfiguration noch nicht angelegt.\n";    
 
-	
+	print_r($topologyPlusLinks);
+
+
     /*-----------------------------------------------------------------*/
 																																													
     echo "\n";

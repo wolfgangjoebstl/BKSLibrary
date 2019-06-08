@@ -1612,6 +1612,8 @@ class OperationCenter
 	function read_routerdata_MBRN3000($router)
 		{
 		 /* siehe write_router weiter oben....   */
+		 
+		write_routerdata_MBRN3000($router);
 		
 		}
 
@@ -1632,9 +1634,9 @@ class OperationCenter
 	 *
 	 */
 
-	function read_routerdata_B2368($router_categoryId, $host, $community, $binary, $debug=false)
+	function read_routerdata_B2368($router_categoryId, $host, $community, $binary, $debug=false, $useSnmpLib=false)
 		{
-        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);							
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug, $useSnmpLib);							
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.1.0", "wan0_ifInOctets", "Counter32");
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.1.0", "wan0_ifOutOctets", "Counter32");
         $snmp->update(false,"wan0_ifInOctets","wan0_ifOutOctets");  
@@ -1642,12 +1644,14 @@ class OperationCenter
 
 	/*
 	 *  Routerdaten vom RT1900AC auslesen, wird vom OperationCenter ausgelesen., eigentlicher AusleseModus wird hier bestimmt
-	 *  
+	 *  blöd ist das die Interface Nummern auch irgendwie von der eingestellten Konfiguration abhängen.
+	 *  langfristig auf die Beschreibung wie zB eth0 ausweichen
 	 *
 	 */
 
 	function read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug=false)
 		{
+		/* Interface Nummer 4,5,8   4 ist der Uplink */
         $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
@@ -1658,6 +1662,23 @@ class OperationCenter
         $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
 		}
 
+	function read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug=false)
+		{
+		/* Interface Nummer 4,6,15   4 ist der Uplink, 6 ist eth2 und Lankabel steckt auf Ethernet LAN Port 1 */
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");		// Uplink, WAN Port
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");		// Video or Ethernet
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.6", "eth2_ifInOctets", "Counter32");		// Ethernet
+
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.5", "eth1_ifOutOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.6", "eth2_ifOutOctets", "Counter32");
+
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.15", "wlan0_ifInOctets", "Counter32");
+        $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.15", "wlan0_ifOutOctets", "Counter32");
+        $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
+		}
+		
 	/*
 	 *  Routerdaten MBRN3000 direct aus dem Router auslesen,
 	 *
@@ -1851,35 +1872,37 @@ class OperationCenter
 		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		foreach($result as $oid)
 			{
-			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
-			{
+			$analyze=@AC_GetLoggingStatus($this->archiveHandlerID,$oid);
+			echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
+			if ($analyze)
+				{
 				$name=explode("_",IPS_GetName($oid));
 				if ($name[sizeof($name)-1]=="chg")
 					{
 					if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
-		            {
-			         $ergebnis+=GetValue($oid)/1024/1024;
-			         }
-	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
-			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-			   	foreach ($werte as $wert)
-		   		   {
-		   		   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
-		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
-		   	   	}
+		            	{
+			         	$ergebnis+=GetValue($oid)/1024/1024;
+			         	}
+	            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+			   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+			   		foreach ($werte as $wert)
+		   		   		{
+		   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+		   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+		   	   			}
 					}
-		      if (IPS_GetName($oid)=="Total")
-		         {
-	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
-			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-			   	foreach ($werte as $wert)
-		   		   {
-		   		   //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
-		   		   echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
-		   	   	}
+		      	if (IPS_GetName($oid)=="Total")
+		      		{
+	            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+			   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+			   		foreach ($werte as $wert)
+		   		   		{
+		   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+		   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+		   	   			}
 					}
+		   		}
 		   	}
-		   }
 		if ($actual==false)
 		   {
 			return ($ergebnis);
@@ -1947,29 +1970,31 @@ class OperationCenter
 		$ergebnis=0;
 		$dateOld="";
 		foreach($result as $oid)
-		   {
-		   if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
-		      {
-		      if (IPS_GetName($oid)=="Total")
-		         {
-	            $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-($start+$duration)*24*60*60, time()-$start*24*60*60,1000);
-			   	echo "   ".IPS_GetName($oid)." Variable wird gelogged, vor ".$start." Tagen fuer ".$duration." Tagen ".sizeof($werte)." Werte.\n";
-			   	foreach ($werte as $wert)
-		   		   {
-                  if (date("d.m",$wert["TimeStamp"])==$dateOld)
-                     {
-                     //echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
-	                  }
-                  else
-                     {
-     		   		   //$ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
-     		   		   $ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
-                     $dateOld=date("d.m",$wert["TimeStamp"]);
-                     $ergebnis += $wert["Value"];
-                     }
+		   	{
+			$analyze=@AC_GetLoggingStatus($this->archiveHandlerID,$oid);
+			echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
+			if ($analyze)
+		      	{
+		      	if (IPS_GetName($oid)=="Total")
+		         	{
+	            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-($start+$duration)*24*60*60, time()-$start*24*60*60,1000);
+			   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, vor ".$start." Tagen fuer ".$duration." Tagen ".sizeof($werte)." Werte.\n";
+			   		foreach ($werte as $wert)
+		   		   		{
+                  		if (date("d.m",$wert["TimeStamp"])==$dateOld)
+                     		{
+                     		//echo "Werte gleich : ".(date("d.m",$wert["TimeStamp"]))."\n";
+	                  		}
+                  		else
+                     		{
+     		   		   		//$ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".$wert["Duration"]."\n";
+     		   		   		$ergebnisPrint.= "       Wert : ".str_pad(round($wert["Value"],2),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+                     		$dateOld=date("d.m",$wert["TimeStamp"]);
+                     		$ergebnis += $wert["Value"];
+                     		}
 						}
 					}
-		   	}
+		   		}
 		   }
 		//echo $ergebnisPrint;
 		return round($ergebnis,2);

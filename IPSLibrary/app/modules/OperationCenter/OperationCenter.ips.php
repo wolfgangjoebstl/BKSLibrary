@@ -750,6 +750,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 								$OperationCenter->read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug);
 					            IPSLogger_Dbg(__file__, "Router RT1900ac Auswertung abgeschlossen.");
 	                            break;
+					        case 'RT2600AC':
+								$OperationCenter->read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug);
+					            IPSLogger_Dbg(__file__, "Router RT2600ac Auswertung abgeschlossen.");
+	                            break;								
 	                        case 'MBRN3000':
 	    					    $OperationCenter->write_routerdata_MBRN3000($router);
 	                            break;
@@ -987,6 +991,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 					        case 'RT1900AC':
 								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
 								$OperationCenter->read_routerdata_RT1900AC($fastPollId, $host, $community, $binary, $debug);
+	                            break;
+					        case 'RT2600AC':
+								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
+								$OperationCenter->read_routerdata_RT2600AC($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
 	                            break;
 							default:
 								echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";

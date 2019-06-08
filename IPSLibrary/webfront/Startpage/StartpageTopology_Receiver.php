@@ -10,6 +10,8 @@
 	
 	IPSUtils_Include ("IPSModuleManager.class.php", "IPSLibrary::install::IPSModuleManager");
 
+	include_once "Startpage_Configuration.inc.php";
+
 	//IPSLogger_Inf(__file__, "Post Parameters: ");
 	//foreach ($_POST as $key=>$value) {
 	//	IPSLogger_Inf(__file__, "Post $key = $value");

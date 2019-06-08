@@ -240,7 +240,7 @@
 	*************************************************************/
 
 	echo "\nRouter Erstellung der iMacro Programmierung, Vorbereitung Tab für SNMP basierte Geräte :\n";
-	$routerSnmpLinks=array();
+	$routerSnmpLinks=array();								// Sammlung der SNMP Variablen im OperationCenterWebfront unter Router
 	foreach ($OperationCenterConfig['ROUTER'] as $router)
 		{
         if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
@@ -328,6 +328,7 @@
                     fclose($handle2);          
                     break;          
 		        case 'RT1900AC':
+                case 'RT2600AC':                
 					$OperationCenter->read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug);
 					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
 					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  

@@ -37,6 +37,8 @@ class SNMP_OperationCenter
 
     private 	$CategoryIdData;
 	private 	$SNMPmodul=false;				// true wenn ein SNMP Modul installiert ist
+	private 	$SNMPRead=false;				// true wenn SNMP Read unterstützt wird
+
 	private 	$SNMPinstanz=false;				// Instanz des passenden SNMP Moduls
 
     //IPS Datentypen
@@ -50,13 +52,14 @@ class SNMP_OperationCenter
 	 *  Konstruktor
 	 */
 
-	public function __construct($CategoryIdData, $host, $community, $binary, $debug)
+	public function __construct($CategoryIdData, $host, $community, $binary, $debug=false, $useSnmpLib=false)
 		{
-		$this->host         = $host;
-		$this->community     = $community;
-		$this->binary         = $binary;
-		$this->debug         = $debug;
-		$this->CategoryIdData = $CategoryIdData;
+		$this->host         	= $host;
+		$this->community     	= $community;
+		$this->binary         	= $binary;
+		$this->debug         	= $debug;
+		$this->CategoryIdData 	= $CategoryIdData;
+		$this->SNMPRead			= true;
 		
 		// prüfe ob ein SNMP Modul mit der geünschten IP Adresse installiert ist, damit können Abfragen schneller erledigt werden
 		$this->SNMPinstanz=$this->findSNMPModul("Babenschneider Symcon Modules","IPSSNMP",$host);
@@ -69,13 +72,14 @@ class SNMP_OperationCenter
 			{
 			$this->SNMPmodul=false;
 			/* wenn schon kein SNMP Modul geladen wurde, dann zumindest schauen ob die Script Datei dabei ist */
-			if (is_file($binary)) 
+			if ( (is_file($binary)) && ($useSnmpLib==false) )
 				{
 				echo "SNMPQ Datei im Verzeichnis $binary vorhanden.\n";
 				}
 			else 
 				{
-				echo "Fehlerbehandlung erforderlich, SNMPQ Datei im Verzeichnis $binary NICHT vorhanden.\n";
+				if (!is_file($binary)) echo "Fehlerbehandlung erforderlich, SNMPQ Datei im Verzeichnis $binary NICHT vorhanden.\n";
+				$this->SNMPRead=false;
 				return;
 				}
 			}
@@ -330,9 +334,13 @@ class SNMP_OperationCenter
 					{
 					if ($this->debug) echo "Die Zahl ist groesser als PHP/IP Symcon verarbeiten kann, daher aufgeteilt auf ".sizeof($z)." Positionen/Subzahlen.\n";
 					}
-				else 
+				elseif (sizeof($z)>0) 
 					{
 					$z[1]=$z[0]; $z[0]=0;		//  den Wert auf zwei Stellen normieren
+					}
+                else
+					{
+					$z[0]=0; $z[1]=$z[0]; 		//  defaultwert setzen, kein Ergebnis erhalten
 					}
 				$parentID=IPS_GetParent($obj->ips_var);					
 				$ips_vare=IPS_GetObjectIDByName((IPS_GetName($obj->ips_var)."_ext"),$parentID);/* Erweiterung, wenn Counter32 sich mit Integer nicht ausgeht */
@@ -469,6 +477,7 @@ class SNMP_OperationCenter
 
 	function getSNMPObject($oid)
 		{
+		$value="";
 		$oid = ltrim($oid,".");
 		if ( ($this->SNMPmodul))
 			{
@@ -476,7 +485,7 @@ class SNMP_OperationCenter
 			$value=$valueObj[".".$oid];
 			echo "getSNMObject, Wert von IPS SNMP Modul für $oid empfangen : ".$value."\n";
 			}
-		else
+		elseif ($this->SNMPRead)
 			{	
 			$exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
 			$value = trim(IPS_Execute($this->binary, $exec_param, false, true));
@@ -564,15 +573,15 @@ class SNMP_OperationCenter
             case "Integer":
             case "Gauge":
             case "Counter32":
-               $valueCorr=(integer)$value;
-               break;
-		      default:
-               $valueCorr=$value;
-		         break;
+        		$valueCorr=(integer)$value;
+        		break;
+		    default:
+            	$valueCorr=$value;
+		        break;
 		      }
 			$csv.=$value."\n";
 			$oidTable[$oiditem]["Value"]=$valueCorr;
-			$oidTableShort[$oiditem]=$valueCorr;
+			$oidTableShort[".".$oiditem]=$valueCorr;		/* Kompatibilität mit IPSSNMP Modul */
 			$oidTableIndex[$index1][$index2]=$valueCorr;
 
 			$result=substr($result,$stop);
@@ -664,11 +673,12 @@ class SNMP_OperationCenter
 			if ($this->debug) echo "Ausgabe als Walk für Interface Tabelle mit IPS SNMP Modul beginnend ab $oidP :\n";
 			$ifTableSnmp=IPSSNMP_WalkSNMP($this->SNMPinstanz, $oidP); //ausgabe als Array wobei der Key die OID ist.
 			}
-		else
+		elseif ($this->SNMPRead)
 			{			
-			if ($this->debug) echo "Ausgabe als Walk für Interface Tabelle mit SNMP Commanline Tool beginnend ab $oidP :\n";
-			$ifTableSnmp = $this->walkSNMP($oidP);
-			}            
+			if ($this->debug) echo "Ausgabe als Walk für Interface Tabelle mit SNMP Commandline Tool beginnend ab $oidP :\n";
+			$ifTableSnmp = $this->walkSNMP($oidP);	/* die OID jedes Eintrags muss am Anfang auch einen Punkt haben, wurde angepasst an das IPSSNMP modul */
+			}
+		echo "Resultat von walk ifTable:\n";
 		print_r($ifTableSnmp);
 
 		$ifTable=array();

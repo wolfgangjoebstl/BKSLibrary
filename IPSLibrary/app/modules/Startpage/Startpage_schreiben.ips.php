@@ -109,7 +109,8 @@ imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
 
 /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
-$startpage->aggregateOpenWeather();		
+$startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
+$startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
 
 /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
