@@ -74,7 +74,7 @@ class SNMP_OperationCenter
 			/* wenn schon kein SNMP Modul geladen wurde, dann zumindest schauen ob die Script Datei dabei ist */
 			if ( (is_file($binary)) && ($useSnmpLib==false) )
 				{
-				echo "SNMPQ Datei im Verzeichnis $binary vorhanden.\n";
+				echo "SNMPQ Commandline verwenden. Datei im Verzeichnis $binary vorhanden.\n";
 				}
 			else 
 				{
@@ -189,6 +189,7 @@ class SNMP_OperationCenter
 	            $ips_vare = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
 	            IPS_SetName($ips_vare, $desc."_ext");
   		        IPS_SetParent($ips_vare, $parentID);
+  		        IPS_SetHidden($ips_vare, true);
   		        //IPS_SetPosition($ips_vare,20);
 				AC_SetLoggingStatus($archiveHandlerID,$ips_vare,true);
 				AC_SetAggregationType($archiveHandlerID,$ips_vare,0);  /* 0 Standard 1 Zähler */
@@ -197,7 +198,8 @@ class SNMP_OperationCenter
 	            $ips_varc = IPS_CreateVariable(1);  			/* Variable Typ Integer anlegen */
 	            IPS_SetName($ips_varc, $desc."_chg");
 		        IPS_SetParent($ips_varc, $parentID);
-  		        //IPS_SetPosition($ips_varc,10);
+  		        IPS_SetHidden($ips_varc, true);
+				//IPS_SetPosition($ips_varc,10);
 				AC_SetLoggingStatus($archiveHandlerID,$ips_varc,true);
 				AC_SetAggregationType($archiveHandlerID,$ips_varc,0);  /* 0 Standard 1 Zähler */
 				IPS_ApplyChanges($archiveHandlerID);
@@ -273,12 +275,14 @@ class SNMP_OperationCenter
     
 	public function update($nolog=false, $download="", $upload="")
 		{
+
+		$localDebug=false;
 		$download_val=0; $upload_val=0;
 
 		if($this->debug) 
 			{
-			echo "Updating ". count($this->snmpobj) ." variable(s)\n";
-			print_r($this->snmpobj);
+			echo "SNMP Library, Updating ". count($this->snmpobj) ." variable(s)\n";
+			if ($localDebug) print_r($this->snmpobj);
 			}
 		foreach($this->snmpobj as $obj)
 			{
@@ -313,7 +317,7 @@ class SNMP_OperationCenter
 				$i=$intl - ($j % $intl);	// schlampig umgerechnet, 4 Bytes sind 8 Hexstellen sind ca. 8 Dezimalstellen, bei 7 Zeichen wird i auf 1 gesetzt, bei 6 auf 2 , Sonderregelung bei 8 auf 0
 				if ($i==8) $i=0; 
 				$k=0;
-				if($this->debug) echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang. PHP Integer kann max Zahl ".PHP_INT_MAX.", das sind ".PHP_INT_SIZE." Bytes. Auf ".$intl." Stellen begrenzen. i beginnt mit $i.\n";
+				if (($this->debug)  && $localDebug) echo "Counter32 Umrechnung: String ".$obj->value." ist ".$j." Zeichen lang. PHP Integer kann max Zahl ".PHP_INT_MAX.", das sind ".PHP_INT_SIZE." Bytes. Auf ".$intl." Stellen begrenzen. i beginnt mit $i.\n";
 				while ($k<$j)
 					{
 					$zi=$i - ($i % $intl);			// Zi faengt bei 0 an und wird erst erhoeht wenn i groesser intl ist, zB 16
@@ -326,13 +330,17 @@ class SNMP_OperationCenter
 					   	{
 						$z[$zii]=	(integer)substr($obj->value,$k,1);
 						}
-					if($this->debug) echo "** char pos ".$k." ".$i." ".$zi." Zahl wird abgespeichert auf Key ".$zii." : ".$z[$zii]."\n";
+					if (($this->debug)  && $localDebug) echo "** char pos ".$k." ".$i." ".$zi." Zahl wird abgespeichert auf Key ".$zii." : ".$z[$zii]."\n";
 					$i++;$k++;
 					}
 				//print_r($z);
 				if (sizeof($z)>1) 
 					{
-					if ($this->debug) echo "Die Zahl ist groesser als PHP/IP Symcon verarbeiten kann, daher aufgeteilt auf ".sizeof($z)." Positionen/Subzahlen.\n";
+					if ($this->debug) 
+						{
+						echo "Die Zahl ist groesser als PHP/IP Symcon verarbeiten kann, daher aufgeteilt auf ".sizeof($z)." Positionen/Subzahlen : ";
+						echo $z[0]." ".$z[1]."\n";
+						}
 					}
 				elseif (sizeof($z)>0) 
 					{
@@ -390,36 +398,40 @@ class SNMP_OperationCenter
 			   		$a+=$b;
 				   	$aMByte=$a/1024/1024;
 		         	}
-				$speed=$a/$timeForSpeed*8;			// Wert in Bit/s
-				if ($this->debug)
+				if ($timeForSpeed>0) 
 					{
-					echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-$intl)." \n";
-					echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-$intl)."\n";
-					echo "           Differenz           : ".str_pad($a,6," ",STR_PAD_LEFT)."   ".round($aMByte,2)." MByte. Geschwindigkeit durchschnittlich : $speed Bit/s.\n";
-					echo "In den letzten ".$this->TimeRater($timeForSpeed)." wurden ".$this->CapacityRater($a)." Daten übertragen. Durchschnittliche Geschwindigkeit ".$this->SpeedRater($speed)."\n";
-					}
-				
-				if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
-
-				if ($nolog==false)
-					{
-					SetValue($obj->ips_var, $z[1]);
-		        	SetValue($ips_vare,$z[0]);
-	            	SetValue($ips_varc,$a);
-					SetValue($ips_vars,$speed);
+					$speed=$a/$timeForSpeed*8;			// Wert in Bit/s
+					if ($this->debug)
+						{
+						echo "           Alter Wert          : ".str_pad(GetValue($ips_vare),6," ",STR_PAD_LEFT).substr(("0000000000000".(string)GetValue($obj->ips_var)),-$intl)." \n";
+						echo "           Übertrag, neuer Wert: ".str_pad($z[0],6," ",STR_PAD_LEFT).substr(("0000000000000".(string)$z[1]),-$intl)."\n";
+						echo "           Differenz           : ".str_pad($a,6," ",STR_PAD_LEFT)."   ".round($aMByte,2)." MByte. Geschwindigkeit durchschnittlich : $speed Bit/s.\n";
+						echo "In den letzten ".$this->TimeRater($timeForSpeed)." wurden ".$this->CapacityRater($a)." Daten übertragen. Durchschnittliche Geschwindigkeit ".$this->SpeedRater($speed)."\n";
+						}
+					if ( ($a>99999999) || ($a<0) ) IPSLogger_Inf(__file__, "In den letzten ".$this->TimeRater($timeForSpeed)." wurden ".$this->CapacityRater($a)." Daten übertragen. Durchschnittliche Geschwindigkeit ".$this->SpeedRater($speed));
 					
-	            	/* download etc variablen setzen */
-					if (IPS_GetName($obj->ips_var) == $download)
+					if ($a>2147483647) { $a=2147483647; }  /* es können maximal 2 GByte Daten pro Tag in IP Symcon Integer Variablen dargestellt werden */
+	
+					if ($nolog==false)
 						{
-		            	SetValue($ips_download,$aMByte);
-		            	$download_val=$aMByte;
-						}
-					if (IPS_GetName($obj->ips_var) == $upload)
-						{
-			            SetValue($ips_upload,$aMByte);
-			            $upload_val=$aMByte;
-						}
-	        	    }
+						SetValue($obj->ips_var, $z[1]);
+			        	SetValue($ips_vare,$z[0]);
+		            	SetValue($ips_varc,$a);
+						SetValue($ips_vars,$speed);
+						
+		            	/* download etc variablen setzen */
+						if (IPS_GetName($obj->ips_var) == $download)
+							{
+			            	SetValue($ips_download,$aMByte);
+			            	$download_val=$aMByte;
+							}
+						if (IPS_GetName($obj->ips_var) == $upload)
+							{
+				            SetValue($ips_upload,$aMByte);
+				            $upload_val=$aMByte;
+							}
+		        	    }
+					} 		// zwei Abfragen kurz hintereinander abfangen
         	    $obj->change = $aMByte;
     			}
 			else
@@ -490,6 +502,7 @@ class SNMP_OperationCenter
 			$exec_param =" /h:". $this->host ." /c:". $this->community ." /o:". $oid ." /v";
 			$value = trim(IPS_Execute($this->binary, $exec_param, false, true));
 			if($this->debug) echo "Execute SNMP-Query: ". $this->binary, " ".$exec_param."  ===> ".$value."\n";			
+			echo "getSNMObject, Wert von SSNMPQ script für $oid empfangen : ".$value."\n";
 			}
 		return ($value);
 		}
@@ -678,8 +691,8 @@ class SNMP_OperationCenter
 			if ($this->debug) echo "Ausgabe als Walk für Interface Tabelle mit SNMP Commandline Tool beginnend ab $oidP :\n";
 			$ifTableSnmp = $this->walkSNMP($oidP);	/* die OID jedes Eintrags muss am Anfang auch einen Punkt haben, wurde angepasst an das IPSSNMP modul */
 			}
-		echo "Resultat von walk ifTable:\n";
-		print_r($ifTableSnmp);
+		//echo "Resultat von walk ifTable:\n";
+		//print_r($ifTableSnmp);
 
 		$ifTable=array();
 		$needle=".".$oidP.".2.1.";
@@ -723,13 +736,13 @@ class SNMP_OperationCenter
             $filterCol=array(		/* kopiere die Spalten die enthalten sein sollen von collums */
                 "1" => "ifIndex",
                 "2" => "ifDescr",
-                //"3" => "ifType",
-                //"4" => "ifMTU",
-                //"5" => "ifSpeed",
+                //"3" => "ifType",			// 6 ist ein echtes Port
+                "4" => "ifMTU",
+                "5" => "ifSpeed",
                 "6" => "ifPhysAddress",
                 //"7" => "ifAdminStatus",
-                "8" => "ifOperStatus",
-                //"9" => "ifLastChange",
+                "8" => "ifOperStatus",			// 1 ist aktiv
+                "9" => "ifLastChange",
                 "10" => "ifnOctets",
                 //"11" => "ifnUcastPkts",
                 //"12" => "ifnNUcastPkts",
@@ -760,23 +773,50 @@ class SNMP_OperationCenter
 				
 					//echo "   ".$i."   ".$j."   ".$entry."  \n";
 					//echo $entry."  ";
-					$print=false;
-					if (sizeof($filterLine)>0)
-						{					
-						foreach ($filterLine as $key => $item)
-							{
-							if (isset($collumnsR[$key])==true) 
+					if (isset($filterLine["AND"])) 
+						{
+						$filterLineAnd=$filterLine["AND"];
+						$gefundenZiel=sizeof($filterLineAnd);
+						$gefunden=0;
+						$print=false;
+						if ($gefundenZiel>0)
+							{					
+							foreach ($filterLineAnd as $key => $item)
 								{
-								//echo "*".$collumnsR[$key]." (".$key.")==".$item;
-								if ($ifTable[$collumnsR[$key]][$j]==$item) 
+								if (isset($collumnsR[$key])==true) 
 									{
-									$print=true;
+									//echo "*".$collumnsR[$key]." (".$key.")==".$item;
+									if ($ifTable[$collumnsR[$key]][$j]==$item) 
+										{
+										$gefunden++;
+										}
 									}
-								}
-							//if ($ifTableR[0][$j]==$key) echo "*"; 
-							} 
+								//if ($ifTableR[0][$j]==$key) echo "*"; 
+								} 
+							}
+						else $print=true;
+						if ($gefunden==$gefundenZiel) $print=true;
 						}
-					else $print=true;
+					else
+						{
+						$print=false;
+						if (sizeof($filterLine)>0)
+							{					
+							foreach ($filterLine as $key => $item)
+								{
+								if (isset($collumnsR[$key])==true) 
+									{
+									//echo "*".$collumnsR[$key]." (".$key.")==".$item;
+									if ($ifTable[$collumnsR[$key]][$j]==$item) 
+										{
+										$print=true;
+										}
+									}
+								//if ($ifTableR[0][$j]==$key) echo "*"; 
+								} 
+							}
+						else $print=true;
+						}
 					if ($print) $ifTableR[$j][$i]=$entry;
 					}
 				} 
@@ -1050,7 +1090,8 @@ class SNMP_OperationCenter
 
 	public function findSNMPModul($findlibrary="Babenschneider Symcon Modules",$findname="IPSSNMP",$IPAdresse="default")
 		{
-		if ($this->debug) echo "Übersicht der verwendeten Bibliotheken:\n";
+		$localDebug=false;
+		if (($this->debug) && $localDebug) echo "Übersicht der verwendeten Bibliotheken:\n";
 		$librarylist=IPS_GetLibraryList(); 
 		foreach ($librarylist as $libraryID)
 			{
@@ -1058,11 +1099,11 @@ class SNMP_OperationCenter
 			if ($Leintrag["Name"]==$findlibrary) 
 				{
 				$foundlibraryID=$libraryID;
-				if ($this->debug) echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+				if (($this->debug)  && $localDebug)echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
 				}
 			else
                 {
-                if ($this->debug) echo "   ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+                if (($this->debug) && $localDebug) echo "   ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
                 }
 			}
 		//echo "\n";
@@ -1097,7 +1138,7 @@ class SNMP_OperationCenter
 				{
 				$configuration=IPS_GetConfiguration($instanzID);
 				$confObject=json_decode($configuration);
-                if ($this->debug) 
+                if (($this->debug)  && $localDebug)
                     {
 				    echo " ModuleName:".$modulname." (".$werte["ModuleInfo"]["ModuleID"].") hat Instanz:".$instanzname." \n";
 				    echo " Module mit Name \"".$modulname."\" hat Instanz: ".$instanzname." (".$instanzID.")\n";

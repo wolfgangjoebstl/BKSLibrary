@@ -181,6 +181,7 @@
 				
 		function __construct($variable,$variablename=Null)
 			{
+            $dosOps= new dosOps();                
 			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
 			
 			/****************** Variablennamen herausfinden und/oder berechnen */
@@ -253,7 +254,7 @@
 			if (isset($directories["LogDirectories"]["TemperatureLog"]))
 		   		 { $directory=$directories["LogDirectories"]["TemperatureLog"]; }
 			else {$directory="C:/Scripts/Temperature/"; }	
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Temperature.csv";
 			parent::__construct($filename,$vid);
 			}

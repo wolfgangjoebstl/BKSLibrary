@@ -192,6 +192,7 @@
 				
 		function __construct($variable)
 			{
+            $dosOps= new dosOps();
 			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			$result=IPS_GetObject($variable);
@@ -238,7 +239,7 @@
 			if (isset($directories["LogDirectories"]["SwitchLog"]))
 		   		 { $directory=$directories["LogDirectories"]["SwitchLog"]; }
 			else {$directory="C:/Scripts/Switch/"; }	
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Switch.csv";
 			parent::__construct($filename,$vid);
 			}

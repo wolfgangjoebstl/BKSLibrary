@@ -44,8 +44,10 @@
 	$configuration=startpage_configuration();
 	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
 
+    $dosOps= new dosOps();
+
 	$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
-	mkdirtree($picturedir);
+	$dosOps->mkdirtree($picturedir);
 
 
 /***************************************************************************************************
@@ -91,7 +93,7 @@ else
 			}
 		//echo $directoryPath."\n";
 		} 
-	mkdirtree($bilderverzeichnis);	
+	$dosOps->mkdirtree($bilderverzeichnis);	
 	}
 
 $check=array();

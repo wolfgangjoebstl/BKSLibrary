@@ -166,7 +166,8 @@
 		 	
 		function __construct($variable=null)
 			{
-			//echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
+            $dosOps= new dosOps();
+            //echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			$result=IPS_GetObject($variable);
 			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
@@ -267,7 +268,7 @@
 					{
 					//echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
 					$directory=$this->configuration["LogDirectories"]["MotionLog"];
-					mkdirtree($directory);
+					$dosOps->mkdirtree($directory);
 					$filename=$directory.$this->variablename."_Motion.csv";
 
 					$variablename=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
@@ -295,7 +296,7 @@
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			$directory=$directories["LogDirectories"]["HumidityLog"];
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Bewegung.csv";
 			parent::__construct($filename);
 			}

@@ -190,6 +190,7 @@
 		
 		function __construct($variable,$variablename=Null)
 			{
+            $dosOps= new dosOps();
 			//echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable."\n";
 			
 			/****************** Variablennamen herausfinden und/oder berechnen */
@@ -276,7 +277,7 @@
 			if (isset($directories["LogDirectories"]["CounterLog"]))
 		   		 { $directory=$directories["LogDirectories"]["CounterLog"]; }
 			else {$directory="C:/Scripts/Counter/"; }	
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Counter.csv";
 			parent::__construct($filename,$vid);
 			}

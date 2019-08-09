@@ -19,17 +19,45 @@
 	 
 	 /***********************************************
 	  *
-	  * verschiedene Routinen udn Definitionen die von allen Modulen benötigt werden können
+	  * verschiedene Routinen und Definitionen die von allen Modulen benötigt werden können
 	  * 
 	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
+      *
+      *
 	  * GetInstanceIDFromHMID
 	  * writeLogEvent
 	  * writeLogEventClass
 	  * GetValueIfFormatted
 	  *
+      * CreateVariableByName
+      * CreateVariableByName2
+      * CreateVariable2
+      * CreateVariableByNameFull
+      * Get_IdentByName2
+      * UpdateObjectData2
+      *
+      * summestartende
+      * summestartende2
+      *
+      * mkdirtree
+      *
+      * RPC_CreateVariableByName
+      * RPC_CreateCategoryByName
+      * RPC_CreateVariableField
+      * RemoteAccessServerTable
+      * RemoteAccess_GetConfigurationNew
+      *
+      *
+      * checkProcess
+      *
+	  * erstellt auch einige für alle brauchbaren Klassen:
 	  *
-	  *
-	  *
+      * dosOps
+      * csvOps    in Planung
+      * ComponentHandling
+	  * WfcHandling
+      * ModuleHandling
+      *
 	  ****************************************************************/
 
 IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -507,28 +535,55 @@ function send_status($aktuell, $startexec=0)
 			$ergebnisOperationCenter.="\nAktuelles Datenvolumen für die verwendeten Router : \n";
 			foreach ($OperationCenterConfig['ROUTER'] as $router)
 				{
-				$ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
-				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
-				if ($router['TYP']=='MBRN3000')
-					{
-					$ergebnisOperationCenter.="\n";
-					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MBRN3000($router,true),2)." Mbyte \n";
-					}
-				elseif ($router['TYP']=='MR3420')
-					{
-					$ergebnisOperationCenter.="\n";
-					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_MR3420($router),2)." Mbyte \n";
-					}
-				elseif ($router['TYP']=='RT1900ac')
-					{
-					$ergebnisOperationCenter.="\n";
-					$ergebnisOperationCenter.="    Werte von Heute   : ".round($OperationCenter->get_routerdata_RT1900($router,true),2)." Mbyte \n";
-					}
-				else
-					{
-					$ergebnisOperationCenter.="    Keine Werte. Router nicht unterstützt.\n";
-					}
-				}
+                if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
+                    {
+
+                    }
+                else
+                    {                    
+					$ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
+					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+					if ($router_categoryId !== false)		// wenn in Install noch nicht angelegt, auch hier im Timer ignorieren
+						{
+						$ergebnisOperationCenter.="\n";
+						echo "****************************************************************************************************\n";
+	                    switch (strtoupper($router["TYP"]))
+	                        {                    
+	                        case 'B2368':
+							case 'MR3420':      
+								$ergebnisOperationCenter.= "    Werte von Heute     : ".$OperationCenter->get_router_history($router,0,1)." Mbyte. \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_router_history($router,1,1)." Mbyte. \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+					        case 'RT1900AC':								
+					        case 'RT2600AC':								
+								$ergebnisOperationCenter.="\n";
+								$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_RT1900($router,true)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+	                        case 'MBRN3000':
+								$ergebnisOperationCenter.="\n";
+								$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+							default:
+								$ergebnisOperationCenter.="    Keine Werte. Router nicht unterstützt.\n";
+							   break;
+							}	// ende switch
+					   }		// ende roter category available
+					}	// ende if status true
+				}		// ende foreach
 			$ergebnisOperationCenter.="\n";
 			
 			$ergebnisOperationCenter.=$OperationCenter->writeSysPingResults();
@@ -1029,7 +1084,7 @@ function send_status($aktuell, $startexec=0)
 		/******************************************************************************************/
 
 		if (isset($installedModules["OperationCenter"])==true)
-		   {
+			{
 			$ergebnisOperationCenter="\nAusgabe der Erkenntnisse des Operation Centers, Logfile: \n\n";
 
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -1049,60 +1104,59 @@ function send_status($aktuell, $startexec=0)
 			$OperationCenterConfig = OperationCenter_Configuration();
 			$ergebnisOperationCenter.="\nHistorisches Datenvolumen für die verwendeten Router : \n";
 			$historie="";
-	   	foreach ($OperationCenterConfig['ROUTER'] as $router)
-			   {
-			   $ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
-				$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
-				if ($router['TYP']=='MBRN3000')
-				   {
-					$ergebnisOperationCenter.="\n";
-					$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
-					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
-					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
-										round($OperationCenter->get_router_history($router,0,7),0)."/".
-					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
-										round($OperationCenter->get_router_history($router,30,30),0)." \n";
-				   }
-				elseif ($router['TYP']=='MR3420')
-				   {
-					$ergebnisOperationCenter.="\n";
-					$ergebnisOperationCenter.= "    Werte von Heute     : ".$OperationCenter->get_router_history($router,0,1)." Mbyte. \n";
-					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_router_history($router,1,1)." Mbyte. \n";
-					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
-										round($OperationCenter->get_router_history($router,0,7),0)."/".
-					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
-										round($OperationCenter->get_router_history($router,30,30),0)." \n";
-					}
-				elseif ($router['TYP']=='RT1900ac')
-				   {
-					$ergebnisOperationCenter.="\n";
-					$host          = $router["IPADRESSE"];
-					$community     = "public";                                                                         // SNMP Community
-					$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-					$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
-					$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
-					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
-					$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
-					$result=$snmp->update(true);  /* kein Logging */
-					$ergebnis=0;
-					foreach ($result as $object)
+			foreach ($OperationCenterConfig['ROUTER'] as $router)
+				{
+                if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
+                    {
+
+                    }
+                else
+                    {                    
+					$ergebnisOperationCenter.="  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER'];
+					$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CatIdData);
+					if ($router_categoryId !== false)		// wenn in Install noch nicht angelegt, auch hier im Timer ignorieren
 						{
-						$ergebnis+=$object->change;
-						}
-					$ergebnisOperationCenter.= "    Werte von heute     : ".round($ergebnis,2)." Mbyte \n";
-					$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
-					$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
-										round($OperationCenter->get_router_history($router,0,7),0)."/".
-					    				round($OperationCenter->get_router_history($router,0,30),0)."/".
-										round($OperationCenter->get_router_history($router,30,30),0)." \n";
-					}
-				else
-				   {
-				   $ergebnisOperationCenter.="\n";
-				   }
-				}
+						$ergebnisOperationCenter.="\n";
+						echo "****************************************************************************************************\n";
+	                    switch (strtoupper($router["TYP"]))
+	                        {                    
+	                        case 'B2368':
+							case 'MR3420':      
+								$ergebnisOperationCenter.= "    Werte von Heute     : ".$OperationCenter->get_router_history($router,0,1)." Mbyte. \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_router_history($router,1,1)." Mbyte. \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+					        case 'RT1900AC':								
+					        case 'RT2600AC':								
+								$ergebnisOperationCenter.="\n";
+								$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_RT1900($router,true)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_RT1900($router,false)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+	                        case 'MBRN3000':
+								$ergebnisOperationCenter.="\n";
+								$ergebnisOperationCenter.= "    Werte von heute     : ".$OperationCenter->get_routerdata_MBRN3000($router,true)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Werte von Gestern   : ".$OperationCenter->get_routerdata_MBRN3000($router,false)." Mbyte \n";
+								$ergebnisOperationCenter.= "    Historie 1/7/30/30  : ".round($OperationCenter->get_router_history($router,0,1),0)."/".
+													round($OperationCenter->get_router_history($router,0,7),0)."/".
+								    				round($OperationCenter->get_router_history($router,0,30),0)."/".
+													round($OperationCenter->get_router_history($router,30,30),0)." \n";
+								break;
+							default:
+							   break;
+							}	// ende switch
+					   }		// ende roter category available
+					}	// ende if status true
+				}		// ende foreach
+			$ergebnisOperationCenter.="\n";
 		  	echo ">>OperationCenter historische Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
-		   }
+			}
 		   
 		/******************************************************************************************/
 
@@ -1645,44 +1699,6 @@ function summestartende2($starttime, $endtime, $increment_var, $estimate, $archi
 	return $ergebnis;
 	}
 
-/*****************************************************************
- * 
- * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
- *
- **/
-
-function mkdirtree($directory)
-	{
-	$directory = str_replace('\\','/',$directory);
-	$directory=substr($directory,0,strrpos($directory,'/')+1);
-	//$directory=substr($directory,strpos($directory,'/'));
-	$i=0;
-	while ((!is_dir($directory)) && ($i<20) )
-		{
-		$i++;
-		echo "mkdirtree: erzeuge Verzeichnis $directory \n"; 		
-		$newdir=$directory;
-		while ( (!is_dir($newdir)) && ($i<20) )
-			{
-			$i++;
-			//echo "es gibt noch kein ".$newdir."\n";
-			if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
-			if ($pos==false) break;
-			$newdir=substr($newdir,0,$pos);
-			echo "   Mach : ".$newdir."\n";
-			try
-				{
-				@mkdir($newdir);
-				}
-			catch (Exception $e) { echo "."; }
-			if (is_dir($newdir)) echo "     Verzeichnis ".$newdir." erzeugt.\n";
-			}
-		if ($pos==false) break;
-		}
-	if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
-		
-	}
-
 /******************************************************************/
 
 function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
@@ -2213,65 +2229,6 @@ function getTaskList()
 		}
 	return ($taskList);
 	}
-
-/******************************************************************/
-
-function fileAvailable($filename,$verzeichnis)
-	{
-	$status=false;
-	/* Wildcards beim Filenamen zulassen */
-	$pos=strpos($filename,"*.");
-	if ( $pos === false )
-	   {
-	   echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
-	   $detName=true;
-	   $detExt=false;
-	   }
-	else
-	   {
-	   $filename=substr($filename,$pos+1,20);
-	   echo "Wir suchen nach der Extension \"*".$filename."\"\n";
-	   $detExt=true;
-	   }
-	if ( is_dir ( $verzeichnis ))
-		{
-    	// öffnen des Verzeichnisses
-    	if ( $handle = opendir($verzeichnis) )
-    		{
-        	while (($file = readdir($handle)) !== false)
-        		{
-				$dateityp=filetype( $verzeichnis.$file );
-            if ($dateityp == "file")
-            	{
-				 	if ($detExt == false)
-				 	   {
-				 	   /* Wir suchen einen Filenamen */
-	            	if ($file == $filename)
-							 {
-							 $status=true;
-							 }
-            		//echo $file."\n";
-            		}
-            	else
-            	   {
-				 	   /* Wir suchen eine Extension */
-				 	   //echo $file."\n";
-				 	   $pos = strpos($file,$filename);
-	               if ( ($pos > 0 ) )
-							 {
-							 $len =strlen($file)-strlen($filename)-$pos;
-							 //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
-							 if ( $len == 0 ) { $status=true; }
-							 }
-            	   }
-         		}
-      	  	} /* Ende while */
-	     	closedir($handle);
-   		} /* end if dir */
-		}/* ende if isdir */
-	return $status;
-	}
-	
 /************************************************************************************/
 
 function checkProcess($processStart)
@@ -2308,6 +2265,615 @@ function checkProcess($processStart)
 		}
 	return($processStart);
 	}
+
+/*****************************************************************
+ *
+ * verschiedene Routinen im Zusammenhang mit File Operationen
+ *
+ * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
+ * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
+ *  dirToArray          verwendet für das rekursive aufrufen
+ * rrmdir               ein Verzeichnis rekursiv loeschen
+ * readFile             eine Datei ausgeben
+ *
+ *
+ *
+ *
+ */
+
+class dosOps
+    {
+
+    /* fileAvailable
+     *
+     * einen Filenamen , auch mit Wildcards, in einem Verzeichnis suchen
+     * liefert status true und false zurück
+     *
+     */    
+
+    function fileAvailable($filename,$verzeichnis)
+        {
+        $status=false;
+        /* Wildcards beim Filenamen zulassen */
+        $pos=strpos($filename,"*.");
+        if ( $pos === false )
+            {
+            echo "Wir suchen nach dem Filenamen \"".$filename."\"\n";
+            $detName=true;
+            $detExt=false;
+            }
+        else
+            {
+            $filename=substr($filename,$pos+1,20);
+            echo "Wir suchen nach der Extension \"*".$filename."\"\n";
+            $detExt=true;
+            }
+        if ( is_dir ( $verzeichnis ))
+            {
+            // öffnen des Verzeichnisses
+            if ( $handle = opendir($verzeichnis) )
+                {
+                while (($file = readdir($handle)) !== false)
+                    {
+                    $dateityp=filetype( $verzeichnis.$file );
+                if ($dateityp == "file")
+                    {
+                        if ($detExt == false)
+                        {
+                        /* Wir suchen einen Filenamen */
+                        if ($file == $filename)
+                                {
+                                $status=true;
+                                }
+                        //echo $file."\n";
+                        }
+                    else
+                    {
+                        /* Wir suchen eine Extension */
+                        //echo $file."\n";
+                        $pos = strpos($file,$filename);
+                    if ( ($pos > 0 ) )
+                                {
+                                $len =strlen($file)-strlen($filename)-$pos;
+                                //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
+                                if ( $len == 0 ) { $status=true; }
+                                }
+                    }
+                    }
+                } /* Ende while */
+                closedir($handle);
+            } /* end if dir */
+            }/* ende if isdir */
+        return $status;
+        }
+
+
+    /*****************************************************************
+    * 
+    * Einen Verzeichnisbaum erstellen. Routine scheitert wenn es bereits eine Datei gibt, die genauso wie das Verzeichnis heisst. Dafür einen Abbruchzähler vorsehen.
+    *
+    **/
+
+    function mkdirtree($directory,$debug=false)
+        {
+        $directory = str_replace('\\','/',$directory);
+        $directory=substr($directory,0,strrpos($directory,'/')+1);
+        //$directory=substr($directory,strpos($directory,'/'));
+        $i=0;
+        while ((!is_dir($directory)) && ($i<20) )
+            {
+            $i++;
+            if ($debug) echo "mkdirtree: erzeuge Verzeichnis $directory \n"; 		
+            $newdir=$directory;
+            while ( (!is_dir($newdir)) && ($i<20) )
+                {
+                $i++;
+                //echo "es gibt noch kein ".$newdir."\n";
+                if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
+                if ($pos==false) break;
+                $newdir=substr($newdir,0,$pos);
+                if ($debug) echo "   Mach : ".$newdir."\n";
+                try
+                    {
+                    @mkdir($newdir);
+                    }
+                catch (Exception $e) { echo "."; }
+                if (is_dir($newdir)) if ($debug) echo "     Verzeichnis ".$newdir." erzeugt.\n";
+                }
+            if ($pos==false) break;
+            }
+        if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
+            
+        }
+
+	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
+	 *
+	 * ein Verzeichnis einlesen und als Array zurückgeben 
+	 *
+	 */
+	
+	public function readdirToArray($dir,$recursive=false,$newest=0)
+		{
+	   	$result = array();
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $dir ) )
+			{		
+			$cdir = scandir($dir);
+			foreach ($cdir as $key => $value)
+				{
+				if (!in_array($value,array(".","..")))
+					{
+					if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+						{
+						if ($recursive)
+							{ 
+							//echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
+							$result[$value]=$this->dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+							//echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
+							}
+						else $result[] = $value;
+						//$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+						}
+					else
+						{
+						$result[] = $value;
+						}
+					}
+				} // ende foreach
+			} // ende isdir
+		else return (false);
+		if ($newest != 0)
+			{
+			if ($newest<0) 
+				{
+				rsort($result);
+				$newest=-$newest;
+				}				
+			foreach ($result as $index => $entry)
+				{
+				if ($index>$newest) unset($result[$index]);
+				}
+			}
+		return $result;
+		}		
+
+	/* Routine fürs rekursive aufrufen in readdirtoarray */
+	
+	private function dirToArray($dir)
+		{
+	   	$result = array();
+	
+		$cdir = scandir($dir);
+		foreach ($cdir as $key => $value)
+			{
+			if (!in_array($value,array(".","..")))
+				{
+				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+	         		{
+					$result[$value] = $this->dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+	         		}
+	         	else
+	         		{
+	            	$result[] = $value;
+	         		}
+	      		}
+	   		}
+		return $result;
+		}
+
+    /* einem Verzeichnisbaum ein Bckslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
+
+	function correctDirName($verzeichnis)
+		{
+		$len=strlen($verzeichnis); $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");
+		//echo "Auswertungen: $len $pos1 $pos2 \n";			// am Schluss muss ein Backslash oder Slash sein !
+		if ( ($pos1) && ($pos1<($len-1)) ) $verzeichnis .= "\\";
+		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
+		return ($verzeichnis);
+		}
+
+	/* ein Verzeichnis rekursiv loeschen */
+
+	function rrmdir($dir) 
+		{
+		if (is_dir($dir)) 
+			{
+			$objects = scandir($dir);
+			foreach ($objects as $object) 
+				{
+				if ($object != "." && $object != "..") 
+					{
+					if (filetype($dir."/".$object) == "dir") $this->rrmdir($dir."/".$object); else unlink($dir."/".$object);
+					}
+				}
+			reset($objects);
+			rmdir($dir);
+			}
+		} 
+
+    /* eine Datei ausgeben 
+     * default sind alle Zeilen
+     */
+
+    function readFile($fileName, $maxLine=0)
+        {
+        if ( (($handle = fopen($fileName, "r")) !== false) )      // nur machen wenn filename  richtig
+            {
+            $row=1;
+            while (($data = fgets($handle)) !== false) 
+                {
+                if ($row++ != $maxLine) echo $data;
+                else break;
+                }
+            fclose($handle);
+            }
+        }
+
+    }       // ende class
+
+
+
+/**************************************************************************************************************************
+ *
+ * fileOps, Zusammenfassung von Funktionen rund um das lesen und schreiben von Datenbanken im csv Format
+ *
+ * __construct              als Constructor wird der Filename an dem die Operationen durchgeführt werden übergeben
+ *
+ * readFileCsvFirstLine     liest nur die erste Zeil eines csv Files, damit bekommt man den Index
+ * readFileCsv              wandelt eine csv Datei in ein Array um, erste Zeile kann als Index für die Umwandlung verwendet werden
+ *
+ * backcupFileCsv           das alte File wegspeichern als.old.csv
+ *
+ * writeFileCsv
+ *
+ *
+ * Manipulationen der erhaltenen, eingelesenen Arrays
+ * ---------------------------------------------------
+ * findColumnsLines         Auswertung Spalten und Zeilen eines Arrays
+ * writeArray
+ *
+ ******************************************************/
+
+class fileOps
+    {
+
+    var $dosOps;
+    var $fileName, $newFileName;
+
+    function __construct($fileName=false)
+        {
+        $this->dosOps = new dosOps();     // create classes used in this class
+        if (is_file($fileName)) 
+            {
+            //echo "File Backup.csv vorhanden.\n";
+            $this->fileName = $fileName;
+            }
+        else 
+            {
+            $this->fileName = false;
+            $this->newFileName = $fileName;
+            }
+        }
+
+    /* ein csv File einlesen und die erste Zeile als array übergeben. 
+     *
+     * ignore = true bedeutet das ungültige Spaltenbezeichnungen ignoriert werden udn nicht auf false gesetzt werden
+     */
+
+    function readFileCsvFirstline($ignore=false)
+        {
+        $index=array();
+        if ($this->fileName !== false) 
+            {
+            if (($handle = fopen($this->fileName, "r")) !== false)
+                {
+                $row=1;
+                while (($data = fgetcsv($handle, 1000, ";")) !== false) 
+                    {
+                    $num = count($data);
+                    if ($row==1) 
+                        {
+                        //print_r($data);
+                        for ($i=0;($i<$num);$i++) 
+                            {
+                            $spaltenBez=trim($data[$i]);
+                            if ($spaltenBez != "") $index[]=$spaltenBez;
+                            elseif (!$ignore) $index[]= false;
+                            }
+                        }
+                    else break;
+                    $row++;
+                    }
+                fclose($handle);            
+                }
+            }
+        //echo "Ende erreicht. Erste Zeile hat ".sizeof($index)." Spalten. Leere Spaltenbezeichner werden ignoriert.\n";
+        return($index);
+        }
+
+    /* ein csv File einlesen und als array übergeben. Das Array ist ein Parameter, bearbeitet als Pointer
+     *
+     * Parameter
+     *      result      das Array mit Zeilen und Spalten, erster key sind die Zeilen, zweiter key sind die Spalten
+     *      key         
+     *      index       ein array mit Spaltenbezeichnungen, wenn leer wird die erste Zeile verwendet
+     *      filter      welche Spalten sollen uebernommen werden
+     *
+     */
+
+    function readFileCsv(&$result, $key="", $index=array(), $filter=array(), $debug=false)
+        {
+        $error=0; $errorMax=20;     /* nicht mehr als 20 Fehler/Info Meldungen ausgeben */
+        $rowMax=10;                 /* debug, nicht mehr als rowMax Zeilen ausgeben, sonst ist der output buffer voll */
+        $ergebnis=true;
+        $keyIndex=false;            // wenn kein Index mit Namen key gefunden wird
+        /* erste Zeile für die Bezeichnung der Spalten verwenden */
+        if (count($index)==0) 
+            {
+            if ($debug)
+                {
+                if ($key=="") echo "readFileCsv : Use First Line for defining Index of array.\n";
+                else  echo "readFileCsv : Use First Line for defining Columns of the Table. Use column $key as Index for Table.\n";
+                }
+            $firstline=true;
+            }
+        else 
+            {
+            $firstline=false;
+            if ($debug)
+                {
+                echo "readFileCsv : Use this array for defining Index of array.\n";
+                print_r($index);
+                }
+            }    
+        if ($debug) echo "    Input array has allready ".count($result)." lines. Will try to merge.\n";
+
+        if ( ($this->fileName !== false) && (is_array($result)) )           // nur machen wenn filename und übergabe Array richtig
+            {
+            if ( (($handle = @fopen($this->fileName, "r")) !== false) )
+                {
+                $row=1;
+                while (($data = fgetcsv($handle, 0, ";")) !== false) 
+                    {
+                    $num = count($data);                            // wieviel Spalten werden eingelesen, num
+                    if ( ($firstline) && ($row==1) )                // in der ersten Reihe sind die Spaltenbezeichnungen
+                        {
+                        for ($i=0;($i<$num);$i++)                   // erste Zeile Spalten einlesen
+                            {
+                            $spaltenBez=trim($data[$i]);
+                            /* Blanks bei den Spalten entfernen, leere Spalten nicht einlesen, wenn ein key definiert ist diesen auch nicht als Spalte einlesen
+                             * d.h. es bleiben alle valide Spalten die nicht key sind als Array in index über. 
+                             * Um die Key Spalte richtig zuzuordnen, wird der index in $keyIndex gespeichert.
+                             * data   [0=>filename  1=>0712    2=>0812    3=>""    4=>0912    5=>0612    6=>0712  
+                             * key=filename, indexKey=0
+                             * filter []  noch niocht implementiert, Spalten entsprechend Angabe filter auf false stellen
+                             * index  
+                             *
+                             */
+                            if ( ($spaltenBez != "") && ($spaltenBez != $key) ) $index[]=$spaltenBez;
+                            elseif ($spaltenBez == $key) 
+                                {
+                                $keyIndex=$i;
+                                $index[]=false;
+                                }
+                            else $index[]=false;
+                            }
+                        /* Filter hier bearbeiten und weitere Index Eintraeg auf false setzen */
+                        if ($debug) print_r($index);            // ermittelter index ausgeben, beinhaltet false für zu überspringende Spalten
+                        }
+                    elseif ($row==1) 
+                        {
+                        if ($debug) print_r($index);            // Index ist vorgegeben, Felder die übersprungen werden sollen mit false markieren
+                        }
+                    else    /* alle anderen Zeilen hier einlesen */
+                        {
+                        if ($num==0) echo "Fehler, no csv Data identified in Line $row.\n";
+                        elseif ($num != (count($index)) ) 
+                            {
+                            echo "Error, not same amount of columns.\n";
+                            print_r($data);
+                            }                            
+                        else 
+                            { /* nur Zeilen einlesen die die gewünschte Anzahl von Spalten haben */
+                            $key1=$row-2;    // starts with 0, if there is no key defined
+                            $i=0;
+                            $dataEntries=array();       // Zeile bearbeiten und Ergebnis zwischenspeichern
+                            foreach ($index as $key2)   // index durchgehen, Eintraege mit false überspringen
+                                {
+                                if ($key2 !== false) $dataEntries[$key2]=$data[$i];
+                                $i++;
+                                }
+                            if ( ($key=="") || ($keyIndex===false) )        // kein Key definiert oder gefunden 
+                                {
+                                $result[$key1]=$dataEntries;
+                                if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: ".json_encode($dataEntries)." index is $key <br /></p>\n";
+                                }
+                            else 
+                                {
+                                /* wenn ein key definiert wurde, kann überprüft werden ob der Eintrag bereits vorhanden ist 
+                                 * wird für in memory merge verwendet. Der Merge könnte auch nachträglich erfolgen. Benötigt aber mehr Speicher.
+                                 * beides implementieren.
+                                 */
+                                $key1=$data[$keyIndex]; 
+                                if ($error++ < $errorMax) 
+                                    {
+                                    if (isset($result[$key1])) 
+                                        {
+                                        $entryExist=json_encode($result[$key1]);
+                                        $entryNew=json_encode($dataEntries);
+                                        if ($entryExist != $entryNew)
+                                            {
+                                            echo "-> $key1 bereits bekannt. Eintrag $entryExist wird mit $entryNew überschrieben.\n"; 
+                                            }
+                                        }
+                                    }
+                                $result[$key1]=$dataEntries;
+                                }
+                            //$result[$key1][$key2]=$data[$i++];                        
+                            //if ($row < $rowMax) echo "<p> $key1 : $num Felder in Zeile $row: <br /></p>\n";
+                            }
+                        }
+                    $row++;                    
+                    }
+                fclose($handle);
+                if ($debug) echo "Input File hat $row Zeilen und $num Spalten. ".sizeof($index)." davon uebernommen.\n";
+                }           // ende File korrekt geöffnet
+            else $ergebis=false;                
+            }           // ende if param error check
+        else $ergebis=false;
+        if ($ergebnis) return ($this->findColumnsLines($result));
+        else return($ergebnis);
+        }  // ende function
+
+
+    /* csv file in old.csv umbenennen :
+     * wenn filename noch nicht existiert (false) den newFilename nehmen
+     * sonst das File auf Backup umbenennen
+     */
+
+    function backcupFileCsv()
+        {
+        if ($this->fileName !== false) 
+            {   /* es gibt schon eine Datei, die wir aber behalten wollen, falls etwas schief geht */
+            $filename=$this->fileName;
+            $pathinfo=pathinfo($filename);
+            print_r($pathinfo);
+            $filenameOld = $this->dosOps->correctDirName($pathinfo["dirname"]).$pathinfo["filename"].".old.".$pathinfo["extension"];
+            echo "Rename $filename mit neuem Dateinamen : $filenameOld \n";
+            rename($filename, $filenameOld);
+            }
+        else $filename=$this->newFileName;
+        return ($filename);
+        }
+
+
+    /************************
+     *
+     * writefilecsv schreibt ein array in die Datei $this->filename, wenn nicht vorhanden (false) dann in $this->newFileName
+     *
+     ***********/
+
+    function writeFileCsv(&$result, $debug=false)
+        {
+        if ($this->fileName === false) $filename=$this->newFileName;
+        else $filename=$this->fileName;
+
+        if ($debug) echo "Neuer Filename $filename zum Schreiben.\n";
+
+        $resultCandL=$this->findColumnsLines($result);
+        $columns=$resultCandL["columns"];
+        if ($debug) 
+            {
+            echo "writeFileCsv: Analyse des Input Arrays: \n";
+            echo "  Insgesamt ".sizeof($resultCandL["lines"])." Zeilen und ".sizeof($resultCandL["columns"])." Spalten erkannt: \n";
+            print_r($columns);
+            }
+        
+        if (is_file($filename)) unlink($filename);      // in ein leeres File schrieben
+        $handle=fopen($filename, "a");
+        fputcsv($handle,$columns,";");             // den Index aus dem result File übernehmen
+
+        foreach ($result as $file => $entry)
+            {
+            /* Struktur von result ist Filename = array Spalte => Datum */
+            $line=array();
+            foreach ($columns as $column)
+                {
+                if (isset($entry[$column])) $line[]=$entry[$column];
+                else $line[]=false;
+                }
+            $entries=[$file] + $line;
+            fputcsv($handle,$entries,";");
+            /*
+            fwrite($handle, $file.";");
+            foreach ($index as $tab)
+                {
+                if (isset($entry[$tab])) fwrite($handle, $entry[$tab].";");   
+                else fwrite($handle, ";");
+                }
+            fwrite($handle,"\n");
+            */
+            }
+        fclose($handle);
+        }
+
+    /*************
+     *
+     *  find all columns and lines in an array
+     *
+     ***************/
+
+    function findColumnsLines(&$resultBackupDirs, $debug=false)
+        {
+        $columns=array(); $lines=array();
+        $row=0; $rowMax=5;
+        foreach ($resultBackupDirs as $key => $line)
+            {
+            if ( ($row++<$rowMax) && $debug )
+                {
+                echo $key.":\n"; print_r($resultBackupDirs[$key]);
+                }
+            $lines[$key]=true;
+            foreach ($line as $column => $entry)
+                {
+                $columns[$column]=$column;
+                } 
+            }
+        //echo "Insgesamt ".sizeof($lines)." Zeilen und ".sizeof($columns)." Spalten erkannt: \n";
+        $columns = ["Filename" => "Filename"] + $columns;
+        //print_r($columns);
+        $result["columns"]=$columns;
+        $result["lines"]=$lines;
+        return ($result);
+        }
+
+    /* Ausgabe des Arrays mit einer max Anzahl von Zeilen machen, damit Output Puffer nicht überlastet wird */
+
+    function writeArray(&$resultBackupDirs)
+        {
+        $result=$this->findColumnsLines($resultBackupDirs);
+        echo "Array ist ".count($result["columns"])." Spalten und ".count($result["lines"])." Zeilen gross.\n";
+        $row=0; $rowMax=50;
+        foreach ($resultBackupDirs as $key => $line)
+            {
+            echo "Index is ".$key.":\n"; 
+            print_r($line);
+            if ($row++>$rowMax) break;
+            }
+        }
+
+    }    // ende class
+
+/**************************************************************************************************************************
+ *
+ * errorAusgabe
+ *
+ * 
+ *
+ * 
+ *
+ ******************************************************/
+
+
+class errorAusgabe
+    {
+
+    function __construct()
+        {
+
+        }
+
+    function write($string)
+        {
+        echo $string;
+        }
+
+    }
+
+
+
+
 
 /***********************************************************************************
  *
@@ -3618,7 +4184,105 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
     }
 
 
+    function getNiceFileSize($bytes, $binaryPrefix=true) {
+        if ($binaryPrefix) {
+            $unit=array('B','KiB','MiB','GiB','TiB','PiB');
+            if ($bytes==0) return '0 ' . $unit[0];
+            return @round($bytes/pow(1024,($i=floor(log($bytes,1024)))),2) .' '. (isset($unit[$i]) ? $unit[$i] : 'B');
+        } else {
+            $unit=array('B','KB','MB','GB','TB','PB');
+            if ($bytes==0) return '0 ' . $unit[0];
+            return @round($bytes/pow(1000,($i=floor(log($bytes,1000)))),2) .' '. (isset($unit[$i]) ? $unit[$i] : 'B');
+        }
+    }
 
+// Returns used memory (either in percent (without percent sign) or free and overall in bytes)
+    function getServerMemoryUsage($getPercentage=true)
+    {
+        $memoryTotal = null;
+        $memoryFree = null;
+
+        if (stristr(PHP_OS, "win")) {
+            // Get total physical memory (this is in bytes)
+            $cmd = "wmic ComputerSystem get TotalPhysicalMemory";
+            @exec($cmd, $outputTotalPhysicalMemory);
+
+            // Get free physical memory (this is in kibibytes!)
+            $cmd = "wmic OS get FreePhysicalMemory";
+            @exec($cmd, $outputFreePhysicalMemory);
+
+            if ($outputTotalPhysicalMemory && $outputFreePhysicalMemory) {
+                // Find total value
+                foreach ($outputTotalPhysicalMemory as $line) {
+                    if ($line && preg_match("/^[0-9]+\$/", $line)) {
+                        $memoryTotal = $line;
+                        break;
+                    }
+                }
+
+                // Find free value
+                foreach ($outputFreePhysicalMemory as $line) {
+                    if ($line && preg_match("/^[0-9]+\$/", $line)) {
+                        $memoryFree = $line;
+                        $memoryFree *= 1024;  // convert from kibibytes to bytes
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (is_readable("/proc/meminfo"))
+            {
+                $stats = @file_get_contents("/proc/meminfo");
+
+                if ($stats !== false) {
+                    // Separate lines
+                    $stats = str_replace(array("\r\n", "\n\r", "\r"), "\n", $stats);
+                    $stats = explode("\n", $stats);
+
+                    // Separate values and find correct lines for total and free mem
+                    foreach ($stats as $statLine) {
+                        $statLineData = explode(":", trim($statLine));
+
+                        //
+                        // Extract size (TODO: It seems that (at least) the two values for total and free memory have the unit "kB" always. Is this correct?
+                        //
+
+                        // Total memory
+                        if (count($statLineData) == 2 && trim($statLineData[0]) == "MemTotal") {
+                            $memoryTotal = trim($statLineData[1]);
+                            $memoryTotal = explode(" ", $memoryTotal);
+                            $memoryTotal = $memoryTotal[0];
+                            $memoryTotal *= 1024;  // convert from kibibytes to bytes
+                        }
+
+                        // Free memory
+                        if (count($statLineData) == 2 && trim($statLineData[0]) == "MemFree") {
+                            $memoryFree = trim($statLineData[1]);
+                            $memoryFree = explode(" ", $memoryFree);
+                            $memoryFree = $memoryFree[0];
+                            $memoryFree *= 1024;  // convert from kibibytes to bytes
+                        }
+                    }
+                }
+            }
+        }
+
+        if (is_null($memoryTotal) || is_null($memoryFree)) {
+            return null;
+        } else {
+            if ($getPercentage) {
+                return (100 - ($memoryFree * 100 / $memoryTotal));
+            } else {
+                return array(
+                    "total" => $memoryTotal,
+                    "free" => $memoryFree,
+                );
+            }
+        }
+    }
+    
 
 
 

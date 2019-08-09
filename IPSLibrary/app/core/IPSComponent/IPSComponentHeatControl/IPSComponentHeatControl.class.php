@@ -139,6 +139,7 @@
 				
 		function __construct($variable,$variablename=Null)
 			{
+            $dosOps= new dosOps();
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
@@ -226,7 +227,7 @@
 			if (isset($directories["LogDirectories"]["HeatControlLog"]))
 		   		 { $directory=$directories["LogDirectories"]["HeatControlLog"]; }
 			else {$directory="C:/Scripts/HeatControl/"; }	
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_HeatControl.csv";
 			parent::__construct($filename,$vid);
 			}

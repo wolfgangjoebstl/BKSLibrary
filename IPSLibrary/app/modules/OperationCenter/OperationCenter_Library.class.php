@@ -26,6 +26,8 @@
 /*********************************************************************************************
  *
  * OperationCenter
+ *      BackupIpsymcon
+ *      LogFileHandler
  * DeviceManagement
  * statusDisplay
  * parsefile
@@ -123,9 +125,10 @@
 class OperationCenter
 	{
 
+    var $dosOps;                        /* verwendete andere Klassen */
 	private $log_OperationCenter;
 
-	private $CategoryIdData, $categoryId_SysPing,$categoryId_RebootCtr,$categoryId_Access,$archiveHandlerID;
+	protected $CategoryIdData, $categoryId_SysPing,$categoryId_RebootCtr,$categoryId_Access,$archiveHandlerID;
 	
     var $subnet               	= "";
 
@@ -147,6 +150,8 @@ class OperationCenter
 		{
 
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+
+        $this->dosOps = new dosOps();     // create classes used in this class
 
 		$this->subnet=$subnet;
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -528,7 +533,7 @@ class OperationCenter
 	 *
 	 * Verwendet selbes Config File wie für die Remote Log Server, es wurden zusätzliche Parameter zur Unterscheidung eingeführt
 	 *
-	 * Wenn der Remote Server erreichbar ist werden Kernel Version udn Uptime abngefragt und lokal gespeichert
+	 * Wenn der Remote Server erreichbar ist werden Kernel Version und Uptime abgefragt und lokal gespeichert
 	 *
 	 */
 	function server_ping()
@@ -651,7 +656,8 @@ class OperationCenter
 		
 	/*****************************************************************************
 	 *
-	 * Die Ergebnisse des Server Pings als String ausgeben
+	 * Die Ergebnisse des Server Pings mit  RemoteAccess_GetServerConfig werden als String ausgeben
+     * der String wird zB im Status textfile verwendet.
 	 *
 	 *******************************************************************************/	
 		
@@ -876,7 +882,7 @@ class OperationCenter
 
 	/*************************************************************************************************************
 	 *
-	 * writeSysPingResults() , in Textform die Ergebnisse des Befehls SysPingAllDevices ausgeben
+	 * writeSysPingResults() , in Textform die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
 	 *
 	 * es werden die Dateneintraege analysiert und ausgegeben
 	 *   Erreichbarkeit IPCams
@@ -1012,14 +1018,21 @@ class OperationCenter
 	 function SystemInfo($debug=false)
 	 	{
 
-		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
-		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-		$ExternalIP			= CreateVariableByName($this->categoryId_SysInfo, "ExternalIP", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-		$UptimeID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_UpTime", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
-		$VersionID			= CreateVariableByName($this->categoryId_SysInfo, "IPS_Version", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$HostnameID   		= IPS_GetObjectIdByName("Hostname", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+		$SystemNameID		= IPS_GetObjectIdByName("Betriebssystemname", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
+		$SystemVersionID	= IPS_GetObjectIdByName("Betriebssystemversion", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$HotfixID			= IPS_GetObjectIdByName("Hotfix", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$MemoryID			= IPS_GetObjectIdByName("Memory", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+
+		$ExternalIP			= IPS_GetObjectIdByName("ExternalIP", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 		
+		$UptimeID			= IPS_GetObjectIdByName("IPS_UpTime", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		$VersionID			= IPS_GetObjectIdByName("IPS_Version", $this->categoryId_SysInfo); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+		
+        /* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
+
+        $ipTableHtml        = IPS_GetObjectIdByName("TabelleGeraeteImNetzwerk", $this->categoryId_SysInfo); // ipTable am Schluss anlegen
+
 		$result=array();	/* fuer Zwischenberechnungen */
 		$results=array();
 		$results2=array();
@@ -1042,16 +1055,17 @@ class OperationCenter
 					$VarField=trim(substr($line,$pos1+1));
 					$result[1]="";$result[2]="";$result[3]="";
 					$result=explode(":",$line);
-					$results[trim($result[0])]=trim($result[1]);
-					for ($i=2; $i<sizeof($result); $i++) { $results[trim($result[0])].=":".trim($result[$i]);  }
+					$results[$this->renameIndex($result[0])]=trim($result[1]);
+					
+					for ($i=2; $i<sizeof($result); $i++) { $results[$this->renameIndex($result[0])].=":".trim($result[$i]);  }
 					$results2[$VarName]=$VarField;
 					$PrintSI.="\n".$line;
 					}
 				else
 					{
-					/* Fortsetzung der Paraemeter Ausgabe */
+					/* Fortsetzung der Parameter Ausgabe, zurückgegeben wird results */
 					$PrintSI.=" ".trim($line);
-					$results[trim($result[0])].=" ".trim($line);
+					$results[$this->renameIndex($result[0])].=" ".trim($line);
 					$results2[$VarName].=" ".trim($line);
 					}
 				}  /* ende strlen */
@@ -1080,9 +1094,40 @@ class OperationCenter
 		SetValue($HotfixID,trim(substr($results["Hotfix(es)"],0,strpos($results["Hotfix(es)"]," "))));
 		SetValue($UptimeID,$ServerUptime);
 		SetValue($VersionID,$ServerVersion);
+		SetValue($MemoryID,$results["Verfuegbarer physischer Speicher"]." von ".$results["Gesamter physischer Speicher"]." verfuegbar. ".$results["Virtueller Arbeitsspeicher"]." Virtualisiert.");
+
+        /* ipTable noch zusaetlich beschreiben */
+
+        $macTable=$this->get_macipdnsTable();
+
+		$collumns=["index","IP","DNSname","Shortname","IP_Adresse","Hostname"];
+		$str=$this->writeIpTable($macTable,$collumns);
+        SetValue($ipTableHtml,$str);
+
+
 						
 		return $results;
 		}	
+
+	 function renameIndex($origIndex)
+	 	{
+		$index=trim($origIndex);
+		//echo "    $index\n";
+		$words=explode(" ",$index);
+		if ( (isset($words[2])) && ($words[2]=="Speicher"))
+			{
+			if (strpos($words[0],"Verf")===0) 
+				{
+				$index="Verfuegbarer physischer Speicher";
+				//echo "  --> verfügbar gefunden \n";
+				}
+			//print_r($words);
+			}
+		
+		
+		return ($index);
+		}
+
 	
 	/*******************
 	 *
@@ -1101,6 +1146,7 @@ class OperationCenter
 		switch ($Version[2])
 			{
 			/* siehe wikipedia Eintrag : https://en.wikipedia.org/wiki/Windows_10_version_history für die Uebersetzung der PC Versionen */
+			/* 18 Monate Support. d.h. max 3 Versionen kann man hinten sein */
 			case "10240": $Codename="RTM (Threshold 1)"; break;
 			case "10586": $Codename="November Update (Threshold 2)"; break;
 			case "14393": $Codename="Anniversary Update (Redstone 1)"; break;
@@ -1108,6 +1154,7 @@ class OperationCenter
 			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
 			case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
 			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			
+			case "18362": $Codename="May 2019 Update (19H1)"; break;
 			default: $Codename=$Version[2];break;
 			}			
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1190,12 +1237,20 @@ class OperationCenter
 			}
 		}
 
-/****************************************************************************************************************/
+/***************************************************************************************************************
+ *
+ * Block im OperationCenter der MAC ADressen, IP Adressen und DomainNames behandelt
+ *
+ *
+ *
+ */
 
 	/**
 	 * @public
 	 *
-	 * Initialisierung des OperationCenter Objektes
+	 * Initialisierung des OperationCenter Objektes macTable
+     *
+     * wird von construct bereits aufgerufen
 	 *
 	 */
 	function create_macipTable($subnet,$printHostnames=false)
@@ -1278,13 +1333,126 @@ class OperationCenter
 	/**
 	 * @public
 	 *
-	 * Initialisierung des OperationCenter Objektes
+	 * Auslesen des OperationCenter Objektes macTable
 	 *
 	 */
-	function get_macipTable($subnet,$printHostnames=false)
+	function get_macipTable()
 		{
 		return($this->mactable);
 		}
+
+
+	/**
+	 *
+	 * Alle IP Adressen und Domain Names herausfinden mit nslookup
+	 *
+	 */
+
+	function get_macipdnsTable()
+		{
+        $ipTable=array();
+        $macTable=array();
+        foreach ($this->mactable as $mac => $ip)
+            {
+            //echo "     ".$mac."   ".$ip."   \n";
+            unset($catch);
+            $ergebnis=array();
+            exec('nslookup '.$ip,$catch);
+            foreach ($catch as $entry)
+                {
+                $entries=explode(":",$entry);
+                if (sizeof($entries)>1)
+                    {
+                    $ergebnis[$entries[0]]=$entries[1];
+                    }
+                }
+            //print_r($ergebnis);
+            //print_r($entries);
+            //print_r($catch);
+
+            $macAdresse=strtoupper($mac);
+            if (isset($ergebnis["Name"]) )
+                {
+                $ipAdresse=trim($ergebnis["Address"]);
+                $ipName=trim($ergebnis["Name"]);
+                
+                $ipTable[$ipAdresse]["DNSname"]=$ipName;
+                $ipTable[$ipAdresse]["MAC"]=$macAdresse;
+                
+                $macTable[$macAdresse]["IP"]=$ipAdresse;
+                $macTable[$macAdresse]["DNSname"]=$ipName;
+                }
+            else 
+                {
+                $ipTable[$ip]["MAC"]=$macAdresse;
+                $macTable[$macAdresse]["IP"]=$ip;
+                }	
+            }
+			
+        //print_r($ipTable);
+
+        $addIPtable=1;			/* 0 HostNamen Tabelle nicht dazunehmen 1 für bekannte MAC Adressen 2 für alle MAC Adressen */
+        if ($addIPtable>0)
+            {
+            $ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeine Definitionen */
+            foreach ($ipadressen as $shortname => $ipadresse)
+                {
+                $macAdresse=strtoupper($ipadresse["Mac_Adresse"]);
+                if ( (isset($macTable[$macAdresse])) && ($addIPtable<2) )
+                    {
+                    $macTable[$macAdresse]["Shortname"]=$shortname;
+                    $macTable[$macAdresse]["IP_Adresse"]=$ipadresse["IP_Adresse"];
+                    $macTable[$macAdresse]["Hostname"]=$ipadresse["Hostname"];
+                    }
+                }
+            //print_r($ipadressen);
+            //print_r($macTable);
+            }
+
+        ksort($macTable);
+	
+        return($macTable);
+		}
+
+	/**
+	 *
+	 * Alle IP Adressen als html Tabelle ausgeben, returns string
+	 * nutzt mactable variable
+	 */
+
+    function writeIpTable($macTable,$collumns) 
+        {
+		$str = "<table width='90%' align='center'>"; 
+		$head=true;
+		foreach ($macTable as $mac => $Line) 
+			{
+			if ($head)
+				{
+				$str.="<tr>";	
+				foreach ($collumns as $j => $entry)
+					{
+					//echo $this->collumns[$j]."  ";
+					$str.="<td><b>".$entry.'</b></td>';
+					}
+				$head=false;
+				$str.='</tr>';	
+				}			
+			//echo "\n";		
+			$str.="<tr>";	
+			foreach ($collumns as $j => $entry)
+				{
+				//print_r($Line);
+				if ( isset($Line[$entry]) )	$str.="<td>".$Line[$entry].'</td>';
+				elseif ($entry=="index") $str.="<td>".$mac.'</td>';
+				else $str.='<td></td>';
+				}
+			$str.='</tr>';	
+			//echo "\n";	
+			} 
+		$str.='</table>';
+        
+        return ($str);
+        }
 
 	/**
 	 * @public
@@ -1293,8 +1461,8 @@ class OperationCenter
 	 *
 	 */
 	function find_HostNames()
-	   {
-	   $ergebnis="";
+		{
+		$ergebnis="";
 		$ipadressen=LogAlles_Hostnames();   /* lange Liste in Allgemeinde Definitionen */
 		$manufacturers=LogAlles_Manufacturers();   /* lange Liste in Config */
 		foreach ($this->mactable as $mac => $ip )
@@ -1321,7 +1489,7 @@ class OperationCenter
 /****************************************************************************************************************/
 
 	/**
-	 * sZusammenfassung der ActionButtons der class OperationCenter
+	 * Zusammenfassung der ActionButtons der class OperationCenter
 	 *
 	 * derzeit sind es die ActionButtons der SNMP Router Erfassung
 	 *
@@ -1352,7 +1520,7 @@ class OperationCenter
 								{	
 								$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);				// FastPoll Kategorie anlegen
 								$SchalterFastPoll_ID=@IPS_GetObjectIDByName("SNMP Fast Poll",$fastPollId);		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-								$actionButton[$SchalterFastPoll_ID]["ActivateTimer"]=true;
+								$actionButton[$SchalterFastPoll_ID]["OperationCenter"]["ActivateTimer"]=true;
 								}
 	                    	break;
 						}          // ende switch
@@ -1408,7 +1576,7 @@ class OperationCenter
 				$summe += $MBytes;
 				}
 			echo "Summe   ".$summe."\n";
-   		if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$router_categoryId))==false)
+   			if (($ByteID=@IPS_GetVariableIDByName("MBytes_All",$router_categoryId))==false)
      			{
 			  	$ByteID = CreateVariableByName($router_categoryId, "MBytes_All", 2);
 				IPS_SetVariableCustomProfile($ByteID,'MByte');
@@ -1649,10 +1817,10 @@ class OperationCenter
 	 *
 	 */
 
-	function read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug=false)
+	function read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug=false, $useSnmpLib=false)
 		{
 		/* Interface Nummer 4,5,8   4 ist der Uplink */
-        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug, $useSnmpLib);
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
@@ -1662,10 +1830,10 @@ class OperationCenter
         $snmp->update(false,"eth0_ifInOctets","eth0_ifOutOctets"); /* Parameter false damit Werte geschrieben werden und die beiden anderen Parameter geben an welcher Wert für download und upload verwendet wird */
 		}
 
-	function read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug=false)
+	function read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug=false, $useSnmpLib=false)
 		{
 		/* Interface Nummer 4,6,15   4 ist der Uplink, 6 ist eth2 und Lankabel steckt auf Ethernet LAN Port 1 */
-        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+        $snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug, $useSnmpLib);
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");		// Uplink, WAN Port
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.5", "eth1_ifInOctets", "Counter32");		// Video or Ethernet
         $snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.6", "eth2_ifInOctets", "Counter32");		// Ethernet
@@ -1816,7 +1984,7 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$result=IPS_GetChildrenIDs($router_categoryId);
-		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		echo "get_routerdata:Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		$result1=array();
 		foreach($result as $oid)
 			{
@@ -1846,14 +2014,19 @@ class OperationCenter
 		}
 
 	/*
-	 *  Routerdaten Synology RT1900ac direct als SNMP Werte aus dem Router auslesen,
+	 * Routerdaten Synology RT1900ac/RT2600ac direct als SNMP Werte aus dem Router auslesen,
 	 *
-	 *  mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
+	 * mit actual wird definiert ob als return Wert die Gesamtwerte von heute oder gestern ausgegeben werden sollen
 	 *
-	 *  derzeit gibt es keinen aktuellen Wert, da der immer vorher mit SNMP Aufrufen ausgelesen werden muesste
-	 *  es fehlt SNMP Aufruf ohne logging !!!
+	 * derzeit gibt es keinen aktuellen Wert, da der immer vorher mit SNMP Aufrufen ausgelesen werden muesste
+	 * es fehlt SNMP Aufruf ohne logging. Wird in der Aufrufroutine gemacht.
 	 *
 	 * Variablennamen in der Category sind kodiert und mit _ getrennt. Der erste Teil ist der Name des Ports und der letzte der Status
+	 *
+	 * Routine legt auch die Kategorie für den Router automatisch in data von OperationCenter an: Router_<RouterName>
+	 * es werden alle Objekte in der Kategorie ausgelesen und geprüft ob sie gelogged werden 
+	 * Ausgewertet werden sie dann wenn sie ein eth0, ein _ und ein chg im Namen haben. In und Out werden zusammengezählt.
+	 * Zusätzlich werden die Archivdaten von Total ausgegeben
 	 *
 	 */
 
@@ -1869,51 +2042,69 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$result=IPS_GetChildrenIDs($router_categoryId);
-		echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
-		foreach($result as $oid)
-			{
-			$analyze=@AC_GetLoggingStatus($this->archiveHandlerID,$oid);
-			echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
-			if ($analyze)
-				{
-				$name=explode("_",IPS_GetName($oid));
-				if ($name[sizeof($name)-1]=="chg")
-					{
-					if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
-		            	{
-			         	$ergebnis+=GetValue($oid)/1024/1024;
-			         	}
-	            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
-			   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-			   		foreach ($werte as $wert)
-		   		   		{
-		   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
-		   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
-		   	   			}
-					}
-		      	if (IPS_GetName($oid)=="Total")
-		      		{
-	            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
-			   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-			   		foreach ($werte as $wert)
-		   		   		{
-		   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
-		   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
-		   	   			}
-					}
-		   		}
-		   	}
+		echo "get_roterdata_RT1900: Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		if ($actual==false)
-		   {
-			return ($ergebnis);
-		   }
+			{
+			foreach($result as $oid)
+				{
+				$analyze=@AC_GetLoggingStatus($this->archiveHandlerID,$oid);
+				//echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
+				if ($analyze)
+					{
+					$name=explode("_",IPS_GetName($oid));
+					if ($name[sizeof($name)-1]=="chg")
+						{
+						if ($name["0"]=="eth0") /* In und out von eth0 zusammenzaehlen */
+			            	{
+				         	$ergebnis+=GetValue($oid)/1024/1024;
+			            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+					   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+					   		foreach ($werte as $wert)
+				   		   		{
+				   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+				   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]/1024/1024),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60/1024),2)." kBytes/Sek  \n";
+				   	   			}
+				         	}
+						}
+			      	if (IPS_GetName($oid)=="Total")
+			      		{
+		            	$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000);
+				   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+				   		foreach ($werte as $wert)
+			   		   		{
+			   		   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+			   		   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."  ".round(($wert["Value"]),2)."Mbyte bzw. ".round(($wert["Value"]/24/60/60*1024),2)." kBytes/Sek  \n";
+			   	   			}
+						}
+			   		}	// ende analyze
+			   	}	// ende foreach
+
+			echo "      Historischen Wert von gestern ausgeben, eth0 In und Out sind zusammgezählt : ".$ergebnis."\n";
+			}
+		else
+			{
+			$host          = $router["IPADRESSE"];
+			$community     = "public";                                                                         // SNMP Community
+			$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+			$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
+			$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
+			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.16.4", "eth0_ifOutOctets", "Counter32");
+			$result=$snmp->update(true);  /* kein Logging */
+			foreach ($result as $object)
+				{
+				$ergebnis+=$object->change;
+				}
+			echo "      Aktuellen Wert von heute ausgeben, eth0 In und Out sind zusammgezählt : ".$ergebnis."\n";
+			}
+		return (round($ergebnis,2));
 		}
 
 
 	/*
 	 *  Routerdaten MR3420 aus dem datenobjekt statt direct aus dem Router auslesen,
 	 *
-	 *  Routine obsolet durch get_router_history
+	 *  Routine obsolet, wird durch get_router_history ersetzt
 	 *
 	 */
 
@@ -1950,8 +2141,8 @@ class OperationCenter
 		}
 
 	/*
-	 *  Routerdaten direct aus dem Archiv auslesen,
-	 *
+	 * Routerdaten direct aus dem Archiv auslesen
+	 * nimmt die Router Kategorie und sucht nach einer archivierten Variable Total
 	 *
 	 */
 
@@ -1965,14 +2156,14 @@ class OperationCenter
 			IPS_SetParent($router_categoryId,$this->CategoryIdData);
 			}
 		$result=IPS_GetChildrenIDs($router_categoryId);
-		//echo "Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
+		echo "get_router_history:Routerdaten liegen in der Kategorie \"Router_".$router['NAME']."\" unter der OID: ".$router_categoryId." \n";
 		$ergebnisPrint="";
 		$ergebnis=0;
 		$dateOld="";
 		foreach($result as $oid)
 		   	{
 			$analyze=@AC_GetLoggingStatus($this->archiveHandlerID,$oid);
-			echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
+			//echo "   Analysiere $oid (".IPS_GetName($oid).")  : ".($analyze?"Ja":"Nein")."\n";
 			if ($analyze)
 		      	{
 		      	if (IPS_GetName($oid)=="Total")
@@ -1996,7 +2187,7 @@ class OperationCenter
 					}
 		   		}
 		   }
-		//echo $ergebnisPrint;
+		echo $ergebnisPrint;
 		return round($ergebnis,2);
 		}
 
@@ -2063,113 +2254,6 @@ class OperationCenter
 		}
 
 
-	/*
-	 *  Die oft umfangreichen Files in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
-	 *	 werden kann. 
-	 *   Verzeichnis: Ort der Dateien, days: wieviele Tage zurück werden Dateien erst zusammengeräumt, StatusID : OID in der der Zeitstempel der letzten Datei gespeichert wird.
-	 *    
-	 *  kann für CamFTP Files als auch für Logs verwendet werden.
-	 */
-
-	function MoveFiles($verzeichnis="",$days=2,$statusID=0)
-		{
-		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
-		echo "MoveFiles: Alle Files von ".$verzeichnis." in eigene Verzeichnisse pro Tag verschieben.";
-
-			$count=100;
-			//echo "<ol>";
-
-			//echo "Heute      : ".date("Ymd", time())."\n";
-			//echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-			//echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
-			$vorgestern = date("Ymd", strtotime("-".$days." day"));
-			$moveTime=strtotime("-".$days." day");
-			echo " Dateien behalten bis ".$vorgestern."\n";
-
-			// Test, ob ein Verzeichnis angegeben wurde
-			if ( is_dir ( $verzeichnis ) )
-				{
-				// öffnen des Verzeichnisses
-				if ( $handle = opendir($verzeichnis) )
-					{
-					/* einlesen der Verzeichnisses
-					   nur count mal Eintraege
-					*/
-					while ((($file = readdir($handle)) !== false) and ($count > 0))
-						{
-						if ( ($file != ".") && ($file != "..") )
-							{
-							$dateityp=filetype( $verzeichnis.$file );
-							if ($dateityp == "file")
-								{
-								$fileTime=filectime($verzeichnis.$file);
-								$unterverzeichnis=date("Ymd", $fileTime);
-								$letztesfotodatumzeit=date("d.m.Y H:i", $fileTime);   // anderes Format fuer Status
-								if ($fileTime <= $moveTime)
-									{
-									$count-=1;
-									if (is_dir($verzeichnis.$unterverzeichnis))
-										{
-										}
-									else
-										{
-										mkdir($verzeichnis.$unterverzeichnis);
-										}
-									rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
-									echo "  Datei: ".$verzeichnis.$file." auf ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
-									if ($statusID != 0) SetValue($statusID,$letztesfotodatumzeit);
-									}
-								}
-							}	
-						} /* Ende while */
-					closedir($handle);
-					} /* end if dir */
-				}/* ende if isdir */
-			else
-				{
-				echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
-				}
-		return (100-$count);
-		}
-
-	/*
-	 *  Die oft umfangreichen Fotos der Webcams in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
-	 *	 werden kann. Es werden die selben Move Operationen wie bei Logs verwendet.
-	 *
-	 */
-
-	function MoveCamFiles($cam_config)
-		{
-		$count=0;
-		$cam_name=$cam_config['CAMNAME'];		
-		$verzeichnis = $cam_config['FTPFOLDER'];
-		$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
-		if ($cam_categoryId==false)
-			{
-			$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-			IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-			IPS_SetParent($cam_categoryId,$this->CategoryIdData);
-			}
-		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
-		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-		$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
-
-		$count=$this->MoveFiles($verzeichnis,0,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
-		$PhotoCountID = CreateVariableByName($this->CategoryIdData, "Webcam_PhotoCount", 1);
-		SetValue($PhotoCountID,GetValue($PhotoCountID)+$count);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */
-		SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
-		if ($count>0)
-			{
-			SetValue($WebCam_MotionID,true);
-			}
-		else
-			{
-			SetValue($WebCam_MotionID,false);
-			}
-		echo "    Anzahl verschobener Fotos für ".$cam_name." : ".$count."\n";
-		return ($count);
-		}
-
 	/******************************
 	 *
 	 * es werden Snapshots pro Kamera erstellt, muss in IPSCam eingeschaltet sein
@@ -2195,7 +2279,7 @@ class OperationCenter
 		$picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
 		$picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
 		echo "Bilderverzeichnis der Kameras, Quellverzeichnis : ".$camVerzeichnis."   Zielverzeichnis : ".$picVerzeichnisFull."\n";
-		if ( is_dir ( $picVerzeichnisFull ) == false ) mkdirtree($picVerzeichnisFull);
+		if ( is_dir ( $picVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($picVerzeichnisFull);
 
 		echo "\n---------------------------------------------------------\n";
 		$anzahl=sizeof($camConfig);
@@ -2311,88 +2395,90 @@ class OperationCenter
 			$imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
 			$imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
 			//echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
-			if ( is_dir ( $imgVerzeichnisFull ) == false ) mkdirtree($imgVerzeichnisFull);
+			if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
 		
 			$picdir=$this->readdirToArray($verzeichnis,false,-500);
-			/* Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
-			$size=sizeof($picdir);
-			$j=0;$k=0;
-			$logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
-			for ($i=0;$i<$size;$i++)
+			if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
 				{
-				if ($debug) echo "   ".$picdir[$i];
-				$path_parts = pathinfo($picdir[$i]);
-				if ($path_parts['extension']=="jpg")
+				/* Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
+				$size=sizeof($picdir);
+				$j=0;$k=0;
+				$logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
+				for ($i=0;$i<$size;$i++)
 					{
-					//echo "       Dirname: ".$path_parts['dirname'], "\n";
-					//echo "       Basename: ".$path_parts['basename'], "\n";
-					//echo "       Extension: ".$path_parts['extension'], "\n";
-					//echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
-					if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; if ($debug) echo "  *"; };
-					$k++;		// eigener Index, da manche Files übersprungen werden
-					} 
-				if ($debug) echo "\n";
-				}
-			echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
-			echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-			//print_r($logdir);	
-			$check=array();
-			$handle=opendir ($imgVerzeichnisFull);
-			while ( false !== ($datei = readdir ($handle)) )
-				{
-				if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
-					{
-					$check[$datei]=true;
+					if ($debug) echo "   ".$picdir[$i];
+					$path_parts = pathinfo($picdir[$i]);
+					if ($path_parts['extension']=="jpg")
+						{
+						//echo "       Dirname: ".$path_parts['dirname'], "\n";
+						//echo "       Basename: ".$path_parts['basename'], "\n";
+						//echo "       Extension: ".$path_parts['extension'], "\n";
+						//echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
+						if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; if ($debug) echo "  *"; };
+						$k++;		// eigener Index, da manche Files übersprungen werden
+						} 
+					if ($debug) echo "\n";
 					}
-				}
-			closedir($handle);
-			/* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
-			$c=0;
-			foreach ($logdir as $filename)
-				{
-				if ( isset($check[$filename]) == true )
+				echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
+				echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
+				//print_r($logdir);	
+				$check=array();
+				$handle=opendir ($imgVerzeichnisFull);
+				while ( false !== ($datei = readdir ($handle)) )
 					{
-					$check[$filename]=false;
-					if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+					if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
+						{
+						$check[$datei]=true;
+						}
 					}
-				else
-					{	
-					echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
-					copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
-					$c++;
-					}
-				}		
-			if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
-			$i=0; $d=0;
-			foreach ($check as $filename => $delete)
-				{
-				if ($delete == true)
+				closedir($handle);
+				/* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
+				$c=0;
+				foreach ($logdir as $filename)
 					{
-					if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
-					unlink($imgVerzeichnisFull.$filename);
-					$d++;
-					}
-				else
+					if ( isset($check[$filename]) == true )
+						{
+						$check[$filename]=false;
+						if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+						}
+					else
+						{	
+						echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
+						copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
+						$c++;
+						}
+					}		
+				if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
+				$i=0; $d=0;
+				foreach ($check as $filename => $delete)
 					{
-					if ($debug) echo "   ".$filename."\n";
-					$i++;		
+					if ($delete == true)
+						{
+						if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
+						unlink($imgVerzeichnisFull.$filename);
+						$d++;
+						}
+					else
+						{
+						if ($debug) echo "   ".$filename."\n";
+						$i++;		
+						}	
 					}	
-				}	
-			echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
-
-			$end=sizeof($logdir);
-			if ($end>100) $end=100;		
-			for ($j=1; $j<$end;$j++)
-				{
-				if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td> </tr>'; }
-				elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
-				else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
+				echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
+	
+				$end=sizeof($logdir);
+				if ($end>100) $end=100;		
+				for ($j=1; $j<$end;$j++)
+					{
+					if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td> </tr>'; }
+					elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
+					else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
+					}
+	
+				$box.='</table>';
+				SetValue($pictureFieldID,$box);
+				//echo $box;		
 				}
-
-			$box.='</table>';
-			SetValue($pictureFieldID,$box);
-			//echo $box;		
-		
 			}
 		}	
 						
@@ -2430,8 +2516,9 @@ class OperationCenter
 	function DirLogs($verzeichnis="")
 		{
 		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';
-		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
+		$verzeichnis = $this->dosOps->correctDirName($verzeichnis);			// sicherstellen das ein Slash oder Backslah am Ende ist
 
+		echo "DirLogs: Verzeichnis der Logfiles von ".$verzeichnis.".\n";
 		$print=0;
 		$dir=0; $totalsize=0; $warning=false;
 
@@ -2446,8 +2533,9 @@ class OperationCenter
 				{
 				if (is_dir($verzeichnis.$entry)==true) 
 					{
-					echo "  ".$index."  Directory  ".$entry."\n";;
-					$size=sizeof($entry);	
+					echo "  ".$index."  Directory  ".$entry."\n";
+					$entries=$this->readdirToArray($verzeichnis.$entry);
+					$size=sizeof($entries);	
 					$dir++;
 					$totalsize+=$size;							
 					}
@@ -2476,6 +2564,16 @@ class OperationCenter
 			}
 		return($dir);		
 		}
+
+/*
+	function correctDirName($verzeichnis)
+		{
+		$len=strlen($verzeichnis); $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");
+		if ( ($pos1) && ($pos1<($len-1)) ) $verzeichnis .= "\\";
+		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
+		return ($verzeichnis);
+		}
+*/
 
 	/*
 	 *  Die in einem Ordner pro Tag zusammengefassten Logfiles loeschen.
@@ -2534,7 +2632,7 @@ class OperationCenter
 			for ($i=0;$i<($count-$remain);$i++)
 				{
 				echo "    Loeschen von Verzeichnis ".$dir[$i]."\n";
-				$this->rrmdir($dir[$i]);
+				$this->dosOps->rrmdir($dir[$i]);
 				}
     		return ($count-$remain);
 			} 	
@@ -2563,9 +2661,9 @@ class OperationCenter
 						{
 						if ($recursive)
 							{ 
-							echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
+							//echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
 							$result[$value]=$this->dirToArray($dir . DIRECTORY_SEPARATOR . $value);
-							echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
+							//echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
 							}
 						else $result[] = $value;
 						//$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
@@ -2577,6 +2675,7 @@ class OperationCenter
 					}
 				} // ende foreach
 			} // ende isdir
+		else return (false);
 		if ($newest != 0)
 			{
 			if ($newest<0) 
@@ -2592,24 +2691,30 @@ class OperationCenter
 		return $result;
 		}		
 
-	/* ein Verzeichnis rekursiv loeschen */
-
-	private function rrmdir($dir) 
+	/* Routine fürs rekursive aufrufen in readdirtoarray */
+	
+	private function dirToArray($dir)
 		{
-		if (is_dir($dir)) 
+	   	$result = array();
+	
+		$cdir = scandir($dir);
+		foreach ($cdir as $key => $value)
 			{
-			$objects = scandir($dir);
-			foreach ($objects as $object) 
+			if (!in_array($value,array(".","..")))
 				{
-				if ($object != "." && $object != "..") 
-					{
-					if (filetype($dir."/".$object) == "dir") $this->rrmdir($dir."/".$object); else unlink($dir."/".$object);
-					}
-				}
-			reset($objects);
-			rmdir($dir);
-			}
-		} 
+				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+	         		{
+					$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+	         		}
+	         	else
+	         		{
+	            	$result[] = $value;
+	         		}
+	      		}
+	   		}
+		return $result;
+		}
+ 
 
 	/***************************************************
 	 *
@@ -2625,7 +2730,7 @@ class OperationCenter
 		print_r($this->oc_Setup);
 		$DIR_copyscriptsdropbox = $this->oc_Setup['DropboxDirectory'].IPS_GetName(0).'/';
 
-		mkdirtree($DIR_copyscriptsdropbox);
+		$this->dosOps->mkdirtree($DIR_copyscriptsdropbox);
 
 		$count=0;
 
@@ -2702,7 +2807,7 @@ class OperationCenter
 		print_r($this->oc_Setup);
 		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
 
-		mkdirtree($DIR_copystatusdropbox);
+		$this->dosOps->mkdirtree($DIR_copystatusdropbox);
 
 		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
 			"\n\n************************************************************************************************************************\n";
@@ -2744,10 +2849,14 @@ class OperationCenter
 		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';	
 		echo $DIR_copystatusdropbox."\n";   
 	   	$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
-		rsort($statusdir);
-		print_r($statusdir);
-		$size=sizeof($statusdir);
-		return($size);
+		if ($statusdir !== false)	// Verzeichnis vorhanden
+			{		
+			rsort($statusdir);
+			print_r($statusdir);
+			$size=sizeof($statusdir);
+			return($size);
+			}
+		else return (false);
 		}
 	
 	/*
@@ -2767,17 +2876,20 @@ class OperationCenter
 				{
 				$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
 	   			$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
-				rsort($statusdir);
-				$i=0; 			   
-				foreach ($statusdir as $index => $name)
+				if ($statusdir !== false)	// Verzeichnis vorhanden
 					{
-					if ($i > $this->oc_Setup['DropboxStatusMaxFileCount'])
-						{	/* delete File */
-						echo "delete File :".$DIR_copystatusdropbox.$name."\n";
-						unlink($DIR_copystatusdropbox.$name);
-						$delete++;
+					rsort($statusdir);
+					$i=0; 			   
+					foreach ($statusdir as $index => $name)
+						{
+						if ($i > $this->oc_Setup['DropboxStatusMaxFileCount'])
+							{	/* delete File */
+							echo "delete File :".$DIR_copystatusdropbox.$name."\n";
+							unlink($DIR_copystatusdropbox.$name);
+							$delete++;
+							}
+						$i++;	
 						}
-					$i++;	
 					}
 				}
 			}
@@ -2931,6 +3043,1780 @@ class OperationCenter
 		
 			
 	}  /* ende class OperationCenter*/
+
+/********************************************************************************************************
+ *
+ * BackupIpsymcon of OperationCenter
+ * ================================= 
+ *
+ * extends OperationCenter because it is using same config file
+ *
+ * uses two different files backup.csv and summaryofbackup.csv
+ * backup.csv is the file inventory of the full Backup Drive
+ * summaryofbackup.csv combines summary of backup.csv with information about the status of the real backups
+ * name.backup.csv is the individual file inventory of a single backup and is only created if the backup was successfull
+ *    name is the name of the directory
+ *
+ * Backup wird mit start_backup(full|increment) aufgerufen
+ *
+ *
+ *  __construct
+ *
+ *  Servicefunktionen, encapsulation
+ *
+ *  getActive, getBackupDrive, getSourceDrive, getBackupSwitch, getBackupSwitchId,  
+ *  getOverwriteBackupId, getBackupActionSwitchId, getBackupStatus, setBackupStatus 
+ *  getConfigurationStatus, setConfigurationStatus
+ *  getMode, setExecTime, setTableStatus
+ *  checkToken, cleanToken, get_ActionButton
+ *  startBackup, startBackupIncrement, stoppBackup
+ *  configBackup
+ *
+ *  Backup Funktion, Files kopieren
+ *  ------------------------------------
+ *  backupDirs, backupDir, copyFile
+ *
+ *  Support functions for Backup, Verzeichnisse mit Properties einlesen
+ *  -------------------------------------------------------------------
+ *  readBackupDir, readSourceDir, readSourceDirs, readFileProps
+ *
+ *  Statemachines for support IPS_GetFunctions
+ *  -------------------------------------------
+ *  getBackupDirectoryStatus        Statemachine to reload Backup.csv
+ *
+ *  getBackupDirectorySummaryStatus
+ *
+ *  getBackupDirectories, getBackupLogTable     Verzeichnisse und Backups (anhand logs) identifizieren
+ *
+ *  readBackupDirectorySummaryStatus
+ *
+ *  writeTableStatus                den Status des Backup Moduls in einen html table schreiben
+ *  pathXinfo
+ *
+ **************************************************************************************************************************/
+
+class BackupIpsymcon extends OperationCenter
+	{
+	var $dosOps, $fileOps;                                                           /* genutzte Objekte/Klassen */
+
+    var $BackupDrive, $SourceDrive;                                         /* Verzeichnisse für Backup Ort und Quelle */
+    var $backupActive;        								                /* Backup Aktiv Status */
+	var $categoryId_BackupFunction;                                          /* Datenspeicherorte */
+    var $StatusSchalterBackupID, $StatusSchalterActionBackupID;				/* Schalter für Steuerung von Backup */
+	var $StatusBackupID, $ConfigurationBackupID;                             /* Status und Configuration */ 
+    var $StatusSchalterOverwriteBackupID;                                    /* Besondere Einstellungen für Backup */ 
+    var $TokenBackupID, $ErrorBackupID;                                     /* Token und Error dafür */
+    var $ExecTimeBackupId, $TableStatusBackupId;                            /* Durchlaufzeit zuletzt anzeigen und eine fette Tabelle mit allerlei Nutzvollem */
+	
+	var $BackOverviewTable = array();										/* alle statistischen Daten über die Backups nach dem Auslesen
+
+	
+    /***********************************************************************
+    *
+    * Backup Configuration analysieren 
+    *
+    * zuerst die Konfiguration einlesen und herausfinden ob aktiviert und das Backupdrive herausfinden 
+    * dann das Backupdrive einlesen:
+    *
+    *   es gibt pro Backup ein Laufwerk mit dem Datum, d.h.nur ein Backup pro Tag
+    *	sobald das Backup fertiggestellt wurde, wird zusaetzlich ein File erstellt mit dem letzten Logfile	
+    *   Name File ist Name des Verzeichnis plus _ plus full oder increment.backup.csv
+    *
+    * es werden pro Vorgang maximal x Dateien für das Backup verarbeitet. Bei 1000 Dateien kann beim ersten Mal ein Timeout ueberschritten werden.
+    *
+    */
+
+	public function __construct($subnet='10.255.255.255')
+		{
+        //echo "Construct Parent class OperationCenter.\n";   
+        parent::__construct($subnet);                       // sonst sind die Config Variablen noch nicht eingelesen
+
+        //echo "Construct BackupIpSymcon.\n";
+
+        $oc_setup=$this->getSetup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        //print_r($oc_setup)
+        if (isset($oc_setup["BACKUP"])) 
+            {
+            //echo "Construct BackupIpSymcon. Backup aktiv. Config now in Setup available.\n";
+            $this->backupActive=true;
+            if (isset($oc_setup["BACKUP"]["Directory"])) 
+                {
+                $this->BackupDrive=$oc_setup["BACKUP"]["Directory"];      /* ein eventuelle fehlendes Backslash am Ende wird später automatisch hinzugefügt */
+                }
+            else $this->BackupDrive='\Backup\IpSymcon';
+            }
+        else $this->backupActive=false;
+
+        $this->SourceDrive="C:\Ip-Symcon";
+	
+		/* Allgemeine Variablen am Webfront, oder im Data Bereich */		
+		$this->categoryId_BackupFunction	= IPS_GetObjectIdByName('Backup', $this->CategoryIdData);
+
+        /* das sind die Schalter im Webfront für die Bedienung des Backups */
+		$this->StatusSchalterBackupID		    = IPS_GetObjectIdByName("Backup-Funktion", $this->categoryId_BackupFunction);
+		$this->StatusSchalterActionBackupID     = IPS_GetObjectIdByName("Backup-Actions", $this->categoryId_BackupFunction);
+    	$this->StatusSchalterOverwriteBackupID  = IPS_GetObjectIdByName("Backup-Overwrite", $this->categoryId_BackupFunction);
+
+
+        $this->StatusBackupID				= IPS_GetObjectIdByName("Status", $this->categoryId_BackupFunction);
+		if ($this->backupActive==false) SetValue($this->StatusSchalterBackupID,0);   // keinen andern Statuzustand erlauben wenn keine Konfiguration vorhanden
+		$this->ConfigurationBackupID		= IPS_GetObjectIdByName("Configuration", $this->categoryId_BackupFunction);
+		
+        $this->TokenBackupID		        = IPS_GetObjectIdByName("Token", $this->categoryId_BackupFunction);
+		$this->ErrorBackupID                = IPS_GetObjectIdByName("LastErrorMessage", $this->categoryId_BackupFunction);
+	    $this->ExecTimeBackupId             = IPS_GetObjectIdByName("ExecTime", $this->categoryId_BackupFunction);	
+        $this->TableStatusBackupId          = IPS_GetObjectIdByName("StatusTable", $this->categoryId_BackupFunction);      /* man kann in einer tabelle alles mögliche darstellen */
+
+        $BackupDrive    = $this->dosOps->correctDirName($this->getBackupDrive());			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $this->fileOps  = new fileOps($BackupDrive."Backup.csv"); 
+        $this->dosOps   = new dosOps();
+        }
+
+    /* adressing of local variables of class */
+
+    public function getActive()
+        {
+        return ($this->backupActive);    			// das ist ein Wert für die Konfiguration im Configfile, aktiv oder disabled (true/false)
+        }
+
+    public function getBackupDrive()
+        {
+        return ($this->BackupDrive);    			// das ist ein Wert für das Backup Verzeichnis als String
+        }    
+
+    public function getSourceDrive()
+        {
+        return ($this->SourceDrive);    			// das ist ein Wert für das Quellverzeichnis für das Backup als String
+        } 
+
+    public function getBackupSwitch()			    // Button im Webfront für Ein/Aus/Auto, wird auf Aus gestellt wenn Backup nicht konfiguriert, liefert den Wert
+        {
+        return (GetValue($this->StatusSchalterBackupID));    
+        }    
+
+    /* adressing of local class variables, here are the action button Ids */
+
+    public function getBackupSwitchId()			    // Button im Webfront für Ein/Aus/Auto, nur die ID, für get_Action, dekativiert die gesamte Backup Funktion, wie ein Notaus
+        {
+        return ($this->StatusSchalterBackupID);    
+        }    
+
+    public function getOverwriteBackupId()			    // Button im Webfront für Overwrite/Keep, nur die ID, für get_Action
+        {
+        return ($this->StatusSchalterOverwriteBackupID);
+        }    
+
+    public function getBackupActionSwitchId()			// Button im Webfront für Sonderbefehle (Full/Increment/Repair, nur die ID, für get_Action
+        {
+        return ($this->StatusSchalterActionBackupID);
+        }
+
+    /* bearbeiten von lokalen class Variablen */
+
+    public function getBackupStatus()			// Statusanzeige im Webfront für Ein/Aus/Auto, wird auf Aus gestellt wenn Backup nicht konfiguriert
+        {
+        return (GetValue($this->StatusBackupID));    
+        } 
+		
+    public function setBackupStatus($string)			// Statusanzeige im Webfront für Ein/Aus/Auto, wird auf Aus gestellt wenn Backup nicht konfiguriert
+        {
+		SetValue($this->StatusBackupID,$string);
+        return ($this->StatusBackupID);    
+        } 
+
+    public function getConfigurationStatus($function="json")			// hier wird die Konfiguration für das Backup gespeichert
+        {
+        if ($function == "json") return (GetValue($this->ConfigurationBackupID));    
+        else return (json_decode(GetValue($this->ConfigurationBackupID),true));
+        } 
+		
+    public function setConfigurationStatus($string, $function="json")			// hier wird eine neue Konfiguration für das Backup gespeichert
+        {
+        if ($function == "json") 
+            {    
+    		SetValue($this->ConfigurationBackupID,$string);
+            return ($this->ConfigurationBackupID);    
+            }
+        else
+            {
+            unset ($string["checkChange"]);
+            $stringenc=json_encode($string);
+    		SetValue($this->ConfigurationBackupID,$stringenc);
+            return ($this->ConfigurationBackupID); 
+            }
+        } 
+
+    /* shall return "backup", "cleanup", "finished" */
+
+    public function getMode()			// hier wird die Konfiguration für das Backup gespeichert
+        {
+        $statusMode="finished";      // default
+        $status=$this->getConfigurationStatus("array")["status"];
+        switch ($status)
+            {
+            case "started":
+            case "maxcopy reached":
+                $statusMode="backup";
+                break;
+            case "cleanup-read":
+            case "cleanup":
+                $statusMode="cleanup";
+                break;
+            default:
+                $statusMode="finished";
+                break;
+            }
+        return ($statusMode);
+        } 
+
+
+    public function setExecTime($time)                      // Abspeichern der Executiontime
+        {
+        SetValue($this->ExecTimeBackupId,$time);
+        return ( $this->ExecTimeBackupId);      
+        }
+
+    public function setTableStatus($html)                      // Abspeichern der Statustabelle
+        {
+        SetValue($this->TableStatusBackupId,$html);
+        return ( $this->TableStatusBackupId);      
+        }
+
+    public function checkToken()			// hier wird eine neue Konfiguration für das Backup gespeichert
+        {
+		if (GetValue($this->TokenBackupID)=="busy") 
+            {
+            echo "Token found busy ".date("Y.m.d H:i:s")."\n";
+            SetValue($this->ErrorBackupID,"Token found busy ".date("Y.m.d H:i:s"));
+            return ("busy");
+            }
+        else 
+            {
+            SetValue($this->TokenBackupID,"busy");
+            return ("free");
+            }    
+        } 
+
+    public function cleanToken()			// hier wird eine neue Konfiguration für das Backup gespeichert
+        {
+        SetValue($this->TokenBackupID,"free");
+        SetValue($this->ErrorBackupID,"Token clean, repaired ".date("Y.m.d H:i:s"));        
+        } 
+
+	/**
+	 * Zusammenfassung der ActionButtons der class Backup, nicht gemeinsam mit OperationCenter
+	 *
+	 * 
+	 *
+	 */
+	
+	function get_ActionButton()
+		{	
+		$actionButton=array();
+
+		$actionButton[$this->getBackupActionSwitchId()]["Backup"]["BackupActionSwitch"]=true;
+		$actionButton[$this->getBackupSwitchId()]["Backup"]["BackupFunctionSwitch"]=true;
+        $actionButton[$this->getOverwriteBackupId()]["Backup"]["BackupOverwriteSwitch"]=true;
+
+		return($actionButton);
+		}
+
+    /* write params to echo in readable version */
+
+    function writeParams(&$params)
+        {
+        echo "Ausgesuchte Werte des Backup params Array :\n";
+        echo "  Backup Status started/finished : ".$params["status"]."\n";
+        echo "  TargetDir : ".$params["BackupTargetDir"]."\n";
+        echo "  SourceDir : ".$params["BackupSourceDir"]."\n";
+        echo "  Style full/increment : ".$params["style"]."\n";
+        echo "  Art des Updates keep/overwrite : ".$params["update"]."\n";
+        echo "  Anzahl file copies pro durchgang : ".$params["maxcopy"]."\n";
+
+        echo "  Anzahl : ".$params["count"]."\n";
+        echo "  Anzahl kopiert : ".$params["copied"]."\n";
+        echo "  Groesse : ".$params["size"]."\n";
+
+        echo "  Type : ".$params["type"]."\n";
+        echo "  Name of latest Full Backup : ".$params["full"]."\n";
+        echo "  Cleanup Status : ".$params["cleanup"]."\n";
+        echo "  Latest Filedate : ".$params["latest"]."\n";
+        echo "  BackupDrive : ".$params["BackupDrive"]."\n";
+        echo "  Groesse bei Increment : ".$params["sizeInc"]."\n";
+        echo "  Anzahl bei increment : ".$params["countInc"]."\n";
+        echo "  Groesse Target wenn fertig : ".$params["sizeTarget"]."\n";
+        echo "  Anzahl Target wenn fertig : ".$params["countTarget"]."\n";     
+        }
+
+    /* start Backup, either full or incement
+     *
+     * Backup Parameter ermitteln.
+     *   bei increment noch herausfinden, welche Backups full + increment der Absprungpunkt sind
+     */
+
+    function startBackup($mode="", $debug=false)
+        {
+        $params=$this->getConfigurationStatus("array");     // gleich ein json decoded array ausgeben
+  
+        /* Backup Verzeichnis im Backup verzeichnis ermitteln. ist der aktuelle Tag */
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $BackupVerzeichnis=date("Ymd", time());
+        $BackupToday=$BackupDrive.$BackupVerzeichnis;
+        $params["BackupTargetDirs"]=[];
+
+        /* Backup Parameter ermiteln. Bei increment muss noch zusätzlich
+         *      der Absprung Punkt definiert werden 
+         *      und der Name des Backupverzeichnisses erweitert werden damit klar ist dass increment und von wo an
+         */
+        switch ($mode)
+            {
+            case "full":
+                if ($debug) echo "startBackup : Backup mit $mode Mode angefordert. Jetzt mit Backup starten.\n";
+                $params["status"]="started";
+                $params["style"]=$mode;
+                $params["BackupTargetDir"]=$BackupToday;
+                break;
+            case "increment":
+                if ($debug) echo "startBackup : Backup mit $mode Mode angefordert. Jetzt mit Backup starten.\n";
+                $params["status"]="started";
+                $params["style"]=$mode;
+                $result=$this->startBackupIncrement($params, $debug);
+                $params["BackupTargetDir"]=$BackupToday."_".$params["style"]."_".$result["name"];
+                break;
+            default:
+                $params["status"]="started";            
+                if ($params["style"]=="full") $params["BackupTargetDir"]=$BackupToday;
+                else
+                    {
+                    $result=$this->startBackupIncrement($params, $debug);
+                    $params["BackupTargetDir"]=$BackupToday."_".$params["style"]."_".$result["name"];
+                    } 
+                break;
+            }
+        $params["size"]=0;  $params["count"]=0;
+        $this->readSourceDirs($params,$result);
+        $params["sizeTarget"]=$params["size"]; 
+        $params["countTarget"]=$params["count"];
+        $params["size"]=0;  $params["count"]=0;
+
+        $paramsJson=json_encode($params);
+        $this->setConfigurationStatus($paramsJson);
+        
+        $this->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben            
+  
+
+        }
+
+
+    /* start Increment Backup
+     * alles tun das noch zusätzlich für einen incrementellen Backup notwendig ist.
+     *
+     */
+
+    function startBackupIncrement(&$params, $debug=false)        
+        {
+        $resultfull=array();
+        $result = $this->readBackupDirectorySummaryStatus($resultfull, $debug);         // lese die Datei SummaryofBackup.csv
+        if ($debug) 
+            { 
+            echo "Letztes Backup von SummaryofBackup.csv mit gültigen Status : \n"; 
+            print_r($result);
+            }
+        foreach ($result as $entry)
+            {
+            if ($entry == "full") break;
+            }
+        $params["full"]=$entry["logFilename"];
+        $params["sizeInc"]=0;  $params["countInc"]=0;        
+        //$result=$this->pathXinfo($params["full"]); echo "Incremental Backup to ".$result["Directory"]."   ".$result["Path"]."   ".$result["PathX"]."   ".$result["Filename"]."   \n";
+        $params["checkChange"]=array();
+        if ($debug) echo "startBackupIncrement abgeschlossen.\n";
+        return($entry);
+        }
+
+    /* config Backup
+     *
+     *  ein parameter wird zur Config ($params) hinzugefügt oder upgedatet, table im html wird auch upgedatet
+     *
+     */
+
+    function configBackup($mode)
+        {
+        $paramsJson=$this->getConfigurationStatus();
+        $params=json_decode($paramsJson,true);
+  
+        //print_r($mode);
+        foreach ($mode as $param => $entry)
+            {
+            $params[$param]=$entry;
+            }
+
+        $paramsJson=json_encode($params);
+        $this->setConfigurationStatus($paramsJson);
+        
+        $this->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben            
+        return($params);
+
+        }
+
+
+    /* stopp Backup
+     *
+     *
+     */
+
+    function stoppBackup()
+        {
+        //echo "stoppBackup aufgerufen \n";
+        $params=$this->getConfigurationStatus("array");
+        $params["status"]="stopped";
+        $this->setConfigurationStatus($params,"array");
+        
+        $this->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben            
+        }
+
+
+    /*********************************************************************************************************
+    *
+    * backup copy function , grundsaetzlicher Aufruf 
+    *
+    * es wird nur params für die parameter und logs für das Ergebnis log übergeben
+    * erfolgt sowohl für Datei oder Verzeichnis mit Parameter:  quellfile/verzeichnis, Sourceverzeichnis, zielverzeichnis, log, params
+    * das quellfile/verzeichnis wird relativ angegeben, Sourceverzeichnis ist relativ, zielverzeichnis sind absolut angegeben, ohne Backupdate/verzeichnis Name
+    * das Zielverzeichnis ist das aktuelle Backupverzeichnis
+    *
+    * bei incremental Backup die Absprungbasis festlegen
+    *
+    */
+
+    function backupDirs(&$log, &$params, $debug=false)
+        {
+        /* Init */
+        $backupSourceDirs=$params["BackupDirectoriesandFiles"];
+        $params["size"]=0;  $params["count"]=0;
+        if ($params["style"]=="increment")
+            {
+            echo "backupDirs: incremental backup requested. Read ".$params["full"]."\n";
+            $count=0; $countmax=10;
+            $result=$this->pathXinfo($params["full"]);                
+            $handle1=fopen($params["full"],"r");
+            while ( !feof($handle1) ) 
+                {
+                if (($input=fgets($handle1)) === FALSE) break;      // the while loop
+                $inputArray=explode(";",$input);
+                /* if ($count++ < $countmax) echo "   ".count($inputArray)." entries : $input ";
+                elseif ($count++ == $countmax) echo "---> more lines availabel.\n";  */
+                switch (sizeof($inputArray)) 
+                    {
+                    case 0:
+                    case 1:
+                        break;
+                    case 2:
+                        $filename='.\\'.substr($inputArray[0],(strrpos($result["PathX"],'\\')+1));                    
+                        $params["checkChange"][$filename]=trim($inputArray[1]);
+                        break;
+                    case 3:
+                        $filename='.\\'.substr($inputArray[0],(strrpos($result["PathX"],'\\')+1));                    
+                        $dataArray=explode(":",$inputArray[2]);
+                        if ( ($dataArray !== false) && (count($dataArray)>2) )
+                            {
+                            switch ($dataArray[0])
+                                {
+                                case "available":
+                                case "copied":
+                                    $params["checkChange"][$filename]=trim($dataArray[2]);
+                                    break;
+                                default:
+                                    if ($count++ < $countmax) echo "   ".$inputArray[2]." \n";
+                                    elseif ($count++ == $countmax) echo "---> more lines available.\n";  
+                                    break;
+                                }
+                            }
+                        break;
+                    }
+                }
+            fclose($handle1);
+            }
+
+        /* excute */
+        foreach ($backupSourceDirs as $backupSourceDir)
+            {
+            $dir=true; $file=false;
+            $SourceVerzeichnis=$params["BackupSourceDir"].$backupSourceDir;
+            if (is_dir($SourceVerzeichnis)) 
+                {
+                if ($debug) echo "   Backup von $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."\n";
+                }
+            else 
+                {
+                if (is_file($SourceVerzeichnis)) 
+                    {
+                    if ($debug) echo "   Backup von Datei $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."\n";
+                    $dir=false; $file=true;
+                    }
+                else 
+                    {
+                    if ($debug) echo "   Verzeichnis/Datei ".$SourceVerzeichnis." nicht vorhanden. Backup nicht möglich\n";
+                    $dir=false;
+                    }
+                
+                }
+            if ( ($dir) || ($file) )
+                {
+                //echo "backupDirs: Backup von $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."\n";                    
+                $this->BackupDir($backupSourceDir,$params["BackupSourceDir"],$params["BackupTargetDir"], $log, $params, $debug);
+                }
+            }       // ende foreach
+        }
+
+    /*********************************************************************************************************
+    *
+    * recursive backup copy function , Aufruf mit Datei oder Verzeichnis, quellverzeichnis, zielverzeichnis, log, params
+    *
+    * wenn datei wird einfach nur kopiert, wenn verzeichnis muss auch im zielverzeichnis das verzeichnis angelegt werden
+    *
+    */
+
+    function backupDir($sourceDir, $backupSourceDir, $TargetVerzeichnis, &$log, &$params, $debug=false)
+        {
+        $i=0;  $imax=100;     // Notbremse, deaktiviert
+        if ( (isset($params["echo"])) === false) $params["echo"]=0;
+        //echo "backupDir: $sourceDir copied ".$params["copied"]." > ".$params["maxcopy"]."\n";
+        if ($params["copied"]>$params["maxcopy"]) 
+            {
+            $params["status"]="maxcopy reached";
+            return;
+            }
+        if (isset($params["BackupTargetDirs"][$TargetVerzeichnis])) $params["BackupTargetDirs"][$TargetVerzeichnis]++;
+        else $params["BackupTargetDirs"][$TargetVerzeichnis]=1;
+        $backupSourceDir = $this->dosOps->correctDirName($backupSourceDir);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $TargetVerzeichnis = $this->dosOps->correctDirName($TargetVerzeichnis);			// sicherstellen das ein Slash oder Backslah am Ende ist
+        //echo "Backup $sourceDir von $backupSourceDir nach $TargetVerzeichnis.\n";
+        $SourceVerzeichnis=$backupSourceDir.$sourceDir;
+        /***************************************************************************/
+        if (is_dir($SourceVerzeichnis))		// Directory wird bearbeitet
+            {
+            //echo "Backup Verzeichnis $sourceDir von $backupSourceDir nach $TargetVerzeichnis. rekursiver Aufruf erforderlich.\n";
+            $dirChildren=$this->readdirToArray($SourceVerzeichnis);
+            //print_r($dirChildren);
+            if (is_dir($TargetVerzeichnis.$sourceDir))
+                {
+                //echo "      Verzeichnis $TargetVerzeichnis$sourceDir bereits angelegt.\n";
+                } 
+            else 
+                {
+                $this->dosOps->mkdirtree($TargetVerzeichnis.$sourceDir);               // muss rekursiv sein	
+                }
+            foreach ($dirChildren as $entry)
+                {
+                //if ($i++<100) 
+                    {
+                    //echo $i."    Aufruf backupdir rekursiv mit $entry.\n";
+                    $this->backupDir($entry, $SourceVerzeichnis, $TargetVerzeichnis.$sourceDir, $log, $params, $debug);
+                    }
+                }
+            }
+        /***************************************************************************/
+        else        // File wird kopiert
+            {
+            $fileTimeInt=filectime($SourceVerzeichnis);			// eindeutiger Identifier, beim Erstellen des Files festgelegt 
+            $fileTime=date("YmdHis",$fileTimeInt);
+            $filemTimeInt=filemtime($SourceVerzeichnis);		// Datum der letzten Aenderung, fuer Backup interessant, Zeitstempel darf nicht groesser als Backup sein
+            $filemTime=date("YmdHis",$filemTimeInt);
+
+            if ($params["style"]=="increment")          // ********************* incremental backup
+                {
+                //$targetFilename='.\\'.$sourceDir; 
+                $targetFilename='.\\'.substr($TargetVerzeichnis.$sourceDir,(strlen($this->dosOps->correctDirName($params["BackupTargetDir"]))));
+                $params["size"]=$params["size"]+filesize($SourceVerzeichnis);
+                $params["count"]=$params["count"]+1;                 // Anzahl bearbeiteter Dateien                
+                //if ( $debug && ($params["echo"]++<$imax)) echo "    look for ".$targetFilename."\n";
+                if (isset($params["checkChange"][$targetFilename])) 
+                    {
+                    //if ( $debug && ($params["echo"]++<$imax) ) echo "       found one ".$targetFilename."\n";
+                    $targetTime=strtotime($params["checkChange"][$targetFilename]);
+                    //if ( ($filemTimeInt>$targetTime) && ($i++ < 2) )              // do not know why only two copies
+                    if ($filemTimeInt>$targetTime)                     
+                        {
+                        //if ($debug && ($params["echo"]++<$imax)) echo $params["echo"]."       copy it ".$targetFilename." $SourceVerzeichnis ($filemTime) > $TargetVerzeichnis$sourceDir (".$params["checkChange"][$targetFilename].") because Backup date ".date("d.m.Y H:m:s",$targetTime)." and Source date ".date("d.m.Y H:m:s",$filemTimeInt)."\n";
+                        $params["sizeInc"]=$params["sizeInc"]+filesize($SourceVerzeichnis);
+                        $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
+                        $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                        }
+                    }
+                else 
+                    {
+                    if ($debug && ($params["echo"]++<$imax)) echo $params["echo"]."NEW FILE, copy it ".$targetFilename."\n";
+                    $params["sizeInc"]=$params["sizeInc"]+filesize($SourceVerzeichnis);
+                    $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
+                    $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                    }
+                }
+            else                                        // ********************** full backup
+                {
+                //echo "       Datei copy $SourceVerzeichnis $TargetVerzeichnis.";
+                $params["size"]=$params["size"]+filesize($SourceVerzeichnis);
+                $params["count"]=$params["count"]+1;                 // Anzahl bearbeiteter Dateien
+                $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                }
+            }	// ende file wird bearbeitet
+
+        if ($debug && ($params["echo"]++<$imax) ) echo "            Backup $sourceDir von $backupSourceDir nach $TargetVerzeichnis. Copy ist ".$params["copied"]."/".$params["maxcopy"].". Size of Log ist ".$params["count"]."\n";
+        }
+
+    /*********************************************************************************************************
+    *
+    * delete backups with status error
+    * loescht vorerst nur unter Aufsicht
+    *
+    * zusaetzliche Checks einbauen , damit nicht die Source geloescht wird, oder etwas anderes als Backup !!!!
+    *
+    */
+
+    function deleteBackupStatusError($debug=false)
+        {
+        $resultfull=array();
+        $result = $this->readBackupDirectorySummaryStatus($resultfull);         // lese die Datei SummaryofBackup.csv
+        if ($debug) 
+            { 
+            echo "Werte von SummaryofBackup.csv mit gültigen Status : \n"; 
+            print_r($result);
+            echo "Alle Werte : \n";
+            print_r($resultfull); 
+            $html='<table>';
+            foreach ($resultfull as $path => $entry)
+                {
+                $html.= '<tr><td>';
+                //$html.= $path.'</td><td>';            // path ist redundant, nicht notwendig
+                $html.= $entry["name"].'</td><td>';
+                if (isset($entry["Size"])) $html.= number_format((floatval(str_replace(",",".",$entry["Size"]))/1024/1024),3,",",".")." MByte";
+                $html.= '</td><td>';
+                if (isset($entry["Filecount"])) $html.= $entry["Filecount"];
+                $html.= '</td><td>';
+                if (isset($entry["type"])) $html.= $entry["type"];
+                $html.= '</td><td>';
+                if (isset($entry["logFilename"])) 
+                    {  // path rausrechnen
+                    if ($debug) echo "writeTableStatus : ".$path."\n";
+                    $len = strlen(pathinfo($path)["dirname"]);
+                    $logfilename=substr($entry["logFilename"],$len);
+                    $html.= $logfilename;
+                    }
+                $html.= '</td><td>';
+                if (isset($entry["status"])) $html.= $entry["status"];
+                $html.= '</td><td>';
+                if (isset($entry["logFiledate"])) $html.= $entry["logFiledate"];            
+                $html.= '</td></tr>';
+                }
+            $html.='</table>';
+            echo $html;
+            }
+        foreach ($resultfull as $BackupDirEntry => $entry)
+            {
+            if ( (isset($entry["status"])) && ($entry["status"]=="error") && (strpos($BackupDirEntry,"Source")===false) )
+                {
+                echo "Delete Verzeichnis $BackupDirEntry.Im Debug Modus wird nicht geloescht !\n";
+                if ($debug) $this->dosOps->rrmdir($BackupDirEntry);
+                }
+            }  
+        }
+
+
+    /*********************************************************************************************
+     *
+     * copyFile Funktion für rekursive Funktion backupDir
+     *
+     * copies file from source to target, updates infos in params and logs
+     * von der source wird das creation und modified Datum ermittelt
+     *
+     * wenn es die Zieldatei schon gibt, ermitteln ob sie überschrieben werden muss
+     *      available:  nein, Datum Datei im Backupverzeichnis ist jünger als Quelle 
+     *      copied:     ja, Datei wurde mit Quelle ueberschrieben, "OVERWRITE" parameter konfiguriert
+     *      doUpdate:   ja, Datei wurde aber nicht mit Quelle ueberschrieben, "KEEP" parameter konfiguriert
+     *
+     * wenn es die Zieldatei noch nicht gibt, sicherstellen das es das Verzeichnis gibt
+     *      copied:     ja, Datei wurde mit Quelle ueberschrieben
+     *
+     **************************************************************************/
+
+    function copyFile($Source, $Target, &$log, &$params)
+        {
+        $fileTimeInt=filectime($Source);			// eindeutiger Identifier, beim Erstellen des Files festgelegt 
+        $fileTime=date("YmdHis",$fileTimeInt);            
+        $filemTimeInt=filemtime($Source);		// Datum der letzten Aenderung, fuer Backup interessant, Zeitstempel darf nicht groesser als Backup sein
+        $filemTime=date("YmdHis",$filemTimeInt);            
+        if (is_file($Target))
+            {
+            $targetFilemTimeInt=filemtime($Target);
+            $targetFilemTime=date("YmdHis",$targetFilemTimeInt);                
+            //echo " -> bereits vorhanden. Datum vom Backup ist $targetFilemTime.\n";
+            if ($targetFilemTimeInt >= $filemTimeInt) $log[$Target]="available:$fileTime:$filemTime";
+            else            // Source File hat sich geändert, hat neueres Datum als Target file 
+                {
+                //echo "$Target => Zeit Backupfile zu alt, hat sich mittlerweile geändert Source: $filemTime    Target: $targetFilemTime     \n";
+                if ($params["update"]=="overwrite")
+                    {
+                    copy($Source,$Target);
+                    $log[$Target]="copied:$fileTime:$filemTime";
+                    $params["copied"]=$params["copied"]+1;                // Anzahl der kopierten Dateien, weniger wenn zB schon einmal vorher aufgerufen            
+                    }
+                else $log[$Target]="doUpdate:$fileTime:$targetFilemTime:$filemTime";
+                }
+            }
+        else 
+            {
+            $this->dosOps->mkdirtree($Target);
+            copy($Source,$Target);
+            $log[$Target]="copied:$fileTime:$filemTime";
+            $params["copied"]=$params["copied"]+1;                // Anzahl der kopierten Dateien, weniger wenn zB schon einmal vorher aufgerufen            
+            //echo "$Target copy \n";
+            }
+        }
+
+
+    /************************************************************************************************************** 
+     *
+     * Groesse eines Backups feststellen 
+     *
+     * Routine ist langsam, deswegen auch eine Zusammenfassung als Cache erstellen
+     * Parameter:
+     *  Directory       Verzeichnis in dem das Backup gespeichert ist
+     *  params          Die Parameter für die Ausführung der Routine
+     *  $result         das Ergebnis, Zeile für Zeile, eine Zeile ist ein Filename
+     *  Backup          der Name derf Spalte, wenn leer wird keien Spalte angelegt
+     *
+     * liest das Verzeichnis $Directory in das array $result ein. Die Dateien werden mit Dateiname = array Backup => ModifiedDate gespeichert 
+     *
+     */
+
+    function readBackupDir($Directory,&$params,&$result,$Backup="",$mode="date",$debug=false, $indent=false)
+        {
+        //if ($debug) echo "readBackupDir aufgerufen für $Directory.\n";
+        $i=0; $imax=5;
+        if ($indent !== false) $indent="  ".$indent;
+        if ( (isset($params["BackupDrive"]))===false) $params["BackupDrive"]="";
+
+        $Directory = $this->dosOps->correctDirName($Directory);         // with slash or backslash at the end
+        if ( (isset($params["size"])) === false) $params["size"]=0;
+        if ( (isset($params["count"])) === false) $params["count"]=0;  
+        $dirChildren=$this->dosOps->readdirToArray($Directory);
+        if ( (count($dirChildren)) == 0)
+            {
+            if ($debug) echo "readBackupDir : ".count($dirChildren)." Eintraege im Verzeichnis $Directory.\n";
+            }
+        else
+            {
+            foreach ($dirChildren as $entry)
+                {
+                if ($debug && ($i++ < $imax)) echo "readBackupDir: $i Lese ".$Directory.$entry."  \n";
+                if (is_dir($Directory.$entry))                
+                    {
+                    If ($indent) echo $indent.$Directory.$entry."\n"; 
+                    $this->readBackupDir($Directory.$entry, $params, $result, $Backup, $mode, $debug, $indent);
+                    }
+                if (is_file($Directory.$entry))
+                    {
+                    if (strpos($Directory.$entry,$params["BackupDrive"])===false) echo "Fehler ".$params["BackupDrive"]." nicht in ".$Directory.$entry." gefunden.\n";   
+                    $BackupFilename=substr($Directory.$entry,strlen($params["BackupDrive"]));
+                    $value=$this->readFileProps($params, $mode, $Directory.$entry);
+                    if ($Backup=="") $result[$BackupFilename] = $value;
+                    else 
+                        {
+                        $result[$BackupFilename][$Backup] = $value;
+                        if ($debug && ($i++ < $imax)) 
+                            {
+                            echo "  readBackupDir: $i Schreibe Zeile $BackupFilename Spalte $Backup mit $value  \n";
+                            print_r($result[$BackupFilename]);
+                            }
+                        } 
+                    }
+                }	// ende foreach
+            }
+        }
+
+    /* Groesse der Source eines Backups feststellen 
+     *
+     * Übergabe ist weiterhin das aktuelle Directory damit rekursive Aufrufe möglich sind
+     *
+     *
+     *
+     */
+
+    function readSourceDir($Directory,&$params,&$result,$Backup="",$mode="date", $indent=false)
+        {
+        $i=0; $imax=100;
+        if ($indent !== false) $indent="  ".$indent;
+       
+        $Directory = $this->dosOps->correctDirName($Directory);         // with slash or backslash at the end
+        if ( (isset($params["size"])) === false) $params["size"]=0;
+        if ( (isset($params["count"])) === false) $params["count"]=0;  
+        $dirChildren=$this->dosOps->readdirToArray($Directory);
+        foreach ($dirChildren as $entry)
+            {
+            //if ($i++ < $imax) echo "Lese ".$Directory.$entry."  \n";
+            if (is_dir($Directory.$entry))                
+                {
+                If ($indent) echo $indent.$Directory.$entry."\n"; 
+                $this->readSourceDir($Directory.$entry, $params, $result, $Backup, $mode, $indent);
+                }
+            if (is_file($Directory.$entry))
+                {
+                $BackupFilename=substr($Directory.$entry,strlen($params["BackupSourceDir"])-1);
+                $value=$this->readFileProps($params, $mode, $Directory.$entry);
+                $params["size"]  = $params["size"]+filesize($Directory.$entry);                   
+                $params["count"] = $params["count"]+1;                   
+                if ($Backup=="") $result[$BackupFilename] = $value;
+                else $result[$BackupFilename][$Backup] = $value; 
+                }
+            }	// ende foreach
+        }
+
+    /* die Properties einer Datei mitschreiben */
+
+    private function readFileProps(&$params, $mode, $filename)
+        {
+        if (is_file($filename))
+            {
+            $fileTimeInt=filemtime($filename);
+            $FileSize=filesize($filename);			 
+            $fileTime=date("YmdHis",$fileTimeInt);                    
+            //$params["size"]  = $params["size"]+filesize($filename);                   
+            //$params["count"] = $params["count"]+1;
+            if ( (isset($params["latest"])) && (($params["latest"])>=$fileTimeInt) ) ;
+            else $params["latest"]=$fileTimeInt;
+            }
+        else
+            {
+            $fileTime="na";  $fileTimeInt=0;  $FileSize=0;
+            }
+        switch ($mode)
+            {
+            case "date":    
+                $value=$fileTime;
+                break;
+            case "date&size":
+                $value=json_encode(["date"=> $fileTimeInt, "size" => $FileSize]);
+                break;    
+            }
+        return ($value);    
+        }
+
+    /* Groesse der Source eines Backups feststellen, Gesamtroutine 
+     * verwendet rekursives readSourceDir
+     * 
+     * params       die Parameter
+     * result       das Ergebnis Array
+     * mode         unterschiedliche Betriebsarten
+     */
+
+    function readSourceDirs(&$params,&$result,$mode="date",$debug=false)
+        {
+        $Backup="Source";
+        $backupSourceDirs=$params["BackupDirectoriesandFiles"];
+        $sourceDir=$params["BackupSourceDir"];  
+        $params["size"]=0;  $params["count"]=0;
+      
+        if ($debug) echo "readSourceDirs $sourceDir.\n";
+        //echo "printParams für die Auswertung der Source : ".$params["BackupSourceDir"]."\n";  print_r($params);
+        $size=0; $count=0;
+        foreach ($backupSourceDirs as $backupSourceDir)
+            {
+            if ($debug) echo "Source Dir evaluieren ".$sourceDir.$backupSourceDir."\n";
+            if (is_dir($sourceDir.$backupSourceDir))		// Directory wird bearbeitet
+                {
+                /* readSourceDir($Directory,&$params,&$result,$Backup="",$mode="date", $indent=false) */
+                $this->readSourceDir($sourceDir.$backupSourceDir,$params, $result, $Backup, $mode);  
+                }
+            if (is_file($sourceDir.$backupSourceDir))
+                {
+                $BackupFilename=substr($sourceDir.$backupSourceDir,strlen($params["BackupSourceDir"])-1);
+                $value=$this->readFileProps($params, $mode, $sourceDir.$backupSourceDir);
+                $params["size"]  = $params["size"]+filesize($sourceDir.$backupSourceDir);                   
+                $params["count"] = $params["count"]+1;                
+                if ($Backup=="") $result[$BackupFilename] = $value;
+                else $result[$BackupFilename][$Backup] = $value; 
+                }
+            if ($debug) 
+                {
+                echo number_format((($params["size"]/1024/1024)-$size),3,",",".")." MByte ".($params["count"]-$count)." aktuell und ".number_format(($params["size"]/1024/1024),3,",",".")." MByte ".$params["count"]." Files insgesamt. \n";
+                echo "Source Dir evaluieren ".$sourceDir.$backupSourceDir." : ".number_format(($params["size"]/1024/1024),3,",",".")." MByte Speicher und ".$params["count"]." Files insgesamt.\n"; 
+                }
+            $size=$params["size"]/1024/1024;
+            $count=$params["count"];
+            } 
+        }
+
+    /* Überprüfe Backup, Gesamtroutine 
+     * verwendet rekursives checkSourceBackupDir
+     * 
+     * params       die Parameter
+     * result       das Ergebnis Array
+     * mode         unterschiedliche Betriebsarten, nur Datzum oder json encoded mehr Informationen
+     *
+     */
+
+    function checkSourceBackupDirs(&$params,&$result,$mode="date", $debug=false)
+        {
+        $Backup="Source";
+        $backupSourceDirs=$params["BackupDirectoriesandFiles"];
+        $sourceDir=$this->dosOps->correctDirName($params["BackupSourceDir"]);        
+        $targetDir=$this->dosOps->correctDirName($params["BackupTargetDir"]);
+        $params["size"]=0; $params["sizeInc"]=0;
+        $params["count"]=0; $params["countInc"]=0;  
+        if ($debug) echo "Vergleiche Verzeichnis $sourceDir mit Backup $targetDir.\n";
+        //echo "printParams für die Auswertung der Source : ".$params["BackupSourceDir"]."\n";  print_r($params);
+        //echo "  Source Dir evaluieren ".$sourceDir." : ".number_format(($params["size"]/1024/1024),3,",",".")." MByte Speicher und ".$params["count"]." Files insgesamt.\n"; 
+        //echo "  Target Dir evaluieren ".$sourceDir." : ".number_format(($params["sizeInc"]/1024/1024),3,",",".")." MByte Speicher und ".$params["countInc"]." Files insgesamt.\n"; 
+        $size=0; $count=0;
+        foreach ($backupSourceDirs as $backupSourceDir)
+            {
+            //echo "Source Dir evaluieren ".$sourceDir.$backupSourceDir."\n";
+            if (is_dir($sourceDir.$backupSourceDir))		// Directory wird bearbeitet
+                {
+                /* readSourceDir($Directory,&$params,&$result,$Backup="",$mode="date", $indent=false) */
+                $this->checkSourceBackupDir($sourceDir.$backupSourceDir, $backupSourceDir, $params, $result, $Backup, $mode, false, $debug);    // no indent
+                }
+            if (is_file($sourceDir.$backupSourceDir))
+                {
+                $BackupFilename=substr($sourceDir.$backupSourceDir,strlen($params["BackupSourceDir"])-1);
+                $value1=$this->readFileProps($params, $mode, $sourceDir.$backupSourceDir);
+                $value2=$this->readFileProps($params, $mode, $targetDir.$backupSourceDir);
+                $params["size"]=$params["size"]+filesize($sourceDir.$backupSourceDir);
+                $params["count"]=$params["count"]+1;                 // Anzahl bearbeiteter Dateien
+                if ($value2 != "na")
+                    {
+                    $params["sizeInc"]=$params["sizeInc"]+filesize($targetDir.$backupSourceDir);
+                    $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
+                    }
+                if ($Backup=="") $result[$BackupFilename] = json_encode(["Source" => $value1,"Target" => $value2]);
+                else $result[$BackupFilename][$Backup] = json_encode(["Source" => $value1,"Target" => $value2]); 
+                }
+            //echo number_format((($params["size"]/1024/1024)-$size),3,",",".")." MByte ".($params["count"]-$count)." aktuell und ".number_format(($params["size"]/1024/1024),3,",",".")." MByte ".$params["count"]." Files insgesamt. \n";
+            if ($debug) echo "  Source Dir evaluieren ".$sourceDir.$backupSourceDir." : ".number_format(($params["size"]/1024/1024),3,",",".")." MByte Speicher und ".$params["count"]." Files insgesamt.\n"; 
+            if ($debug) echo "  Target Dir evaluieren ".$sourceDir.$backupSourceDir." : ".number_format(($params["sizeInc"]/1024/1024),3,",",".")." MByte Speicher und ".$params["countInc"]." Files insgesamt.\n"; 
+            $size=$params["size"]/1024/1024;
+            $count=$params["count"];
+            } 
+        }
+
+    /* Überprüfe Backup, rekurive Routine 
+     *
+     * Übergabe ist weiterhin das aktuelle Directory damit rekursive Aufrufe möglich sind
+     * zusaetzlich das Target für das Backup Directory mitgeben
+     *
+     *
+     */
+
+    function checkSourceBackupDir($Directory,$Target,&$params,&$result,$Backup="",$mode="date", $indent=false, $debug=false)
+        {
+        //if (isset($params["BackupSourceDir"])===false) print_r($params);
+        //if ($debug) echo "      checkSourceBackupDir : echomax ".$params["echo"]." \n";
+        $i=0; $imax=100;
+        if ( (isset($params["echo"])) === false) $params["echo"]=0;
+        if ($indent !== false) $indent="  ".$indent;
+       
+        $DirectorySource = $this->dosOps->correctDirName($Directory);         // with slash or backslash at the end
+        $DiectoryBackup = $this->dosOps->correctDirName($params["BackupTargetDir"]);
+        $DirectoryTarget = $this->dosOps->correctDirName($DiectoryBackup.$Target);         // with slash or backslash at the end
+
+        //if ($debug && ($params["echo"]++ < $imax)) echo "  checkSourceBackupDir $DirectorySource with $DirectoryTarget for $Target\n";
+
+        $dirChildren=$this->dosOps->readdirToArray($Directory);
+        foreach ($dirChildren as $entry)
+            {
+            //if ($i++ < $imax) echo "Lese ".$Directory.$entry."  \n";
+            if (is_dir($DirectorySource.$entry))                
+                {
+                If ($indent) echo $indent.$Directory.$entry."\n"; 
+                $newTarget=substr($DirectoryTarget.$entry,strlen($DiectoryBackup));
+                //if ($debug && ($params["echo"]++ < $imax)) echo "  checkSourceBackupDir $DirectorySource with $DirectoryTarget for $Target calls with $newTarget\n";
+                $this->checkSourceBackupDir($DirectorySource.$entry,  $newTarget, $params, $result, $Backup, $mode, $indent, $debug);
+                }
+            if (is_file($DirectorySource.$entry))
+                {
+                $BackupFilename=substr($DirectorySource.$entry,strlen($params["BackupSourceDir"])-1);
+                $value1=$this->readFileProps($params, $mode, $DirectorySource.$entry);
+                $value2=$this->readFileProps($params, $mode, $DirectoryTarget.$entry);
+                $params["size"]=$params["size"]+filesize($DirectorySource.$entry);
+                $params["count"]=$params["count"]+1;                 // Anzahl bearbeiteter Dateien
+                if ($value2 != "na")
+                    {
+                    if ($debug && ($params["echo"]++ < $imax))  echo "   $BackupFilename :    $value1   $value2                    \n";
+                    $params["sizeInc"]=$params["sizeInc"]+filesize($DirectoryTarget.$entry);
+                    $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
+                    }
+                else
+                    {
+                    $i=0;
+                    while (isset($params["BackupTargetDirs"][$i]))
+                        { 
+                        $DirectorynewTarget=$this->dosOps->correctDirName($params["BackupTargetDirs"][$i]);
+                        if ($debug && ($params["echo"]++ < $imax))  echo "   $BackupFilename : compare $DirectorySource$entry with $DirectoryTarget$entry, Ziel nicht vorhanden, probiere $DirectorynewTarget$entry .\n";
+                        $value2=$this->readFileProps($params, $mode, $DirectorynewTarget.$entry); 
+                        if ($value2 != "na")
+                            {   
+                            $params["sizeInc"]=$params["sizeInc"]+filesize($DirectorynewTarget.$entry);
+                            $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
+                            break;
+                            }
+                        elseif ($debug && ($params["echo"]++ < $imax)) echo "   $BackupFilename : compare $DirectorySource$entry with $DirectoryTarget$entry, Ziel nicht vorhanden, probiere $DirectorynewTarget$entry -> not found !!!! .\n";
+                        }
+                    }
+                if ($Backup=="") $result[$BackupFilename] = json_encode(["Source" => $value1,"Target" => $value2]);
+                else $result[$BackupFilename][$Backup] = json_encode(["Source" => $value1,"Target" => $value2]); 
+                }
+            }	// ende foreach
+        }
+
+    /* Zusammenfassung eines Backups als Logfile geben
+     *
+     * Inhalt von log in die Datei schreiben.
+     * wird immer am Ende eines fertig gestellten Backups geschrieben, oder nach Cleanup
+     *
+     *
+     */
+
+    function writeBackupLogStatus(&$log, $debug=false)
+        {
+        $params=$this->getConfigurationStatus("array");
+        $params["status"]="finished";
+        $this->setConfigurationStatus($params, "array");
+        $this->setBackupStatus("Status : ".$params["status"]."  ".date("Y:m:d H:i:s"));    
+
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);      
+        $fileName=$BackupDrive.pathinfo($params["BackupTargetDir"])["basename"]."_".$params["style"].".backup.csv";
+        Echo "Backup Zusammenstellung in das File $fileName schreiben.\n"; 
+        if (is_file($fileName)) unlink($fileName);
+        $handle=fopen($fileName, "a");
+        $count=0; $maxentry=100;
+        foreach ($log as $file => $entry)
+            {
+            $entryArray=explode(":",$entry);
+            if ($count++<$maxentry) 
+                {
+                echo $file." => ".$entryArray[1].";".$entry."\n";
+                }
+            fwrite($handle, $file.";".$entryArray[1].";".$entry."\n");
+            }
+        fclose($handle);
+        }
+
+
+    /*************************************************************************************************** 
+	 *
+	 * Zusammenfassung des Zustandes aller Backups im File Backup.csv geben
+	 * Ausführzeiten werden schnell sehr lange, analysiert jedes Verzeichnis im Backup Verzeichnis
+     * daher reload modus für Statemachine und Mehrfachaufrufe
+     * wenn fertig kann das SummaryofBackups.csv File mit den detaillierten Angeban über Anzahl und Groese der Dateien upgedatet werden
+	 *
+	 * verschiedene Parameter für die Gestaltung der Ausführung, 
+     * verwendet im OperationCenter Timer für Cleanup : $result=$BackupCenter->getBackupDirectoryStatus("reload");
+     * und nach einem fertig gestelltem Backup.
+     *
+	 * reload       das langfristigste Unterfangen alle Datei Modifizierungsdaten werden in eine Tabelle backup.csv eingetragen
+	 *              es sind mehrere Aufrufe notwendig
+	 * update       einmaliger Aufruf wenn ein Backup fertig gestellt wurde
+     *
+     */
+
+    function getBackupDirectoryStatus($mode,$debug=false)
+        {
+
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+
+        /* alle Verzeichnisse im Backup */
+        $BackupDirs=$this->getBackupDirectories();        
+        if ($debug) { echo "\ngetBackupDirectoryStatus : Backup Verzeichnisse auflisten :\n"; print_r($BackupDirs); }
+
+        /* Backup Logfile Array erstellen, wird in gemeinsame Tabelle übernommen */
+		$backUpLogTable=$this->getBackupLogTable();        
+		//if ($debug) print_r($backUpLogTable);
+
+        $result=array();            // alle Backups zusammenfassen in einem grossen array, index ist der Backupname oder Source als Referenz
+
+        /*************************************************************
+         *
+         * und auch noch das grosse Backup.csv scheiben in dem alle Dateien mit dem im Verzeichnis gespoeicherten Datum angelegt werden 
+		 * geht sich nicht mehr in einem Durchlauf aus, daher einem nach den anderen Machen
+		 * Der automatische Timer wird auf reload gestellt und ruft diese Routine auf. Es wird solange false als return gegeben bis die Datei vollstaendig erstellt wurde.
+		 *
+		 *************************************************/
+
+	    if ( ($mode == "reload") || ($mode == "update") )
+            {
+    		$params=$this->getConfigurationStatus("array");     // aktuellen Status auslesen, statemaschine ist auf cleanup
+            if  ( ($mode == "reload") && ($params["cleanup"]=="started") )
+                {
+                echo "Backup.csv auf Backup.old.csv umbenennen und neu erstellen.\n";  
+                $this->fileOps->backcupFileCsv();  
+                $params["cleanup"]="ongoing";
+
+                }
+            if ( ($params["cleanup"]=="ongoing") || ($mode == "update") )
+                {
+                $resultBackupDirs=array();
+                echo "Backup.csv einlesen und Spalten herausfinden :\n";
+                $result=$this->fileOps->readFileCsv($resultBackupDirs,"Filename",[],["Source","20190707"]);
+                $indexCsvFile=$result["columns"];
+                print_r($indexCsvFile);
+
+                echo getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb
+
+                echo "Eingelesenes Array (in Memory) hat ".count($resultBackupDirs)." Einträge.\n";
+                /* anhand der im $resultBackupDirs erkannten Spalten die noch benötigten Spalten ermitteln */
+                echo "Folgende Spalten müssen noch eingelesen werden :\n";
+                $index=array();
+                if (!in_array("Source",$indexCsvFile)) $index[]="Source";
+                foreach ($BackupDirs as $BackupDirEntry)
+                    {
+                    //echo "  Groesse der bisher erstellten Backupverzeichnisse für $BackupDirEntry : \n";
+                    $pathinfo=pathinfo($BackupDirEntry);
+                    $backup=$pathinfo["filename"];
+                    if ($debug) echo "    Suche $backup im array.\n";
+                    if (in_array($backup,$indexCsvFile) ) { if ($debug) echo "   -> Spalte $backup wurde bereits eingelesen.\n"; }
+                    else $index[]=$backup;
+                    }  
+                print_r($index);
+                if (count($index)>0)
+                    {
+                    echo "\n-------------------------------------------------------------------------\n";
+                    echo "Dann aus dem Backup Verzeichnis das Backup \"".$index[0]."\" einlesen.\n";
+                    $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
+                    if ($index[0]=="Source")
+                        {
+                        echo "getBackupDirectoryStatus: Source Verzeichnis einlesen:\n";
+                        $params["Statustext"]="getBackupDirectoryStatus : Source Verzeichnis einlesen.";
+                        $params["BackupSourceDir"]=$this->dosOps->correctDirName($this->getSourceDrive());
+                        $params["count"]=0;     /* Zähler zurücksetzen */
+                        $params["size"]=0;
+                        $this->readSourceDirs($params, $resultBackupDirs,"date&size");        // Übergabe in resultBackupDirs
+
+                        }
+                    else
+                        {
+                        echo "Backup Verzeichnis einlesen mit folgenden Parametern :\n";
+                        $params["Statustext"]="getBackupDirectoryStatus : Backup Verzeichnis einlesen.";
+                        $BackupDirEntry=$BackupDrive.$index[0];
+                        $params["BackupDrive"]=$BackupDirEntry;
+                        $params["count"]=0;       /* Zähler zurücksetzen */
+                        $params["size"]=0;
+                        print_r($params);
+                        /*     function readBackupDir($Directory,&$params,&$result,$Backup="",$mode="date",$debug=false, $indent=false) */
+                        $this->readBackupDir($BackupDirEntry, $params, $resultBackupDirs, $index[0], "date&size", true);           // mit Debug
+                        print_r($params); 
+                        if  ($params["count"]==0)
+                            {
+                            echo "Ein leeres Verzeichnis. Dummy Eintrag machen.\n"; 
+                            $resultBackupDirs["."][$index[0]]=false;   
+                            }                                            
+                        echo "fertig gestellt.\n";    
+                        }
+                    $this->fileOps->writeFileCsv($resultBackupDirs);
+                    }
+                else 
+                    {   /* keine weiteren Verzeichnisse gefunden, SummaryofBackups.csv ergänzen */
+                    unset ($resultBackupDirs);
+                    echo getNiceFileSize(memory_get_usage(true),false)."/".getNiceFileSize(memory_get_usage(false),false)."\n"; // 123 kb
+                    echo "SummaryofBackup.csv updaten.\n";  
+                    $this->updateSummaryofBackupFile();  
+
+                    $params["cleanup"]="finished";
+                    $params["status"]="finished";
+                    }
+                }
+            $this->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben
+            $paramsJson=json_encode($params);
+            $this->setConfigurationStatus($paramsJson);
+            return ($params);
+
+            }           // ende mode reload/update
+        return ($this->BackOverviewTable);
+        }
+
+    /****************************
+     *
+     * analyse Backup.csv as input for SummaryofBackup.csv
+     * in Backup.csv steht für jede Datei das letzte Modifikations-Datum und die Filegroesse
+     * man benötigt nur mehr eine statistische Auswertung pro Backup verzeichnis
+     *
+     *****************************/
+
+    function analyseBackupDirectoryStatus(&$ergebnis, $debug=false)
+        {
+        if ($debug) echo "Ermitteltes Ergebnis aus Backup.csv für SummaryofBackup.csv ausgeben:\n";
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+
+        $fileOps = new fileOps($BackupDrive."Backup.csv");
+        $result=array();
+        $fileOps->readFileCsv($result,"Filename");      // erste Spalte als Index nehmen
+        //$index=$fileOps->readFileCsvFirstline(); print_r($index);
+        foreach ($result as $file => $line)
+            {
+            foreach ($line as $backup =>$columns)
+                {
+                if (isset($ergebnis[$BackupDrive.$backup]["name"])) ;
+                else $ergebnis[$BackupDrive.$backup]["name"]=$backup;           // damit auch Source einen Namen bekommt
+                $columnsArray=json_decode($columns,true);
+                $size = $columnsArray["size"];
+                //echo $size." ";
+                //if (!(is_numeric($size))) echo "Fehler, Size ist nicht numerisch\n";    
+                //if (is_bool($size)) echo "Fehler, Size ist Boolean\n";    
+                if ( ($columnsArray !== Null) && (count($columnsArray)>0) ) 
+                    {
+                    if (isset($ergebnis[$BackupDrive.$backup]["Filecount"]))
+                        {
+                        $ergebnis[$BackupDrive.$backup]["Filecount"]++;
+                        }
+                    else $ergebnis[$BackupDrive.$backup]["Filecount"]=1; 
+                    if (isset($ergebnis[$BackupDrive.$backup]["Size"]))
+                        {
+                        $ergebnis[$BackupDrive.$backup]["Size"]=(integer)$ergebnis[$BackupDrive.$backup]["Size"]+$size;
+                        //echo "Add ".$BackupDrive.$backup." : ".$ergebnis[$BackupDrive.$backup]["Size"]." von +=$size\n";
+                        }
+                    else 
+                        {
+                        $ergebnis[$BackupDrive.$backup]["Size"]=(integer)$size; 
+                        //echo "Initialize  ".$BackupDrive.$backup." : ".$ergebnis[$BackupDrive.$backup]["Size"]." with $size\n";
+                        }
+                    if (isset($ergebnis[$BackupDrive.$backup]["first"]))
+                        {
+                        if ($columnsArray["date"] < $ergebnis[$BackupDrive.$backup]["first"]) $ergebnis[$BackupDrive.$backup]["first"]=$columnsArray["date"];
+                        }
+                    else $ergebnis[$BackupDrive.$backup]["first"]=$columnsArray["date"];
+                    if (isset($ergebnis[$BackupDrive.$backup]["last"]))
+                        {
+                        if ($columnsArray["date"] > $ergebnis[$BackupDrive.$backup]["last"]) $ergebnis[$BackupDrive.$backup]["last"]=$columnsArray["date"];
+                        }
+                    else $ergebnis[$BackupDrive.$backup]["last"]=$columnsArray["date"];
+                    //$ergebnis[$backup]=$columnsArray;    
+                    }
+                else 
+                    {
+                    if ( ($columns !== false) && ($columns != "") ) $ergebnis[$BackupDrive.$backup]["error"][] = $columns;
+                    //if ($columns !== false) $ergebnis[$backup]["error"][$file][] = $columns;
+                    }
+                }    
+            }
+        return($ergebnis);    
+        }
+
+
+    /*****************************
+     *
+     * Backup Verzeichnis auslesen und alle Verzeichnisse (angefangene und vollendete Backuops ausgeben)
+     *
+     ***********/
+
+    function getBackupDirectories($debug=false)
+        {
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $dir=$this->readdirToArray($BackupDrive);
+        $BackupDirs=array();
+        foreach ($dir as $entry)
+            {
+            //echo "$BackupDrive$entry   \n";
+            if (is_dir($BackupDrive.$entry)) $BackupDirs[]=$BackupDrive.$entry;
+            }
+        if ($debug) { echo "\nBackup Verzeichnisse :\n"; print_r($BackupDirs); }
+        return($BackupDirs);
+        }
+
+    /*****************************
+     *
+     * Backup Verzeichnis auslesen, Tabelle aller Logfiles von Backups (damit möglicherweise vollendete Backups ausgeben)
+     *
+     ***********/
+
+    function getBackupLogTable($debug=false)
+        {
+        if ($debug) echo "getBackupLogTable aufgerufen.\n";
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $dir=$this->readdirToArray($BackupDrive);
+        $BackupLogs=array();
+        foreach ($dir as $entry)
+            {
+            if (is_file($BackupDrive.$entry)) $BackupLogs[]=$BackupDrive.$entry;  
+            }
+        if ($debug) { echo "\nBackup Log Dateien :\n"; print_r($BackupLogs); }
+
+        /* Backup Logfile Array erstellen, wird in gemeinsame Tabelle übernommen */
+		$backUpLogTable=array();
+		foreach ($BackupLogs as $BackupLog)
+			{
+			$Logfile=pathinfo($BackupLog); 
+            //echo "Logfile ".$Logfile["filename"]." behandeln.\n";
+            //if ($debug) print_r($Logfile);
+			$LogFileName=explode(".",$Logfile["filename"]);
+            $pos=strrpos($LogFileName[0],"_");
+            if ($pos != false)
+                {
+                $LogFileTypeDir=substr($LogFileName[0],0,$pos);
+                $LogFileType=substr($LogFileName[0],$pos+1);
+                //echo "Pos $pos $LogFileTypeDir $LogFileType  \n";
+                }
+			if ( (isset($LogFileName[1])) && ($pos != false) && ($Logfile["extension"]=="csv") && ($LogFileName[1]=="backup") )
+				{	// wahrscheinlich gültiger Filename
+				$backUpLogTable[$LogFileTypeDir]["filename"]=$BackupLog;
+				$backUpLogTable[$LogFileTypeDir]["type"]=$LogFileType;
+                $backUpLogTable[$LogFileTypeDir]["filedate"]=date("YmdHis",filemtime($BackupLog));
+				}
+			}
+        return ($backUpLogTable);
+        }
+
+
+    /***************************** 
+     *
+     * getBackupDirectorySummaryStatus:
+     * updates $this->BackOverviewTable, can take too long time in "read" mode, read mode erzeugt ein vollstaendiges result file für backup.csv 
+     * immer noread verwenden, ausser vielleicht beim ersten mal, oder wenn alle Verzeichnisse gelöscht sind 
+     * see state machine driven version for creation/update of backup.csv
+     *
+     *   alle Backup verzeichnisse durchgehen
+     *   der gemeinsame Zustand wird gecached in einer SummaryofBackups.csv Datei
+     *
+     ********************************************************/
+
+    function getBackupDirectorySummaryStatus(&$result, $mode="noread", $debug=false)
+        {
+
+        /* mit read werden die Backupdirs einzeln gelesen, kann abhängig von der Anzahl der Backupdirs sehr lange dauern, daher andere Lösung
+         * es wird auch das Arra result beschrieben
+         */
+
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+
+        /* alle Verzeichnisse im Backup */
+        $BackupDirs=$this->getBackupDirectories();        
+        if ($debug) { echo "\nBackup Verzeichnisse :\n"; print_r($BackupDirs); }
+
+        /* Backup Logfile Array erstellen, wird in gemeinsame Tabelle übernommen */
+		$backUpLogTable=$this->getBackupLogTable($debug);        
+		//if ($debug) print_r($backUpLogTable);
+
+        $this->BackOverviewTable =array();		/* statistische Daten über die Backups speichern */
+        $size=0; $count=0;
+        foreach ($BackupDirs as $BackupDirEntry)
+            {
+            if ($debug) echo "  Groesse der bisher erstellten Backupverzeichnisse für $BackupDirEntry : \n";
+            $pathinfo=pathinfo($BackupDirEntry);
+            //print_r($pathinfo);
+            $data=array();
+            $data["BackupDrive"]=$BackupDirEntry;
+            $backupName=$pathinfo["filename"];
+            if ($mode != "noread") 
+                {
+                $this->readBackupDir($BackupDirEntry,$data, $result, $backupName);             
+                $this->BackOverviewTable[$BackupDirEntry]["size"]=($data["size"]/1024/1024);
+                $this->BackOverviewTable[$BackupDirEntry]["count"]=$data["count"];
+                echo "      ".number_format(($data["size"]/1024/1024),3,",",".")." MByte ".$data["count"]." Files insgesamt. \n";
+                }      
+            $this->BackOverviewTable[$BackupDirEntry]["name"]=$pathinfo["filename"];
+            if (isset($backUpLogTable[$backupName]))	/* wenn es kein Backup Logfile gibt ist das Backup nicht abgeschlossen */
+                {
+                $this->BackOverviewTable[$BackupDirEntry]["type"]=$backUpLogTable[$backupName]["type"];
+                $this->BackOverviewTable[$BackupDirEntry]["logFilename"]=$backUpLogTable[$backupName]["filename"];
+                $this->BackOverviewTable[$BackupDirEntry]["status"]="finished";
+                }
+            else $this->BackOverviewTable[$BackupDirEntry]["status"]="error";	
+            /* echo "      ".number_format((($params["size"]/1024/1024)-$size),3,",",".")." MByte ".($params["count"]-$count)." aktuell und ".number_format(($params["size"]/1024/1024),3,",",".")." MByte ".$params["count"]." Files insgesamt. \n"; 
+            $size+=$params["size"]/1024/1024;
+            $count+=$params["count"];   */    
+            }
+        //echo "printParams am Ende der Auswertung der Backups :\n"; print_r($data);
+        if ($mode != "noread") 
+            {        
+            $data=array();
+            $sourceDir="C:\Ip-Symcon";
+            $sourceDir = $this->dosOps->correctDirName($sourceDir);
+            $data["BackupSourceDir"]=$sourceDir;
+            $backupSourceDirs=array("db","media","modules","scripts","webfront","settings.json");
+            $data["BackupDirectoriesandFiles"]=$backupSourceDirs;
+            //echo "printParams für die Auswertung der Source : ".$data["BackupSourceDir"]."\n"; print_r($params);
+            $this->readSourceDirs($data,$result,$mode="date");
+            }
+        return ($this->BackOverviewTable);
+        }
+
+    /* Zusammenfassung des Zustandes aller Backups geben
+     *   der Zustand wird gecached in einer SummaryofBackups.csv Datei, siehe function read
+     *   hier nur diese Datei auslesen, wenn nicht vorhanden $this->getBackupDirectorySummaryStatus("noread") starten
+     *
+     * result of function ist die nächste, jüngste Backup Datei
+     * zusaetzlich $this->BackOverviewTable schreiben.
+     * im Parameter ein array übergeben, das ist die selbe Tabelle wie in $this->BackOverviewTable, damit können result zusammengebaut werden
+     *  
+     */
+
+    function readBackupDirectorySummaryStatus(&$result, $debug=false)
+        {
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $fileName = $BackupDrive."SummaryofBackup.csv";
+
+        $fileOps = new fileOps($BackupDrive."SummaryofBackup.csv");
+        if ($fileOps->readFileCsv($result,"Filename")) 
+            {
+            if ($debug) echo "readBackupDirectorySummaryStatus : ".$BackupDrive."SummaryofBackup.csv.\n";
+            }
+        else 
+            {
+            if ($debug) echo "readBackupDirectorySummaryStatus : ".$BackupDrive."SummaryofBackup.csv nicht vorhanden, das Backup verzeichnis auslesen.\n"; 
+            $result=$this->getBackupDirectorySummaryStatus($resultfull);
+            }
+        if ($debug) print_r($result);
+        $this->BackOverviewTable=$result;
+ 
+        /* filter finished, get last full */
+        $resultFiltered=array();
+        $full=0;
+        krsort($result);
+        foreach ($result as $path => $entry) 
+            {
+            if ( (isset($entry["status"])) && (isset($entry["type"])) ) 
+                {
+                if ( ($full==0) && ($entry["status"]=="finished") &&  ($entry["type"]=="full") ) 
+                    {
+                    $resultFiltered[$path]=$entry;
+                    $full++;
+                    }
+                if ( ($full==0) && ($entry["status"]=="finished") &&  ($entry["type"]=="increment") ) 
+                    {
+                    $resultFiltered[$path]=$entry;
+                    }
+                }
+            }
+        //print_r($resultFiltered);
+        return ($resultFiltered);
+        }
+
+    /* Zusammenfassung des Zustandes aller Backups in die SummaryofBackups.csv Datei schreiben, siehe function read
+     *
+     * Inhalt kommt aus $this->BackOverviewTable , in die Datei schreiben.
+     * wird immer am Ende eines fertig gestellten Backups geschrieben, oder nach Cleanup
+     *
+     *
+     */
+
+    function writeBackupDirectorySummaryStatus($debug=false)
+        {
+        $BackupDrive=$this->getBackupDrive();
+        $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
+
+        ksort($this->BackOverviewTable);            // sicherheitshalber aufsteigen, letztes Backup am Ende
+        if ($debug) 
+            {
+            echo "writeBackupDirectorySummaryStatus with following information :\n";
+            print_r($this->BackOverviewTable);
+            }
+
+        /* write summary csv file if rebuild if file is requested, usually it will only be extended */
+        $fileName = $BackupDrive."SummaryofBackup.csv";
+        if (is_file($fileName)) rename($fileName, $BackupDrive."SummaryofBackup.old.csv");            
+        if ($debug) echo "Zusammenfassung der Backups ist in ".$fileName." gespeichert.\n";
+        if (is_file($fileName)) unlink($fileName);
+
+        $fileOps = new fileOps($fileName);
+        $fileOps->writeFileCsv($this->BackOverviewTable);
+
+        }
+
+    /* Zusammenfassung des Zustandes aller Backups in die SummaryofBackups.csv Datei schreiben, siehe function read
+     *
+     * Inhalt kommt aus $this->BackOverviewTable , in die Datei schreiben.
+     * wird immer am Ende eines fertig gestellten Backups geschrieben, oder nach Cleanup
+     *
+     * die Informationen aus dem Backup Verzeichnis werden um Informationen aus dem Backup.csv File und den logfiles angereichert.
+     */
+
+    function updateSummaryofBackupFile($debug=false)
+        {
+        //if ($debug) echo "Allocated Memory : ".getNiceFileSize(memory_get_usage(false),false)." / ".getNiceFileSize(memory_get_usage(true),false)."\n"; // true including unused pages
+        $params=$this->getConfigurationStatus("array");
+        $ergebnis=array();
+        $this->analyseBackupDirectoryStatus($ergebnis);
+        /* if ($debug) 
+            {
+            echo "Allocated Memory : ".getNiceFileSize(memory_get_usage(false),false)." / ".getNiceFileSize(memory_get_usage(true),false)."\n"; // true including unused pages    
+            echo "updateSummaryofBackupFile: status von Backup aus Backup.csv eruieren (Rückmeldung analyseBackupDirectoryStatus) :\n";
+            print_r($ergebnis);
+            } */
+        $backUpLogTable = $this->getBackupLogTable($debug);  
+        /* if ($debug) 
+            {
+            echo "   vorhandene Datum_backup.csv Log Files:\n";
+            print_r($backUpLogTable);         
+            } */
+        foreach ($ergebnis as $BackupDirEntry => $entry)
+            {
+            $pathinfo=pathinfo($BackupDirEntry);
+            $backupName=$pathinfo["filename"];
+            //echo "suche $backupName in backUpLogTable.\n";
+            if (isset($backUpLogTable[$backupName]))	/* wenn es kein Backup Logfile gibt ist das Backup nicht abgeschlossen */
+                {
+                // echo "  gefunden $backupName in backUpLogTable:\n"; print_r($backUpLogTable[$backupName]);
+                $ergebnis[$BackupDirEntry]["type"]=$backUpLogTable[$backupName]["type"];
+                $ergebnis[$BackupDirEntry]["logFilename"]=$backUpLogTable[$backupName]["filename"];
+                $ergebnis[$BackupDirEntry]["logFiledate"]=$backUpLogTable[$backupName]["filedate"];         // zusaetzlich Datum in die Tabelle aufnehmen
+                $ergebnis[$BackupDirEntry]["status"]="finished";
+                }
+            else $ergebnis[$BackupDirEntry]["status"]="error";
+            }
+        $this->BackOverviewTable=$ergebnis;
+        if ($debug) 
+            {
+            echo "Ergebnis von updateSummaryofBackupFile, neuer BackOverviewTable:\n";
+            print_r($ergebnis);
+            }
+        $this->writeBackupDirectorySummaryStatus($debug);
+        $this->writeTableStatus($params);
+        if ($debug) echo "Allocated Memory : ".getNiceFileSize(memory_get_usage(false),false)." / ".getNiceFileSize(memory_get_usage(true),false)."\n"; // true including unused pages
+        }
+
+    /*************************************************************+ 
+     *
+     * Zusammenfassung des Zustandes von Backup geben
+     * dreispaltige Tabelle mit Untertabellen in das Webfront schreiben
+     *
+     * wird von Start und stopp_backup, config_mode und anderen aufgerufen. Soll schnell die html Style Tabelle updaten und keine echo Ausgaben machen  
+     *
+     */
+
+    function writeTableStatus($params=false, $debug=false)
+        {
+        $resultfull=array();
+        if ($params !== false) $tabledata=$params;
+        else 
+            {
+            $tabledata=$this->getConfigurationStatus("array");                
+            }
+        /* geschrieben wird in $this->BackOverviewTable. Entweder aus der Cache Datei, oder neu ausgelesen ohne die Groesse des Directory zu erfassen aus der Filestruktur */
+        $result=$this->readBackupDirectorySummaryStatus($resultfull, $debug);          // komplettes array ist in resultfull, zusaetzlich wird $this->BackOverviewTable upgedatet
+        if ($debug) 
+            {
+            echo "writeTableStatus : read SummaryofBackup.csv and writes html Table.\n";
+            print_r($this->BackOverviewTable);
+            }
+        $html='';                           /* html start */    
+        $html.='<style>';
+        $html.='.boxes={background-color: blue; color: white; margin: 20px; padding: 20px; border: 1px solid green;}';
+        $html.='.subboxes={background-color: blue; color: white; margin: 20px; padding: 20px; border: 1px solid green;}';    
+        $html.='table {border: 1px solid white; border-collapse: collapse; font-family: arial, sans-serif;} '; 
+        $html.='td, th {border: 1px solid #dddddd; text-align: left; padding: 2px; } ';
+        $html.='tr:nth-child(even) { background-color: #dddddd; color: black;} ';
+        $html.='</style>';
+        $html.='<table style="width:100%" >';
+        $html.='<tr><td><table class="subboxes">';           /* in der ersten Tabelle eine Untertabelle anfangen */
+        $html.= '<tr><td>Backup Style</td><td>'.$tabledata["style"].'</td></tr>'; 
+        unset($tabledata["style"]);
+        $html.= '<tr><td>Count act/target</td><td>'.number_format($tabledata["count"],0,",",".").' / '.number_format($tabledata["countTarget"],0,",",".").'</td></tr>'; 
+        unset($tabledata["count"]);  unset($tabledata["countTarget"]);      
+        $html.= '<tr><td>Size act/target</td><td>'.number_format($tabledata["size"],0,",",".").' / '.number_format($tabledata["sizeTarget"],0,",",".").'</td></tr>'; 
+        unset($tabledata["size"]);  unset($tabledata["sizeTarget"]);                 
+        foreach ($tabledata as $name => $entry)
+            {
+            if (is_array($entry))
+                {   /* untergeodnete Arrays im writeTable igorieren */
+                //echo ">>".$name."\n"; print_r($entry); echo "\n";
+                switch ($name)
+                    {
+                    case "BackupDirectoriesandFiles":
+                    default:
+                        break;
+                    }
+                }
+            else $html.= '<tr><td>'.$name.'</td><td>'.$entry.'</td></tr>';
+            }
+        $html.='</table>';
+        $html.='</td><td>|   ................   <>   ....................... |</td><td><table>';
+		foreach ($this->BackOverviewTable as $path => $entry)
+			{
+            $html.= '<tr><td>';
+            //$html.= $path.'</td><td>';            // path ist redundant, nicht notwendig
+            $html.= $entry["name"].'</td><td>';
+            if (isset($entry["Size"])) $html.= number_format((floatval(str_replace(",",".",$entry["Size"]))/1024/1024),3,",",".")." MByte";
+            $html.= '</td><td>';
+            if (isset($entry["Filecount"])) $html.= $entry["Filecount"];
+            $html.= '</td><td>';
+            if (isset($entry["type"])) $html.= $entry["type"];
+            $html.= '</td><td>';
+            if (isset($entry["logFilename"])) 
+                {  // path rausrechnen
+                if ($debug) echo "writeTableStatus : ".$path."\n";
+                $len = strlen(pathinfo($path)["dirname"]);
+                $logfilename=substr($entry["logFilename"],$len);
+                $html.= $logfilename;
+                }
+            $html.= '</td><td>';
+            if (isset($entry["status"])) $html.= $entry["status"];
+            $html.= '</td><td>';
+            if (isset($entry["logFiledate"])) $html.= $entry["logFiledate"];            
+            $html.= '</td></tr>';
+			}
+		$html.='</table></td><td>#3</td></tr></table>';
+        
+        $this->setTableStatus($html);
+        }
+
+    /* zu einem Backup Log Filenamen relevante Informationen ableiten
+     *
+     */
+
+    function pathXinfo($BackupLogFilename)
+        {
+        $result=array();
+        $directory = str_replace('/','\\',$BackupLogFilename);      // alle einheitlich mit backslash getrennt
+        $path=substr($directory,0,strrpos($directory,'\\')+1);
+        $filename=substr($directory,(strrpos($directory,'\\')+1));
+        $filenameArray=explode("_",$filename);
+        $pathX=$path.$filenameArray[0].'\\';
+        $result["Directory"]=$directory;
+        $result["Path"]=$path;
+        $result["PathX"]=$pathX;
+        $result["Filename"]=$filename;
+        return($result);
+        }
+	
+	}
+
+/********************************************************************************************************
+ *
+ * LogFileHandler of OperationCenter
+ * ================================= 
+ *
+ * extends OperationCenter because it is using same config file
+ * works with the generated logfiles and backups them and deletes them after some time
+ *
+ **************************************************************************************************************************/
+
+class LogFileHandler extends OperationCenter
+	{
+
+	/*
+	 *  Die oft umfangreichen Log-Files oder Captured Pics bei Alarmierung in einem gemeinsamen Ordner pro Tag zusammenfassen, 
+	 *  damit können die Dateien leichter gelogged und gelöscht werden.
+	 *	 
+	 *  Verzeichnis: Ort der Dateien, days: wieviele Tage zurück werden Dateien erst zusammengeräumt, StatusID : OID in der der Zeitstempel der letzten Datei gespeichert wird.
+	 *  days geht immer auf den Tag um 00:00 zurück. Sonst werden wenn die Dateien regelmaessig über den Tag erstellt wurden, auch dauernd Dateien verschoben  
+	 *
+	 *  kann für CamFTP Files als auch für Logs verwendet werden.
+	 */
+
+	function MoveFiles($verzeichnis="",$days=2,$statusID=0)
+		{
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs';
+		$verzeichnis = $this->dosOps->correctDirName($verzeichnis);			// sicherstellen das ein Slash oder Backslash am Ende ist
+
+		echo "MoveFiles: Alle Files von ".$verzeichnis." in eigene Verzeichnisse pro Tag verschieben.\n";
+
+			$count=100;
+			//echo "<ol>";
+
+			//echo "Heute      : ".date("Ymd", time())."\n";
+			//echo "Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+			//echo "Vorgestern : ".date("Ymd", strtotime("-2 day"))."\n";
+			$vorgestern = date("Ymd", strtotime("-".$days." day"));
+			$moveTime=strtotime($vorgestern."000000");
+			//echo " Dateien bis ".$vorgestern." nicht verschieben. ".date("YmdHis",$moveTime)."\n";
+			//echo " Dateien bis ".$vorgestern." nicht verschieben.\n";
+
+			// Test, ob ein Verzeichnis angegeben wurde
+			if ( is_dir ( $verzeichnis ) )
+				{
+				// öffnen des Verzeichnisses
+				if ( $handle = opendir($verzeichnis) )
+					{
+					/* einlesen der Verzeichnisses
+					   nur count mal Eintraege
+					*/
+					while ((($file = readdir($handle)) !== false) and ($count > 0))
+						{
+						if ( ($file != ".") && ($file != "..") )
+							{
+							$dateityp=filetype( $verzeichnis.$file );
+							if ($dateityp == "file")
+								{
+								$filemTimeInt=filemtime($verzeichnis.$file);
+								$filemTime=date("YmdHis",$filemTimeInt);
+								$filecTimeInt=filectime($verzeichnis.$file);
+								$filecTime=date("YmdHis",$filecTimeInt);
+								$unterverzeichnis=date("Ymd", $filecTimeInt);
+								$letztesfotodatumzeit=date("d.m.Y H:i", $filecTimeInt);   // anderes Format fuer Status
+								//echo "Bearbeite Datei $verzeichnis$file : $filemTime modified, $filecTime created. Move files younger than ".date("YmdHis",$moveTime)."\n";
+								if ($filecTimeInt <= $moveTime)
+									{
+									$count-=1;
+									if (is_dir($verzeichnis.$unterverzeichnis))
+										{
+										}
+									else
+										{
+                                        //echo "Mkdirtree von ".$verzeichnis.$unterverzeichnis."\n";
+										$this->dosOps->mkdirtree($this->dosOps->correctDirName($verzeichnis.$unterverzeichnis));
+										}
+                                    //echo "rename ".$verzeichnis.$file."   ,    ".$verzeichnis.$unterverzeichnis."\\".$file."\n";
+									rename($verzeichnis.$file,$verzeichnis.$unterverzeichnis."\\".$file);
+									echo "     Datei: ".$verzeichnis.$file." auf ".$verzeichnis.$unterverzeichnis."\\".$file." verschoben.\n";
+									if ($statusID != 0) SetValue($statusID,$letztesfotodatumzeit);
+									}
+								}
+							}	
+						} /* Ende while */
+					closedir($handle);
+					} /* end if dir */
+				}/* ende if isdir */
+			else
+				{
+				echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
+				}
+		return (100-$count);
+		}
+	/*
+	 *  Die oft umfangreichen Fotos der Webcams in einem Ordner pro Tag zusammenfassen, damit leichter gelogged und gelöscht
+	 *	 werden kann. Es werden die selben Move Operationen wie bei Logs verwendet.
+	 *
+	 */
+
+	function MoveCamFiles($cam_config)
+		{
+		$count=0;
+		$cam_name=$cam_config['CAMNAME'];		
+		$verzeichnis = $cam_config['FTPFOLDER'];
+		$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
+		if ($cam_categoryId==false)
+			{
+			$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+			IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+			IPS_SetParent($cam_categoryId,$this->CategoryIdData);
+			}
+		$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3);
+		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+		$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
+
+		$count=$this->MoveFiles($verzeichnis,0,$WebCam_LetzteBewegungID);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
+		$PhotoCountID = CreateVariableByName($this->CategoryIdData, "Webcam_PhotoCount", 1);
+		SetValue($PhotoCountID,GetValue($PhotoCountID)+$count);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */
+		SetValue($WebCam_PhotoCountID,GetValue($WebCam_PhotoCountID)+$count);
+		if ($count>0)
+			{
+			SetValue($WebCam_MotionID,true);
+			}
+		else
+			{
+			SetValue($WebCam_MotionID,false);
+			}
+		echo "    Anzahl verschobener Fotos für ".$cam_name." : ".$count."\n";
+		return ($count);
+		}
+
+	}
 
 /********************************************************************************************************
  *
@@ -3481,8 +5367,8 @@ class DeviceManagement
 	            $SortInventoryId = IPS_GetVariableIdByName("Sortieren",$CategoryIdHomematicCCU);
 	   			$HomematicInventoryId = IPS_GetVariableIdByName(IPS_GetName($HMI),$CategoryIdHomematicCCU);
 	
-	            $ActionButton[$SortInventoryId]["HMI"]=$HMI;
-	            $ActionButton[$SortInventoryId]["HtmlBox"]=$HomematicInventoryId;
+	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HMI"]=$HMI;
+	            $ActionButton[$SortInventoryId]["DeviceManagement"]["HtmlBox"]=$HomematicInventoryId;
 	            }            
 	        }
 		return($ActionButton);
@@ -4618,17 +6504,17 @@ class parsefile
 			{
 			echo "Ergebnisfile ".$verzeichnis."SystemStatisticRpm.htm gefunden.\n";
 			$ok=true;
-   		while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
+   		    while ((($buffer = fgets($handle, 4096)) !== false) && $ok) /* liest bis zum Zeilenende */
 				{
 				/* fährt den ganzen Textblock durch, Werte die früher detektiert werden, werden ueberschrieben */
 				//echo $buffer;
-	      	if(preg_match('/statList/i',$buffer))
-		   		{
-		   		do {
-		   		   if (($buffer = fgets($handle, 4096))==false) {	$ok=false; }
-			      	if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
+	      	    if(preg_match('/statList/i',$buffer))
+		   		    {
+		   		    do  {
+		   		        if (($buffer = fgets($handle, 4096))==false) {	$ok=false; }
+			      	    if ((preg_match('/script/i',$buffer))==true) {	$ok=false; }
 						if ($ok)
-						   {
+						    {
 							//echo "       ".$buffer;
 					  		$pos1=strpos($buffer,"\"");
 							if ($pos1!=false)

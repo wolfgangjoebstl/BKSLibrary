@@ -58,7 +58,17 @@ $installedModules = $moduleManager->GetInstalledModules();
 
 $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-$scriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+$scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+$backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+if ($backupScriptId !== false) 
+    {
+    echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
+    }
+else 
+    {
+    echo "Script UpdateBackupLogs nicht gefunden. Speicherlimit kann überschritten werden.\n";
+    $backupScriptId=35446;   
+    }
 //echo "Zwei Werte, OperationCenter Modul (".IPS_GetName($scriptId).") und Script im Modul $CategoryIdApp (".IPS_GetName($CategoryIdApp).").\n";
 
 $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
@@ -138,7 +148,19 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
     
 	$DeviceManager = new DeviceManagement();
 
-/* Homematic RSSI Werte auslesen
+/**********************************
+ *
+ * Backup Funktion und Move Log and Capture Files vorbereiten
+ *
+ *************************************/
+
+	$BackupCenter=new BackupIpsymcon($subnet);
+
+	$LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
+
+/***********************************************
+ *
+ * Homematic RSSI Werte auslesen
  *
  ********************************************************************************************/
 
@@ -157,6 +179,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 
 	$ActionButton=$OperationCenter->get_ActionButton();
 	$ActionButton+=$DeviceManager->get_ActionButton();
+	$ActionButton+=$BackupCenter->get_ActionButton();
 
 /*********************************************************************************************/
 
@@ -164,7 +187,9 @@ if ($_IPS['SENDER']=="WebFront")
 	{
 	/* vom Webfront aus gestartet */
     $variableId=$_IPS['VARIABLE'];
-	SetValue($variableId,$_IPS['VALUE']);
+    $value=$_IPS['VALUE'];
+    $oldvalue=GetValue($variableId);
+	SetValue($variableId,$value);
     //echo "Taste gedrückt. $variableId ".IPS_GetName($variableId)."\n";
 	switch ($variableId)
 		{
@@ -173,24 +198,110 @@ if ($_IPS['SENDER']=="WebFront")
 		default:	
 		    if (array_key_exists($variableId,$ActionButton))
 		        {
-				if (isset($ActionButton[$variableId]["HMI"]))
+                /* nach Klassen getrennt auswerten, Routine kann in die Klasse später übernommen werden */
+				if (isset($ActionButton[$variableId]["DeviceManager"]))
 					{
-					/* Homematic Inventory Tabelle sortieren
- 					 *
- 					 ********************************************************************************************/					
-			        $HMI=$ActionButton[$variableId]["HMI"];
-			        $HomematicInventoryId=$ActionButton[$variableId]["HtmlBox"];
-			        //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
-			        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
-			        IPS_ApplyChanges($HMI);
-			        HMI_CreateReport($HMI);
-			        SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
+					if (isset($ActionButton[$variableId]["DeviceManager"]["HMI"]))
+                        {
+                        /* Homematic Inventory Tabelle sortieren
+                        *
+                        ********************************************************************************************/					
+                        $HMI=$ActionButton[$variableId]["DeviceManager"]["HMI"];
+                        $HomematicInventoryId=$ActionButton[$variableId]["DeviceManager"]["HtmlBox"];
+                        //echo "$variableId gefunden.".IPS_GetName($HMI)."   ".IPS_GetProperty($HMI,"SortOrder");
+                        IPS_SetProperty($HMI,"SortOrder",$_IPS['VALUE']);
+                        IPS_ApplyChanges($HMI);
+                        HMI_CreateReport($HMI);
+                        SetValue($HomematicInventoryId,GetValue($HomematicInventoryId));
+                        }
 					}
-				if (isset($ActionButton[$variableId]["ActivateTimer"]))
-					{
-					if (GetValue($variableId)) IPS_SetEventActive($tim12ID,true);
-					else IPS_SetEventActive($tim12ID,false);
-					}
+
+                /* Router Management, SNMP FastPoll */
+
+				if (isset($ActionButton[$variableId]["OperationCenter"]))
+                    {
+                    if (isset($ActionButton[$variableId]["OperationCenter"]["ActivateTimer"]))
+                        {
+                        if (GetValue($variableId)) IPS_SetEventActive($tim12ID,true);
+                        else IPS_SetEventActive($tim12ID,false);
+                        }
+                    }
+
+                /* Backup Funktionen */
+				if (isset($ActionButton[$variableId]["Backup"]))
+                    {
+                    //echo "Wir sind bei den Action Buttons der Klasse Backup. Variable Id ist $variableId.\n";
+                    if (isset($ActionButton[$variableId]["Backup"]["BackupActionSwitch"]))
+                        {
+                        //echo "Button Action Switch mit Wert $value.\n";
+                        switch ($value)
+                            {
+                            case 0: // Repair
+                                $BackupCenter->cleanToken();
+                                SetValue($variableId,$oldvalue); 
+                                IPS_SetEventActive($tim11ID,true); 
+                                $BackupCenter->setBackupStatus("Repair ".date("d.m.Y H:i:s"));                     
+                                break;
+                            case 1: // Restart
+                                $BackupCenter->startBackup();               // no type means, start the old one again
+                                $BackupCenter->setBackupStatus("Restart ".date("d.m.Y H:i:s"));                     
+                                $BackupCenter->cleanToken();
+                                IPS_SetEventActive($tim11ID,true);          // event erst am Ende starten, damit nicht gleich wieder ausgeschaltet wird
+                                break;
+                            case 2: // Full
+                                $BackupCenter->startBackup("full");
+                                $BackupCenter->setBackupStatus("Backup Full ".date("d.m.Y H:i:s"));                     
+                                IPS_SetEventActive($tim11ID,true);          // event erst am Ende starten, damit nicht gleich wieder ausgeschaltet wird
+                                break;
+                            case 3: // Increment
+                                //echo "Increment gedrückt. Jetzt mit Backup starten.\n";
+                                $BackupCenter->startBackup("increment");
+                                $BackupCenter->setBackupStatus("Backup Increment ".date("d.m.Y H:i:s"));                     
+                                IPS_SetEventActive($tim11ID,true);          // event erst am Ende starten, damit nicht gleich wieder ausgeschaltet wird
+                                break;
+                            case 4: // CleanUp
+                                $BackupCenter->configBackup(["status" => "cleanup"]);
+                                $BackupCenter->configBackup(["cleanup" => "started"]);
+                                $BackupCenter->setBackupStatus("Cleanup ".date("d.m.Y H:i:s"));                     
+                                IPS_SetEventActive($tim11ID,true);          // event erst am Ende starten, damit nicht gleich wieder ausgeschaltet wird
+                                break;
+                            case 5: // Stopp
+                                $BackupCenter->stoppBackup();
+                                $BackupCenter->setBackupStatus("Stopp ".date("d.m.Y H:i:s"));                     
+                                break;                            
+                            default:
+                                break;                                                    
+                            }
+                        }
+                    if (isset($ActionButton[$variableId]["Backup"]["BackupFunctionSwitch"]))
+                        {
+                        //echo "BackupFunctionSwitch mit $value gedrueckt.\n";
+                        switch ($value)
+                            {
+                            case 0: // Aus
+                            case 1: // Ein
+                            case 2: // Auto
+                            default:
+                                break;                                                    
+                            }
+                        }
+                    if (isset($ActionButton[$variableId]["Backup"]["BackupOverwriteSwitch"]))
+                        {
+                        //echo "BackupOverwriteSwitch mit $value gedrueckt.\n";
+                        switch ($value)
+                            {
+                            case 0: // Keep
+                                $BackupCenter->configBackup(["update" => "keep"]);
+                                break;
+                            case 1: // Overwrite
+                                $BackupCenter->configBackup(["update" => "overwrite"]);
+                                break;
+                            case 2: // Auto
+                            default:
+                                break;                                                    
+                            }
+                        }
+                    }                   
 				}	
 			break;
 		}
@@ -632,7 +743,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	**********************************************************/
 
 	//$OperationCenter->MoveLogs();
-	if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$OperationCenter->MoveFiles(IPS_GetKernelDir().'logs/',2);
+	if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$LogFileHandler->MoveFiles(IPS_GetKernelDir().'logs/',2);
 
 
 	/************************************************************************************
@@ -761,6 +872,42 @@ if ($_IPS['SENDER']=="TimerEvent")
 								echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";
 								break;						
 					        }   /* ende switch */
+
+						if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") ) 
+							{					                    
+						    echo "ifTable: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
+							$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);
+							$ifTable_ID=@IPS_GetObjectIDByName("ifTable", $fastPollId);
+							if ($ifTable_ID !== false)
+								{					
+			                    switch (strtoupper($router["TYP"]))
+			                        {                    
+			                        case 'B2368':
+										$snmp=new SNMP_OperationCenter($fastPollId, $host, $community, $binary, $debug);							
+										$filterLine=array();
+										$filterCol=false;
+										$result=$snmp->getifTable("1.3.6.1.2.1.2", $filterLine, $filterCol);
+										SetValue($ifTable_ID,$result);
+			                            break;
+							        case 'RT1900AC':
+							        case 'RT2600AC':
+										$snmp=new SNMP_OperationCenter($fastPollId, $host, $community, $binary, $debug);							
+										$filterLine=["AND" => ["ifType" => "6", "ifOperStatus" => "1"]];
+			                            $filterCol=array(		// kopiere die Spalten die enthalten sein sollen von collums
+							                "1" => "ifIndex",
+							                "2" => "ifDescr",
+											 "6" => "ifPhysAddress",
+			                                "10" => "ifnOctets",
+			                                "16" => "ifOutOctests",
+			                                        );
+										$result=$snmp->getifTable("1.3.6.1.2.1.2", $filterLine, $filterCol);
+										SetValue($ifTable_ID,$result);
+			                            break;
+									default:
+										break;						
+			                        }       // router case
+								}			// ifTable HTMLBox angelegt
+							} 			// if snmp readmode
 						} /* ende if routerCategory definiert */
                     }   /* ende if active */
 				} /* Ende foreach */
@@ -778,7 +925,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 					{
 					echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
 					$cam_config['CAMNAME']=$cam_name;
-					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$OperationCenter->MoveCamFiles($cam_config);
+					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
 					if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
 					}
 				/* Die Snapshots der IPS Cam Kameras auf einen Bildschorm bringen */	
@@ -932,10 +1079,34 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 * Timer "Maintenance" einmal am Tag um 01:20, schaltet derzeit nur Timer11 ein, damit dieser zyklisch abarbeitet
 	  		 *
 			 *************************************************************************************/	
+
+            $oc_setup=$BackupCenter->getSetup()["BACKUP"];                // direkter Zugriff auf Parent variablen sollte vermieden werden
+            if ( (isset($oc_setup["FULL"])) && (count($oc_setup["FULL"])>0) )
+                {
+                $full=false;
+                echo "Die nächsten Wochentage : \n";
+                for ($i=0; $i < 7; $i++)
+                    {
+                    $weekday = date("D", time()+60*60*24*$i);    
+                    if (in_array($weekday, $oc_setup["FULL"])) 
+                        {
+                        $full=true;
+                        $style="full"; 
+                        }
+                    else $style="increment";
+                    echo "    $weekday => $style \n";
+                    }
+                echo "\n";            
+                }
+            if ( ($full==false) || (in_array(date("D"), $oc_setup["FULL"])) ) $style="full";
+            else $style="increment";
+            $BackupCenter->startBackup($style); 
+            $BackupCenter->cleanToken();                    
+            $BackupCenter->setBackupStatus("Backup $style, automatically started ".date("d.m.Y H:i:s"));     
 			IPS_SetEventActive($tim11ID,true);	
 			break;		
 		case $tim11ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance Intervall, Logdateien zusammenräumen");
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance Intervall, Logdateien zusammenräumen");    // Dbg is less than inf
 			/************************************************************************************
  			 *
 			 * Log Dateien zusammenräumen, alle 150 Sekunden, bis fertig, von Timer 10 gestartet
@@ -943,24 +1114,96 @@ if ($_IPS['SENDER']=="TimerEvent")
 			 *
 			 *************************************************************************************/	
 			$countlog=0;
-			if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$OperationCenter->MoveFiles(IPS_GetKernelDir().'logs/',2);
+			if (isset($OperationCenter->oc_Setup['CONFIG']['MOVELOGS'])==true) if ($OperationCenter->oc_Setup['CONFIG']['MOVELOGS']==true) $countlog=$LogFileHandler->MoveFiles(IPS_GetKernelDir().'logs',2);
 			if ($countlog == 100)
 				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben. Es gibt noch mehr.");				
+				IPSLogger_Inf(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countlog." Dateien verschoben. Es gibt noch mehr.");				
 				}
 			elseif ($countlog>0)
 				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");
+				IPSLogger_Inf(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, restliche ".$countlog." Dateien verschoben.");
 				}
-			else
-				{
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei bereits zusammengeraeumt.");	
-				$countdir=$OperationCenter->PurgeFiles();
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");
-				$countdelstatus=$OperationCenter->FileStatusDelete();	
-				IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Dropbox Statusdateien zusammengeraeumt, ".$countdelstatus." alte Dateien geloescht.");
-				IPS_SetEventActive($tim11ID,false);
-				}		
+			elseif ( ($BackupCenter->getBackupSwitch()>0) && ($BackupCenter->checkToken()=="free") )
+                {
+                /* hier ist Platz für regelmaessige, laufende Backup Aktivitäten. Im Hintergrund laufen lassen 
+                    *
+                    * nur abarbeiten wenn die Logs bereits verraeumt sind und die Backup Funktion im Webfront eingeschaltet ist 
+                    */
+                $BackupDrive=$BackupCenter->getBackupDrive();
+                $BackupDrive = $BackupCenter->dosOps->correctDirName($BackupDrive);                    
+                $params=$BackupCenter->getConfigurationStatus("array");
+                switch ( $BackupCenter->getMode() )
+                    {
+                    case "backup":      /* ohne das das Backup fertig oder gestoppt ist einfach weitermachen mit dem Backup */ 
+                        IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Backup wird durchgeführt.");
+
+                        /* update Targets for successfull Backup */
+                        $BackupCenter->readSourceDirs($params,$result);    
+                        $params["sizeTarget"]=$params["size"]; 
+                        $params["countTarget"]=$params["count"];        
+                        $params["size"]=0;  $params["count"]=0;  $params["copied"]=0;
+                        
+                        $log=array();
+                        $BackupCenter->BackupDirs($log, $params);
+
+                        //$BackupCenter->setBackupStatus(date("Y:m:d H:i:s"));
+                        $ausdrucken="Status : ".$params["status"]." , aktuell ".$params["copied"]." von ".$params["count"]." nach ".$params["BackupTargetDir"]." kopiert ".date("d.m.Y H:i:s");
+                        $BackupCenter->setBackupStatus($ausdrucken);
+                        echo "Status \"$ausdrucken\"\n";                            
+                        IPSLogger_Inf(__file__, "TimerEvent from ".$_IPS['EVENT']." Backup wird durchgeführt: $ausdrucken");
+                        //$BackupCenter->setBackupStatus("Status : ".$params["status"]." , aktuell ".$params["copied"]." von ".$params["count"]." nach ".$params["BackupTargetDir"]." kopiert ".date("Y:m:d H:i:s"));
+                        echo "Zum Vergleich Size ".$params["size"]." und Count ".$params["count"]." mit ".$params["sizeTarget"]." und ".$params["countTarget"].".\n";
+
+                        $BackupCenter->setConfigurationStatus($params,"array"); 
+
+                        if ( ($params["size"]==$params["sizeTarget"]) && ($params["count"]==$params["countTarget"]) )
+                            {
+                            $BackupCenter->writeBackupLogStatus($log);  
+                            if ($backupScriptId !== false)
+                                {
+                                IPS_RunScriptEx($backupScriptId);
+                                }
+                            else
+                                {
+                                echo "Backup.csv updaten.\n";
+                                $result=$BackupCenter->getBackupDirectoryStatus("update");
+                                echo "SummaryofBackup.csv updaten.\n";  
+                                $BackupCenter->updateSummaryofBackupFile();                                                                                              
+                                }
+                            }
+                        break;
+                    case "cleanup": /* cleanup, finished oder stopped, es ist Zeit für Wartungsarbeiten. Das Backup.csv wird automatisch neu erstellt. */
+                        IPSLogger_Inf(__file__, "TimerEvent from ".$_IPS['EVENT']." Backup, Cleanup wird durchgeführt.");
+                        if ($params["status"] == "cleanup")
+                            {
+                            $BackupCenter->deleteBackupStatusError();
+                            $BackupCenter->setBackupStatus("Status, getBackupDirectoryStatus : ".$params["status"]."  ".date("d.m.Y H:i:s"));                                 
+                            $params["status"]="cleanup-read";
+                            $BackupCenter->setConfigurationStatus($params,"array");                                
+                            }    
+                        elseif ($params["status"] == "cleanup-read")
+                            {  
+                            /* solange im cleanup bleiben bis finished oder stopped */
+                            IPSLogger_Inf(__file__, "TimerEvent from ".$_IPS['EVENT']." Cleanup vom Backup wird durchgeführt.");
+                            $result=$BackupCenter->getBackupDirectoryStatus("reload");			// Backup.csv neu erstellen, result ist params
+                            $BackupCenter->setBackupStatus("Status, getBackupDirectoryStatus : ".$params["status"]."  ".date("d.m.Y H:i:s"));   
+                            }
+                        break;
+                    }
+                $BackupCenter->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben
+                $BackupCenter->setExecTime((microtime(true)-$startexec)." Sekunden");
+                $BackupCenter->cleanToken();
+                }   // ende if backupCenter active
+            else      // Timer nicht ausschalten, bis alle Funktione getestet wurden
+                {		// erst wenn Backup auch fertig mit der Fertigstellungsmeldung kommen
+                IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei bereits zusammengeraeumt.");	
+                $countdir=$OperationCenter->PurgeFiles();
+                IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Logdatei zusammengeraeumt, ".$countdir." alte Verzeichnisse geloescht.");
+                $countdelstatus=$OperationCenter->FileStatusDelete();	
+                IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Dropbox Statusdateien zusammengeraeumt, ".$countdelstatus." alte Dateien geloescht.");
+
+                IPS_SetEventActive($tim11ID,false);
+                }
 			break;
 		case $tim12ID:			/* High Speed Polling, alle 10 Sekunden */
 			foreach ($OperationCenterConfig['ROUTER'] as $router)
@@ -976,30 +1219,38 @@ if ($_IPS['SENDER']=="TimerEvent")
 					    echo "Timer: Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
 	        			$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
 						$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);
-						$host          = $router["IPADRESSE"];
-						if (isset($router["COMMUNITY"])) $community     = $router["COMMUNITY"]; 
-						else $community     = "public";				    //print_r($router);
-	                    $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
-											
-					    //print_r($router);
-	                    switch (strtoupper($router["TYP"]))
-	                        {                    
-	                        case 'B2368':
-								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
-								$OperationCenter->read_routerdata_B2368($fastPollId, $host, $community, $binary, $debug);
-	                            break;
-					        case 'RT1900AC':
-								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
-								$OperationCenter->read_routerdata_RT1900AC($fastPollId, $host, $community, $binary, $debug);
-	                            break;
-					        case 'RT2600AC':
-								echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
-								$OperationCenter->read_routerdata_RT2600AC($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
-	                            break;
-							default:
-								echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";
-								break;						
-	                        }       // router case
+						if ($fastPollId!== false)
+							{
+							$ifTable_ID=@IPS_GetObjectIDByName("ifTable", $fastPollId);
+							$SchalterFastPoll_ID=@IPS_GetObjectIDByName("SNMP Fast Poll", $fastPollId);
+							if ( ($SchalterFastPoll_ID !== false) && ($ifTable_ID !== false) && (GetValue($SchalterFastPoll_ID)==true) )
+								{
+								$host          = $router["IPADRESSE"];
+								if (isset($router["COMMUNITY"])) $community     = $router["COMMUNITY"]; 
+								else $community     = "public";				    //print_r($router);
+			                    $binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+													
+							    //print_r($router);
+			                    switch (strtoupper($router["TYP"]))
+			                        {                    
+			                        case 'B2368':
+										echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
+										$OperationCenter->read_routerdata_B2368($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
+			                            break;
+							        case 'RT1900AC':
+										echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
+										$OperationCenter->read_routerdata_RT1900AC($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
+			                            break;
+							        case 'RT2600AC':
+										echo "   Auslesen per SNMP von \"".$router['NAME']."\".\n";
+										$OperationCenter->read_routerdata_RT2600AC($fastPollId, $host, $community, $binary, $debug, true);		// nur abarbeiten wenn SNMP Library installiert ist
+			                            break;
+									default:
+										echo "   Kein Eintrag für \"".$router['NAME']."\" gefunden. Typ \"".strtoupper($router["TYP"])."\" nicht erkannt.\n";
+										break;						
+			                        }       // router case
+								}			// ende if SchalterFastPoll
+							}				// ende if fastPoll Category
 						}   	// if snmp fast poll active
                     }       // if active
                 }   // foreach

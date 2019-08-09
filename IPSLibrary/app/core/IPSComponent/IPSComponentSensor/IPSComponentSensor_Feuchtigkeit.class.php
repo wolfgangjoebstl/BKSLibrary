@@ -128,6 +128,7 @@
 		
 		function __construct($variable)
 			{
+            $dosOps = new dosOps();
 			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			$result=IPS_GetObject($variable);
@@ -171,7 +172,7 @@
 		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		   $directories=get_IPSComponentLoggerConfig();
 		   $directory=$directories["LogDirectories"]["HumidityLog"];
-		   mkdirtree($directory);
+		   $dosOps->mkdirtree($directory);
 		   $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
 		   parent::__construct($filename,$vid);
 	   	}

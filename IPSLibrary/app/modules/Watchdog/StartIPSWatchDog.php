@@ -47,6 +47,8 @@
 	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
 	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
+    $dosOps = new dosOps(); 
+
 	echo "\nStartIPSWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -105,7 +107,7 @@
 
 	if (isset($config["Software"]["Watchdog"]["Directory"])==true )
 	   {
-		if ( (fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
+		if ( ($dosOps->fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
 		   {
 	   	echo "Keine Installation von IPSWatchdog vorhanden.\n";
 		   $processStart["IPSWatchDog.exe"]="Off";
@@ -118,12 +120,12 @@
 
 	if (isset($config["Software"]["VMware"]["Directory"])==true )
 	   {
-		if ( (fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
+		if ( ($dosOps->fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
 		   {
 		   echo "Keine Installation von VMware vorhanden.\n";
 		   $processStart["vmplayer.exe"]="Off";
 			}
-		if ( (fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
+		if ( ($dosOps->fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
 		   {
 	   	echo "Keine Images für VMPlayer vorhanden.\n";
 		   $processStart["vmplayer.exe"]="Off";
@@ -136,7 +138,7 @@
 
 	if (isset($config["Software"]["iTunes"]["Directory"])==true )
 	   {
-		if ( (fileAvailable("iTunes.exe",$config["Software"]["iTunes"]["Directory"])) == false )
+		if ( ($dosOps->fileAvailable("iTunes.exe",$config["Software"]["iTunes"]["Directory"])) == false )
 		   {
 		   echo "Keine Installation von iTunes vorhanden.\n";
 		   $processStart["iTunes.exe"]="Off";
@@ -149,7 +151,7 @@
 
 	if (isset($config["Software"]["Firefox"]["Directory"])==true )
 	   {
-		if ( (fileAvailable("firefox.exe",$config["Software"]["Firefox"]["Directory"])) == false )
+		if ( ($dosOps->fileAvailable("firefox.exe",$config["Software"]["Firefox"]["Directory"])) == false )
 		   {
 		   echo "Keine Installation von Firefox vorhanden.\n";
 		   $processStart["Firefox.exe"]="Off";

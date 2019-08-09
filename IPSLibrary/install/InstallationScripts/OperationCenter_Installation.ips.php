@@ -120,8 +120,9 @@
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 	
+	$dosOps= new dosOps();
 	
-	/*----------------------------------------------------------------------------------------------------------------------------
+    /*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * Hardware Evaluierung starten, auf Fertigstellung warten
 	 *
@@ -220,7 +221,7 @@
 	$tim1ID=$timer->CreateTimerOC("RouterAufruftimer",00,20);				/* Eventuell Router regelmaessig auslesen */	
 
 	$tim10ID=$timer->CreateTimerOC("Maintenance",01,20);						/* Starte Maintanenance Funktionen */	
-	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files */	
+	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
 
 	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
 	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
@@ -232,12 +233,93 @@
 	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
 	
 	$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
-  		
+
+
+	/*******************************
+	 *
+	 * Variablen Profile Vorbereitung, Allgemeine Profile, gibt es gleich auch bei Autosteuerung
+	 *
+	 ********************************/
+
+    /* für Backup Funktionen */
+
+	$pname="AusEinAuto";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+			//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		//IPS_SetVariableProfileAssociation($pname, 3, "Picture", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
+
+    $pname="RepairRestartFullIncrementCleanup";
+	if (IPS_VariableProfileExists($pname) == false)
+		{       //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+        }
+    else 
+        {        
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Repair", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "Restart", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Full", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 3, "Increment", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 4, "Cleanup", "", 0x20c0f0); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 5, "Stopp", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." überarbeitet;\n";
+		}
+
+    $pname="KeepOverwriteAuto";
+	if (IPS_VariableProfileExists($pname) == false)
+		{       //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+        }
+    else 
+        {        
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Keep", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 1, "Overwrite", "", 0xf0c000); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Auto", "", 0x20c0f0); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." überarbeitet;\n";
+		}
+
+
 	/******************************************************
 
 				INIT, iMacro basierende und SNMP unterstützende Router vorbereiten
 
 	*************************************************************/
+
+	/* SNMP iFTable verwenden folgendes Profil um die Interface Tabellen zu sortieren. */
+		$pname="SortifTable";
+		if (IPS_VariableProfileExists($pname) == false)
+			{
+			//Var-Profil erstellen
+			IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+			echo "Profil ".$pname." erstellt;\n";
+			}
+			
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 10, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Event#", "", 	0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "ID", "", 	0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Name", "", 		0x4e3127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 3, "Pfad", "", 		0x4e7127); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 4, "Objektname", "", 		0x1ef1f7); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 5, "Module", "", 		0x1ef177); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 6, "Funktion", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 7, "Konfiguration", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 8, "Homematic", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 9, "DetectMovement", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 10, "Autosteuerung", "", 		0xaef177); //P-Name, Value, Assotiation, Icon, Color			
+		echo "Profil ".$pname." upgedated.\n";
 
 	echo "\nRouter Erstellung der iMacro Programmierung, Vorbereitung Tab für SNMP basierte Geräte :\n";
 	$routerSnmpLinks=array();								// Sammlung der SNMP Variablen im OperationCenterWebfront unter Router
@@ -245,13 +327,15 @@
 		{
         if ( (isset($router['STATUS'])) && ((strtoupper($router['STATUS']))!="ACTIVE") )
             {
-
+        	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
+		    if ($router_categoryId==true) 	IPS_SetHidden($router_categoryId,true);       // deaktivierte Kategorien verstecken wenn bereits angelegt
             }
         else
             {
     		echo "  Router \"".$router['NAME']."\" vom Typ ".$router['TYP']." von ".$router['MANUFACTURER']." wird bearbeitet.\n";
         	$router_categoryId=@IPS_GetObjectIDByName("Router_".$router['NAME'],$CategoryIdData);
 		    if ($router_categoryId==false) 	$router_categoryId = CreateCategory("Router_".$router['NAME'],$CategoryIdData,10);       // Kategorie anlegen
+			IPS_SetHidden($router_categoryId,false);		// und anzeigen
 	    	//print_r($router);
 
 			$host          = $router["IPADRESSE"];
@@ -328,7 +412,6 @@
                     fclose($handle2);          
                     break;          
 		        case 'RT1900AC':
-                case 'RT2600AC':                
 					$OperationCenter->read_routerdata_RT1900AC($router_categoryId, $host, $community, $binary, $debug);
 					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
 					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
@@ -336,32 +419,49 @@
 						$OperationCenter->read_routerdata_RT1900AC($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
 						}						
 					break;					
+                case 'RT2600AC':                
+					$OperationCenter->read_routerdata_RT2600AC($router_categoryId, $host, $community, $binary, $debug);
+					$routerFastPoll_categoryId = CreateCategory("SnmpFastPoll",$router_categoryId,1000);       	// Kategorie anlegen
+					if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") )			//  
+						{	
+						$OperationCenter->read_routerdata_RT2600AC($routerFastPoll_categoryId, $host, $community, $binary, $debug);	
+						}						
+					break;					
                 //SetValue($ScriptCounterID,1);
                 //IPS_SetEventActive($tim3ID,true);
                 }
 			if ( (isset($router["READMODE"])) && (strtoupper($router["READMODE"])=="SNMP") ) 
 				{
-				/* eine SNMP basierte Auswertung erstellen, da es viele Daten in kurzer Auflösung gibt eine eigene Kategorie unter Router erstellen */
+				/* eine SNMP basierte hochauflösende Auswertung erstellen, es können viele Daten in kurzer Auflösung erstellt werden, eine eigene Kategorie unter Router erstellen 
+				 */
                 echo "      SNMP Highspeed Abfrage für Router Typ ".$router['TYP']." wird hergestellt.\n";
 				$fastPollId=@IPS_GetObjectIDByName("SnmpFastPoll",$router_categoryId);				// FastPoll Kategorie anlegen
 				$routerSnmpLinks[$router_categoryId]["ID"] = $routerFastPoll_categoryId;					// für Webfront Darstellung, die Links sammeln
+				$routerSnmpLinks[$router_categoryId]["NAME"] = $router['NAME']."_".$router['TYP']."_".$router['MANUFACTURER'];
 				$results=IPS_GetChildrenIDs($fastPollId);
 				foreach ($results as $result)
 					{
 					$nameWithTags=IPS_GetName($result);
 					$nametags=explode("_",$nameWithTags);
-					if ( (isset($nametags[2])) && ($nametags[2]=="speed") )
+					if (sizeof($nametags)>0)
 						{
-						print_r($nametags);
-						IPS_SetHidden($result,false);
+						if ( (isset($nametags[2])) && ($nametags[2]=="speed") )
+							{
+							print_r($nametags);
+							IPS_SetHidden($result,false);
+							}
+						else IPS_SetHidden($result,true);	// alle anderen variablen mit _ werden als Hilfsvariablen betrachtet und versteckt 	
 						}
-					else IPS_SetHidden($result,true);	// alle anderen variablen werden als Hilfsvariablen betrachtet und versteckt 	
 					}
-				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,0,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-					
-				}
-			}
-		}
+				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$ifTable_ID=CreateVariable("ifTable",3, $fastPollId,150,"~HTMLBox",null, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				IPS_SetHidden($SchalterFastPoll_ID,false);	
+				IPS_SetHidden($ifTable_ID,false);	
+				IPS_SetHidden($SchalterSortSnmp_ID,false);
+				}		// ende fastpoll
+			}			// ende status active
+		}				// ende foreach
 
 	/******************************************************
 
@@ -401,7 +501,40 @@
 
 	*************************************************************/
 
-	$categoryId_SystemInfo    = CreateCategory('SystemInfo',   $CategoryIdData, 230);
+	$categoryId_SystemInfo	= CreateCategory('SystemInfo',   $CategoryIdData, 230);
+	$HostnameID   			= CreateVariableByName($categoryId_SystemInfo, "Hostname", 3, "", "", 10); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+	$SystemNameID			= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemname", 3, "", "", 20); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
+	$SystemVersionID		= CreateVariableByName($categoryId_SystemInfo, "Betriebssystemversion", 3, "", "", 30); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$HotfixID				= CreateVariableByName($categoryId_SystemInfo, "Hotfix", 3, "", "", 40); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$ExternalIP				= CreateVariableByName($categoryId_SystemInfo, "ExternalIP", 3, "", "", 100); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$UptimeID				= CreateVariableByName($categoryId_SystemInfo, "IPS_UpTime", 3, "", "", 200); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$VersionID				= CreateVariableByName($categoryId_SystemInfo, "IPS_Version", 3, "", "", 210); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$MemoryID				= CreateVariableByName($categoryId_SystemInfo, "Memory", 3, "", "", 50); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	
+	/* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
+    $ipTableHtml      		= CreateVariable("TabelleGeraeteImNetzwerk", 3,  $categoryId_SystemInfo, 500 , '~HTMLBox',null,null,""); // ipTable am Schluss anlegen
+
+	/******************************************************
+
+				INIT, Backup Funktionen
+
+	*************************************************************/
+
+	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
+	/* Hilfe zur Verwendeung von CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon ); */
+	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
+	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptIdOperationCenter,null,"");
+	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptIdOperationCenter,null,"");
+
+	$StatusBackupId				= CreateVariable("Status",3, $categoryId_BackupFunction, 20, "", null, null, ""); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
+	$ConfigurationBackupId		= CreateVariable("Configuration",3, $categoryId_BackupFunction, 2000, "", null, null, ""); 		/* speichert die konfiguration im json Format */	
+	$TokenBackupId		        = CreateVariable("Token",3, $categoryId_BackupFunction, 2010, "", null, null, ""); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+	$ErrorBackupId		        = CreateVariable("LastErrorMessage",3, $categoryId_BackupFunction, 2020, "", null, null, ""); 		        /* verwendet einen Token um sicherzustellen das die Routine nur einmal ausgeführt wird */	
+	$ExecTimeBackupId		    = CreateVariable("ExecTime",3, $categoryId_BackupFunction, 2050, "", null, null, ""); 		        /* maximale Durchlaufzeit um festzustellen ob Backup noch schneller gemacht werden kann */	
+    $TableStatusBackupId        = CreateVariable("StatusTable",3, $categoryId_BackupFunction, 5000, "~HTMLBox", null,null,"");      /* man kann in einer tabelle alles mögliche darstellen */
+
+    IPS_SetHidden($ConfigurationBackupId,true);
+    IPS_SetHidden($TokenBackupId,true);
 
 	/*******************************
      *
@@ -469,6 +602,31 @@
 	 *				Webfront siehe weiter unten
 	 *
 	 *************************************************************/
+
+	/* Zusammenfassung:
+	
+	Es gibt IPSCam das sehr vielseitig programmiert wurde:
+	------------------------------------------------------
+	Visulaisiert Livestreams, steuert die PTZ Kameras an und stellt den Livestream gemeinsma mit Steuerungstasten in einem gemeinsamen iFrame dar
+	Erstellt automatisch Snapshots, die in einem Verzeichnis abgelegt werden
+	und sogar zu einem kleinen Video arrangiert werden können - hab ich immer noch nicht herausgefunden wie
+	Darstellung erfolgt
+	   Unter Visualization/Webfront/Administrator nicht angelegt, liegt direkt auf data
+	   Im Webfront Konfigurator auf CamTPACam/CamTPA/roottp, Splitpane mit zwei Categories verlinken auf NavigationPanel und CameraPanel
+	
+	Es gibt dazu Erweiterungen, Versuche im OperationCenter, die aktiviert werden wenn IPSCam installiert ist:
+	----------------------------------------------------------------------------------------------------------
+	Darstellung des Capture auf dem FTP Laufwerk
+	   Unter Visualization/Webfront/Administrator auf
+	   Im Webfront Konfigurator auf CamCapture
+	Gesammelte Livestreams auf einer Seite
+	   Unter Visualization auf
+	   Im Webfront Konfigurator auf CamTPAOvw bzw. CamTPAOvw0 ...   
+	Gesammelte Bilder auf einer Seite
+	   Unter Visualization auf
+	   Im Webfront Konfigurator auf CamPicture
+	
+	*/
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -917,7 +1075,7 @@
 		$Verzeichnis="user/OperationCenter/Homematics/";
 		$Verzeichnis=IPS_GetKernelDir()."webfront/".$Verzeichnis;
 		$Verzeichnis = str_replace('\\','/',$Verzeichnis);
-		if ( is_dir ( $Verzeichnis ) == false ) mkdirtree($Verzeichnis);
+		if ( is_dir ( $Verzeichnis ) == false ) $dosOps->mkdirtree($Verzeichnis);
 		
 		$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
 				
@@ -934,7 +1092,7 @@
 			if ( is_dir ( $Verzeichnis.$HMI.'/' ) == false ) 
 				{
 				echo "Verzeichnis $neuVerzeichnis existiert noch nicht. Daher erstellen:\n";
-				mkdirtree($Verzeichnis.$HMI.'/');
+				$dosOps->mkdirtree($Verzeichnis.$HMI.'/');
 				}
 			echo "Ausgabe Speicher Verzeichnis :".$aktVerzeichnis."\n";
 			if ( $aktVerzeichnis != $neuVerzeichnis)
@@ -994,6 +1152,7 @@
 		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
 		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
 		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
+		CreateLinkByDestination('Backup', $categoryId_BackupFunction,    $categoryId_WebFront,  850);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 
 		/* für Hardware */
@@ -1005,10 +1164,12 @@
 		/* für Router */
 		if (sizeof($routerSnmpLinks)>0)
 			{
+			echo "   Eigene Kategorie Router erstellen und folgende Links darin anzeigen:\n";
+			print_r($routerSnmpLinks);
 			$categoryId_Router = CreateCategory("Router",  $categoryId_WebFront, 20);
 			foreach ($routerSnmpLinks as $routerSnmpLink)
 				{
-				CreateLinkByDestination($router['NAME']."_".$router['TYP']."_".$router['MANUFACTURER'], $routerSnmpLink["ID"],    $categoryId_Router,  100);		// Link auf eine Kategorie, daher neues Tab
+				CreateLinkByDestination($routerSnmpLink["NAME"], $routerSnmpLink["ID"],    $categoryId_Router,  100);		// Link auf eine Kategorie, daher neues Tab
 				}
 			}
 
@@ -1021,21 +1182,21 @@
 
 	if ($WFC10User_Enabled)
 		{
-		echo "\nWebportal User installieren: \n";
+		echo "\nWebportal User installieren: ".$WFC10User_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
 
 		}
 
 	if ($Mobile_Enabled)
 		{
-		echo "\nWebportal Mobile installieren: \n";
+		echo "\nWebportal Mobile installieren: ".$Mobile_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
 
 		}
 
 	if ($Retro_Enabled)
 		{
-		echo "\nWebportal Retro installieren: \n";
+		echo "\nWebportal Retro installieren: ".$Retro_Path." \n";
 		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
 
 		}
@@ -1075,32 +1236,6 @@
 			$categoryIdCams     		= CreateCategory('Cams',    $CategoryIdCamData, 20);
 			$scriptIdActionScript   = IPS_GetScriptIDByName('IPSCam_ActionScript', $CategoryIdCamApp);			
 			
-			// ===================================================================================================
-			// Add Camera Devices
-			// ===================================================================================================
-			
-			IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
-			IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
-			$camConfig = IPSCam_GetConfiguration();
-			$result=array();
-			
-			/* der iFrame für die Movie Darstellung wird von IPSCam übernommen, damit wird ein eigenen Cam.php File aufgerufen */
-
-			foreach ($camConfig as $idx=>$data) 
-				{
-				$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
-				$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
-				echo "\nKamera ".$idx." (".$data["Name"].") auf Kategorie : ".$categoryIdCamX." (".IPS_GetName($categoryIdCamX).") mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
-				//print_r($data);
-				$result[$idx]["OID"]=$variableIdCamHtmlX;
-				$result[$idx]["Name"]=$data["Name"];
-				$cam_name="Cam_".$data["Name"];
-				$cam_categoryId=@IPS_GetObjectIDByName($cam_name,$CategoryIdData);
-				if ($cam_categoryId==false) echo "   Name ungleich zu OperationCenter.\n";
-				}
-			$anzahl=sizeof($result);
-			echo "Es werden im Snapshot Overview insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
-
 			$WFC10Cam_Path        	 = $moduleManagerCam->GetConfigValue('Path', 'WFC10');
 			$WFC10Cam_TabPaneItem    = $moduleManagerCam->GetConfigValue('TabPaneItem', 'WFC10');
 			$WFC10Cam_TabPaneParent  = $moduleManagerCam->GetConfigValue('TabPaneParent', 'WFC10');
@@ -1122,6 +1257,91 @@
 			echo "  TabName       : ".$WFC10Cam_TabName."\n";
 			echo "  TabIcon       : ".$WFC10Cam_TabIcon."\n";
 			echo "  TabOrder      : ".$WFC10Cam_TabOrder."\n";
+
+			// ===================================================================================================
+			// Add Camera Devices
+			// ===================================================================================================
+			
+			IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+			IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
+			
+
+			if (false)		// kompletten iFrame einbinden und suchen
+				{
+				/* der iFrame für die Movie Darstellung wird von IPSCam übernommen, damit wird ein eigenen Cam.php File aufgerufen */
+				$camConfig = IPSCam_GetConfiguration();
+				$result=array();
+				foreach ($camConfig as $idx=>$data) 
+					{
+					$categoryIdCamX      = CreateCategory($idx, $categoryIdCams, $idx);
+					$variableIdCamHtmlX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMHTML, $categoryIdCamX);
+					$variableIdCamStreamX  = IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMSTREAM, $categoryIdCamX);
+					echo "\nKamera ".$idx." (".$data["Name"].") auf Kategorie : ".$categoryIdCamX." (".IPS_GetName($categoryIdCamX).") mit HTML Objekt auf : ".$variableIdCamHtmlX."\n";
+					//print_r($data);
+					$result[$idx]["OID"]=$variableIdCamHtmlX;
+					$result[$idx]["Stream"]=$variableIdCamStreamX;
+					$result[$idx]["Name"]=$data["Name"];
+					$cam_name="Cam_".$data["Name"];
+					$cam_categoryId=@IPS_GetObjectIDByName($cam_name,$CategoryIdData);
+					if ($cam_categoryId==false) echo "   Name ungleich zu OperationCenter.\n";
+					}
+				$anzahl=sizeof($result);
+				echo "Es werden im Snapshot Overview insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
+
+	    		//echo "\n"; print_r($result);
+				echo "\n";
+	
+				foreach ($result as $cam)
+					{
+					$media=IPS_GetMedia($cam["Stream"]);
+					echo "    ".$cam["Name"]."     ".$cam["OID"]."   ";
+					echo "(".IPS_GetName($cam["OID"])."/".IPS_GetName(IPS_GetParent($cam["OID"]))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($cam["OID"])))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($cam["OID"])))).")";
+					echo "    ".$media["MediaFile"]."  ";
+					echo "\n";
+					}
+				echo "\n      \"".htmlspecialchars(GetValue($cam["OID"]))."\"\n";
+				//$media=IPS_GetMedia($cam["Stream"]);
+				//print_r($media);
+				}
+			
+			if (function_exists('Cam_GetConfiguration'))
+				{
+				$camConfig = Cam_GetConfiguration();
+				}
+			else $camConfig=array();
+				
+			$IntExt="EXT";
+
+			$result=array();
+			foreach ($camConfig as $idx=>$data) 
+				{
+				$ext=(string)$idx;
+				$categoryIdCamX      = @IPS_GetObjectIDByName($idx, $categoryIdCams);
+				/* der iframe für die Darstellung des Cam Livestreams heisst für jede Kamera gleich =>  CamHtml*/
+				$variableIdCamStreamX  = @IPS_GetObjectIDByIdent(IPSCAM_VAR_CAMSTREAM, $categoryIdCamX);
+				if ( ($variableIdCamStreamX !== false) && ($categoryIdCamX !== false) )
+					{
+					$categoryIdNewCamX=CreateCategory($ext,$CategoryIdDataOverview,$idx+200);
+					EmptyCategory($categoryIdNewCamX);			// die Config eines Mediastreams wird nachdem er einmal angelegt wurde nicht mehr geändert, daher loeschen
+					echo "\nKamera ".$idx." (".$data["CAM_PROPERTY_NAME"].") auf Kategorie : ".$categoryIdCamX." (".IPS_GetName($categoryIdCamX).") mit Stream Objekt auf : ".$variableIdCamStreamX."\n";
+					print_r($data);
+					$index="CAM_PROPERTY_COMPONENT_".$IntExt;
+					if ( isset($data[$index]) )
+						{
+						$componentParams     = $data[$index];
+						$component           = IPSComponent::CreateObjectByParams($componentParams);
+						$urlStream           = $component->Get_URLLiveStream();
+						$variableIdNewCamStreamX= CreateMediaStream (IPSCAM_VAR_CAMSTREAM, $categoryIdNewCamX, $urlStream,'Image', 40); 
+
+						$result[$idx]["OID"]=$variableIdNewCamStreamX;
+						$result[$idx]["Name"]=$data["CAM_PROPERTY_NAME"];
+						}
+					}
+				}
+			$anzahl=sizeof($result);
+			echo "Es werden im Snapshot Overview der Stream von insgesamt ".$anzahl." Live Cameras (lokal und remote) angezeigt.\n";
+
+			print_r($result);
 									
 			/************************
 			 *
@@ -1193,18 +1413,28 @@
 
 			// definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
 			CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontPictures,  10,"");								
+
+			/************************
+			 *
+			 * Anlegen des Livestream Overviews von allen Kameras
+			 * ein Tab für jeweils vier Kameras, es wird nur der Livestream angezeigt - alternativ ist es auch noch möglich die IPSCam iframes mit der Camerasteuerung anzuzeigen
+			 * unbenötigte Tabs sollten auch wieder gelöscht werden.
+			 *
+			 ************************/
 				
 			/* zuerst die Kategorien in Visualization aufbauen */
 			$tabs=(integer)($anzahl/4);
 			if ($tabs>0)
 				{
 				/* mehr als 4 Kameras, zusaetzliche Tabs eröffnen */
+				echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur für Livestream in mehreren Tabs installieren in: ".$WFC10Cam_Path." \n";					
+				$tabItem = $WFC10Cam_TabPaneItem.'Ovw';																				
+				DeleteWFCItems($WFC10_ConfigId, $tabItem);			// Einzel Tab loeschen
 				for ($i=0;$i<=$tabs;$i++)
 					{
 					if ($i==0) $ext="";
 					else $ext=(string)$i;
-
-					echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: ".$WFC10Cam_Path.$ext." \n";					
+					echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur für Livestream jetzt installieren in: ".$WFC10Cam_Path.$ext." \n";					
 					$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path.$ext);
 					EmptyCategory($categoryId_WebFrontAdministrator);
         			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
@@ -1215,7 +1445,7 @@
 					$categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontAdministrator, 40);						
 
 					$tabItem = $WFC10Cam_TabPaneItem.'Ovw'.$ext;																				
-					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+100), "Overview", $WFC10Cam_TabIcon, 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem, $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+100), "Overview".$ext, $WFC10Cam_TabIcon, 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Left", $tabItem, 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 					CreateWFCItemSplitPane ($WFC10_ConfigId, $tabItem."_Right", $tabItem, 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
 			
@@ -1230,9 +1460,18 @@
 					if (sizeof($result)>(($i*4)+3)) CreateLink($result[($i*4)+3]["Name"], $result[($i*4)+3]["OID"], $categoryIdRightDn, 10);
 					}
 				}
-			else
+			else		/* nur ein Tab anlegen, Anzahl dargestellter Kameras kleiner gleich 4 */
 				{
-				echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: ".$WFC10Cam_Path." \n";
+				echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur für Livestream in einem Tab installieren in: ".$WFC10Cam_Path." \n";
+				for ($i=0;$i<3;$i++)	// sicherheitshalber Tab 0,1,2 loeschen wenn vorhanden
+					{
+					$ext=(string)$i;
+					$tabItem = $WFC10Cam_TabPaneItem.'Ovw'.$ext;																				
+					if ( exists_WFCItem($WFC10_ConfigId, $tabItem) )
+		 				{
+						DeleteWFCItems($WFC10_ConfigId, $tabItem);
+						}
+					}
 				$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path);
 				EmptyCategory($categoryId_WebFrontAdministrator);
 				$categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontAdministrator, 10);
@@ -1255,7 +1494,7 @@
 				if (sizeof($result)>2) CreateLink($result[2]["Name"], $result[2]["OID"], $categoryIdLeftDn, 10);
 				if (sizeof($result)>3) CreateLink($result[3]["Name"], $result[3]["OID"], $categoryIdRightDn, 10);
 				}			
-			}
+			}			// ende WFCCam enabled */
 			
 		}
 

@@ -189,7 +189,8 @@
 				
 		function __construct($variable,$variablename=Null)
 			{
-			echo "Construct IPSComponentSensor HeatSet Logging for Variable ID : ".$variable."\n";
+            $dosOps= new dosOps();                
+			//echo "Construct IPSComponentSensor HeatSet Logging for Variable ID : ".$variable."\n";
 			$this->variable=$variable;
 			if ($variablename==Null)
 				{
@@ -276,7 +277,7 @@
 			if (isset($directories["LogDirectories"]["HeatSetLog"]))
 		   		 { $directory=$directories["LogDirectories"]["HeatSetLog"]; }
 			else {$directory="C:/Scripts/HeatSet/"; }	
-			mkdirtree($directory);
+			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_HeatSet.csv";
 			parent::__construct($filename,$vid);
 			}
