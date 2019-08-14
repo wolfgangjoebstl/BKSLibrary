@@ -62,12 +62,11 @@ $scriptId           = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectID
 $backupScriptId     = @IPS_GetObjectIDByIdent('UpdateBackupLogs', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
 if ($backupScriptId !== false) 
     {
-    echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
+    //echo "Die Backups werden in einem eigenem Script ($backupScriptId) mit höherem Speicherbedarf finalisiert.\n";
     }
 else 
     {
-    echo "Script UpdateBackupLogs nicht gefunden. Speicherlimit kann überschritten werden.\n";
-    $backupScriptId=35446;   
+    //echo "Script UpdateBackupLogs nicht gefunden. Speicherlimit kann überschritten werden.\n";
     }
 //echo "Zwei Werte, OperationCenter Modul (".IPS_GetName($scriptId).") und Script im Modul $CategoryIdApp (".IPS_GetName($CategoryIdApp).").\n";
 
@@ -1161,7 +1160,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                             $BackupCenter->writeBackupLogStatus($log);  
                             if ($backupScriptId !== false)
                                 {
-                                IPS_RunScriptEx($backupScriptId);
+                                IPS_RunScriptEx($backupScriptId, array());
                                 }
                             else
                                 {

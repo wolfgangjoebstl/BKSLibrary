@@ -182,20 +182,28 @@ class AutosteuerungHandler
 		   {
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
-			//echo "----> wird jetzt gespeichert:\n";
-			//print_r($configuration);
+			echo "StoreEventConfiguration, Configuration wird jetzt wieder gespeichert:\n";
+			print_r($configuration);
 
 			foreach ($configuration as $variableId=>$params) 
 				{
-				//echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
-				//print_r($params);
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) 
-					{
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-					}
-				$configString .= '),'.'        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
+                $configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+                for ($i=0; $i<count($params); $i=$i+3) 
+                    {
+                    if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+                    $configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+                    }
+                $configString .= '),';                
+                if (IPS_ObjectExists($variableId)==false) 
+                    {
+                    echo "Objekt $variableId nicht angelegt. Parameter: ".json_encode($params).". Trotzdem in config übernehmen damit es nicht verloren geht ...\n";
+                    $configString .= '        /* !!! UNKNOWN variableID  */';                    
+                    }
+                else
+                    {
+                    echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
+                    $configString .= '        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
+                    }
 				}
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 			//echo $configString;
@@ -226,11 +234,13 @@ class AutosteuerungHandler
 		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
 			$configuration = self::Get_EventConfigurationAuto();
+            echo "register Autoevent für $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).")\n";
 			//echo "---> war gespeichert.\n";
-			//print_r($configuration);
 
 			if (array_key_exists($variableId, $configuration))
 				{
+                echo "  Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." vorhanden.\n";
+    			print_r($configuration[$variableId]);
 				$moduleParamsNew = explode(',', $moduleParams);
 				$moduleClassNew  = $moduleParamsNew[0];
 
@@ -239,46 +249,46 @@ class AutosteuerungHandler
 				//print_r($params);
 				$ct_par=count($params);
 				if (($ct_par%3)>0)
-				   {
+				    {
 					echo "Anzahl Parameter bei ID ".$variableId." : ".$ct_par." da sind ",($ct_par%3)." Parameter zuviel.\n";
 					$ct_parN=$ct_par-($ct_par%3);
 					for ($i=$ct_parN; $i<$ct_par; $i++)
 						{
 						unset($configuration[$variableId][$i]);
 						}
-               }
+                    }
+                else
+                    {
+                    $ct_parN=$ct_par;
+                    }
+                for ($i=0; $i<$ct_parN; $i=$i+3)
+                    {
+                    $moduleParamsCfg = $params[$i+2];
+                    $moduleParamsCfg = explode(',', $moduleParamsCfg);
+                    $moduleClassCfg  = $moduleParamsCfg[0];
+                    // Found Variable and Module --> Update Configuration
+                    if ($moduleClassCfg=$moduleClassNew)
+                        {
+                        $found = true;
+                        $configuration[$variableId][$i]   = $eventType;
+                        $configuration[$variableId][$i+1] = $componentParams;
+                        $configuration[$variableId][$i+2] = $moduleParams;
+                        }
+                    }
+                }
             else
-               {
-               $ct_parN=$ct_par;
-               }
-				for ($i=0; $i<$ct_parN; $i=$i+3)
-					{
-					$moduleParamsCfg = $params[$i+2];
-					$moduleParamsCfg = explode(',', $moduleParamsCfg);
-					$moduleClassCfg  = $moduleParamsCfg[0];
-					// Found Variable and Module --> Update Configuration
-					if ($moduleClassCfg=$moduleClassNew)
-						{
-						$found = true;
-						$configuration[$variableId][$i]   = $eventType;
-						$configuration[$variableId][$i+1] = $componentParams;
-						$configuration[$variableId][$i+2] = $moduleParams;
-						}
-					}
-				}
-			else
-			   {
-			   //echo "Lege neue Variable mit ID : ".$variableId." : ".count($params)." Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
-				//echo "Variable with ID ".$variableId. " not found\n";
-				// Variable NOT found --> Create Configuration
-				$configuration[$variableId][] = $eventType;
-				$configuration[$variableId][] = $componentParams;
-				$configuration[$variableId][] = $moduleParams;
-				}
-				//print_r($configuration);
-				self::StoreEventConfiguration($configuration);
-				self::CreateEvent($variableId, $eventType, self::$scriptID);
-   		}
+                {
+                echo "Lege neue Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
+                //echo "Variable with ID ".$variableId. " not found\n";
+                // Variable NOT found --> Create Configuration
+                $configuration[$variableId][] = $eventType;
+                $configuration[$variableId][] = $componentParams;
+                $configuration[$variableId][] = $moduleParams;
+                }
+            //print_r($configuration);
+            self::StoreEventConfiguration($configuration);
+            self::CreateEvent($variableId, $eventType, self::$scriptID);
+   		    }
 		
 		/************************************************************************
 		 *
@@ -771,7 +781,7 @@ class AutosteuerungOperator
 	private $logicAnwesend;			// die überarbeitete Konfiguration
 	private $motionDetect_DataID;	// hier sind die verzoegerten Spiegelvariablen gespeichert 
 
-	public function __construct()
+	public function __construct($debug=false)
 		{
 		//IPSLogger_Dbg(__file__, 'Construct Class AutosteuerungOperator.');
 		
@@ -791,21 +801,22 @@ class AutosteuerungOperator
 		if (isset($configAnwesend["Config"])==false) $configAnwesend["Config"]["Delayed"]=false;
 		if (isset($configAnwesend["Config"]["Delayed"])==false) $configAnwesend["Config"]["Delayed"]=false;
 		
+        if ($debug) echo "Anwesend Konfiguration analysieren:\n";
 		//print_r($configAnwesend);
 		foreach($configAnwesend as $type => $operation)
 			{
-			switch ($type)
+			switch (strtoupper($type))
 				{
 				case "OR":
 				case "AND":
-					echo "Type $type erkannt.\n";
+					if ($debug) echo "  Type $type erkannt:\n";
 					foreach ($operation as $index => $oid)
 						{
 						if (is_array($oid)) 
 							{
 							$name=IPS_GetName($index);
 							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
-							echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
+							if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
 							//$config[$type][$index] = $oid;
 							$newPos="x";
 							foreach ($oid as $pos => $entry) 
@@ -831,13 +842,13 @@ class AutosteuerungOperator
 									}
 								elseif ( ($pos === 0) || ($pos === 1) )
 									{
-									echo "0/1 erkannt : $pos wird zu $newPos mit $entry\n";
+									if ($debug) echo "   0/1 erkannt : $pos wird zu $newPos mit $entry\n";
 									$config[$type][$index][$newPos] = $entry;
 									if ($newPos =="x") $newPos="y";
 									}
 								else 
 									{
-									echo "alle anderen uebernehmen : $pos mit $entry\n";
+									if ($debug) echo "   alle anderen uebernehmen : $pos mit $entry\n";
 									$config[$type][$index][$pos] = $entry;
 									}	
 								}
@@ -846,17 +857,20 @@ class AutosteuerungOperator
 						else
 							{  /* add default entry and remove old one */
 							//unset($configAnwesend[$type][$index]);
-							echo " --> kein Array, Topology hinzufuegen.\n";
+							if ($debug) echo " --> kein Array, Topology hinzufuegen.\n";
 							$name=IPS_GetName($oid);
 							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
-							echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
+							if ($debug) echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
 							$config[$type][$oid]=["x" => 0,"y" => 0];
 							}
 						}
 					unset($operation);
 					break;
+				case "CONFIG":                    
+					$config[$type]=$operation;
+					break;
 				default:
-					echo "Index unbekannt, $type erkannt.\n";
+					echo "  !! class AutosteuerungOperator construct, Index unbekannt, $type erkannt.\n";
 					$config[$type]=$operation;
 					break;
 				}
@@ -1119,7 +1133,7 @@ class Autosteuerung
 	
 	var $installedmodules;
 	var $CategoryIdData, $CategoryIdApp;
-	var $CategoryId_Ansteuerung;
+	var $CategoryId_Ansteuerung, $CategoryId_Status;        // werden immer in Install generiert
 	var $availableModules;							// eigentlich Liste aller GUIDs der Module, für check ob Parameter ein gültige Modul GID hat
 	
 	var $log;										// logging class, called with this class
@@ -1183,6 +1197,7 @@ class Autosteuerung
 		$this->CategoryIdData   				= $moduleManager->GetModuleCategoryID('data');
 		$this->CategoryIdApp      				= $moduleManager->GetModuleCategoryID('app');
 		$this->CategoryId_Ansteuerung			= IPS_GetCategoryIDByName("Ansteuerung", $this->CategoryIdData);
+		$this->CategoryId_Status			    = IPS_GetCategoryIDByName("Status", $this->CategoryIdData);
 
 		$this->scriptId_Autosteuerung  = IPS_GetObjectIDByIdent('Autosteuerung', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Autosteuerung'));
 
@@ -1743,7 +1758,7 @@ class Autosteuerung
 
 	/***************************************
 	 *
-	 * Vorwert erfassen und speichern, eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
+	 * Vorwert (Float) erfassen und in der Category Stromheizung speichern, eingesetzt bei Heizung um zB zu erkennen Temperatur gestiegen, gesunken, etc.
 	 * wird bei jeder Änderung aufgerufen
 	 *
 	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Ansteuerung.Stromheizung einen Eintrag mit
@@ -1751,9 +1766,10 @@ class Autosteuerung
 	 *
 	 ******************************************************************/
 
-	public function setNewValue($variableID,$value)
+	public function setNewValue($variableID,$value, $category=0)
 		{
-		if ($this->CategoryId_Stromheizung !== false)
+        if ($category === 0) $category=$this->CategoryId_Stromheizung;
+		if ($category !== false)
 			{
 			if ( !(IPS_ObjectExists($variableID)) ) 
 				{
@@ -1762,9 +1778,9 @@ class Autosteuerung
 				}
 			else
 				{	 
-				//echo "Stromheizung Speicherort OID : ".$this->CategoryId_Stromheizung." (".IPS_GetName(IPS_GetParent($this->CategoryId_Stromheizung))."/".IPS_GetName($this->CategoryId_Stromheizung).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				//echo "Stromheizung Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
-				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), 2, $this->CategoryId_Stromheizung, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), 2, $category, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
 				//echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				SetValue($mirrorVariableID,$value);
@@ -1805,6 +1821,79 @@ class Autosteuerung
 				}
 			}
 		else return ($value);	
+		}
+
+	/***************************************
+	 *
+	 * Vorwert (Boolean) erfassen und in der Category Status speichern, eingesetzt bei Status und StatusParallel um zB zu erkennen wie sich der >Status geändert hat on->off, off->on, just bounce, or only update on->on etc.
+	 * wird bei jeder Änderung aufgerufen
+	 *
+	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Status einen Eintrag mit
+	 * dem selben Variablennamen machen (plus Parentname) und daraus den Vorwert ableiten
+     *
+     * bislang wurde nur abhängig vom aktuellen Statuswert geschaltet    on:true, off:none
+	 *
+	 ******************************************************************/
+
+	public function setNewStatus($variableID,$value, $category=0)
+		{
+        if ($category === 0) $category=$this->CategoryId_Status;            
+		if ($category !== false)
+			{
+			if ( !(IPS_ObjectExists($variableID)) ) 
+				{
+				echo "Variable ID : ".$variableID." existiert nicht.\n";
+				return($value);
+				}
+			else
+				{	 
+				echo "setNewStatus: Status Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				//CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), 0, $category, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				$oldValue=GetValue($mirrorVariableID);
+				if ($value != $oldValue) SetValue($mirrorVariableID,$value);
+				return($oldValue);
+				}
+			}
+		else return ($value);	
+		}
+
+	/***************************************
+	 *
+	 * Vorwert (boolean) erfassen und speichern wenn zeitlicher Abstand zur letzen Änderung groesser $bounce ist
+     *
+     * Änderungen nur abspeichern wenn zeitlich lang genug vom letztem Speicherdatum entfernt sind, Wert ist eigentlich völlig egal, es wird das Speicherdatum der Variable genommen
+     * Routine wird nur bei Änderungen von 0 auf 1 oder von 1 auf 0 aufgerufen  Befehlr   ON:true oder OFF:true
+	 *
+	 * in der entsprechenden Kategorie data.modules.Autosteuerung.Status einen Eintrag mit
+	 * dem selben Variablennamen machen (plus Parentname plus dif)  und daraus den Vorwert ableiten
+	 *
+	 ******************************************************************/
+
+	public function setNewStatusBounce($variableID,$value,$bounce, $category=0)
+		{
+        if ($category === 0) $category=$this->CategoryId_Status; 
+		if ($category !== false)
+			{
+			if ( !(IPS_ObjectExists($variableID)) ) 
+				{
+				echo "Variable ID : ".$variableID." existiert nicht.\n";
+				return($value);
+				}
+			else
+				{	 
+				echo "Stromheizung Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				// CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+				$mirrorVariableID=CreateVariable (IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID))."_Dif", 2, $category, $Position=0, $Profile="", $Action=null, $ValueDefault=0, $Icon='');
+				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID))).
+						"   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				$timeOfChange=time()-IPS_GetVariable($mirrorVariableID);
+				if ($timeOfChange>=$dif) SetValue($mirrorVariableID,$value);
+				return($timeOfChange);
+				}
+			}
+		else return (false);	
 		}
 
 	/**
@@ -2509,7 +2598,12 @@ class Autosteuerung
 			case "ON":
 				if ( ($result["STATUS"] !== false) || ($result["SOURCE"] == "ONUPDATE") )   
 					{
-					/* nimmt den Wert des auslösenden Ereignisses, ON nur wenn Wert des Ereignis true ausführen*/
+					/* nimmt den Wert des auslösenden Ereignisses, ON Befehl wird nur abgearbeitet wenn Wert des Ereignis auf true steht oder als Auslöser update eingetragen wird (statt onchange) 
+                     * ON:TRUE:MASK   der Befehl On hat noch zusätzliche parameter, der geläufigste ist TRUE. Kann aber auch FALSE, TOGGLE oder NONE sein. 
+                     *                Für die Programmbearbeitung von IPLight gibt es auch noch START, NEXT, PREV, END
+                     *                ein Spezialbefehl ist ON:TRUE:MASK:0x4356 ---> Funktion muss noch weiter untersucht werden
+                     *                BOUNCE:2, mask within time interval, 12:01:34 erste Änderung von 0 auf 1 , dazwischen 1 auf 0, 12:01:35 zweite Änderung von 0 auf 1
+                     */
 					$value_on=strtoupper($befehl[1]);
 					$i=2;
 					while ($i<count($befehl))
@@ -2520,6 +2614,10 @@ class Autosteuerung
 							//$notmask_on=~($mask_on)&0xFFFFFF;						
 							$result["ON_MASK"]=$mask_on;
 							}
+                        elseif (strtoupper($befehl[$i])=="BOUNCE")
+                            {
+                            echo "Befehl Bounce gefunden.\n";    
+                            }
 						$i++;
 						}
 					switch ($value_on)
@@ -3019,7 +3117,7 @@ class Autosteuerung
 						}	        // ende else andere befehlsdarstellung	
 								
 				break;
-			case "IFDIF":
+			case "IFDIF":           /* bei Temperaturwerten ist das der Abstand, der zum alten Wert erreicht werden muss bevor der befehl ausgeführt wird */
 				$dif=(float)($befehl[1]);
 				$oldvalue=$this->setNewValueIfDif($result["SOURCEID"],$result["STATUS"],$dif);
 				echo "IFDIF Befehl erkannt : aktuelle Temperatur : ".($result["STATUS"])."    ".$dif." alter ifdif Wert : ".$oldvalue."\n";
@@ -5688,6 +5786,12 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="")
    /* array('OnChange','Status',   'ArbeitszimmerLampe,on:true,off:false,if:light',),       				*/
 
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
+
+	/* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
+	 * neuen Wert gleichzeitig schreiben
+	 */
+	$oldValue=$auto->setNewStatus($variableID,$status);	
+
 	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
 	$parges=$auto->ParseCommand($params,$status,$simulate);
@@ -5699,6 +5803,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="")
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */        
 		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 	
 		foreach ($Kommando as $num => $befehl)
@@ -5735,7 +5840,13 @@ function StatusParallel($params,$status,$variableID,$simulate=false,$wertOpt="")
 	
 	IPSLogger_Inf(__file__, 'Aufruf Routine StatusParallel mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
-	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+
+    /* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
+	 * neuen Wert gleichzeitig schreiben
+	 */
+	$oldValue=$auto->setNewStatus($variableID,$status);	
+	
+    $lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	
 	$parges=$auto->ParseCommand($params,$status,$simulate);
 	//print_r($parges);
@@ -5744,6 +5855,7 @@ function StatusParallel($params,$status,$variableID,$simulate=false,$wertOpt="")
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
 		$command[$entry]["STATUS"]=$status;	
+		$command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */        
 		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 	
 		foreach ($Kommando as $num => $befehl)

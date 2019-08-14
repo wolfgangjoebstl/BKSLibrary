@@ -61,8 +61,9 @@
 	$scriptIdAlexaControl   = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 	
 	$eventType='OnChange';
-	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
-	
+	$categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
+	$categoryId_Status  = CreateCategory("Status", $CategoryIdData, 100);                 // ein paar Spiegelregister für die Statusberechnung, Debounce Funktion
+
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -516,6 +517,7 @@
 			case "ANWESENHEITSSIMULATION":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Schaltbefehle'));
 				$simulation=new AutosteuerungAnwesenheitssimulation();
+                echo " --> AutosteuerungAnwesenheitssimulation erfolgreich aufgerufen.\n";
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {                
 				    $webfront_links[$AutosteuerungID]["OID_R"]=$inputSchalt;									

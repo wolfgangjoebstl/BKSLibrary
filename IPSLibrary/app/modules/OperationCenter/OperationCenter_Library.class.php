@@ -3498,15 +3498,14 @@ class BackupIpsymcon extends OperationCenter
         if ($params["style"]=="increment")
             {
             echo "backupDirs: incremental backup requested. Read ".$params["full"]."\n";
-            $count=0; $countmax=10;
-            $result=$this->pathXinfo($params["full"]);                
+            $count=0; $countmax=10; $fileCount=0;
+            $result=$this->pathXinfo($params["full"]); 
+            //print_r($result);              
             $handle1=fopen($params["full"],"r");
             while ( !feof($handle1) ) 
                 {
                 if (($input=fgets($handle1)) === FALSE) break;      // the while loop
                 $inputArray=explode(";",$input);
-                /* if ($count++ < $countmax) echo "   ".count($inputArray)." entries : $input ";
-                elseif ($count++ == $countmax) echo "---> more lines availabel.\n";  */
                 switch (sizeof($inputArray)) 
                     {
                     case 0:
@@ -3515,6 +3514,7 @@ class BackupIpsymcon extends OperationCenter
                     case 2:
                         $filename='.\\'.substr($inputArray[0],(strrpos($result["PathX"],'\\')+1));                    
                         $params["checkChange"][$filename]=trim($inputArray[1]);
+                        $fileCount++;
                         break;
                     case 3:
                         $filename='.\\'.substr($inputArray[0],(strrpos($result["PathX"],'\\')+1));                    
@@ -3533,10 +3533,20 @@ class BackupIpsymcon extends OperationCenter
                                     break;
                                 }
                             }
+                        $fileCount++;
                         break;
                     }
+                /* if ($count++ < $countmax) 
+                    {
+                    echo "   ".count($inputArray)." entries : ";
+                    //echo $input ;
+                    echo $inputArray[0]."  ".$result["PathX"];
+                    echo " $filename ".$params["checkChange"][$filename]."\n";
+                    }
+                elseif ($count++ == $countmax) echo "---> more lines availabel.\n";   */
                 }
             fclose($handle1);
+            echo "  in total $fileCount Files read from ".$params["full"]."\n";
             }
 
         /* excute */
@@ -3678,13 +3688,61 @@ class BackupIpsymcon extends OperationCenter
         {
         $resultfull=array();
         $result = $this->readBackupDirectorySummaryStatus($resultfull);         // lese die Datei SummaryofBackup.csv
+        $increment=0; $full=0; $delete=false; 
+        //$monthCount=0; $month=(integer)date("n");          // n ist monat ohne führende Nullen
+        $monthSet=array();
+        $monthFound=false;
+        foreach ($resultfull as $BackupDirEntry => $entry)
+            {
+            if (isset($entry["logFilename"])) 
+                {  // path rausrechnen
+                $details=$this->pathXinfo($entry["logFilename"]);
+                //print_r($details);
+                if ( (isset($details["Date"])) && (isset($details["Type"][2])) )
+                    {
+                    $backupTime=strtotime($details["Date"]);
+                    $days=round((time()-$backupTime)/24/60/60,0);
+                    $monthBackup=(integer)date("n", $backupTime);
+                    if ( (isset($monthSet[$monthBackup])==false) && (($entry["type"]) == "full") ) { $monthSet[$monthBackup]=$details["Date"]; $monthFound=true; }
+                    else $monthFound=false;
+                    echo "Zeit zum Backup in Tagen : ".$days." fuer ".$details["Date"]." ".$entry["type"]."   Monat $monthBackup ".($monthFound?"Neuer Monat":"")."\n";
+                    if ($details["Type"][0] == "full") $full++;
+                    elseif ($details["Type"][0] == "increment") $increment++;
+                    echo "$full/$increment Zeit zum Backup in Tagen : ".$days." fuer ".$details["Date"]."\n";
+                    if ($delete) 
+                        {
+                        if ( ($monthFound==false) ) $resultfull[$BackupDirEntry]["cleanup"]="delete";
+                        //print_r($entry);
+                        }
+                    else
+                        {
+                        if ( ($full>=2) && (($full+$increment)>=10) ) 
+                            {
+                            echo "   Tagesbackups ausreichend vorhanden, von hier an loeschen.\n";
+                            $delete=true;
+                            }
+                        }
+                    }
+                }
+            }
+        //print_r($monthSet);
         if ($debug) 
             { 
-            echo "Werte von SummaryofBackup.csv mit gültigen Status : \n"; 
-            print_r($result);
-            echo "Alle Werte : \n";
-            print_r($resultfull); 
-            $html='<table>';
+            //echo "Werte von SummaryofBackup.csv mit gültigen Status : \n"; 
+            //print_r($result);
+            //echo "Alle Werte : \n";
+            //print_r($resultfull); 
+            $html="";
+            $html .= '<style>';
+            $html .= 'table.quick { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
+            $html .= ' font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; font-weight:400; text-decoration:none; color:#0018ff; white-space:pre-wrap; }';
+            $html .= 'table.quick th { padding: 2px; background-color:#98dcff; border:solid 2px #006CFF; }';
+            $html .= 'table.quick td { padding: 2px; border:solid 1px #006CFF; }';
+            $html .= 'table.custom_class tr { margin:0; padding:4px; }';
+            $html .= '.quick.green {border:solid green; color:green;}';
+            $html .= '';
+            $html .= '</style>';
+            $html .= '<table class="quick">';
             foreach ($resultfull as $path => $entry)
                 {
                 $html.= '<tr><td>';
@@ -3698,26 +3756,65 @@ class BackupIpsymcon extends OperationCenter
                 $html.= '</td><td>';
                 if (isset($entry["logFilename"])) 
                     {  // path rausrechnen
+                    $details=$this->pathXinfo($entry["logFilename"]);
+                    //print_r($details);
                     if ($debug) echo "writeTableStatus : ".$path."\n";
-                    $len = strlen(pathinfo($path)["dirname"]);
-                    $logfilename=substr($entry["logFilename"],$len);
-                    $html.= $logfilename;
+                    $html.= $details["Filename"];
                     }
                 $html.= '</td><td>';
                 if (isset($entry["status"])) $html.= $entry["status"];
                 $html.= '</td><td>';
                 if (isset($entry["logFiledate"])) $html.= $entry["logFiledate"];            
-                $html.= '</td></tr>';
+                $html.= '</td><td>';
+                if (isset($entry["last"])) $html.= date("H:i:s d.m.Y",(integer)$entry["last"]);            
+                $html.= '</td><td>';                
+                if (isset($entry["first"])) $html.= date("H:i:s d.m.Y",(integer)$entry["first"]);            
+                $html.= '</td><td>';                
+                if (isset($entry["cleanup"])) $html.= $entry["cleanup"];            
+                $html.= '</td></tr>'; 
+                }
+            $html.='</table><br>';
+            $html .= '<table class="quick green">';
+            foreach ($result as $path => $entry)
+                {
+                $html.= '<tr><td>';
+                //$html.= $path.'</td><td>';            // path ist redundant, nicht notwendig
+                $html.= $entry["name"].'</td><td>';
+                if (isset($entry["Size"])) $html.= number_format((floatval(str_replace(",",".",$entry["Size"]))/1024/1024),3,",",".")." MByte";
+                $html.= '</td><td>';
+                if (isset($entry["Filecount"])) $html.= $entry["Filecount"];
+                $html.= '</td><td>';
+                if (isset($entry["type"])) $html.= $entry["type"];
+                $html.= '</td><td>';
+                if (isset($entry["logFilename"])) 
+                    {  // path rausrechnen
+                    $details=$this->pathXinfo($entry["logFilename"]);
+                    if ($debug) echo "writeTableStatus : ".$path."\n";
+                    $html.= $details["Filename"];
+                    }
+                $html.= '</td><td>';
+                if (isset($entry["status"])) $html.= $entry["status"];
+                $html.= '</td><td>';
+                if (isset($entry["logFiledate"])) $html.= $entry["logFiledate"];            
+                $html.= '</td><td>';
+                if (isset($entry["last"])) $html.= date("H:i:s d.m.Y",(integer)$entry["last"]);            
+                $html.= '</td><td>';                
+                if (isset($entry["first"])) $html.= date("H:i:s d.m.Y",(integer)$entry["first"]);            
+                $html.= '</td></tr>'; 
                 }
             $html.='</table>';
             echo $html;
             }
+        echo "\n"; // neue Zeile nach Backup Tabelle 
         foreach ($resultfull as $BackupDirEntry => $entry)
             {
-            if ( (isset($entry["status"])) && ($entry["status"]=="error") && (strpos($BackupDirEntry,"Source")===false) )
+            if (strpos($BackupDirEntry,"Source")===false)
                 {
-                echo "Delete Verzeichnis $BackupDirEntry.Im Debug Modus wird nicht geloescht !\n";
-                if ($debug) $this->dosOps->rrmdir($BackupDirEntry);
+                if ( ((isset($entry["status"])) && ($entry["status"]=="error")) || ((isset($entry["cleanup"])) && ($entry["cleanup"]=="delete")) )
+                    {
+                    echo "Delete Verzeichnis $BackupDirEntry. Im Debug Modus wird nicht geloescht !\n";
+                    if ($debug !== true) $this->dosOps->rrmdir($BackupDirEntry);
+                    }
                 }
             }  
         }
@@ -4343,29 +4440,30 @@ class BackupIpsymcon extends OperationCenter
             {
             if (is_file($BackupDrive.$entry)) $BackupLogs[]=$BackupDrive.$entry;  
             }
-        if ($debug) { echo "\nBackup Log Dateien :\n"; print_r($BackupLogs); }
+        if ($debug) { echo "Backup Log Dateien :\n"; print_r($BackupLogs); }
 
         /* Backup Logfile Array erstellen, wird in gemeinsame Tabelle übernommen */
 		$backUpLogTable=array();
 		foreach ($BackupLogs as $BackupLog)
 			{
-			$Logfile=pathinfo($BackupLog); 
-            //echo "Logfile ".$Logfile["filename"]." behandeln.\n";
-            //if ($debug) print_r($Logfile);
-			$LogFileName=explode(".",$Logfile["filename"]);
-            $pos=strrpos($LogFileName[0],"_");
-            if ($pos != false)
-                {
-                $LogFileTypeDir=substr($LogFileName[0],0,$pos);
-                $LogFileType=substr($LogFileName[0],$pos+1);
-                //echo "Pos $pos $LogFileTypeDir $LogFileType  \n";
+			$Logfile=$this->pathXinfo($BackupLog); 
+            //print_r($Logfile);
+			if (isset($Logfile["DirectoryX"]))
+                { 
+                if (isset($Logfile["Type"][2])) 
+                    {
+                    if ( ($Logfile["Type"][2]=="csv") && ($Logfile["Type"][1]=="backup") )
+                        {	// wahrscheinlich gültiger Filename
+                        //echo "   gefunden $BackupLog\n";
+                        $backUpLogTable[$Logfile["DirectoryX"]]["filename"]=$BackupLog;
+                        $backUpLogTable[$Logfile["DirectoryX"]]["type"]=$Logfile["Type"][0];
+                        $backUpLogTable[$Logfile["DirectoryX"]]["filedate"]=date("YmdHis",filemtime($BackupLog));
+                        }
+                    else echo " extensions nicht backup.csv \n";
+                    }
+                else echo "nicht gefunden Type 2\n";
                 }
-			if ( (isset($LogFileName[1])) && ($pos != false) && ($Logfile["extension"]=="csv") && ($LogFileName[1]=="backup") )
-				{	// wahrscheinlich gültiger Filename
-				$backUpLogTable[$LogFileTypeDir]["filename"]=$BackupLog;
-				$backUpLogTable[$LogFileTypeDir]["type"]=$LogFileType;
-                $backUpLogTable[$LogFileTypeDir]["filedate"]=date("YmdHis",filemtime($BackupLog));
-				}
+            else echo "nicht gefunden \n";
 			}
         return ($backUpLogTable);
         }
@@ -4476,7 +4574,7 @@ class BackupIpsymcon extends OperationCenter
  
         /* filter finished, get last full */
         $resultFiltered=array();
-        $full=0;
+        $full=0; $increment=0;
         krsort($result);
         foreach ($result as $path => $entry) 
             {
@@ -4485,15 +4583,27 @@ class BackupIpsymcon extends OperationCenter
                 if ( ($full==0) && ($entry["status"]=="finished") &&  ($entry["type"]=="full") ) 
                     {
                     $resultFiltered[$path]=$entry;
+                    $result[$path]["cleanup"]="latest_full";
                     $full++;
                     }
-                if ( ($full==0) && ($entry["status"]=="finished") &&  ($entry["type"]=="increment") ) 
+                elseif ( ($full==0) && ($increment==0) && ($entry["status"]=="finished") &&  ($entry["type"]=="increment") ) 
                     {
                     $resultFiltered[$path]=$entry;
+                    $result[$path]["cleanup"]="latest_inc";
+                    $increment++;
+                    }
+                else 
+                    {
+                    if ($entry["type"]=="increment") { $result[$path]["cleanup"] = "i".$increment++; }
+                    if ($entry["type"]=="full") { $result[$path]["cleanup"] = "f".$full++; }
                     }
                 }
             }
-        //print_r($resultFiltered);
+        if ($debug) 
+            {            
+            echo "Werte von SummaryofBackup.csv mit gültigen Status : \n"; 
+            print_r($resultFiltered);
+            }
         return ($resultFiltered);
         }
 
@@ -4542,26 +4652,26 @@ class BackupIpsymcon extends OperationCenter
         $params=$this->getConfigurationStatus("array");
         $ergebnis=array();
         $this->analyseBackupDirectoryStatus($ergebnis);
-        /* if ($debug) 
+        if ($debug) 
             {
             echo "Allocated Memory : ".getNiceFileSize(memory_get_usage(false),false)." / ".getNiceFileSize(memory_get_usage(true),false)."\n"; // true including unused pages    
             echo "updateSummaryofBackupFile: status von Backup aus Backup.csv eruieren (Rückmeldung analyseBackupDirectoryStatus) :\n";
             print_r($ergebnis);
-            } */
+            } 
         $backUpLogTable = $this->getBackupLogTable($debug);  
-        /* if ($debug) 
+        if ($debug) 
             {
             echo "   vorhandene Datum_backup.csv Log Files:\n";
             print_r($backUpLogTable);         
-            } */
+            }
         foreach ($ergebnis as $BackupDirEntry => $entry)
             {
             $pathinfo=pathinfo($BackupDirEntry);
             $backupName=$pathinfo["filename"];
-            //echo "suche $backupName in backUpLogTable.\n";
+            if ($debug) echo "suche $backupName in backUpLogTable.\n";
             if (isset($backUpLogTable[$backupName]))	/* wenn es kein Backup Logfile gibt ist das Backup nicht abgeschlossen */
                 {
-                // echo "  gefunden $backupName in backUpLogTable:\n"; print_r($backUpLogTable[$backupName]);
+                if ($debug) echo "  --> gefunden $backupName in backUpLogTable:\n"; print_r($backUpLogTable[$backupName]);
                 $ergebnis[$BackupDirEntry]["type"]=$backUpLogTable[$backupName]["type"];
                 $ergebnis[$BackupDirEntry]["logFilename"]=$backUpLogTable[$backupName]["filename"];
                 $ergebnis[$BackupDirEntry]["logFiledate"]=$backUpLogTable[$backupName]["filedate"];         // zusaetzlich Datum in die Tabelle aufnehmen
@@ -4665,7 +4775,19 @@ class BackupIpsymcon extends OperationCenter
         $this->setTableStatus($html);
         }
 
-    /* zu einem Backup Log Filenamen relevante Informationen ableiten
+    /* zu einem Backup Log Filenamen relevante Informationen ableiten:
+     *
+     * Directory       der Input Parameter BackupLogFilename bestehend aus filename plus path mit einheitlichem backslash als Verzeichnis Seperatoren
+     * DirectoryX      nur der Name des Backupverzeichnis, ohne backslash vorher und nachher
+     * Path            der Pfad, also bis zu dem letztem Backslash im BackupLogFilename
+     * Filename        der Filename, also ab dem letztem Backslash im BackupLogFilename
+     *
+     * Beispiel für E:\Backup\IpSymcon/20190812_full.backup.csv
+     *      Directory   E:\Backup\IpSymcon\20190812_full.backup.csv
+     *      DirectoryX  20190812
+     *      Path        E:\Backup\IpSymcon\
+     *      PathX       E:\Backup\IpSymcon\20190812
+     *      Filename    20190812_full.backup.csv
      *
      */
 
@@ -4673,13 +4795,24 @@ class BackupIpsymcon extends OperationCenter
         {
         $result=array();
         $directory = str_replace('/','\\',$BackupLogFilename);      // alle einheitlich mit backslash getrennt
+        /* Directory und Filenamen voneinander trennen */
         $path=substr($directory,0,strrpos($directory,'\\')+1);
         $filename=substr($directory,(strrpos($directory,'\\')+1));
-        $filenameArray=explode("_",$filename);
-        $pathX=$path.$filenameArray[0].'\\';
+        /* Filenamen analysieren */
+        $pos1=strrpos($filename,"_");       // letztes underscore
+        if ($pos1 != false)
+            {
+            $result["DirectoryX"]=substr($filename,0,$pos1);
+            $result["PathX"]=$path.$result["DirectoryX"]."\\";
+            $result["Type"]=explode(".",substr($filename,$pos1+1)); 
+            }
+        $pos2=strpos($filename,"_");        // erstes underscore
+        if ($pos2 != false)
+            {
+            $result["Date"]=substr($filename,0,$pos2);
+            }
         $result["Directory"]=$directory;
         $result["Path"]=$path;
-        $result["PathX"]=$pathX;
         $result["Filename"]=$filename;
         return($result);
         }

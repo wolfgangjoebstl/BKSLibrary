@@ -22,6 +22,8 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 
 *************************************************************/
 
+$debug=false;
+
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
 		{
@@ -107,7 +109,7 @@ $speak_config=Autosteuerung_Speak();
 
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
 $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-$operate=new AutosteuerungOperator();
+$operate=new AutosteuerungOperator($debug);
 $auto=new Autosteuerung();
 
 $simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");  // automatisch eigenen File und Nachrichtenspeicher anlegen
@@ -163,8 +165,9 @@ if ($_IPS['SENDER']=="RunScript")
  *                                                                                           
  * alles aus Variablenaenderungen gesteuert. GutenMorgen Wecker verändert die Variable Wecker in Data auf 0,1,2. Daraus werden hier die Handlungen abgeleitet.
  * in Autosteurung Configuration stehen die entsprechenden Befehle
- *
- *
+ * uebergeben wird die Variable ID und der neue Wert dazu kann ausgelesen werden.
+ * 
+ * an die Funktion wird als Parameter übergeben:   $params,$value,$variableID,false,$wertOpt  diese meldet einen Status zurück
  *
  *********************************************************************************************/
 
@@ -192,7 +195,7 @@ if ($_IPS['SENDER']=="Variable")
             $wertOpt=$wertparam[1];
             }
         else $wertOpt="";
-		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter */
+		/* 0: OnChange or OnUpdate, 1 ist die Klassifizierung, Befehl 2 sind Parameter , wert ist die Klassifizierung - der zweite Parameter */
 		//tts_play(1,$_IPS['VARIABLE'].' and '.$wert,'',2);
 		switch ($wert)    {
 			/*********************************************************************************************/
