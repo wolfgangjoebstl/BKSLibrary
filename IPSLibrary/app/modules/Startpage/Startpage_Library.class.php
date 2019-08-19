@@ -95,7 +95,17 @@
 	        }
 
 		/*
-		 * aus der Stratpage Konfiguration die Einstellung ableiten ob
+		 * Abstrahierung der OpenWeather Modul Konfiguration
+		 *
+		 */
+		 		
+		function getOWDs()
+	        {
+	        return ($this->OWDs);
+	        }
+
+		/*
+		 * aus der Startpage Konfiguration die Einstellung ableiten ob
 		 *
 		 *     ob eine Wettertabelle angezeigt werden soll
 		 *     ob Wunderground oder OpenWeatherTable verwendet werden soll
@@ -162,65 +172,6 @@
 			$Config=$this->configWeather();
 			//print_r($Config);
 			$noweather=!$Config["Active"];
-			if ($Config["Source"]=="WU")
-				{
-				$todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
-				if ($todayID == false)
-					{
-					//echo "weatherforecast nicht installiert.\n";
-					$noweather=true;
-					}
-				else
-					{
-					$today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-					$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-					$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-					$tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-					$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-					$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-					$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-					$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-					$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-					$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-					$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-					$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
-
-					$todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
-					}
-				}
-			else			/* nicht Weather Wunderground, daher Openwewather */
-				{
-				$todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");		
-				if ($todayID == false)
-					{
-					//echo "weatherforecast nicht installiert.\n";
-					$noweather=true;
-					}
-				else
-					{
-					//echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
-					$todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
-					$today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-					$todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-					$todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-					$tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
-					$tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-					$tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-					$tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-					$tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
-					$tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-					$tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-					$tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-					$tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
-					$tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-					$tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-					$tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
-					$tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
-					$tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
-					$tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
-					$tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
-					}		
-				}
 		
 			/* html file schreiben, Anfang Style für alle gleich */
 
@@ -240,6 +191,65 @@
 				}
 			else
 				{
+                if ($Config["Source"]=="WU")
+                    {
+                    $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
+                    if ($todayID == false)
+                        {
+                        //echo "weatherforecast nicht installiert.\n";
+                        $noweather=true;
+                        }
+                    else
+                        {
+                        $today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                        $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                        $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                        $tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                        $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                        $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                        $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                        $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                        $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                        $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                        $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                        $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+
+                        $todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
+                        }
+                    }
+                else			/* nicht Weather Wunderground, daher Openwewather */
+                    {
+                    $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");		
+                    if ($todayID == false)
+                        {
+                        //echo "weatherforecast nicht installiert.\n";
+                        $noweather=true;
+                        }
+                    else
+                        {
+                        //echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
+                        $todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
+                        $today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                        $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                        $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                        $tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
+                        $tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                        $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                        $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                        $tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
+                        $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                        $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                        $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                        $tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
+                        $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                        $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                        $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+                        $tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
+                        $tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
+                        $tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
+                        $tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
+                        }		
+                    }
 		        if ($PageType==3)           // Topologie
 					{
 					//echo "Topologiedarstellung fehlt noch.\n";
