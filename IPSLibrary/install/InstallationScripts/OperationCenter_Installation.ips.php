@@ -536,6 +536,17 @@
     IPS_SetHidden($ConfigurationBackupId,true);
     IPS_SetHidden($TokenBackupId,true);
 
+    $subnet='10.255.255.255';
+    $BackupCenter=new BackupIpsymcon($subnet);
+
+    $params=$BackupCenter->getConfigurationStatus("array");
+    if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
+    if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$BackupCenter->dosOps->correctDirName($BackupCenter->getSourceDrive());
+    $BackupCenter->setConfigurationStatus($params,"array");
+
+    /* Default Parameter after Install */
+    $BackupCenter->configBackup(["update" => "overwrite"]);    
+
 	/*******************************
      *
      * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen

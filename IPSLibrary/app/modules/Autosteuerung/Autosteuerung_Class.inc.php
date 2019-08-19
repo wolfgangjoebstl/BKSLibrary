@@ -2596,6 +2596,7 @@ class Autosteuerung
 					}						
 
 			case "ON":
+                echo "    --> ON Befehl erkannt ....\n";
 				if ( ($result["STATUS"] !== false) || ($result["SOURCE"] == "ONUPDATE") )   
 					{
 					/* nimmt den Wert des auslösenden Ereignisses, ON Befehl wird nur abgearbeitet wenn Wert des Ereignis auf true steht oder als Auslöser update eingetragen wird (statt onchange) 

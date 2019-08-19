@@ -4724,12 +4724,15 @@ class BackupIpsymcon extends OperationCenter
         $html.='</style>';
         $html.='<table style="width:100%" >';
         $html.='<tr><td><table class="subboxes">';           /* in der ersten Tabelle eine Untertabelle anfangen */
-        $html.= '<tr><td>Backup Style</td><td>'.$tabledata["style"].'</td></tr>'; 
-        unset($tabledata["style"]);
-        $html.= '<tr><td>Count act/target</td><td>'.number_format($tabledata["count"],0,",",".").' / '.number_format($tabledata["countTarget"],0,",",".").'</td></tr>'; 
-        unset($tabledata["count"]);  unset($tabledata["countTarget"]);      
-        $html.= '<tr><td>Size act/target</td><td>'.number_format($tabledata["size"],0,",",".").' / '.number_format($tabledata["sizeTarget"],0,",",".").'</td></tr>'; 
-        unset($tabledata["size"]);  unset($tabledata["sizeTarget"]);                 
+        if (isset($tabledata["style"])) 
+            {
+            $html.= '<tr><td>Backup Style</td><td>'.$tabledata["style"].'</td></tr>'; 
+            unset($tabledata["style"]);
+            $html.= '<tr><td>Count act/target</td><td>'.number_format($tabledata["count"],0,",",".").' / '.number_format($tabledata["countTarget"],0,",",".").'</td></tr>'; 
+            unset($tabledata["count"]);  unset($tabledata["countTarget"]);      
+            $html.= '<tr><td>Size act/target</td><td>'.number_format($tabledata["size"],0,",",".").' / '.number_format($tabledata["sizeTarget"],0,",",".").'</td></tr>'; 
+            unset($tabledata["size"]);  unset($tabledata["sizeTarget"]);                 
+            }
         foreach ($tabledata as $name => $entry)
             {
             if (is_array($entry))

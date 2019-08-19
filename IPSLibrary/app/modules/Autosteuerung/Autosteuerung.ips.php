@@ -496,7 +496,8 @@ if ($_IPS['SENDER']=="Execute")
 				$status=iTunesSteuerung($entry,$i++,12345,true);
 				break;				
 			case "Status":
-				$status=Status($entry,GetValue($key),$key,true);
+				//$status=Status($entry,GetValue($key),$key,true);
+                $status=Status($entry,!GetValue($key),$key,true);
 				break;
 		   case "StatusParallel":                       
 			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
