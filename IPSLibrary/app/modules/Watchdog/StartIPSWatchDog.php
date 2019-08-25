@@ -47,7 +47,8 @@
 	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
 	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
-    $dosOps = new dosOps(); 
+    $dosOps = new dosOps();
+    $sysOps = new sysOps();
 
 	echo "\nStartIPSWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
@@ -101,7 +102,7 @@
 
 	echo "\n";
 	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On", "Firefox.exe" => "On");
-	$processStart=checkProcess($processStart);
+	$processStart=$sysOps->checkProcess($processStart);
 	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
 	print_r($processStart);
 

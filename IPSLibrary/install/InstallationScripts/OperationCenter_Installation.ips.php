@@ -234,6 +234,8 @@
 	
 	$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
+	$tim13ID=$timer->CreateTimerOC("CleanUpEndofDay",22,40);	
+
 
 	/*******************************
 	 *
@@ -542,6 +544,9 @@
     $params=$BackupCenter->getConfigurationStatus("array");
     if (isset($params["BackupDirectoriesandFiles"]) == false) $params["BackupDirectoriesandFiles"]=array("db","media","modules","scripts","webfront","settings.json");
     if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$BackupCenter->dosOps->correctDirName($BackupCenter->getSourceDrive());
+    if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
+    if (isset($params["maxcopy"])===false) $params["maxcopy"]=500;
+    $params["status"]="finished";
     $BackupCenter->setConfigurationStatus($params,"array");
 
     /* Default Parameter after Install */

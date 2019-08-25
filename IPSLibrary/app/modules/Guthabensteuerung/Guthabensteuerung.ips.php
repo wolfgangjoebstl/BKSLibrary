@@ -97,10 +97,12 @@ else
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 /******************************************************
-
-				TIMER
-
-*************************************************************/
+ *
+ *				TIMER
+ *
+ * zwei TimerEvents. Eines einmal am Tag und das andere alle 
+ *
+ *************************************************************/
 
 if ($_IPS['SENDER']=="TimerEvent")
 	{
@@ -120,9 +122,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 				{
 				// keine Anführungszeichen verwenden
 				IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
-				if ($ScriptCounter>0)
+				if ( ($ScriptCounter>0) && (is_file($fileName)) )
 					{
-					$filedate=date ("d.m.Y H:i:s.", filemtime($GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt") );
+                    $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+					$filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
 					$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
 					}
 				else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
@@ -282,8 +285,16 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Dateien im Download Verzeichnis.\n";
 	foreach ($dir as $entry) echo "   ".$entry["Name"]."  zuletzt geändert am ".$entry["Date"]."\n";
 
-	echo "Stand ScriptCounter :".GetValue($ScriptCounterID)." von max ".$maxcount."\n";
-	
+	$ScriptCounter=GetValue($ScriptCounterID);
+    $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+	echo "Stand ScriptCounter :  $ScriptCounter von max $maxcount   für File $fileName.\n";
+    if (is_file($fileName))
+        {
+        $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
+	    $note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+	    echo $note;
+        }
+
 	if (false)		// Jetzt das automatisches Auslesen über Webfront steuern
 		{
 		SetValue($ScriptCounterID,0);

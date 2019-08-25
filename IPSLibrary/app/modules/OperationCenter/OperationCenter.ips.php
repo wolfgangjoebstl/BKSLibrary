@@ -107,6 +107,8 @@ $tim10ID = @IPS_GetEventIDByName("Maintenance",$scriptId);						/* Starte Mainte
 $tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance Funktion: Move Log Files */	
 $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptId);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
+$tim13ID = @IPS_GetEventIDByName("CleanUpEndofDay",$scriptId);                  /* CleanUp für Backup starten, sollte alte Backups loeschen */
+
 /*********************************************************************************************/
 
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -1254,6 +1256,14 @@ if ($_IPS['SENDER']=="TimerEvent")
                     }       // if active
                 }   // foreach
 			break;
+		case $tim13ID:
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Maintenance EndofDay Intervall, Backup Dateien zusammenräumen, CleanUp");    // Dbg is less than inf
+            /* jeden Abend die Backup Verzeichnisse zusammenräumen */
+            $BackupCenter->configBackup(["status" => "cleanup"]);
+            $BackupCenter->configBackup(["cleanup" => "started"]);
+            $BackupCenter->setBackupStatus("Cleanup ".date("d.m.Y H:i:s"));                     
+			IPS_SetEventActive($tim11ID,true);	
+            break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 		   break;

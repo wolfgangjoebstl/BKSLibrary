@@ -34,6 +34,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	echo "StopIPSWatchDog hat die ScriptID  : ".$scriptIdStopWD." \n";
 	echo "Alive WatchDog hat die ScriptID   : ".$scriptIdAliveWD." \n";
 
+    $sysOps = new sysOps();
+
 	echo "\nEigenen Logspeicher für Watchdog vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
@@ -80,7 +82,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 	echo "\n";
 	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
-	$processStart=checkProcess($processStart);
+	$processStart=$sysOps->checkProcess($processStart);
 	echo "Die folgenden Programme muessen gestoppt (wenn Off) werden:\n";
 	print_r($processStart);
 

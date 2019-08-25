@@ -13,7 +13,7 @@
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 	 * GNU General Public License for more details.
 	 *
-	 * You should have received a copy of the GNU General Public License
+	 * You should have received a copy of the GNU General Public Licensef
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
@@ -3297,10 +3297,12 @@ class BackupIpsymcon extends OperationCenter
             }    
         } 
 
-    public function cleanToken()			// hier wird eine neue Konfiguration für das Backup gespeichert
+    public function cleanToken($debug=false)			// hier wird eine neue Konfiguration für das Backup gespeichert
         {
+        $lastchange=IPS_GetVariable($this->TokenBackupID,)["VariableUpdated"];
+        if ($debug) echo "Last Change of Token was ".date("Y.m.d H:i:s",$lastchange);
         SetValue($this->TokenBackupID,"free");
-        SetValue($this->ErrorBackupID,"Token clean, repaired ".date("Y.m.d H:i:s"));        
+        SetValue($this->ErrorBackupID,"Token clean, repaired ".date("Y.m.d H:i:s")." Last Change was ".date("Y.m.d H:i:s",$lastchange));        
         } 
 
 	/**

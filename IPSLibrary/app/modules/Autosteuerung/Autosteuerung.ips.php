@@ -483,21 +483,31 @@ if ($_IPS['SENDER']=="Execute")
 		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."       ";
 		echo "(".memory_get_usage()." Byte).";
 		echo "\n";
+
+		$wert=$entry[1];
+        if (strpos($wert,"+"))
+            {   // es gibt einen Zusatzparameter beim Modul
+            $wertparam=explode("+",$wert);
+            $wert = $wertparam[0];
+            $wertOpt=$wertparam[1];
+            }
+        else $wertOpt="";
+        
 		//print_r($entry);
 		//print_r($auto->ParseCommand($entry));
-		switch ($entry[1])
+		switch ($wert)
 			{
 			case "Anwesenheit":
-				$status=Anwesenheit($entry,GetValue($key),$key,true);  // Simulation aktiv, Testwert ist +1
+				$status=Anwesenheit($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist +1
 				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
 				break;
 			case "iTunes":
 			case "Media":
-				$status=iTunesSteuerung($entry,$i++,12345,true);
+				$status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
 				break;				
 			case "Status":
 				//$status=Status($entry,GetValue($key),$key,true);
-                $status=Status($entry,!GetValue($key),$key,true);
+                $status=Status($entry,!GetValue($key),$key,true,$wertOpt);
 				break;
 		   case "StatusParallel":                       
 			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
@@ -507,29 +517,29 @@ if ($_IPS['SENDER']=="Execute")
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
 			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
 				//$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
-				$status=StatusParallel($entry,GetValue($key),$key,true);
+				$status=StatusParallel($entry,GetValue($key),$key,true,$wertOpt);
 				break;
 			case "Ventilator":
 			case "HeatControl":
 			case "Heizung":
 				//print_r($entry);
-				$status=Ventilator2($entry,GetValue($key),$key,true);  // Simulation aktiv, Testwert ist 32
+				$status=Ventilator2($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist 32
 				break;	
 			case "iTunes":
-				$status=iTunesSteuerung($entry,$i++,12345,true);
+				$status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
 				break;
 			/*********************************************************************************************/
 			case "GutenMorgenWecker":
-				$status=GutenMorgenWecker($entry,$i++,12345,true);
+				$status=GutenMorgenWecker($entry,$i++,12345,true,$wertOpt);
 		      break;
 			/*********************************************************************************************/
 		   case "Ventilator1":
-				$status=Ventilator1($entry,$i++,12345,true);
+				$status=Ventilator1($entry,$i++,12345,true,$wertOpt);
 				//$status=Ventilator($entry,$i++,true);				
 		      break;
 			/*********************************************************************************************/
 		   case "Parameter":
-				$status=Parameter($entry,$i++,12345,true);
+				$status=Parameter($entry,$i++,12345,true,$wertOpt);
 		      break;
 			/*********************************************************************************************/
 		   case "StatusRGB":
@@ -538,7 +548,7 @@ if ($_IPS['SENDER']=="Execute")
 				break;
 			/*********************************************************************************************/
 		   case "Switch":
-				$status=SwitchFunction($entry,$i++,12345,true);
+				$status=SwitchFunction($entry,$i++,12345,true,$wertOpt);
 		      break;
 			/*********************************************************************************************/
 		   case "Custom":

@@ -39,24 +39,31 @@
       * summestartende
       * summestartende2
       *
-      * mkdirtree
-      *
       * RPC_CreateVariableByName
       * RPC_CreateCategoryByName
       * RPC_CreateVariableField
       * RemoteAccessServerTable
       * RemoteAccess_GetConfigurationNew
       *
+      * ReadTemperaturWerte
+      * ReadThermostatWerte
+      * ReadAktuatorWerte
       *
-      * checkProcess
+      * exectime
+      * getVariableId
       *
-	  * erstellt auch einige für alle brauchbaren Klassen:
+	  * erstellt auch einige für alle brauchbaren Klassen, uebersichtlicher als die verschiedenen einzelnen Routinen
 	  *
       * dosOps
-      * csvOps    in Planung
+      * sysOps
+      * fileOps
+      * errorAusgabe
       * ComponentHandling
 	  * WfcHandling
       * ModuleHandling
+      *
+      * DEPRICIATED
+      * verschiedene Routinen die bald geloescht werden sollen
       *
 	  ****************************************************************/
 
@@ -126,6 +133,33 @@ define("STAT_Undefiniert",3);
 define("STAT_vonzuHauseweg",2);
 define("STAT_nichtzuHause",1);
 define("STAT_Abwesend",0);
+
+
+
+/**************************************************************************************************************************************/
+
+
+/* Webcam hat zwei Ports, derzeit verwenden wir den WLAN Port, da er immer auf lbgtest (direkt am Thomson) funktioniert
+	10.0.0.27 (es kann auch immer nur ein Dienst auf eine IP Adresse umgeroutet werden, daher immer WLAN verwenden
+	ausser zur Konfiguration */
+	
+//define("ADR_WebCamLBG","10.0.0.27");
+
+/* Cam Positionen : 1-4 : 'Sofa', 'Gang', 'Sessel', 'Terasse'  */
+
+define("ADR_WebCamLBG","hupo35.ddns-instar.de");
+define("ADR_WebCamBKS","sina73.ddns-instar.com");
+define("ADR_GanzLinks","10.0.0.1");
+define("ADR_DenonWZ","10.0.0.115");
+define("ADR_DenonAZ","10.0.0.26");
+
+/* IP Adresse iTunes SOAP Modul  */
+
+define("ADR_SOAPModul","10.0.0.20:8085");
+define("ADR_SoapServer","10.0.0.20:8085");
+
+//define("ADR_Programs","C:/Program Files/");
+define("ADR_Programs",'C:/Program Files (x86)/');
 
 /****************************************************************************************************
  * immer wenn eine Statusmeldung per email angefragt wird 
@@ -1225,31 +1259,6 @@ function writeLogEvent($event)
    
 
 
-/**************************************************************************************************************************************/
-
-
-/* Webcam hat zwei Ports, derzeit verwenden wir den WLAN Port, da er immer auf lbgtest (direkt am Thomson) funktioniert
-	10.0.0.27 (es kann auch immer nur ein Dienst auf eine IP Adresse umgeroutet werden, daher immer WLAN verwenden
-	ausser zur Konfiguration */
-	
-//define("ADR_WebCamLBG","10.0.0.27");
-
-/* Cam Positionen : 1-4 : 'Sofa', 'Gang', 'Sessel', 'Terasse'  */
-
-define("ADR_WebCamLBG","hupo35.ddns-instar.de");
-define("ADR_WebCamBKS","sina73.ddns-instar.com");
-define("ADR_GanzLinks","10.0.0.1");
-define("ADR_DenonWZ","10.0.0.115");
-define("ADR_DenonAZ","10.0.0.26");
-
-/* IP Adresse iTunes SOAP Modul  */
-
-define("ADR_SOAPModul","10.0.0.20:8085");
-define("ADR_SoapServer","10.0.0.20:8085");
-
-//define("ADR_Programs","C:/Program Files/");
-define("ADR_Programs",'C:/Program Files (x86)/');
-
 /**************************************************************************************************************************************
 
 	Verschieden brauchbare Funktionen
@@ -2046,233 +2055,472 @@ function exectime($startexec)
 	return (number_format((microtime(true)-$startexec),2));
 	}
 
-	/******************************************************************/
-	
-	function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
-		{
-		$childrenIds = IPS_GetChildrenIDs($switchCategoryId);
-		foreach ($childrenIds as $childId) 
-			{
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		$childrenIds = IPS_GetChildrenIDs($groupCategoryId);
-		foreach ($childrenIds as $childId) 
-			{
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		$childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
-		foreach ($childrenIds as $childId) {
-			if (IPS_GetName($childId)==$name) 
-				{
-				return $childId;
-				}
-			}
-		trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
-		}
-
 /******************************************************************/
 
-function getProcessList()
-	{
-	$processList=array();
-	echo "Die aktuell gestarteten Dienste werden erfasst.\n";
-	$result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
+function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPrograms) 
+    {
+    $childrenIds = IPS_GetChildrenIDs($switchCategoryId);
+    foreach ($childrenIds as $childId) 
+        {
+        if (IPS_GetName($childId)==$name) 
+            {
+            return $childId;
+            }
+        }
+    $childrenIds = IPS_GetChildrenIDs($groupCategoryId);
+    foreach ($childrenIds as $childId) 
+        {
+        if (IPS_GetName($childId)==$name) 
+            {
+            return $childId;
+            }
+        }
+    $childrenIds = IPS_GetChildrenIDs($categoryIdPrograms);
+    foreach ($childrenIds as $childId) {
+        if (IPS_GetName($childId)==$name) 
+            {
+            return $childId;
+            }
+        }
+    trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
+    }
 
-	$trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
-	$result = strtr($result,$trans);
-	$handle=fopen("c:/scripts/process.txt","w");
-	fwrite($handle,$result);
-	fclose($handle);
+/*****************************************************************
+ *
+ *
+ *
+ *
+ */
 
-	$firstLine=true;
-	$ergebnis=explode("\x0D",$result);
-	foreach ($ergebnis as &$resultvalue)
-		{
-		if ($firstLine==true)
-		   {
-		   $posCommandline=strpos($resultvalue,'CommandLine');
-		   $posCSName=strpos($resultvalue,'CSName');
-		   $posDescription=strpos($resultvalue,'Description');
-		   $posExecutablePath=strpos($resultvalue,'ExecutablePath');
-		   $posExecutionState=strpos($resultvalue,'ExecutionState');
-		   $posHandle=strpos($resultvalue,'Handle');
-		   $posHandleCount=strpos($resultvalue,'HandleCount');
-		   $posInstallDate=strpos($resultvalue,'InstallDate');
-		   //echo 'CommandLine    : '.$posCommandline."\n";
-		   //echo 'CSName         : '.$posCSName."\n";
-		   //echo 'Description    : '.$posDescription."\n";
-		   //echo 'ExecutablePath : '.$posExecutablePath."\n";
-		   //echo 'ExecutionState : '.$posExecutionState."\n";
-		   //echo 'Handle         : '.$posHandle."\n";
-		   //echo 'HandleCount    : '.$posHandleCount."\n";
-		   //echo 'InstallDate    : '.$posInstallDate."\n";
-		   $firstLine=false;
-		   }
-		$value=$resultvalue;
-		//echo $value;
-		$resultvalue=array();
-		$resultvalue['Commandline']=trim(substr($value,$posCommandline,$posCSName));
-		$resultvalue['CSName']=rtrim(substr($value,$posCSName,$posDescription-$posCSName));
-		$resultvalue['Description']=rtrim(substr($value,$posDescription,$posExecutablePath-$posDescription));
-		$resultvalue['ExecutablePath']=rtrim(substr($value,$posExecutablePath,$posExecutionState-$posExecutablePath));
-		$resultvalue['ExecutionState']=rtrim(substr($value,$posExecutionState,$posHandle-$posExecutionState));
-		$resultvalue['Handle']=rtrim(substr($value,$posHandle,$posHandleCount-$posHandle));
-		$resultvalue['HandleCount']=rtrim(substr($value,$posHandleCount,$posInstallDate-$posHandleCount));
-		$resultvalue['InstallDate']=rtrim(substr($value,$posInstallDate,13));
-		}
-	unset($resultvalue);
-	//print_r($ergebnis);
-	
-	$LineProcesses="";
-	foreach ($ergebnis as $valueline)
-		{
-		//echo $valueline['Commandline'];
-	   if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
-	      {
-	      //echo "****\n";
-	      $process=$valueline['ExecutablePath'];
-	      $pos=strrpos($process,'\\');
-	      $process=substr($process,$pos+1,100);
-	      if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe")or ($process=="SMSvcHost.exe")  or ($process=="WmiPrvSE.exe")  )
-	         {
-	         }
-	      else
-	         {
-		      //echo $process."  Pos : ".$pos."  \n";
-				//$processes.=$valueline['ExecutablePath']."\n";
-				$LineProcesses.=$process.",";
-				$processList[]=$process;
-				}
-			}
-		}
+class sysOps
+    { 
 
-	return ($processList);
-	}
+    private function getProcessList()
+        {
+        $processList=array();
+        echo "Die aktuell gestarteten Dienste werden erfasst.\n";
+        $result=IPS_EXECUTE("c:/windows/system32/wbem/wmic.exe","process list", true, true);
 
-/******************************************************************/
+        $trans = array("\x0D\x0A\x0D\x0A" => "\x0D");
+        $result = strtr($result,$trans);
+        $handle=fopen("c:/scripts/process.txt","w");
+        fwrite($handle,$result);
+        fclose($handle);
 
-function getTaskList()
-	{
-	$taskList=array();
-	echo "Die aktuell gestarteten Programme werden erfasst.\n";
-	$result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
-	//echo $result;
+        $firstLine=true;
+        $ergebnis=explode("\x0D",$result);
+        foreach ($ergebnis as &$resultvalue)
+            {
+            if ($firstLine==true)
+            {
+            $posCommandline=strpos($resultvalue,'CommandLine');
+            $posCSName=strpos($resultvalue,'CSName');
+            $posDescription=strpos($resultvalue,'Description');
+            $posExecutablePath=strpos($resultvalue,'ExecutablePath');
+            $posExecutionState=strpos($resultvalue,'ExecutionState');
+            $posHandle=strpos($resultvalue,'Handle');
+            $posHandleCount=strpos($resultvalue,'HandleCount');
+            $posInstallDate=strpos($resultvalue,'InstallDate');
+            //echo 'CommandLine    : '.$posCommandline."\n";
+            //echo 'CSName         : '.$posCSName."\n";
+            //echo 'Description    : '.$posDescription."\n";
+            //echo 'ExecutablePath : '.$posExecutablePath."\n";
+            //echo 'ExecutionState : '.$posExecutionState."\n";
+            //echo 'Handle         : '.$posHandle."\n";
+            //echo 'HandleCount    : '.$posHandleCount."\n";
+            //echo 'InstallDate    : '.$posInstallDate."\n";
+            $firstLine=false;
+            }
+            $value=$resultvalue;
+            //echo $value;
+            $resultvalue=array();
+            $resultvalue['Commandline']=trim(substr($value,$posCommandline,$posCSName));
+            $resultvalue['CSName']=rtrim(substr($value,$posCSName,$posDescription-$posCSName));
+            $resultvalue['Description']=rtrim(substr($value,$posDescription,$posExecutablePath-$posDescription));
+            $resultvalue['ExecutablePath']=rtrim(substr($value,$posExecutablePath,$posExecutionState-$posExecutablePath));
+            $resultvalue['ExecutionState']=rtrim(substr($value,$posExecutionState,$posHandle-$posExecutionState));
+            $resultvalue['Handle']=rtrim(substr($value,$posHandle,$posHandleCount-$posHandle));
+            $resultvalue['HandleCount']=rtrim(substr($value,$posHandleCount,$posInstallDate-$posHandleCount));
+            $resultvalue['InstallDate']=rtrim(substr($value,$posInstallDate,13));
+            }
+        unset($resultvalue);
+        //print_r($ergebnis);
+        
+        $LineProcesses="";
+        foreach ($ergebnis as $valueline)
+            {
+            //echo $valueline['Commandline'];
+        if ((substr($valueline['Commandline'],0,3)=="C:\\") or (substr($valueline['Commandline'],0,3)=='"C:')or (substr($valueline['Commandline'],0,3)=='C:/') or (substr($valueline['Commandline'],0,3)=='C:\\')  or (substr($valueline['Commandline'],0,3)=='"C:'))
+            {
+            //echo "****\n";
+            $process=$valueline['ExecutablePath'];
+            $pos=strrpos($process,'\\');
+            $process=substr($process,$pos+1,100);
+            if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe")or ($process=="SMSvcHost.exe")  or ($process=="WmiPrvSE.exe")  )
+                {
+                }
+            else
+                {
+                //echo $process."  Pos : ".$pos."  \n";
+                    //$processes.=$valueline['ExecutablePath']."\n";
+                    $LineProcesses.=$process.",";
+                    $processList[]=$process;
+                    }
+                }
+            }
 
-	//$trans = array("\x0D\x0A" => "\x0D");
-	//$result = strtr($result,$trans);
-	$handle=fopen("c:/scripts/tasks.txt","w");
-	fwrite($handle,$result);
-	fclose($handle);
+        return ($processList);
+        }
 
-	$firstLine=0;
-	$ergebnis=explode("\x0A",$result);
-	//print_r($ergebnis);
-	foreach ($ergebnis as &$resultvalue)
-		{
-		//echo $resultvalue;
-		if ($firstLine<3)
-		   {
-		   $pos=strpos($resultvalue,'Abbildname');
-			if ($pos === false)
+    /******************************************************************/
+
+    private function getTaskList()
+        {
+        $taskList=array();
+        echo "Die aktuell gestarteten Programme werden erfasst.\n";
+        $result=IPS_EXECUTE("c:/windows/system32/tasklist.exe","", true, true);
+        //echo $result;
+
+        //$trans = array("\x0D\x0A" => "\x0D");
+        //$result = strtr($result,$trans);
+        $handle=fopen("c:/scripts/tasks.txt","w");
+        fwrite($handle,$result);
+        fclose($handle);
+
+        $firstLine=0;
+        $ergebnis=explode("\x0A",$result);
+        //print_r($ergebnis);
+        foreach ($ergebnis as &$resultvalue)
+            {
+            //echo $resultvalue;
+            if ($firstLine<3)
+                {
+                $pos=strpos($resultvalue,'Abbildname');
+                if ($pos === false)
+                    {
+                    }
+                else
+                    {
+                    $posAbbild=$pos;
+                    $posPID=strpos($resultvalue,'PID')-5;
+                    $posSitzung=strpos($resultvalue,'Sitzungsname');
+                    $posSitzNr=strpos($resultvalue,'Sitz.-Nr.')-2;
+                $posSpeicher=strpos($resultvalue,'Speichernutzung');
+
+                    //echo 'Abbildname    : '.$posAbbild."\n";
+                    //echo 'PID           : '.$posPID."\n";
+                    //echo 'Sitzung       : '.$posSitzung."\n";
+                //echo 'SitzungsNr    : '.$posSitzNr."\n";
+                    //echo 'Speicher      : '.$posSpeicher."\n";
+                    }
+                }
+            else
+                {
+                $value=$resultvalue;
+                $resultvalue=array();
+                $resultvalue['Abbildname']=trim(substr($value,$posAbbild,$posPID));
+                $resultvalue['PID']=rtrim(substr($value,$posPID,$posSitzung-$posPID));
+                $resultvalue['Sitzung']=rtrim(substr($value,$posSitzung,$posSitzNr-$posSitzung));
+                $resultvalue['ExecutablePath']=rtrim(substr($value,$posSitzNr,$posSpeicher-$posSitzNr));
+                $resultvalue['ExecutionState']=rtrim(substr($value,$posSpeicher,15));
+                }
+            $firstLine+=1;
+            }
+        unset($resultvalue);
+        //print_r($ergebnis);
+
+        foreach ($ergebnis as $valueline)
+            {
+            if (isset($valueline['Abbildname'])==true)
+                {
+                $process=$valueline['Abbildname'];
+            //echo "**** ".$process."\n";
+            if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe") or ($process=="SMSvcHost.exe") or ($process=="WmiPrvSE.exe")  )
+                {
+                    }
+                else
+                {
+                    $taskList[]=$process;
+                    }
+                }
+            }
+        return ($taskList);
+        }
+    
+    /************************************************************************************/
+
+    public function checkProcess($processStart)
+        {
+        $processes=$this->getProcessList();
+        sort($processes);
+        //print_r($processes);
+
+        foreach ($processes as $process)
+            {
+            foreach ($processStart as $key => &$start)
+                {
+            if ($process==$key)
+                {
+                $start="Off";
+                }
+                }
+            unset($start);
+            }
+        //print_r($processStart);
+
+        $processes=$this->getTaskList();
+        sort($processes);
+        foreach ($processes as $process)
+            {
+            foreach ($processStart as $key => &$start)
+                {
+            if ($process==$key)
+                {
+                $start="Off";
+                }
+                }
+            unset($start);
+            }
+        return($processStart);
+        }
+
+    /********
+     *
+     * getNiceFileSize, formatSize
+     *
+     * zum Formattieren von Byte Angaben, beide Routinen machen das selbe auf ähnliche Weise
+     * formatSize arbeitet immer mit 1024, getNicefileSize unterscheidet, da scheinbar jetzt Mega, Giga, Terra wieder auf mehrfache von 1000 gehen
+     *
+     *********************/
+
+    function getNiceFileSize($bytes, $binaryPrefix=true) 
+        {
+        if ($binaryPrefix) 
+            {
+            $unit=array('B','KiB','MiB','GiB','TiB','PiB');
+            if ($bytes==0) return '0 ' . $unit[0];
+            return @round($bytes/pow(1024,($i=floor(log($bytes,1024)))),2) .' '. (isset($unit[$i]) ? $unit[$i] : 'B');
+            } 
+        else 
+            {
+            $unit=array('B','KB','MB','GB','TB','PB');
+            if ($bytes==0) return '0 ' . $unit[0];
+            return @round($bytes/pow(1000,($i=floor(log($bytes,1000)))),2) .' '. (isset($unit[$i]) ? $unit[$i] : 'B');
+            }
+        }
+
+
+    function formatSize($value,$komma=2)
+        {
+        if ($value <1024) $result = number_format($value,2). " Byte";
+        elseif ($value <(1024*1024)) $result = number_format(($value/1024),2)." kByte";
+        elseif ($value <(1024*1024*1024)) $result = number_format(($value/1024/1024),2)." MByte";
+        elseif ($value <(1024*1024*1024*1024)) $result = number_format(($value/1024/1024/1024),2)." GByte";
+        else $result = number_format(($value/1024/1024/1024/1024),2)." TByte";
+        
+        return $result;
+        }
+
+    /********
+     *
+     *Returns used memory (either in percent (without percent sign) or free and overall in bytes)
+     *
+     *****************************/
+
+    function getServerMemoryUsage($getPercentage=true)
+        {
+        $memoryTotal = null;
+        $memoryFree = null;
+
+        if (stristr(PHP_OS, "win")) 
+            {
+            // Get total physical memory (this is in bytes)
+            $cmd = "wmic ComputerSystem get TotalPhysicalMemory";
+            @exec($cmd, $outputTotalPhysicalMemory);
+
+            // Get free physical memory (this is in kibibytes!)
+            $cmd = "wmic OS get FreePhysicalMemory";
+            @exec($cmd, $outputFreePhysicalMemory);
+
+            if ($outputTotalPhysicalMemory && $outputFreePhysicalMemory) 
+                {
+                // Find total value
+                foreach ($outputTotalPhysicalMemory as $line) 
+                    {
+                    if ($line && preg_match("/^[0-9]+\$/", $line)) 
+                        {
+                        $memoryTotal = $line;
+                        break;
+                        }
+                    }
+
+                // Find free value
+                foreach ($outputFreePhysicalMemory as $line) 
+                    {
+                    if ($line && preg_match("/^[0-9]+\$/", $line)) 
+                        {
+                        $memoryFree = $line;
+                        $memoryFree *= 1024;  // convert from kibibytes to bytes
+                        break;
+                        }   
+                    }
+                }   
+            }
+        else
+            {
+            if (is_readable("/proc/meminfo"))
+                {
+                $stats = @file_get_contents("/proc/meminfo");
+
+                if ($stats !== false) 
+                    {
+                    // Separate lines
+                    $stats = str_replace(array("\r\n", "\n\r", "\r"), "\n", $stats);
+                    $stats = explode("\n", $stats);
+
+                    // Separate values and find correct lines for total and free mem
+                    foreach ($stats as $statLine) 
+                        {
+                        $statLineData = explode(":", trim($statLine));
+
+                        //
+                        // Extract size (TODO: It seems that (at least) the two values for total and free memory have the unit "kB" always. Is this correct?
+                        //
+
+                        // Total memory
+                        if (count($statLineData) == 2 && trim($statLineData[0]) == "MemTotal") 
+                            {
+                            $memoryTotal = trim($statLineData[1]);
+                            $memoryTotal = explode(" ", $memoryTotal);
+                            $memoryTotal = $memoryTotal[0];
+                            $memoryTotal *= 1024;  // convert from kibibytes to bytes
+                            }
+
+                        // Free memory
+                        if (count($statLineData) == 2 && trim($statLineData[0]) == "MemFree") 
+                            {
+                            $memoryFree = trim($statLineData[1]);
+                            $memoryFree = explode(" ", $memoryFree);
+                            $memoryFree = $memoryFree[0];
+                            $memoryFree *= 1024;  // convert from kibibytes to bytes
+                            }
+                        }
+                    }
+                }
+            }
+
+        if (is_null($memoryTotal) || is_null($memoryFree)) 
+            {
+            return null;
+            } 
+        else 
+            {
+            if ($getPercentage) 
+                {
+                return (100 - ($memoryFree * 100 / $memoryTotal));
+                } 
+            else 
+                {
+                return array( "total" => $memoryTotal, "free" => $memoryFree, );
+                }
+            }
+        }
+
+    /*
+     *
+     *
+     **************/
+
+    public function readHardDisk($debug=false)
+        {
+        /* 0 = Unknown
+        1 = No Root Directory
+        2 = Removable Disk
+        3 = Local Disk
+        4 = Network Drive
+        5 = Compact Disc
+        6 = RAM Disk
+
+        / options of get
+        ohne	nette Tabelle, lesbar für Menschen, ohne besonderes Trennzeichen , schaut aus wie bei /all
+        /value  schreibt die Objekt=Wert Paare untereinander, mehrere Leerzeilen als trennung zum nächsten Objekt
+        
+        */
+
+        $festplatte=array();
+        $id=0;
+        exec('wmic logicaldisk get deviceid, volumename, description, drivetype, freespace, size',$catch);
+		$head=true;
+		foreach($catch as $line)
+			{
+			if ($debug) echo $line."\n";
+			//$result=explode(" ",$line); print_r($result);
+			
+			// zerlegt die Zeichenkette an Stellen mit beliebiger Anzahl von
+			// Kommata oder Leerzeichen, die " ", \r, \t, \n und \f umfassen
+			$schluesselwoerter = preg_split("/[\s,]+/", $line);
+			//print_r($schluesselwoerter);
+			if ($head) 
 				{
+				$index=$schluesselwoerter;
+				$head=false;
 				}
 			else
 				{
-				$posAbbild=$pos;
-				$posPID=strpos($resultvalue,'PID')-5;
-			   $posSitzung=strpos($resultvalue,'Sitzungsname');
-			   $posSitzNr=strpos($resultvalue,'Sitz.-Nr.')-2;
-		   	$posSpeicher=strpos($resultvalue,'Speichernutzung');
-
-			   //echo 'Abbildname    : '.$posAbbild."\n";
-			   //echo 'PID           : '.$posPID."\n";
-			   //echo 'Sitzung       : '.$posSitzung."\n";
-		   	//echo 'SitzungsNr    : '.$posSitzNr."\n";
-			   //echo 'Speicher      : '.$posSpeicher."\n";
-			   }
-		   }
-		else
-		   {
-			$value=$resultvalue;
-			$resultvalue=array();
-			$resultvalue['Abbildname']=trim(substr($value,$posAbbild,$posPID));
-			$resultvalue['PID']=rtrim(substr($value,$posPID,$posSitzung-$posPID));
-			$resultvalue['Sitzung']=rtrim(substr($value,$posSitzung,$posSitzNr-$posSitzung));
-			$resultvalue['ExecutablePath']=rtrim(substr($value,$posSitzNr,$posSpeicher-$posSitzNr));
-			$resultvalue['ExecutionState']=rtrim(substr($value,$posSpeicher,15));
-		   }
-		$firstLine+=1;
-		}
-	unset($resultvalue);
-	//print_r($ergebnis);
-
-	foreach ($ergebnis as $valueline)
-		{
-		if (isset($valueline['Abbildname'])==true)
-		   {
-	      $process=$valueline['Abbildname'];
-   	  	//echo "**** ".$process."\n";
-	   	if (($process=="svchost.exe") or ($process=="lsass.exe") or ($process=="csrss.exe") or ($process=="SMSvcHost.exe") or ($process=="WmiPrvSE.exe")  )
-	      	{
-		      }
-		   else
-	   	   {
-				$taskList[]=$process;
+				foreach ($schluesselwoerter as $num => $schluesselwort)
+					{
+					if ( strpos($schluesselwort,":")==1) 
+						{
+						if ($debug) echo "     ->DeviceId gefunden auf $num.\n"; 
+						$j=0;
+						$description="";
+						for ($i=0;$i<sizeof($schluesselwoerter);$i++)
+							{
+							if ($i < $num) $description .=$schluesselwoerter[$i];
+							elseif ($i==$num)
+								{
+								$festplatte[$id][$index[$j++]]=$description;
+								$festplatte[$id][$index[$j++]]=$schluesselwoerter[$i];
+								}
+							else $festplatte[$id][$index[$j++]]=$schluesselwoerter[$i];
+							}
+						}
+					}
+				$id++;
 				}
 			}
-		}
-	return ($taskList);
-	}
-/************************************************************************************/
 
-function checkProcess($processStart)
-	{
-	$processes=getProcessList();
-	sort($processes);
-	//print_r($processes);
+        if ($debug) print_r($festplatte);
 
-	foreach ($processes as $process)
-		{
-		foreach ($processStart as $key => &$start)
-		   {
-      	if ($process==$key)
-      	   {
-      	   $start="Off";
-      	   }
-		   }
-		unset($start);
-		}
-	//print_r($processStart);
+        foreach ($festplatte as $entry)
+            {
+            if ( ($entry["DriveType"]>1) && ($entry["DriveType"]<5) )
+                {
+                echo "   ".$entry["DeviceID"]."  ";
+                if (isset($entry["Size"]))
+                    {
+                    $size=$entry["Size"];
+                    $free=$entry["FreeSpace"];
+                    echo "  ".$this->formatSize($free,2)." from ".$this->formatSize($size,2)." ".number_format(($free/$size)*100,2)."%\n";
+                    }
+                else echo "\n";
+                }
+            }
+        return($festplatte);
+        }
 
-	$processes=getTaskList();
-	sort($processes);
-	foreach ($processes as $process)
-		{
-		foreach ($processStart as $key => &$start)
-		   {
-      	if ($process==$key)
-      	   {
-      	   $start="Off";
-      	   }
-		   }
-		unset($start);
-		}
-	return($processStart);
-	}
+
+    } // ende class sysOps
 
 /*****************************************************************
  *
  * verschiedene Routinen im Zusammenhang mit File Operationen
  *
  * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
+ * mkdirtree
  * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
- *  dirToArray          verwendet für das rekursive aufrufen
+ * dirToArray          verwendet für das rekursive aufrufen
+ * correctDirName
  * rrmdir               ein Verzeichnis rekursiv loeschen
  * readFile             eine Datei ausgeben
  *
@@ -2879,6 +3127,12 @@ class errorAusgabe
  *
  * Die Komplette Installation von Compnents in einer Klasse zusammenfassen
  *
+ * __construct
+ * listOfRemoteServer
+ * getStructureofROID
+ * registerEvent
+ * getComponent
+ * getKeyword
  *
  *
  *
@@ -4182,6 +4436,9 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
             }
         }    
     }
+
+
+/******************************** DEPRCIATED **************************/
 
 
     function getNiceFileSize($bytes, $binaryPrefix=true) {
