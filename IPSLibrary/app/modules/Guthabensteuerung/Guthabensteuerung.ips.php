@@ -122,15 +122,17 @@ if ($_IPS['SENDER']=="TimerEvent")
 				{
 				// keine Anführungszeichen verwenden
 				IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
-				if ( ($ScriptCounter>0) && (is_file($fileName)) )
-					{
+				if ($ScriptCounter>0) 
+                    {
                     $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
-					$filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
-					$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
-					}
+                    if (is_file($fileName))
+                        {
+                        $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
+                        $note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                        }
+                    }
 				else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
 				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
-
 			    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
 				}
 			else

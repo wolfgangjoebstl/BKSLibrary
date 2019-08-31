@@ -104,7 +104,7 @@
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
 			echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
-			IPSLogger_Inf(__file__, 'IPSComponentHeatSet_HomematicIP HandleEvent für VariableID '.$variable.' ('.IPS_GetName($variable).') mit Wert '.$value);			
+			IPSLogger_Inf(__file__, 'IPSComponentHeatSet_HomematicIP HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
 			if ( ((IPS_GetName($variable))=="CONTROL_MODE") || ((IPS_GetName($variable))=="SET_POINT_MODE") )
 				{

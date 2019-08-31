@@ -292,6 +292,17 @@
 		echo "Profil ".$pname." überarbeitet;\n";
 		}
 
+    $pname="MaxCopySlider";                                 // Integer für maxCopy, als % Slider
+	if (IPS_VariableProfileExists($pname) == false)
+		{       //Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+        }
+    IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+    IPS_SetVariableProfileValues($pname, 0, 1000, 10); //PName, Minimal, Maximal, Schrittweite
+    IPS_SetVariableProfileText($pname, "", "%");    
+    echo "Profil ".$pname." überarbeitet;\n";
+
+
 
 	/******************************************************
 
@@ -527,6 +538,7 @@
 	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
 	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptIdOperationCenter,null,"");
 	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptIdOperationCenter,null,"");
+    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptIdOperationCenter,null,"");
 
 	$StatusBackupId				= CreateVariable("Status",3, $categoryId_BackupFunction, 20, "", null, null, ""); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$ConfigurationBackupId		= CreateVariable("Configuration",3, $categoryId_BackupFunction, 2000, "", null, null, ""); 		/* speichert die konfiguration im json Format */	
@@ -546,6 +558,7 @@
     if (isset($params["BackupSourceDir"]) == false) $params["BackupSourceDir"]=$BackupCenter->dosOps->correctDirName($BackupCenter->getSourceDrive());
     if (isset($params["cleanup"])===false) $params["cleanup"]="finished";
     if (isset($params["maxcopy"])===false) $params["maxcopy"]=500;
+    if (isset($params["maxtime"])===false) $params["maxtime"]=100;
     $params["status"]="finished";
     $BackupCenter->setConfigurationStatus($params,"array");
 

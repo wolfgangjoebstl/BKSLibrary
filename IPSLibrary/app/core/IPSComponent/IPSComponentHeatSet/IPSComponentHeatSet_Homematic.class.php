@@ -89,7 +89,7 @@
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
 			echo "HandleEvent: HeatSet Homematic Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' mit Wert '.$value);			
+			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
 			if ( (IPS_GetName($variable))=="CONTROL_MODE")
 				{

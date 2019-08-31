@@ -302,6 +302,13 @@ if ($_IPS['SENDER']=="WebFront")
                                 break;                                                    
                             }
                         }
+
+                    if (isset($ActionButton[$variableId]["Backup"]["StatusSliderMaxcopy"])) 
+                        // StatusSliderMaxcopy schreibt in params
+                        {
+                        $BackupCenter->configBackup(["maxcopy" => $value]);
+                        }
+
                     }                   
 				}	
 			break;
@@ -1192,7 +1199,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                         break;
                     }
                 $BackupCenter->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben
-                $BackupCenter->setExecTime((microtime(true)-$startexec)." Sekunden");
+                $BackupCenter->setExecTime((microtime(true)-$startexec),2);           // Zahl übergeben, optional die Anzahl Stellen zum Runden
                 $BackupCenter->cleanToken();
                 }   // ende if backupCenter active
             else      // Timer nicht ausschalten, bis alle Funktione getestet wurden

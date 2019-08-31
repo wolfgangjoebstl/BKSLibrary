@@ -3104,7 +3104,7 @@ class BackupIpsymcon extends OperationCenter
 	var $categoryId_BackupFunction;                                          /* Datenspeicherorte */
     var $StatusSchalterBackupID, $StatusSchalterActionBackupID;				/* Schalter für Steuerung von Backup */
 	var $StatusBackupID, $ConfigurationBackupID;                             /* Status und Configuration */ 
-    var $StatusSchalterOverwriteBackupID;                                    /* Besondere Einstellungen für Backup */ 
+    var $StatusSchalterOverwriteBackupID,$StatusSliderMaxcopyID;             /* Besondere Einstellungen für Backup */ 
     var $TokenBackupID, $ErrorBackupID;                                     /* Token und Error dafür */
     var $ExecTimeBackupId, $TableStatusBackupId;                            /* Durchlaufzeit zuletzt anzeigen und eine fette Tabelle mit allerlei Nutzvollem */
 	
@@ -3141,7 +3141,8 @@ class BackupIpsymcon extends OperationCenter
             $this->backupActive=true;
             if (isset($oc_setup["BACKUP"]["Directory"])) 
                 {
-                $this->BackupDrive=$oc_setup["BACKUP"]["Directory"];      /* ein eventuelle fehlendes Backslash am Ende wird später automatisch hinzugefügt */
+                $BackupDrive=$oc_setup["BACKUP"]["Directory"];
+                $this->BackupDrive=$BackupDrive;      /* ein eventuelle fehlendes Backslash am Ende wird später in der Routine construct automatisch hinzugefügt */
                 }
             else $this->BackupDrive='\Backup\IpSymcon';
             }
@@ -3156,6 +3157,7 @@ class BackupIpsymcon extends OperationCenter
 		$this->StatusSchalterBackupID		    = IPS_GetObjectIdByName("Backup-Funktion", $this->categoryId_BackupFunction);
 		$this->StatusSchalterActionBackupID     = IPS_GetObjectIdByName("Backup-Actions", $this->categoryId_BackupFunction);
     	$this->StatusSchalterOverwriteBackupID  = IPS_GetObjectIdByName("Backup-Overwrite", $this->categoryId_BackupFunction);
+        $this->StatusSliderMaxcopyID            = IPS_GetObjectIdByName("Maxcopy per Session", $this->categoryId_BackupFunction);
 
 
         $this->StatusBackupID				= IPS_GetObjectIdByName("Status", $this->categoryId_BackupFunction);
@@ -3167,8 +3169,8 @@ class BackupIpsymcon extends OperationCenter
 	    $this->ExecTimeBackupId             = IPS_GetObjectIdByName("ExecTime", $this->categoryId_BackupFunction);	
         $this->TableStatusBackupId          = IPS_GetObjectIdByName("StatusTable", $this->categoryId_BackupFunction);      /* man kann in einer tabelle alles mögliche darstellen */
 
-        $BackupDrive    = $this->dosOps->correctDirName($this->getBackupDrive());			// sicherstellen das ein Slash oder Backslash am Ende ist
-        $this->fileOps  = new fileOps($BackupDrive."Backup.csv"); 
+        $this->BackupDrive    = $this->dosOps->correctDirName($this->getBackupDrive());			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $this->fileOps  = new fileOps($this->BackupDrive."Backup.csv"); 
         $this->dosOps   = new dosOps();
         }
 
@@ -3204,7 +3206,12 @@ class BackupIpsymcon extends OperationCenter
     public function getOverwriteBackupId()			    // Button im Webfront für Overwrite/Keep, nur die ID, für get_Action
         {
         return ($this->StatusSchalterOverwriteBackupID);
-        }    
+        } 
+
+    public function getStatusSliderMaxcopyId()			    // Button im Webfront für Overwrite/Keep, nur die ID, für get_Action
+        {
+        return ($this->StatusSliderMaxcopyID);
+        } 
 
     public function getBackupActionSwitchId()			// Button im Webfront für Sonderbefehle (Full/Increment/Repair, nur die ID, für get_Action
         {
@@ -3256,6 +3263,7 @@ class BackupIpsymcon extends OperationCenter
             {
             case "started":
             case "maxcopy reached":
+            case "maxtime reached":
                 $statusMode="backup";
                 break;
             case "cleanup-read":
@@ -3270,9 +3278,10 @@ class BackupIpsymcon extends OperationCenter
         } 
 
 
-    public function setExecTime($time)                      // Abspeichern der Executiontime
+    public function setExecTime($time, $runde=2, $debug=false)                      // Abspeichern der Executiontime
         {
-        SetValue($this->ExecTimeBackupId,$time);
+        SetValue($this->ExecTimeBackupId,round($time,$runde). " Sekunden");
+        if ($debug) echo "Abgelaufene Zeit ".GetValue($this->ExecTimeBackupId)."\n";
         return ( $this->ExecTimeBackupId);      
         }
 
@@ -3282,7 +3291,12 @@ class BackupIpsymcon extends OperationCenter
         return ( $this->TableStatusBackupId);      
         }
 
-    public function checkToken()			// hier wird eine neue Konfiguration für das Backup gespeichert
+    public function getToken()
+        {
+        return (GetValue($this->TokenBackupID));
+        }
+
+    public function checkToken()			// Mit einem Token die Backup Routinen vor einem parallelem Aufruf absichern
         {
 		if (GetValue($this->TokenBackupID)=="busy") 
             {
@@ -3297,12 +3311,13 @@ class BackupIpsymcon extends OperationCenter
             }    
         } 
 
-    public function cleanToken($debug=false)			// hier wird eine neue Konfiguration für das Backup gespeichert
+    public function cleanToken($repair=false, $debug=false)			// diesen token am Ende des Aufrufs zurücksetzen oder reparieren
         {
         $lastchange=IPS_GetVariable($this->TokenBackupID,)["VariableUpdated"];
         if ($debug) echo "Last Change of Token was ".date("Y.m.d H:i:s",$lastchange);
         SetValue($this->TokenBackupID,"free");
-        SetValue($this->ErrorBackupID,"Token clean, repaired ".date("Y.m.d H:i:s")." Last Change was ".date("Y.m.d H:i:s",$lastchange));        
+        if ($repair) SetValue($this->ErrorBackupID,"Token clean, repaired ".date("Y.m.d H:i:s")." Last Change was ".date("Y.m.d H:i:s",$lastchange));  
+        else SetValue($this->ErrorBackupID,"Token free since ".date("Y.m.d H:i:s")." Last Change was ".date("Y.m.d H:i:s",$lastchange));      
         } 
 
 	/**
@@ -3319,6 +3334,7 @@ class BackupIpsymcon extends OperationCenter
 		$actionButton[$this->getBackupActionSwitchId()]["Backup"]["BackupActionSwitch"]=true;
 		$actionButton[$this->getBackupSwitchId()]["Backup"]["BackupFunctionSwitch"]=true;
         $actionButton[$this->getOverwriteBackupId()]["Backup"]["BackupOverwriteSwitch"]=true;
+        $actionButton[$this->getStatusSliderMaxcopyID()]["Backup"]["StatusSliderMaxcopy"]=true; 
 
 		return($actionButton);
 		}
@@ -3339,13 +3355,13 @@ class BackupIpsymcon extends OperationCenter
         echo "  Anzahl kopiert : ".$params["copied"]."\n";
         echo "  Groesse : ".$params["size"]."\n";
 
-        echo "  Type : ".$params["type"]."\n";
-        echo "  Name of latest Full Backup : ".$params["full"]."\n";
+        if (isset($params["type"])) echo "  Type : ".$params["type"]."\n";
+        if (isset($params["full"])) echo "  Name of latest Full Backup : ".$params["full"]."\n";
         echo "  Cleanup Status : ".$params["cleanup"]."\n";
         echo "  Latest Filedate : ".$params["latest"]."\n";
         echo "  BackupDrive : ".$params["BackupDrive"]."\n";
-        echo "  Groesse bei Increment : ".$params["sizeInc"]."\n";
-        echo "  Anzahl bei increment : ".$params["countInc"]."\n";
+        if (isset($params["sizeInc"])) echo "  Groesse bei Increment : ".$params["sizeInc"]."\n";
+        if (isset($params["countInc"])) echo "  Anzahl bei increment : ".$params["countInc"]."\n";
         echo "  Groesse Target wenn fertig : ".$params["sizeTarget"]."\n";
         echo "  Anzahl Target wenn fertig : ".$params["countTarget"]."\n";     
         }
@@ -3478,7 +3494,25 @@ class BackupIpsymcon extends OperationCenter
         $this->writeTableStatus($params);            // ohne Parameter wird das html automatisch geschrieben            
         }
 
+    /* abgelaufene zeit im Backup ermitteln und ausgeben */
 
+    private function runTime($startTime)
+        {
+        return ((time()-$startTime)." Sekunden");    
+        }
+
+    /* abgelaufene zeit im Backup ermitteln und ausgeben */
+
+    private function writeSpeed($startTime, $filesize)
+        {
+        $copytime=(time()-$startTime);
+        if ($copytime>0) 
+             {
+             $speed=$filesize/$copytime;
+             return ("$speed Byte/s");
+             }   
+        else return ("schnell");    
+        }
     /*********************************************************************************************************
     *
     * backup copy function , grundsaetzlicher Aufruf 
@@ -3496,6 +3530,7 @@ class BackupIpsymcon extends OperationCenter
         {
         /* Init */
         $backupSourceDirs=$params["BackupDirectoriesandFiles"];
+        $params["startTime"]=time();
         $params["size"]=0;  $params["count"]=0;
         if ($params["style"]=="increment")
             {
@@ -3558,13 +3593,13 @@ class BackupIpsymcon extends OperationCenter
             $SourceVerzeichnis=$params["BackupSourceDir"].$backupSourceDir;
             if (is_dir($SourceVerzeichnis)) 
                 {
-                if ($debug) echo "   Backup von $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."\n";
+                if ($debug) echo "   Backup von $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."  ".$this->runTime($params["startTime"])."\n";
                 }
             else 
                 {
                 if (is_file($SourceVerzeichnis)) 
                     {
-                    if ($debug) echo "   Backup von Datei $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."\n";
+                    if ($debug) echo "   Backup von Datei $backupSourceDir aus Verzeichnis ".$params["BackupSourceDir"]." nach ".$params["BackupTargetDir"]."  ".$this->runTime($params["startTime"])."\n";
                     $dir=false; $file=true;
                     }
                 else 
@@ -3598,6 +3633,11 @@ class BackupIpsymcon extends OperationCenter
         if ($params["copied"]>$params["maxcopy"]) 
             {
             $params["status"]="maxcopy reached";
+            return;
+            }
+        if ((time()-$params["startTime"])>$params["maxtime"]) 
+            {
+            $params["status"]="maxtime reached";
             return;
             }
         if (isset($params["BackupTargetDirs"][$TargetVerzeichnis])) $params["BackupTargetDirs"][$TargetVerzeichnis]++;
@@ -3637,6 +3677,8 @@ class BackupIpsymcon extends OperationCenter
             $filemTimeInt=filemtime($SourceVerzeichnis);		// Datum der letzten Aenderung, fuer Backup interessant, Zeitstempel darf nicht groesser als Backup sein
             $filemTime=date("YmdHis",$filemTimeInt);
 
+            if ( $debug && ( ($params["count"] % 100) == 0) ) echo " ".$params["count"]."/".$params["copied"]."   ".$params["size"]."   ".$this->runTime($params["startTime"])."\n";
+
             if ($params["style"]=="increment")          // ********************* incremental backup
                 {
                 //$targetFilename='.\\'.$sourceDir; 
@@ -3654,7 +3696,7 @@ class BackupIpsymcon extends OperationCenter
                         //if ($debug && ($params["echo"]++<$imax)) echo $params["echo"]."       copy it ".$targetFilename." $SourceVerzeichnis ($filemTime) > $TargetVerzeichnis$sourceDir (".$params["checkChange"][$targetFilename].") because Backup date ".date("d.m.Y H:m:s",$targetTime)." and Source date ".date("d.m.Y H:m:s",$filemTimeInt)."\n";
                         $params["sizeInc"]=$params["sizeInc"]+filesize($SourceVerzeichnis);
                         $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
-                        $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                        $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params, $debug);
                         }
                     }
                 else 
@@ -3662,7 +3704,7 @@ class BackupIpsymcon extends OperationCenter
                     if ($debug && ($params["echo"]++<$imax)) echo $params["echo"]."NEW FILE, copy it ".$targetFilename."\n";
                     $params["sizeInc"]=$params["sizeInc"]+filesize($SourceVerzeichnis);
                     $params["countInc"]=$params["countInc"]+1;                 // Anzahl kopierter Dateien
-                    $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                    $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params, $debug);
                     }
                 }
             else                                        // ********************** full backup
@@ -3670,7 +3712,7 @@ class BackupIpsymcon extends OperationCenter
                 //echo "       Datei copy $SourceVerzeichnis $TargetVerzeichnis.";
                 $params["size"]=$params["size"]+filesize($SourceVerzeichnis);
                 $params["count"]=$params["count"]+1;                 // Anzahl bearbeiteter Dateien
-                $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params);
+                $this->copyFile($SourceVerzeichnis,$TargetVerzeichnis.$sourceDir, $log, $params, $debug);
                 }
             }	// ende file wird bearbeitet
 
@@ -3839,7 +3881,7 @@ class BackupIpsymcon extends OperationCenter
      *
      **************************************************************************/
 
-    function copyFile($Source, $Target, &$log, &$params)
+    function copyFile($Source, $Target, &$log, &$params, $debug=false)
         {
         $fileTimeInt=filectime($Source);			// eindeutiger Identifier, beim Erstellen des Files festgelegt 
         $fileTime=date("YmdHis",$fileTimeInt);            
@@ -3856,7 +3898,10 @@ class BackupIpsymcon extends OperationCenter
                 //echo "$Target => Zeit Backupfile zu alt, hat sich mittlerweile geändert Source: $filemTime    Target: $targetFilemTime     \n";
                 if ($params["update"]=="overwrite")
                     {
+                    $startCopyTime=time();
+                    $filesize=filesize($Source);
                     copy($Source,$Target);
+                    if ($debug) echo "  copy/update $Source,$Target with $filesize ".$this->runTime($startCopyTime)." ".$this->writeSpeed($startCopyTime,$filesize)." \n";
                     $log[$Target]="copied:$fileTime:$filemTime";
                     $params["copied"]=$params["copied"]+1;                // Anzahl der kopierten Dateien, weniger wenn zB schon einmal vorher aufgerufen            
                     }
@@ -3865,8 +3910,10 @@ class BackupIpsymcon extends OperationCenter
             }
         else 
             {
+            $startCopyTime=time(); $filesize=filesize($Source);
             $this->dosOps->mkdirtree($Target);
             copy($Source,$Target);
+            if ($debug) echo "  copy/mkdirtree $Source,$Target with $filesize ".$this->runTime($startCopyTime)." ".$this->writeSpeed($startCopyTime,$filesize)." \n";
             $log[$Target]="copied:$fileTime:$filemTime";
             $params["copied"]=$params["copied"]+1;                // Anzahl der kopierten Dateien, weniger wenn zB schon einmal vorher aufgerufen            
             //echo "$Target copy \n";
@@ -4816,6 +4863,40 @@ class BackupIpsymcon extends OperationCenter
             {
             $result["Date"]=substr($filename,0,$pos2);
             }
+        $pos3=strpos($path,"\\\\");        // erstes \\ für ein Netvolume
+        //echo "Netzlaufwerk finden in $path, suche \\\\ auf $pos3 .\n";
+        if (($pos3 !== false) && ($pos3==0))
+            {
+            echo "Netzlaufwerk gefunden, suche erstes \\.\n";
+            $pos4=strpos(substr($path,2),"\\");
+            if ($pos4 != false)
+                {
+                $result["PathV"]=substr($path,$pos4+2);     /* die Backslashe am Anfange entfernen */
+                $result["NetVolume"]=substr($path,2,$pos4);
+                }
+            }
+        $pos5=strpos($path,":");        // erstes \\ für ein Netvolume
+        echo "Laufwerk finden in $path, suche : auf $pos5 .\n";
+        if (($pos5 !== false) && ($pos5==1))
+            {
+            echo "Laufwerk gefunden, suche erstes \\.\n";
+            $pos6=strpos($path,"\\");
+            if ($pos6 != false)
+                {
+                $result["PathV"]=substr($path,$pos6);     /* die Backslashe am Anfange entfernen */
+                $result["Volume"]=substr($path,0,$pos6);
+                }
+            }
+        if (isset($result["PathV"]))
+            {
+            /* wenn es einen Pfad gibt, das erste Directory ermitteln */
+            $pos7=strpos(substr($result["PathV"],1),"\\");
+            if ($pos7 != false)
+                {
+                $result["Path1"]=substr($result["PathV"],1,$pos7);     /* die Backslashe am Anfange entfernen */
+                }            
+            }
+
         $result["Directory"]=$directory;
         $result["Path"]=$path;
         $result["Filename"]=$filename;
