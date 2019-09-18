@@ -25,10 +25,10 @@ if (!isset($moduleManager))
 
 $installedModules = $moduleManager->GetInstalledModules();
 
-if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; break; }
-if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; break;}
-//if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; break;}
-if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; break;}
+if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; return; }
+if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; return;}
+//if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; return;}
+if (isset ($installedModules["RemoteAccess"])) { echo "Modul RemoteAccess ist installiert.\n"; } else { echo "Modul RemoteAccess ist NICHT installiert.\n"; return;}
 
 /*
 
@@ -159,13 +159,19 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::
 
 			echo "****\nDetect Movement Konfiguration durchgehen:\n";
 			$config=IPSDetectMovementHandler_GetEventConfiguration();
-			$gesamt=array();
+            //print_r($config);
 			foreach ($config as $oid=>$params)
 				{
 				echo "  OID: ".$oid." Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)." Type :".str_pad($params[0],15)."Status: ".(integer)GetValue($oid)." Gruppe ".$params[1]."\n";
-				$gesamt["Gesamtauswertung_".$params[1]]["NAME"]="Gesamtauswertung_".$params[1];
-				$gesamt["Gesamtauswertung_".$params[1]]["OID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$params[1],$DetectMovementHandler->getCustomComponentsDataGroup());
-				$gesamt["Gesamtauswertung_".$params[1]]["MOID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$params[1],$DetectMovementHandler->getDetectMovementDataGroup());
+				}
+
+			$groups=$DetectMovementHandler->ListGroups('Motion');		// wenn Parameter angegeben ist gibt es auch ein Explode der mit Komma getrennten Gruppennamen
+            //print_r($groups);
+			foreach ($groups as $group=>$status)
+				{
+				$gesamt["Gesamtauswertung_".$group]["NAME"]="Gesamtauswertung_".$group;
+				$gesamt["Gesamtauswertung_".$group]["OID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$group,$DetectMovementHandler->getCustomComponentsDataGroup());
+				$gesamt["Gesamtauswertung_".$group]["MOID"]=@IPS_GetObjectIDByName("Gesamtauswertung_".$group,$DetectMovementHandler->getDetectMovementDataGroup());
 				}
 
 			$LogConfiguration=get_IPSComponentLoggerConfig();

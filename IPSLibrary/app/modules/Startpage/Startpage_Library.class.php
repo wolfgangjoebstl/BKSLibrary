@@ -163,33 +163,451 @@
 
 		function StartPageWrite($PageType,$showfile=false)
 			{
-	
-			$file=$this->readPicturedir();
-			$maxcount=count($file);
-			if ($showfile===false) $showfile=rand(1,$maxcount-1);
-		
+	    	/* html file schreiben, Anfang Style für alle gleich */
+			$wert="";
+		    $wert.= $this->writeStartpageStyle();
+            switch ($PageType)
+                {
+                case 3:        // Topologie
+                    //echo "Topologiedarstellung erster Entwurf, verwendet showPicture und showTopology.\n";
+                    $wert.='<table id="startpage">';
+                    $wert.='<tr>';
+                    $wert.= $this->showPicture($showfile);
+                    $wert.= $this->showTopology();
+                    $wert.='</tr></table>';
+                    break;
+                case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
+                    if ( $noweather==true )
+                        {
+                        $file=$this->readPicturedir();
+                        $maxcount=count($file);
+                        if ($showfile===false) $showfile=rand(1,$maxcount-1);
+
+                        //echo "NOWEATHER true.\n";
+                        $wert.='<table id="startpage">';
+                        $wert.='<tr><td>';
+                        if ($maxcount >0)
+                            {
+                            $wert.='<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">';
+                            }		
+                        $wert.='</td></tr></table>';
+                        }
+                    else
+                        {    
+                        $wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
+                        $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
+                        $wert.='<tr><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
+                        $wert.='<tr><td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
+                        $wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td>';
+                        $wert.='<td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle><tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>';
+                        $wert.='<tr> <td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr></tablestyle> </table> </td></tr>';
+                        $wert.='</table>';
+                        }
+                    break;
+                case 1:
+                    /*******************************************
+                     *
+                     * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt 
+                     * Bild und Wetterstation als zweispaltige Tabelle gestalten
+                     *
+                     *************************/
+                    $wert.='<table id="startpage">';
+                    //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
+                    //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
+                    $wert.='<tr>';
+                    $wert.= $this->showPicture($showfile);
+                    $wert.= $this->showWeatherTable();
+                    $wert.='</tr>';
+                    $wert.=$this->bottomTableLines();
+                    $wert.='</table>';
+                    break;
+                default:
+                    break;    
+                }
+			return $wert;
+			}
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Darstellung der Topologie mit aktuellen Werten
+         *
+         *
+         **************************************/
+
+		function showTopology($debug=false)
+			{
+            $wert="";
+
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+            IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+            IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');            
+
+            /* Get Topology Liste aus EvaluateHardware_Configuration */
+            $Handler = new DetectDeviceHandler();
+            $topology=$Handler->Get_Topology();
+
+            /* die Topologie mit den Geräten anreichen. Es gibt Links zu INSTANCES and OBJECTS 
+            * OBJECTS sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+            *
+            */
+
+            $topologyPlusLinks=$topology;
+            foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
+                {
+                if ($debug) echo $entry[0]."|",$entry[1]."|",$entry[2]."\n";
+                $name=IPS_GetName($index);
+                $entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen, es können auch mehrere sein, das ist der Ort zB Arbeitszimmer */
+                $entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
+                if (sizeof($entry1)>0)
+                    {
+                    foreach ($entry1 as $place)
+                        {
+                        if ( isset($topology[$place]["OID"]) != true ) 
+                            {
+                            if ($debug) echo "   Kategorie $place anlegen.\n";
+                            }
+                        else
+                            {
+                            $oid=$topology[$place]["OID"];
+                            //print_r($topology[$place]);
+                            $size=sizeof($entry2);
+                            if ($entry2[0]=="") $size=0;
+                            if ($size > 0) 
+                                {	/* es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren */
+                                if ($debug) echo "   erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                //CreateLinkByDestination($name, $index, $oid, 10);	
+                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gwerk als Identifier nehmen
+                                }
+                            else
+                                {	/* eine Instanz, dient nur der Vollstaendigkeit */
+                                if ($debug) echo "   erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+                                //CreateLinkByDestination($name, $index, $oid, 1000);						
+                                $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
+                                }
+                            }
+                        }
+                    //print_r($entry1);
+                    }
+                }  // ende foreach
+
+            if ($debug) 
+                {
+                print_r($topologyPlusLinks);
+                echo "=====================================================================================\n";
+                echo "Topology Status Ausgabe:\n";
+                }
+
+            $topologyStatus=array();
+            foreach ($topologyPlusLinks as $name => $place)
+                {
+                if ( (isset($place["x"])) && (isset($place["y"])) ) 
+                    {
+                    $x=$place["x"]; $y=$place["y"];
+                    if ( isset($place["l"]) ) $l=$place["l"]; else $l=1;
+                    if ( isset($place["h"]) ) $h=$place["h"]; else $h=1;
+                    $topologyStatus[$y][$x]["Size"]=["l"=>$l,"h"=>$h];
+                    if ($debug) echo "$name is located on $x und $y. Size is $l x $h.\n"; 
+                    if (isset($place["ShortName"])) $topologyStatus[$y][$x]["ShortName"]=$place["ShortName"];
+                    if (isset($place["OBJECT"])) 
+                        {
+                        $topologyStatus[$y][$x]["Status"]=$place["OBJECT"];
+                        if ($debug) 
+                            {
+                            foreach ($place["OBJECT"] as $type => $objName) 
+                                {
+                                echo "  $type : ";
+                                foreach ($objName as $oid => $name) echo "  $oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";
+                                echo "\n";
+                                }
+                            echo "\n";
+                            }
+                        }
+                    }
+                }  // ende foreach
+
+
+            if ($debug) 
+                {
+                echo "=====================================================================================\n";
+                echo "Status Topologie für Ausgabe vorbereitet:\n";
+                print_r($topologyStatus);
+                }
+
+            ksort($topologyStatus);
+            $wert.="<style>";
+            $wert.="#topology { border-collapse: collapse; border: 1px solid #ddd;   }";
+            $wert.="#topology td, #topology th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
+            $wert.="#topology p { color:lightblue; margin:0;   }";
+            $wert.="</style>";
+            $wert.="<td>";
+            $wert .= $this->writeTable($topologyStatus, $debug);
+            $wert.="</td>";
+            return ($wert);
+            }
+
+       /* rekursive Routine um eine Tabelle zu zeichnen 
+        * es kann auch eine Tabelle in einer Zelle abgebildet werden, daher rekursives Modell
+        * 
+        *
+        *
+        ********/
+
+        function writeTable($topologyStatus, $debug=false)
+            {
+            if ($debug) 
+                {
+                echo "**************************************************************************************\n";
+                echo "Aufruf writeTable, Darstellung der Informationen innerhalb einer Topologie.\n";
+                print_r($topologyStatus);
+                }
+
+            /* Analyse der übergebenen Daten */
+            $maxx=1; $maxy=0;
+            $lsum=array();
+            foreach ($topologyStatus as $y => $line)	
+                {
+                $lsum[$y]["line"]=0;        // Summenzähler für übergrosse Zellen
+                $maxy++;    
+                foreach ($line as $x => $status) 
+                    {
+                    $lsum[$y][$x]=0;        // Merker für übergrosse Zellen die über mehrere Zeilen gehen
+                    if ($x > $maxx) $maxx=$x; 
+                    }
+                }
+            if ($debug) echo "Evaluierung Tabellengroesse: maximale Anzahl an Tabelleneinträgen in x Richtung : $maxx , in y Richtung : $maxy.\n";
+
+            $html="";
+            $html.="<table id=topology>";
+            foreach ($topologyStatus as $y => $line)
+                {
+                $html.="<tr>";
+                //echo "   Zeile $y abarbeiten:\n";
+                $maxxActual=$maxx; $shiftleft=0;
+                for ($i=1;$i<=$maxxActual;$i++)
+                    {
+                    $x=$i+$lsum[$y]["line"];
+                    if ($debug) echo "   Zelle mit Koordinaten Zeile $y Spalte $x abarbeiten:\n";
+                    $text=$i;               // Default Text
+                    if ( (isset($lsum[$y][$x])) && ($lsum[$y][$x]==1) ) 
+                        {
+                        /* $lsum[$y]["line"] nicht anpassen, Darstellung anders gewählt, bei x Koordinaten wird die Versetzung bereits bei der Eingabe in config berücksichtigt */
+                        $maxxActual = $maxxActual-1;            // hier haengt noch ein Spalte von oben herunter, wird beim Tabellenzeichnen ignoriert und einfach daneben angefangen
+                        $shiftleft++;
+                        }
+                    elseif (isset($line[$i-$shiftleft]))
+                        {
+                        if (isset($line[$i-$shiftleft]["ShortName"])) $text=$line[$i-$shiftleft]["ShortName"];
+                        if (isset($line[$i-$shiftleft]["Size"])) { $l=$line[$i-$shiftleft]["Size"]["l"]; $h=$line[$i-$shiftleft]["Size"]["h"]; } else { $l=1; $h=1; }
+                        if ($debug) 
+                            {
+                            echo "      Eintrag $i ist dran mit Size (hxb) $h x $l :\n"; 
+                            print_r($line[$i-$shiftleft]);
+                            }
+                        if ($l>1) 
+                            {
+                            $maxxActual = $maxxActual-$l+1;
+                            $lsum[$y]["line"] = $lsum[$y]["line"] + $l-1;
+                            }
+                        if ($h>1) 
+                            {
+                            for ($j=1;$j<$h;$j++) $lsum[$y+$j][$x]=1;
+                            }
+                        if (isset($line[$i-$shiftleft]["Status"])) 
+                            {
+                            $newStatus=$this->transformStatus($line[$i-$shiftleft]["Status"]);
+                            /*
+                            if ($line[$i]["Status"]==2) $html.='<td bgcolor="00FF00"> '.$text.' </td>'; 
+                            elseif ($line[$i]["Status"]==1) $html.='<td bgcolor="00FFFF"> '.$text.' </td>';			
+                            else $html.='<td bgcolor="0000FF"> '.$text.' </td>';
+                            */
+                            //foreach ($line[$i-$shiftleft]["Status"] as $type => $object)
+                            foreach ($newStatus as $entry)
+                                {
+                                foreach ($entry as  $type => $object)
+                                    {
+                                    if (count($object)>1) $long=true; else $long=false;
+                                    $first=true;
+                                    foreach ($object as $index => $name) 
+                                        {
+                                        if ($first) $first=false;
+                                        else $text .= "<br>";
+                                        if (IPS_VariableExists($index)) 
+                                            {
+                                            if ($long) $text .= " ".$this->writeValue($index,$type)." ($name)";
+                                            else $text .= " ".$this->writeValue($index,$type);
+                                            }
+                                        }
+                                    }
+                                }
+                            $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="min-width:100px;background-color:#122232;color:white"> '.$text.' </td>';                            
+                            }
+                        else $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="bgcolor:#FFFFFF"> '.$text.' </td>';
+                        }
+                    else $html.='<td bgcolor="FFFFFF"> '.$text.' </td>';
+                    }
+                $html.="</tr>";
+                }       // ende for schleife für Zeilen
+            $html.="</table>";		
+            
+            if ($debug) 
+                {
+                // echo "Hilfestellung für Darstellung :\n"; print_r($lsum);
+                }
+
+            return ($html);
+            }
+
+
+        /******************************
+        * 
+        * Darstellung der Werte, es wird writeCell aufgerufen
+        *
+        *
+        ********/
+
+        function transformStatus($status)
+            {
+            echo "transformStatus: Input Werte\n";
+            print_r($status);
+            $result=array();
+            $count=count($status);
+            $keys=array();
+            foreach ($status as $index => $entry)
+                {
+                switch (strtoupper($index))
+                    {
+                    case "TEMPERATURE":
+                        $keys["TEMPERATURE"]=10;
+                        break;
+                    case "HUMIDITY":
+                        $keys["HUMIDITY"]=20;
+                        break;
+                    case "MOVEMENT":
+                        $keys["MOVEMENT"]=30;
+                        break;
+                    default:
+                        $keys[strtoupper($index)]=100;
+                        break;
+                    }
+                }
+            asort($keys);
+            print_r($keys);
+            $i=0; 
+            foreach ($keys as $key => $num) 
+                {
+                foreach ($status as $index => $entry)
+                    {
+                    if (strtoupper($index) == $key) 
+                        {
+                        $result[$i][$index]=$entry;
+                        $i++;
+                        }
+                    }
+                }
+            //print_r($status);
+            print_r($result);
+            return ($result);
+            }
+
+        /******************************
+        * 
+        * Darstellung der Werte, es wird writeCell aufgerufen
+        *
+        *
+        ********/
+
+        function writeCell()
+            {
+
+
+            }
+
+        /******************************
+        * 
+        * Darstellung der Werte, es wird writeValue aufgerufen
+        *
+        *
+        ********/
+        function writeValue($valueID, $type)
+            {
+            switch ($type)
+                {
+                case "Movement":
+                    return ($this->writeMovement($valueID));
+                case "Temperature":
+                    return ($this->writeTemperature($valueID));
+                case "Humidity":
+                    return ($this->writeHumidity($valueID));
+                default:
+                    return("<p>$type".GetValue($valueID)."</p>");
+                }
+            }
+
+        function writeMovement($valueID, $debug=false)
+            {
+            $timeSinceUpdate=time()-IPS_GetVariable($valueID)["VariableUpdated"];
+            if ($timeSinceUpdate > (24*60*60))
+                {
+                if ($debug) echo IPS_GetName($valueID)."  last update ".date ("d.m.Y H.i.s",IPS_GetVariable($valueID)["VariableUpdated"])."\n";
+                return ('<p style="color:red">Move '.(GetValue($valueID)?"Yes":"No")."</p>"); 
+                }
+            else return ("<p>Move ".(GetValue($valueID)?"Yes":"No")."</p>"); 
+            }
+
+        function writeTemperature($valueID, $debug=false)
+            {
+            return ("<p>".GetValue($valueID)." °C</p>"); 
+            }
+
+        function writeHumidity($valueID, $debug=false)
+            {
+            return ("<p>".GetValue($valueID)." %</p>"); 
+            }
+    
+            
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes
+         *
+         *
+         **************************************/
+
+		function showPicture($showfile=false)
+			{
+            $wert="";
+            $file=$this->readPicturedir();
+            $maxcount=count($file);
+            if ($showfile===false) $showfile=rand(1,$maxcount-1);
+            $filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
+            $filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
+            $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
+            if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
+                {
+                //echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                }
+            //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
+            $wert.='<td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+            $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
+            $wert.='</div></td>';
+            return ($wert);
+            }
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Wettertabelle
+         *
+         **************************************/
+
+		function showWeatherTable()
+			{
+            $wert="";
 			/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
 			$Config=$this->configWeather();
 			//print_r($Config);
 			$noweather=!$Config["Active"];
-		
-			/* html file schreiben, Anfang Style für alle gleich */
-
-			$wert="";
-		    $wert.= $this->writeStartpageStyle();
-
-			if ( $noweather==true )
-				{
-		        //echo "NOWEATHER true.\n";
-				$wert.='<table id="startpage">';
-		        $wert.='<tr><td>';
-   				if ($maxcount >0)
-		   			{
-					$wert.='<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">';
-					}		
-				$wert.='</td></tr></table>';
-				}
-			else
+			if ( $noweather==false )
 				{
                 if ($Config["Source"]=="WU")
                     {
@@ -250,80 +668,37 @@
                         $tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
                         }		
                     }
-		        if ($PageType==3)           // Topologie
-					{
-					//echo "Topologiedarstellung fehlt noch.\n";
-        		    }
-				elseif ($PageType==2)
-					{
-					//echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
-					$wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
-					$wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
-					$wert.='<tr><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
-					$wert.='<tr><td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
-					$wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td>';
-		            $wert.='<td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle><tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>';
-        		    $wert.='<tr> <td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr></tablestyle> </table> </td></tr>';
-		            $wert.='</table>';
-					}
-				else
-					{
-					/*******************************************
-					 *
-					 * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt 
-					 * Bild und Wetterstation als zweispaltige Tabelle gestalten
-					 *
-					 *************************/
-					$filename = 'user/Startpage/user/pictures/SmallPics/'.$file[$showfile];
-					$filegroesse=number_format((filesize(IPS_GetKernelDir()."webfront/".$filename)/1024/1024),2);
-					$info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
-					if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
-						{
-						//echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
-						}
-					//echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";            	                
-					$wert.='<table id="startpage">';
-					if ($todayDate!="") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
-					else { $tableSpare=''; $colspan=""; }
-					//$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
-					//$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
-					$wert.='<tr><td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
-					$wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-					$wert.='</div></td>';
-					$wert.='<td><table id="nested">';
-					$wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-					$wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-					$wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
-		            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
-		//			$wert.='<tr id="temp"><td><temperatur>'.number_format($todayTempMin, 1, ",", "" ).'°C<br>'.number_format($todayTempMax, 1, ",", "" ).'°C</temperatur></td>';
-		//			$wert.='<td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
-		//			$wert.='<tr id="temp"><td><temperatur>'.number_format($tomorrowTempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrowTempMax, 1, ",", "" ).'°C</temperatur></td>';
-		//			$wert.='<td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
-		//			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow1TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow1TempMax, 1, ",", "" ).'°C</temperatur></td>';
-		//			$wert.='<td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
-		//			$wert.='<tr id="temp"><td> <temperatur>'.number_format($tomorrow2TempMin, 1, ",", "" ).'°C<br>'.number_format($tomorrow2TempMax, 1, ",", "" ).'°C</temperatur></td>';
-		//			$wert.='<td align="center"> <img src="'.$tomorrow2.'" alt="Heute" > </td></tr></table></td></tr>';
-					if ($todayDate=="")
-						{
-						$wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today);
-						$wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow);
-						$wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1);
-						$wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2);
-						}
-					else
-						{
-						$wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today,$todayDate);
-						$wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow, $tomorrowDate);
-						$wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1, $tomorrow1Date);
-						$wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2, $tomorrow2Date);
-						}
-					$wert.='</table></td></tr>';
-		            $wert.=$this->bottomTableLines();
-		            $wert.='</table>';
-		            }
-		        }    
-			return $wert;
-			}
+		        }    // ende weather aktiviert
+            if ($todayDate!="") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
+            else { $tableSpare=''; $colspan=""; }
+            $wert.='<td><table id="nested">';
+            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
+            if ($todayDate=="")
+                {
+                $wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today);
+                $wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow);
+                $wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1);
+                $wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2);
+                }
+            else
+                {
+                $wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today,$todayDate);
+                $wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow, $tomorrowDate);
+                $wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1, $tomorrow1Date);
+                $wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2, $tomorrow2Date);
+                }
+            $wert.='</table></td>';
+            return ($wert);
+            }
+
+        /********************
+         *
+         * macht eine Zeile in der Wettertabelle
+         *
+         **************************************/
 
 		function tempTableLine($TempMin, $TempMax, $imageSrc, $date="")
 			{
@@ -342,6 +717,12 @@
 			return ($wert);
 			}
 		
+        /********************
+         *
+         * Die Tabelle benötigt einen gemeinsamen Style, diesen hier zusammenfassen
+         *
+         **************************************/
+
 	    function writeStartpageStyle()
 	        {
 	    	$wert='<style>';

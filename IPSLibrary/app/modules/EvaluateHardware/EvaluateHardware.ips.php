@@ -205,7 +205,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
  *      Liste der Homematic Geräte nach Seriennummern
  *
  * wenn $installedModules auch "DetectMovement" enthält:
- *      werden alle Geräte ind er EvaluateHardware_Configuration der Tabelle registriert
+ *      werden alle Geräte in der EvaluateHardware_Configuration der Tabelle registriert
  *      zwei Tabellen:
  *          get_Topology() für die einfache Darstellung der Topologie mit NameOrt und Parent
  *          IPSDetectDeviceHandler_GetEventConfiguration() für die Funktion mit Objekt 1,2,3 (Standardroutine)

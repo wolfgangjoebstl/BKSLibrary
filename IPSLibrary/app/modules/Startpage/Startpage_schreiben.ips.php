@@ -24,50 +24,9 @@ $StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryId
 $variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $parentid, 40, '~HTMLBox', null,null,"");
 
 $vid = @IPS_GetVariableIDByName("SwitchScreen",$parentid);
+$showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
 
-/******************************************* INIT ******************************************************/
-
-/* 
- * Das Archiv für die Fotos ist das bilderverzeichnis, picturedir wird für die Darstellung aus dem Webfront verwendet
- * da eine relative Adressierung auf den Server adressiert und eine absolute Adressierung auf den Client geht.
- *
- */
-
-$file=$startpage->readPicturedir();
-$maxcount=count($file);
-$showfile=rand(1,$maxcount-1);
-//echo $maxcount."  ".$showfile."\n";;
-//print_r($file);
-
-if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
-$datei=$file[$showfile];
-
-// Get new dimensions
-list($width, $height) = getimagesize($startpage->picturedir.$datei);
-//echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
-
-$new_width=1920;
-$percent=$new_width/$width;
-$new_height = $height * $percent;
-if ($new_height > 1080) 
-    { 
-    //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
-    $new_height=1080;
-    $percent=$new_height/$height;
-    $new_width = $width * $percent;
-    }
-//echo "New Size : (".$new_width." x ".$new_height.").\n";
-
-// Resample
-$image_p = imagecreatetruecolor($new_width, $new_height);
-$image = imagecreatefromjpeg($startpage->picturedir.$datei);
-imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
-
-// Output
-imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
-
-
-/**************************************** PROGRAM WEBFRONT *********************************************************/
+/**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
 
 
  if ($_IPS['SENDER']=="WebFront")
@@ -107,10 +66,59 @@ imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
 
 	}
 
+/******************************************* Bilder initialisieren und bearbeiten ******************************************************/
+
+if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein konvertieren und aussuchen wenn die darstellung auch auf Pictures ist
+    {
+
+    /* 
+    * Das Archiv für die Fotos ist das bilderverzeichnis, picturedir wird für die Darstellung aus dem Webfront verwendet
+    * da eine relative Adressierung auf den Server adressiert und eine absolute Adressierung auf den Client geht.
+    *
+    */
+
+    $file=$startpage->readPicturedir();
+    $maxcount=count($file);
+    $showfile=rand(1,$maxcount-1);
+    //echo $maxcount."  ".$showfile."\n";;
+    //print_r($file);
+
+    if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
+    $datei=$file[$showfile];
+
+    // Get new dimensions
+    list($width, $height) = getimagesize($startpage->picturedir.$datei);
+    //echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
+
+    $new_width=1920;
+    $percent=$new_width/$width;
+    $new_height = $height * $percent;
+    if ($new_height > 1080) 
+        { 
+        //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
+        $new_height=1080;
+        $percent=$new_height/$height;
+        $new_width = $width * $percent;
+        }
+    //echo "New Size : (".$new_width." x ".$new_height.").\n";
+
+    // Resample
+    $image_p = imagecreatetruecolor($new_width, $new_height);
+    $image = imagecreatefromjpeg($startpage->picturedir.$datei);
+    imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+
+    // Output
+    imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
+    }
+
+/**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
+
 /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
 $startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
 $startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
+
+/**************************************** und jetzt die Startpage darstellen *********************************************************/
 
 /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
@@ -140,6 +148,8 @@ SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$
 	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=false; } }
 	if ($noweather == false) { echo "Keine Anzeige der rechten Wettertabelle in der Startpage.\n"; }
 	
+    $file=$startpage->readPicturedir();
+    $maxcount=count($file);
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
 	echo $startpage->StartPageWrite(1);
 	}

@@ -795,6 +795,78 @@ class AutosteuerungOperator
 			$this->motionDetect_DataID=@IPS_GetObjectIDByName("Motion-Detect",$CategoryIdDataDM);
 			}
 				
+		$this->setLogicAnwesend();              // Config auslesen und logicAnwesend abspeichern
+		}
+
+	/* Ausgabe der privaten Config Variable, das ist die Config aus dem include File in ein allgemeines Format gebracht */
+
+	public function getConfig()
+		{
+		return($this->logicAnwesend);
+		}
+
+    /*
+     * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
+     * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 5 Minuten aufgerufen.
+     *
+     *
+     */
+
+	public function Anwesend()
+		{
+		$result=false;
+		$delayed = $this->logicAnwesend["Config"]["Delayed"];
+		$operator="";
+		foreach($this->logicAnwesend as $type => $operation)
+			{
+			if ($type == "OR")
+				{
+				$operator.="OR";
+				foreach ($operation as $oid=>$topology)
+					{
+					if ( (isset($topology["Delayed"])) && ($delayed) ) 
+						{
+						$result = $result || GetValueBoolean($topology["Delayed"]);
+						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
+						}
+					else 
+						{
+						$result = $result || GetValueBoolean($oid);
+						$operator.=" ".IPS_GetName($oid);
+						}
+					//echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
+					}
+				}
+			if ($type == "AND")
+				{
+				$operator.=" AND";				
+				foreach ($operation as $oid=>$topology)
+					{
+					if ( (isset($topology["Delayed"])) && ($delayed) ) 
+						{
+						$result = $result && GetValue($topology["Delayed"]);
+						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
+						}
+					else 
+						{
+						$result = $result && GetValue($oid);
+						$operator.=" ".IPS_GetName($oid);
+						}
+					//echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
+					}
+				}
+			}
+		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
+		return ($result);				
+		}
+
+
+    /* set/get LogicAnwesend 
+     * analyse der entsprechenden Konfiguration und abspeichern in einem class object 
+     *
+     */ 
+	public function setLogicAnwesend($debug=false)
+		{
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 		$configAnwesend=Autosteuerung_Anwesend();
 		$config=array();
@@ -877,79 +949,18 @@ class AutosteuerungOperator
 				
 			}
 		$this->logicAnwesend=$config;
-		
-		}
+        return ($config);
+        }
 
-	/* Ausgabe der privaten Config Variable, das ist die Config aus dem include File in ein allgemeines Format gebracht */
-
-	public function getConfig()
-		{
-		return($this->logicAnwesend);
-		}
-
-    /*
-     * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
-     * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 5 Minuten aufgerufen.
-     *
-     *
-     */
-
-	public function Anwesend()
-		{
-		$result=false;
-		$delayed = $this->logicAnwesend["Config"]["Delayed"];
-		$operator="";
-		foreach($this->logicAnwesend as $type => $operation)
-			{
-			if ($type == "OR")
-				{
-				$operator.="OR";
-				foreach ($operation as $oid=>$topology)
-					{
-					if ( (isset($topology["Delayed"])) && ($delayed) ) 
-						{
-						$result = $result || GetValueBoolean($topology["Delayed"]);
-						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
-						}
-					else 
-						{
-						$result = $result || GetValueBoolean($oid);
-						$operator.=" ".IPS_GetName($oid);
-						}
-					//echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
-					}
-				}
-			if ($type == "AND")
-				{
-				$operator.=" AND";				
-				foreach ($operation as $oid=>$topology)
-					{
-					if ( (isset($topology["Delayed"])) && ($delayed) ) 
-						{
-						$result = $result && GetValue($topology["Delayed"]);
-						$operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
-						}
-					else 
-						{
-						$result = $result && GetValue($oid);
-						$operator.=" ".IPS_GetName($oid);
-						}
-					//echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
-					}
-				}
-			}
-		IPSLogger_Dbg(__file__, 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Aus":"Ein"));
-		return ($result);				
-		}
-	
     /* das ist die passende Debug Funktion zu Anwesend()
      * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
      *
      */ 
-	public function getLogicAnwesend()
+	public function getLogicAnwesend($debug=false)
 		{
 		$delayed = $this->logicAnwesend["Config"]["Delayed"];
-		$result=false; $resultDelayed=false;
+		if ($debug) print_r($this->logicAnwesend );
+        $result=false; $resultDelayed=false;
 		$operator="";
 		$topologyStatus=array();	
 		foreach($this->logicAnwesend as $type => $operation)
@@ -2895,8 +2906,10 @@ class Autosteuerung
 					$result["MUTE"]=$mute;
 					}
 				break;
-			case "IFOR":	
+			case "IFOR":
+            case "ORIF":	
 			case "IFAND":	/* überschreibt den Wert vom vorigen if wenn false, gleich wie mehrere if hintereinander */
+            case "ANDIF":
 			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
 				$cond=$Befehl1;
 				if ( $cond == "STATUS") 		/* andere Befehldarstellung IF:STATUS:EQ:parameter */
@@ -2911,7 +2924,7 @@ class Autosteuerung
 								$result["SWITCH"]=false;						
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:eq ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
 								}
-							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+							elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
 								{
 								$result["SWITCH"]=true;
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:eq gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
@@ -2923,7 +2936,7 @@ class Autosteuerung
 								$result["SWITCH"]=false;						
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:lt ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
 								}
-							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+							elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
 								{
 								$result["SWITCH"]=true;
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:lt gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
@@ -2935,7 +2948,7 @@ class Autosteuerung
 								$result["SWITCH"]=false;						
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:gt ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
 								}
-							elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+							elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
 								{
 								$result["SWITCH"]=true;
 								IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:gt gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
@@ -2960,7 +2973,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;						
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist true ');								
@@ -2973,7 +2986,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;						
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist true ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist false ');								
@@ -2986,7 +2999,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;						
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist hell ');								
@@ -2999,7 +3012,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist dunkel ');								
@@ -3012,7 +3025,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim schlafen ');								
@@ -3025,7 +3038,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind beim aufwachen oder schlafen ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind munter ');								
@@ -3038,7 +3051,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim aufwachen ');								
@@ -3051,7 +3064,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir bewegen uns ');								
@@ -3064,7 +3077,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind zu Hause ');								
@@ -3077,7 +3090,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Alarmanlage aktiviert ');								
@@ -3118,7 +3131,7 @@ class Autosteuerung
                                     $result["SWITCH"]=false;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:'.$cond.' ');
                                     }
-                                elseif ( strtoupper($befehl[0]) == "IFOR" ) 
+                                elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                     {
                                     $result["SWITCH"]=true;
                                     IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:'.$cond.' ');
@@ -3152,7 +3165,7 @@ class Autosteuerung
                                 else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert vom Switch	
                                 if ($checkId !== false)
                                     {
-                                    if ( strtoupper($befehl[0]) == "IFAND" )
+                                    if ( (strtoupper($befehl[0]) == "IFAND") || (strtoupper($befehl[0]) == "ANDIF") )
                                         {
                                         $result["SWITCH"]=$result["SWITCH"] && $statusCheck;
                                         }
@@ -5955,7 +5968,6 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
         default:
             break;
         }
-    if ($log) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.$variableID.' mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -5972,8 +5984,9 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
     $command=array(); 
     $entry=1;	
 
-    if ($bounce==false)
+    if ($bounce==false)   // bei einem Bounce die ganze Befehlsabarbeitung deaktivieren
         {
+        if ($log) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.$variableID.' mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
         $lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
         
         $parges=$auto->ParseCommand($params,$status,$simulate);
