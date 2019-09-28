@@ -163,6 +163,8 @@
 
 		function StartPageWrite($PageType,$showfile=false)
 			{
+			$Config=$this->configWeather();
+			$noweather=!$Config["Active"];                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
 		    $wert.= $this->writeStartpageStyle();
@@ -192,12 +194,13 @@
                             }		
                         $wert.='</td></tr></table>';
                         }
-                    else
-                        {    
+                    else        // Anzeige der Wetterdaten
+                        {
+                        $weather=$this->getWeatherData();                                
                         $wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
-                        $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$today.'" alt="Heute" > </td></tr>';
-                        $wert.='<tr><td align="center"> <img src="'.$tomorrow.'" alt="Heute" > </td></tr>';
-                        $wert.='<tr><td align="center"> <img src="'.$tomorrow1.'" alt="Heute" > </td></tr>';
+                        $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
+                        $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
+                        $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow1"].'" alt="Heute" > </td></tr>';
                         $wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td>';
                         $wert.='<td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle><tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>';
                         $wert.='<tr> <td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr></tablestyle> </table> </td></tr>';
@@ -603,13 +606,117 @@
 		function showWeatherTable()
 			{
             $wert="";
-			/* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
+            $weather=$this->getWeatherData();
+
+            if (false)
+                {
+                /* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
+                $Config=$this->configWeather();
+                //print_r($Config);
+                $noweather=!$Config["Active"];
+                if ( $noweather==false )
+                    {
+                    if ($Config["Source"]=="WU")
+                        {
+                        $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
+                        if ($todayID == false)
+                            {
+                            //echo "weatherforecast nicht installiert.\n";
+                            $noweather=true;
+                            }
+                        else
+                            {
+                            $today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                            $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                            $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                            $tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                            $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                            $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                            $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                            $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                            $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                            $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                            $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                            $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+
+                            $todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
+                            }
+                        }
+                    else			/* nicht Weather Wunderground, daher Openwewather */
+                        {
+                        $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");		
+                        if ($todayID == false)
+                            {
+                            //echo "weatherforecast nicht installiert.\n";
+                            $noweather=true;
+                            }
+                        else
+                            {
+                            //echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
+                            $todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
+                            $today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                            $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                            $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                            $tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
+                            $tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                            $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                            $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                            $tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
+                            $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                            $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                            $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                            $tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
+                            $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                            $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                            $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+                            $tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
+                            $tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
+                            $tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
+                            $tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
+                            }		
+                        }
+                    }    // ende weather aktiviert
+                }
+            
+            if ($weather["todayDate"] != "") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
+            else { $tableSpare=''; $colspan=""; }
+
+            $wert.='<td><table id="nested">';
+            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
+            if ($weather["todayDate"]=="")
+                {
+                $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
+                $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
+                $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
+                $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
+                }
+            else
+                {
+                $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
+                $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
+                $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
+                $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+                }
+            $wert.='</table></td>';
+            return ($wert);
+            }
+
+        /********************
+         *
+         * holt die Wetterdaten, abhängig von der benutzten App sind die Daten auf verschiedenen Orten gespeichert
+         *
+         **************************************/
+
+		function getWeatherData()
+            {
+            $result=array();
 			$Config=$this->configWeather();
-			//print_r($Config);
-			$noweather=!$Config["Active"];
-			if ( $noweather==false )
+			if ( $Config["Active"] )
 				{
-                if ($Config["Source"]=="WU")
+                if ($Config["Source"]=="WU")        // WeatherUnderground
                     {
                     $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
                     if ($todayID == false)
@@ -619,20 +726,20 @@
                         }
                     else
                         {
-                        $today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-                        $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-                        $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-                        $tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-                        $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-                        $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-                        $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-                        $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-                        $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-                        $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-                        $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-                        $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+                        $result["today"] = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                        $result["todayTempMin"] = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                        $result["todayTempMax"] = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                        $result["tomorrow"] = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                        $result["tomorrowTempMin"] = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                        $result["tomorrowTempMax"] = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                        $result["tomorrow1"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                        $result["tomorrow1TempMin"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                        $result["tomorrow1TempMax"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                        $result["tomorrow2"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                        $result["tomorrow2TempMin"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                        $result["tomorrow2TempMax"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
 
-                        $todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
+                        $result["todayDate"]="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
                         }
                     }
                 else			/* nicht Weather Wunderground, daher Openwewather */
@@ -646,52 +753,30 @@
                     else
                         {
                         //echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
-                        $todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
-                        $today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-                        $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-                        $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-                        $tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
-                        $tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-                        $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-                        $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-                        $tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
-                        $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-                        $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-                        $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-                        $tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
-                        $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-                        $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-                        $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
-                        $tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
-                        $tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
-                        $tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
-                        $tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
+                        $result["todayDate"]    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
+                        $result["today"]        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
+                        $result["todayTempMin"] = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
+                        $result["todayTempMax"] = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
+                        $result["tomorrowDate"] = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
+                        $result["tomorrow"]     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
+                        $result["tomorrowTempMin"] = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
+                        $result["tomorrowTempMax"] = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
+                        $result["tomorrow1Date"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
+                        $result["tomorrow1"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
+                        $result["tomorrow1TempMin"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
+                        $result["tomorrow1TempMax"] = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
+                        $result["tomorrow2Date"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
+                        $result["tomorrow2"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
+                        $result["tomorrow2TempMin"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
+                        $result["tomorrow2TempMax"] = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
+                        $result["tomorrow3Date"] = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
+                        $result["tomorrow3"] = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
+                        $result["tomorrow3TempMin"] = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
+                        $result["tomorrow3TempMax"] = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
                         }		
                     }
-		        }    // ende weather aktiviert
-            if ($todayDate!="") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
-            else { $tableSpare=''; $colspan=""; }
-            $wert.='<td><table id="nested">';
-            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
-            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
-            if ($todayDate=="")
-                {
-                $wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today);
-                $wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow);
-                $wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1);
-                $wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2);
                 }
-            else
-                {
-                $wert.= $this->tempTableLine($todayTempMin, $todayTempMax, $today,$todayDate);
-                $wert.= $this->tempTableLine($tomorrowTempMin, $tomorrowTempMax, $tomorrow, $tomorrowDate);
-                $wert.= $this->tempTableLine($tomorrow1TempMin, $tomorrow1TempMax, $tomorrow1, $tomorrow1Date);
-                $wert.= $this->tempTableLine($tomorrow2TempMin, $tomorrow2TempMax, $tomorrow2, $tomorrow2Date);
-                }
-            $wert.='</table></td>';
-            return ($wert);
+            return($result);
             }
 
         /********************

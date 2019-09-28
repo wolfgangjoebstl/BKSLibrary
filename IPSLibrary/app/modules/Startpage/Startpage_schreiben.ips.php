@@ -144,10 +144,10 @@ SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$
 	echo "Switch on Monitor, look for :".$configuration["Directories"]["Scripts"].'nircmd.exe'."\n"; 
 	IPS_ExecuteEX($configuration["Directories"]["Scripts"].'nircmd.exe', "sendkeypress F11", false, false, -1);	
 	
-	$noweather=true;
-	if ( isset ($configuration["Display"]["Weathertable"]) == true ) { if ( $configuration["Display"]["Weathertable"] != "Active" ) { $noweather=false; } }
-	if ($noweather == false) { echo "Keine Anzeige der rechten Wettertabelle in der Startpage.\n"; }
-	
+	$Config=$startpage->configWeather();
+	$noweather=!$Config["Active"]; 
+    print_r($Config);
+
     $file=$startpage->readPicturedir();
     $maxcount=count($file);
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";

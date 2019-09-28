@@ -2085,10 +2085,50 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
     trigger_error("$name could NOT be found in 'Switches' and 'Groups'");
     }
 
+/**************************************************************************************************************************
+ *
+ * ipsOps, Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
+ *
+ * __construct              als Constructor wird entweder nichts oder der Modulname übergeben
+ *
+ *
+ ******************************************************/
+
+class ipsOps
+    {
+
+    var $module;
+
+    function __construct($module="")
+        {
+        if ($module != "") $this->module = $module;
+        }
+
+    function path($objectR)
+        {
+        $str = IPS_GetName($objectR);
+        while ($objectR=IPS_GetParent($objectR))
+            {
+            $str .= ".".IPS_GetName($objectR);
+            }
+        $str .= ".".IPS_GetName($objectR);
+        return($str);
+        }
+
+    }
+
+
 /*****************************************************************
  *
+ *  Funktionen rund um das Disk Operating System
  *
- *
+ *  checkProcess, verwendt folgende private functions
+ *      getProcessList
+ *      getTaskList
+ *  getNiceFileSize
+ *  formatSize
+ *  getServerMemoryUsage
+ *  readHardDisk
  *
  */
 
@@ -2620,12 +2660,21 @@ class dosOps
                 if (($pos=strrpos($newdir,"/"))==false) {$pos=strrpos($newdir,"\\");};
                 if ($pos==false) break;
                 $newdir=substr($newdir,0,$pos);
-                if ($debug) echo "   Mach : ".$newdir."\n";
+                if ($debug) echo "   Mach : ".$newdir.", Aufruf von mkdir($newdir)\n";
                 try
                     {
-                    @mkdir($newdir);
+                    if ($debug) 
+                        {
+                        @mkdir($newdir);
+                        $error = error_get_last(); echo "   Mkdir hat zurück gemeldet: ".$error['message']."  \n";
+                        }
+                    else @mkdir($newdir);
                     }
-                catch (Exception $e) { echo "."; }
+                catch (Exception $e) 
+                    { 
+                    echo "."; 
+                    if ($debug) echo "Catch Exception, Fehler bei mkdir($newdir).\n";
+                    }
                 if (is_dir($newdir)) if ($debug) echo "     Verzeichnis ".$newdir." erzeugt.\n";
                 }
             if ($pos==false) break;
