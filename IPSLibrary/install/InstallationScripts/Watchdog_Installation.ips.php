@@ -240,10 +240,19 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	fclose($handle2);
 	
 	if (isset($configWD["Software"]["Firefox"]["Directory"])==true )
-	   {
-	   echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
-		$handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");
-		fwrite($handle2,'"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWD["Software"]["Firefox"]["Url"].'"'."\r\n");
+	    {
+	    echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
+        $handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");        
+        if (is_array($configWD["Software"]["Firefox"]["Url"]))
+            {
+            echo "   mehrere Urls sollen gestartet werden.\n";
+            $command='"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" ';
+            foreach ($configWD["Software"]["Firefox"]["Url"] as $url) $command.=' "'.$url.'" ';
+            $command.="\r\n";
+            fwrite($handle2,$command);
+            echo "   Befehl ist jetzt : $command\n";
+            }
+		else fwrite($handle2,'"'.$configWD["Software"]["Firefox"]["Directory"].'firefox.exe" "'.$configWD["Software"]["Firefox"]["Url"].'"'."\r\n");
 		fclose($handle2);
 		}
 		
