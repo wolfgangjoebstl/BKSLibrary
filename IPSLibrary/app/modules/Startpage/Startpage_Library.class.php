@@ -219,7 +219,7 @@
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
                     $wert.='<tr>';
                     $wert.= $this->showPicture($showfile);
-                    $wert.= $this->showWeatherTable();
+                    if ( $noweather==false ) $wert.= $this->showWeatherTable();
                     $wert.='</tr>';
                     $wert.=$this->bottomTableLines();
                     $wert.='</table>';
@@ -927,6 +927,7 @@
 	
 		function aggregateOpenWeather($debug=false)
 			{
+            if (count($this->getOWDs())==0) return (false); 
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			$moduleManagerSP = new IPSModuleManager('StartPage',$repository);
 			$CategoryIdDataSP     = $moduleManagerSP->GetModuleCategoryID('data');
