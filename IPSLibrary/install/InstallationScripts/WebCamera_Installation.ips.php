@@ -37,6 +37,9 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\WebLinks\WebLinks_Configuration.inc.php");
 
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -60,6 +63,214 @@
 
 /********************************************************************/
 
+    /* auch OperationCenter Installation mit betrachten */
+
+    $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+    $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
+
+    /* auch IPSCam Installation mit betrachten */
+
+    $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+	$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
+
+    $ipsOps = new ipsOps();
+    $dosOps = new dosOps();
+
+    $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
+    echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
+
+	/*******************************
+     *
+     * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+     *
+     ********************************/
+
+	//echo "\n";
+	//$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
+	//echo "Default WFC10_ConfigId fuer OperationCenter, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
+    //echo "(".memory_get_usage()." Byte).\n";	
+
+    $subnet="10.255.255.255";
+    $OperationCenter=new OperationCenter($subnet);
+    $OperationCenterConfig = $OperationCenter->getConfiguration();
+
+    echo "====================================================================================\n";
+    echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
+    if (isset ($OperationCenterConfig['CAM']))
+        {
+
+        //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
+        
+        /* Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
+        * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
+        */
+		$resultStream=array(); $idx=0;          // Link zu den Cameras
+
+        echo "CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
+        echo "\n";
+        foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+            {
+            echo "   ---------------------------------\n";
+            echo "   Bearbeite WebCamera $cam_name:\n";
+            if ( (isset($cam_config["FTP"])) && (strtoupper($cam_config["FTP"])=="ENABLED") ) 
+                {
+                echo "     Kamera FTP Server: ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
+                $verzeichnis = $cam_config['FTPFOLDER'];  
+                if (is_dir($verzeichnis)) 
+                    {
+                    //$dir=$dosOps->readdirToArray($verzeichnis); print_r($dir);
+                    $stat=$dosOps->readdirToStat($verzeichnis);
+                    //print_r($stat);
+                    $lastupdate=$dosOps->latestChange($verzeichnis);
+                    echo "     Verzeichnis $verzeichnis verfügbar. ".$stat["dirs"]." Verzeichnisse und ".$stat["files"]." Dateien. Latest File is from ".date("j.m.Y H:i:s",$lastupdate).".\n";
+                    }
+                else 
+                    {
+                    echo "    Verzeichnis $verzeichnis NICHT verfügbar, jetzt erstellen.\n";
+                    $rootDir='C:\\ftp\\';
+                    if (is_dir($rootDir)) echo "    Verzeichnis $rootDir verfügbar.\n";
+                    $dosOps->mkdirtree($verzeichnis,true);          // mit Debug um Fehler rauszufinden
+                    }
+                }
+            else echo "       FTP Folder disabled.\n";
+
+            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+            if ($cam_categoryId==false)
+                {
+                $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                }
+            echo "Kategorie pro Kamera : $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
+
+            if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
+                {
+                $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
+                if ($cam_streamId===false)
+                    {  
+                    echo "Eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie erstellen mit entsprechendem Streaming Link.\n";
+                    $cam_streamId=IPS_CreateMedia(3);
+                    IPS_SetName($cam_streamId, "CamStream_".$cam_name);     // Media Stream Objekt benennen
+                    IPS_SetParent($cam_streamId, $cam_categoryId);
+                    }
+                echo "rtsp Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie RTSP Stream 1: rtsp://user:password@192.168.x.x:/11\n";
+                if ( (isset($cam_config["FORMAT"])) && (isset($cam_config["USERNAME"])) && (isset($cam_config["PASSWORD"])) && (isset($cam_config["IPADRESSE"])) && (isset($cam_config["STREAMPORT"])))
+                    {
+                    /* a few checks, wether it is a IP Address */
+                    $ipadresse=explode(".",$cam_config["IPADRESSE"]);
+                    if (count($ipadresse)==4) 
+                        {
+                        $ok=true;
+                        foreach ($ipadresse as $ip)
+                            {
+                            $ipNum=(integer)$ip;
+                            if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
+                            }
+                        if ($ok) echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
+                            {
+                            $streamLink="";
+                            if (strtoupper($cam_config["FORMAT"])=="RTSP")
+                                {
+                                $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
+                                echo "    Streaming Media will be set to $streamLink.\n";
+                                IPS_SetMediaFile($cam_streamId,$streamLink,true);
+
+						        $resultStream[$idx]["OID"]=$cam_streamId;
+						        $resultStream[$idx]["Name"]=$cam_name;                                
+                                $idx++;
+                                }
+                            }
+                        }
+                    }
+                
+                }
+
+            echo "      Konfiguration ".$cam_name."\n";
+            print_r($cam_config);
+            echo "\n";
+
+            }
+        print_R($resultStream);
+
+    $configWFront=$ipsOps->configWebfront($moduleManager);
+    print_r($configWFront);
+
+    if (isset($configWFront["Administrator"]))
+        {
+        installWebfront($configWFront["Administrator"],$resultStream);             
+        }
+        
+    if (isset($configWFront["User"]))
+        {
+        installWebfront($configWFront["User"],$resultStream);     
+        }
+
+    if (isset($configWFront["Mobile"]))
+        {
+        $configWF=$configWFront["Mobile"];
+        $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
+        $mobileId               = CreateCategoryPath($configWF["Path"].'.'.$configWF["Name"],$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
+		EmptyCategory($mobileId);
+
+        /* RTSP Streams werden noch nicht am Iphone angezeigt */
+
+        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Name"], $resultStream[0]["OID"], $mobileId, 10);
+        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Name"], $resultStream[1]["OID"], $mobileId, 20);
+        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Name"], $resultStream[2]["OID"], $mobileId, 30);
+        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Name"], $resultStream[3]["OID"], $mobileId, 40);
+        }
+	}
+
+
+
+
+
+
+
+
+
+/********************************************************************/
+
+
+    function installWebfront($configWF,$resultStream)
+        {
+        $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User.WebCamera
+        
+        //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
+		//echo "installWebfront: WF10 Path for WebCamera Monitor         : ".$configWF["Path"]." with this Webfront item name : $tabItem\n";
+        echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+        echo "----------------------------------------------------------------------------------------------------------------------------------\n";
+
+        EmptyCategory($categoryId_WebFront);
+    	IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+        
+        $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+
+        $categoryIdOverview  = CreateCategory('Overview',  $categoryId_WebFrontMonitor, 0);             // links davon, um die Cam Bilder in die richtige Größe zu bringen, für Summaries
+        $categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontMonitor, 10);
+        $categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontMonitor, 20);						
+        $categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontMonitor, 30);
+        $categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontMonitor, 40);						
+
+		DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
+		CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
+        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 20 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+
+		CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdOverview /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+    
+        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
+        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
+
+        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Name"], $resultStream[0]["OID"], $categoryIdLeftUp, 10);
+        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Name"], $resultStream[1]["OID"], $categoryIdRightUp, 10);
+        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Name"], $resultStream[2]["OID"], $categoryIdLeftDn, 10);
+        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Name"], $resultStream[3]["OID"], $categoryIdRightDn, 10);         
+        }
 
 
 ?>

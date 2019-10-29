@@ -2090,7 +2090,10 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
  * ipsOps, Zusammenfassung von Funktionen rund um die Erleichterung der Bedienung von IPS Symcon
  *
  * __construct              als Constructor wird entweder nichts oder der Modulname übergeben
- *
+ * path                     gibt den IPS Category Path als string return aus
+ * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
+ *     countChildren           rekursive Funktion dafür.
+ * readWebfrontConfig
  *
  ******************************************************/
 
@@ -2104,6 +2107,8 @@ class ipsOps
         if ($module != "") $this->module = $module;
         }
 
+    /* den IPS Pfad ausgeben */
+
     function path($objectR)
         {
         $str = IPS_GetName($objectR);
@@ -2113,6 +2118,234 @@ class ipsOps
             }
         $str .= ".".IPS_GetName($objectR);
         return($str);
+        }
+
+    /* die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen */
+
+    function totalChildren($oid)
+        {
+        $count=0;
+        $this->countChildren($oid,$count);
+        return ($count);
+        }
+
+    function countChildren($oid,&$count)
+        {
+        $entries=IPS_getChildrenIDs($oid);
+        $countEntry=count($entries);
+        if ( ($entries !== false) && ($countEntry>0) )
+            {
+            foreach ($entries as $entry)
+                {
+                countChildren($entry,$count);   
+                }
+            }
+        else $count++;
+        }     
+
+    function readWebfrontConfig($WFC10_ConfigId, $debug)
+        {
+        if ($debug) echo "Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items:\n";
+        $config = IPS_GetConfiguration($WFC10_ConfigId);
+        $configStructure=json_decode($config,true); // array erstellen statt struct
+        //print_r($configStructure);
+        $configItems=json_decode($configStructure["Items"],true); // array erstellen statt struct
+        if ($debug) print_r($configItems);
+
+        /* flache Struktur aus dem configitems Array erstellen, Name => Parent */
+        $structure=array();
+        foreach ($configItems as $name => $entry)
+            {
+            //echo $name."   \n"; print_r($entry);
+            if ($entry["ParentID"]=="") 
+                {
+                //echo "Root gefunden : ".$entry["ID"]." \n";
+                $structure[$entry["ID"]]["ParentID"]="root";
+                }
+            else $structure[$entry["ID"]]["ParentID"]=$entry["ParentID"];
+            $structure[$entry["ID"]]["Configuration"]=$entry["Configuration"];
+            }
+        //print_r($structure);
+
+
+        /* Verzeichnisstruktur aus Struktur aufbauen, beginnt mit roottp */
+        $directory=array();
+        foreach ($structure as $index => $entry)
+            {
+            //echo " bearbeite $index => $entry \n";
+            if ($entry["ParentID"]=="root") $directory[$index][0]=$entry["Configuration"];
+            if (isset($directory[$entry["ParentID"]])) $directory[$entry["ParentID"]][$index][0]=$entry["Configuration"];
+            else
+                {   
+                // zweite Ebene untersuchen
+                $found=false;
+                foreach ($directory as $ind => $needle)
+                    {
+                    //print_r($needle);
+                    //echo "   suche in $ind \n";
+                    if (isset($directory[$ind][$entry["ParentID"]])) 
+                        {
+                        $directory[$ind][$entry["ParentID"]][$index][0]=$entry["Configuration"];
+                        $found=true;
+                        }
+                    }
+                if ($found==false)
+                    {   // wenn noch nicht gefunden dann die dritte Ebene untersuchen
+                    if ($debug) echo "   Dritte Ebene untersuchen für $index / ".$entry["ParentID"]."\n";
+                    foreach ($directory as $ind1 => $needle1)
+                        {
+                        //print_r($needle1);
+                        foreach ($directory as $ind => $needle)
+                            {                
+                            if ($debug) echo "      suche in $ind $ind1 \n";
+                            if (isset($directory[$ind][$ind1][$entry["ParentID"]])) $directory[$ind][$ind1][$entry["ParentID"]][$index][0]=$entry["Configuration"];
+                            }
+                        }
+                    }   
+                }
+            }
+        return ($directory);
+        }           
+
+    function getMediaListbyType($type, $debug=false)
+        {
+        /* Mit Medialist arbeiten. Sind alle Objekte mit Typ Media, Nutzung der zusätzlichen Features */
+        $medias=IPS_GetMediaList();
+        $mediaFound=array();    
+        if ($debug) echo "Anzahl Eintraege Medialist ".count($medias)."\n";
+        foreach ($medias as $media)
+            {
+            $mediaType=IPS_GetMedia($media)["MediaType"];
+            if ($mediaType==$type) $mediaFound[]=$media;
+            if ($debug) 
+                {
+                echo " $media ";
+                switch ($mediaType)
+                    {
+                    case 0:
+                        echo "Formular";
+                        break;
+                    case 1:
+                        echo "Bild    ";
+                        break;
+                    case 2:
+                        echo "Ton     ";
+                        break;
+                    case 3:
+                        echo "Stream  ";
+                        break;
+                    case 4:
+                        echo "Chart   ";
+                        break;
+                    case 5:
+                        echo "Dokument";
+                        break;
+                    default:
+                        echo "unknown ";
+                        break;
+                    }
+                $objectR=$media;
+                echo "   ".IPS_GetName($objectR);
+                while ($objectR=IPS_GetParent($objectR))
+                    {
+                    echo ".".IPS_GetName($objectR);
+                    }
+                echo ".".IPS_GetName($objectR);
+                echo "             ".IPS_GetMedia($media)["MediaFile"];
+                echo "\n";
+                }
+            }
+        return($mediaFound);
+        }
+
+    /* das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt */
+
+    function configWebfront($moduleManager)
+        {
+        $result=array();
+        $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+        foreach ($alleInstanzen as $instanz)
+            {
+            $instance=IPS_GetInstance($instanz);
+            $result[IPS_GetName($instanz)]["ConfigId"]=$instance["InstanceID"];
+            echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$instance["InstanceID"]."  (".$instanz.")\n";
+            }
+        $RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis', false);
+        if ($RemoteVis_Enabled)
+            {
+            echo "RemoteVis is enabled.\n";
+            $result["RemoteVis"] = true;
+            }
+
+        $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+        if ($WFC10_Enabled)
+            {
+            $Path        	 = $moduleManager->GetConfigValueDef('Path', 'WFC10',false);
+            if ($Path) $result["Administrator"]["Path"] = $Path;
+            $TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',false);          //TabPaneItem="WebCameraTPA", so ist es im Webfront abgespeichert
+            if ($TabPaneItem !== false) $result["Administrator"]["TabPaneItem"] = $TabPaneItem;
+            $TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',false);        //TabPaneParent="roottp", gleich über der Wurzel
+            if ($TabPaneParent !== false) $result["Administrator"]["TabPaneParent"] = $TabPaneParent;
+            $TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',false);          // TabPaneName="" in der ersten Reihe gibt es nur Bilder/Icons keine Namen
+            if ($TabPaneName !== false) $result["Administrator"]["TabPaneName"] = $TabPaneName;
+            $TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10',false);          // TabPaneIcon="Camera" wichtig, das Icon zum Wiedererkennen
+            if ($TabPaneIcon !== false) $result["Administrator"]["TabPaneIcon"] = $TabPaneIcon;
+            $TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10',false);      // TabPaneOrder="10" wo soll das Icon in der obersten Leiste stehen  
+            if ($TabPaneOrder !== false) $result["Administrator"]["TabPaneOrder"] = $TabPaneOrder;
+            $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
+            if ($TabItem !== false) $result["Administrator"]["TabItem"] = $TabItem;
+            $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10',false);              // TabIcon="Window"
+            if ($TabIcon !== false) $result["Administrator"]["TabIcon"] = $TabIcon;
+            $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10',false);              
+            if ($TabOrder !== false) $result["Administrator"]["TabOrder"] = $TabOrder;
+            }
+
+        $WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+        if ($WFC10User_Enabled)
+            {        
+            $Path        	 = $moduleManager->GetConfigValueDef('Path', 'WFC10User',false);
+            if ($Path) $result["User"]["Path"] = $Path;
+            $TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10User',false);          //TabPaneItem="WebCameraTPA", so ist es im Webfront abgespeichert
+            if ($TabPaneItem !== false) $result["User"]["TabPaneItem"] = $TabPaneItem;
+            $TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10User',false);        //TabPaneParent="roottp", gleich über der Wurzel
+            if ($TabPaneParent !== false) $result["User"]["TabPaneParent"] = $TabPaneParent;
+            $TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10User',false);          // TabPaneName="" in der ersten Reihe gibt es nur Bilder/Icons keine Namen
+            if ($TabPaneName !== false) $result["User"]["TabPaneName"] = $TabPaneName;
+            $TabPaneIcon    = $moduleManager->GetConfigValueDef('TabPaneIcon', 'WFC10User',false);          // TabPaneIcon="Camera" wichtig, das Icon zum Wiedererkennen
+            if ($TabPaneIcon !== false) $result["User"]["TabPaneIcon"] = $TabPaneIcon;
+            $TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',false);      // TabPaneOrder="10" wo soll das Icon in der obersten Leiste stehen  
+            if ($TabPaneOrder !== false) $result["User"]["TabPaneOrder"] = $TabPaneOrder;
+            $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
+            if ($TabItem !== false) $result["User"]["TabItem"] = $TabItem;
+            $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',false);              // TabIcon="Window"
+            if ($TabIcon !== false) $result["User"]["TabIcon"] = $TabIcon;
+            $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10User',false);              
+            if ($TabOrder !== false) $result["User"]["TabOrder"] = $TabOrder;            
+            }
+
+        $Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+        if ($Mobile_Enabled)
+            {        
+            $Path        	 = $moduleManager->GetConfigValueDef('Path', 'Mobile',false);
+            if ($Path) $result["Mobile"]["Path"] = $Path;
+            $PathOrder     = $moduleManager->GetConfigValueDef('PathOrder', 'Mobile',false);
+            if ($PathOrder !== false) $result["Mobile"]["PathOrder"] = $PathOrder;
+            $PathIcon      = $moduleManager->GetConfigValueDef('PathIcon', 'Mobile',false);
+            if ($PathIcon !== false) $result["Mobile"]["PathIcon"] = $PathIcon;
+            $Name          = $moduleManager->GetConfigValueDef('Name', 'Mobile',false);
+            if ($Name !== false) $result["Mobile"]["Name"] = $Name;
+            $Order         = $moduleManager->GetConfigValueDef('Order', 'Mobile',false);
+            if ($Order !== false) $result["Mobile"]["Order"] = $Order;
+            $Icon          = $moduleManager->GetConfigValueDef('Icon', 'Mobile',false);            
+            if ($Icon !== false) $result["Mobile"]["Icon"] = $Icon;
+            }
+        $Retro_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Retro',false);
+        if ($Retro_Enabled)
+            {        
+            $Path        	 = $moduleManager->GetConfigValueDef('Path', 'Retro',false);
+            if ($Path) $result["Mobile"]["Path"] = $Path;
+            }
+        return ($result);
         }
 
     }
@@ -2604,33 +2837,33 @@ class dosOps
                 while (($file = readdir($handle)) !== false)
                     {
                     $dateityp=filetype( $verzeichnis.$file );
-                if ($dateityp == "file")
-                    {
-                        if ($detExt == false)
+                    if ($dateityp == "file")
                         {
-                        /* Wir suchen einen Filenamen */
-                        if ($file == $filename)
+                        if ($detExt == false)
+                            {
+                            /* Wir suchen einen Filenamen */
+                            if ($file == $filename)
                                 {
                                 $status=true;
                                 }
-                        //echo $file."\n";
-                        }
-                    else
-                    {
-                        /* Wir suchen eine Extension */
-                        //echo $file."\n";
-                        $pos = strpos($file,$filename);
-                    if ( ($pos > 0 ) )
+                            //echo $file."\n";
+                            }
+                        else
+                            {
+                            /* Wir suchen eine Extension */
+                            //echo $file."\n";
+                            $pos = strpos($file,$filename);
+                            if ( ($pos > 0 ) )
                                 {
                                 $len =strlen($file)-strlen($filename)-$pos;
                                 //echo "Filename \"".$file."\" gefunden. Laenge Extension : ".$len." ".$pos."\n";
                                 if ( $len == 0 ) { $status=true; }
                                 }
-                    }
-                    }
-                } /* Ende while */
+                            }
+                        }
+                    } /* Ende while */
                 closedir($handle);
-            } /* end if dir */
+                } /* end if dir */
             }/* ende if isdir */
         return $status;
         }
@@ -2681,6 +2914,27 @@ class dosOps
             }
         if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
             
+        }
+
+    function latestChange($dir, $recursive=false)
+        {
+        //echo "LatestChange: mit $dir aufgerufen.\n";
+        $latestdate=0;
+        $dirs=$this->readdirToArray($dir,$recursive);
+        //print_r($dirs);
+        foreach ($dirs as $filename)
+            {
+            $file=$dir.$filename;
+            if (is_dir($file)) 
+                {
+                // echo "Fehler";
+                }
+            else
+                {
+                if ((filemtime($file))>$latestdate) $latestdate=filemtime($file);
+                }
+            }
+        return ($latestdate);
         }
 
 	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
@@ -2759,7 +3013,84 @@ class dosOps
 		return $result;
 		}
 
-    /* einem Verzeichnisbaum ein Bckslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
+	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
+	 *
+	 * ein Verzeichnis einlesen und als Array zurückgeben 
+	 *
+	 */
+	
+	public function readdirToStat($dir,$recursive=false)
+		{
+	   	$result = array();
+        $stat=array();
+        $stat["files"]=0; 
+        $stat["dirs"]=0;
+
+		// Test, ob ein Verzeichnis angegeben wurde
+		if ( is_dir ( $dir ) )
+			{
+            $this->dirToStat($dir,$stat,$recursive);   
+            if (false)
+                {		
+                $cdir = scandir($dir);
+                foreach ($cdir as $key => $value)
+                    {
+                    if (!in_array($value,array(".","..")))
+                        {
+                        if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+                            {
+                            if ($recursive)
+                                { 
+                                //echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
+                                $this->dirToStat($dir . DIRECTORY_SEPARATOR . $value,$stat);
+                                $stat["dirs"]++;
+                                //echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
+                                }
+                            else $stat["dirs"]++;
+                            //$result[$value] = dirToArray($dir . DIRECTORY_SEPARATOR . $value);
+                            }
+                        else
+                            {
+                            $stat["files"]++;
+                            }
+                        }
+                    } // ende foreach
+                }
+			} // ende isdir
+		else return (false);
+
+		return $stat;
+		}		
+
+	/* Routine fürs rekursive aufrufen in readdirtoStat */
+	
+	private function dirToStat($dir, &$stat, $recursive)
+		{
+	   	$result = array();
+	
+		$cdir = scandir($dir);
+		foreach ($cdir as $key => $value)
+			{
+			if (!in_array($value,array(".","..")))
+				{
+				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+	         		{
+                    if ($recursive)
+                        {                          
+					    $this->dirToStat($dir . DIRECTORY_SEPARATOR . $value,$stat, $recursive);
+                        $stat["dirs"]++;
+                        }
+                    else $stat["dirs"]++;                        
+	         		}
+	         	else
+	         		{
+	            	$stat["files"]++;
+	         		}
+	      		}
+	   		}
+		}
+
+    /* einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
 
 	function correctDirName($verzeichnis)
 		{

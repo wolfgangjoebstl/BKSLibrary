@@ -186,10 +186,12 @@
 	 * @param string $groupName Name der Gruppe
 	 * @param bool $value Neuer Wert der Gruppe
 	 */
-	function IPSHeat_SetGroupByName($groupName, $value) {
+	function IPSHeat_SetGroupByName($groupName, $value, $debug=false) {
 		$lightManager = new IPSHeat_Manager();
 		$groupId = $lightManager->GetGroupIdByName($groupName);
-		$lightManager->SetGroup($groupId, $value);
+        if ($debug) echo "Aufruf von SetGroup mit $groupId und $value.\n";
+        $syncGroups=true; $syncPrograms=true;
+		$lightManager->SetGroup($groupId, $value, $syncGroups, $syncPrograms, $debug);
 	}
 
 	/**

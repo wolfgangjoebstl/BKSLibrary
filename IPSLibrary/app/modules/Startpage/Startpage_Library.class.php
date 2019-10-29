@@ -40,6 +40,8 @@
      * Startpage_Refresh*
      */
 
+	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+
 	class StartpageHandler 
 		{
 
@@ -67,7 +69,6 @@
 			/* get Directories */
 
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-			IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 			$moduleManager = new IPSModuleManager('Startpage',$repository);
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -170,6 +171,18 @@
 		    $wert.= $this->writeStartpageStyle();
             switch ($PageType)
                 {
+                case 4:        // Hierarchie
+                    //echo "Hierarchiedarstellung erster Entwurf, verwendet showPicture und showTopology.\n";
+                    //$wert.='<div style="width: 400px; height: 200px; overflow: scroll;">';
+                    //$wert.='<div style="overflow-x:auto;">';        // funktioniert nur wenn y nicht zu gross
+                    $wert.='<div style="overflow:scroll; height:900px;">';
+                    $wert.='<table id="startpage">';
+                    $wert.='<tr>';
+                    //$wert.= $this->showPicture($showfile);
+                    $wert.= $this->showHierarchy();
+                    $wert.='</tr></table>';
+                    $wert.='</div>';
+                    break;
                 case 3:        // Topologie
                     //echo "Topologiedarstellung erster Entwurf, verwendet showPicture und showTopology.\n";
                     $wert.='<table id="startpage">';
@@ -569,7 +582,274 @@
             return ("<p>".GetValue($valueID)." %</p>"); 
             }
     
+
+          /********************
+         *
+         * Zelle Tabelleneintrag für die Darstellung der Topologie mit aktuellen Werten
+         *
+         *
+         **************************************/
+
+		function showHierarchy($debug=false)
+			{
+            $wert="";
+
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+            IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+            IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');   
+
+			/* get Directories */
+
+			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+			$moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+	        $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+    		$WFC10_Path           = $moduleManager->GetConfigValue('Path', 'WFC10');            
+            $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
+    		$worldID=IPS_GetObjectIDByName("World",  $categoryId_WebFrontAdministrator);
             
+            /* Get Topology Liste aus EvaluateHardware_Configuration */
+            $Handler = new DetectDeviceHandler();
+            $topology=$Handler->Get_Topology();
+
+            $wert  = "";
+            $wert .= "<style>";
+            $wert .= "#topology { border-collapse: collapse; border: 1px solid #ddd;   }";
+            $wert .= "#topology table { border-collapse: separate; border: 1px solid #ddd;   }";
+            $wert .= "#topology td { border: 1px solid blue; text-align: center; height: 50px; width: 50px; background-color: lightblue; margin-top: 1%; vertical-align: top;}";
+            $wert .= "#topology caption { font: 20px arial, bold, sans-serif; border: 1px solid black; text-align: left; text-indent: 50px; padding-top: 10px; padding-bottom: 10px; height: auto; background-color: silver;}";
+            $wert .= "#topology th { border: 1px solid black; text-align: left; height: 50px; width: 50px; background-color: silver; margin-top: 1%; padding-top: 0px; colspan: 100%;}";
+            $wert .= "#topology p { color:lightblue; margin:0;   }";
+            $wert .= "</style>"; 
+
+            $config=array();
+            $config["View"]="All";
+            //$config["View"]="Category";
+            $config["Detail"]="NoDevices";
+            $config["Columns"]=3;
+            $config["StyleFont"]=["Decrease"=>true,"Start"=>20,"Stopp"=>10];
+            $config["ValueFormatted"]=true;
+
+            $wert .= $this->drawTable($worldID, $config);            
+
+            return ($wert);
+            }
+
+        /* 
+         * Tabelle mit Topologie zeichnen. Einstiegsroutine für rekursiven Aufruf von drawCell
+         */
+
+        function drawTable($oid,&$config)
+            {
+            $html = "";
+            $level=0;
+
+            $this->drawCell($oid,$html,$level,$config);
+
+            return($html);
+            }
+
+        /* 
+         * rekursive Funktion zum Tabellen zeichnen 
+         *
+         * für die übergebene OID wird überprüft ob es Children gibt
+         *
+         * es gibt immer einen Header. Zellen darunter so anordnen das eventuell weiter unterlagerte Tabellen am Anfang kommen
+         * Tabellen mit vielen Einträgen auf mehrere Zeilen aufteilen  
+         *
+         */
+
+        function drawCell($oid,&$html,$level,&$config)
+            {
+            $debug=false;
+            $ipsOps=new ipsOps();
+            $entries=IPS_getChildrenIDs($oid);
+            $count=count($entries);
+
+            if ( ($entries !== false) && ($count>0) )
+                {
+                /* es gibt einen oder mehrere Tabelleneinträge, d.h. es gibt Childrens */
+
+                $count=$this->totalChildren($oid);
+                $totalcount=$count["Total"];
+                if ($debug)
+                    {
+                    for ($a=0;$a<$level;$a++) echo " ";
+                    echo "drawTable: Aufruf mit $oid (".IPS_GetName($oid).") $level:$totalcount --> $count   \n";
+                    }
+                //$html .= '<table id=topology><tr><th style="colspan:100%;">'.IPS_GetName($oid)." ($level:$totalcount)</th></tr>";  
+                //$html .= '<table id=topology><caption>'.IPS_GetName($oid)." ($level:$totalcount)</caption>";  
+                if ( (isset($config["StyleFont"])) && ($config["StyleFont"]["Decrease"]==true) )
+                    {
+                    $height = ($config["StyleFont"]["Start"]-$level);
+                    if ($height <= $config["StyleFont"]["Stopp"]) $height = $config["StyleFont"]["Stopp"];
+                    }
+                else $height=20;
+                $indent=$height;
+                $html .= '<table id=topology style=";"><caption style="font:'.$height.'px arial; text-indent: '.$indent.'px;">'.IPS_GetName($oid)." ($level:$totalcount)  ".$count["Entry"]."/".$count["Category"]."</caption>";
+                $i=0; $tr=0;
+                if (isset($config["Columns"])) $r=$config["Columns"];
+                else $r=4;
+                /*if ($count>$r) 
+                    {
+                    $html .= "<tr>"; 
+                    $tr++;
+                    } */
+                /* zuerst Eintraege ausgeben, die selbst Childrens haben */    
+                foreach ($entries as $entry)
+                    {
+                    $subEntries=IPS_getChildrenIDs($entry);
+                    $subCount=count($subEntries);
+                    if ( ($subEntries !== false) && ($subCount>0) )  // Kategorie mit Childrens 
+                        {
+                        //$html .= "<td>".IPS_GetName($entry)."</td>";
+                        if ($i % $r == 0)
+                            {
+                            if ($debug) echo "*Zeilenanfang*\n";
+                            $html .= "<tr>"; 
+                            $tr++;
+                            }
+                        $html .= "<td>";
+                        //for ($a=0;$a<$level;$a++) echo " ";
+                        //echo "  $entry with Children: ".IPS_GetName($entry)."\n";  
+                        $this->drawCell($entry,$html,$level+1,$config);             // changes $html
+                        $html .= "</td>";                    
+                        if ($i % $r == ($r-1))
+                            {
+                            $html .= "</tr>"; 
+                            $tr++;
+                            }                                        
+                        $i++;  
+                        }
+                    }
+                if (strtoupper($config["View"])=="ALL")            
+                    {
+                    foreach ($entries as $entry)
+                        {
+                        $subEntries=IPS_getChildrenIDs($entry);
+                        $subCount=count($subEntries);
+                        if ($subEntries == false)  // keine Childrens 
+                            {
+                            //$html .= "<td>".IPS_GetName($entry)."</td>";
+                            if ($debug) { for ($a=0;$a<$level;$a++) echo " "; }
+                            $type=IPS_GetObject($entry)["ObjectType"];
+                            if ($type==6)
+                                {
+                                $target=IPS_GetLink($entry)["TargetID"];
+                                if (IPS_GetObject($target)["ObjectType"]==1) 
+                                    {
+                                    if ($debug) echo "  $entry (Link to Instanz $target) ".$ipsOps->path($target)."\n";
+                                    if ( strtoupper($config["Detail"]) != "NODEVICES" )
+                                        {
+                                        if ($i % $r == 0)
+                                            {
+                                            if ($debug) echo "*Zeilenanfang*\n";
+                                            $html .= "<tr>"; 
+                                            $tr++;
+                                            }                                    
+                                        //$html .= "<td>".IPS_GetName($entry)."</td>";
+                                        $html .= "<td>".IPS_GetName($target)."</td>";
+                                        if ($i % $r == ($r-1))
+                                            {
+                                            if ($debug) echo "*Zeilenende*\n";
+                                            $html .= "</tr>"; 
+                                            $tr++;
+                                            }                                        
+                                        $i++;                                              
+                                        }
+                                    }
+                                else 
+                                    {
+                                    if ($i % $r == 0)
+                                        {
+                                        if ($debug) echo "*Zeilenanfang*\n";
+                                        $html .= "<tr>"; 
+                                        $tr++;
+                                        }                                    
+                                    if ($debug) echo "  $entry (Link to $target) ".$ipsOps->path($target)."\n";
+                                    //$html .= "<td>".IPS_GetName($entry)."</td>";
+                                    if ( (isset($config["ValueFormatted"])) && ($config["ValueFormatted"]) )
+                                        {
+                                        $html .= "<td>".IPS_GetName($target)."  ".GetValueFormatted($target)."</td>";
+                                        //$html .= '<td><table style="border-collapse: collapse;"><tr><td>'.IPS_GetName($target)."</td></tr><tr><td>".GetValueFormatted($target)."</td></tr></table></td>";
+                                        }
+                                    else
+                                        {    
+                                        $html .= "<td>".IPS_GetName($target)."  ".GetValue($target)."</td>";
+                                        }
+                                    if ($i % $r == ($r-1))
+                                        {
+                                        if ($debug) echo "*Zeilenende*\n";
+                                        $html .= "</tr>"; 
+                                        $tr++;
+                                        }                                        
+                                    $i++;                                    
+                                    }
+                                }
+                            else 
+                                {
+                                if ($debug) echo "  $entry ".$ipsOps->path($entry)."\n";  
+                                }
+  
+                            }   // ende no subentries
+                        } // ende foreach                 
+                    }  
+                if ($tr) $html .= "</tr>"; 
+                $html .= "</table>";                     
+                }
+            else 
+                {
+                /* keine Children, als Zelle ausgeben */
+                $html .= '<td style="background-color=lightred;">:'.IPS_GetName($oid)."</td>";
+                if ($debug)
+                    {
+                    for ($a=0;$a<$level;$a++) echo " ";
+                    echo '  $entry "ende"'.IPS_GetName($entry)."\n";  
+                    }
+                }
+            }
+
+        /* Hilfsfunktionen, Analyse Datenstamm */
+
+        function totalChildren($oid)
+            {
+            $count=array();
+            $count["Total"]=0;
+            $count["Category"]=0;
+            $count["Entry"]=0;
+            $this->countChildren($oid,$count);
+            return ($count);
+            }
+
+        function countChildren($oid,&$count)
+            {
+            $entries=IPS_getChildrenIDs($oid);
+            $countEntry=count($entries);
+            if ( ($entries !== false) && ($countEntry>0) )
+                {
+                $count["Category"]++;               // das ist sicher eine Kategorie, da sie mehrere Children hat
+                foreach ($entries as $entry)
+                    {
+                    $this->countChildren($entry,$count);
+                    }
+                }
+            else 
+                {
+                $count["Total"]++;
+                if (IPS_GetObject($oid)["ObjectType"]==6)
+                    {
+                    $target=IPS_GetLink($oid)["TargetID"];
+                    if (IPS_GetObject($target)["ObjectType"] != 1) 
+                        {                
+                        $count["Entry"]++;                 
+                        }
+                    }
+                }
+            }
+
+
+
         /********************
          *
          * Zelle Tabelleneintrag für die Darstellung eines BestOf Bildes

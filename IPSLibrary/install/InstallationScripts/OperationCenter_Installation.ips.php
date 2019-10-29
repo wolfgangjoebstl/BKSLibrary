@@ -120,7 +120,8 @@
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
 	
-	$dosOps= new dosOps();
+	$dosOps = new dosOps();
+    $ipsOps = new ipsOps();
 	
     /*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -636,7 +637,7 @@
 	
 	Es gibt IPSCam das sehr vielseitig programmiert wurde:
 	------------------------------------------------------
-	Visulaisiert Livestreams, steuert die PTZ Kameras an und stellt den Livestream gemeinsma mit Steuerungstasten in einem gemeinsamen iFrame dar
+	Visulaisiert Livestreams, steuert die PTZ Kameras an und stellt den Livestream gemeinsam mit Steuerungstasten in einem iFrame dar
 	Erstellt automatisch Snapshots, die in einem Verzeichnis abgelegt werden
 	und sogar zu einem kleinen Video arrangiert werden können - hab ich immer noch nicht herausgefunden wie
 	Darstellung erfolgt

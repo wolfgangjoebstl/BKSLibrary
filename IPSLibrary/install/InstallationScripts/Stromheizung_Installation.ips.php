@@ -277,39 +277,63 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	// Add Heat or Light Devices
 	// ===================================================================================================
-	$idx = 10;
+
+    echo "\n";
+    echo "Create Mirror Variables for Switches, dependent on Type create one or more objects.\n";
+    $childs=IPS_GetChildrenIDs($categoryIdSwitches);
+    foreach ($childs as $child) IPS_SetHidden($child,true);
+	$idx = 100;
 	$lightConfig = IPSHeat_GetHeatConfiguration();
-	print_r($lightConfig);
+	//print_r($lightConfig);
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
 		$deviceType = $deviceData[IPSHEAT_TYPE];
-
+        echo "   $deviceName $deviceType\n";
 		switch ($deviceType) 
 			{
 			case IPSLIGHT_TYPE_SWITCH:
 			case IPSHEAT_TYPE_SWITCH:			
 				$switchId = CreateVariable($deviceName,    0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+                IPS_SetHidden($switchId,false);
 				break;
 			case IPSLIGHT_TYPE_DIMMER:
 			case IPSHEAT_TYPE_DIMMER:			
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                IPS_SetHidden($switchId,false); IPS_SetHidden($levelId,false);
 				break;
 			case IPSLIGHT_TYPE_RGB:
 			case IPSHEAT_TYPE_RGB:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~HexColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                IPS_SetHidden($switchId,false); IPS_SetHidden($colorId,false); IPS_SetHidden($levelId,false);
+                //echo "   suche Variable \"".$deviceName.IPSHEAT_DEVICE_AMBIENCE."\"\n";
+                $miredId  = @IPS_GetObjectIDByName($deviceName.IPSHEAT_DEVICE_AMBIENCE,$categoryIdSwitches);
+                if ($miredId!==false) 
+                    {
+                    echo "    -> Variable \"".$deviceName.IPSHEAT_DEVICE_AMBIENCE."\", die nicht mehr benötigt wird, gefunden. Jetzt loeschen.\n";
+                    IPS_DeleteVariable($miredId);
+                    }                
 				break;
 			case IPSHEAT_TYPE_AMBIENT:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
-				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'ColorTemperatureSelect.Hue',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+				$miredId  = CreateVariable($deviceName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'ColorTemperatureSelect.Hue',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                IPS_SetHidden($switchId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);
+                //echo "   suche Variable \"".$deviceName.IPSHEAT_DEVICE_COLOR."\"\n";
+                $colorId  = @IPS_GetObjectIDByName($deviceName.IPSHEAT_DEVICE_COLOR,$categoryIdSwitches);
+                if ($colorId!==false) 
+                    {
+                    echo "    -> Variable \"".$deviceName.IPSHEAT_DEVICE_COLOR."\", die nicht mehr benötigt wird, gefunden. Jetzt loeschen.\n";
+                    IPS_DeleteVariable($colorId);
+                    }
 				break;
 			case IPSHEAT_TYPE_SET:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$tempId  = CreateVariable($deviceName.IPSHEAT_DEVICE_TEMPERATURE, 2 /*Float*/, $categoryIdSwitches,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
 				$modeId  = CreateVariable($deviceName.IPSHEAT_DEVICE_MODE, 1 /*Integer*/, $categoryIdSwitches,  $idx, 'mode.HM', $scriptIdActionScript, false, 'Title');
+                IPS_SetHidden($switchId,false); IPS_SetHidden($tempId,false); IPS_SetHidden($modeId,false);                
 				break;
 			default:
 				trigger_error('Unknown DeviceType '.$deviceType.' found for Heat or Light '.$devicename);
@@ -320,7 +344,14 @@ Path=Visualization.Mobile.Stromheizung
 	// ===================================================================================================
 	// Add Groups
 	// ===================================================================================================
-	$idx = 10;
+
+    echo "\n";
+    echo "Create Mirror Variables for Groupes, dependent on Type create one or more objects.\n";
+    /* cleanup unused variables */
+    $childs=IPS_GetChildrenIDs($categoryIdGroups);
+    foreach ($childs as $child) IPS_SetHidden($child,true);
+
+	$idx = 100;
 	$groupConfig = IPSHeat_GetGroupConfiguration();
 	foreach ($groupConfig as $groupName=>$groupData) 
 		{
@@ -329,13 +360,21 @@ Path=Visualization.Mobile.Stromheizung
 			$groupType = $groupData[IPSHEAT_TYPE];		
 			switch ($groupType) 
 				{
+                case IPSHEAT_TYPE_AMBIENT:                    
+					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+					$miredId  = CreateVariable($groupName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdGroups,  $idx, 'ColorTemperatureSelect.Hue', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                    IPS_SetHidden($switchId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);                
+                    break;
 				case IPSHEAT_TYPE_SET:
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 					$tempId  = CreateVariable($groupName.IPSHEAT_DEVICE_TEMPERATURE, 2 /*Float*/, $categoryIdGroups,  $idx, '~Temperature.HM', $scriptIdActionScript, false, 'Temperature');
 					$modeId  = CreateVariable($groupName.IPSHEAT_DEVICE_MODE, 1 /*Integer*/, $categoryIdGroups,  $idx, 'mode.HM', $scriptIdActionScript, false, 'Title');
+                    IPS_SetHidden($switchId,false); IPS_SetHidden($tempId,false); IPS_SetHidden($modeId,false);                
 					break;
 				default:
 					$switchId     = CreateVariable($groupName,    0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
+                    IPS_SetHidden($switchId,false);
 					break;								
 				}
 			}	
