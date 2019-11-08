@@ -53,11 +53,28 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 	$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 
+	echo "IP Symcon Daten:\n";
+	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
+	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
+	echo "  Modulversion  : ".$ergebnis."\n";
+
+	/*******************************
+     *
+     * Init, wichtige Variablen
+     *
+     ********************************/
+
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 
     $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
     echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
+
+    $OperationCenterConfig = OperationCenter_Configuration();
+    //echo "(".memory_get_usage()." Byte).\n";	
+
+    $subnet="10.255.255.255";
+    $OperationCenter=new OperationCenter($subnet);
 
 	/*******************************
      *
@@ -75,11 +92,11 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     else
         {
 
-        /*******************************
+        /*******************************************
         *
-        * Media Objects Vorbereitung
+        * Media Objects Vorbereitung, Evaluierung
         *
-        ********************************/
+        **********************************************************/
 
         $mediaFound=$ipsOps->getMediaListbyType(3);     // get Streams out of MediaList
 
@@ -107,11 +124,11 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
         echo "Auflistung, Strukturierung anhand Parent Verzeichnis = Module:\n";
         print_r($module);
 
-        $OperationCenterConfig = OperationCenter_Configuration();
-        //echo "(".memory_get_usage()." Byte).\n";	
-
-        $subnet="10.255.255.255";
-        $OperationCenter=new OperationCenter($subnet);
+        /*******************************
+         *
+         * Kamerakonfiguration auswerten
+         *
+         ********************************/
 
         echo "====================================================================================\n";
         echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
@@ -121,11 +138,12 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
             //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
             
             /* Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
-            * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
-            */
+             * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
+             * es werden die OperationCenter Data Objekte verwendet. Keine Objekte im data von Webcamera anlegen
+             */
             $resultStream=array(); $idx=0;          // Link zu den Cameras
 
-            echo "CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
+            echo "CamCapture Ausgabe FTP übertragene Bilder/Videos für folgende Kameras konfiguriert:\n";
             echo "\n";
             foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
                 {
@@ -133,7 +151,7 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
                 echo "   Bearbeite WebCamera $cam_name:\n";
                 if ( (isset($cam_config["FTP"])) && (strtoupper($cam_config["FTP"])=="ENABLED") ) 
                     {
-                    echo "     Kamera FTP Server: ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
+                    echo "     Kamera, FTP Server Verzeichnis: ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
                     $verzeichnis = $cam_config['FTPFOLDER'];  
                     if (is_dir($verzeichnis)) 
                         {
@@ -153,21 +171,28 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
                     }
                 else echo "       FTP Folder disabled.\n";
 
-                $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
                 if ($cam_categoryId==false)
                     {
+                    echo "              !!! Fehler, eigene Kategorie pro Kamera muss vorhanden sein.\n";
                     //$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
                     //IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
                     //IPS_SetParent($cam_categoryId,$CategoryIdData);
                     }
-                echo "Kategorie pro Kamera : $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
-
+                echo "        Kategorie pro Kamera : $cam_categoryId   -> Pfad: ".$ipsOps->path($cam_categoryId)."\n";
+                $WebCam_LetzteBewegungID = IPS_GetObjectIdByName("Cam_letzteBewegung", $cam_categoryId); 
+				$WebCam_PhotoCountID = IPS_GetObjectIdByName("Cam_PhotoCount", $cam_categoryId);
+				$WebCam_MotionID = IPS_GetObjectIdByName("Cam_Motion", $cam_categoryId); 
+                echo "            Status Bewegung             : ".(GetValue($WebCam_MotionID)?"Ja":"Nein")."\n";
+                //echo "            Letzte erkannte Bewegung    : ".date("D d.m.Y H:i:s",GetValue($WebCam_LetzteBewegungID))."\n";
+                echo "            Letzte erkannte Bewegung    : ".GetValue($WebCam_LetzteBewegungID)."\n";
+                echo "            Anzahl erfasste Bilder      : ".GetValue($WebCam_PhotoCountID)."\n";
                 if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
                     {
                     $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
                     if ($cam_streamId===false)
                         {  
-                        echo "Eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie ist zu erstellen mit entsprechendem Streaming Link.\n";
+                        echo "              !!! Fehler, eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie ist zu erstellen mit entsprechendem Streaming Link.\n";
                         //$cam_streamId=IPS_CreateMedia(3);
                         //IPS_SetName($cam_streamId, "CamStream_".$cam_name);     // Media Stream Objekt benennen
                         //IPS_SetParent($cam_streamId, $cam_categoryId);
@@ -194,8 +219,8 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
                                     echo "    Streaming Media shall be set to $streamLink.\n";
                                     //IPS_SetMediaFile($cam_streamId,$streamLink,true);
 
-                                    $resultStream[$idx]["OID"]=$cam_streamId;
-                                    $resultStream[$idx]["Name"]=$cam_name;                                
+                                    $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
+                                    $resultStream[$idx]["Stream"]["Name"]=$cam_name;                                
                                     $idx++;
                                     }
                                 }

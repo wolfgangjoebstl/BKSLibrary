@@ -51,8 +51,7 @@
 	 *
 	 */
 
-	$debug=false;
-	
+
 	/******************************************************
 	 *
 	 * INIT, Init
@@ -62,6 +61,7 @@
 	 *
 	 *************************************************************/
 
+	$debug=false;
     $startexec=microtime(true);     /* Laufzeitmessung */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -83,11 +83,11 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 	echo "IP Symcon Daten:\n";
-	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";;
+	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "  IPS Version : ".$ergebnis;
+	echo "  Modulversion : ".$ergebnis."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
-	echo " Status ".$ergebnis."\n";
+	echo "  Modulstatus  : ".$ergebnis."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "  IPSModulManager Version : ".$ergebnis."\n";
 	$ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('OperationCenter');
@@ -191,7 +191,8 @@
 		$tim4ID = IPS_CreateEvent(1);
 		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
 		IPS_SetName($tim4ID, "SysPingTimer");
-		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,60);      /* alle 60 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+        /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
+		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
 		IPS_SetEventActive($tim4ID,true);
 		echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
@@ -200,6 +201,8 @@
 		{
 		echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
   		IPS_SetEventActive($tim4ID,true);
+        /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
+		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
   		}
   		
@@ -671,6 +674,8 @@
 		$CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
 		echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
 		$CamTablePictureID=CreateVariable("CamTablePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+		$CamMobilePictureID=CreateVariable("CamMobilePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+
 		$CamTableMovieID=CreateVariable("CamTableMovie",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
 
 		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
@@ -757,6 +762,17 @@
 	echo "Sysping Variablen anlegen.\n";
 
 	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+
+    /* Standardvariablen für den Betrieb von Sysping setzen 
+     * Exectime
+     * Counter für fast and slow exec mode  (5/60 Minuten)
+     */
+	$SysPingStatusID = CreateVariableByName($categoryId_SysPing, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+	IPS_SetVariableCustomProfile($SysPingStatusID,"~UnixTimestamp");
+    IPS_SetHidden($SysPingStatusID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+	$SysPingCountID = CreateVariableByName($categoryId_SysPing, "SysPingCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+    IPS_SetHidden($SysPingCountID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+    setValue($SysPingCountID,0);
 
 	if (isset ($installedModules["IPSCam"]))
 		{

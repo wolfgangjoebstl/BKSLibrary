@@ -98,12 +98,16 @@
     echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
     if (isset ($OperationCenterConfig['CAM']))
         {
+        $CategoryIdDataOverview=IPS_GetObjectIdByName("Cams",$CategoryIdDataOC);
+        $CamTablePictureID=IPS_GetObjectIdByName("CamTablePicture",$CategoryIdDataOverview);
+        $CamMobilePictureID=IPS_GetObjectIdByName("CamMobilePicture",$CategoryIdDataOverview);
+        echo "    Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID\n";
 
         //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
         
         /* Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
-        * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
-        */
+         * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
+         */
 		$resultStream=array(); $idx=0;          // Link zu den Cameras
 
         echo "CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
@@ -134,14 +138,17 @@
                 }
             else echo "       FTP Folder disabled.\n";
 
-            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
             if ($cam_categoryId==false)
                 {
                 $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
                 IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                IPS_SetParent($cam_categoryId,$CategoryIdDataOC);
                 }
             echo "Kategorie pro Kamera : $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
+            $WebCam_LetzteBewegungID = IPS_GetObjectIdByName("Cam_letzteBewegung", $cam_categoryId); 
+            $WebCam_PhotoCountID = IPS_GetObjectIdByName("Cam_PhotoCount", $cam_categoryId);
+            $WebCam_MotionID = IPS_GetObjectIdByName("Cam_Motion", $cam_categoryId); 
 
             if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
                 {
@@ -175,8 +182,11 @@
                                 echo "    Streaming Media will be set to $streamLink.\n";
                                 IPS_SetMediaFile($cam_streamId,$streamLink,true);
 
-						        $resultStream[$idx]["OID"]=$cam_streamId;
-						        $resultStream[$idx]["Name"]=$cam_name;                                
+						        $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
+						        $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
+                                $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
+                                $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
+                                $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
                                 $idx++;
                                 }
                             }
@@ -197,12 +207,21 @@
 
     if (isset($configWFront["Administrator"]))
         {
-        installWebfront($configWFront["Administrator"],$resultStream);             
+        $configWF = $configWFront["Administrator"];
+        installWebfrontMon($configWF,$resultStream);             
+        $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
+        $configWF["TabIcon"]="Window";                              // different Icon
+        installWebfrontPics($configWF,$CamTablePictureID);        
         }
         
     if (isset($configWFront["User"]))
         {
-        installWebfront($configWFront["User"],$resultStream);     
+        $configWF = $configWFront["User"];            
+        installWebfrontMon($configWF,$resultStream); 
+        
+        $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
+        $configWF["TabIcon"]="Window";                              // different Icon
+        installWebfrontPics($configWF,$CamTablePictureID);            
         }
 
     if (isset($configWFront["Mobile"]))
@@ -214,10 +233,15 @@
 
         /* RTSP Streams werden noch nicht am Iphone angezeigt */
 
-        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Name"], $resultStream[0]["OID"], $mobileId, 10);
-        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Name"], $resultStream[1]["OID"], $mobileId, 20);
-        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Name"], $resultStream[2]["OID"], $mobileId, 30);
-        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Name"], $resultStream[3]["OID"], $mobileId, 40);
+        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Stream"]["Name"], $resultStream[0]["Stream"]["OID"], $mobileId, 10);
+        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Stream"]["Name"], $resultStream[1]["Stream"]["OID"], $mobileId, 20);
+        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Stream"]["Name"], $resultStream[2]["Stream"]["OID"], $mobileId, 30);
+        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Stream"]["Name"], $resultStream[3]["Stream"]["OID"], $mobileId, 40);
+
+        $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
+        $mobileId               = CreateCategoryPath($configWF["Path"].'.KameraPics',$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
+		EmptyCategory($mobileId);
+        CreateLinkByDestination("Pictures", $CamMobilePictureID, $mobileId,  10,"");	
         }
 	}
 
@@ -232,16 +256,18 @@
 /********************************************************************/
 
 
-    function installWebfront($configWF,$resultStream)
+    function installWebfrontMon($configWF,$resultStream)
         {
-        $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User.WebCamera
+        $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
         
         //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
 		//echo "installWebfront: WF10 Path for WebCamera Monitor         : ".$configWF["Path"]." with this Webfront item name : $tabItem\n";
         echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
         echo "----------------------------------------------------------------------------------------------------------------------------------\n";
 
-        EmptyCategory($categoryId_WebFront);
+        echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+        $status=@EmptyCategory($categoryId_WebFront);
+        if ($status) echo "   -> erfolgreich.\n";
     	IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
         
         $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
@@ -266,10 +292,56 @@
         CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
         CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
 
-        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Name"], $resultStream[0]["OID"], $categoryIdLeftUp, 10);
-        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Name"], $resultStream[1]["OID"], $categoryIdRightUp, 10);
-        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Name"], $resultStream[2]["OID"], $categoryIdLeftDn, 10);
-        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Name"], $resultStream[3]["OID"], $categoryIdRightDn, 10);         
+        $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
+        $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
+        $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
+        $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
+        $count=sizeof($resultStream);
+        for ($i=0;$i<$count;$i++) 
+            {
+            if (isset($resultStream[$i]["Stream"]["Name"]))
+                {
+                CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
+                //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs 
+                $camID=CreateVariable($resultStream[$i]["Stream"]["Name"],0, $categoryIdOverview,$i*10,"",null,null,"");
+                foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $camID, 10);
+                }
+            }
+        }
+
+    function installWebfrontPics($configWF,$CamTablePictureID)
+        {
+        $full=false;            // nur zusätzlich installieren
+
+        $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+
+        if ($full) 
+            {
+            echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "----------------------------------------------------------------------------------------------------------------------------------\n";            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+            if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabPaneItem"])==false )           /* nur wenn uebergeordnetes Webfront nicht da ist, die entsprechende Kategorie loeschen */
+                {
+                CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
+                EmptyCategory($categoryId_WebFront);
+                IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                }
+            }
+        
+        $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 50);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+
+        if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabItem"]) )
+            {
+            echo "Einzel Tab loeschen und neu anlegen: DeleteWFCItems(".$configWF["ConfigId"].", ".$configWF["TabItem"].")\n";		
+		    DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen und neu anlegen
+            EmptyCategory($categoryId_WebFrontMonitor);
+    	    IPS_SetHidden($categoryId_WebFrontMonitor, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+            }
+		
+        /* im TabPane entweder eine Kategorie oder ein SplitPane und Kategorien anlegen */
+        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"],   ($configWF["TabOrder"]+300), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+
+        // definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
+        CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontMonitor,  10,"");								
         }
 
 

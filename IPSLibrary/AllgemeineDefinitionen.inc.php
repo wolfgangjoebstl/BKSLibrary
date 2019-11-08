@@ -2258,9 +2258,13 @@ class ipsOps
         return($mediaFound);
         }
 
-    /* das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt */
+    /***************
+     *
+     * das Ini File auslesen und als Array zur verfügung stellen, es wird nur der modulManager benötigt 
+     *
+     ******************************/
 
-    function configWebfront($moduleManager)
+    function configWebfront($moduleManager, $debug=false)
         {
         $result=array();
         $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
@@ -2268,12 +2272,12 @@ class ipsOps
             {
             $instance=IPS_GetInstance($instanz);
             $result[IPS_GetName($instanz)]["ConfigId"]=$instance["InstanceID"];
-            echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$instance["InstanceID"]."  (".$instanz.")\n";
+            if ($debug) echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$instance["InstanceID"]."  (".$instanz.")\n";
             }
         $RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis', false);
         if ($RemoteVis_Enabled)
             {
-            echo "RemoteVis is enabled.\n";
+            if ($debug) echo "RemoteVis is enabled.\n";
             $result["RemoteVis"] = true;
             }
 
