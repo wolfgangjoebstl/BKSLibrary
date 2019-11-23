@@ -5,7 +5,9 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur 
+	 * Script zur Berechnhung der Periodenwerte von Energieregistern
+     * es werden Werte von AMIS Zählern als auch von Homematic Energiemessungen verwendet.
+     * welche gibt die AMIS Config vor.
 	 *
 	 *
 	 * @file      
@@ -42,12 +44,14 @@ $Jahr=2011;
 //$variableID=30163;
 
 $parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+$ipsOps = new ipsOps();
 
 foreach ($MeterConfig as $meter)
 	{
 	echo"-------------------------------------------------------------\n";
-	echo "Create Variableset for :".$meter["NAME"]." \n";
-	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    $ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
+    
 	/* ID von Wirkenergie bestimmen */
 	switch (strtoupper($meter["TYPE"]))
 		{
@@ -142,11 +146,25 @@ foreach ($MeterConfig as $meter)
 
 if ($_IPS['SENDER'] == "Execute")
 	{
-	echo "-------------------------------------------------------------\n";
+	echo "-------------------------------------------------------------------------------------------\n";
 	echo "        EXECUTE\n";
-	echo "-------------------------------------------------------------\n";
+	echo "-------------------------------------------------------------------------------------------\n";
 
-	echo "Plausi-Check von Logged Variablen.\n";
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+		}
+
+	echo "\nIPS aktuelle Kernelversion : ".IPS_GetKernelVersion();
+	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Amis');       /*   <--- change here */
+	echo "\nAmis Modul Version : ".$ergebnis."\n"; 
+    $installedModules = $moduleManager->GetInstalledModules();
+
+    echo "\n";
+    $count=sizeof($MeterConfig);
+	echo "Plausi-Check von Logged Variablen. Im AMIS Configfile sind $count Geräte angelegt.\n";
 
 	$initial=true;
 	$ergebnis=0;
@@ -164,14 +182,14 @@ if ($_IPS['SENDER'] == "Execute")
 
 	
 	$display=true;
-	$delete=false;
+	$delete=false;          // damit werden geloggte Werte gelöscht
 
 	foreach ($MeterConfig as $meter)
 		{
 		echo"-------------------------------------------------------------\n";
-		echo "Create Variableset for : ".$meter["NAME"]." \n";
-
 		$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+        echo "Create Variableset for : ".$meter["NAME"]." vom Typ ".$meter["TYPE"]." in $ID (".$ipsOps->path($ID).")\n";   
+
 		if (isset($meter["WirkenergieID"]) == true )	 
 			{ 
 			$variableID = $meter["WirkenergieID"]; 
@@ -179,14 +197,32 @@ if ($_IPS['SENDER'] == "Execute")
 		else
 			{
 			/* Variable ID selbst festlegen */
-		   $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+            echo "     Variable Wirkenergie selber anlegen. nicht in Konfiguration vorgesehen:\n";
+            switch (strtoupper($meter["TYPE"]))
+                {
+                case "AMIS":
+                    $AmisID = CreateVariableByName($ID, "AMIS", 3);
+                    $variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+                    //$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+                    //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+                    break;
+                case "HOMEMATIC":
+                case "REGISTER":
+                case "SUMME": 
+                    $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                    break;
+                default:
+                    echo "Fehler, Type noch nicht bekannt.\n";
+                    break;	
+                }        
+            print_r($meter);
 			}
 		
 		$vorwert=0;
 		$zaehler=0;
 		//$variableID=44113;
 
-		echo "ArchiveHandler: ".$archiveHandlerID." Variable: ".$variableID."\n";
+		echo "ArchiveHandler: ".$archiveHandlerID." Variable: $variableID (".$ipsOps->path($variableID).")\n";
 		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
 		
 		$increment=1;
@@ -242,6 +278,7 @@ if ($_IPS['SENDER'] == "Execute")
 					$vorwert=$aktwert;
 					echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
 					}
+                $vorwertCalc=$vorwert;                    
 				if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
 				   {
 				 	if ($delete==true)
@@ -284,11 +321,14 @@ if ($_IPS['SENDER'] == "Execute")
 
 				if ($display==true)
 					{
-			   	/* jeden Eintrag ausgeben */
-			   	//print_r($wert);
-			   	   {
-						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+			   	    /* jeden Eintrag ausgeben */
+			   	    //print_r($wert);
+                    if ($vorwertCalc != $aktwert)
+			   	        {
+						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 						}
+                    else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+
 					}
 				$zaehler+=1;
 				}
@@ -299,7 +339,37 @@ if ($_IPS['SENDER'] == "Execute")
 	}
 
 
-	}
+    if (isset($installedModules["OperationCenter"]))
+        {
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+        IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
+        $scriptId       = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
+        $tim7ID         = @IPS_GetEventIDByName("FileStatus", $scriptId);
+        $status         = IPS_GetEvent($tim7ID);
+        //print_r($status);
+        echo "Berechnung das letzte Mal gestartet am/um ".date("d.m.Y H:i:s",$status["LastRun"])."\n";        
+
+        $subnet="10.255.255.255";
+        $OperationCenter=new OperationCenter($subnet);
+
+        $amis=new Amis();
+        $MeterConfig = $amis->getMeterConfig();
+        $dataOID=$amis->getAMISDataOids();
+        $tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
+        $regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);
+        $Meter=$amis->writeEnergyRegistertoArray($MeterConfig);
+        SetValue($tableID,$amis->writeEnergyRegisterTabletoString($Meter));
+        SetValue($regID,$amis->writeEnergyRegisterValuestoString($Meter));		
+
+        echo GetValue($tableID);
+        echo GetValue($regID);
+
+        }
+
+
+    }           // Ende Execute
 
 
 	   

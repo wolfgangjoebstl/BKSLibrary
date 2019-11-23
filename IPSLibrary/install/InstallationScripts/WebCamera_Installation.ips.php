@@ -60,10 +60,17 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	echo "IP Symcon Daten:\n";
+	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
+	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
+	echo "  Modulversion  : ".$ergebnis."\n";
+    echo "\n";
 
-/********************************************************************/
-
-    /* auch OperationCenter Installation mit betrachten */
+    /********************************************************************
+     *
+     * auch OperationCenter Installation mit betrachten 
+     *
+     *****************************************************************/
 
     $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
     $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
@@ -101,7 +108,7 @@
         $CategoryIdDataOverview=IPS_GetObjectIdByName("Cams",$CategoryIdDataOC);
         $CamTablePictureID=IPS_GetObjectIdByName("CamTablePicture",$CategoryIdDataOverview);
         $CamMobilePictureID=IPS_GetObjectIdByName("CamMobilePicture",$CategoryIdDataOverview);
-        echo "    Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID\n";
+        echo "    Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID für die Captured Bilder.\n";
 
         //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
         
@@ -110,7 +117,7 @@
          */
 		$resultStream=array(); $idx=0;          // Link zu den Cameras
 
-        echo "CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
+        echo "    CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
         echo "\n";
         foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
             {
@@ -136,7 +143,7 @@
                     $dosOps->mkdirtree($verzeichnis,true);          // mit Debug um Fehler rauszufinden
                     }
                 }
-            else echo "       FTP Folder disabled.\n";
+            else echo '       FTP Folder in der Konfiguration disabled. Füge "FTP" => "Enabled" ein.'."\n";
 
             $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
             if ($cam_categoryId==false)
