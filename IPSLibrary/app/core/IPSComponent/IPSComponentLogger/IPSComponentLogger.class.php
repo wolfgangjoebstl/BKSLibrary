@@ -121,7 +121,17 @@ class ipsobject
  *
  * class logging
  *
- * Speicherung von Nachrichten
+ * Speicherung von Nachrichten, als Einträge in einem File, als Werte in Objekten und Ausgabe als html tabelle und als echo
+ *
+ * Aufruf mit folgenden Parametern:
+ *      logfile     wenn der Wert auf "No-Output" steht wird kein Logfile angelegt. Sonst wird ein Logfile mit diesem Namen angelegt.
+ *                  der Filename wird mit vollständigen, absoluten Pfad angegeben
+ *
+ *      nachrichteninput_id  wenn der Wert auf "Ohne" steht werden die Nachrichtenobjekte in einer Default Kategorie angelegt
+ *
+ *      prefix      wird am Anfang jeder Nachricht, die als Logfile geschrieben wir mitgegeben: Format Datum, Zeit, Prefix, Nachricht
+ *
+ *      html        wenn ID ungleich false wird dort eine html tabelle mit den selben Nachrichten geschrieben.
  *
  ****************************************************************/
 
@@ -132,22 +142,31 @@ class Logging
 	private $nachrichteninput_Id="Default";
 	private $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
 	private $installedmodules;
+    private $zeile=array();                     /* Nachrichteninput Objekte OIDs */
+    private $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
+    private $config=array();                    /* interne Konfiguration */
 	
-	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="")
+	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
 		//echo "Logfile Construct\n";
 		$this->prefix=$prefix;
 		$this->log_File=$logfile;
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
+        $this->config["Prefix"]=$prefix;
+        $this->config["HTMLOutput"]=$html;
+        if ($count>1) $this->config["TableSize"]=$count; 
+        else $this->config["TableSize"]=16;
    		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
 		//echo "Init ".get_class($this)." : ";
 		//var_dump($this);
-		if ($logfile=="No-Output")
+		if ( ($this->log_File=="No-Output") || ($this->log_File==false) ) 
 			{
 			/* kein Logfile anlegen */
+            $this->config["Logfile"]=false;
 			}
 		else
 			{			
+            $this->config["Logfile"]=$logfile;
 			if (!file_exists($this->log_File))
 				{
 				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
@@ -164,23 +183,30 @@ class Logging
 				}
 			}
 		if ($this->nachrichteninput_Id != "Ohne")
-		   {
-			$this->zeile1 = CreateVariable("Zeile01",3,$this->nachrichteninput_Id, 10 );
-			$this->zeile2 = CreateVariable("Zeile02",3,$this->nachrichteninput_Id, 20 );
-			$this->zeile3 = CreateVariable("Zeile03",3,$this->nachrichteninput_Id, 30 );
-			$this->zeile4 = CreateVariable("Zeile04",3,$this->nachrichteninput_Id, 40 );
-			$this->zeile5 = CreateVariable("Zeile05",3,$this->nachrichteninput_Id, 50 );
-			$this->zeile6 = CreateVariable("Zeile06",3,$this->nachrichteninput_Id, 60 );
-			$this->zeile7 = CreateVariable("Zeile07",3,$this->nachrichteninput_Id, 70 );
-			$this->zeile8 = CreateVariable("Zeile08",3,$this->nachrichteninput_Id, 80 );
-			$this->zeile9 = CreateVariable("Zeile09",3,$this->nachrichteninput_Id, 90 );
-			$this->zeile10 = CreateVariable("Zeile10",3,$this->nachrichteninput_Id, 100 );
-			$this->zeile11 = CreateVariable("Zeile11",3,$this->nachrichteninput_Id, 110 );
-			$this->zeile12 = CreateVariable("Zeile12",3,$this->nachrichteninput_Id, 120 );
-			$this->zeile13 = CreateVariable("Zeile13",3,$this->nachrichteninput_Id, 130 );
-			$this->zeile14 = CreateVariable("Zeile14",3,$this->nachrichteninput_Id, 140 );
-			$this->zeile15 = CreateVariable("Zeile15",3,$this->nachrichteninput_Id, 150 );
-			$this->zeile16 = CreateVariable("Zeile16",3,$this->nachrichteninput_Id, 160 );
+		    {
+            $this->config["MessageInputID"]=$nachrichteninput_Id;                
+            $this->zeile = $this->CreateZeilen($this->nachrichteninput_Id);
+                        $this->zeile1 = CreateVariable("Zeile01",3,$this->nachrichteninput_Id, 10 );
+                        $this->zeile2 = CreateVariable("Zeile02",3,$this->nachrichteninput_Id, 20 );
+                        $this->zeile3 = CreateVariable("Zeile03",3,$this->nachrichteninput_Id, 30 );
+                        $this->zeile4 = CreateVariable("Zeile04",3,$this->nachrichteninput_Id, 40 );
+                        $this->zeile5 = CreateVariable("Zeile05",3,$this->nachrichteninput_Id, 50 );
+                        $this->zeile6 = CreateVariable("Zeile06",3,$this->nachrichteninput_Id, 60 );
+                        $this->zeile7 = CreateVariable("Zeile07",3,$this->nachrichteninput_Id, 70 );
+                        $this->zeile8 = CreateVariable("Zeile08",3,$this->nachrichteninput_Id, 80 );
+                        $this->zeile9 = CreateVariable("Zeile09",3,$this->nachrichteninput_Id, 90 );
+                        $this->zeile10 = CreateVariable("Zeile10",3,$this->nachrichteninput_Id, 100 );
+                        $this->zeile11 = CreateVariable("Zeile11",3,$this->nachrichteninput_Id, 110 );
+                        $this->zeile12 = CreateVariable("Zeile12",3,$this->nachrichteninput_Id, 120 );
+                        $this->zeile13 = CreateVariable("Zeile13",3,$this->nachrichteninput_Id, 130 );
+                        $this->zeile14 = CreateVariable("Zeile14",3,$this->nachrichteninput_Id, 140 );
+                        $this->zeile15 = CreateVariable("Zeile15",3,$this->nachrichteninput_Id, 150 );
+                        $this->zeile16 = CreateVariable("Zeile16",3,$this->nachrichteninput_Id, 160 );
+            if ($this->config["HTMLOutput"]) 
+                {
+                $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                SetValue($sumTableID,$this->PrintNachrichten(true));
+                }
 			}
 		else
 			{
@@ -192,22 +218,24 @@ class Logging
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==0) $vid = CreateCategory($name,$CategoryIdData, 10);
-			$this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
-			$this->zeile2  = CreateVariable("Zeile02",3,$vid, 20 );
-			$this->zeile3  = CreateVariable("Zeile03",3,$vid, 30 );
-			$this->zeile4  = CreateVariable("Zeile04",3,$vid, 40 );
-			$this->zeile5  = CreateVariable("Zeile05",3,$vid, 50 );
-			$this->zeile6  = CreateVariable("Zeile06",3,$vid, 60 );
-			$this->zeile7  = CreateVariable("Zeile07",3,$vid, 70 );
-			$this->zeile8  = CreateVariable("Zeile08",3,$vid, 80 );
-			$this->zeile9  = CreateVariable("Zeile09",3,$vid, 90 );
-			$this->zeile10 = CreateVariable("Zeile10",3,$vid, 100 );
-			$this->zeile11 = CreateVariable("Zeile11",3,$vid, 110 );
-			$this->zeile12 = CreateVariable("Zeile12",3,$vid, 120 );
-			$this->zeile13 = CreateVariable("Zeile13",3,$vid, 130 );
-			$this->zeile14 = CreateVariable("Zeile14",3,$vid, 140 );
-			$this->zeile15 = CreateVariable("Zeile15",3,$vid, 150 );
-			$this->zeile16 = CreateVariable("Zeile16",3,$vid, 160 );
+            $this->config["MessageInputID"]=$vid; 
+            $this->zeile = $this->CreateZeilen($vid);
+                    $this->zeile1  = CreateVariable("Zeile01",3,$vid, 10 );
+                    $this->zeile2  = CreateVariable("Zeile02",3,$vid, 20 );
+                    $this->zeile3  = CreateVariable("Zeile03",3,$vid, 30 );
+                    $this->zeile4  = CreateVariable("Zeile04",3,$vid, 40 );
+                    $this->zeile5  = CreateVariable("Zeile05",3,$vid, 50 );
+                    $this->zeile6  = CreateVariable("Zeile06",3,$vid, 60 );
+                    $this->zeile7  = CreateVariable("Zeile07",3,$vid, 70 );
+                    $this->zeile8  = CreateVariable("Zeile08",3,$vid, 80 );
+                    $this->zeile9  = CreateVariable("Zeile09",3,$vid, 90 );
+                    $this->zeile10 = CreateVariable("Zeile10",3,$vid, 100 );
+                    $this->zeile11 = CreateVariable("Zeile11",3,$vid, 110 );
+                    $this->zeile12 = CreateVariable("Zeile12",3,$vid, 120 );
+                    $this->zeile13 = CreateVariable("Zeile13",3,$vid, 130 );
+                    $this->zeile14 = CreateVariable("Zeile14",3,$vid, 140 );
+                    $this->zeile15 = CreateVariable("Zeile15",3,$vid, 150 );
+                    $this->zeile16 = CreateVariable("Zeile16",3,$vid, 160 );
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
 				/* nur wenn Detect Movement installiert zusaetzlich ein Motion Log fuehren */
@@ -215,23 +243,24 @@ class Logging
 				$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
 				//echo "  Kategorien im Datenverzeichnis Detect Movement :".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 				$name="Motion-Nachrichten";
-				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);			
-				$this->zeile01DM = CreateVariable("Zeile01",3,$vid, 10 );
-				$this->zeile02DM = CreateVariable("Zeile02",3,$vid, 20 );
-				$this->zeile03DM = CreateVariable("Zeile03",3,$vid, 30 );
-				$this->zeile04DM = CreateVariable("Zeile04",3,$vid, 40 );
-				$this->zeile05DM = CreateVariable("Zeile05",3,$vid, 50 );
-				$this->zeile06DM = CreateVariable("Zeile06",3,$vid, 60 );
-				$this->zeile07DM = CreateVariable("Zeile07",3,$vid, 70 );
-				$this->zeile08DM = CreateVariable("Zeile08",3,$vid, 80 );
-				$this->zeile09DM = CreateVariable("Zeile09",3,$vid, 90 );
-				$this->zeile10DM = CreateVariable("Zeile10",3,$vid, 100 );
-				$this->zeile11DM = CreateVariable("Zeile11",3,$vid, 110 );
-				$this->zeile12DM = CreateVariable("Zeile12",3,$vid, 120 );
-				$this->zeile13DM = CreateVariable("Zeile13",3,$vid, 130 );
-				$this->zeile14DM = CreateVariable("Zeile14",3,$vid, 140 );
-				$this->zeile15DM = CreateVariable("Zeile15",3,$vid, 150 );
-				$this->zeile16DM = CreateVariable("Zeile16",3,$vid, 160 );			
+				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);	
+                $this->zeileDM = $this->CreateZeilen($vid);		
+                        $this->zeile01DM = CreateVariable("Zeile01",3,$vid, 10 );
+                        $this->zeile02DM = CreateVariable("Zeile02",3,$vid, 20 );
+                        $this->zeile03DM = CreateVariable("Zeile03",3,$vid, 30 );
+                        $this->zeile04DM = CreateVariable("Zeile04",3,$vid, 40 );
+                        $this->zeile05DM = CreateVariable("Zeile05",3,$vid, 50 );
+                        $this->zeile06DM = CreateVariable("Zeile06",3,$vid, 60 );
+                        $this->zeile07DM = CreateVariable("Zeile07",3,$vid, 70 );
+                        $this->zeile08DM = CreateVariable("Zeile08",3,$vid, 80 );
+                        $this->zeile09DM = CreateVariable("Zeile09",3,$vid, 90 );
+                        $this->zeile10DM = CreateVariable("Zeile10",3,$vid, 100 );
+                        $this->zeile11DM = CreateVariable("Zeile11",3,$vid, 110 );
+                        $this->zeile12DM = CreateVariable("Zeile12",3,$vid, 120 );
+                        $this->zeile13DM = CreateVariable("Zeile13",3,$vid, 130 );
+                        $this->zeile14DM = CreateVariable("Zeile14",3,$vid, 140 );
+                        $this->zeile15DM = CreateVariable("Zeile15",3,$vid, 150 );
+                        $this->zeile16DM = CreateVariable("Zeile16",3,$vid, 160 );			
 				}
 			}																																
 	   }
@@ -250,7 +279,7 @@ class Logging
 	function LogNachrichten($message)
 		{
 		if ($this->nachrichteninput_Id != "Ohne")
-		   {
+		    {
 			//echo "Nachrichtenverlauf auf  ".$this->nachrichteninput_Id."   \n";
 			SetValue($this->zeile16,GetValue($this->zeile15));
 			SetValue($this->zeile15,GetValue($this->zeile14));
@@ -306,21 +335,67 @@ class Logging
 				SetValue($this->zeile02DM,GetValue($this->zeile01DM));
 				SetValue($this->zeile01DM,date("d.m.y H:i:s")." : ".$message);
 				}
-			}								
+			}
+        if ($this->config["HTMLOutput"]) 
+            {
+            $sumTableID = IPS_GetObjectIDByName("MessageTable", $this->nachrichteninput_Id); 
+            SetValue($sumTableID,$this->PrintNachrichten(true));
+            }            								
 		}
 
-	function PrintNachrichten()
+    /* alle Zeilen entweder als text oder html Tabelle ausgeben */
+
+	function PrintNachrichten($html=false)
 		{
 		$result=false;
+        $PrintHtml="";
+        $PrintHtml.='<style> 
+            table,td {align:center;border:1px solid white;border-collapse:collapse;}
+            </style>';
+        $PrintHtml.='<table>';         
 		if ($this->nachrichteninput_Id != "Ohne")
-		   {
-		   $result=GetValue($this->zeile1)."\n".GetValue($this->zeile2)."\n".GetValue($this->zeile3)."\n".GetValue($this->zeile4)."\n".
-					  GetValue($this->zeile5)."\n".GetValue($this->zeile6)."\n".GetValue($this->zeile7)."\n".GetValue($this->zeile8)."\n".
-					  GetValue($this->zeile9)."\n".GetValue($this->zeile10)."\n".GetValue($this->zeile11)."\n".GetValue($this->zeile12)."\n".
-					  GetValue($this->zeile13)."\n".GetValue($this->zeile14)."\n".GetValue($this->zeile15)."\n".GetValue($this->zeile16)."\n";
+		    {
+            $result="";
+            $count=sizeof($this->zeile);
+            if ($count>1)
+                {
+                for ($i=1;$i<=$count;$i++)
+                    {
+                    $result    .= GetValue($this->zeile[$i])."\n";
+                    //$PrintHtml .= '<tr><td>'.str_pad($i, 2 ,'0', STR_PAD_LEFT).'</td><td>'.GetValue($this->zeile[$i]).'</td></tr>';
+                    $PrintHtml .= '<tr><td>'.GetValue($this->zeile[$i]).'</td></tr>';
+                    }
+                }
+            else $result=GetValue($this->zeile1)."\n".GetValue($this->zeile2)."\n".GetValue($this->zeile3)."\n".GetValue($this->zeile4)."\n".GetValue($this->zeile5)."\n".GetValue($this->zeile6)."\n".GetValue($this->zeile7)."\n".GetValue($this->zeile8)."\n".GetValue($this->zeile9)."\n".GetValue($this->zeile10)."\n".GetValue($this->zeile11)."\n".GetValue($this->zeile12)."\n".GetValue($this->zeile13)."\n".GetValue($this->zeile14)."\n".GetValue($this->zeile15)."\n".GetValue($this->zeile16)."\n";
 			}
-		return $result;
+        $PrintHtml.='</table>';        
+
+		if ($html) return ($PrintHtml);
+        else return $result;
 		}
+
+    function CreateZeilen($oid, $count=16)
+        {
+        $zeile=array();
+        for ($i=1;$i<=$count;$i++)
+            {
+            $zeile[$i] = CreateVariable("Zeile".str_pad($i, 2 ,'0', STR_PAD_LEFT),3,$oid, ($i*10) );
+            }
+        return ($zeile);
+        }
+
+    function shiftZeile($message, $zeile, $count=16)
+        {
+        //print_r($zeile);
+        for ($i=1;$i<=$count;$i++) echo str_pad($i, 2 ,'0', STR_PAD_LEFT)."   ".GetValue($zeile[$i])."\n";
+        }
+
+    function shiftZeileDebug()
+        {
+        $this->shiftZeile("", $this->zeile, 16);
+        echo $this->PrintNachrichten(true);
+        }
+
 
 	function IPSpathinfo($InputID="")
 		{

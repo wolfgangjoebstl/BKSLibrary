@@ -35,7 +35,7 @@
 	 *
 	 * Init	includes, installed Modules
 	 * Hardware Evaluierung, nur auf die aktuellsten Hardware Objekte aufbauen
-	 * Webfront Config einlesen, OperationCenter hat keinen eigenen Tab, könnte man noch dazu geben, Webfront Tabs kommen immer bei den anderen bestehenden Tabs unter
+	 * Webfront Config einlesen, OperationCenter hat jetzt auch einen eigenen Tab
 	 * Init Timer
 	 * INIT, iMacro Router auslesen
 	 * INIT, Nachrichtenspeicher
@@ -157,6 +157,10 @@
 	 *
 	 *************************************************************/    
 
+    $configWFront=$ipsOps->configWebfront($moduleManager);          // Webfron Configuration vom OperationCenter
+
+    /* komplizierte Version : */
+
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -195,11 +199,11 @@
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
 		IPS_SetEventActive($tim4ID,true);
-		echo "   Timer Event SysPingTimer neu angelegt. Timer 60 Minuten ist aktiviert.\n";
+		echo "   Timer Event SysPingTimer neu angelegt. Timer 5 Minuten ist aktiviert.\n";
 		}
 	else
 		{
-		echo "   Timer Event SysPingTimer bereits angelegt. Timer 60 Minuten ist aktiviert.\n";
+		echo "   Timer Event SysPingTimer bereits angelegt. Timer 5 Minuten ist aktiviert.\n";
   		IPS_SetEventActive($tim4ID,true);
         /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
@@ -490,8 +494,10 @@
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
-	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+	$NachrichtinputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$NachrichtinputID);
+    $MessageTableID           = @IPS_GetObjectIDByName("MessageTable", $NachrichtinputID);
+    IPS_SetHidden($categoryId_Nachrichten,true);            // in der normalen Kategorie Darstellung ausblenden
 
 	if ($_IPS['SENDER']=="Execute")
 		{
@@ -530,6 +536,10 @@
 	
 	/* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
     $ipTableHtml      		= CreateVariable("TabelleGeraeteImNetzwerk", 3,  $categoryId_SystemInfo, 500 , '~HTMLBox',null,null,""); // ipTable am Schluss anlegen
+    $sumTableHtmlID      	= CreateVariable("SystemInfoOverview", 3,  $categoryId_SystemInfo, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+
+    IPS_SetHidden($categoryId_SystemInfo, true); 		// in der normalen OperationCenter Kategorie Darstellung die Kategorie verstecken, ist jetzt eh im Webfront
+
 
 	/******************************************************
 
@@ -773,6 +783,9 @@
 	$SysPingCountID = CreateVariableByName($categoryId_SysPing, "SysPingCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
     IPS_SetHidden($SysPingCountID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
     setValue($SysPingCountID,0);
+	$SysPingTableID = CreateVariable("SysPingTable",   3 /*String*/,  $categoryId_SysPing, 6000 , '~HTMLBox',null,null,"");
+    IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+    
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -1161,7 +1174,9 @@
 	/* ----------------------------------------------------------------------------------------------------------------------------
 	 * WebFront Installation
 	 *
-	 * ungefilterte Standard-Darstellung vom Ordner Visualization/OperationCenter, kein eigener Tab
+     * Es gibt einen eigenen Tab für die wichtigste Darstellung des Status
+     *
+	 * ungefilterte Standard-Darstellung vom Ordner Visualization/OperationCenter:
 	 * im Ordner OperationCenter gibt es einen Link auf das ganze Data des OperationCenters und einzelne spezielle Links zu Sonderthemen
 	 * es wird bereits begonnen, einzelne Untergruppen zu bilden
 	 *
@@ -1181,7 +1196,58 @@
 	 *
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
-	
+
+	$resultStream=array();
+    if ($sumTableHtmlID !== false) 
+        {
+        $resultStream[0]["Stream"]["Name"]="SysInfo";
+        $resultStream[0]["Stream"]["OID"]=$sumTableHtmlID;
+        }
+    if ($MessageTableID !== false) 
+        {
+        $resultStream[1]["Stream"]["Name"]="Nachrichten";
+        $resultStream[1]["Stream"]["OID"]=$MessageTableID;
+        }
+    if ($SysPingTableID !== false) 
+        {
+        $resultStream[2]["Stream"]["Name"]="SyspingTabelle";
+        $resultStream[2]["Stream"]["OID"]=$SysPingTableID;
+        }
+    $resultStream[4]["Stream"]["Name"]="SysPing";
+    $resultStream[4]["Stream"]["OID"]=$categoryId_SysPing;
+
+    if (isset($configWFront["Administrator"]))
+        {
+        $configWF = $configWFront["Administrator"];
+        installWebfrontMon($configWF,$resultStream); 
+		}
+
+    if (isset($configWFront["User"]))
+        {
+        $configWF = $configWFront["User"];
+        installWebfrontMon($configWF,$resultStream); 
+		}
+
+    if (isset($configWFront["Mobile"]))
+        {
+        $configWF=$configWFront["Mobile"];
+        $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
+        $mobileId               = CreateCategoryPath($configWF["Path"].'.'.$configWF["Name"],$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
+		EmptyCategory($mobileId);
+
+        if ($resultStream !== false) 
+            {
+            $count=sizeof($resultStream);
+            for ($i=0;$i<$count;$i++) 
+                {
+                if (isset($resultStream[$i]["Stream"]["Name"]))
+                    {
+                    CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $mobileId , 10+$i*10);
+                    }
+                }
+            }	
+        } 
+
 	if ($WFC10_Enabled)
 		{
 		echo "\nWebportal Administrator installieren in: ".$WFC10_Path." \n";
@@ -1196,8 +1262,10 @@
             }
 		if ($countHue>0)	CreateLinkByDestination('HUE', $categoryId_Hue,    $categoryId_WebFront,  120);			
 		if (isset ($installedModules["DetectMovement"]))	CreateLinkByDestination('DetectMovement', $categoryId_DetectMovement,    $categoryId_WebFront,  90);		
-		CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
-		CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
+		
+        //CreateLinkByDestination('Nachrichtenverlauf', $categoryId_Nachrichten,    $categoryId_WebFront,  200);
+		//CreateLinkByDestination('SystemInfo', $categoryId_SystemInfo,    $categoryId_WebFront,  800);
+
 		CreateLinkByDestination('Backup', $categoryId_BackupFunction,    $categoryId_WebFront,  850);
 		CreateLinkByDestination('TraceRouteVerlauf', $categoryId_Route,    $categoryId_WebFront,  900);
 
@@ -1553,6 +1621,79 @@
 	// Local Functions
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+    /*******************************************************************
+     *
+     * eigenes OperationCenter Webfront aufbauen, Default Icon Arztkoffer
+     *
+     * Tab mit 5 Fenster links gross und 4fach im Quadrat
+     *           $resultStream[0]["Stream"]["OID"]   für Fenster Links oben
+     *           $resultStream[1]["Stream"]["Link"]  für Fenster Rechts oben
+     *           $resultStream[2]["Stream"]["Link"]  für Fenster Links unten
+     *           $resultStream[3]["Stream"]["Link"]  für Fenster Rechts unten
+     *           $resultStream[4]["Stream"]["Link"]  für grosses Fenster links
+     *
+     *
+     **********************************/
+
+    function installWebfrontMon($configWF,$resultStream)
+        {
+        if (isset($configWF["Path"]))
+            {            
+            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+            
+            echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "----------------------------------------------------------------------------------------------------------------------------------\n";
+
+            $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+            IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
+			EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+
+            $categoryIdLeftDn    = CreateCategory('SystemNachrichten',      $categoryId_WebFrontMonitor, 0);             
+            $categoryIdLeft      = CreateCategory('SysPingErreichbarkeit',  $categoryId_WebFrontMonitor, 0);             
+            $categoryIdLeftUp    = CreateCategory('SystemInfo',      $categoryId_WebFrontMonitor, 0);             
+            $categoryIdRightUp    = CreateCategory('RightUp',      $categoryId_WebFrontMonitor, 0);             
+            $categoryIdRightDn    = CreateCategory('RightDn',      $categoryId_WebFrontMonitor, 0);             
+
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
+            CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
+            
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 30 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
+
+            if ($resultStream !== false) 
+                {
+                $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
+                $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
+                $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
+                $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
+                $resultStream[4]["Stream"]["Link"]=$categoryIdLeft;
+                $count=sizeof($resultStream);
+                for ($i=0;$i<$count;$i++) 
+                    {
+                    if (isset($resultStream[$i]["Stream"]["Name"]))
+                        {
+                        CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
+                        }
+                    }
+                }	
+            } // Config vollstaendig			
+        }    
+
+    /*******************************************************************
+     *
+     *
+     *
+     *
+     **********************************/
 
 	function CreateHomematicInstance($moduleManager, $Address, $Channel, $Name, $ParentId, $Protocol='BidCos-RF') 
         {

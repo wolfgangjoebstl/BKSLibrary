@@ -176,7 +176,7 @@ class OperationCenter
 		$this->mactable=$this->create_macipTable($this->subnet);
 		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input, "OperationCenter",true);       // File, Objekt und html Logging, und Prefix Classname
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		$this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
@@ -222,6 +222,15 @@ class OperationCenter
         return ($this->CategoryIdData);
         }
 
+    public function getCategoryIdSysPing()
+        {
+        return ($this->categoryId_SysPing);
+        }
+
+    public function shiftZeileDebug()
+        {
+        $this->log_OperationCenter->shiftZeileDebug();    
+        }
 
 	/**
 	 * @public
@@ -986,6 +995,8 @@ class OperationCenter
 		$OperationCenterConfig = $this->oc_Configuration;
 		//print_r($OperationCenterConfig);
 		
+        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$this->categoryId_SysPing);
+        
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
 		 *************************************************************************************/
@@ -1021,7 +1032,7 @@ class OperationCenter
 		$result1=array();
 		foreach($childrens as $oid)
 			{
-			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))          // sollten schon ausgefilter sein, sicherheitshalber
+			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))          // sollten schon ausgefiltert sein, sicherheitshalber
 		   		{
         		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
 		   		//print_r($werte);
@@ -1105,28 +1116,50 @@ class OperationCenter
                 $dauer=$this->Dauer($lastTime,$maxend,$maxend);
                 If ($lastWert==true) $onTime += $dauer; 
                 If ($lastWert==false) $offTime += $dauer;                
-				$result1[IPS_GetName($oid)]=$oid;
+				$result1[IPS_GetName($oid)]["OID"]=$oid;
                 $available=round((1-($offTime/($onTime+$offTime)))*100,1);
-                echo "       Gesamtauswertung ".IPS_GetName($oid)." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)." Availability ".$available."%.\n";
+                $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
+                $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
+                $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
+                echo "       Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
 		   		}
 			else
 		    	{
 				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
 		    	}
 			}
-		print_r($result1);	
+		//print_r($result1);	//Ergebnis für html Tabelle
 							
 		$result .= "\n";
 
 		/************************************************************************************
-		 * Erreichbarkeit Remote Access Server
+		 * Erreichbarkeit Remote Access Server, für die html Auswertung nicht Berücksichtigen
 		 *************************************************************************************/
 		
-		if (isset ($this->installedModules["RemoteAccess"]))
-			{		
-			$result .= $this->writeServerPingResults();
-			}
-		return($result);
+		if ($html)
+            {
+            ksort($result1);
+            $PrintHtml="";
+            $PrintHtml.='<style> 
+                table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                </style>';
+            $PrintHtml.='<table>';
+            $PrintHtml.='<tr><th>Gerät</th><th>Ontime</th><th>Offtime</th><th>Availability</th></tr>';
+            foreach ($result1 as $name => $entry)
+                {
+                $PrintHtml.='<tr><td>'.$name.'</td><td>'.$entry["ONTIME"].'</td><td>'.$entry["OFFTIME"].'</td><td>'.$entry["AVAILABILITY"].'%</td></tr>';
+                }
+            $PrintHtml.='</table>';
+    		return($PrintHtml);
+            }
+        else
+            {
+            if (isset ($this->installedModules["RemoteAccess"]))
+                {		
+                $result .= $this->writeServerPingResults();
+                }
+    		return($result);
+            }
 		}
 
     function getLoggedValues($objectID=false)
@@ -1184,7 +1217,8 @@ class OperationCenter
 		
         /* zusaetzlich Table mit IP Adressen auslesen und in einem html Table darstellen */
 
-        $ipTableHtml        = IPS_GetObjectIdByName("TabelleGeraeteImNetzwerk", $this->categoryId_SysInfo); // ipTable am Schluss anlegen
+        $ipTableHtml        = IPS_GetObjectIdByName("TabelleGeraeteImNetzwerk", $this->categoryId_SysInfo);     // ipTable am Schluss anlegen
+        $sumTableHtmlID     = IPS_GetObjectIdByName("SystemInfoOverview", $this->categoryId_SysInfo);           // obige Informationen als kleine Tabelle erstellen
 
 		$result=array();	/* fuer Zwischenberechnungen */
 		$results=array();
@@ -1257,8 +1291,10 @@ class OperationCenter
 		$str=$this->writeIpTable($macTable,$collumns);
         SetValue($ipTableHtml,$str);
 
+        $html=true;
+        $sumTableHtml=$this->readSystemInfo($html);             // die Systeminfo als html Tabelle zusammenstellen
+        SetValue($sumTableHtmlID, $sumTableHtml);
 
-						
 		return $results;
 		}	
 
@@ -1288,9 +1324,16 @@ class OperationCenter
 	 *
 	 ***************************************************/
 									
-	 function readSystemInfo()
+	 function readSystemInfo($html=false)
 	 	{
 		$PrintLn="";
+        $PrintHtml="";
+        $PrintHtml.='<style> 
+            table {width:100%}
+            td {width:50%}						
+            table,td {align:center;border:1px solid white;border-collapse:collapse;}
+            </style>';
+        $PrintHtml.='<table>';            
 		$HostnameID   		= CreateVariableByName($this->categoryId_SysInfo, "Hostname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 		$SystemNameID		= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemname", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */		
 		$SystemVersionID	= CreateVariableByName($this->categoryId_SysInfo, "Betriebssystemversion", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
@@ -1306,8 +1349,9 @@ class OperationCenter
 			case "15063": $Codename="Creators Update (Redstone 2)"; break;
 			case "16299": $Codename="Fall Creators Update (Redstone 3)"; break;
 			case "17134": $Codename="Spring Creators Update (Redstone 4)"; break;
-			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			
+			case "17763": $Codename="Fall 2018 Update (Redstone 5)"; break;			        // long term maintenance release
 			case "18362": $Codename="May 2019 Update (19H1)"; break;
+			case "18363": $Codename="November 2019 Update (19H2)"; break;
 			default: $Codename=$Version[2];break;
 			}			
 		$HotfixID			= CreateVariableByName($this->categoryId_SysInfo, "Hotfix", 3); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
@@ -1322,7 +1366,19 @@ class OperationCenter
 		$PrintLn.="   ".str_pad("External IP Adresse",30)." = ".str_pad(GetValue($ExternalIP),30)."   (".date("d.m H:i",IPS_GetVariable($ExternalIP)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Uptime",30)." = ".str_pad(GetValue($UptimeID),30)."   (".date("d.m H:i",IPS_GetVariable($UptimeID)["VariableChanged"]).") \n";
 		$PrintLn.="   ".str_pad("IPS Version",30)." = ".str_pad(GetValue($VersionID),30)."   (".date("d.m H:i",IPS_GetVariable($VersionID)["VariableChanged"]).") \n";
-		return ($PrintLn);
+
+        $PrintHtml .= '<tr><td>Hostname</td><td>'.GetValue($HostnameID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Name</td><td>'.GetValue($SystemNameID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Version</td><td>'.GetValue($SystemVersionID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>Betriebssystem Codename</td><td>'.$Codename.'</td><td></tr>';
+        $PrintHtml .= '<tr><td>Anzahl Hotfix</td><td>'.GetValue($HotfixID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>External IP Adresse</td><td>'.GetValue($ExternalIP).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>IPS Uptime</td><td>'.GetValue($UptimeID).'</td><td></tr>';
+        $PrintHtml .= '<tr><td>IPS Version</td><td>'.GetValue($VersionID).'</td><td></tr>';
+        $PrintHtml.='</table>';            
+        
+		if ($html) return ($PrintHtml);
+        else return ($PrintLn);
 		}
 
 /****************************************************************************************************************/
@@ -5358,7 +5414,7 @@ class DeviceManagement
 	/**
 	 * @public
 	 *
-	 * Initialisierung des OperationCenter Objektes
+	 * Initialisierung des DeviceManagement Class Objektes
 	 *
 	 */
 	public function __construct()
@@ -6895,9 +6951,10 @@ class statusDisplay
 	/**
 	 * @public
 	 *
-	 * Initialisierung des OperationCenter Objektes
+	 * Initialisierung des statusDisplays Class Objektes
 	 *
 	 */
+
 	public function __construct()
 		{
 
@@ -6933,7 +6990,7 @@ class statusDisplay
         if (isset($this->installedModules["Autosteuerung"])) echo "Module Autosteuerung installiert.\n";
         $this->auto=new Autosteuerung();
 
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input,"",true);            // mit File, Objekt und html Logging, kein prefix
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		}
 

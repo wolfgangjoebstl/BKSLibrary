@@ -9,7 +9,7 @@
  *
  * RouterAufruftimer
  * RouterExectimer
- * SysPingTimer			alle 60 Minuten syspingalldevices
+ * SysPingTimer			alle 5 Minuten, wennnicht anders konfiguriert wird alls 60 Minuten syspingalldevices aufgerufen
  *						für alle bekannten Geräte (Router, LED, Denon, Cams) pingen und Status ermitteln
  *						eventuell auch reboot, reset für erhöhte betriebssicherheit
  * CyclicUpdate			Update aller IPS Module, zB immer am 12. des Monates
@@ -814,7 +814,7 @@ if ($_IPS['SENDER']=="Variable")
  * 1 Router auslesen starten
  * 2 Webcam Files zusammenräumen
  * 3 Router auswerten, wird von 1 gestartet
- * 4 Sysping alle Geräte, alle 60 Minuten
+ * 4 Sysping alle Geräte, alle 5 Minuten, wenn nicht anders konfiguriert exec alle 60 Minuten
  * 5 automatisches Update der App Routinen, immer am 12. des Monats
  * 6 Scripts auf Dropbox kopieren
  * 7 File Status kopieren
