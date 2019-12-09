@@ -275,7 +275,13 @@
 						//writeLogEvent("Autostart (ftpserverlite)");
 						if ($processStart["Firefox.exe"] == "On")
 							{
-							writeLogEvent("Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"]);
+                            if (is_array($config["Software"]["Firefox"]["Url"]))
+                                {
+                                $logtext="Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ";    
+                                foreach ($config["Software"]["Firefox"]["Url"] as $address) $logtext .= $address." ";
+                                }
+                            else $logtext="Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"];
+							writeLogEvent($logtext);
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
 							}
 						SetValue($ScriptCounterID,$counter+1);

@@ -155,8 +155,73 @@ if ($_IPS['SENDER'] == "Execute")
 			}
 		}
 
-	$log_iTunes->LogMessage("Script wurde direkt aufgerufen");
-	$log_iTunes->LogNachrichten("Script wurde direkt aufgerufen");
+    $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+	$modulhandling->printrLibraries();
+
+	echo "\n";
+    echo "Modules for \"Amazon Echo Remote\":\n";	
+    $modulhandling->printModules("Amazon Echo Remote");    
+	
+	echo "\n";	
+    echo "Instances for \"EchoRemote\":\n";	    
+	$modulhandling->printInstances('EchoRemote');
+    $modulhandling->printInstances('AmazonEchoIO');
+    $modulhandling->printInstances('AmazonEchoConfigurator');
+
+	$echoIOs=$modulhandling->getInstances('AmazonEchoIO');
+	$config=IPS_GetConfiguration($echoIOs[0]);
+	echo "AmazonEchoIO Config : ".$config." \n";
+
+	$echoConfs=$modulhandling->getInstances('AmazonEchoConfigurator');
+	$config=IPS_GetConfiguration($echoConfs[0]);
+	echo "AmazonEchoConfigurator Config : ".$config." \n";
+	
+    echo "Alexa Echo remote Instaces:\n";
+	$echos=$modulhandling->getInstances('EchoRemote');
+	//print_r($echos);
+    $selectConfs=$modulhandling->selectConfiguration($echos,['Devicetype','Devicenumber']);
+	print_r($selectConfs);
+	
+	echo "\n";
+	$countAlexa = sizeof($echos);
+	echo "Es gibt insgesamt ".$countAlexa." Alexa Echo Geräte mit der Konfiguration.\n";
+   	if ($countAlexa>0)
+		{
+        for ($i=0; $i<$countAlexa; $i++)
+            {
+            $config=IPS_GetConfiguration($echos[$i]);
+		    //echo "   ".$i."  ".$echos[$i]."   ".IPS_GetName($echos[$i])."  ".$config."\n";
+		    echo "   ".$i."  ".$echos[$i]."   ".IPS_GetName($echos[$i])."  \n";
+    		$configStruct=json_decode($config);
+	    	//print_r($configStruct);
+            foreach ($configStruct as $typ=>$conf)
+                {
+    		    $confStruct=json_decode($conf);
+                switch ($typ)
+				    {
+				    case "Devicenumber": 
+						echo strlen($conf);
+				    case "Devicetype":
+                        echo "      ->  ".$typ."    ".$conf."\n";
+                        break;                    
+                    default:
+                        //echo "      ->  ".$typ."    ".$conf."\n";                    
+                        break;
+                    } 
+                }       
+            }
+        }
+
+    $ipsOps= new ipsOps();
+    //print_r($echos);"
+    echo "Ausgabe der Speicherorte der Echo Instanzen:\n";
+    foreach ($echos as $device)
+        {
+        echo "   $device : ".$ipsOps->path($device)."\n";
+        }
+
+	//$log_iTunes->LogMessage("Script wurde direkt aufgerufen");
+	//$log_iTunes->LogNachrichten("Script wurde direkt aufgerufen");
 	}
 
 if ($_IPS['SENDER'] == "WebFront")

@@ -1,6 +1,6 @@
 <?
 
-	/*
+ 	/*
 	 * This file is part of the IPSLibrary.
 	 *
 	 * The IPSLibrary is free software: you can redistribute it and/or modify
@@ -2094,6 +2094,8 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
  * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
  *     countChildren           rekursive Funktion dafür.
  * readWebfrontConfig
+ * getMediaListbyType
+ * configWebfront
  *
  ******************************************************/
 
@@ -2109,7 +2111,7 @@ class ipsOps
 
     /* den IPS Pfad ausgeben */
 
-    function path($objectR)
+    public function path($objectR)
         {
         $str = IPS_GetName($objectR);
         while ($objectR=IPS_GetParent($objectR))
@@ -2122,14 +2124,16 @@ class ipsOps
 
     /* die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen */
 
-    function totalChildren($oid)
+    public function totalChildren($oid)
         {
         $count=0;
         $this->countChildren($oid,$count);
         return ($count);
         }
 
-    function countChildren($oid,&$count)
+    /* rekursiver Aufruf für Ermittlung totalChildren   */
+
+    private function countChildren($oid,&$count)
         {
         $entries=IPS_getChildrenIDs($oid);
         $countEntry=count($entries);
@@ -2137,13 +2141,38 @@ class ipsOps
             {
             foreach ($entries as $entry)
                 {
-                countChildren($entry,$count);   
+                $this->countChildren($entry,$count);   
                 }
             }
         else $count++;
         }     
 
-    function readWebfrontConfig($WFC10_ConfigId, $debug)
+
+    /* sucht ein Children mit dem Namen der needle enthält */
+    
+    public function searchIDbyName($needle, $oid)
+        {
+		$resultOID=IPS_GetObject($oid);
+		//echo $oid." \"".$resultOID["ObjectName"]."\" ".$resultOID["ParentID"]."\n";
+		$childrenIds=$resultOID["ChildrenIDs"];
+		foreach ($childrenIds as $childrenId)
+			{
+			$result=IPS_GetObject($childrenId);
+			$resultname=$result["ObjectName"];
+			if (strpos($resultname,$needle)===false)
+				{
+				$nachrichtok="";
+				}
+			else
+				{
+				$nachrichtok="gefunden";
+				return $childrenId;
+				}
+			}
+        return (false);
+        }
+
+    public function readWebfrontConfig($WFC10_ConfigId, $debug)
         {
         if ($debug) echo "Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items:\n";
         $config = IPS_GetConfiguration($WFC10_ConfigId);
@@ -4680,6 +4709,8 @@ class ModuleHandling
 		return ($instances);
 		}
 
+	/* Alle Funktionen die einem bestimmten Modul zugeordnet sind als print/echo ausgeben 
+     */
 	public function getFunctions($lookup="")
 		{
 		if ($lookup=="") $alleFunktionen = IPS_GetFunctionList(0);
@@ -4705,6 +4736,49 @@ class ModuleHandling
 		return ($alleFunktionen);
 		}
 
+	public function getFunctionAsArray($lookup="")
+        {
+        if ($lookup=="")
+            {
+            echo "Funktionlist, alle Module:\n";
+            $instanceid = 0; //0 = Alle Funktionen, sonst Filter auf InstanzID
+            }
+        else
+            {
+            echo "Funktionlist, Module $lookup :\n";
+            $instanceid = $lookup;
+            }
+        //Exportiert alle IP-Symcon Funktionen mit einer Parameterliste
+        $fs = IPS_GetFunctionList($instanceid);
+        asort($fs);
+        $typestr = Array("boolean", "integer", "float", "string", "variant", "array");
+        foreach($fs as $f) 
+            {
+            $f = IPS_GetFunction($f);
+            echo sprintf("[%7s]", $typestr[$f['Result']['Type_']]) . " - ".$f['FunctionName']."(";
+            $a = Array();
+            foreach($f['Parameters'] as $p) 
+                {
+                if(isset($p['Enumeration']) && sizeof($p['Enumeration']) > 0) 
+                    {
+                    $b=Array();
+                    foreach($p['Enumeration'] as $k => $v) 
+                        {
+                        $b[] = $k."=".$v;
+                        }
+                    $type = "integer/enum[".implode(", ", $b)."]";
+                    } 
+                else 
+                    {
+                    $type = $typestr[$p['Type_']];
+                    }
+                $a[]=$type." $".$p['Description'];
+                }
+            echo implode(", ", $a).");\n";
+            }        
+        return ($a);
+        }
+        
     /* Strukturen die nicht unbedingt jeson encoded sind von ihren {} Klammern befreien
      */	
 	private function get_string_between($string, $start, $end)
