@@ -289,12 +289,13 @@ function anfragezahlernr($varname,$anfang,$ende,$content){
  * Anfrage ob in dem String ein Wert zwischen den Zeichenketten anfang und ende steht. Wenn ja , dann unter varname mit den anderen Parametern abspeichern 
  */
 
-function anfrage($varname, $anfang, $ende, $content, $vartyp, $VariProfile, $arhid, $ParentID){
+function anfrage($varname, $anfang, $ende, $content, $vartyp, $VariProfile, $arhid, $ParentID, $debug=false)
+    {
     $wert = Auswerten($content, $anfang, $ende);
     if (($debug) && ($wert !== false) ) echo "    Wert ausgelesen : $wert \n";     
     if ($wert) {vars($arhid, $ParentID, $varname, $wert, $vartyp, $VariProfile); return (true); }
     else { return (false); }
-};
+    };
 
 function Auswerten($content,$anfang,$ende){
  	$result_1 = explode($anfang,$content);
