@@ -1,5 +1,23 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */    
+
+
 /*
 	 * @defgroup 
 	 * @ingroup
@@ -9,8 +27,22 @@
 	 *
 	 * wird alle 60 Sekunden aufgerufen, es gibt 15 Timeslots, Je timeslot werden alle registrierten Zählertypen je nach Anforderung bearbeitet
 	 *
-	 * Timelsot 1,8,11 für AMIS Zähler
-	 * Timeslot 7 für Homematic
+	 * Timelslot 
+     *     1        sendReadCommandAmis "F009"
+     *     2
+     *     3
+     *     4        writeEnergyRegister
+     *     5
+     *     6        sendReadCommandAmis "F009"
+     *     7        writeEnergyHomematic
+     *     8        sendReadCommandAmis "F001"
+     *     9
+     *    10
+     *    11        sendReadCommandAmis "F010"
+     *    12
+     *    13
+	 *    14
+     *    15        writeEnergySumme
 	 *
 	 * @file      
 	 * @author        Wolfgang Joebstl
@@ -28,16 +60,19 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
  *			INIT
  *
  *************************************************************/
-
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+	
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 $amis=new Amis();
 $MeterConfig = $amis->getMeterConfig();
 //print_r($MeterConfig);
 
 /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-$TimeSlotReadID = CreateVariableByName($parentid, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 
 
@@ -82,6 +117,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 					$amis->writeEnergyHomematic($meter);
 					break;
 				case "6":  /* Auto */
+                    $amis->sendReadCommandAmis($meter,$identifier,"F009");                
+                    break;                
 				case "5":  /* Auto */
 				case "4":  /* Auto */
 					$amis->writeEnergyRegister($meter);
@@ -131,7 +168,7 @@ if ($_IPS['SENDER']=="Execute")
 	echo "Konfiguration für Zaehlerauslesung: \n\n";	
 	foreach ($MeterConfig as $identifier => $meter)
 		{
-		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "Category/Variable for : ".str_pad($meter["NAME"],30)." ".$meter["TYPE"]."\n";
 		if ($meter["TYPE"]=="Amis")
 			{
@@ -182,8 +219,6 @@ if ($_IPS['SENDER']=="Execute")
 	   echo " ".$instanz." Name : ".IPS_GetName($instanz)."\n";
 	   }
 
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-	
 	echo "\n********************************************VALUES**************************************************************\n\n";
 	$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic schreiben
 	}

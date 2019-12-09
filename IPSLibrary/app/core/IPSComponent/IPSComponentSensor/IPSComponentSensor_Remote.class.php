@@ -113,6 +113,8 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Genereller Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
+			IPSLogger_Dbg(__file__, 'HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+            
 			if ($this->RemoteOID != Null)
 			   {
 				//print_r($this);

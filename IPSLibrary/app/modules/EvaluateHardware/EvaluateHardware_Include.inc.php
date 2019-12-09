@@ -326,13 +326,13 @@ function HomematicList() { return array(
          "Type" => "HM_TYPE_BUTTON", 
          "Device" => "TYPE_BUTTON", 
          "COID" => array(
-                "PRESS_SHORT" => array(
-                              "OID" => "31711", 
-                              "Name" => "PRESS_SHORT", 
-                              "Typ" => "2",), 
                 "PRESS_CONT" => array(
                               "OID" => "57726", 
                               "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_SHORT" => array(
+                              "OID" => "31711", 
+                              "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
                 "PRESS_LONG_RELEASE" => array(
                               "OID" => "39837", 
@@ -430,10 +430,6 @@ function HomematicList() { return array(
                               "OID" => "40225", 
                               "Name" => "PRESS_SHORT", 
                               "Typ" => "2",), 
-                "PRESS_LONG_RELEASE" => array(
-                              "OID" => "26662", 
-                              "Name" => "PRESS_LONG_RELEASE", 
-                              "Typ" => "2",), 
                 "INSTALL_TEST" => array(
                               "OID" => "33732", 
                               "Name" => "INSTALL_TEST", 
@@ -441,6 +437,10 @@ function HomematicList() { return array(
                 "PRESS_CONT" => array(
                               "OID" => "37055", 
                               "Name" => "PRESS_CONT", 
+                              "Typ" => "2",), 
+                "PRESS_LONG_RELEASE" => array(
+                              "OID" => "26662", 
+                              "Name" => "PRESS_LONG_RELEASE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -604,9 +604,17 @@ function HomematicList() { return array(
                               "OID" => "26906", 
                               "Name" => "POWER_STATUS", 
                               "Typ" => "2",), 
+                "VOLTAGE_STATUS" => array(
+                              "OID" => "21708", 
+                              "Name" => "VOLTAGE_STATUS", 
+                              "Typ" => "2",), 
                 "ENERGY_COUNTER" => array(
                               "OID" => "18808", 
                               "Name" => "ENERGY_COUNTER", 
+                              "Typ" => "2",), 
+                "CURRENT" => array(
+                              "OID" => "13056", 
+                              "Name" => "CURRENT", 
                               "Typ" => "2",), 
                 "VOLTAGE" => array(
                               "OID" => "41900", 
@@ -615,14 +623,6 @@ function HomematicList() { return array(
                 "POWER" => array(
                               "OID" => "27470", 
                               "Name" => "POWER", 
-                              "Typ" => "2",), 
-                "VOLTAGE_STATUS" => array(
-                              "OID" => "21708", 
-                              "Name" => "VOLTAGE_STATUS", 
-                              "Typ" => "2",), 
-                "CURRENT" => array(
-                              "OID" => "13056", 
-                              "Name" => "CURRENT", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1100,10 +1100,6 @@ function HomematicList() { return array(
                               "OID" => "20594", 
                               "Name" => "BOOT", 
                               "Typ" => "2",), 
-                "VOLTAGE" => array(
-                              "OID" => "37500", 
-                              "Name" => "VOLTAGE", 
-                              "Typ" => "2",), 
                 "CURRENT" => array(
                               "OID" => "44974", 
                               "Name" => "CURRENT", 
@@ -1119,6 +1115,10 @@ function HomematicList() { return array(
                 "FREQUENCY" => array(
                               "OID" => "18506", 
                               "Name" => "FREQUENCY", 
+                              "Typ" => "2",), 
+                "VOLTAGE" => array(
+                              "OID" => "37500", 
+                              "Name" => "VOLTAGE", 
                               "Typ" => "2",), 
              	),
       	),
@@ -1279,6 +1279,10 @@ function HomematicList() { return array(
                               "OID" => "37426", 
                               "Name" => "PRESS_LONG_RELEASE", 
                               "Typ" => "2",), 
+                "PRESS_LONG" => array(
+                              "OID" => "40184", 
+                              "Name" => "PRESS_LONG", 
+                              "Typ" => "2",), 
                 "PRESS_SHORT" => array(
                               "OID" => "16466", 
                               "Name" => "PRESS_SHORT", 
@@ -1286,10 +1290,6 @@ function HomematicList() { return array(
                 "PRESS_CONT" => array(
                               "OID" => "42861", 
                               "Name" => "PRESS_CONT", 
-                              "Typ" => "2",), 
-                "PRESS_LONG" => array(
-                              "OID" => "40184", 
-                              "Name" => "PRESS_LONG", 
                               "Typ" => "2",), 
                 "INSTALL_TEST" => array(
                               "OID" => "22897", 

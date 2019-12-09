@@ -35,27 +35,26 @@ else
 
 	*************************************************************/
 	
-	$amis=new Amis();
 	
-	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
-
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+	$amis=new Amis();
+
 	$MeterConfig = $amis->getMeterConfig();
 	//print_r($MeterConfig);
 
 	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-	$MeterReadID = CreateVariableByName($parentid, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	$configPort=array();
 
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		echo"-------------------------------------------------------------\n";
 		echo "Create Variableset for : ".$meter["NAME"]." \n";
-		$ID = CreateVariableByName($parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
 		   {
 		   $amismetername=$meter["NAME"];			

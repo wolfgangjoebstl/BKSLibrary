@@ -1,12 +1,31 @@
 <?
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */    
 
 /*
 	 * @defgroup 
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur  Bearbeitung von Daten, die aus den AMIS Registern ausgelesen werden
-	 *
+	 * Script zur  Bearbeitung von Daten, die aus den AMIS Registern ausgelesen werden.
+     * Aus dem AMIS Read vom Zähler wird der Datenstrom herausgelöst (Cutter Funktionalität)
+     * Dann werden die einzelnen registereinträge geparst udn abgespeichert.
+     * Über REGISTER können die Register frei definiert werden, sonst wird ein Standardset genommen
+	 * Über CALCULATION können basierend auf den REGISTERn noch zusätzliche Rechenoperationen durchgeführt werden.
 	 *
 	 * @file      
 	 * @author        Wolfgang Joebstl
@@ -24,14 +43,17 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 
 *************************************************************/
 
-$trans = array(chr(13) => "", chr(10) => "");	/* für Log_Cutter Log File damit lesbar bleibt */
-$cutter=true;	/* wenn der IPS interne Cutter für die Erkennung von 02 (STX) und 03 (ETX) aktiviert ist, spart logging traffic auf den echo Ports */ 
-$amisAvailable=false;		/* wird true gesetzt wenn ein AMIS Zähler in der Config vorkommt */
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	$moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$parentid1  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+$trans = array(chr(13) => "", chr(10) => "");	/* für Log_Cutter Log File damit lesbar bleibt */
+$cutterActive=true;	/* wenn der IPS interne Cutter für die Erkennung von 02 (STX) und 03 (ETX) aktiviert ist, spart logging traffic auf den echo Ports */ 
+
+$ipsOps = new ipsOps();
 
 /* macht das selbe wie der eingebaute Cutter, kann aber selbststaendig installiert werden */
-
 
 // Archiv Handler damit das Logging eingeschaltet werden kann.
 $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
@@ -40,100 +62,10 @@ $arhid = $archiveHandlerID[0];
 
 $Amis = new Amis();
 $MeterConfig = $Amis->getMeterConfig();
-//print_r($MeterConfig);
 
-$configPort=array();
-foreach ($MeterConfig as $identifier => $meter)
-	{
-	$ID = CreateVariableByName($parentid1, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	if ($meter["TYPE"]=="Amis")
-		{
-		//echo"-------------------------------------------------------------\n";
-		//echo "Create AMIS Variableset for :".$meter["NAME"]." (".$identifier.") \n";
-		$amismetername=$meter["NAME"];
-		$amisAvailable=true;
-		//echo "Amis Zähler, verfügbare Ports:\n";			
-		
-		$AmisID = CreateVariableByName($ID, "AMIS", 3);
-		$ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-		$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
-			
-		// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
-		$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
-		$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
-
-		// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
-		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-		$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
-			
-		//Hier die COM-Port Instanz festlegen
-		$serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
-		foreach ($serialPortID as $num => $serialPort)
-			{
-			//echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-			if (IPS_GetName($serialPort) == $identifier." Serial Port") 
-				{ 
-				$com_Port = $serialPort;
-				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-				if (IPS_InstanceExists($regVarID) && ($cutter==false) )
-					{
-					//echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
-					$configPort[$regVarID]["Name"]=$amismetername;	
-					$configPort[$regVarID]["ID"]=$identifier;	
-					$configPort[$regVarID]["Port"]=$serialPort;																				 
-					}
-				}	
-			if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
-				{ 
-				$com_Port = $serialPort; 
-				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
-				if (IPS_InstanceExists($regVarID) && ($cutter==false) )
-					{
-					echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
-					$configPort[$regVarID]["Name"]=$amismetername;	
-					$configPort[$regVarID]["ID"]=$identifier;
-					$configPort[$regVarID]["Port"]=$serialPort;							
-					}					
-				}				
-			}
-		$listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
-		foreach ($listCutter as $num => $CutterID)
-			{
-			if (IPS_GetName($CutterID) == $identifier." Cutter")
-				{ 
-				//echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
-				$result=IPS_getConfiguration($CutterID);
-				//echo "        ".$result."\n";
-				$childrenIDs=IPS_GetInstanceChildrenIDs($CutterID);
-				//print_r($childrenIDs);
-				$parentID=IPS_GetInstanceParentID($CutterID);
-				//echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
-				$regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
-				if (IPS_InstanceExists($regVarID) && ($cutter==true))
-					{
-					//echo "        Registervariable : ".$regVarID."\n";
-					$configPort[$regVarID]["Name"]=$amismetername;	
-					$configPort[$regVarID]["ID"]=$identifier;
-					$configPort[$regVarID]["Port"]=$CutterID;							
-					}					
-				}
-			}			
-		if (isset($com_Port) === true) 
-			{ 
-			//echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; 
-			}
-		}
-	if (!file_exists("C:\Scripts\Log_Cutter_".$identifier.".csv"))
-		{
-		$handle=fopen("C:\Scripts\Log_Cutter_".$identifier.".csv", "a");
-		fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");
-		fclose($handle);
-		}				
-	//print_r($meter);
-	}
-//echo "Ermittelte Registervariablen als mögliche Quelle für empfangene Daten.\n";	
-//print_r($configPort);		
+/* Configport evaluieren, Konfiguration so umschreiben das sie auf Registervariablen basiert */ 
+$configPort = $Amis->getPortConfiguration($MeterConfig,$cutterActive);
+$amisAvailable = $Amis->getAmisAvailable($MeterConfig);                      /* wird true gesetzt wenn ein AMIS Zähler in der Config vorkommt */
 	
 /******************************************************
 
@@ -149,7 +81,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	 	{
 	 	$amismetername=$configPort[$sender]["Name"];
 		/* parentid1 ist das Data Verzeichnis fuer AMIS */
-		$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		$ID = CreateVariableByName($CategoryIdData, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		$AmisID = CreateVariableByName($ID, "AMIS", 3);
 		$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 		$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */		
@@ -160,7 +92,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 		$handle=fopen("C:\Scripts\Log_Cutter_".$configPort[$sender]["ID"].".csv","a");
 		$ausgabewert=date("d.m.y H:i:s").";".$sender.";".strlen($content).";";
 
-		if ($cutter == true)
+		if ($cutterActive == true)
 			{ /* Es wird ein Cutter eingesetzt, d.h. die RegisterVariable liefert bereits vollstaendige Pakete */
 			fwrite($handle, strtr($ausgabewert.$content,$trans)."\r\n");
 			$content=chr(02).$content.chr(03);	/* Die Zeichen die der Cutter entfernt hat wieder dazu bauen */
@@ -183,7 +115,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 					//$ausgabewert.="Ende**********************;";
 					$ausgabewert.=$ReceiveChar.";";
 					SetValue($AMISReceiveCharID,$ReceiveChar);
-					if ($cutter==false) {	fwrite($handle, strtr($ausgabewert,$trans)."\r\n"); }		/* erst am Ende das Cutter Logfile schreiben */
+					if ($cutterActive==false) {	fwrite($handle, strtr($ausgabewert,$trans)."\r\n"); }		/* erst am Ende das Cutter Logfile schreiben */
 		
 					/* verarbeitung der eingelesenen Telegramme  */
 					/*                                           */
@@ -200,17 +132,30 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 
 					SetValue($AMISReceiveID,date("Y-m-d H:i:s",time()).":".$content);
     				if (strlen($content)>20)
-      				{
+      				    {
 	 					/* Routine funktioniert nur wenn der ganze Verrechnungsdatensatz ausgelesen wird
 		 					Dauer ca. 60 Sekunden
 	 					*/
 						SetValue($ReceiveTimeID,time());
 						anfrage('Fehlerregister','F.F(',')',$content,3,'',$arhid,$zaehlerid);
 						anfrage('Wirkleistung','1.7.0(','*kW)',$content,2,'~Power',$arhid,$zaehlerid);
-						anfrage('Strom L1','31.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
-						anfrage('Strom L2','51.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
-						anfrage('Strom L3','71.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
+
+                        if (isset($configPort[$sender]["Register"]))
+                            {
+                            $Amis->do_register($configPort[$sender]["Register"],$content,$zaehlerid);
+                            }
+                        else
+                            {                        
+                            anfrage('Strom L1','31.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
+                            anfrage('Strom L2','51.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
+                            anfrage('Strom L3','71.7(','*A)',$content,2,'~Ampere',$arhid,$zaehlerid);
+                            }
 						anfrage('Frequenz','14.7(','*Hz)',$content,2,'~Hertz',$arhid,$zaehlerid);
+
+                        if (isset($configPort[$sender]["Calculate"]))
+                            {
+                            $Amis->do_calculate($configPort[$sender]["Calculate"],$content,$zaehlerid);
+                            }                          
 
 						if (anfrage('Wirkenergie','1.8.0(','*kWh)',$content,2,'~Electricity',$arhid,$zaehlerid))
 							{
@@ -262,7 +207,12 @@ if ($_IPS['SENDER'] == "Execute")
 	{
 	echo "\n==================================================================\n";
 	echo "Amis Execute aufgerufen:\n\n";
-	$listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
+	echo "Als erstes die Konfiguration:\n";
+    print_r($MeterConfig);
+    echo "Ermittelte Registervariablen als mögliche Quelle für empfangene Daten von AMIS Zählern:\n";	
+    print_r($configPort);
+    echo "Installierte Module:\n";	
+    $listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
 	foreach ($listCutter as $num => $CutterID)
 		{
 		echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
@@ -288,13 +238,12 @@ if ($_IPS['SENDER'] == "Execute")
 
 	if ($amisAvailable==true)
 		{
-		$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		echo "\nAmis Available, Auswertung über Registervariable erfolgt.Ausgabe Variable von configPort, als zentrales Steuerungselement:\n";
 		print_r($configPort);
 		foreach ($configPort as $config)
 			{	
 			$amismetername=$config["Name"];
-		 	$ID = CreateVariableByName($parentid1, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+		 	$ID = CreateVariableByName($CategoryIdData, $amismetername, 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			echo "------------------------------------------\n";		
 			echo "AMIS Root OID:".$ID."  ".$amismetername."\n";
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);
@@ -307,6 +256,16 @@ if ($_IPS['SENDER'] == "Execute")
 			echo "   Testweise letztes Ergebnis auswerten (AMIS Receive/".$AMISReceiveID."):\n";
 			$content=GetValue($AMISReceiveID);
 	   		echo $content."\n";
+
+            if (isset($config["Register"]))
+                {
+                $Amis->do_register($config["Register"],$content,$zaehlerid);
+                }
+            if (isset($config["Calculate"]))
+                {
+                $Amis->do_calculate($config["Calculate"],$content,$zaehlerid);
+                }                
+               
 			echo "     Fehlerregister : ".Auswerten($content,'F.F(',')')."\n";
 			echo "     Wirkenergie : ".Auswerten($content,'1.8.0(','*kWh)')."kWh \n";
 			$letzterWertID = CreateVariableByName($AmisID, "Letzter Wert", 1);
@@ -326,8 +285,13 @@ function anfragezahlernr($varname,$anfang,$ende,$content){
     return $zaehler_nr_ist;
 };
 
+/*
+ * Anfrage ob in dem String ein Wert zwischen den Zeichenketten anfang und ende steht. Wenn ja , dann unter varname mit den anderen Parametern abspeichern 
+ */
+
 function anfrage($varname, $anfang, $ende, $content, $vartyp, $VariProfile, $arhid, $ParentID){
     $wert = Auswerten($content, $anfang, $ende);
+    if (($debug) && ($wert !== false) ) echo "    Wert ausgelesen : $wert \n";     
     if ($wert) {vars($arhid, $ParentID, $varname, $wert, $vartyp, $VariProfile); return (true); }
     else { return (false); }
 };
@@ -351,18 +315,20 @@ function Auswerten($content,$anfang,$ende){
 
 
 function vars($arhid,$ParentID, $varname, $wert, $vartyp, $VariProfile)
-  {
-$VariID = IPS_GetVariableIDByName($varname, $ParentID);
-    if ($VariID == false)
     {
+    $VariID = @IPS_GetVariableIDByName($varname, $ParentID);
+    if ($VariID === false)
+        {
         $VariID = IPS_CreateVariable ($vartyp);
         IPS_SetVariableCustomProfile($VariID, $VariProfile);
         IPS_SetName($VariID,$varname);
-          AC_SetLoggingStatus($arhid, $VariID, true);
+        AC_SetLoggingStatus($arhid, $VariID, true);
         IPS_SetParent($VariID,$ParentID);
-    }
+        }
+    if (GetValue($VariID) != $wert) IPSLogger_Dbg(__file__, 'AMISCutter: Write Variable ID '.$VariID.' ('.IPS_GetName(IPS_GetParent($VariID)).'.'.IPS_GetName($VariID).') mit neuem Wert '.$wert.' und Wert vorher '.GetValue($VariID));	
+    else IPSLogger_Dbg(__file__, 'AMISCutter: Write Variable ID '.$VariID.' ('.IPS_GetName(IPS_GetParent($VariID)).'.'.IPS_GetName($VariID).') mit unverändertem Wert '.$wert);
     SetValue($VariID, $wert);
-  };
+    }
 
 
 	   

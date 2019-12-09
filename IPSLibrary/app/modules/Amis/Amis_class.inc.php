@@ -26,18 +26,25 @@
      * sendReadCommandAmis
      * writeEnergyHomematics
      * writeEnergyHomematic
+     * writeEnergyRegister
+     * writeEnergySumme
+     * writeEnergyAmis
      *
-     *
+     * writeEnergyRegistertoString
+     * writeEnergyRegistertValueoString
+     * writeEnergyTable
+     * writeEnergyRegistertoArray
      *
      ********************************************************************/
 
 	class Amis {
 
-
-		var $parentid=0;
+        var $CategoryIdData, $CategoryIdApp;
 		var $archiveHandlerID=0;
 		
 		var $MeterConfig;
+
+        var $ipsOps;
 		
 		/**
 		 * @public
@@ -47,9 +54,15 @@
 		 */
 		public function __construct() 
 			{
-			$this->parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Amis');
+            $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	        $moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
+	        $this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	        $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			$this->MeterConfig = $this->getMeterConfig();
+
+            $this->ipsOps = new ipsOps();
 			}
 
         /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
@@ -73,6 +86,201 @@
                 }
 
             return ($result);
+            }
+
+        /* getWirkenergieID aus der Config
+         *
+         */
+
+        public function getWirkenergieID($meter)
+            {
+            $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData,);                 
+            $variableID=false;
+            if (isset($meter["WirkenergieID"]) == true )	 
+                { 
+                $variableID = $meter["WirkenergieID"]; 
+                }
+            else
+                {
+                /* Variable ID selbst festlegen */
+                //echo "     Variable Wirkenergie selber anlegen. nicht in Konfiguration vorgesehen:\n";
+                switch (strtoupper($meter["TYPE"]))
+                    {
+                    case "AMIS":
+                        $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
+                        $variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $AmisID );
+                        //$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+                        //$variableID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
+                        break;
+                    case "HOMEMATIC":
+                    case "REGISTER":
+                    case "SUMME": 
+                        $variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        break;
+                    default:
+                        //echo "Fehler, Type noch nicht bekannt.\n";
+                        break;	
+                    }        
+                //print_r($meter);
+                }
+			return ($variableID);
+            }
+
+        /* beliebiges Register aus den Zaehlervariablen heraussuchen */
+
+        public function getZaehlervariablenID($meter, $name)
+            {
+            $ID = IPS_GetObjectIDByName($meter["NAME"], $this->CategoryIdData,);                  
+            $variableID=false;
+            switch (strtoupper($meter["TYPE"]))
+                {
+                case "AMIS":
+                    $AmisID = IPS_GetObjectIDByName( "AMIS", $ID);
+                    //echo "AmisID $AmisID (".$this->ipsOps->path($AmisID).")\n"; 
+                    $zaehlervarID = IPS_GetObjectIDByName ( 'Zaehlervariablen' , $AmisID );
+                    //echo "ZaehlervariablenID $zaehlervarID (".$this->ipsOps->path($zaehlervarID).")\n"; 
+                    $variableID = IPS_GetObjectIDByName ( $name , $zaehlervarID );
+                    //echo "variableID $variableID (".$this->ipsOps->path($variableID).")\n"; 
+                default:
+                    break;	
+                }        
+			return ($variableID);
+            }
+
+
+    /* configurePort, die AMIS Konfiguration anders anordnen und gleich die Variablen anlegen 
+     * Parameter sind die Konfiguration udn der Parameter ob die IPS Cutter Funktion verwendet weird (true) oder nicht
+     *
+     *
+     */
+
+        public function getPortConfiguration($MeterConfig, $cutter)
+            {
+            $configPort=array();
+            foreach ($MeterConfig as $identifier => $meter)
+                {
+                $ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                if ($meter["TYPE"]=="Amis")
+                    {
+                    //echo"-------------------------------------------------------------\n";
+                    //echo "Create AMIS Variableset for :".$meter["NAME"]." (".$identifier.") \n";
+                    $amismetername=$meter["NAME"];
+                    $amisAvailable=true;
+                    //echo "Amis Zähler, verfügbare Ports:\n";			
+                    
+                    $AmisID = CreateVariableByName($ID, "AMIS", 3);
+                    $ReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
+                        
+                    // Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
+                    $AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
+                    $AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
+
+                    // Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
+                    $zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
+                    $variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
+                        
+                    //Hier die COM-Port Instanz festlegen
+                    $serialPortID = IPS_GetInstanceListByModuleID('{6DC3D946-0D31-450F-A8C6-C42DB8D7D4F1}');
+                    foreach ($serialPortID as $num => $serialPort)
+                        {
+                        //echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
+                        if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+                            { 
+                            $com_Port = $serialPort;
+                            $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+                            if (IPS_InstanceExists($regVarID) && ($cutter==false) )
+                                {
+                                //echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
+                                $configPort[$regVarID]["Name"]=$amismetername;	
+                                $configPort[$regVarID]["ID"]=$identifier;	
+                                $configPort[$regVarID]["Port"]=$serialPort;																				 
+                                }
+                            }	
+                        if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
+                            { 
+                            $com_Port = $serialPort; 
+                            $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
+                            if (IPS_InstanceExists($regVarID) && ($cutter==false) )
+                                {
+                                echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
+                                $configPort[$regVarID]["Name"]=$amismetername;	
+                                $configPort[$regVarID]["ID"]=$identifier;
+                                $configPort[$regVarID]["Port"]=$serialPort;							
+                                }					
+                            }				
+                        }
+                    $listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
+                    foreach ($listCutter as $num => $CutterID)
+                        {
+                        if (IPS_GetName($CutterID) == $identifier." Cutter")
+                            { 
+                            //echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
+                            $result=IPS_getConfiguration($CutterID);
+                            //echo "        ".$result."\n";
+                            $childrenIDs=IPS_GetInstanceChildrenIDs($CutterID);
+                            //print_r($childrenIDs);
+                            $parentID=IPS_GetInstanceParentID($CutterID);
+                            //echo "         ParentID mit OID ".$parentID." und Bezeichnung ".IPS_GetName($parentID)."\n";
+                            $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$CutterID);
+                            if (IPS_InstanceExists($regVarID) && ($cutter==true))
+                                {
+                                //echo "        Registervariable : ".$regVarID."\n";
+                                $configPort[$regVarID]["Name"]=$amismetername;	
+                                $configPort[$regVarID]["ID"]=$identifier;
+                                $configPort[$regVarID]["Port"]=$CutterID;							
+                                }					
+                            }  // Registervariable mit Cutter gefunden
+                        }	// alle Cutter durchgehen
+
+                            
+                    if (isset($com_Port) === true) 
+                        { 
+                        //echo "\nAMIS Zähler Serial Port auf OID ".$com_Port." definiert.\n"; 
+                        }
+                    if ( (isset($configPort[$regVarID])) && (isset($meter["REGISTER"])) )
+                        {
+                        $configPort[$regVarID]["Register"]=$meter["REGISTER"];							
+                        if (isset($meter["CALCULATION"]))
+                            {
+                            $configPort[$regVarID]["Calculate"]=$meter["CALCULATION"];   
+                            } 
+                        if (isset($meter["CALCULATE"]))
+                            {
+                            $configPort[$regVarID]["Calculate"]=$meter["CALCULATE"];   
+                            }                                                    							
+                        }
+                    }  // if AMIS Zähler
+                if (!file_exists("C:\Scripts\Log_Cutter_".$identifier.".csv"))
+                    {
+                    $handle=fopen("C:\Scripts\Log_Cutter_".$identifier.".csv", "a");
+                    fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");
+                    fclose($handle);
+                    }				
+                //print_r($meter);
+                }
+            //echo "Ermittelte Registervariablen als mögliche Quelle für empfangene Daten.\n";	
+            return ($configPort);		
+            }
+
+
+    /* aus der AMIS Konfiguration rausfinden ob ein AMIS Zähler enthalten ist
+     *
+     *
+     */
+
+        public function getAmisAvailable($MeterConfig)
+            {
+            $amisAvailable=false;                
+            foreach ($MeterConfig as $identifier => $meter)
+                {
+                if ($meter["TYPE"]=="Amis")
+                    {
+                    $amisAvailable=true;
+                    }  // if AMIS Zähler
+                }
+            return ($amisAvailable);		
             }
 
 
@@ -157,7 +365,7 @@
 				{
 				$amisAvailable=true;
 	 			echo "Werte von : ".$meter["NAME"]."\n";
-				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */				
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */				
 				$AmisID = CreateVariableByName($ID, "AMIS", 3);
 				$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */				
 				$AmisReadMeterID = CreateVariableByName($AmisID, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -271,7 +479,7 @@
 					$homematicAvailable=true;
 					echo "Werte von : ".$meter["NAME"]."\n";
 	   		      
-					$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -329,7 +537,7 @@
 				$homematicAvailable=true;
 				echo "Werte von : ".$meter["NAME"]."\n";
 			      
-				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -411,8 +619,8 @@
 					{
 					if ($meter["OID"]==$oid) 
 						{
-						//$catID=IPS_GetCategoryIDByName($meter["NAME"], $this->parentid);
-						$catID=IPS_GetVariableIDByName($meter["NAME"], $this->parentid);
+						//$catID=IPS_GetCategoryIDByName($meter["NAME"], $this->CategoryIdData);
+						$catID=IPS_GetVariableIDByName($meter["NAME"], $this->CategoryIdData);
 						$result["EnergieID"]=IPS_GetVariableIDByName("Wirkenergie", $catID);
 						$result["LeistungID"]=IPS_GetVariableIDByName("Wirkleistung", $catID);
 						echo "    gefunden : ".$oid." in ".$identifier." und Kategorie ".$catID." (".IPS_GetName($catID).") \n";
@@ -440,28 +648,74 @@
 				$registerAvailable=true;
 				echo "Werte von : ".$meter["NAME"]."\n";
 			      
-				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				if ( isset($meter["OID"]) == true )
 					{
+                    if ( isset($meter["OIDTYPE"]) == true ) $regType=strtoupper($meter["OIDTYPE"]);
+                    elseif ( isset($meter["OIDType"]) == true ) $regType=strtoupper($meter["OIDType"]);
+                    else $regType="kWh"; 
 					$HMenergieID = $meter["OID"];
-					echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : nicht bekannt\n";
-					}
-				else
-					{
-					//$HMenergieID  = $meter["HM_EnergieID"];
-					//$HMleistungID = $meter["HM_LeistungID"];
-					}
-				//$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-				$energie=GetValue($HMenergieID); /* Homematic Wert ist in kWh, nicht umrechnen */
-				$leistung=($energie-GetValue($EnergieID))*4;
-
-				SetValue($EnergieID,$energie);
-				SetValue($LeistungID,$leistung);
-				echo "  Werte aus dem Register : ".$energie." kWh  ".GetValue($HMenergieID)." W\n";
+					echo "  OID des Register für die Messung aus der Konfiguration, Type ist $regType";
+                    echo " Energie OID: ".$HMenergieID." (".IPS_GetName($HMenergieID).") Leistung OID: nicht bekannt\n";
+ 
+                    $leistungStore=false;
+                    switch (strtoupper($regType))
+                        {
+                        case "KWH":
+        	    			$energie=GetValue($HMenergieID);            /* Register Wert ist in kWh, nicht umrechnen */
+                            break;
+                        case "WH":
+    				        $energie=GetValue($HMenergieID)/1000;       /* Register Wert ist in Wh, in kWh umrechnen */
+                            break;
+                        case "KW":
+    				        $leistung=GetValue($HMenergieID);           /* Register Wert ist in kW  */
+                            $lastAChanged=IPS_GetVariable($HMenergieID)["VariableUpdated"];
+                            $timeAChanged=time()-$lastAChanged;
+                            echo "   Wert in A, letzte Änderung des Wertes war ".date("d.m.Y H:i:s",$lastAChanged)."  vor $timeAChanged Sekunden\n";
+                            $energie=$leistung*$timeAChanged/3600;
+                            echo "   Energie  $energie kWh  Leistung $leistung kW \n";
+                            $leistungStore=true;
+                            break;
+                        case "A":
+    				        $leistung=GetValue($HMenergieID)*230/1000; /* Homematic Wert ist in A in W umrechnen, in kW umrechnen */
+                            $lastAChanged=IPS_GetVariable($HMenergieID)["VariableUpdated"];
+                            $timeAChanged=time()-$lastAChanged;
+                            echo "   Wert in A, letzte Änderung des Wertes war ".date("d.m.Y H:i:s",$lastAChanged)."  vor $timeAChanged Sekunden\n";
+                            $energie=$leistung*$timeAChanged/3600;
+                            echo "   Energie  $energie kWh  Leistung $leistung kW \n";
+                            $leistungStore=true;
+                            break;
+                        default:
+        	    			$energie=GetValue($HMenergieID); /* Homematic Wert ist in kWh, nicht umrechnen */
+                            break;
+                        }
+                    if ($leistungStore)
+                        {
+                        SetValue($EnergieID,GetValue($EnergieID)+$energie);
+                        SetValue($LeistungID,$leistung);
+                        }
+                    else
+                        {
+                        //print_r(IPS_GetObject($EnergieID));
+                        //print_r(IPS_GetVariable($EnergieID));
+                        $lastChanged=IPS_GetVariable($EnergieID)["VariableUpdated"];
+                        $timeChanged=time()-$lastChanged;    // in Sekunden
+                        //echo "    Last changed ".date("d.m.Y H:i:s",IPS_GetVariable($EnergieID)["VariableChanged"])."   Wert  :  ".GetValue($EnergieID)." \n";
+                        echo "  Last updated ".date("d.m.Y H:i:s",$lastChanged)." seit $timeChanged Sekunden,  Wert  :  ".GetValue($EnergieID)." \n";
+                        $leistung = (($energie-GetValue($EnergieID))/$timeChanged*3600);
+                        echo "  Umgerechnete Werte aus dem Register : ".$energie." kWh abgeleitet von ".GetValue($HMenergieID)." $regType, vorher war ".GetValue($EnergieID)." Unterschied ".(($energie-GetValue($EnergieID))*1000)." Wh $regType ,  Leistung : $leistung kW\n";
+                        if ($timeChanged>880)   // nur alle 15 Minuten schreiben
+                            {
+                            $leistung=($energie-GetValue($EnergieID))*4;
+                            SetValue($EnergieID,$energie);
+                            SetValue($LeistungID,$leistung);
+                            }
+                        }
+                    }
 				}
 			return ($registerAvailable);
 			}
@@ -486,7 +740,7 @@
 				$registerAvailable=true;
 				echo "Werte von : ".$meter["NAME"]."\n";
 			      
-				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -531,7 +785,7 @@
 				$amisAvailable=true;
 	 			echo "Werte von : ".$meter["NAME"]."\n";
 	
-				$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 	    		$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	    		$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -636,7 +890,7 @@
 					{
 					echo "-----------------------------".$newline;
 					echo "Werte von : ".$meter["NAME"].$newline;
-					$ID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -1131,7 +1385,7 @@
 		
 		function getAMISDataOids()
 			{
-			return(CreateVariableByName($this->parentid, "Zusammenfassung", 3)); 
+			return(CreateVariableByName($this->CategoryIdData, "Zusammenfassung", 3)); 
 			}
 			
 		/* 
@@ -1151,7 +1405,7 @@
 					echo "-----------------------------\n";
 					echo "Werte von : ".$meter["NAME"]."\n";
 					}
-				$meterdataID = CreateVariableByName($this->parentid, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$meterdataID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 				/* ID von Wirkenergie bestimmen */
 				switch ( strtoupper($meter["TYPE"]) )
 					{	
@@ -1248,8 +1502,361 @@
 			
 			return($zeile);
 			}
+
+        /* Messwerte aus dem Archive auslesen und gleichzeitig eine Plausicheck machen
+         *
+         * type unterscheidet "" für Energie das sind Zählwerte, "A" zB für Messwerte
+         *
+         */
+
+        function getArchiveData($variableID, $starttime, $endtime, $type="")
+            {
+            $object = @IPS_GetObject($variableID);
+            if ($object === false) 
+                {
+                echo "FEHLER, Variable mit ID  $variableID  nicht vorhanden.\n";
+                return(false);                
+                }
+            $display=true;
+            $delete=false;          // damit werden geloggte Werte gelöscht
+
+            $initial=true;
+            $ergebnis=0;
+            $vorigertag="";
+            $disp_vorigertag="";
+            $neuwert=0;
+
+            $vorwert=0;
+            $zaehler=0;
+            //$variableID=44113;               
+            echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
+            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            
+            $increment=1;
+            //echo "Increment :".$increment."\n";
+            $gepldauer=($endtime-$starttime)/24/60/60;
+            do {
+                /* es könnten mehr als 10.000 Werte sein
+                    Abfrage generisch lassen
+                */
+
+                $werte = AC_GetLoggedValues($this->archiveHandlerID, $variableID, $starttime, $endtime, 0);
+                /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+                    Nicht mer als 10.000 Werte ...
+                */
+                //print_r($werte);
+                $anzahl=count($werte);
+                echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
+
+                if (($anzahl == 0) & ($zaehler == 0)) 
+                    {
+                    echo " Keine Werte archiviert. \n";
+                    break;
+                    }   // hartes Ende der Schleife wenn keine Werte vorhanden
+
+                if ($initial)
+                    {
+                    /* allererster Durchlauf */
+                    $ersterwert=$werte['0']['Value'];
+                    $ersterzeit=$werte['0']['TimeStamp'];
+                    }
+
+                if ($anzahl<10000)
+                    {
+                    /* letzter Durchlauf */
+                    $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+                    $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+                    //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
+                    //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
+                    }
+
+                $initial=true;
+
+                foreach($werte as $wert)
+                    {
+                    $zeit=$wert['TimeStamp'];
+                    $tag=date("d.m.Y", $zeit);
+                    $aktwert=(float)$wert['Value'];
+
+                    if ($initial)
+                        {
+                        //print_r($wert);
+                        $initial=false;
+                        $vorwert=$aktwert;
+                        echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+                        }
+                    if ($type=="")      // unplausible Werte bei Energiemessung rausfiltern */
+                        {                        
+                        $vorwertCalc=$vorwert;                    
+                        if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
+                            {
+                            if ($delete==true)
+                                {
+                                AC_DeleteVariableData($this->archiveHandlerID, $variableID, $zeit, $zeit);
+                                }
+                            echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            }
+                        else
+                            {
+                            $vorwert=$aktwert;
+                            }
+                        if ($tag!=$vorigertag)
+                            { /* neuer Tag */
+                            $altwert=$neuwert;
+                            $neuwert=$aktwert;
+                            switch ($increment)
+                                {
+                                case 1:
+                                    $ergebnis=$aktwert;
+                                    break;
+                                case 2:
+                                    if ($altwert<$neuwert)
+                                        {
+                                        $ergebnis+=($neuwert-$altwert);
+                                        }
+                                    else
+                                        {
+                                        //$ergebnis+=($altwert-$neuwert);
+                                        //$ergebnis=$aktwert;
+                                        }
+                                    break;
+                                case 0:
+                                    $ergebnis+=$aktwert;
+                                    break;
+                                default:
+                                }
+                            $vorigertag=$tag;
+                            }
+                        }
+                    if ( ($display==true) && ($type=="") )
+                        {
+                        /* jeden Eintrag ausgeben */
+                        //print_r($wert);
+                        if ($vorwertCalc != $aktwert)
+                            {
+                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            }
+                        else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                        }
+                    if ( ($display==true) && ($type=="A") )
+                        {
+                        /* jeden Eintrag ausgeben */
+                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."\n";
+                        }
+
+                    $zaehler+=1;
+                    }
+                        //$endtime=$zeit;
+                } while (count($werte)==10000);
+            }
+
 		
-										
+        /* aus den Archivedaten den grössten Wert finden 
+         */
+
+        function getArchiveDataMax($variableID, $starttime, $endtime, $display=false)
+            {
+            $object = @IPS_GetObject($variableID);
+            if ($object === false) return(false);
+
+            $maxwert=0;
+            $zaehler=0;
+            //$variableID=44113;               
+            echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
+            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            
+            $gepldauer=($endtime-$starttime)/24/60/60;
+
+            $initial=true;                  // ersten Wert anders behandeln
+            do {
+                /* es könnten mehr als 10.000 Werte sein, Abfrage generisch lassen, wird mehrmals durchlaufen */
+
+                $werte = AC_GetLoggedValues($this->archiveHandlerID, $variableID, $starttime, $endtime, 0);
+                $anzahl=count($werte);
+                echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
+
+                if (($anzahl == 0) & ($zaehler == 0)) 
+                    {
+                    echo " Keine Werte archiviert. \n";
+                    return (false);
+                    }   // hartes Ende der Schleife wenn keine Werte vorhanden
+
+                if ($initial)
+                    {
+                    /* allererster Durchlauf */
+                    $ersterwert=$werte['0']['Value'];
+                    $ersterzeit=$werte['0']['TimeStamp'];
+                    }
+
+                if ($anzahl<10000)
+                    {
+                    /* letzter Durchlauf */
+                    $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+                    $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+                    //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
+                    //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
+                    }
+
+                $initial=true;
+
+                foreach($werte as $wert)
+                    {
+                    $zeit=$wert['TimeStamp'];
+                    $tag=date("d.m.Y", $zeit);
+                    $aktwert=(float)$wert['Value'];
+
+                    if ($initial)
+                        {
+                        //print_r($wert);
+                        $initial=false;
+                        $maxwert=$aktwert;
+                        echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+                        }
+                    if ($aktwert > $maxwert) $maxwert=$aktwert;
+                    if ($display==true) 
+                        {
+                        /* jeden Eintrag ausgeben */
+                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."    aktuelles Max ist $maxwert. \n";
+                        }
+                    $zaehler+=1;
+                    }
+                        //$endtime=$zeit;
+                } while (count($werte)==10000);
+            return ($maxwert);
+            }
+
+    /******************************************************************************************************************/
+
+        /*
+         * Routinen werden für die Auswertung der Datenströme vom Zähler und zusätzlichen berechnungen verwendet
+         */
+
+        function do_register($config,$content,$zaehlerid)
+            {
+            echo "Alle konfigurierten Register auslesen:\n";
+            //print_r($config["Register"]);
+            foreach ($config as $name => $filterConf)
+                {
+                echo " *   $name Filter : ".$filterConf[0]."%".$filterConf[1]."  Variablenprofil : ".$filterConf[2]."\n"; 
+                if ((count($filterConf))==3)
+                    {   
+                    //print_r($filterConf);
+                    anfrage($name, $filterConf[0],$filterConf[1],$content,2,$filterConf[2],$this->archiveHandlerID,$zaehlerid,true);
+                    }
+                }   
+            }
+
+        function do_calculate($config,$content,$zaehlerid)
+            {
+            echo "Weitere Register kalkulieren:\n";
+            foreach ($config as $name => $filterConf)
+                {
+                if ((count($filterConf))==4)
+                    {
+                    echo " *   $name  : ".$filterConf[0]." mit Variable 1 : ".$filterConf[1]."  Variable 2 : ".$filterConf[2]."  Variablenprofil : ".$filterConf[3]."\n"; 
+                    switch (strtoupper($filterConf[0]))
+                        {
+                        case "MULTIPLY":     
+                            $var1ID=IPS_GetObjectIDByName($filterConf[1],$zaehlerid);
+                            $var2ID=IPS_GetObjectIDByName($filterConf[2],$zaehlerid);                         
+                            if ( ($var1ID !== false) && ($var2ID !== false) )
+                                {                                    
+                                $wert=(GetValue($var1ID)*GetValue($var2ID))/1000;
+                                echo "    Wert berechnet : $wert kW\n"; 
+                                vars($this->archiveHandlerID, $zaehlerid, $name, $wert, 2, $filterConf[3]);                                    
+                                //anfrage($name, $filterConf[0],$filterConf[1],$content,2,$filterConf[2],$arhid,$zaehlerid,true);
+                                }
+                            break;                                
+                        case "MAX":     
+                            $var1ID=IPS_GetObjectIDByName($filterConf[1],$zaehlerid);
+                            $timeBack=strtotime("-".$filterConf[2]);
+                            echo "     Datum ab : ".date("D d.m.Y H:i:s",$timeBack)."\n";
+                            if ($var1ID !== false)
+                                {
+                                $maxWert = $this->getArchiveDataMax($var1ID, $timeBack, time());  
+                                echo "    Wert berechnet ".$filterConf[1]." $var1ID (".$this->ipsOps->path($var1ID).")   MaxWert : $maxWert \n";
+                                vars($this->archiveHandlerID, $zaehlerid, $name, $maxWert, 2, $filterConf[3]);   	
+                                }
+                            
+                            break;
+                        default:
+                            print_r($filterConf);
+                            break;                        
+                        }
+                    }
+                }       // ende foreach
+            }										
+
+
+        /******************************************************
+        *
+        * Summestartende,
+        *
+        * Gemeinschaftsfunktion, fuer die manuelle Aggregation von historisierten Daten
+        *
+        * Eingabe Beginnzeit Format time(), Endzeit Format time(), 0 Statuswert 1 Inkrementwert 2 test, false ohne Hochrechnung
+        * Parameter increment_var muss immer 1 sein.
+        *
+        *
+        * Es werden bereits aggregierte Werte aus dem Archive ausgelesen
+        *
+        * Routine fehlerhaft bei Ende Sommerzeit, hier wird als Startzeit -30 Tage eine Stunde zu wenig berechnet 
+        *
+        ******************************************************************************************/
+
+        function summestartende($starttime, $endtime, $increment_var, $estimate, $variableID, $display=false )
+            {
+            if ($display)
+                {
+                echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
+                echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";                    
+                }
+            $zaehler=0;
+            $ergebnis=0;
+            $increment=(integer)$increment_var;
+                
+            do {
+                /* es könnten mehr als 10.000 Werte sein
+                    Abfrage generisch lassen
+                */
+                
+                // Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
+                $aggWerte = AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+                $aggAnzahl=count($aggWerte);
+                //print_r($aggWerte);
+                foreach ($aggWerte as $entry)
+                    {
+                    if (((time()-$entry["MinTime"])/60/60/24)>1) 
+                        {
+                        /* keine halben Tage ausgeben */
+                        $aktwert=(float)$entry["Avg"];
+                        if ($display) echo "     ".date("D d.m.Y H:i:s",$entry["TimeStamp"])."      ".$aktwert."\n";
+                        switch ($increment)
+                            {
+                            case 0:
+                            case 2:
+                                echo "*************Fehler.\n";
+                                break;
+                            case 1:        /* Statuswert, daher kompletten Bereich zusammenzählen */
+                                $ergebnis+=$aktwert;
+                                break;
+                            default:
+                            }
+                        }
+                    else
+                        {
+                        $aggAnzahl--;
+                        }	
+                    }
+                if (($aggAnzahl == 0) & ($zaehler == 0)) {return 0;}   // hartes Ende wenn keine Werte vorhanden
+                
+                $zaehler+=1;
+                    
+                } while (count($aggWerte)==10000);		
+            if ($display) echo "   Variable: ".IPS_GetName($variableID)." mit ".$aggAnzahl." Tageswerten und ".$ergebnis." als Ergebnis.\n";
+            return $ergebnis;
+            }
+
 			
 		}  // ende class
 

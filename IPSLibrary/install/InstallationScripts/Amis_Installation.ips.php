@@ -45,6 +45,8 @@
  * Die AMIS zähler können über den IPS integrierten Cutter oder über eine
  * im PHP erstellte Routine ausgelesen werden.
  *
+ * Script MomentanwerteAbfragen wird jede Minute aufgerufen
+ *
  *************************************************************/
 
 $cutter=true;
@@ -75,20 +77,29 @@ $cutter=true;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Amis');       /*   <--- change here */
-	echo "\nAmis Modul Version : ".$ergebnis;    										/*   <--- change here */
+	echo "\nAmis Modul Version : ".$ergebnis."\n\n";    										/*   <--- change here */
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+    $ipsOps = new ipsOps();
+    $dosOps = new dosOps();
+	$wfcHandling = new WfcHandling();		
+
+	/***********************
+	 *
+	 * Webfront Konfiguration auslesen
+	 * 
+	 **************************/
+
+    //$wfcHandling->read_wfc();
 
 	/***********************
 	 *
 	 * Webfront GUID herausfinden und Konfiguratoren anlegen
 	 * 
 	 **************************/
-	
-	$wfcHandling = new WfcHandling();		
-    $wfcHandling->read_wfc();
 	
 	echo "\n\n";
 	$WebfrontConfigID=array();
@@ -107,12 +118,10 @@ $cutter=true;
 		}
 	//print_r($WebfrontConfigID);
 	
-	/* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
-	if ( isset($WebfrontConfigID["Administrator"]) == false )
-	//$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
-	//if(!IPS_InstanceExists($AdministratorID))
+	if ( isset($WebfrontConfigID["Administrator"]) == false )       /* webfront Administrator Configuratoren anlegen, wenn noch nicht vorhanden */
 		{
-		echo "\nWebfront Configurator Administrator  erstellen !\n";
+    	//$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
+	    //if(!IPS_InstanceExists($AdministratorID))		echo "\nWebfront Configurator Administrator  erstellen !\n";
 		$AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
 		IPS_SetName($AdministratorID, "Administrator");
 		$config = IPS_GetConfiguration($AdministratorID);
@@ -122,15 +131,15 @@ $cutter=true;
 		$WebfrontConfigID["Administrator"]=$AdministratorID;
 		echo "Webfront Configurator Administrator aktiviert. \n";
 		}
-	else
+	else                                                        /* webfront Administrator Configurator ID nur speichern, da schon vorhanden */
 		{
 		$AdministratorID = $WebfrontConfigID["Administrator"];
 		}		
 
-	if ( isset($WebfrontConfigID["User"]) == false )
+	if ( isset($WebfrontConfigID["User"]) == false )                /* webfront User Configuratoren anlegen, wenn noch nicht vorhanden */
+		{
 		//$UserID = @IPS_GetInstanceIDByName("User", 0);
 		//if(!IPS_InstanceExists($UserID))
-		{
 		echo "\nWebfront Configurator User  erstellen !\n";
 		$UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
 		IPS_SetName($UserID, "User");
@@ -141,7 +150,7 @@ $cutter=true;
 		$WebfrontConfigID["User"]=$UserID;
 		echo "Webfront Configurator User aktiviert. \n";
 		}
-	else
+	else                                                         /* webfront User Configurator ID nur speicher, da schon vorhanden */
 		{
 		$UserID = $WebfrontConfigID["User"];
 		}	
@@ -155,6 +164,9 @@ $cutter=true;
 	 * Webfront Konfigurationen herausfinden
 	 * 
 	 **************************/
+
+    $configWFront=$ipsOps->configWebfront($moduleManager);
+    print_r($configWFront);
 
 	echo "\nWebuser activated : ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
@@ -350,6 +362,7 @@ $cutter=true;
 	//$MeterConfig = get_MeterConfiguration();
 	$MeterConfig = $Amis->getMeterConfig();
 
+	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	$MeterReadDefault=true;
 	if ( function_exists("get_AmisConfiguration") )
 		{
@@ -361,12 +374,10 @@ $cutter=true;
 		}
 	//print_r($MeterConfig);
 	
-	/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
 	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
 	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
 	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "Zaehlt",$scriptIdAmis,$MeterReadDefault,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */		
 	SetValue($MeterReadID,$MeterReadDefault);
-
 	
 	/* Links für Webfront identifizieren 
 	 *  Struktur [Tab] [Left, Right] [LINKID] ["NAME"]="Name"

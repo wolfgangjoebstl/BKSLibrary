@@ -1,5 +1,33 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */  
+
+/*******************************************************
+ *
+ * schreiben des Startpage html Strings in der htmlbox der Startpage
+ *
+ *
+ *
+ *
+ **************************************/
+
+$debug=false;
+
 /********************************************* CONFIG *******************************************************/
 
 ini_set('memory_limit', '-1');
@@ -19,7 +47,7 @@ $bilderverzeichnis=$configuration["Directories"]["Pictures"];
 
 //$StartPageTypeID = CreateVariableByName($parentid, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 $StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
-//echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).")\n";
+if ($debug) echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
 
 $variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $parentid, 40, '~HTMLBox', null,null,"");
 
@@ -83,7 +111,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
     $file=$startpage->readPicturedir();
     $maxcount=count($file);
     $showfile=rand(1,$maxcount-1);
-    //echo $maxcount."  ".$showfile."\n";;
+    if ($debug) echo "StartpageTypeID ist 1. Parameter : $maxcount   $showfile \n";;
     //print_r($file);
 
     if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
@@ -91,7 +119,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     // Get new dimensions
     list($width, $height) = getimagesize($startpage->picturedir.$datei);
-    //echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
+    if ($debug) echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
 
     $new_width=1920;
     $percent=$new_width/$width;
@@ -103,7 +131,7 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         $percent=$new_height/$height;
         $new_width = $width * $percent;
         }
-    //echo "New Size : (".$new_width." x ".$new_height.").\n";
+    if ($debug) echo "New Size : (".$new_width." x ".$new_height.").\n";
 
     // Resample
     $image_p = imagecreatetruecolor($new_width, $new_height);
@@ -118,20 +146,24 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
 /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
+if ($debug) echo "aggregate Openweather.\n";
 $startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
+if ($debug) echo "write Summary Openweather.\n";
 $startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
 
 /**************************************** und jetzt die Startpage darstellen *********************************************************/
 
 /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
-SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile));
+if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
+SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
 
 
 /**************************************** PROGRAM EXECUTE *********************************************************/
 
  if ($_IPS['SENDER']=="Execute")
 	{
+    echo "\n================================================================\n"; 
 	echo "Execute aufgerufen:\n";
 	echo "\nKonfigurationseinstellungen:\n";
 	print_r($configuration);

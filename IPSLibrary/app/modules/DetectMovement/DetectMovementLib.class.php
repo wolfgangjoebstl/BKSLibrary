@@ -31,7 +31,7 @@
      *
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
-     * DetectHandler provides the following functions
+     * DetectHandler provides the following functions as abstract class
 	 *	StoreEventConfiguration
 	 *	CreateEvents
 	 *	ListEvents
@@ -366,11 +366,16 @@
 		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
 		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
 		 * Konfigurations File.
+         *
+         * Beispiel $Handler->RegisterEvent($soid,'Topology','Wohnzimmer','Temperature,Weather');
 		 *
 		 * @param integer $variableId ID der auslösenden Variable
 		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
 		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
 		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
+         *
+         * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
+         *
 		 */
 		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
 			{
@@ -387,13 +392,13 @@
 				//print_r($moduleParamsNew);
 				$moduleClassNew  = $moduleParamsNew[0];
 
-				$params = $configurationAuto[$variableId];
+				$params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
 				//print_r($params);
-				for ($i=0; $i<count($params); $i=$i+3)
+				for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
 					{
-					$moduleParamsCfg = $params[$i+2];
-					$moduleParamsCfg = explode(',', $moduleParamsCfg);
-					$moduleClassCfg  = $moduleParamsCfg[0];
+					$moduleParamsCfg = $params[$i+2];           
+					$moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
+					$moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
 					// Found Variable and Module --> Update Configuration
 					//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
 					/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
@@ -406,8 +411,22 @@
 						} */
 					$found = true;
 					$configurationAuto[$variableId][$i]   = $eventType;
+                    /* überschreiben oder doch nicht genauer machen. 
+                     * Es werden nur nicht leere neue Parameter überschrieben. Dazu wird auch in subarrays unterschieden.
+                     */
 					if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-					if ($moduleParams != "") {	$configurationAuto[$variableId][$i+2] = $moduleParams; }
+					if ($moduleParams != "") 
+                        {
+                        $moduleParamsCfgNewCount=count($moduleParamsNew);
+                        if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )
+                            {
+                            for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
+                                {
+                                if ($moduleParamsCfg[$j] != "") $moduleParams[$j]=$moduleParamsNew[$j];
+                                }
+                            } 
+                        else $configurationAuto[$variableId][$i+2] = $moduleParams; 
+                        }
 					}
 				}
 

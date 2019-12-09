@@ -28,7 +28,7 @@
  *	
  */
 
-$ExecuteExecute=false;
+$ExecuteExecute=false;          // false Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
 
 /******************************************************
  *
@@ -568,6 +568,11 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
         foreach ($devices as $device) echo "     ".$device."\n";
         }
 
+/* wenn DetectMovement installiert ist zusaetlich zwei Konfigurationstabellen evaluieren
+ *
+ *
+ */
+
 if (isset($installedModules["DetectMovement"]))
     {
     echo "\n";
@@ -652,8 +657,10 @@ if (isset($installedModules["DetectMovement"]))
 
 
 
-	/*-----------------------------------------------------------------*/
-																																													
+
+if (false)
+    {
+	/*--------------------------nur zur Ausgabe und Kontrolle---------------------------------------*/
     echo "\n";
     echo "=======================================================================\n";
 	echo "Jetzt in den einzelnen Katgorien die Links hineinsortieren :\n";
@@ -711,9 +718,8 @@ if (isset($installedModules["DetectMovement"]))
     else "FEHLER, function IPSDetectDeviceHandler_GetEventConfiguration noch nicht angelegt.\n";    
 
 	print_r($topologyPlusLinks);
-
-
     /*-----------------------------------------------------------------*/
+    }
 																																													
     echo "\n";
     echo "=======================================================================\n";

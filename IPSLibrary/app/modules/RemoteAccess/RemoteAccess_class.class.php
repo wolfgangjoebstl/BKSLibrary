@@ -144,14 +144,28 @@ class RemoteAccess
 				$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 				$energieID = IPS_GetObjectIDByName ( 'Wirkenergie' , $zaehlerid );
 				$leistungID = IPS_GetObjectIDByName ( 'Wirkleistung' , $zaehlerid );
-				$StromL1ID = IPS_GetObjectIDByName ( 'Strom L1' , $zaehlerid );
-				$StromL2ID = IPS_GetObjectIDByName ( 'Strom L2' , $zaehlerid );
-				$StromL3ID = IPS_GetObjectIDByName ( 'Strom L3' , $zaehlerid );
-				$this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
-				$this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
-				$this->add_variablewithname($StromL1ID,$meter["NAME"]."_StromL1",$this->includefile,$count_phone);
-				$this->add_variablewithname($StromL2ID,$meter["NAME"]."_StromL2",$this->includefile,$count_phone);
-				$this->add_variablewithname($StromL3ID,$meter["NAME"]."_StromL3",$this->includefile,$count_phone);
+                $this->add_variablewithname($energieID,$meter["NAME"]."_Wirkenergie",$this->includefile,$count_phone);
+                $this->add_variablewithname($leistungID,$meter["NAME"]."_Wirkleistung",$this->includefile,$count_phone);
+
+                $PowerL1ID = @IPS_GetObjectIDByName ( 'Power L1' , $zaehlerid );
+                if ($PowerL1ID !== false)           // Power pro L wird berechnet
+                    {
+                    $PowerL2ID = IPS_GetObjectIDByName ( 'Power L2' , $zaehlerid );
+                    $PowerL3ID = IPS_GetObjectIDByName ( 'Power L3' , $zaehlerid );
+                    $this->add_variablewithname($PowerL1ID,$meter["NAME"]."_PowerL1",$this->includefile,$count_phone);
+                    $this->add_variablewithname($PowerL2ID,$meter["NAME"]."_PowerL2",$this->includefile,$count_phone);
+                    $this->add_variablewithname($PowerL3ID,$meter["NAME"]."_PowerL3",$this->includefile,$count_phone);
+                        
+                    }
+                else 
+                    {
+                    $StromL1ID = IPS_GetObjectIDByName ( 'Strom L1' , $zaehlerid );
+                    $StromL2ID = IPS_GetObjectIDByName ( 'Strom L2' , $zaehlerid );
+                    $StromL3ID = IPS_GetObjectIDByName ( 'Strom L3' , $zaehlerid );
+                    $this->add_variablewithname($StromL1ID,$meter["NAME"]."_StromL1",$this->includefile,$count_phone);
+                    $this->add_variablewithname($StromL2ID,$meter["NAME"]."_StromL2",$this->includefile,$count_phone);
+                    $this->add_variablewithname($StromL3ID,$meter["NAME"]."_StromL3",$this->includefile,$count_phone);
+                    }
 				}
 			if ($meter["TYPE"]=="Homematic")
 				{

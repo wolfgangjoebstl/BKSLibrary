@@ -1,5 +1,22 @@
 <?
 
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */  
+
 /*
 	 * @defgroup Startpage
 	 *
@@ -162,7 +179,20 @@
 	
 		/**************************************** FUNCTIONS *********************************************************/
 
-		function StartPageWrite($PageType,$showfile=false)
+
+        /* StartPageWrite, die Startpage vollständig schreiben, erstellt eine html Tabelle
+         *
+         * Parameter:
+         *       PageType    4 Hierarchie, 3 Topologie, 2 Status, 1 Picture
+         *       Showfile
+         *
+         * Bei PageType Picture erfolgt eine zweispaltige Tabelle, mit links einem Bild aus der Library, es gibt auch eine Bottomline
+         *    Aufruf der folgenden Module:   showPicture($showfile), showWeatherTable(), bottomTableLines() 
+         *
+         *
+         */
+
+		function StartPageWrite($PageType,$showfile=false,$debug=false)
 			{
 			$Config=$this->configWeather();
 			$noweather=!$Config["Active"];                
@@ -247,12 +277,19 @@
          *
          * Zelle Tabelleneintrag für die Darstellung der Topologie mit aktuellen Werten
          *
+         * Get Topology Liste aus EvaluateHardware_Configuration
+         * die Topologie mit den Geräten anreichen. Es gibt Links zu INSTANCES and OBJECTS 
          *
          **************************************/
 
 		function showTopology($debug=false)
 			{
             $wert="";
+            
+            $config=array();
+            $config["Cell"]="Table";
+            $config["Headline"]="";
+            //$config["Scale"]=2;
 
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
@@ -264,11 +301,16 @@
             $Handler = new DetectDeviceHandler();
             $topology=$Handler->Get_Topology();
 
-            /* die Topologie mit den Geräten anreichen. Es gibt Links zu INSTANCES and OBJECTS 
-            * OBJECTS sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
-            *
-            */
+            /* die Topologie mit den Geräten anreichen. Es gibt Links zu Chíldren, INSTANCE und OBJECT 
+             * Children, listet die untergeordneten Eintraege
+             * OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+             * INSTANCE ist der vollständigkeit halber für die Geräte
+             */
 
+            $topologyPlusLinks=$this->mergeTopologyObjects($topology,IPSDetectDeviceHandler_GetEventConfiguration(),$debug);
+
+        if (false)
+            {
             $topologyPlusLinks=$topology;
             foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
                 {
@@ -292,13 +334,13 @@
                             if ($entry2[0]=="") $size=0;
                             if ($size > 0) 
                                 {	/* es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren */
-                                if ($debug) echo "   erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
                                 //CreateLinkByDestination($name, $index, $oid, 10);	
-                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gwerk als Identifier nehmen
+                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
                                 }
                             else
                                 {	/* eine Instanz, dient nur der Vollstaendigkeit */
-                                if ($debug) echo "   erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+                                if ($debug) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
                                 //CreateLinkByDestination($name, $index, $oid, 1000);						
                                 $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
                                 }
@@ -307,13 +349,19 @@
                     //print_r($entry1);
                     }
                 }  // ende foreach
-
+            }
             if ($debug) 
                 {
                 print_r($topologyPlusLinks);
                 echo "=====================================================================================\n";
                 echo "Topology Status Ausgabe:\n";
                 }
+
+            /* Konfiguration aus der Topologie in eine Struktur mit aktuellen Werten bringen 
+             * Zusatzkonfigurationen, wie die Position und Groesse auf der Anzeige, jetzt übernehmen
+             * INSTANCE wird ignoriert, es wird nur OBJECT ausgewertet
+             * OBJECT wird 1:1 aus der vorigen Struktur übernommen
+             */
 
             $topologyStatus=array();
             foreach ($topologyPlusLinks as $name => $place)
@@ -326,19 +374,31 @@
                     $topologyStatus[$y][$x]["Size"]=["l"=>$l,"h"=>$h];
                     if ($debug) echo "$name is located on $x und $y. Size is $l x $h.\n"; 
                     if (isset($place["ShortName"])) $topologyStatus[$y][$x]["ShortName"]=$place["ShortName"];
+                    if (isset($place["Background"])) $topologyStatus[$y][$x]["Background"]=$place["Background"];                    
                     if (isset($place["OBJECT"])) 
                         {
                         $topologyStatus[$y][$x]["Status"]=$place["OBJECT"];
-                        if ($debug) 
+                        if ($debug)             /* eigentlich nur die Anzeige in diesem Status, die auf hierarchische Gewerk Strukturen angepasst wurde */
                             {
                             foreach ($place["OBJECT"] as $type => $objName) 
                                 {
                                 echo "  $type : ";
-                                foreach ($objName as $oid => $name) echo "  $oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";
+                                switch ($type)
+                                    {
+                                    case "Weather":         // Überbegriff, mögliche Hierarchie 
+                                        foreach ($objName as $subtype => $objName2)
+                                            {
+                                            foreach ($objName2 as $oid => $name) echo "  $subtype:$oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";    
+                                            }
+                                        break;
+                                    default:    
+                                        foreach ($objName as $oid => $name) echo "  $oid (".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName($oid).") => $name  ";
+                                        break;
+                                    }
                                 echo "\n";
                                 }
                             echo "\n";
-                            }
+                            }           // Ende Debug
                         }
                     }
                 }  // ende foreach
@@ -353,116 +413,326 @@
 
             ksort($topologyStatus);
             $wert.="<style>";
-            $wert.="#topology { border-collapse: collapse; border: 1px solid #ddd;   }";
-            $wert.="#topology td, #topology th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
+            //$wert.="#topology { border-collapse: collapse; border: 1px solid #ddd;   }";
+            //$wert.="#topology td, #topology th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
+            //$wert.="#topology p { color:lightblue; margin:0;   }";
+
+            $wert.="#topology { border-collapse: collapse; border: 1px solid #ddd; background-color:#020304; color:#c3d4e5; }";
+            $wert.="#topology td, #topology th { border: 1px solid #ddd; text-align:center; height:10px; width:10px; }";
             $wert.="#topology p { color:lightblue; margin:0;   }";
+            $wert.="#valuecell { width:100%; height:100%; border-collapse: collapse; color:orange;  }";
+            $wert.="#valuecell td { border-style:dotted; border-color:111111; }";
+
             $wert.="</style>";
             $wert.="<td>";
-            $wert .= $this->writeTable($topologyStatus, $debug);
+            $wert .= $this->writeTable($topologyStatus, $config, $debug);
             $wert.="</td>";
             return ($wert);
             }
 
-       /* rekursive Routine um eine Tabelle zu zeichnen 
-        * es kann auch eine Tabelle in einer Zelle abgebildet werden, daher rekursives Modell
-        * 
+        /*
+         * Verbindung der Topologie mit der Object und instamnzen Konfiguration
+         * es können jetzt auch mehrstufige hierarchische Gewerke aufgebaut werden
+         * zB Weather besteht aus Temperatur und Feuchtigkeit
+         */
+
+        function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
+            {
+            $text="";                
+            $topologyPlusLinks=$topology;
+            foreach ($objectsConfig as $index => $entry)
+                {
+                if ($debug) 
+                    {
+                    $newText=$entry[0]."|".$entry[1]."|".$entry[2];
+                    if ($newText != $text) echo "$newText\n";
+                    $text=$newText;
+                    }
+                $name=IPS_GetName($index);
+                $entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen, es können auch mehrere sein, das ist der Ort zB Arbeitszimmer */
+                $entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
+                if (sizeof($entry1)>0)
+                    {
+                    foreach ($entry1 as $place)
+                        {
+                        if ( isset($topology[$place]["OID"]) != true ) 
+                            {
+                            if ($debug) echo "   Kategorie $place anlegen.\n";
+                            }
+                        else
+                            {
+                            $oid=$topology[$place]["OID"];
+                            //print_r($topology[$place]);
+                            $size=sizeof($entry2);
+                            if ($entry2[0]=="") $size=0;
+                            if ($size == 1) 
+                                {	/* es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren */
+                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                //CreateLinkByDestination($name, $index, $oid, 10);	
+                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
+                                }
+                            elseif ($size == 2)
+                                {
+                                /* eine zusätzliche Hierarchie einführen, der zweite Wert ist die Übergruppe */
+                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
+                                //CreateLinkByDestination($name, $index, $oid, 10);	
+                                $topologyPlusLinks[$place]["OBJECT"][$entry2[1]][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
+                                } 
+                            else
+                                {	/* eine Instanz, dient nur der Vollstaendigkeit */
+                                if ($debug) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
+                                //CreateLinkByDestination($name, $index, $oid, 1000);						
+                                $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
+                                }
+                            }
+                        }
+                    //print_r($entry1);
+                    }
+                }  // ende foreach
+            return ($topologyPlusLinks);
+            }
+
+
+
+
+       /******************************************************************
         *
+        * rekursive(?) Routine um eine Tabelle zu zeichnen, es soll auch eine Tabelle in einer Zelle abgebildet werden
+        * die Rekursivität der Funktion erfolgt über die Html Struktur, dazu sind zB style und andere Deklarationen ausserhalb
+        * 
+        * Für besondere Konfigurationen wird ein eigenes array verwendet. $config
+        *   $config["Scale"]   Faktor zum vergrößern der Tabelle. statt einer zellgröße von 1x1 wird mit Scale=3 eine Zelle von 3x3.
+        *
+        * Übergeben wir $topologyStatus als zweidimensionales array [y][x]  y sind die Zeilen, x sind die Spalten
+        *    Elemente sind  Size mit l,h   ShortName, Status mit Humidity,Temperature, 
+        *
+        * zuerst max Spalten und Zeilenanzahl ermitteln
+        * <table id=topology> anlegen
         *
         ********/
 
-        function writeTable($topologyStatus, $debug=false)
+        function writeTable($topologyStatusInput, $config=array(), $debug=false)
             {
             if ($debug) 
                 {
                 echo "**************************************************************************************\n";
                 echo "Aufruf writeTable, Darstellung der Informationen innerhalb einer Topologie.\n";
-                print_r($topologyStatus);
+                //print_r($topologyStatus);
+                }
+            $topologyStatus=array();
+            if (isset($config["Scale"])) $scale=$config["Scale"]; 
+            else $scale=1;
+            foreach ($topologyStatusInput as $y=>$line)
+                {
+                $yNew=($y-1)*$scale+1;            /*   1..1, 2..3, 3..5 usw */
+                foreach ($line as $x => $status) 
+                    {
+                    $xNew=($x-1)*$scale+1;            /*   1..1, 2..3, 3..5 usw */
+                    if ($debug) echo "New Index :  $y x $x transformed to $yNew x $xNew :\n";
+                    foreach ($status as $key=>$entry)
+                        {
+                        if ($debug) echo "    ".$key."\n";
+                        switch ($key)
+                            {
+                            case "Size":
+                                if ($debug) print_r($entry);
+                                $lNew=1; $hNew=1;
+                                if (isset($entry["l"])) $lNew=$entry["l"]*$scale;
+                                if (isset($entry["h"])) $hNew=$entry["h"]*$scale;
+                                $topologyStatus[$yNew][$xNew][$key]["l"]=$lNew;
+                                $topologyStatus[$yNew][$xNew][$key]["h"]=$hNew;
+                                break;
+                            default:
+                                $topologyStatus[$yNew][$xNew][$key]=$entry;
+                                break;
+                            }
+                        }
+                    }
                 }
 
             /* Analyse der übergebenen Daten */
-            $maxx=1; $maxy=0;
+            $maxx=0; $maxy=0; $minx=1000; $miny=1000;
             $lsum=array();
-            foreach ($topologyStatus as $y => $line)	
+            foreach ($topologyStatus as $y => $line)        // jede Zeilen und Spalteneintrag durchgehen, min/max finden, leere Zeilen/Zellen nicht anschauen
                 {
-                $lsum[$y]["line"]=0;        // Summenzähler für übergrosse Zellen
-                $maxy++;    
-                foreach ($line as $x => $status) 
+                if ($y < $miny) $miny=$y;
+                if ($y > $maxy) $maxy=$y;
+                foreach ($line as $x => $status)            // in einer Zeile die Zellen im Detail anschauen, die groesse der Zelle hat Einfluss auf max
                     {
-                    $lsum[$y][$x]=0;        // Merker für übergrosse Zellen die über mehrere Zeilen gehen
-                    if ($x > $maxx) $maxx=$x; 
+                    if (isset($status["Size"]["l"])) $l=$status["Size"]["l"]-1;         /* Zellengroesse in die Breite mit berücksichtigen */
+                    else $l=0;
+                    if (isset($status["Size"]["h"])) $h=$status["Size"]["h"]-1;         /* Zellengroesse in die Höhe mit berücksichtigen, eventuell maxy anpassen */
+                    else $h=0;
+                    if (($x) < $minx) $minx=$x; 
+                    if (($x+$l) > $maxx) $maxx=$x+$l; 
+                    if (($y+$h) > $maxy) $maxy=$y+$h;
                     }
                 }
-            if ($debug) echo "Evaluierung Tabellengroesse: maximale Anzahl an Tabelleneinträgen in x Richtung : $maxx , in y Richtung : $maxy.\n";
+            if ($debug) echo "Evaluierung Tabellengroesse: min/maximale Anzahl an Tabelleneinträgen in x Richtung : $minx/$maxx , in y Richtung : $miny/$maxy.\n";
+            /* lsum array anlegen, für jede Zeile lsum[y]["line"], für jede Zelle lsum[y][x] mit 0 eintragen */
+            for ($yCount=$miny; $yCount<=$maxy; $yCount++)
+                {
+                if (isset($topologyStatus[$yCount])) $line=$topologyStatus[$yCount];
+                else $line=array();         // fehlende Zeilen einfügen
+                $lsum[$yCount]["line"]=0;                                                   // Summenzähler für übergrosse Zellen in Richtung x anlegen
+                foreach ($line as $x => $status) $lsum[$yCount][$x]=0;                      // x Merker für übergrosse Zellen die über mehrere Zeilen gehen setzen
+                }
+            if ($debug) { echo "Evaluierung mit übergrossen Zellen\n"; print_r($lsum); }
 
             $html="";
             $html.="<table id=topology>";
-            foreach ($topologyStatus as $y => $line)
+            $html.='<tr><td colspan="'.$maxx.'">Info-Überschrift '."$maxy x $maxx".'</td></tr>';
+            for ($yCount=$miny; $yCount<=$maxy; $yCount++)          /* jede Zeile durchgehen, leere Zeilen/Zellen auch bearbeiten */
                 {
                 $html.="<tr>";
-                //echo "   Zeile $y abarbeiten:\n";
-                $maxxActual=$maxx; $shiftleft=0;
-                for ($i=1;$i<=$maxxActual;$i++)
+                //foreach ($topologyStatus as $y => $line)   Befehl vorher
+                /* für Leerzeilen die erwarteten Daten einfügen */
+                if (isset($topologyStatus[$yCount])) { $y= $yCount; $line=$topologyStatus[$yCount]; }
+                else { $y= $yCount; $line=array(); } 
+                if ($debug) { echo "   Zeile $y abarbeiten:\n"; print_r($line); }
+                $maxxActual=$maxx; $shiftleft=0;                    /* neues maxxActual für grosse Zellen, wird jedesmal bei einer grossen Zelle reduziert, shiftleft zeigt auf den neuen reduzierten Spaltenzähler */
+                /* x und y sind immer die Koordinaten auf der Matrix und innerhalb des arrays
+                 * Tabelleneintraege in der gleichen Zeile muessen übersprungen werden wenn Zellen breiter (l) als 1 sind 
+                 * Tabelleneintraege in den Zeilen darunter muessen übersprungen werden wenn Zellen höher (h) als 1 sind 
+                 *
+                 * Merker für breite Zellen sind in lsum[line]
+                 * Merker für hohe Zellen sind in lsum[y][x]=l
+                 */
+                for ($i=$minx;$i<=$maxxActual;$i++)                 /* jede Spalte durchgehen, maxxActual wird um die grossen Zellen reduziert */
                     {
                     $x=$i+$lsum[$y]["line"];
-                    if ($debug) echo "   Zelle mit Koordinaten Zeile $y Spalte $x abarbeiten:\n";
-                    $text=$i;               // Default Text
-                    if ( (isset($lsum[$y][$x])) && ($lsum[$y][$x]==1) ) 
+                    if ($debug) echo "      Zelle mit Koordinaten Zeile $y Spalte $x abarbeiten. ".$lsum[$y]["line"]." Zellen überspringen:\n";
+                    $text=""; $starttext=""; $midtext="";  $endtext="";              // Default Text, Starttext und Endtext zum Öffnen und Schliessen von zusaetzlichen Formatierungen
+                    //$text=$i; 
+                    if ( (isset($lsum[$y][$x])) && ($lsum[$y][$x]>0) )     /* wenn eine Zelle höher ist als 1, steht hier der Merker, die breite steht im array */
                         {
                         /* $lsum[$y]["line"] nicht anpassen, Darstellung anders gewählt, bei x Koordinaten wird die Versetzung bereits bei der Eingabe in config berücksichtigt */
-                        $maxxActual = $maxxActual-1;            // hier haengt noch ein Spalte von oben herunter, wird beim Tabellenzeichnen ignoriert und einfach daneben angefangen
-                        $shiftleft++;
+                        $maxxActual = $maxxActual-$lsum[$y][$x]+1;            // hier haengt noch ein Spalte von oben herunter, wird beim Tabellenzeichnen ignoriert und einfach daneben angefangen
+                        $shiftleft=$shiftleft+$lsum[$y][$x]-1;                  // obsolet
+                        $lsum[$y]["line"] = $lsum[$y]["line"] + $lsum[$y][$x]-1;
+                        if ($debug) echo "         Marker gefunden, hier haengt eine Zelle von oben herunter. Debug lsum ".$lsum[$y][$x]." maxxActual $maxxActual shiftleft $shiftleft \n";
                         }
-                    elseif (isset($line[$i-$shiftleft]))
+                    elseif (isset($line[$x]))        /* Eintrag für eine Zelle vorhanden, shiftleft ist am Anfang noch Null, nur von überhängenden hohen Zellen benutzt. */
                         {
-                        if (isset($line[$i-$shiftleft]["ShortName"])) $text=$line[$i-$shiftleft]["ShortName"];
-                        if (isset($line[$i-$shiftleft]["Size"])) { $l=$line[$i-$shiftleft]["Size"]["l"]; $h=$line[$i-$shiftleft]["Size"]["h"]; } else { $l=1; $h=1; }
+                        if (isset($line[$x]["ShortName"])) 
+                            {
+                            $shortname=$line[$x]["ShortName"];
+                            }
+                        else $shortname="";
+                        if (isset($line[$x]["Size"]["l"])) $l=$line[$x]["Size"]["l"];          /* Zelle hat wahrscheinlich Sondermasse, entweder h oder l ist größer 1 */
+                        else $l=1;
+                        if (isset($line[$x]["Size"]["h"])) $h=$line[$x]["Size"]["h"];         /* Zelle hat wahrscheinlich Sondermasse, entweder h oder l ist größer 1 */
+                        else $h=1;
                         if ($debug) 
                             {
-                            echo "      Eintrag $i ist dran mit Size (hxb) $h x $l :\n"; 
-                            print_r($line[$i-$shiftleft]);
+                            echo "         Eintrag auf ".($x)." ist dran mit Size (hxb) $h x $l Name : $shortname\n"; 
+                            //print_r($line[$i-$shiftleft]);
                             }
-                        if ($l>1) 
+                        if ($l>1)           /* Zelle ist breiter als 1 */
                             {
-                            $maxxActual = $maxxActual-$l+1;
-                            $lsum[$y]["line"] = $lsum[$y]["line"] + $l-1;
+                            $maxxActual = $maxxActual-$l+1;                         /* um die zusaetzliche Breite früher aufhören */
+                            $lsum[$y]["line"] = $lsum[$y]["line"] + $l-1;           /* auch in lsum[y][line] die zusaetzliche Breite mitführen, damit wird das naechste x uebersprungen */
                             }
-                        if ($h>1) 
+                        if ($h>1)           /* Zelle ist höher als 1, in lsum für die nächsten Höhe-1 Zeilen lsum[y][x]=l, also die Breite der Zelle eintragen */
                             {
-                            for ($j=1;$j<$h;$j++) $lsum[$y+$j][$x]=1;
+                            for ($j=1;$j<$h;$j++) $lsum[$y+$j][$x]=$l;
                             }
-                        if (isset($line[$i-$shiftleft]["Status"])) 
+                        if (isset($config["Cell"])) 
                             {
-                            $newStatus=$this->transformStatus($line[$i-$shiftleft]["Status"]);
+                            //echo "Cell Konfiguriert.\n"; print_r($line[$x]);
+                            if (isset($line[$x]["Background"])) 
+                                {
+                                $background="background-color:".$line[$x]["Background"];
+                                //echo "**** Background Parameter gefunden.\n";
+                                }
+                            else $background="";
+                            $starttext='<table id=valuecell style="'.$background.';border-style:none;"><tr>';
+                            $midtext  =  '<td></td><td></td></tr>';
+                            $midtext .= '<tr><td></td><td>';
+                            $endtext  = '</td><td></td></tr><tr><td></td><td></td><td></td></tr></table>';
+                            $texte=array();                 // Array mit bis zu 9 Eintraegen
+                            $texte[1]='<td>'.$shortname.'</td>';
+                            $texte[2]='<td></td>';$texte[3]='<td></td>';$texte[4]='<td></td>';$texte[5]='<td></td>';$texte[6]='<td></td>';$texte[7]='<td></td>';$texte[8]='<td></td>';$texte[9]='<td></td>';
+                            $shortname=$texte[1];
+                            }                        
+                        if (isset($line[$x]["Status"])) 
+                            {
+                            $newStatus=$this->transformStatus($line[$x]["Status"], $debug);             /* Sortierung nach Kriterien, wird neu indexiert */
                             /*
                             if ($line[$i]["Status"]==2) $html.='<td bgcolor="00FF00"> '.$text.' </td>'; 
                             elseif ($line[$i]["Status"]==1) $html.='<td bgcolor="00FFFF"> '.$text.' </td>';			
                             else $html.='<td bgcolor="0000FF"> '.$text.' </td>';
                             */
                             //foreach ($line[$i-$shiftleft]["Status"] as $type => $object)
-                            foreach ($newStatus as $entry)
+                            $first=true;
+                            foreach ($newStatus as $entry)                                              /* geht jetzt 0,1,2,3 usw. nicht mehr nach Keys */
                                 {
-                                foreach ($entry as  $type => $object)
+                                if ($first) $first=false;
+                                else $text .= "<br>";
+                                foreach ($entry as  $type => $object)                                   /* type ist HUMIDITY, TEMPERATURE aber auch Gruppen wie WEATHER */
                                     {
                                     if (count($object)>1) $long=true; else $long=false;
-                                    $first=true;
-                                    foreach ($object as $index => $name) 
+                                    switch ($type)
                                         {
-                                        if ($first) $first=false;
-                                        else $text .= "<br>";
-                                        if (IPS_VariableExists($index)) 
-                                            {
-                                            if ($long) $text .= " ".$this->writeValue($index,$type)." ($name)";
-                                            else $text .= " ".$this->writeValue($index,$type);
-                                            }
-                                        }
+                                        case "Weather":
+                                            if ($debug) echo "writeTable,Status: Untergruppe $type erkannt :\n"; print_r($object);
+                                            $humidity=""; $temperature=""; $other="";
+                                            foreach ($object as $index => $name) 
+                                                {
+                                                foreach ($name as $subvalueID => $subname) 
+                                                    {
+                                                    if ($debug) echo "   Status Weather, Bearbeite $subvalueID:$index und $subname:\n";
+                                                    switch ($index)
+                                                        {
+                                                        case "Temperature":
+                                                            $temperature .= $this->writeValue($subvalueID, $index)." ";
+                                                            break;
+                                                        case "Humidity":
+                                                            $humidity .= $this->writeValue($subvalueID, $index)." ";
+                                                            break;
+                                                        default:
+                                                            $other .= $this->writeValue($subvalueID, $index)." ";
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            if ($long) $subtext = $temperature."/ ".$humidity."/ ".$other." ($subname)";
+                                            else $subtext = $temperature."/ ".$humidity."/ ".$other;
+                                            if (isset($config["Cell"])) $texte[2]='<td>'.$subtext.'</td>';
+                                            else $text .= $subtext;
+                                            break;
+                                        default:
+                                            foreach ($object as $index => $name) 
+                                                {
+                                                if ($debug) echo "writeTable,Status: Bearbeite $index in $type:\n";
+                                                if ($long) $text .= " ".$this->writeValue($index,$type)." ($name)";
+                                                else $text .= " ".$this->writeValue($index,$type);
+                                                }
+                                            break;
+                                        }       // Ende switch type
+                                    }       // ende foreach entry
+                                }       // ende foreach newStatus
+                            /* der Inhalt der Zellen steht in text */   
+                            if (isset($config["Cell"])) 
+                                {
+                                $texte[5]='<td>'.$text.'</td>';;
+                                $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="min-width:100px;background-color:#122232;color:white">'.$starttext;
+                                $k=1;
+                                foreach ($texte as $cell) 
+                                    {
+                                    if ( ($k == 4) || ($k==7) ) $html .= '<tr>';
+                                    $html .= $cell;
+                                    if ( ($k==3) || ($k == 6) || ($k==9) ) $html .= '</tr>';
+                                    $k++;
                                     }
+                                $html.='</table></td>';
                                 }
-                            $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="min-width:100px;background-color:#122232;color:white"> '.$text.' </td>';                            
-                            }
-                        else $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="bgcolor:#FFFFFF"> '.$text.' </td>';
-                        }
-                    else $html.='<td bgcolor="FFFFFF"> '.$text.' </td>';
-                    }
+                            else $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="min-width:100px;background-color:#122232;color:white">'.$starttext.$shortname.$midtext.$text.$endtext.'</td>';                            
+                            }   // Ende es ist ein Statuseintrag vorhanden
+                        else $html.='<td colspan="'.$l.'" rowspan="'.$h.'" style="background-color:#122232;color:white"> '.$starttext.$shortname.$midtext.$text.$endtext.' </td>';           // nur zum Beispiel Shortname ausgeben
+                        }   // ende Eintrag für eine Zelle ist vorhanden
+                    else $html.='<td style="background-color:#020304;color:#322212"> '.$text.' </td>';        // nur Default Text ausgeben
+                    }           // ende alle Spalten durchgehen
                 $html.="</tr>";
                 }       // ende for schleife für Zeilen
             $html.="</table>";		
@@ -478,15 +748,15 @@
 
         /******************************
         * 
-        * Darstellung der Werte, es wird writeCell aufgerufen
+        * Darstellung der Werte, Sortierung der einzelnen OBJECTs abhängig von vorgegbenen Reihenfolgen
+        * hierarchische Gruppierung werden gleich behandelt
         *
         *
         ********/
 
-        function transformStatus($status)
+        function transformStatus($status, $debug=false)
             {
-            echo "transformStatus: Input Werte\n";
-            print_r($status);
+            if ($debug) { echo "transformStatus: Input Werte\n"; print_r($status); }
             $result=array();
             $count=count($status);
             $keys=array();
@@ -509,7 +779,7 @@
                     }
                 }
             asort($keys);
-            print_r($keys);
+            if ($debug) print_r($keys);
             $i=0; 
             foreach ($keys as $key => $num) 
                 {
@@ -523,7 +793,7 @@
                     }
                 }
             //print_r($status);
-            print_r($result);
+            if ($debug) print_r($result);
             return ($result);
             }
 
@@ -551,13 +821,17 @@
             switch ($type)
                 {
                 case "Movement":
-                    return ($this->writeMovement($valueID));
+                    if (IPS_VariableExists($valueID)) return ($this->writeMovement($valueID));
+                    else return("");
                 case "Temperature":
-                    return ($this->writeTemperature($valueID));
+                    if (IPS_VariableExists($valueID)) return ($this->writeTemperature($valueID));
+                    else return("");
                 case "Humidity":
-                    return ($this->writeHumidity($valueID));
+                    if (IPS_VariableExists($valueID)) return ($this->writeHumidity($valueID));
+                    else return("");
                 default:
-                    return("<p>$type".GetValue($valueID)."</p>");
+                    if (IPS_VariableExists($valueID)) return("<p>$type".GetValue($valueID)."</p>");
+                    else return("");
                 }
             }
 
@@ -567,19 +841,19 @@
             if ($timeSinceUpdate > (24*60*60))
                 {
                 if ($debug) echo IPS_GetName($valueID)."  last update ".date ("d.m.Y H.i.s",IPS_GetVariable($valueID)["VariableUpdated"])."\n";
-                return ('<p style="color:red">Move '.(GetValue($valueID)?"Yes":"No")."</p>"); 
+                return ('<span style="color:red">Move '.(GetValue($valueID)?"Yes":"No")."</span>"); 
                 }
-            else return ("<p>Move ".(GetValue($valueID)?"Yes":"No")."</p>"); 
+            else return ("<span>Move ".(GetValue($valueID)?"Yes":"No")."</span>"); 
             }
 
         function writeTemperature($valueID, $debug=false)
             {
-            return ("<p>".GetValue($valueID)." °C</p>"); 
+            return ("<span>".GetValue($valueID)." °C</span>"); 
             }
 
         function writeHumidity($valueID, $debug=false)
             {
-            return ("<p>".GetValue($valueID)." %</p>"); 
+            return ("<span>".GetValue($valueID)." %</span>"); 
             }
     
 
@@ -1562,6 +1836,11 @@
 			return "Date.UTC(" . date("Y,", $timeStamp) .$monthForJS. date(",j,H,i,s", $timeStamp) .")";
 			}
 			
+
+        /*
+         * additional Table Lines werden zwischen temperatur und Wetteranzeige eingebaut
+         *
+         */
 			
 	    function additionalTableLines($format="")
 	        {
@@ -1580,18 +1859,31 @@
 	        return ($wert);
 	        }
 	
+        /* bottomTableLines()
+         * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
+         *
+         * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle aufgebaut
+         *
+         */
+			
 	    function bottomTableLines()
 	        {
 	        $wert="";
 	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
 	            {
-	            $wert.='<tr>';
+	            $wert.='<tr><td colspan="2">';
+                $wert.='<table><tr>';
 	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)
 	                {
 	                //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
-	    			$wert.='<td><addText>'.$tableEntry["Name"].'</addText></td><td><addText>'.number_format(GetValue($tableEntry["OID"]), 1, ",", "" ).'°C</addtext></td>';
+	    			$wert.='<td>';
+                    $wert.='<addText>'.$tableEntry["Name"].'</addText></td><td><addText>';
+                    if (isset($tableEntry["UNIT"])) $wert.=number_format(GetValue($tableEntry["OID"]), 3, ",", "" ).$tableEntry["UNIT"].'</addtext>';
+                    else $wert.=number_format(GetValue($tableEntry["OID"]), 1, ",", "" ).'°C</addtext>';
+                    $wert.='</td>';
 	                }
-	            $wert.='</tr>';
+                $wert.='</tr></table>';
+	            $wert.='</td></tr>';
 	            //print_r($this->configuration["AddLine"]);
 				//$wert.='<tr><td>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
 	            //echo $wert;
