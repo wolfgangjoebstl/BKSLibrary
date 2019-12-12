@@ -20,6 +20,10 @@
 	/**
 	 *
 	 * Script zur Erstellung von WebCamera Anzeigen
+     *
+     * noch kein eigenständiges Modul. Verwendet eigenes Webfront für die Darstellung
+     *
+     *
 	 *
 	 *
 	 * @file          WebCamera_Installation.ips.php
@@ -66,46 +70,51 @@
 	echo "  Modulversion  : ".$ergebnis."\n";
     echo "\n";
 
-    /********************************************************************
-     *
-     * auch OperationCenter Installation mit betrachten 
-     *
-     *****************************************************************/
-
-    $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-    $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
-
-    /* auch IPSCam Installation mit betrachten */
-
-    $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
-
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 
-    $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
-    echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
-
-	/*******************************
+    /********************************************************************
      *
-     * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
+     * auch IPSCam Installation mit betrachten
      *
-     ********************************/
+     *****************************************************************/
 
-	//echo "\n";
-	//$WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	//echo "Default WFC10_ConfigId fuer OperationCenter, wenn nicht definiert : ".IPS_GetName($WFC10_ConfigId)."  (".$WFC10_ConfigId.")\n\n";
-    //echo "(".memory_get_usage()." Byte).\n";	
+    if (isset($installedModules["IPSCam"]) )
+        {
+        $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
+        $moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 
-    $subnet="10.255.255.255";
-    $OperationCenter=new OperationCenter($subnet);
-    $OperationCenterConfig = $OperationCenter->getConfiguration();
+    	$camManager = new IPSCam_Manager();
+		echo "\n";
+		echo "IPSCam installiert, Ausgabe Konfiguration:\n";
+		$CamConfig             = IPSCam_GetConfiguration();
+        print_r($CamConfig);
+        }
+
+    /********************************************************************
+     *
+     * auch OperationCenter Installation mit betrachten, Config Dateien kommen von dort
+     *
+     *****************************************************************/
+
+    if (isset($installedModules["OperationCenter"]) )
+        {
+        $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+        $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
+
+        $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
+        echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
+
+        $subnet="10.255.255.255";
+        $OperationCenter=new OperationCenter($subnet);
+        $OperationCenterConfig = $OperationCenter->getConfiguration();
+        }
+    else $OperationCenterConfig = array();                  // leeres Array wenn OperationCenter nicht konfiguriert ist
 
     echo "====================================================================================\n";
     echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
     if (isset ($OperationCenterConfig['CAM']))
         {
-        $CategoryIdDataOverview=IPS_GetObjectIdByName("Cams",$CategoryIdDataOC);
         $CamTablePictureID=IPS_GetObjectIdByName("CamTablePicture",$CategoryIdDataOverview);
         $CamMobilePictureID=IPS_GetObjectIdByName("CamMobilePicture",$CategoryIdDataOverview);
         echo "    Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID für die Captured Bilder.\n";
