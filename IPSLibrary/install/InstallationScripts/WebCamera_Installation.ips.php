@@ -21,9 +21,11 @@
 	 *
 	 * Script zur Erstellung von WebCamera Anzeigen
      *
-     * noch kein eigenständiges Modul. Verwendet eigenes Webfront für die Darstellung
+     * noch kein eigenständiges Modul. Verwendet aber bereits eigenes Webfront für die Darstellung
+     * Verwendung von Activity für regelmaessige Timeraufrufe und Library für gemeinsame Routine und eine Class
      *
-     *
+     * aus der OperationCenter Configuration werden die Cameras für die Live Überwachung genommen. Das sind alle lokalen Kameras mit lokalen IP Adressen. Exxterne gehen auch aber dee Bandbreite ist recht gross.
+     * in der IPSCam können mehrere Kameras sein, auch welche die nur über extern erreichbar sind
 	 *
 	 *
 	 * @file          WebCamera_Installation.ips.php
@@ -31,18 +33,19 @@
 	 *
 	 **/
 
-/*******************************
- *
- * Initialisierung, Modul Handling Vorbereitung
- *
- ********************************/
+	$debug=false;
+    $startexec=microtime(true);     /* Laufzeitmessung */
+
+    /*******************************
+    *
+    * Initialisierung, Modul Handling Vorbereitung
+    *
+    ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\Configuration.inc.php");
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\WebLinks\WebLinks_Configuration.inc.php");
 
-	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
-	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+    IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
+	IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
 
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -63,6 +66,8 @@
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $scriptIdActivity   = IPS_GetScriptIDByName('WebCamera_Activity', $CategoryIdApp);
+    echo "Script ID für regelmaessige Timeraufrufe gefunden:  $scriptIdActivity \n";
 
 	echo "IP Symcon Daten:\n";
 	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
@@ -73,6 +78,53 @@
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 
+    $webCamera = new webCamera();       // eigene class starten
+
+	/******************************************************
+	 *
+	 *				Logging der Installation 
+     *
+     ********************************************************/
+
+	$Heute=time();
+	$HeuteString=date("dmY",$Heute);
+	echo "Heute  Datum ".$HeuteString." für das Logging der OperationCenter Installation.\n";
+	
+	if (isset ($installedModules["OperationCenter"])) 
+		{
+		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
+		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
+		}    
+
+
+	/******************************************************
+	 *
+	 *				INIT, Timer
+	 *
+	 * Timer immer so konfigurieren dass sie sich nicht in die Quere kommen. 
+     * Derzeit ein Timer der alle 5 Minuten ein Bild von einer Webcam abholt. Umso mehr WebCams umso langsamer geht es.
+     * In IPSCam ware es einzelne Timer pro Camera, der Startpunkt war zufällig, wenn die Auslesezeit neu definiert wurde
+	 *
+	 *************************************************************/
+
+	echo "\nTimer für das Auslesen des Standbildes aller Cameras programmieren :\n";
+	
+	$timerOps = new timerOps();
+    $tim1ID = $timerOps->setTimerPerMinute("GetCamPictureTimer", $scriptIdActivity, 5);           /* Name Activity Script Minuten */
+
+	/******************************************************
+     *
+	 *			INIT, DATA SystemInfo
+     *
+	 *************************************************************/
+
+	$categoryId_CamPictures	= CreateCategory('CamPictures',   $CategoryIdData, 230);
+	$camIndexID   			= CreateVariableByName($categoryId_CamPictures, "Hostname", 1, "", "", 1000); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
+
+    IPS_SetHidden($categoryId_CamPictures, true); 		// in der normalen OperationCenter Kategorie Darstellung die Kategorie verstecken, ist jetzt eh im Webfront
+
+    SetValue($camIndexID,0);
+
     /********************************************************************
      *
      * auch IPSCam Installation mit betrachten
@@ -81,6 +133,8 @@
 
     if (isset($installedModules["IPSCam"]) )
         {
+        IPSUtils_Include ("IPSCam.inc.php","IPSLibrary::app::modules::IPSCam");
+
         $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
         $moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 
@@ -99,6 +153,9 @@
 
     if (isset($installedModules["OperationCenter"]) )
         {
+    	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+	    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");            
+
         $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
         $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 

@@ -66,7 +66,7 @@ if (isset($installedModules["OperationCenter"]))
 
     $DeviceManager = new DeviceManagement();
     echo $DeviceManager->HomematicFehlermeldungen();
-    $serials=$DeviceManager->addHomematicSerialList_Typ(true);
+    $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
     }
 
 //print_r($installedModules); 
@@ -241,7 +241,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	$HomInstanz=sizeof($ids);
 	if($HomInstanz == 0)
 		{
-		echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";
+		//echo "ERROR: Keine HomeMatic Socket Instanz gefunden!\n";         
 		$includefile.='function HomematicInstanzen() { return array('."\n";
 		$includefile.=');}'."\n\n";		
 		}
@@ -277,7 +277,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	$alleInstanzen = IPS_GetInstanceListByModuleID($guid);
 	$includefile.='function FHTList() { return array('."\n";
 
-	echo "\nFHT Geräte: ".sizeof($alleInstanzen)."\n\n";
+	echo "\nFHT Geräte Instanzen gefunden: ".sizeof($alleInstanzen)."\n\n";
 	foreach ($alleInstanzen as $instanz)
 		{
 		echo str_pad(IPS_GetName($instanz),30)." ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";

@@ -17,259 +17,177 @@
  * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
  */
 
-/* overview of cam Status   
+/* WebCamera Library   
  *
  * es gibt IPS Cam als externes Modul, hier werden pro Kamera Einstellungen im Webfront vorgesehen
- *
  * im OperationCenter gibt es die Livestreamdarstellung und eine Capturebilder Darstellung
- *
+ * WebCamera ist dazu ein eigenständiges Modul das aktuell noch Funktionen aus den beiden anderen Programmen übernimmt
  *
  */
 
 
-Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
-IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+class WebCamera
+    {
 
-IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
-IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+    var $CategoryIdData,  $CategoryIdApp;               // zur Orientierung, wo ist was
+    var $CategoryIdDataOC;
 
-    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-    if (!isset($moduleManager))
+    var $camConfiguration;                              // die Konfiguration
+
+    var $ipsOps, $dosOps;                               // praktische Module
+
+    function __construct()
         {
-        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-        $moduleManager = new IPSModuleManager('WebCamera',$repository);
-        }
-
-    $installedModules = $moduleManager->GetInstalledModules();
-
-    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-    $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-    $CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
-
-    $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-	$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
-
-	echo "IP Symcon Daten:\n";
-	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "  Modulversion  : ".$ergebnis."\n";
-
-	/*******************************
-     *
-     * Init, wichtige Variablen
-     *
-     ********************************/
-
-    $ipsOps = new ipsOps();
-    $dosOps = new dosOps();
-
-    $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
-    echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
-
-    $OperationCenterConfig = OperationCenter_Configuration();
-    //echo "(".memory_get_usage()." Byte).\n";	
-
-    $subnet="10.255.255.255";
-    $OperationCenter=new OperationCenter($subnet);
-
-	/*******************************
-     *
-     * Webfront, Action Routines
-     *
-     ********************************/
-
-    if ($_IPS['SENDER']=="WebFront")
-        {
-        /* vom Webfront aus gestartet */
-
-        SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
-        
-        }
-    else
-        {
-
-        /*******************************************
-        *
-        * Media Objects Vorbereitung, Evaluierung
-        *
-        **********************************************************/
-
-        $mediaFound=$ipsOps->getMediaListbyType(3);     // get Streams out of MediaList
-
-        echo "\n";
-        echo "Anzahl Eintraege Streaming Media ".count($mediaFound)."\n";
-        $module=array();
-        foreach ($mediaFound as $media)
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        if (!isset($moduleManager))
             {
-            $objectR=$media;
-            echo " $media ";
-            echo "   ".IPS_GetName($objectR);
-            $moduleName="";
-            while ($objectR=IPS_GetParent($objectR))
-                {
-                if (IPS_GetName($objectR)=="modules") $moduleName=$last;
-                $last=IPS_GetName($objectR);
-                echo ".".$last;
-                }
-            echo ".".IPS_GetName($objectR);
-            echo "         $moduleName    ".IPS_GetMedia($media)["MediaFile"];
-            echo "\n";
-            $module[$moduleName][$media]=IPS_GetName($media);
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManager = new IPSModuleManager('WebCamera',$repository);
             }
-        echo "\n";
-        echo "Auflistung, Strukturierung anhand Parent Verzeichnis = Module:\n";
-        print_r($module);
+        $installedModules = $moduleManager->GetInstalledModules();
+
+        $this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+        $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
         /*******************************
-         *
-         * Kamerakonfiguration auswerten
-         *
-         ********************************/
+        *
+        * Init, wichtige Variablen
+        *
+        ********************************/
 
-        echo "====================================================================================\n";
-        echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
-        if (isset ($OperationCenterConfig['CAM']))
+        $this->ipsOps = new ipsOps();
+        $this->dosOps = new dosOps();
+
+        $this->camConfiguration = array();
+        if (isset($installedModules["OperationCenter"]) )
             {
-
-            //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
+            Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+            IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
             
-            /* Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
-             * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
-             * es werden die OperationCenter Data Objekte verwendet. Keine Objekte im data von Webcamera anlegen
-             */
-            $resultStream=array(); $idx=0;          // Link zu den Cameras
+            $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
+            $this->CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 
-            echo "CamCapture Ausgabe FTP übertragene Bilder/Videos für folgende Kameras konfiguriert:\n";
-            echo "\n";
-            foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+            $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$this->CategoryIdDataOC);
+
+            $subnet="10.255.255.255";
+            $OperationCenter=new OperationCenter($subnet);
+            $OperationCenterConfig = $OperationCenter->getConfiguration();
+
+            /* Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten */
+            if (isset ($OperationCenterConfig['CAM']))
                 {
-                echo "   ---------------------------------\n";
-                echo "   Bearbeite WebCamera $cam_name:\n";
-                if ( (isset($cam_config["FTP"])) && (strtoupper($cam_config["FTP"])=="ENABLED") ) 
-                    {
-                    echo "     Kamera, FTP Server Verzeichnis: ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
-                    $verzeichnis = $cam_config['FTPFOLDER'];  
-                    if (is_dir($verzeichnis)) 
-                        {
-                        //$dir=$dosOps->readdirToArray($verzeichnis); print_r($dir);
-                        $stat=$dosOps->readdirToStat($verzeichnis);
-                        //print_r($stat);
-                        $lastupdate=$dosOps->latestChange($verzeichnis);
-                        echo "     Verzeichnis $verzeichnis verfügbar. ".$stat["dirs"]." Verzeichnisse und ".$stat["files"]." Dateien. Latest File is from ".date("j.m.Y H:i:s",$lastupdate).".\n";
-                        }
-                    else 
-                        {
-                        echo "    Verzeichnis $verzeichnis NICHT verfügbar, sollte erstellt werden.\n";
-                        $rootDir='C:\\ftp\\';
-                        if (is_dir($rootDir)) echo "    Verzeichnis $rootDir verfügbar.\n";
-                        //$dosOps->mkdirtree($verzeichnis,true);          // mit Debug um Fehler rauszufinden
-                        }
-                    }
-                else echo "       FTP Folder disabled.\n";
-
-                $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
-                if ($cam_categoryId==false)
-                    {
-                    echo "              !!! Fehler, eigene Kategorie pro Kamera muss vorhanden sein.\n";
-                    //$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                    //IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-                    //IPS_SetParent($cam_categoryId,$CategoryIdData);
-                    }
-                echo "        Kategorie pro Kamera : $cam_categoryId   -> Pfad: ".$ipsOps->path($cam_categoryId)."\n";
-                $WebCam_LetzteBewegungID = IPS_GetObjectIdByName("Cam_letzteBewegung", $cam_categoryId); 
-				$WebCam_PhotoCountID = IPS_GetObjectIdByName("Cam_PhotoCount", $cam_categoryId);
-				$WebCam_MotionID = IPS_GetObjectIdByName("Cam_Motion", $cam_categoryId); 
-                echo "            Status Bewegung             : ".(GetValue($WebCam_MotionID)?"Ja":"Nein")."\n";
-                //echo "            Letzte erkannte Bewegung    : ".date("D d.m.Y H:i:s",GetValue($WebCam_LetzteBewegungID))."\n";
-                echo "            Letzte erkannte Bewegung    : ".GetValue($WebCam_LetzteBewegungID)."\n";
-                echo "            Anzahl erfasste Bilder      : ".GetValue($WebCam_PhotoCountID)."\n";
-                if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
-                    {
-                    $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
-                    if ($cam_streamId===false)
-                        {  
-                        echo "              !!! Fehler, eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie ist zu erstellen mit entsprechendem Streaming Link.\n";
-                        //$cam_streamId=IPS_CreateMedia(3);
-                        //IPS_SetName($cam_streamId, "CamStream_".$cam_name);     // Media Stream Objekt benennen
-                        //IPS_SetParent($cam_streamId, $cam_categoryId);
-                        }
-                    echo "rtsp Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie RTSP Stream 1: rtsp://user:password@192.168.x.x:/11\n";
-                    if ( (isset($cam_config["FORMAT"])) && (isset($cam_config["USERNAME"])) && (isset($cam_config["PASSWORD"])) && (isset($cam_config["IPADRESSE"])) && (isset($cam_config["STREAMPORT"])))
-                        {
-                        /* a few checks, wether it is a IP Address */
-                        $ipadresse=explode(".",$cam_config["IPADRESSE"]);
-                        if (count($ipadresse)==4) 
-                            {
-                            $ok=true;
-                            foreach ($ipadresse as $ip)
-                                {
-                                $ipNum=(integer)$ip;
-                                if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
-                                }
-                            if ($ok) echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
-                                {
-                                $streamLink="";
-                                if (strtoupper($cam_config["FORMAT"])=="RTSP")
-                                    {
-                                    $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
-                                    echo "    Streaming Media shall be set to $streamLink.\n";
-                                    //IPS_SetMediaFile($cam_streamId,$streamLink,true);
-
-                                    $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
-                                    $resultStream[$idx]["Stream"]["Name"]=$cam_name;                                
-                                    $idx++;
-                                    }
-                                }
-                            }
-                        }
-                    
-                    }
-
-                echo "      Konfiguration ".$cam_name."\n";
-                print_r($cam_config);
-                echo "\n";
-
-                }
-                
-            echo "\n";
-            echo "Das sind die installierten WebCams.\n";
-            print_R($resultStream);
-        
-            }           // im Modul OperationCenter sind Cameras konfiguriert
-
-        $WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-        $structur = $ipsOps->readWebfrontConfig($WFC10_ConfigId,false);         // Debug false
-        echo "Webfront, komplette Struktur ausgeben für Webfront ".IPS_GetName($WFC10_ConfigId).":\n";
-        print_r($structur);
-
-        echo "Webfront $WFC10_ConfigId ".IPS_GetName($WFC10_ConfigId)."\n";
-        foreach ($structur as $root => $entries) 
-            {
-            echo "  Ausgabe für Name Wurzel : $root\n";
-            foreach ($entries as $TabPane => $entry)
-                {
-                echo "    $TabPane    \n";
+                $this->camConfiguration=$OperationCenterConfig['CAM'];
                 }
             }
 
-        /* die drei betroffenen Module */
 
-        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-        $moduleManager = new IPSModuleManager('WebCamera',$repository);
-        $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
-        $repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
-        $moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);
 
-        $result=array();
-        $result["WebCamera"]=$ipsOps->configWebfront($moduleManager);
-        $result["OperationCenter"]=$ipsOps->configWebfront($moduleManagerOC);
-        $result["IPSCam"]=$ipsOps->configWebfront($moduleManagerCam);        
-        print_r($result);
         }
 
+    /* aktuell gilt die Operation Center Configuration als die treibende Konfiguration. 
+     * Es sollen so gut wie möglich alle Configurationen hier zusammengefasst werden. 
+     */
+
+    public function getConfiguration()
+        {
+        return ($this->camConfiguration);
+        }
+
+    /* aus der Operation Center Configuration die Component Information raussuchen
+     */
+
+    public function getStillPicsConfiguration()
+        {
+        $i=0; $j=0; $configCamPicture=array();
+        foreach($this->camConfiguration as $camera => $entry) 
+            {
+            if (isset($entry["COMPONENT"])) 
+                {
+                echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]."\n";
+                $configCamPicture[$j]=$entry;
+                $configCamPicture[$j]["NAME"]=$camera;
+                $j++;
+                }
+            else echo "    $i : ".str_pad($camera,30)." ".$entry["IPADRESSE"]."\n";
+            $i++;
+            }
+        return($configCamPicture);
+        }
+
+    public function getCategoryIdData()
+        {
+        return ($this->CategoryIdData);
+        }
+
+    public function zielVerzeichnis()
+        {
+        /* Zielverzeichnis für Anzeige ermitteln */
+        $picVerzeichnis="user/OperationCenter/AllPics/";
+        $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
+        $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);            
+        return ($picVerzeichnisFull);
+        }
+
+    function DownloadImageFromCam($cameraIdx, $componentParams, $directoryName, $size, $fileName, $debug=false) 
+        {
+        $categoryIdCams     		= IPS_GetObjectIDByName('Cams',    $this->CategoryIdDataOC);
+        $PictureTitleID             = IPS_GetObjectIDByName("CamPictureTitle".$cameraIdx, $categoryIdCams);        // string
+        $PictureTimeID              = IPS_GetObjectIDByName("CamPictureTime".$cameraIdx, $categoryIdCams);         // integer, time                    
+        
+        $result = IPS_SemaphoreEnter('IPSCam_'.$cameraIdx, 5000);
+        if ($result) 
+            {
+            //$componentParams = $this->config[$cameraIdx][IPSCAM_PROPERTY_COMPONENT];
+            $component       = IPSComponent::CreateObjectByParams($componentParams["COMPONENT"]);
+            $urlPicture      = $component->Get_URLPicture($size);
+            //$localFile       = IPS_GetKernelDir().'Cams/'.$cameraIdx.'/'.$directoryName.'/'.$fileName.'.jpg';
+            $localFile       = $directoryName.$fileName;
+            echo "   DownloadImageFromCam, $cameraIdx $directoryName$fileName  \n";
+            IPSLogger_Inf(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");
+
+            $curl_handle=curl_init();
+            curl_setopt($curl_handle, CURLOPT_URL, $urlPicture);
+            curl_setopt($curl_handle, CURLOPT_CONNECTTIMEOUT, 20);
+            curl_setopt($curl_handle, CURLOPT_TIMEOUT, 30);  
+            curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER,true);
+            curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($curl_handle, CURLOPT_FAILONERROR, true);
+            $fileContent = curl_exec($curl_handle);
+            curl_close($curl_handle);
+
+            if ($fileContent===false) 
+                {
+                IPS_SemaphoreLeave('IPSCam_'.$cameraIdx);
+                //IPSLogger_Dbg (__file__, 'File '.$this->GetLoggingTextFromURL($urlPicture).' could NOT be found on the Server !!!');
+                echo "Error, filecontent false.\n";
+                return false;
+                }
+            $result = file_put_contents($localFile, $fileContent);
+            IPS_SemaphoreLeave('IPSCam_'.$cameraIdx);
+
+            if ($result===false) 
+                {
+                trigger_error('Error writing File Content to '.$localFile);
+                }
+            else
+                {       /* erfolgeich eine Datei erstellt, die begleitenden Informationen updaten */
+                $filemtime=filemtime($localFile);
+                if ($debug) echo "      Kamera ".$componentParams["NAME"]." :  write to ".$picVerzeichnisFull." File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
+                SetValue($PictureTitleID,$componentParams["NAME"]."   ".date ("F d Y H:i:s.", $filemtime));
+                SetValue($PictureTimeID,$filemtime);
+                }
+            return $localFile;
+            }
+        else echo "Error, semaphore IPSCam_".$cameraIdx." busy.\n";
+        return false;
+        }
+
+		private function GetLoggingTextFromURL($url) {
+			return str_replace(parse_url($url, PHP_URL_USER).":".parse_url($url, PHP_URL_PASS)."@", "<<user:pwd>>",$url);
+		}
+
+
+
+    }
 
 ?>

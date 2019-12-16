@@ -43,6 +43,8 @@ $ExecuteExecute=false;  	$debug=false;	// keine Echo Ausgaben
 
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 500);
+ini_set('memory_limit', '128M');       //usually it is 32/16/8/4MB 
+
 $startexec=microtime(true);
 
 $dir655=false;
@@ -929,15 +931,19 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$count=0;
 			if (isset ($OperationCenterConfig['CAM']))
 				{
-				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
-					{
-					echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-					$cam_config['CAMNAME']=$cam_name;
-					if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
-					if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
-					}
-				/* Die Snapshots der IPS Cam Kameras auf einen Bildschorm bringen */	
-				$OperationCenter->copyCamSnapshots();	// prüft nicht ob IPSCam Modul installiert ist
+                foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)             /* das sind die Capture Dateien, die häufen sich natürlich wenn mehr Bewegung ist */
+                    {
+                    if (isset ($cam_config['FTPFOLDER']))         
+                        {
+                        echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+                        $cam_config['CAMNAME']=$cam_name;
+                        if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
+                        if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
+                        }
+                    }
+				/* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
+				//$OperationCenter->copyCamSnapshots();	
+				$OperationCenter->showCamSnapshots();	
 				
 				/* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
 				$OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM']);
@@ -1185,6 +1191,13 @@ if ($_IPS['SENDER']=="TimerEvent")
                         if ($params["status"] == "cleanup")
                             {
                             $BackupCenter->deleteBackupStatusError();
+                            $deleteCsvFiles=$BackupCenter->cleanupBackupLogTable();
+                            //print_r($deleteCsvFiles);
+                            foreach ($deleteCsvFiles as $file)
+                                {
+                                //echo "Loesche csv Datei $file\n";
+                                unlink($file);
+                                }                            
                             $BackupCenter->setBackupStatus("Status, getBackupDirectoryStatus : ".$params["status"]."  ".date("d.m.Y H:i:s"));                                 
                             $params["status"]="cleanup-read";
                             $BackupCenter->setConfigurationStatus($params,"array");                                

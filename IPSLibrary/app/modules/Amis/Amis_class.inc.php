@@ -561,6 +561,7 @@
 				$energievorschub=$energie-GetValue($Homematic_WirkergieID);
 				if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
 					{
+                    $offset = GetValue($OffsetID);                        
 					$offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
 					$energievorschub=$energie;
 					SetValue($OffsetID,$offset);

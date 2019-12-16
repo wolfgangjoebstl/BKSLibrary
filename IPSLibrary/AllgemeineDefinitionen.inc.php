@@ -2311,12 +2311,15 @@ class ipsOps
             }
 
         $WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
+        if (strtoupper($WFC10_Enabled)=="FALSE") $WFC10_Enabled=false;
+        $result["Administrator"]["Enabled"] = $WFC10_Enabled;
+        if ($debug) echo "Wert vom Administrator Webfront $WFC10_Enabled\n";
+        $TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',false);          //TabPaneItem="WebCameraTPA", so ist es im Webfront abgespeichert
+        if ($TabPaneItem !== false) $result["Administrator"]["TabPaneItem"] = $TabPaneItem;
         if ($WFC10_Enabled)
             {
             $Path        	 = $moduleManager->GetConfigValueDef('Path', 'WFC10',false);
             if ($Path) $result["Administrator"]["Path"] = $Path;
-            $TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',false);          //TabPaneItem="WebCameraTPA", so ist es im Webfront abgespeichert
-            if ($TabPaneItem !== false) $result["Administrator"]["TabPaneItem"] = $TabPaneItem;
             $TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',false);        //TabPaneParent="roottp", gleich über der Wurzel
             if ($TabPaneParent !== false) $result["Administrator"]["TabPaneParent"] = $TabPaneParent;
             $TabPaneName    = $moduleManager->GetConfigValueDef('TabPaneName', 'WFC10',false);          // TabPaneName="" in der ersten Reihe gibt es nur Bilder/Icons keine Namen
@@ -2334,6 +2337,10 @@ class ipsOps
             }
 
         $WFC10User_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'WFC10User',false);
+        if (strtoupper($WFC10User_Enabled)=="FALSE") $WFC10User_Enabled=false;
+        $result["User"]["Enabled"] = $WFC10User_Enabled;
+        $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
+        if ($TabItem !== false) $result["User"]["TabItem"] = $TabItem;
         if ($WFC10User_Enabled)
             {        
             $Path        	 = $moduleManager->GetConfigValueDef('Path', 'WFC10User',false);
@@ -2348,8 +2355,6 @@ class ipsOps
             if ($TabPaneIcon !== false) $result["User"]["TabPaneIcon"] = $TabPaneIcon;
             $TabPaneOrder   = $moduleManager->GetConfigValueDef('TabPaneOrder', 'WFC10User',false);      // TabPaneOrder="10" wo soll das Icon in der obersten Leiste stehen  
             if ($TabPaneOrder !== false) $result["User"]["TabPaneOrder"] = $TabPaneOrder;
-            $TabItem        = $moduleManager->GetConfigValueDef('TabItem', 'WFC10User',false);              // TabItem="Monitor" nächste Reihe, Gliederung der Funktionen
-            if ($TabItem !== false) $result["User"]["TabItem"] = $TabItem;
             $TabIcon        = $moduleManager->GetConfigValueDef('TabIcon', 'WFC10User',false);              // TabIcon="Window"
             if ($TabIcon !== false) $result["User"]["TabIcon"] = $TabIcon;
             $TabOrder       = $moduleManager->GetConfigValueDef('TabOrder', 'WFC10User',false);              
@@ -2357,6 +2362,8 @@ class ipsOps
             }
 
         $Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+        if (strtoupper($Mobile_Enabled)=="FALSE") $Mobile_Enabled=false;
+        $result["Mobile"]["Enabled"] = $Mobile_Enabled;        
         if ($Mobile_Enabled)
             {        
             $Path        	 = $moduleManager->GetConfigValueDef('Path', 'Mobile',false);
@@ -2807,7 +2814,7 @@ class sysOps
                     {
                     $size=$entry["Size"];
                     $free=$entry["FreeSpace"];
-                    echo "  ".$this->formatSize($free,2)." from ".$this->formatSize($size,2)." ".number_format(($free/$size)*100,2)."%\n";
+                    echo "  ".$this->formatSize($free,2)." from ".$this->formatSize($size,2)." free. Empty ".number_format(($free/$size)*100,2)."%\n";
                     }
                 else echo "\n";
                 }
@@ -3505,6 +3512,56 @@ class fileOps
         }
 
     }    // ende class
+
+/**************************************************************************************************************************
+ *
+ * timerOps
+ *
+ * 
+ *
+ * 
+ *
+ ******************************************************/
+
+class timerOps
+    {
+
+    function __construct()
+        {
+
+        }
+
+    function setTimerPerMinute($name, $scriptIdActivity, $minutes)
+        {
+        $tim4ID = @IPS_GetEventIDByName($name, $scriptIdActivity);
+        if ($tim4ID==false)
+            {
+            $tim4ID = IPS_CreateEvent(1);
+            IPS_SetParent($tim4ID, $scriptIdActivity);
+            IPS_SetName($tim4ID, $name);
+            /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
+            IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+            IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
+            IPS_SetEventActive($tim4ID,true);
+            echo "   Timer Event $name neu angelegt. Timer $minutes Minuten ist aktiviert.\n";
+            }
+        else
+            {
+            echo "   Timer Event $name bereits angelegt. Timer $minutes Minuten ist aktiviert.\n";
+            IPS_SetEventActive($tim4ID,true);
+            IPS_SetEventCyclic($tim4ID,0,1,0,0,2,$minutes);      /* Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
+            IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
+            }
+        return ($tim4ID);
+        }
+
+    function write($string)
+        {
+        echo $string;
+        }
+
+    }
+
 
 /**************************************************************************************************************************
  *

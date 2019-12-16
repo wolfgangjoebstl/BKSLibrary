@@ -98,18 +98,23 @@
 		function StoreEventConfiguration($configuration)
 			{
 			//$configurationSort=$this->sortEventList($configuration);			
-
+            //print_r($configuration);
 			// Build Configuration String
 			$configString = $this->Get_Configtype().' = array(';
-			foreach ($configuration as $variableId=>$params) {
-				$configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
-				for ($i=0; $i<count($params); $i=$i+3) {
-					if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
-					$configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
-				}
-				$configString .= '),';
-				$configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
-			}
+			foreach ($configuration as $variableId=>$params) 
+                {
+                if (IPS_ObjectExists($variableId))
+                    {                    
+                    $configString .= PHP_EOL.chr(9).chr(9).chr(9).$variableId.' => array(';
+                    for ($i=0; $i<count($params); $i=$i+3) 
+                        {
+                        if ($i>0) $configString .= PHP_EOL.chr(9).chr(9).chr(9).'               ';
+                        $configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
+                        }
+                    $configString .= '),';
+                    $configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
+                    }
+			    }
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
 
 			// Write to File

@@ -101,19 +101,25 @@
 		}
 	//echo $inst_modules;
 	
-	/* Logging der Installation */
+	/******************************************************
+	 *
+	 *				Logging der Installation 
+     *
+     ********************************************************/
+
 	$Heute=time();
 	//$HeuteString=date("jnY_Hi",$Heute);
 	//$HeuteString=date("jnY",$Heute);			// j Tag ohne führende Nullen, n Monat ohne führende Nullen
 	$HeuteString=date("dmY",$Heute);
-	echo "Heute  Datum ".$HeuteString." für das Logging der OperationCenter Installion.\n";
+	echo "Heute  Datum ".$HeuteString." für das Logging der OperationCenter Installation.\n";
 	
 	if (isset ($installedModules["OperationCenter"])) 
 		{
-		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefastt
+		$log_Install=new Logging("C:\Scripts\Install\Install".$HeuteString.".csv");								// mehrere Installs pro Tag werden zusammengefasst
 		$log_Install->LogMessage("Install Module OperationCenter. Aktuelle Version ist $ergebnisVersion.");
 		}
 		
+        
 	$subnet="10.255.255.255";
 	$OperationCenter=new OperationCenter($subnet);
 	//$OperationCenterConfig = $OperationCenter->oc_Configuration;			// alter zugriff direkt auf die Config Variable
@@ -1637,7 +1643,7 @@
 
     function installWebfrontMon($configWF,$resultStream)
         {
-        if (isset($configWF["Path"]))
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) )
             {            
             $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
             

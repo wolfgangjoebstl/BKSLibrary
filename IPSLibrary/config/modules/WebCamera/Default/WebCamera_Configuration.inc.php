@@ -18,7 +18,7 @@
 
 
 	/**
-	 * @file          WebLinks_Configuration.inc.php
+	 * @file          WebCamera_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.1, 13.02.2012<br/>
@@ -26,19 +26,17 @@
 	 */
 
 
-	function WebLinks_Configuration()
+	function WebCamera_Configuration()
 		{
-		$weblinks=array(
-			"Cameras" 	=> array( "IPSCam" => true),
-			"WebLinks" 	=> array(
-				"derStandard" => array (
-					"NAME" 	=> "derStandard",
-					"TITLE"	=> "Link zum Standard",
-					"LINK"	=> "http://derstandard.at",
-												),
-										),
+		$webCamera=array(
+			"Cameras" 	=> array( 
+                "Camera1" => array(
+
+
+                    ),
+                ),
 			);
-		return ($weblinks);
+		return ($webCamera);
 		}
 
 	 
