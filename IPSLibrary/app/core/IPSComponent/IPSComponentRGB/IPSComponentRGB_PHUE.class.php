@@ -3,70 +3,74 @@
      * @{
      *
       *
-     * @file          IPSComponentRGB_PhilipsHUE.class.php
+     * @file          IPSComponentRGB_PHUE.class.php
      * @author        Wolfgang Joebstl, inspiriert von Andreas Brauneis
      *
      *
      */
 
 	/**
-	 * @class IPSComponentRGB_HUE
+	 * @class IPSComponentRGB_PHUE
 	 *
-	 * Definiert ein IPSComponentRGB_HUE Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
+	 * Definiert ein IPSComponentRGB_PHUE Object, das ein IPSComponentRGB Object fuer PhilipsHUE implementiert.
 	 *
-	 * verwendet das neue IPSModul Philips HUE Bridge, damit sind keine neue Anpassungen oder Adaptierungen notwendig
-	 * Routinen sind zwar noch vorhanden, werden aber nicht mehr verwendet
+	 * verwendet nun das IPSModul "Philips HUE" , damit sind keine neue Anpassungen oder Adaptierungen notwendig
+     *
+     * Versionsgeschichte:
+     * Dann sind Anpassungen für das SymconHUE Modul erfolgt, einfachere Ansteuerung der Hue Funktionen über die Bridge und nicht mehr direkt
+	 * Routinen vom initialen HUE Modul (direkte Adressierung) sind zwar noch vorhanden, werden aber nicht mehr verwendet
+     * cgpoint class wird nicht mehr verwendet, trotzdem in der Funktion beinhaltet, damit keine Überschneidungen mit dem HUE Modul entstehen. umbennannt auf cgpoint2
 	 *
 	 *  es wird nur construct und setState aufgerufen
+     *
+     * PHUE_AlertSet($InstanceID, $Value)           Mit dieser Funktion ist es möglich einen Alarm für eine Lampe / Gruppe zu setzen
+     * PHUE_CTSet($InstanceID, $Value)              Mit dieser Funktion ist es möglich die Farbtemperatur der Lampe bzw. der Gruppe zu ändern. Der Wert wird in Integer angegeben werden.
+     * PHUE_ColorSet($InstanceID, $Value)           Mit dieser Funktion ist es möglich die Farbe der Lampe bzw. der Gruppe zu ändern. Der Wert wird in Hex angegeben werden.
+     * PHUE_DimSet($InstanceID, $Value)             Mit dieser Funktion ist es möglich das Gerät bzw. die Gruppe zu dimmen.
+     * PHUE_EffectSet($InstanceID, $Value)          Mit dieser Funktion ist es möglich einen Effekt für die Lampe bzw. Gruppe zu aktiveren.
+     * PHUE_GetState($InstanceID)                   Mit dieser Funktion ist es möglich den aktuellen Status der Lampe / Gruppe abzufragen.
+     * PHUE_SceneSet($InstanceID, $Value)           Mit dieser Funktion ist es möglich eine Szene für die Gruppe zu aktiveren.
+     * PHUE_SwitchMode($InstanceID, $Value)         Mit dieser Funktion ist es möglich das Gerät ein- bzw. auszuschalten.
+     *
 	 *
+     * __construct
+     * HandleEvent
+     * GetComponentParams
+     * SetStateHUE
+     * SetState
+     * SetAlert
+     *
+     * calculateXY
+     * getColorPointsForModel
+     *
+     *
 	 */
 
 	IPSUtils_Include ('IPSComponentRGB.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentRGB');
 	IPSUtils_Include ("IPSLogger.inc.php", "IPSLibrary::app::core::IPSLogger");
 
-	class IPSComponentRGB_HUE extends IPSComponentRGB {
+	class IPSComponentRGB_PHUE extends IPSComponentRGB {
 
-		private $bridgeOID, $lampOID;
+		private $lampOID;
 			
-		private $bridgeIP;
-		private $lampNr;
-		private $hueKey;
-		private $modelID;
-		
-		public 	$Status;
-		public  $Hue;
-		public  $ModelID;
-		public  $XY;
-		public  $Level;
-		public  $Saturation;
-		
     
         /**
          * @public
          *
-         * Initialisierung eines IPSComponentRGB_HUE Objektes
-         * basiert nun auf dem Symcon HUE Modul
-		 * alles IP und key spezielle ist bereits abgedeckt
+         * Initialisierung eines IPSComponentRGB_PHUE Objektes
+         * basiert nun auf dem Philps HUE Modul
+         * vorher war es das Symcon HUE Modul und ein proprietäres Modul. Die Bridge bzw. vorher die Schlüssel müssen nicht mehr übergeben werden, sind in der Config ooder in der verbundenen Bridge Instanz 
+		 * Bridge ID und alles IP und key spezielle ist damit bereits abgedeckt
 		 *
-		 * bridgeOID ist das I/O Modul bei dem die Parameter der Hue Bridge hinterlegt sind.
+		 * HueBridge ist die I/O Instanz bei der die Parameter der Hue Bridge hinterlegt sind.
 		 *
 		 *
-         * @param string $bridgeIP IP Addresse der HUE Lampe
-         * @param string $hueKey Key zum Zugriff auf die Lampe
-         * @param string $lampNr Nummer der Lampe
-		 * @param string $modelID Philips Modelnummer der Lampe
 		 *
          */
-		public function __construct($bridgeOID, $lampOID) 
+		public function __construct($lampOID) 
 			{
-			$this->bridgeOID = $bridgeOID;
 			$this->lampOID = $lampOID;
-
-			/* $this->bridgeIP = $bridgeIP;
-            $this->hueKey   = $hueKey;
-            $this->lampNr   = $lampNr;
-			$this->modelID	= $modelID; */
-        }
+            }
 
         /**
          * @public
@@ -92,62 +96,12 @@
          */
         public function GetComponentParams() {
             //return get_class($this).','.$this->bridgeIP.','.$this->hueKey.','.$this->lampNr.','.$this->modelID;
-			return get_class($this).','.$this->bridgeOID.','.$this->lampOID;
+			return (get_class($this).','.$this->lampOID.',');
         }
 
-        /**
-        *  @brief Sends command to HUE bridge using JSON
-        *  
-        *  @param [in] $type Type of parameter ([Lights, Bridge]
-        *  @param [in] $request [GET,PUT]
-        *  @param [in] $cmd Command string
-        *  @return Returns the result of the JSON command
-        *  
-        */
-        private function hue_SendLampCommand($type, $request, $cmd = null) {
-			
-			switch ($type) {
-
-			case 'Lights':
-			    $json_url = 'http://'.$this->bridgeIP.'/api/'.$this->hueKey.'/lights/'.$this->lampNr.'/state';
-				break;
-
-			case 'Bridge':
-				$json_url = 'http://'.$this->bridgeIP.'/api/'.$this->hueKey;
-				break;
-				
-			case 'api':
-			//For further development
-				break;
-
-			default:
-				break;
-			}
-			
-			
-			$json_string = '{'.$cmd.'}';
-            
-			// Configuring curl 
-            $ch = curl_init($json_url);
-            $options = array(
-                           CURLOPT_RETURNTRANSFER => true,
-                           CURLOPT_CUSTOMREQUEST => $request, 
-                           CURLOPT_HTTPHEADER => array('Content-type: application/json') ,
-                           CURLOPT_POSTFIELDS => $json_string
-                           );
-            curl_setopt_array($ch, $options);
-            IPSLogger_Inf(__file__, 'Send PhilipsHUE: JsonURL='.$json_url.', Command='.$json_string);
-
-            // Execute
-            if ($this->bridgeIP <> '') {
-                $json_result = curl_exec($ch);
-				return json_decode($json_result);
-            }
-        }
-        
         
         /**
-         * @public
+         * @public  DEPRICIATED
          *
          * @brief Zustand Setzen 
          *
@@ -191,6 +145,9 @@
          *
          * @brief Zustand Setzen 
          *
+         * mit Ambience=true wird $color zu Farbtemperatur in mired
+         *
+         *
          * @param boolean $power RGB Gerät On/Off
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
@@ -200,20 +157,29 @@
 			//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."  Typ ".($ambience?"Ambience":"RGB")."    \n";
 			if (!$power) 
 				{
-				HUE_SetValue($this->lampOID, "STATE",$power);
+				//HUE_SetValue($this->lampOID, "STATE",$power);
+                PHUE_SwitchMode($this->lampOID, $power);
 				} 
 			elseif ($ambience)
 				{
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
 				$level = round($level * 2.54);
 
-				HUE_SetValue($this->lampOID, "STATE",$power);
-				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
-				HUE_SetValue($this->lampOID, "COLOR_TEMPERATURE",$color);
+                PHUE_SwitchMode($this->lampOID, $power);
+                PHUE_CTSet($this->lampOID, $color);
+                PHUE_DimSet($this->lampOID, $level);
 				//echo "Level:".$level."\n";				
 				}
 			else	    
 				{
+                PHUE_SwitchMode($this->lampOID, $power);
+                PHUE_ColorSet($this->lampOID, $color);
+                PHUE_DimSet($this->lampOID, $level);
+				//echo "IPSComponentRGB_PHUE SetState mit Power ".($power?"Ein":"Aus")."      \n";
+				//echo "IPSComponentRGB_PHUE SetState mit  Color ".dechex($color)." \n";
+				//echo "IPSComponentRGB_PHUE SetState mit Level ".$level."      \n";
+
+                /*
 				$rotDec = (($color >> 16) & 0xFF);
 				$gruenDec = (($color >> 8) & 0xFF);
 				$blauDec = (($color >> 0) & 0xFF); 
@@ -227,63 +193,28 @@
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
 				$level = round($level * 2.54);
 				$cmd 	= '"bri":'.$level.', "xy":['.$values->x.','.$values->y.'], "on":true'; 
-				//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."      \n";
 				HUE_SetValue($this->lampOID, "STATE",$power);
-				//echo "IPSComponentRGB_HUE SetState mit  Color ".dechex($color)." \n";
 				HUE_SetValue($this->lampOID, "COLOR",$color);
-				//echo "IPSComponentRGB_HUE SetState mit Level ".$level."      \n";
 				HUE_SetValue($this->lampOID, "BRIGHTNESS",$level);
+                */
 				}
-		}
+		    }
 				
-		/**
-		 *  @brief Queries bridge for details of the lamp 
-		 *  
-		 *  @return None, details are populated in the public variables of the class
-		 *  
-		 */
-		public function QueryHUE() {
-
-			
-			$type	 = 'Bridge'; //Type of Command
-			$request = 'GET';	 //Type of Request
-            
-			//Send command to Hue lamp
-			$result = $this->hue_SendLampCommand($type, $request);
-			
- 			$id = 1;
-
-			foreach ($result->lights as $light) {
-
-				if ($id == $this->lampNr) {
-				
-						$this->Status 		= $light->state->on;
-						$this->Hue			= $light->state->hue;
-						$this->ModelID		= $light->modelid;
-						$this->XY			= $light->state->xy;
-						$this->Level		= $light->state->bri;
-						$this->Saturation 	= $light->state->sat;
-
-				}
-				
-				$id=$id+1;
-				
-			}
-		}
 
 		/**
 		 *  @brief Sets the alert state. 'select' blinks once, 'lselect' blinks repeatedly, 'none' turns off blinking
 		 *  
 		 */
-		public function SetAlert( $alert_type = 'select' ) {
-		
+		public function SetAlert( $alert_type = 'select' ) 
+            {
+            PHUE_AlertSet($this->lampOID, $alert_type);
+            /*
 			 $type	 	= 'Lights'; //Type of Command
 			 $request 	= 'PUT';	 //Type of Request
              $cmd 		= '"alert":"'.$alert_type.'"';
-		     
-			 //Send command to Hue lamp
-             $this->hue_SendLampCommand($type, $request, $cmd);		
-		}
+             $this->hue_SendLampCommand($type, $request, $cmd);		//Send command to Hue lamp
+             */
+		    }
 		
 		/**
 		 *  @brief Converts colour value from RGB to XY 
@@ -318,7 +249,7 @@
 			if(is_nan($cy)) $cy = 0.0;
 
 			// Check if the found xy value is within the color gamut of the light
-			$xyPoint = new cgpoint($cx, $cy);
+			$xyPoint = new cgpoint2($cx, $cy);
 			$colorPoints = $this->getColorPointsForModel($model);
 			$inReachOfLamps = $this->checkPointInLampsReach($xyPoint, $colorPoints);
 
@@ -350,7 +281,7 @@
 				$cx = $closestPoint->x;
 				$cy = $closestPoint->y;
 			}
-			return new cgpoint($cx, $cy);
+			return new cgpoint2($cx, $cy);
 		}
 		
         /**
@@ -385,21 +316,21 @@
 
 			if(in_array($model, $hueBulbs))
 			{
-				array_push($colorPoints, new cgpoint(0.674,0.322));
-				array_push($colorPoints, new cgpoint(0.408,0.517));
-				array_push($colorPoints, new cgpoint(0.168,0.041));
+				array_push($colorPoints, new cgpoint2(0.674,0.322));
+				array_push($colorPoints, new cgpoint2(0.408,0.517));
+				array_push($colorPoints, new cgpoint2(0.168,0.041));
 			}
 			else if(in_array($model, $livingColors))
 			{
-				array_push($colorPoints, new cgpoint(0.703,0.296));
-				array_push($colorPoints, new cgpoint(0.214,0.709));
-				array_push($colorPoints, new cgpoint(0.139,0.081));
+				array_push($colorPoints, new cgpoint2(0.703,0.296));
+				array_push($colorPoints, new cgpoint2(0.214,0.709));
+				array_push($colorPoints, new cgpoint2(0.139,0.081));
 			}
 			else
 			{
-				array_push($colorPoints, new cgpoint(1.0,0.0));
-				array_push($colorPoints, new cgpoint(0.0,1.0));
-				array_push($colorPoints, new cgpoint(0.0,0.0));
+				array_push($colorPoints, new cgpoint2(1.0,0.0));
+				array_push($colorPoints, new cgpoint2(0.0,1.0));
+				array_push($colorPoints, new cgpoint2(0.0,0.0));
 			}
 			
 			return $colorPoints;
@@ -430,8 +361,8 @@
 		 */
 		private function getClosestPointToPoints($A, $B, $P) {
 		
-			$AP = new cgpoint($P->x - $A->x, $P->y - $A->y);
-			$AB = new cgpoint($B->x - $A->x, $B->y - $A->y);
+			$AP = new cgpoint2($P->x - $A->x, $P->y - $A->y);
+			$AB = new cgpoint2($B->x - $A->x, $B->y - $A->y);
 			$ab2 = $AB->x * $AB->x + $AB->y * $AB->y;
 			$ap_ab = $AP->x * $AB->x + $AP->y * $AB->y;
 
@@ -444,7 +375,7 @@
 			{
 				$t = 1.0;
 			}
-			$newPoint = new cgpoint($A->x + $AB->x * $t, $A->y + $AB->y * $t);
+			$newPoint = new cgpoint2($A->x + $AB->x * $t, $A->y + $AB->y * $t);
 			return $newPoint;
 		}
 
@@ -478,9 +409,9 @@
 			$bry =$blue->y -$red->y;
 			$prx =$p->x - $red->x;
 			$pry =$p->y - $red->y;
-			$v1 = new cgpoint($grx, $gry);
-			$v2 = new cgpoint($brx, $bry);
-			$q = new cgpoint($prx, $pry);
+			$v1 = new cgpoint2($grx, $gry);
+			$v2 = new cgpoint2($brx, $bry);
+			$q = new cgpoint2($prx, $pry);
 
 			$s = ($this->getCrossProduct($q, $v2) / $this->getCrossProduct($v1, $v2));
 			$t = ($this->getCrossProduct($v1, $q) / $this->getCrossProduct($v1, $v2));
@@ -503,7 +434,7 @@
     *
     */	
 	
-  class cgpoint {
+  class cgpoint2 {
   
 	public $x;
 	public $y;

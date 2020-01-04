@@ -5394,6 +5394,10 @@ class BackupIpsymcon extends OperationCenter
  * extends OperationCenter because it is using same config file
  * works with the generated logfiles and backups them and deletes them after some time
  *
+ *  MoveFiles
+ *  MoveCamFiles
+ *
+ *
  **************************************************************************************************************************/
 
 class LogFileHandler extends OperationCenter
@@ -5529,7 +5533,12 @@ class LogFileHandler extends OperationCenter
  * DeviceManagement
  * ================ 
  *
- * HardwareStatus
+ * __construct          
+ *      HMIs aus dem HomeMatic Inventory Handler
+ *      HomematicAddressesList 
+ *      HomematicSerialNumberList
+ *
+ * HardwareStatus                       Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
  * getHomematicSerialNumberList
  * addHomematicSerialList_Typ
  * addHomematicSerialList_RSSI
@@ -5610,9 +5619,7 @@ class DeviceManagement
 
 
 	/*
-	 * Statusinfo von Hardware, auslesen der Sensoren 
-	 *
-	 * und Alarm wenn laenger keine Aktion.
+	 * Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
 	 *
 	 * Parameter:
 	 * -----------
@@ -5975,7 +5982,7 @@ class DeviceManagement
 
 	/********************************************************************
 	 *
-	 * erfasst alle Homematic Geräte anhand der Seriennumme rund erstellt eine gemeinsame liste 
+	 * erfasst alle Homematic Geräte anhand der Seriennummer und erstellt eine gemeinsame liste 
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
 	 *
 	 *****************************************************************************/
@@ -6173,11 +6180,12 @@ class DeviceManagement
 				if ($debug) echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".str_pad($name,20)." Inst: ".str_pad($anzahl["Anzahl"],4)." Child: ".str_pad(sizeof($register),6)." ";
 			    if (sizeof($register)>1) 
 				    { /* es gibt Childrens zum analysieren, zuerst gleiche Werte unterdruecken */
-				    echo $this->HomematicDeviceType($register,2)."\n";
+				    if ($debug) echo $this->HomematicDeviceType($register,2)."\n";
+                    $this->HomematicSerialNumberList[$ccu][$name]["Type"]=$this->HomematicDeviceType($register,2);
 					} 
 				else
 					{	
-					//if ($debug)
+					if ($debug)
 						{ 
 						echo "     ".str_pad($anzahl["Name"],40)."  S-Num: ".$name." Inst: ".$anzahl["Anzahl"]." Child: ".sizeof($register)." ";
 						echo "not installed\n";
@@ -6705,13 +6713,30 @@ function getFS20Type($instanz)
      * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
      * STATE
      *
+     * erkannte Device Typen (unabhängig ob Homematic)
+     *  TYPE_ACTUATOR
+     *  TYPE_THERMOSTAT
+     *  TYPE_METER_TEMPERATURE
+     *  TYPE_BUTTON
+     *  TYPE_SWITCH
+     *  TYPE_CONTACT
+     *  TYPE_DIMMER
+     *  TYPE_SHUTTER
+     *  TYPE_MOTION
+     *  TYPE_METER_POWER
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
      ****************************************/
 
-    private function HomematicDeviceType($register, $debug=false)
+    private function HomematicDeviceType($register, $outputVersion=false, $debug=false)
         {
 		sort($register);
         $registerNew=array();
     	$oldvalue="";        
+        /* gleiche Einträge eliminieren */
 	    foreach ($register as $index => $value)
 		    {
 	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
@@ -6733,6 +6758,10 @@ function getFS20Type($instanz)
                 }                         
             $result[0]="Stellmotor";                               
             $result[2]="TYPE_ACTUATOR";
+            $result[3]["Type"]="TYPE_ACTUATOR";
+            if (array_search("LEVEL",$registerNew) !== false) $result[3]["Register"][]="LEVEL"; 
+            else $result[3]["Register"][]="VALVE_STATE";
+            $result[3]["RegisterAll"]=$registerNew;
             }
         /*-------------------------------------*/
         elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
@@ -6747,6 +6776,11 @@ function getFS20Type($instanz)
                 }
             $result[0] = "Wandthermostat";
             $result[2] = "TYPE_THERMOSTAT";
+            $result[3]["Type"]="TYPE_THERMOSTAT";
+            if (array_search("SET_TEMPERATURE",$registerNew) !== false) $result[3]["Register"][]="SET_TEMPERATURE";
+            if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $result[3]["Register"][]="SET_POINT_TEMPERATURE";
+            if (array_search("TargetTempVar",$registerNew) !== false) $result[3]["Register"][]="TargetTempVar";
+            $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
         elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
@@ -6754,6 +6788,10 @@ function getFS20Type($instanz)
             $result[1] = "Funk Temperatursensor";
             $result[0] = "Temperatursensor";
             $result[2] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Type"] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Register"][]="TEMPERATURE";
+            $result[3]["Register"][]="HUMIDITY";
+            $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
         elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
@@ -6770,6 +6808,10 @@ function getFS20Type($instanz)
                 }
             $result[0]="Taster ".$anzahl."-fach";
             $result[2]="TYPE_BUTTON";                                        
+            $result[3]["Type"] = "TYPE_BUTTON";            
+            if (array_search("PRESS_SHORT",$registerNew) !== false) $result[3]["Register"][]="PRESS_SHORT";
+            if (array_search("PRESS_LONG",$registerNew) !== false) $result[3]["Register"][]="PRESS_LONG";
+            $result[3]["RegisterAll"]=$registerNew;
             }
         /*-------------------------------------*/
         elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
@@ -6793,12 +6835,17 @@ function getFS20Type($instanz)
                     $result[1] .= " mit Energiemesung";
                     }
                 $result[2]="TYPE_SWITCH";     
+                $result[3]["Type"] = "TYPE_SWITCH";            
+                $result[3]["Register"][]="STATE";
+                $result[3]["RegisterAll"]=$registerNew;
                 }
             else 
                 {
                 $result[0] = "Tuerkontakt";
                 $result[1] = "Funk-Tuerkontakt";
                 $result[2] = "TYPE_CONTACT";     
+                $result[3]["Type"] = "TYPE_CONTACT";            
+                $result[3]["RegisterAll"]=$registerNew;
                 }
             }
         /*-------------------------------------*/
@@ -6808,6 +6855,8 @@ function getFS20Type($instanz)
             $result[0] = "Dimmer";
             $result[1] = "Funk-Dimmer";
             $result[2] = "TYPE_DIMMER";            
+            $result[3]["Type"] = "TYPE_DIMMER";            
+            $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )/* Dimmer */
@@ -6815,7 +6864,9 @@ function getFS20Type($instanz)
             //print_r($registerNew);                
             $result[0] = "Rollladensteuerung";
             $result[1] = "Funk-Rollladensteuerung";
-            $result[2] = "TYPE_SHUTTER";            
+            $result[2] = "TYPE_SHUTTER";     
+            $result[3]["Type"] = "TYPE_SHUTTER";            
+            $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
         elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
@@ -6824,27 +6875,34 @@ function getFS20Type($instanz)
             $result[0] = "Bewegungsmelder";
             $result[1] = "Funk-Bewegungsmelder";
             $result[2] = "TYPE_MOTION";             
+            $result[3]["Type"] = "TYPE_MOTION";            
+            $result[3]["Register"][]="MOTION";
+            $result[3]["Register"][]="BRIGHTNESS";
+            $result[3]["RegisterAll"]=$registerNew;
             }
-        elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* Bewegungsmelder */
+        elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
             {
             $result[0] = "RSSI Wert";
             if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
             else $result[1] = "Funk RSSI Wert";
             $result[2] = "TYPE_RSSI";             
             }            
-        elseif ( array_search("CURRENT",$registerNew) !== false) /* Bewegungsmelder */
+        elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
             {
             $result[0] = "Energiemessgeraet";
             if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
             else $result[1] = "IP Funk Energiemessgeraet";
             $result[2] = "TYPE_METER_POWER";             
+            $result[3]["Type"] = "TYPE_METER_POWER";            
+            $result[3]["RegisterAll"]=$registerNew;
             }          
         else $found=false;
 
         if ($found) 
             {
-            if ($debug==false) return($result[2]);
-            elseif ($debug==2) return ($result[1]);
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
 			else return ($result[0]);
             }
         else return (false);
@@ -6858,7 +6916,7 @@ function getFS20Type($instanz)
      *
      ***********************************************/
 
-    function getHomematicDeviceType($instanz, $debug=false)
+    function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
 	    {
     	$cids = IPS_GetChildrenIDs($instanz);
 	    $homematic=array();
@@ -6866,7 +6924,7 @@ function getFS20Type($instanz)
 	    	{
 		    $homematic[]=IPS_GetName($cid);
     		}
-    	return ($this->HomematicDeviceType($homematic));
+    	return ($this->HomematicDeviceType($homematic,$outputVersion));
     	}
 
     /*********************************

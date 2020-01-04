@@ -503,7 +503,8 @@ Path=Visualization.Mobile.Stromheizung
 			case 'IPSComponentSwitch_RFS20':
 			case 'IPSComponentSwitch_Value':
 			case 'IPSComponentRGB_PhilipsHUE':		// alte Component mit Direktansteuerung von HUE
-			case 'IPSComponentRGB_HUE':			
+			case 'IPSComponentRGB_HUE':			    // neuere Variante
+			case 'IPSComponentRGB_PHUE':	        // finale Variante Philips HUE mit Discovery Funktion
 			case 'IPSComponentDimmer_Homematic':
 			case 'IPSComponentShutter_XHomematic':			
 			case 'IPSComponentSwitch_RMonitor':

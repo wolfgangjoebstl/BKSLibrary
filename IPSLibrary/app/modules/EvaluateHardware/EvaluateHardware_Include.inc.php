@@ -1,4 +1,2369 @@
 <?
+
+
+function gatewayInstanzen() { return array(
+     "HUE" => array(
+               "HUEBridge" => array(
+                    'OID' => '23027',
+                    'CONFIG' => '{"Host":"10.0.0.114","UpdateInterval":10}',
+                              ),
+                    ),
+     "Harmony" => array(
+               "HarmonyHub" => array(
+                    'OID' => '33829',
+                    'CONFIG' => '{"Email":"","Password":"","HarmonyVars":false,"HarmonyScript":false,"Alexa":false,"UpdateInterval":40}',
+                              ),
+                    ),
+     "Homematic" => array(
+               "Homematic-CCU" => array(
+                    'OID' => '24342',
+                    'CONFIG' => '{"Open":true,"Host":"10.0.0.116","Port":5544,"Username":"Admin","Password":"","UseSSL":false,"RFOpen":true,"RFPort":2001,"RFSSLPort":42001,"WROpen":false,"WRPort":2000,"WRSSLPort":42000,"IPOpen":true,"IPPort":2010,"IPSSLPort":42010,"HSOpen":true,"HSPort":8181,"HSSSLPort":48181,"IPAddress":"10.0.0.124"}',
+                              ),
+                    ),
+          );
+;}
+
+function deviceList() { return array(
+     "Abwesenheits-Schalter" => array(
+               "Instances" => array(
+                         "2" => array(
+                              'OID' => '54785',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0100238:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Abwesenheits-Schalter:Entriegeln',
+                                        ),
+                         "1" => array(
+                              'OID' => '44950',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0100238:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Abwesenheits-Schalter:Verriegeln',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Abwesenheits-Schalter:Entriegeln',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Abwesenheits-Schalter:Verriegeln',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Apple TV Generation 2/3" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '47895',
+                              'CONFIG' => '{"devicename":"","DeviceID":48939556,"ConnectionID":0,"BluetoothDevice":false,"VolumeControl":false,"MaxStepVolume":0,"Manufacturer":"","IsKeyboardAssociated":false,"model":"","commandset":"","deviceTypeDisplayName":"","HarmonyVars":false,"HarmonyScript":false}',
+                              'NAME' => 'Apple TV Generation 2/3',
+                                        ),
+                              ),
+          'Type' => 'Harmony',
+                    ),
+     "Arbeitslichtdrei" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '48320',
+                              'CONFIG' => '{"HUEDeviceID":"10","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitslichtdrei',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'Ambient',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Arbeitslichteins" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '23748',
+                              'CONFIG' => '{"HUEDeviceID":"8","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitslichteins',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'Ambient',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Arbeitslichtzwei" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '28605',
+                              'CONFIG' => '{"HUEDeviceID":"9","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitslichtzwei',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'Ambient',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Arbeitszimmer Bewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '19582',
+                              'CONFIG' => '{"Protocol":0,"Address":"GEQ0127585:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'Arbeitszimmer Bewegung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'BRIGHTNESS',
+                                        '1' => 'ERROR',
+                                        '2' => 'INSTALL_TEST',
+                                        '3' => 'MOTION',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'Arbeitszimmer Bewegung',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+     "Arbeitszimmer-Netzwerk" => array(
+               "Instances" => array(
+                         "2" => array(
+                              'OID' => '17390',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1346339:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'Arbeitszimmer-Netzwerk:Energie',
+                                        ),
+                         "1" => array(
+                              'OID' => '29604',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1346339:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitszimmer-Netzwerk:Status',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "2" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'BOOT',
+                                        '1' => 'CURRENT',
+                                        '2' => 'ENERGY_COUNTER',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'Arbeitszimmer-Netzwerk:Energie',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Arbeitszimmer-Netzwerk:Status',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Arbeitszimmer-Taster" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '53385',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0004086:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Arbeitszimmer-Taster:Aus',
+                                        ),
+                         "2" => array(
+                              'OID' => '35837',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0004086:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Arbeitszimmer-Taster:An',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Arbeitszimmer-Taster:Aus',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Arbeitszimmer-Taster:An',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Arbeitszimmer4fach" => array(
+               "Instances" => array(
+                         "4" => array(
+                              'OID' => '46238',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0627606:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitszimmer4fach:Lampe',
+                                        ),
+                         "2" => array(
+                              'OID' => '42377',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0627606:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitszimmer4fach:Computer',
+                                        ),
+                         "1" => array(
+                              'OID' => '29754',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0627606:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitszimmer4fach:Netzwerk',
+                                        ),
+                         "3" => array(
+                              'OID' => '26298',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0627606:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Arbeitszimmer4fach:Festplatten',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Arbeitszimmer4fach:Lampe',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Arbeitszimmer4fach:Computer',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Arbeitszimmer4fach:Netzwerk',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Arbeitszimmer4fach:Festplatten',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "4" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                         "2" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "ArbeitszimmerNetzwerk" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '10246',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D709900FD6:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'ArbeitszimmerNetzwerk:Schalter',
+                                        ),
+                         "6" => array(
+                              'OID' => '32898',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D709900FD6:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'ArbeitszimmerNetzwerk:Energie',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'SECTION_STATUS',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'ArbeitszimmerNetzwerk:Schalter',
+                                        ),
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'CURRENT_STATUS',
+                                        '2' => 'ENERGY_COUNTER',
+                                        '3' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '4' => 'FREQUENCY',
+                                        '5' => 'FREQUENCY_STATUS',
+                                        '6' => 'POWER',
+                                        '7' => 'POWER_STATUS',
+                                        '8' => 'VOLTAGE',
+                                        '9' => 'VOLTAGE_STATUS',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'ArbeitszimmerNetzwerk:Energie',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Energiemessgeraet',
+          'Type' => 'Homematic',
+                    ),
+     "ArbeitszimmerRouter" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '29744',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D709900F6B:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'ArbeitszimmerRouter:Schalter',
+                                        ),
+                         "6" => array(
+                              'OID' => '10541',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D709900F6B:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'ArbeitszimmerRouter:Energie',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'ArbeitszimmerRouter:Schalter',
+                                        ),
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'ENERGY_COUNTER',
+                                        '2' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'ArbeitszimmerRouter:Energie',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Energiemessgeraet',
+          'Type' => 'Homematic',
+                    ),
+     "ArbeitszimmerTaster" => array(
+               "Instances" => array(
+                         "2" => array(
+                              'OID' => '47012',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:2',
+                                        ),
+                         "4" => array(
+                              'OID' => '54513',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:4',
+                                        ),
+                         "1" => array(
+                              'OID' => '38201',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:1',
+                                        ),
+                         "6" => array(
+                              'OID' => '30917',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:6',
+                                        ),
+                         "5" => array(
+                              'OID' => '32472',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:5","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:5',
+                                        ),
+                         "3" => array(
+                              'OID' => '25093',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B5569A28100:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTaster:3',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:2',
+                                        ),
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:4',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:1',
+                                        ),
+                         "6" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:6',
+                                        ),
+                         "5" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:5',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTaster:3',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "ArbeitszimmerTestTaster" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '25408',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:1',
+                                        ),
+                         "4" => array(
+                              'OID' => '31596',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:4',
+                                        ),
+                         "5" => array(
+                              'OID' => '28286',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:5","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:5',
+                                        ),
+                         "2" => array(
+                              'OID' => '29468',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:2',
+                                        ),
+                         "3" => array(
+                              'OID' => '24303',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:3',
+                                        ),
+                         "6" => array(
+                              'OID' => '10893',
+                              'CONFIG' => '{"Protocol":0,"Address":"OEQ0311350:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'ArbeitszimmerTestTaster:6',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:1',
+                                        ),
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:4',
+                                        ),
+                         "5" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:5',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:2',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:3',
+                                        ),
+                         "6" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'ArbeitszimmerTestTaster:6',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Arbeitszimmerfenster-Kontakt" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '40055',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1060012:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_CONTACT',
+                              'NAME' => 'Arbeitszimmerfenster-Kontakt',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'ERROR',
+                                        '1' => 'INSTALL_TEST',
+                                        '2' => 'LOWBAT',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_CONTACT',
+                              'Name' => 'Arbeitszimmerfenster-Kontakt',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Tuerkontakt',
+          'Type' => 'Homematic',
+                    ),
+     "Aussen-Ostseite" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '43562',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0206685:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_TEMPERATURE',
+                              'NAME' => 'Aussen-Ostseite',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'TEMPERATURE',
+                                        '1' => 'HUMIDITY',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'HUMIDITY',
+                                        '1' => 'TEMPERATURE',
+                                                  ),
+                              'Type' => 'TYPE_METER_TEMPERATURE',
+                              'Name' => 'Aussen-Ostseite',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Temperatursensor',
+          'Type' => 'Homematic',
+                    ),
+     "Aussen-Westseite" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '54128',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0267840:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_TEMPERATURE',
+                              'NAME' => 'Aussen-Westseite',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'TEMPERATURE',
+                                        '1' => 'HUMIDITY',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'HUMIDITY',
+                                        '1' => 'TEMPERATURE',
+                                                  ),
+                              'Type' => 'TYPE_METER_TEMPERATURE',
+                              'Name' => 'Aussen-Westseite',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Temperatursensor',
+          'Type' => 'Homematic',
+                    ),
+     "Badezimmer-Taster" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '32211',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:3',
+                                        ),
+                         "4" => array(
+                              'OID' => '41177',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:4',
+                                        ),
+                         "2" => array(
+                              'OID' => '28728',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:2',
+                                        ),
+                         "1" => array(
+                              'OID' => '19141',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:1',
+                                        ),
+                         "5" => array(
+                              'OID' => '59013',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:5","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:5',
+                                        ),
+                         "6" => array(
+                              'OID' => '45365',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ1084617:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Badezimmer-Taster:6',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:3',
+                                        ),
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:4',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:2',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:1',
+                                        ),
+                         "5" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:5',
+                                        ),
+                         "6" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Badezimmer-Taster:6',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "BalkonEffektlicht" => array(
+               "Instances" => array(
+                         "6" => array(
+                              'OID' => '51965',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C99C5EF3:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'BalkonEffektlicht:Energie',
+                                        ),
+                         "3" => array(
+                              'OID' => '10804',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C99C5EF3:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'BalkonEffektlicht:Schalter',
+                                        ),
+                         "1" => array(
+                              'OID' => '48880',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C99C5EF3:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'BalkonEffektlicht:Taster',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'CURRENT_STATUS',
+                                        '2' => 'ENERGY_COUNTER',
+                                        '3' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '4' => 'FREQUENCY',
+                                        '5' => 'FREQUENCY_STATUS',
+                                        '6' => 'POWER',
+                                        '7' => 'POWER_STATUS',
+                                        '8' => 'VOLTAGE',
+                                        '9' => 'VOLTAGE_STATUS',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'BalkonEffektlicht:Energie',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'SECTION_STATUS',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'BalkonEffektlicht:Schalter',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'BalkonEffektlicht:Taster',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Denon Arbeitszimmer" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '26767',
+                              'CONFIG' => '{"devicename":"","DeviceID":48939751,"ConnectionID":0,"BluetoothDevice":false,"VolumeControl":false,"MaxStepVolume":0,"Manufacturer":"","IsKeyboardAssociated":false,"model":"","commandset":"","deviceTypeDisplayName":"","HarmonyVars":false,"HarmonyScript":false}',
+                              'NAME' => 'Denon Arbeitszimmer',
+                                        ),
+                              ),
+          'Type' => 'Harmony',
+                    ),
+     "Denon Wohnzimmer" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '26602',
+                              'CONFIG' => '{"devicename":"","DeviceID":48939750,"ConnectionID":0,"BluetoothDevice":false,"VolumeControl":false,"MaxStepVolume":0,"Manufacturer":"","IsKeyboardAssociated":false,"model":"","commandset":"","deviceTypeDisplayName":"","HarmonyVars":false,"HarmonyScript":false}',
+                              'NAME' => 'Denon Wohnzimmer',
+                                        ),
+                              ),
+          'Type' => 'Harmony',
+                    ),
+     "Eingangstürenmelder" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '48092',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0068698:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_CONTACT',
+                              'NAME' => 'Eingangstürenmelder',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'ERROR',
+                                        '1' => 'INSTALL_TEST',
+                                        '2' => 'LOWBAT',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_CONTACT',
+                              'Name' => 'Eingangstürenmelder',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Tuerkontakt',
+          'Type' => 'Homematic',
+                    ),
+     "EsstischEffektlicht" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '31373',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C996136E:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'EsstischEffektlicht:Schalter',
+                                        ),
+                         "6" => array(
+                              'OID' => '58351',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C996136E:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'EsstischEffektlicht:Energie',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'EsstischEffektlicht:Schalter',
+                                        ),
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'ENERGY_COUNTER',
+                                        '2' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'EsstischEffektlicht:Energie',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Energiemessgeraet',
+          'Type' => 'Homematic',
+                    ),
+     "Esstischlicht" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '26126',
+                              'CONFIG' => '{"HUEDeviceID":"5","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Esstischlicht',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'Ambient',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Gaestezimmer-Heizung" => array(
+               "Instances" => array(
+                         "2" => array(
+                              'OID' => '36358',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0591638:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_THERMOSTAT',
+                              'NAME' => 'Gaestezimmer-Heizung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'SET_TEMPERATURE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ACTUAL_HUMIDITY',
+                                        '1' => 'ACTUAL_TEMPERATURE',
+                                        '2' => 'BATTERY_STATE',
+                                        '3' => 'BOOST_STATE',
+                                        '4' => 'COMMUNICATION_REPORTING',
+                                        '5' => 'CONTROL_MODE',
+                                        '6' => 'LOWBAT_REPORTING',
+                                        '7' => 'PARTY_START_DAY',
+                                        '8' => 'PARTY_START_MONTH',
+                                        '9' => 'PARTY_START_TIME',
+                                        '10' => 'PARTY_START_YEAR',
+                                        '11' => 'PARTY_STOP_DAY',
+                                        '12' => 'PARTY_STOP_MONTH',
+                                        '13' => 'PARTY_STOP_TIME',
+                                        '14' => 'PARTY_STOP_YEAR',
+                                        '15' => 'PARTY_TEMPERATURE',
+                                        '16' => 'SET_TEMPERATURE',
+                                        '17' => 'WINDOW_OPEN_REPORTING',
+                                                  ),
+                              'Type' => 'TYPE_THERMOSTAT',
+                              'Name' => 'Gaestezimmer-Heizung',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "2" => array(
+                              'ComponentName' => 'IPSComponentHeatSet_Homematic',
+                              'Type' => 'Thermostat',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Wandthermostat',
+          'Type' => 'Homematic',
+                    ),
+     "Gaestezimmer-Messwerte" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '39281',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0591638:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_TEMPERATURE',
+                              'NAME' => 'Gaestezimmer-Messwerte',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'TEMPERATURE',
+                                        '1' => 'HUMIDITY',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'HUMIDITY',
+                                        '1' => 'TEMPERATURE',
+                                                  ),
+                              'Type' => 'TYPE_METER_TEMPERATURE',
+                              'Name' => 'Gaestezimmer-Messwerte',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Temperatursensor',
+          'Type' => 'Homematic',
+                    ),
+     "Gaestezimmer-Stellmotor" => array(
+               "Instances" => array(
+                         "4" => array(
+                              'OID' => '35596',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ0806357:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_ACTUATOR',
+                              'NAME' => 'Gaestezimmer-Stellmotor',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'VALVE_STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ACTUAL_TEMPERATURE',
+                                        '1' => 'BATTERY_STATE',
+                                        '2' => 'BOOST_STATE',
+                                        '3' => 'CONTROL_MODE',
+                                        '4' => 'FAULT_REPORTING',
+                                        '5' => 'PARTY_START_DAY',
+                                        '6' => 'PARTY_START_MONTH',
+                                        '7' => 'PARTY_START_TIME',
+                                        '8' => 'PARTY_START_YEAR',
+                                        '9' => 'PARTY_STOP_DAY',
+                                        '10' => 'PARTY_STOP_MONTH',
+                                        '11' => 'PARTY_STOP_TIME',
+                                        '12' => 'PARTY_STOP_YEAR',
+                                        '13' => 'PARTY_TEMPERATURE',
+                                        '14' => 'SET_TEMPERATURE',
+                                        '15' => 'VALVE_STATE',
+                                                  ),
+                              'Type' => 'TYPE_ACTUATOR',
+                              'Name' => 'Gaestezimmer-Stellmotor',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Stellmotor',
+          'Type' => 'Homematic',
+                    ),
+     "GaestezimmerTischlampe" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '28807',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C9961367:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'GaestezimmerTischlampe:Schalter',
+                                        ),
+                         "6" => array(
+                              'OID' => '20006',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C9961367:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'GaestezimmerTischlampe:Energie',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'GaestezimmerTischlampe:Schalter',
+                                        ),
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'ENERGY_COUNTER',
+                                        '2' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'GaestezimmerTischlampe:Energie',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Energiemessgeraet',
+          'Type' => 'Homematic',
+                    ),
+     "Homematic Dummy Schalter" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '10216',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0066960:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Homematic Dummy Schalter',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Homematic Dummy Schalter',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Kueche Bewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '20551',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0538004:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'Kueche Bewegung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'BRIGHTNESS',
+                                        '1' => 'ERROR',
+                                        '2' => 'INSTALL_TEST',
+                                        '3' => 'MOTION',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'Kueche Bewegung',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+     "Kueche-Schalter-Ledlicht" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '42353',
+                              'CONFIG' => '{"Protocol":0,"Address":"JEQ0295555:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Kueche-Schalter-Ledlicht',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Kueche-Schalter-Ledlicht',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Kuechenfenster Kontakt" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '33412',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0501629:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_CONTACT',
+                              'NAME' => 'Kuechenfenster Kontakt',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'ERROR',
+                                        '1' => 'INSTALL_TEST',
+                                        '2' => 'LOWBAT',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_CONTACT',
+                              'Name' => 'Kuechenfenster Kontakt',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Tuerkontakt',
+          'Type' => 'Homematic',
+                    ),
+     "Samsung TV" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '48207',
+                              'CONFIG' => '{"devicename":"","DeviceID":49476846,"ConnectionID":0,"BluetoothDevice":false,"VolumeControl":false,"MaxStepVolume":0,"Manufacturer":"","IsKeyboardAssociated":false,"model":"","commandset":"","deviceTypeDisplayName":"","HarmonyVars":false,"HarmonyScript":false}',
+                              'NAME' => 'Samsung TV',
+                                        ),
+                              ),
+          'Type' => 'Harmony',
+                    ),
+     "Schlafzimmer-DimmerDeckenlampe" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '46938',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0039436:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_DIMMER',
+                              'NAME' => 'Schlafzimmer-DimmerDeckenlampe',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'DIRECTION',
+                                        '1' => 'ERROR_OVERHEAT',
+                                        '2' => 'ERROR_OVERLOAD',
+                                        '3' => 'ERROR_REDUCED',
+                                        '4' => 'INHIBIT',
+                                        '5' => 'LEVEL',
+                                        '6' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_DIMMER',
+                              'Name' => 'Schlafzimmer-DimmerDeckenlampe',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentDimmer_Homematic',
+                              'Type' => 'Dimmer',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Dimmer',
+          'Type' => 'Homematic',
+                    ),
+     "SchlafzimmerBewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '58936',
+                              'CONFIG' => '{"Protocol":2,"Address":"0009156993C3CA:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'SchlafzimmerBewegung:Werte',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ILLUMINATION',
+                                        '1' => 'MOTION',
+                                        '2' => 'MOTION_DETECTION_ACTIVE',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'SchlafzimmerBewegung:Werte',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+     "SchlafzimmerKastenlicht" => array(
+               "Instances" => array(
+                         "6" => array(
+                              'OID' => '30083',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C9961817:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'SchlafzimmerKastenlicht:Energie',
+                                        ),
+                         "3" => array(
+                              'OID' => '59713',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C9961817:3","EmulateStatus":false}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'SchlafzimmerKastenlicht:Schalter',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'ENERGY_COUNTER',
+                                        '2' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'SchlafzimmerKastenlicht:Energie',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'SchlafzimmerKastenlicht:Schalter',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "SchlafzimmerTaster" => array(
+               "Instances" => array(
+                         "5" => array(
+                              'OID' => '42688',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:5","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:5',
+                                        ),
+                         "6" => array(
+                              'OID' => '58492',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:6',
+                                        ),
+                         "1" => array(
+                              'OID' => '52480',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:1',
+                                        ),
+                         "3" => array(
+                              'OID' => '50526',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:3',
+                                        ),
+                         "2" => array(
+                              'OID' => '54466',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:2',
+                                        ),
+                         "4" => array(
+                              'OID' => '34777',
+                              'CONFIG' => '{"Protocol":2,"Address":"000B55699AE8F6:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'SchlafzimmerTaster:4',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "5" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:5',
+                                        ),
+                         "6" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:6',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:1',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:3',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:2',
+                                        ),
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PRESS_LONG',
+                                        '1' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'SchlafzimmerTaster:4',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Schlafzimmerstatus" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '42675',
+                              'CONFIG' => '{"HUEDeviceID":"6","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Schlafzimmerstatus',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Urlaubs-Schalter-Entriegeln" => array(
+               "Instances" => array(
+                         "4" => array(
+                              'OID' => '58483',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0100238:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Urlaubs-Schalter-Entriegeln',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Urlaubs-Schalter-Entriegeln',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Urlaubs-Schalter-Verriegeln" => array(
+               "Instances" => array(
+                         "3" => array(
+                              'OID' => '41711',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0100238:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Urlaubs-Schalter-Verriegeln',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Urlaubs-Schalter-Verriegeln',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Vorzimmer Bewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '45617',
+                              'CONFIG' => '{"Protocol":0,"Address":"IEQ0064942:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'Vorzimmer Bewegung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'BRIGHTNESS',
+                                        '1' => 'ERROR',
+                                        '2' => 'INSTALL_TEST',
+                                        '3' => 'MOTION',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'Vorzimmer Bewegung',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+     "Vorzimmerstatus" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '12934',
+                              'CONFIG' => '{"HUEDeviceID":"4","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Vorzimmerstatus',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Windows-Computer" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '40912',
+                              'CONFIG' => '{"devicename":"","DeviceID":48939822,"ConnectionID":0,"BluetoothDevice":false,"VolumeControl":false,"MaxStepVolume":0,"Manufacturer":"","IsKeyboardAssociated":false,"model":"","commandset":"","deviceTypeDisplayName":"","HarmonyVars":false,"HarmonyScript":false}',
+                              'NAME' => 'Windows-Computer',
+                                        ),
+                              ),
+          'Type' => 'Harmony',
+                    ),
+     "Wohnlichtdrei" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '56441',
+                              'CONFIG' => '{"HUEDeviceID":"3","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnlichtdrei',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Wohnlichteins" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '50465',
+                              'CONFIG' => '{"HUEDeviceID":"1","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnlichteins',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Wohnlichtzwei" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '31782',
+                              'CONFIG' => '{"HUEDeviceID":"2","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnlichtzwei',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Wohnzimmer Bewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '36184',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1292430:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'Wohnzimmer Bewegung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'BRIGHTNESS',
+                                        '1' => 'ERROR',
+                                        '2' => 'INSTALL_TEST',
+                                        '3' => 'MOTION',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'Wohnzimmer Bewegung',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmer-Kugellampe" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '59692',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0145674:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnzimmer-Kugellampe',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Wohnzimmer-Kugellampe',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmer-Mediencenter" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '45153',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0538372:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnzimmer-Mediencenter',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Wohnzimmer-Mediencenter',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmer-Mediencenter-Leistungswerte" => array(
+               "Instances" => array(
+                         "2" => array(
+                              'OID' => '51071',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0538372:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'Wohnzimmer-Mediencenter-Leistungswerte',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "2" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'BOOT',
+                                        '1' => 'CURRENT',
+                                        '2' => 'ENERGY_COUNTER',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'Wohnzimmer-Mediencenter-Leistungswerte',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Energiemessgeraet',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmer-ResetWebCam" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '45238',
+                              'CONFIG' => '{"Protocol":0,"Address":"MEQ0192030:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnzimmer-ResetWebCam',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INHIBIT',
+                                        '1' => 'STATE',
+                                        '2' => 'WORKING',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'Wohnzimmer-ResetWebCam',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmer-Taster" => array(
+               "Instances" => array(
+                         "5" => array(
+                              'OID' => '13198',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:5","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:5',
+                                        ),
+                         "1" => array(
+                              'OID' => '12354',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:1',
+                                        ),
+                         "4" => array(
+                              'OID' => '22003',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:4","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:4',
+                                        ),
+                         "6" => array(
+                              'OID' => '38007',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:6',
+                                        ),
+                         "3" => array(
+                              'OID' => '32540',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:3',
+                                        ),
+                         "2" => array(
+                              'OID' => '31835',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ1059882:2","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_BUTTON',
+                              'NAME' => 'Wohnzimmer-Taster:2',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "5" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:5',
+                                        ),
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:1',
+                                        ),
+                         "4" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:4',
+                                        ),
+                         "6" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:6',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:3',
+                                        ),
+                         "2" => array(
+                                   "Register" => array(
+                                        '0' => 'PRESS_SHORT',
+                                        '1' => 'PRESS_LONG',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'INSTALL_TEST',
+                                        '1' => 'PRESS_CONT',
+                                        '2' => 'PRESS_LONG',
+                                        '3' => 'PRESS_LONG_RELEASE',
+                                        '4' => 'PRESS_SHORT',
+                                                  ),
+                              'Type' => 'TYPE_BUTTON',
+                              'Name' => 'Wohnzimmer-Taster:2',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Taster 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "WohnzimmerEffektlicht" => array(
+               "Instances" => array(
+                         "6" => array(
+                              'OID' => '36091',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C98DD615:6","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_METER_POWER',
+                              'NAME' => 'WohnzimmerEffektlicht:Energie',
+                                        ),
+                         "3" => array(
+                              'OID' => '58432',
+                              'CONFIG' => '{"Protocol":2,"Address":"0001D3C98DD615:3","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'WohnzimmerEffektlicht:Schalter',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "6" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'CURRENT',
+                                        '1' => 'ENERGY_COUNTER',
+                                        '2' => 'ENERGY_COUNTER_OVERFLOW',
+                                        '3' => 'FREQUENCY',
+                                        '4' => 'POWER',
+                                        '5' => 'VOLTAGE',
+                                                  ),
+                              'Type' => 'TYPE_METER_POWER',
+                              'Name' => 'WohnzimmerEffektlicht:Energie',
+                                        ),
+                         "3" => array(
+                                   "Register" => array(
+                                        '0' => 'STATE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'PROCESS',
+                                        '1' => 'SECTION',
+                                        '2' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_SWITCH',
+                              'Name' => 'WohnzimmerEffektlicht:Schalter',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "3" => array(
+                              'ComponentName' => 'IPSComponentSwitch_Homematic',
+                              'Type' => 'Switch',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Schaltaktor 1-fach',
+          'Type' => 'Homematic',
+                    ),
+     "WohnzimmerFenster-Stellmotor" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '24592',
+                              'CONFIG' => '{"Protocol":2,"Address":"002018A99742E8:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_ACTUATOR',
+                              'NAME' => 'WohnzimmerFenster-Stellmotor',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'LEVEL',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ACTIVE_PROFILE',
+                                        '1' => 'ACTUAL_TEMPERATURE',
+                                        '2' => 'ACTUAL_TEMPERATURE_STATUS',
+                                        '3' => 'BOOST_MODE',
+                                        '4' => 'BOOST_TIME',
+                                        '5' => 'FROST_PROTECTION',
+                                        '6' => 'LEVEL',
+                                        '7' => 'LEVEL_STATUS',
+                                        '8' => 'PARTY_MODE',
+                                        '9' => 'PARTY_SET_POINT_TEMPERATURE',
+                                        '10' => 'PARTY_TIME_END',
+                                        '11' => 'PARTY_TIME_START',
+                                        '12' => 'QUICK_VETO_TIME',
+                                        '13' => 'SET_POINT_MODE',
+                                        '14' => 'SET_POINT_TEMPERATURE',
+                                        '15' => 'SWITCH_POINT_OCCURED',
+                                        '16' => 'VALVE_ADAPTION',
+                                        '17' => 'VALVE_STATE',
+                                        '18' => 'WINDOW_STATE',
+                                                  ),
+                              'Type' => 'TYPE_ACTUATOR',
+                              'Name' => 'WohnzimmerFenster-Stellmotor',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Stellmotor',
+          'Type' => 'Homematic',
+                    ),
+     "WohnzimmerHeizkoerper" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '40129',
+                              'CONFIG' => '{"Protocol":2,"Address":"000397098A4330:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_ACTUATOR',
+                              'NAME' => 'WohnzimmerHeizkoerper:Stellmotor',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'LEVEL',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ACTIVE_PROFILE',
+                                        '1' => 'ACTUAL_TEMPERATURE',
+                                        '2' => 'BOOST_MODE',
+                                        '3' => 'BOOST_TIME',
+                                        '4' => 'CONTROL_DIFFERENTIAL_TEMPERATURE',
+                                        '5' => 'CONTROL_MODE',
+                                        '6' => 'FROST_PROTECTION',
+                                        '7' => 'LEVEL',
+                                        '8' => 'PARTY_MODE',
+                                        '9' => 'PARTY_SET_POINT_TEMPERATURE',
+                                        '10' => 'PARTY_TIME_END',
+                                        '11' => 'PARTY_TIME_START',
+                                        '12' => 'SET_POINT_MODE',
+                                        '13' => 'SET_POINT_TEMPERATURE',
+                                        '14' => 'SWITCH_POINT_OCCURED',
+                                        '15' => 'VALVE_ADAPTION',
+                                        '16' => 'VALVE_STATE',
+                                        '17' => 'WINDOW_STATE',
+                                                  ),
+                              'Type' => 'TYPE_ACTUATOR',
+                              'Name' => 'WohnzimmerHeizkoerper:Stellmotor',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Stellmotor',
+          'Type' => 'Homematic',
+                    ),
+     "WohnzimmerWandthermostat" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '20699',
+                              'CONFIG' => '{"Protocol":2,"Address":"000313C99546B5:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_THERMOSTAT',
+                              'NAME' => 'WohnzimmerWandthermostat:Einstellungen',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'SET_POINT_TEMPERATURE',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'ACTIVE_PROFILE',
+                                        '1' => 'ACTUAL_TEMPERATURE',
+                                        '2' => 'BOOST_MODE',
+                                        '3' => 'BOOST_TIME',
+                                        '4' => 'CONTROL_DIFFERENTIAL_TEMPERATURE',
+                                        '5' => 'CONTROL_MODE',
+                                        '6' => 'FROST_PROTECTION',
+                                        '7' => 'HUMIDITY',
+                                        '8' => 'PARTY_MODE',
+                                        '9' => 'PARTY_SET_POINT_TEMPERATURE',
+                                        '10' => 'PARTY_TIME_END',
+                                        '11' => 'PARTY_TIME_START',
+                                        '12' => 'SET_POINT_MODE',
+                                        '13' => 'SET_POINT_TEMPERATURE',
+                                        '14' => 'SWITCH_POINT_OCCURED',
+                                        '15' => 'WINDOW_STATE',
+                                                  ),
+                              'Type' => 'TYPE_THERMOSTAT',
+                              'Name' => 'WohnzimmerWandthermostat:Einstellungen',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "1" => array(
+                              'ComponentName' => 'IPSComponentHeatSet_HomematicIP',
+                              'Type' => 'Thermostat',
+                                        ),
+                              ),
+          'SubType' => 'IP',
+          'Information' => 'Wandthermostat',
+          'Type' => 'Homematic',
+                    ),
+     "Wohnzimmerstatus" => array(
+               "Instances" => array(
+                         "0" => array(
+                              'OID' => '27059',
+                              'CONFIG' => '{"HUEDeviceID":"7","DeviceType":"lights","SensorType":""}',
+                              'TYPEDEV' => 'TYPE_SWITCH',
+                              'NAME' => 'Wohnzimmerstatus',
+                                        ),
+                              ),
+               "Actuators" => array(
+                         "0" => array(
+                              'ComponentName' => 'IPSComponentRGB_PHUE',
+                              'Type' => 'RGB',
+                                        ),
+                              ),
+          'Type' => 'HUE',
+                    ),
+     "Wohnzimmertuere Kontakt" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '38119',
+                              'CONFIG' => '{"Protocol":0,"Address":"LEQ0501511:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_CONTACT',
+                              'NAME' => 'Wohnzimmertuere Kontakt',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "RegisterAll" => array(
+                                        '0' => 'ERROR',
+                                        '1' => 'INSTALL_TEST',
+                                        '2' => 'LOWBAT',
+                                        '3' => 'STATE',
+                                                  ),
+                              'Type' => 'TYPE_CONTACT',
+                              'Name' => 'Wohnzimmertuere Kontakt',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Tuerkontakt',
+          'Type' => 'Homematic',
+                    ),
+     "Zentralzimmer Bewegung" => array(
+               "Instances" => array(
+                         "1" => array(
+                              'OID' => '19031',
+                              'CONFIG' => '{"Protocol":0,"Address":"NEQ0046162:1","EmulateStatus":true}',
+                              'TYPEDEV' => 'TYPE_MOTION',
+                              'NAME' => 'Zentralzimmer Bewegung',
+                                        ),
+                              ),
+               "Channels" => array(
+                         "1" => array(
+                                   "Register" => array(
+                                        '0' => 'MOTION',
+                                        '1' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'BRIGHTNESS',
+                                        '1' => 'ERROR',
+                                        '2' => 'INSTALL_TEST',
+                                        '3' => 'MOTION',
+                                                  ),
+                              'Type' => 'TYPE_MOTION',
+                              'Name' => 'Zentralzimmer Bewegung',
+                                        ),
+                              ),
+          'SubType' => 'Funk',
+          'Information' => 'Bewegungsmelder',
+          'Type' => 'Homematic',
+                    ),
+          );
+;}
+
 function HomematicInstanzen() { return array(
 "Homematic-CCU" => array(
          "CONFIG" => '{"Open":0,"Host":"10.0.0.116","Port":5544,"Username":"Admin","Password":"","UseSSL":false,"RFOpen":true,"RFPort":2001,"RFSSLPort":42001,"WROpen":false,"WRPort":2000,"WRSSLPort":42000,"IPOpen":true,"IPPort":2010,"IPSSLPort":42010,"HSOpen":true,"HSPort":8181,"HSSSLPort":48181,"IPAddress":"10.0.0.124"}', 
@@ -2243,10 +4608,10 @@ function HomematicList() { return array(
                               "Typ" => "2",), 
              	),
       	),
-"Wohnzimmer-Stellmotor" => array(
+"WohnzimmerHeizkoerper:Stellmotor" => array(
          "OID" => 40129, 
          "Adresse" => "000397098A4330:1", 
-         "Name" => "Wohnzimmer-Stellmotor", 
+         "Name" => "WohnzimmerHeizkoerper:Stellmotor", 
          "CCU" => "Homematic-CCU", 
          "Protocol" => "IP", 
          "EmulateStatus" => "1", 

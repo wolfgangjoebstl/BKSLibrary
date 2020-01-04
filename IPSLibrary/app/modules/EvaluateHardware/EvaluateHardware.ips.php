@@ -29,6 +29,7 @@
  */
 
 $ExecuteExecute=false;          // false Execute routine gesperrt, es wird eh immer die Timer Routine aufgerufen. Ist das selbe !
+$startexec=microtime(true);
 
 /******************************************************
  *
@@ -40,8 +41,6 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
-
-$startexec=microtime(true);
 
 $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 if (!isset($moduleManager))
@@ -62,14 +61,23 @@ if (isset($installedModules["DetectMovement"]))
 
 if (isset($installedModules["OperationCenter"])) 
     {
-    IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
-
+    IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+    echo "OperationCenter ist installiert:\n";
     $DeviceManager = new DeviceManagement();
-    echo $DeviceManager->HomematicFehlermeldungen();
+    //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
+    echo $DeviceManager->HomematicFehlermeldungen()."\n";
+    //echo "  Homematic Serialnummern erfassen:\n";
     $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
     }
 
 //print_r($installedModules); 
+
+    echo "\n";
+    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "\n";
+
+    $ipsOps = new ipsOps();
+	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
 /******************************************************
  *
@@ -231,7 +239,78 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 
 	/************************************
 	 *
-	 *  Zuerst wenn vorhanden die Homematic Sockets auflisten, dann kommen die Geräte dran
+	 *  Wenn vorhanden Hardware Sockets auflisten, dann kommen die Geräte dran
+     *  damit kann die Konfiguration des entsprechenden Gateways wieder hergestellt werden
+	 *
+	 ******************************************/
+
+    echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
+    $discovery = $modulhandling->getDiscovery();
+    $hardware=array(); $gateway=array();
+    $device=array();
+    $hardwareTypeDetect = new Hardware();
+    foreach ($discovery as $entry)
+        {
+        $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);
+        if ($hardwareType != false) 
+            {
+            //echo "    $hardwareType \n";
+            $objectClassName = "Hardware".$hardwareType;
+            $object = new $objectClassName(); 
+            $bridgeID = $object->getBridgeID();
+            $deviceID = $object->getDeviceID();
+            //echo "        BridgeID    $bridgeID ".IPS_GetModule($bridgeID)["ModuleName"]."\n";
+            //echo "        DeviceID    $deviceID ".IPS_GetModule($deviceID)["ModuleName"]."\n";
+            $bridges=$modulhandling->getInstances($bridgeID);
+            foreach ($bridges as $bridge)
+                {
+                //echo "           ".IPS_GetName($bridge)."\n";
+                $gateway[$hardwareType][IPS_GetName($bridge)]["OID"]=$bridge;
+                $gateway[$hardwareType][IPS_GetName($bridge)]["CONFIG"]=$configHue=IPS_GetConfiguration($bridge);
+                }
+            $devices=$modulhandling->getInstances($deviceID);
+            foreach ($devices as $device)
+                {
+                //echo "           ".IPS_GetName($device)."\n";
+                $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
+                $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=$configHue=IPS_GetConfiguration($device);
+                }
+            }
+        }
+
+    echo "\n";
+    $includefile .= "\n\n";
+    $includefile .= "function gatewayInstanzen() { return ";
+    $ipsOps->serializeArrayAsPhp($gateway, $includefile);
+    $includefile .= ';}'."\n\n"; 
+
+    $deviceList=array();
+    foreach ($hardware as $hardwareType => $deviceEntries)          // die device types durchgehen HUE, Homematic etc.
+        {
+        foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
+            {
+            $objectClassName = "Hardware".$hardwareType;
+            $object = new $objectClassName(); 
+            $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+            $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+            $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+            }
+        }
+    ksort($deviceList);
+    //print_r($deviceList);
+    echo "\n";
+    echo "Bereits konfigurierte Actuators aus IPSHeat dazugeben, Ergebnis der Funktion: \n";
+    $actuators=$hardwareTypeDetect->getDeviceActuatorsFromIpsHeat($deviceList);
+    print_r($actuators);
+
+    $includefile .= 'function deviceList() { return ';
+    $ipsOps->serializeArrayAsPhp($deviceList, $includefile, 0, 0, false);          // true mit Debug
+    $includefile .= ';}'."\n\n";        
+       
+
+	/************************************
+	 *
+	 *  Wenn vorhanden die Homematic Sockets auflisten, dann kommen die Geräte dran
      *  damit kann die Konfiguration der CCU Anknüpfung wieder hergestellt werden
      *  CCU Sockets werden als function HomematicInstanzen() dargestellt
 	 *
@@ -440,8 +519,8 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	$includehomematic=	'function getHomematicConfiguration() {'."\n".'            return array('." \n";
 	$includefile.='function HomematicList() { return array('."\n";
 
-	echo "\nHomematic Geräte/Kanäle: ".sizeof($alleInstanzen)."\n\n";
-	$serienNummer=array();
+	echo "\nHomematic Instanzen von Geräten: ".sizeof($alleInstanzen)."\n\n";
+	$serienNummer=array(); $i=0;
 	foreach ($alleInstanzen as $instanz)
 		{
 		$HM_CCU_Name=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
@@ -465,7 +544,8 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 		$sizeResult=sizeof($result);
 		//print_r($result);
 
-		echo str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($HM_Adresse,22)." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
+		echo str_pad($i,4).str_pad(IPS_GetName($instanz),40)." ".$instanz." ".str_pad($HM_Adresse,22)." ".str_pad($protocol,6)." ".str_pad(IPS_GetProperty($instanz,'EmulateStatus'),3)." ".$HM_CCU_Name;
+        $i++;
 		if (isset($installedModules["DetectMovement"])) $Handler->RegisterEvent($instanz,'Topology','','');	                    /* für Topology registrieren, RSSI Register mit registrieren für spätere geografische Auswertungen */
         //echo "check.\n";
 		if ($sizeResult > 1)
@@ -563,12 +643,12 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	//print_r($summary);
     foreach ($summary as $type => $devices)
         {
-        echo "   Type : ".$type."\n";
+        echo "   Type : ".$type."   (".count($devices).")\n";
         asort($devices);
         foreach ($devices as $device) echo "     ".$device."\n";
         }
 
-/* wenn DetectMovement installiert ist zusaetlich zwei Konfigurationstabellen evaluieren
+/* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
  *
  *
  */
@@ -730,7 +810,12 @@ if (false)
     $configurationNew=$Handler->sortEventList($configuration);
     $Handler->StoreEventConfiguration($configurationNew);
     } /* ende if isset DetectMovement */
-	    
+
+echo "\n";
+echo "\n";
+echo "\n";
+echo "Gesamtlaufzeit ".(time()-$startexec)." Sekunden.\n";
+
 /********************************************************************************************************************/
 
 /*    FUNKTIONEN       */

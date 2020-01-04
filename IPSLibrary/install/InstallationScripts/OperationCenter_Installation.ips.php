@@ -474,7 +474,7 @@
 						{
 						if ( (isset($nametags[2])) && ($nametags[2]=="speed") )
 							{
-							print_r($nametags);
+							//print_r($nametags);
 							IPS_SetHidden($result,false);
 							}
 						else IPS_SetHidden($result,true);	// alle anderen variablen mit _ werden als Hilfsvariablen betrachtet und versteckt 	
@@ -720,51 +720,53 @@
 
 		if (isset ($OperationCenterConfig['CAM']))
 			{
-			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
-				echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-				$verzeichnis = $cam_config['FTPFOLDER'];
-				$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-				if ($cam_categoryId==false)
-				   {
-					$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-					IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-					IPS_SetParent($cam_categoryId,$CategoryIdData);
-					}
-				$WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
-				$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
-				AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
-				AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
-				IPS_ApplyChanges($archiveHandlerID);
+                if (isset($cam_config['FTPFOLDER']))            			/* möglicherweise sind keine FTP Folders zum zusammenräumen definiert */
+                    {
+                    echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+                    $verzeichnis = $cam_config['FTPFOLDER'];
+                    $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                    if ($cam_categoryId==false)
+                    {
+                        $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                        IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                        IPS_SetParent($cam_categoryId,$CategoryIdData);
+                        }
+                    $WebCam_LetzteBewegungID = CreateVariableByName($cam_categoryId, "Cam_letzteBewegung", 3); /* 0 Boolean 1 Integer 2 Float 3 String */
+                    $WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
+                    AC_SetLoggingStatus($archiveHandlerID,$WebCam_PhotoCountID,true);
+                    AC_SetAggregationType($archiveHandlerID,$WebCam_PhotoCountID,1);      /* 0 normaler Wert 1 Zähler */
+                    IPS_ApplyChanges($archiveHandlerID);
 
-				$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-				AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
-				AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
+                    $WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
+                    AC_SetLoggingStatus($archiveHandlerID,$WebCam_MotionID,true);
+                    AC_SetAggregationType($archiveHandlerID,$WebCam_MotionID,0);      /* normaler Wwert */
+                    IPS_ApplyChanges($archiveHandlerID);
 
-				// Test, ob ein Verzeichnis angegeben wurde
-				if ( is_dir ( $verzeichnis ))
-					{
-	   		 	// öffnen des Verzeichnisses
-   		 		if ( $handle = opendir($verzeichnis) )
-		    			{
-	   	 			$count=0; $list="";
-		        		/* einlesen des Verzeichnisses        	*/
-			        	while (($file = readdir($handle)) !== false)
-	   		     		{
-   	   		  		if (is_dir($verzeichnis.$file)==false)
-	        				   {
-		        				$count++;
-	   	     				$list .= $file."\n";
-			   	     		}
-							}
-						echo "   Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
-						echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
-						//echo $list."\n";
-						}
-					} /* ende ifisdir */
-				}  /* ende foreach */
+                    // Test, ob ein Verzeichnis angegeben wurde
+                    if ( is_dir ( $verzeichnis ))
+                        {
+                        // öffnen des Verzeichnisses
+                        if ( $handle = opendir($verzeichnis) )
+                            {
+                            $count=0; $list="";
+                            /* einlesen des Verzeichnisses        	*/
+                            while (($file = readdir($handle)) !== false)
+                                {
+                                if (is_dir($verzeichnis.$file)==false)
+                                    {
+                                    $count++;
+                                    $list .= $file."\n";
+                                    }
+                                }
+                            echo "   Im Cam FTP Verzeichnis ".$verzeichnis." gibt es ".$count." neue Dateien.\n";
+                            echo "   Letzter Eintrag von ".GetValue($WebCam_LetzteBewegungID)."\n";
+                            //echo $list."\n";
+                            }                   /* if handle */
+                        }                       /* ende ifisdir */
+                    }                           /* ende ftpfolder definiert */
+				}                               /* ende foreach */
 			}
 		}
 

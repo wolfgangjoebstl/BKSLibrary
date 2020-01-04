@@ -73,6 +73,8 @@
 	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
 	echo "  Modulversion  : ".$ergebnis."\n";
+    $ergebnisVersion=$moduleManager->VersionHandler()->GetVersion('WebCamera');
+	echo "  WebCamera Version : ".$ergebnisVersion."\n";                                    /* wird auch für das Logging der Installation verwendet */
     echo "\n";
 
     $ipsOps = new ipsOps();
@@ -219,61 +221,64 @@
                 IPS_SetParent($cam_categoryId,$CategoryIdDataOC);
                 }
             echo "Kategorie pro Kamera : $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
-            $WebCam_LetzteBewegungID = IPS_GetObjectIdByName("Cam_letzteBewegung", $cam_categoryId); 
-            $WebCam_PhotoCountID = IPS_GetObjectIdByName("Cam_PhotoCount", $cam_categoryId);
-            $WebCam_MotionID = IPS_GetObjectIdByName("Cam_Motion", $cam_categoryId); 
 
-            if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
+            if (isset($cam_config['FTPFOLDER']) )
                 {
-                $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
-                if ($cam_streamId===false)
-                    {  
-                    echo "Eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie erstellen mit entsprechendem Streaming Link.\n";
-                    $cam_streamId=IPS_CreateMedia(3);
-                    IPS_SetName($cam_streamId, "CamStream_".$cam_name);     // Media Stream Objekt benennen
-                    IPS_SetParent($cam_streamId, $cam_categoryId);
-                    }
-                echo "rtsp Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie RTSP Stream 1: rtsp://user:password@192.168.x.x:/11\n";
-                if ( (isset($cam_config["FORMAT"])) && (isset($cam_config["USERNAME"])) && (isset($cam_config["PASSWORD"])) && (isset($cam_config["IPADRESSE"])) && (isset($cam_config["STREAMPORT"])))
-                    {
-                    /* a few checks, wether it is a IP Address */
-                    $ipadresse=explode(".",$cam_config["IPADRESSE"]);
-                    if (count($ipadresse)==4) 
-                        {
-                        $ok=true;
-                        foreach ($ipadresse as $ip)
-                            {
-                            $ipNum=(integer)$ip;
-                            if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
-                            }
-                        if ($ok) echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
-                            {
-                            $streamLink="";
-                            if (strtoupper($cam_config["FORMAT"])=="RTSP")
-                                {
-                                $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
-                                echo "    Streaming Media will be set to $streamLink.\n";
-                                IPS_SetMediaFile($cam_streamId,$streamLink,true);
+                $WebCam_LetzteBewegungID = IPS_GetObjectIdByName("Cam_letzteBewegung", $cam_categoryId); 
+                $WebCam_PhotoCountID = IPS_GetObjectIdByName("Cam_PhotoCount", $cam_categoryId);
+                $WebCam_MotionID = IPS_GetObjectIdByName("Cam_Motion", $cam_categoryId); 
 
-						        $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
-						        $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
-                                $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
-                                $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
-                                $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
-                                $idx++;
+                if ( (isset($cam_config["STREAM"])) && (strtoupper($cam_config["STREAM"])=="ENABLED") ) 
+                    {
+                    $cam_streamId=@IPS_GetObjectIDByName("CamStream_".$cam_name,$cam_categoryId);                  
+                    if ($cam_streamId===false)
+                        {  
+                        echo "Eigenes Media Objekt mit CamStream_$cam_name in dieser Kategorie erstellen mit entsprechendem Streaming Link.\n";
+                        $cam_streamId=IPS_CreateMedia(3);
+                        IPS_SetName($cam_streamId, "CamStream_".$cam_name);     // Media Stream Objekt benennen
+                        IPS_SetParent($cam_streamId, $cam_categoryId);
+                        }
+                    echo "rtsp Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie RTSP Stream 1: rtsp://user:password@192.168.x.x:/11\n";
+                    if ( (isset($cam_config["FORMAT"])) && (isset($cam_config["USERNAME"])) && (isset($cam_config["PASSWORD"])) && (isset($cam_config["IPADRESSE"])) && (isset($cam_config["STREAMPORT"])))
+                        {
+                        /* a few checks, wether it is a IP Address */
+                        $ipadresse=explode(".",$cam_config["IPADRESSE"]);
+                        if (count($ipadresse)==4) 
+                            {
+                            $ok=true;
+                            foreach ($ipadresse as $ip)
+                                {
+                                $ipNum=(integer)$ip;
+                                if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
+                                }
+                            if ($ok) echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
+                                {
+                                $streamLink="";
+                                if (strtoupper($cam_config["FORMAT"])=="RTSP")
+                                    {
+                                    $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
+                                    echo "    Streaming Media will be set to $streamLink.\n";
+                                    IPS_SetMediaFile($cam_streamId,$streamLink,true);
+
+                                    $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
+                                    $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
+                                    $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
+                                    $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
+                                    $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
+                                    $idx++;
+                                    }
                                 }
                             }
                         }
                     }
-                
-                }
+                }                           /* nur anlegen wenn FTPFOLDER definiert ist */
 
             echo "      Konfiguration ".$cam_name."\n";
             print_r($cam_config);
             echo "\n";
 
             }
-        print_R($resultStream);
+        print_r($resultStream);
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
     print_r($configWFront);

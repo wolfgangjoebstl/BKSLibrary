@@ -2096,6 +2096,7 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
  * readWebfrontConfig
  * getMediaListbyType
  * configWebfront
+ * intelliSort              nach einem sub index sortieren
  *
  ******************************************************/
 
@@ -2388,7 +2389,123 @@ class ipsOps
         return ($result);
         }
 
+
+    /* verwendet array_multisort
+     */
+
+    function intelliSort(&$inputArray, $orderby)
+        {
+        $sortArray = array(); 
+        foreach($inputArray as $entry)
+            { 
+            foreach($entry as $key=>$value)
+                { 
+                if(!isset($sortArray[$key])) $sortArray[$key] = array();  
+                $sortArray[$key][] = $value; 
+                } 
+            } 
+        array_multisort($sortArray[$orderby],SORT_ASC,$inputArray); 
+        return($sortArray);
+        }
+
+    /* array serialize 
+     *
+     * liest die keys der ersten Ebene und rekursiv ruft es dieselbe routine für weitere Ebenen auf
+     * erstellt einen php array Definition für das echte array
+     *
+     * arrayInput   ist das array als array formattiert
+     * text         ist der String in dem das php formatierte array hineinkopiert wird
+     * depth        gibt die Anzahl der bereits erfolgten rekursiven Aufrufe wieder
+     *
+     */
+
+    function serializeArrayAsPhp(&$arrayInput, &$text, $depth = 0, $ident=0, $debug=false)
+        {
+        $arrayStart=false;
+        $items = array();       // Zwischenspeicher
+
+        if ($debug) echo "array("; 
+        $text .= "array("; 
+
+        /* alle Eintraeg des Array durchgehen, sind immer key value Pärchen, zuerst die sub array abarbeiten und dann die einzelnen Pärchen drucken */
+        foreach($arrayInput as $key => &$value)             // foreach mit referenz, der Eintrag wird verändert
+            {
+            if(is_array($value))
+                {
+                if ($debug) echo "\n".str_pad(" ",$ident+5)."\"$key\" => ";
+                $text .= "\n".str_pad(" ",$ident+5)."\"$key\" => ";
+
+                $this->serializeArrayAsPhp($value, $text, $depth+1, $ident+10, $debug);
+
+                //if ($debug) echo str_pad(" ",$ident+5)."),\n"; 
+                //$text .= str_pad(" ",$ident+5)."),\n"; 
+                }
+            else
+                {
+                $items[$key] = $value;
+                }
+            }
+
+        if(count($items) > 0)
+            {
+            $prefix = "";
+            foreach($items as $key => &$value)
+                {
+                if ($debug) echo "\n".str_pad(" ",$ident).$prefix . '\'' . $key . '\' => \''.$value.'\',';
+                $text .= "\n".str_pad(" ",$ident).$prefix . '\'' . $key . '\' => \''.$value.'\',';
+                $prefix = "";
+                }
+            }
+
+        if ($debug) echo "\n".str_pad(" ",$ident+10).')';
+        $text .= "\n".str_pad(" ",$ident+10).')';
+        if ($depth>0) 
+            {
+            if ($debug) echo ",";
+            $text .= ",";
+            }
+        else 
+            {
+            if ($debug) echo ";\n";
+            $text .= ";\n";
+            }
+
+        return $text;
+        } 
+
     }
+
+function serialize_array(&$array, $root = '$root', $depth = 0)
+{
+        $items = array();
+
+        foreach($array as $key => &$value)
+        {
+                if(is_array($value))
+                {
+                        serialize_array($value, $root . '[\'' . $key . '\']', $depth + 1);
+                }
+                else
+                {
+                        $items[$key] = $value;
+                }
+        }
+
+        if(count($items) > 0)
+        {
+                echo $root . ' = array(';
+
+                $prefix = '';
+                foreach($items as $key => &$value)
+                {
+                        echo $prefix . '\'' . $key . '\' => \'' . addslashes($value) . '\'';
+                        $prefix = ', ';
+                }
+
+                echo ');' . "\n";
+        }
+}
+
 
 
 /*****************************************************************
@@ -3709,7 +3826,11 @@ class ComponentHandling
 /***********************************************************************************
  *
  * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
+ * $keywords kann ein Eintrag oder ein Array sein
+ * Die Elements sind die Geräteliste aus EvaluateHardware_include, sortiert nach Name, im COID sind die Unterobjekte nach denen die oder das Keyword verglichen wird
+ * Bei einem array ist das ausschlaggebende Keyword immer das erste, die anderen keywords sind zusätzliche Vergleichsoperatoren
  *
+ * Es gibt vorgefertigte TYPE_ keywords: TYPE_ACTUATOR, TYPE_CONTACT, TYPE_THERMOSTAT
  *
  ****************************************************************************************/    
 
@@ -4050,7 +4171,7 @@ class ComponentHandling
 
 		/* einheitliche Routine verwenden, Formattierung Ergebnis für Install */   
 		//echo "Passende Geraeteregister suchen:\n"; 
-		$result=$this->getComponent($Elements,$keywords,"Install");				/*passende Geräte suchen*/
+		$result=$this->getComponent($Elements,$keywords,"Install");				/* passende Geräte aus Elements anhand keywords suchen*/
 		if ( (sizeof($result))>0)											/* gibts ueberhaupt etwas zu tun */
 			{		
 			$keyword=$this->getKeyword($result);
@@ -4629,11 +4750,12 @@ class ModuleHandling
 	private $modules;	// array mit Liste der Namen und GUIDs von Modules 
 	private $functions;
 	private $debug;
+    private $ips;       // Hilfestellung
 	
 	public function __construct($debug=false)
 		{
 		$this->debug=$debug;
-		if ($debug) echo "Alle Bibliotheken mit GUID ausgeben:\n";
+		if ($debug) echo "Alle verfügbaren Bibliotheken mit GUID ausgeben:\n";
 		foreach(IPS_GetLibraryList() as $guid)
 			{
 			$module = IPS_GetLibrary($guid);
@@ -4646,7 +4768,7 @@ class ModuleHandling
 			if ($debug) echo "    ".$key." = ".$guid."\n";
 			}
 		unset($pair);
-		if ($debug) echo "Alle Modulnamen mit GUID ausgeben: \n";
+		if ($debug) echo "Alle installierten Modulnamen mit GUID ausgeben: \n";
 		foreach(IPS_GetModuleList() as $guid)
 			{
 			$module = IPS_GetModule($guid);
@@ -4658,6 +4780,7 @@ class ModuleHandling
 			$this->modules[$key]=$guid;
 			if ($debug) echo $key." = ".$guid."\n";
 			}
+        $this->ipsOps=new ipsOps();
 		}
 
 	public function printrLibraries()
@@ -4674,7 +4797,7 @@ class ModuleHandling
      */
 	public function printLibraries()
 		{
-		echo "Alle geladenen Bibliotheken auflisten:\n";		
+		echo "Alle verfügbaren Bibliotheken auflisten:\n";		
 		foreach($this->libraries as $index => $library)
 			{
 			//print_r($module);
@@ -4682,6 +4805,22 @@ class ModuleHandling
 			}
 		}
 		
+	/* Alle Libraries als array ausgeben , die ID der Library muss stimmen
+     */
+	public function getLibrary($needleID)
+		{
+        $result=false;
+		foreach($this->libraries as $index => $library)
+			{
+			if ($library == $needleID) 
+                {
+                //echo "   ".str_pad($index,35)."    ".$library."\n";
+                $result=$index;
+                }
+			}
+        return($result);
+		}
+
 	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
      */
 	public function printModules($input)
@@ -4698,7 +4837,7 @@ class ModuleHandling
 			/* wahrscheinlich keine GUID sondern ein Name eingeben */
 			if (isset($this->libraries[$input])==true)
 				{
-				echo "Library ".$input." hat GUID :".$this->libraries[$input]."\n";
+				echo "Library ".$input." mit GUID ".$this->libraries[$input]." hat folgende Module:\n";
 				$modules=IPS_GetLibraryModules($this->libraries[$input]);
 				}
 			else $modules=array();	
@@ -4707,12 +4846,44 @@ class ModuleHandling
 		foreach($modules as $guid)
 			{
 			$module = IPS_GetModule($guid);
-			$pair[$module['ModuleName']] = $guid;
+			$pair[$module['ModuleName']]["GUID"] = $guid;
+            switch ($module['ModuleType'])
+                {
+                /*
+                    0	Kern Instanz
+                    1	I/O Instanz
+                    2	Splitter Instanz
+                    3	Gerät Instanz
+                    4	Konfigurator Instanz
+                    5	Discovery Instanz
+                */
+                case 0:
+                    $pair[$module['ModuleName']]["Type"] = "Kern";
+                    break;
+                case 1:
+                    $pair[$module['ModuleName']]["Type"] = "I/O";
+                    break;
+                case 2:
+                    $pair[$module['ModuleName']]["Type"] = "Splitter";
+                    break;
+                case 3:
+                    $pair[$module['ModuleName']]["Type"] = "Gerät";
+                    break;
+                case 4:
+                    $pair[$module['ModuleName']]["Type"] = "Konfigurator";
+                    break;
+                case 5:
+                    $pair[$module['ModuleName']]["Type"] = "Discovery";
+                    break;
+                default:
+                    $pair[$module['ModuleName']]["Type"] = $module['ModuleType'];
+                    break;
+                }
 			}
 		if ( sizeof($pair) > 0 ) ksort($pair);
-		foreach($pair as $key=>$guid)
+		foreach($pair as $modulName=>$entry)
 			{
-			echo "     ".$key." = ".$guid;
+			echo "     ".str_pad($modulName,30)." = ".str_pad($entry["GUID"],40)."     ".$entry["Type"];
 			//if (IPS_ModuleExists($guid)) echo "***************";
 			echo "\n";
 			}
@@ -4734,7 +4905,7 @@ class ModuleHandling
 			/* wahrscheinlich keine GUID sondern ein Name eingeben */
 			if (isset($this->modules[$input])==true)
 				{
-				echo "Library ".$input." hat GUID :".$this->modules[$input]."\n";
+				echo "Instanz ".$input." hat GUID :".$this->modules[$input]."\n";
 				$instances=IPS_GetInstanceListByModuleID($this->modules[$input]);
 				}
 			else $instances=array();	
@@ -4742,10 +4913,15 @@ class ModuleHandling
 		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
-	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben 
+	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
+     * der Modulname kann auf unterschiedliche Varianten übermittelt werden
+     * als Modul Identifier:        {31F53ADE-EC84-55ED-901D-38C5EF0970C4}
+     * als Name:
+     * wenn empty oder *:           alle installierten Instanzen, egal welches Modul
      */
 	public function getInstances($input)
 		{
+        //echo "getInstances aufgerufen mit Parameter $input \n"; 
 		$input=trim($input);
 		$key=$this->get_string_between($input,'{','}');
 		if (strlen($key)==36) 
@@ -4753,18 +4929,78 @@ class ModuleHandling
 			if ($this->debug) echo "Gültige GUID mit ".$key."\n";
 			$instances=IPS_GetInstanceListByModuleID($input);
 			}
-		else
+		elseif ( ($input=="") || ($input=="*") )
+            {
+            //echo "   get all Instances.\n";
+            $instances = IPS_GetInstanceList();
+            }
+        else    
 			{
-			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			/* wahrscheinlich keine GUID sondern ein Modulname eingeben */
+            //echo "   look for a module with this name $input \n";
 			if (isset($this->modules[$input])==true)
 				{
 				//echo "Objekt Input ".$input." hat GUID :".$this->modules[$input]."\n";
 				$instances=IPS_GetInstanceListByModuleID($this->modules[$input]);
 				}
-			else $instances=array();	
+			else 
+                {
+                //$asterix=explode("*",$input);
+                //print_r($asterix);
+                //echo "Fehler getInstances: Modulname unbekannt.\n";
+                $instances=array();	
+                }
 			}		
 		return ($instances);
 		}
+
+    /* Alle installierten Discovery Instanzen ausgeben
+     *
+     */
+	public function getDiscovery()
+		{
+        //echo "getDiscovery aufgerufen :\n"; 
+		return ($this->getInstancesByName("Discovery"));
+		}
+
+    /* Alle installierten Instanzen, die ein Schlüsselwort enthalten ausgeben
+     *
+     */
+	public function getInstancesByName($search)
+		{
+        //echo "getInstancesByName aufgerufen :\n"; 
+        $instances = $this->getInstances('');          // alle installierten Instanzen, sonst ist es etwas komplizierter da die Instanzen nur über die Libraries ermittelt werden können
+        $result=array(); $configurator=array();
+        foreach ($instances as $instance) 
+            {
+            $moduleinfo = IPS_GetInstance($instance)["ModuleInfo"];
+            //print_r($moduleinfo);
+            //echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
+            $result[$instance]["OID"]=$instance;
+            $result[$instance]["Name"]=IPS_GetName($instance);
+            $result[$instance]["ModuleName"]=$moduleinfo["ModuleName"];
+            $result[$instance]["ModuleID"]=$moduleinfo["ModuleID"];
+            $result[$instance]["ModuleType"]=$moduleinfo["ModuleType"];
+            }
+        $sort=$this->ipsOps->intelliSort($result, "ModuleName");
+        //print_r($result);
+        $i=0;
+        foreach ($result as $entry)
+            {
+            if (strpos($entry["ModuleName"],$search) !== false) 
+                {
+                $configurator[$i]=$entry;
+                $libraryID=IPS_GetModule($entry["ModuleID"])["LibraryID"];
+                $libraryName=$this->getLibrary($libraryID);
+                echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
+                $configurator[$i]["Library"]=$libraryName;
+                $i++;
+                }
+            }
+        //print_r($sort);        
+		return ($configurator);
+		}
+
 
 	/* Alle Funktionen die einem bestimmten Modul zugeordnet sind als print/echo ausgeben 
      */
@@ -4848,7 +5084,7 @@ class ModuleHandling
 		return substr($string, $ini, $len);
 		}	
 
-    /* Config einer Instanz oder einem array aus Instanzen ausles und bestimmte Variablen der Konfiguration als array mitgeben
+    /* Config einer Instanz oder einem array aus Instanzen auslesen und bestimmte Variablen der Konfiguration als array mitgeben
      * Filterfunktion für Konfiguration
      */
 	public function selectConfiguration($id,$select=false)
@@ -5055,6 +5291,506 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
         }
     }
     
+
+/******************************************************************************************************/
+
+
+
+
+/* Klassen die extends nutzen müssen in der richtigen Reihenfolge definiert werden wenn sie mit einer Variablen aufgerufen werden,sonst gibt es einen runtime Fehler
+ * unter der Klasse alle Gerätespezifischen Eigenschaften sammeln
+ *
+ * Hardware wird extended by HardwareHUE, HardwareHomematic, HardwareHarmony
+ * Die extension classes müssen immer mit Hardware anfangen
+ *
+ *
+ */
+
+class Hardware
+    {
+	
+    protected $bridgeID, $deviceID;           // eingeschränkte Sichtbarkeit. Private nicht möglich, da auf selbe Klasse beschränkt
+    protected $installedModules;
+
+    public function __construct()
+        {
+        //echo "parent class Hardware construct.\n";
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        if (!isset($moduleManager))
+            {
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
+            }
+        $this->installedModules = $moduleManager->GetInstalledModules();
+        }
+
+    public function getBridgeID()
+        {
+        return ($this->bridgeID);
+        }
+
+    public function getDeviceID()
+        {
+        return ($this->deviceID);
+        }
+
+    public function getHardwareType($moduleID)
+        {
+        switch ($moduleID)
+            {
+            case "{3718244C-71A2-B20D-F754-DF5C79340AB4}":
+                $hardwareType="Homematic";
+                break;
+            case "{E4B2E379-63A8-4B79-3067-AF906DA91C33}":
+                $hardwareType="HUE";                
+                break;
+            case "{22F51957-348D-9A73-E019-3811573E7CA2}":
+                $hardwareType="Harmony";  
+                break;
+            default:
+                $hardwareType=false;
+                break;
+            }            
+        return ($hardwareType);
+        }
+
+    /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist
+     * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
+     * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
+     */
+
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry)
+        {
+        $deviceList[$name]["Type"]=$type;
+        $entry["NAME"]=$name; 
+        $deviceList[$name]["Instances"][]=$entry;
+        return (true);
+        }
+
+    /* die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät kann mehrere Instances und Channels haben, 
+     * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
+     *
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry)
+        {
+        return (true);
+        }
+
+    /* die Device Liste (Geräteliste) um die Actuators erweitern, ein Gerät kann Actuators haben, muss aber nicht
+     *
+     */
+
+    public function getDeviceActuators(&$deviceList, $name, $type, $entry)
+        {
+        return (true);
+        }
+
+
+    public function getDeviceActuatorsFromIpsHeat(&$deviceList)
+        {
+        /* IPS Heat analysieren */
+        $actuators = array();
+        if ( isset($this->installedModules["Stromheizung"]) )
+            {
+            echo "\nStromheizung ist installiert. Configuration auslesen. Devicelist mit Aktuatoren anreichern:\n";
+            IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
+            IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
+            IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		
+            IPSUtils_Include ("Stromheizung_Configuration.inc.php",  "IPSLibrary::config::modules::Stromheizung");
+            $IPSLightObjects=IPSHeat_GetHeatConfiguration();
+            foreach ($IPSLightObjects as $name => $object)
+                {
+                $components=explode(",",$object[IPSHEAT_COMPONENT]);
+                echo "  ".str_pad($name,25).str_pad($object[IPSHEAT_TYPE],15).str_pad($components[0],35);           // strukturiert ausgeben und wenn Component bekannt ist erweitern
+                switch (strtoupper($components[0]))
+                    {
+                    case "IPSCOMPONENTSWITCH_HOMEMATIC":
+                    case "IPSCOMPONENTDIMMER_HOMEMATIC":                
+                    case "IPSCOMPONENTRGB_PHUE":
+                    case "IPSCOMPONENTRGB_LW12":
+                    case "IPSCOMPONENTHEATSET_HOMEMATIC":
+                    case "IPSCOMPONENTHEATSET_HOMEMATICIP":                
+                    //case "IPSCOMPONENTHEATSET_FS20":                              // remote Adresse, OID nicht vorhanden
+                        echo $components[1]."   ".IPS_GetName($components[1]);
+                        $actuators[$components[1]]["ComponentName"]=$components[0];
+                        $actuators[$components[1]]["Type"]=$object[IPSHEAT_TYPE];
+                        break;
+                    default:
+                        echo "  unbekannter Component -------------------";
+                        break;
+                    }
+                echo "\n";	
+                }
+            }
+        //print_r($actuators); 
+        foreach ($deviceList as $name => $entry)
+            {
+            if (isset($entry["Instances"]))
+                {
+                foreach ($entry["Instances"] as $port => $instance)
+                    {
+                    if ( (isset($instance["OID"])) && (isset($actuators[$instance["OID"]])) ) 
+                        {
+                        $deviceList[$name]["Actuators"][$port]=$actuators[$instance["OID"]];
+                        $actuators[$instance["OID"]]["result"]="copied";
+                        }
+                    }
+                }
+            }                    
+        return ($actuators);
+        }
+
+
+    /* Plausi und Syntax Check der devicelist. Als Ergebnis werden statistische  Auswertungen geliefert. 
+     * Fehlermeldungen werden als echo ausgegeben
+     */
+
+    public function getDeviceStatistics($deviceList)
+        {
+        $statistic=array();
+        foreach ($deviceList as $name => $entry)
+            {
+            /* das registrieren muss wo anders passieren:
+            $instances=$entry["Instances"];
+            $first=true;
+            foreach ($instances as $instance)
+                {
+                if ( (isset($installedModules["DetectMovement"])) && $first ) $Handler->RegisterEvent($instance["OID"],'Topology','','');	                    // für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann            
+                $first=false;
+                }
+            */
+                
+            if (isset($entry["Type"])) 
+                {
+                if (isset($statistic[$entry["Type"]])) $statistic[$entry["Type"]]["Count"]++;
+                else $statistic[$entry["Type"]]["Count"]=1; 
+                }
+            if (isset($entry["Instances"]))
+                {
+                if (isset($statistic[$entry["Type"]]["Instances"])) $statistic[$entry["Type"]]["Instances"]["Count"]++;
+                else $statistic[$entry["Type"]]["Instances"]["Count"]=1; 
+                foreach ($entry["Instances"] as $instance)
+                    {
+                    if (isset($statistic[$entry["Type"]]["Instances"]["CountInstances"])) 
+                        {
+                        $statistic[$entry["Type"]]["Instances"]["CountInstances"]++;
+                        }
+                    else 
+                        {
+                        $statistic[$entry["Type"]]["Instances"]["CountInstances"]=1; 
+                        }                     
+                    if (isset($instance["TYPEDEV"]))
+                        {    
+                        if (isset($statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]])) $statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]]["Count"]++;
+                        else $statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]]["Count"]=1; 
+                        }
+                    else echo "TYPEDEV in den Instances für $name nicht definiert.\n";
+                    }
+                } 
+            if (isset($entry["Channels"]))
+                {
+                if (isset($statistic[$entry["Type"]]["Channels"])) 
+                    {
+                    $statistic[$entry["Type"]]["Channels"]["Count"]++;
+                    //$statistic[$entry["Type"]]["Channels"]["List"] .= ";".$name;
+                    }
+                else 
+                    {
+                    $statistic[$entry["Type"]]["Channels"]["Count"]=1; 
+                    //$statistic[$entry["Type"]]["Channels"]["List"] = $name;
+                    }
+                
+                foreach ($entry["Channels"] as $channel)
+                    {
+                    if (isset($statistic[$entry["Type"]]["Channels"]["CountChannels"])) 
+                        {
+                        $statistic[$entry["Type"]]["Channels"]["CountChannels"]++;
+                        }
+                    else 
+                        {
+                        $statistic[$entry["Type"]]["Channels"]["CountChannels"]=1; 
+                        }                    
+                    if (isset($channel["Type"]))
+                        {                    
+                        if (isset($statistic[$entry["Type"]]["Channels"][$channel["Type"]])) 
+                            {
+                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["Count"]++;
+                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["List"] .= ";".$channel["Name"];
+                            }
+                        else 
+                            {
+                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["Count"]=1; 
+                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["List"] = $channel["Name"];
+                            }
+                        }
+                    else echo "Type in den Channels nicht definiert.\n";
+                    }
+                }            
+            }    
+        return ($statistic);
+        }
+
+    }
+
+
+class HardwareHomematic extends Hardware
+	{
+	
+    protected $bridgeID, $deviceID;
+    protected $installedModules;
+	
+	public function __construct($debug=false)
+		{
+        $this->bridgeID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
+        $this->deviceID = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
+
+        parent::__construct($debug);
+        }
+
+    /* die Device Liste aus der Geräteliste erstellen 
+     * Antwort ist ein Geräteeintrag
+     */
+
+    public function getDeviceParameter(&$deviceList,$name, $type, $entry)
+        {
+        /* Jeder Entry ist ein Device, oder ? */
+
+        /* sehr schwierig, Devices sind nicht automatisch Instanzen */
+        /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
+
+        //echo "getDeviceParameter aufgerufen:\n";
+        $goOn=true;
+        $nameSelect=explode(":",$name);
+        if (isset($deviceList[$nameSelect[0]])) 
+            {
+            if (count($nameSelect)<2) 
+                {
+                echo "    getDeviceParameter Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                }
+            }
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        //print_r($result);
+        if (isset($result["Address"])) 
+            {
+            $addressSelect=explode(":",$result["Address"]);
+            if (count($addressSelect)>1)
+                {
+                $port=(integer)$addressSelect[1];
+                if ($port==0) 
+                    {
+                    //echo "Fehler, Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
+                    $goOn=false;
+                    }
+                }
+            else 
+                {
+                echo "   getDeviceParameter Fehler, Seriennummer ohne Port.\n";
+                $goOn=false;
+                }
+            }
+        else 
+            {
+            echo "   getDeviceParameter Fehler, keine Seriennummer.\n";
+            $goOn=false;
+            }
+        if ($goOn)
+            {
+            if (isset($result["Protocol"])) 
+                {
+                switch ($result["Protocol"])
+                    {
+                    case 0:
+                        $deviceList[$nameSelect[0]]["SubType"]="Funk";                            
+                        break;
+                    case 1:
+                        $deviceList[$nameSelect[0]]["SubType"]="Wired";                            
+                        break;
+                    case 2:
+                        $deviceList[$nameSelect[0]]["SubType"]="IP";                            
+                        break;
+                    default:
+                        break;    
+                    }
+                }
+            if (isset($this->installedModules["OperationCenter"])) 
+                {
+                IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+                $DeviceManager = new DeviceManagement();                    
+                $instanz=$entry["OID"];
+
+                //echo " $instanz: ";
+                //$typeInst   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
+                //$HMDevice   = $DeviceManager->getHomematicHMDevice($instanz);
+                /* if ($typeInst <> "") 
+                    {
+                    echo "TypeInst => $typeInst ";
+                    $entry["TYPE"]=$typeInst;
+                    }
+                if ($HMDevice<>"") 
+                    {
+                    echo "HMDevice => $HMDevice ";
+                    $entry["HMDEVICE"]=$HMDevice;
+                    }
+                echo "\n";
+                    
+                */
+                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                if ($typedev<>"")  $entry["TYPEDEV"]=$typedev;
+                else echo "   getDeviceParameter Fehler $instanz: kein TYPEDEV ermittelt.\n";
+                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in beschreibender Form aus */
+                if ($typedev<>"")   $deviceList[$nameSelect[0]]["Information"]=$typedev;
+                else echo "   getDeviceParameter Fehler $instanz: kein INFO ermittelt.\n";
+                /*
+                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
+                if ($typedev<>"")  
+                    {
+                    $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                    $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
+                    }
+                else "Fehler $instanz: keine Channels ermittelt.\n";
+                */
+                }                            
+            $deviceList[$nameSelect[0]]["Type"]=$type;
+            $entry["NAME"]=$name; 
+            $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
+            return (true);
+            }
+        else return (false);
+        }
+
+    /* der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     */
+
+    public function getDeviceChannels(&$deviceList,$name, $type, $entry)
+        {
+        /* Jeder Entry ist ein Device, oder ? */
+
+        /* sehr schwierig, Devices sind nicht automatisch Instanzen */
+        /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
+
+        //echo "    getDeviceChannels aufgerufen:\n";
+        $goOn=true;
+        $nameSelect=explode(":",$name);
+        if (isset($deviceList[$nameSelect[0]]) === false) 
+            {
+            $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+            if (isset($result["Address"])) 
+                {
+                $addressSelect=explode(":",$result["Address"]);
+                if (count($addressSelect)>1)
+                    {   
+                    echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]." Port : ".$addressSelect[1]." \n";
+                    }
+                else
+                    {
+                    echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]."  \n";
+                    }
+                }
+            else echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Keine Seriennummer gefunden.\n";
+            $goOn=false;
+            }
+        $port= $this->checkConfig($goOn, $entry["CONFIG"]);     	// gibt Port zurück, wenn alles okay wird goOn nicht auf false gesetzt
+        if ($goOn)
+            {
+            //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
+            if (isset($this->installedModules["OperationCenter"])) 
+                {
+                IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+                $DeviceManager = new DeviceManagement();                    
+                $instanz=$entry["OID"];
+                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                if ($typedev<>"")  
+                    {
+                    $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                    $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
+                    }
+                else echo "   getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+                }                            
+            return (true);
+            }
+        else return (false);
+        }
+
+    function checkConfig(&$goOn,$config)
+        {
+        //$goOn=true;           // Variable wird als Pointer übergeben
+        $result=json_decode($config,true);   // als array zurückgeben 
+        //print_r($result);
+        if (isset($result["Address"])) 
+            {
+            $addressSelect=explode(":",$result["Address"]);
+            if (count($addressSelect)>1)
+                {
+                $port=(integer)$addressSelect[1];
+                if ($port==0) 
+                    {
+                    //echo "Fehler, Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
+                    $goOn=false;
+                    }
+                }
+            else 
+                {
+                echo "     getDeviceChannels Fehler, Seriennummer ohne Port.\n";
+                $goOn=false;
+                }
+            }
+        else 
+            {
+            echo "      getDeviceChannels Fehler, keine Seriennummer.\n";
+            $goOn=false;
+            }
+        return ($port);
+        }
+
+    }
+
+
+class HardwareHUE extends Hardware
+	{
+	
+    protected $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        $this->bridgeID = "{6EFF1F3C-DF5F-43F7-DF44-F87EFF149566}";
+        $this->deviceID = "{83354C26-2732-427C-A781-B3F5CDF758B1}";
+        parent::__construct($debug);        
+        }
+
+    /* die Device Liste aus der Geräteliste erstellen 
+     * Antwort ist ein Geräteeintrag
+     */
+
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry)
+        {
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        //print_r($result);
+        if ( (isset($result["DeviceType"])) &&($result["DeviceType"]=="lights") ) $entry["TYPEDEV"]="TYPE_SWITCH";
+        $deviceList[$name]["Type"]=$type;
+        $entry["NAME"]=$name; 
+        $deviceList[$name]["Instances"][]=$entry;
+        return (true);
+        }
+
+    }
+
+
+class HardwareHarmony extends Hardware
+	{
+	
+    protected $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        $this->bridgeID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
+        $this->deviceID = "{B0B4D0C2-192E-4669-A624-5D5E72DBB555}";
+        parent::__construct($debug);        
+        }
+
+    }
 
 
 
