@@ -73,7 +73,11 @@ if (isset($installedModules["OperationCenter"]))
 //print_r($installedModules); 
 
     echo "\n";
+    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
     echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
     echo "\n";
 
     $ipsOps = new ipsOps();
@@ -734,72 +738,6 @@ if (isset($installedModules["DetectMovement"]))
 		echo "     ".$oid."  ".IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."\n";
 		$Handler->RegisterEvent($soid,'Topology','','HeatControl');		
 		}	
-
-
-
-
-if (false)
-    {
-	/*--------------------------nur zur Ausgabe und Kontrolle---------------------------------------*/
-    echo "\n";
-    echo "=======================================================================\n";
-	echo "Jetzt in den einzelnen Katgorien die Links hineinsortieren :\n";
-    echo "\n";
-    echo "Noch einmal Ausgabe der nun erfolgreich registrierten Topologie Eintraege:\n";
-	$configurationAuto = $Handler->Get_EventConfigurationAuto();
-	//$result=$Handler->sortEventList($configurationAuto);
-	foreach ($configurationAuto as $oid => $entry) 
-		{ 
-		echo "     ".$oid."    ".str_pad(IPS_GetName($oid),40)."   ".str_pad($entry[0],20)."  ".str_pad($entry[1],30)."   ".$entry[2]."  \n"; 
-		}
-
-	if ( function_exists("IPSDetectDeviceHandler_GetEventConfiguration") == true )
-		{
-	    $topology=$Handler->Get_Topology();
-    	print_r($topology);
-        $topologyPlusLinks=$topology;
-		foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
-			{
-			$name=IPS_GetName($index);
-			$entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen */
-			$entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
-			if (sizeof($entry1)>0)
-				{
-				foreach ($entry1 as $place)
-					{
-					if ( isset($topology[$place]["OID"]) != true ) 
-						{
-						echo "Kategorie $place anlegen.\n";
-						}
-					else
-						{
-						$oid=$topology[$place]["OID"];
-						//print_r($topology[$place]);
-						$size=sizeof($entry2);
-						if ($entry2[0]=="") $size=0;
-						if ($size > 0) 
-							{	/* ein Gewerk, vorne einsortieren */
-							echo "erzeuge Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-							CreateLinkByDestination($name, $index, $oid, 10);	
-                            $topologyPlusLinks[$place]["OBJECT"][$index]=$name;
-							}
-						else
-							{	/* eine Instanz, dient nur der Vollstaendigkeit */
-							echo "erzeuge Instanz Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
-							CreateLinkByDestination($name, $index, $oid, 1000);						
-                            $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
-							}
-						}
-					}
-				//print_r($entry1);
-				}
-			}
-		}
-    else "FEHLER, function IPSDetectDeviceHandler_GetEventConfiguration noch nicht angelegt.\n";    
-
-	print_r($topologyPlusLinks);
-    /*-----------------------------------------------------------------*/
-    }
 																																													
     echo "\n";
     echo "=======================================================================\n";

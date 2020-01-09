@@ -4887,6 +4887,7 @@ class ModuleHandling
 			//if (IPS_ModuleExists($guid)) echo "***************";
 			echo "\n";
 			}
+        return($modules);
 		}
 
 	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als echo ausgeben 
@@ -4910,7 +4911,7 @@ class ModuleHandling
 				}
 			else $instances=array();	
 			}		
-		foreach ($instances as $ID => $name) echo "     ".$ID."    ".$name."    ".IPS_GetName($name)."    ".IPS_GetName(IPS_GetParent($name))."\n";
+		foreach ($instances as $ID => $name) echo "     ".str_pad($ID,5).str_pad($name,7).str_pad(IPS_GetName($name),30)."  ".IPS_GetName(IPS_GetParent($name))."\n";
 		}
 
 	/* Alle Instanzen die einem bestimmten Modul zugeordnet sind als array ausgeben
@@ -4919,14 +4920,15 @@ class ModuleHandling
      * als Name:
      * wenn empty oder *:           alle installierten Instanzen, egal welches Modul
      */
-	public function getInstances($input)
+	public function getInstances($input, $format="OID")
 		{
         //echo "getInstances aufgerufen mit Parameter $input \n"; 
 		$input=trim($input);
 		$key=$this->get_string_between($input,'{','}');
 		if (strlen($key)==36) 
 			{
-			if ($this->debug) echo "Gültige GUID mit ".$key."\n";
+            /* Übergabe einer ModulID */
+			if ($this->debug) echo "Anforderung mit Module GUID : ".$key."\n";
 			$instances=IPS_GetInstanceListByModuleID($input);
 			}
 		elseif ( ($input=="") || ($input=="*") )
@@ -4950,8 +4952,17 @@ class ModuleHandling
                 //echo "Fehler getInstances: Modulname unbekannt.\n";
                 $instances=array();	
                 }
-			}		
-		return ($instances);
+			}
+        if ($format=="OID") return ($instances);
+        else
+            {
+            $result=array();
+            foreach ($instances as $instance)    
+                {
+                $result[IPS_GetName($instance)]=$instance;
+                }
+            return ($result);
+            }
 		}
 
     /* Alle installierten Discovery Instanzen ausgeben
@@ -5486,7 +5497,11 @@ class Hardware
                         if (isset($statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]])) $statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]]["Count"]++;
                         else $statistic[$entry["Type"]]["Instances"][$instance["TYPEDEV"]]["Count"]=1; 
                         }
-                    else echo "TYPEDEV in den Instances für $name nicht definiert.\n";
+                    else 
+                        {
+                        if (isset($entry["Type"])) echo "TYPEDEV in den ".$entry["Type"]." Instances für $name nicht definiert.\n";
+                        else echo "TYPEDEV in den Instances für $name nicht definiert.\n";
+                        }
                     }
                 } 
             if (isset($entry["Channels"]))
