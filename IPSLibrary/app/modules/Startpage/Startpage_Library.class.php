@@ -309,47 +309,6 @@
 
             $topologyPlusLinks=$this->mergeTopologyObjects($topology,IPSDetectDeviceHandler_GetEventConfiguration(),$debug);
 
-        if (false)
-            {
-            $topologyPlusLinks=$topology;
-            foreach (IPSDetectDeviceHandler_GetEventConfiguration() as $index => $entry)
-                {
-                if ($debug) echo $entry[0]."|",$entry[1]."|",$entry[2]."\n";
-                $name=IPS_GetName($index);
-                $entry1=explode(",",$entry[1]);		/* Zuordnung Gruppen, es können auch mehrere sein, das ist der Ort zB Arbeitszimmer */
-                $entry2=explode(",",$entry[2]);		/* Zuordnung Gewerke, eigentlich sollte pro Objekt nur jeweils ein Gewerk definiert sein. Dieses vorrangig anordnen */
-                if (sizeof($entry1)>0)
-                    {
-                    foreach ($entry1 as $place)
-                        {
-                        if ( isset($topology[$place]["OID"]) != true ) 
-                            {
-                            if ($debug) echo "   Kategorie $place anlegen.\n";
-                            }
-                        else
-                            {
-                            $oid=$topology[$place]["OID"];
-                            //print_r($topology[$place]);
-                            $size=sizeof($entry2);
-                            if ($entry2[0]=="") $size=0;
-                            if ($size > 0) 
-                                {	/* es wurde ein Gewerk angeben, zB Temperatur, vorne einsortieren */
-                                if ($debug) echo "   erzeuge OBJECT Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid).") ".$entry[2]."\n";
-                                //CreateLinkByDestination($name, $index, $oid, 10);	
-                                $topologyPlusLinks[$place]["OBJECT"][$entry2[0]][$index]=$name;       // nach OBJECT auch das Gewerk als Identifier nehmen
-                                }
-                            else
-                                {	/* eine Instanz, dient nur der Vollstaendigkeit */
-                                if ($debug) echo "   erzeuge INSTANCE Link mit Name ".$name." auf ".$index." der Category $oid (".IPS_GetName($oid)."), wird nachrangig einsortiert.".$entry[2]."\n";						
-                                //CreateLinkByDestination($name, $index, $oid, 1000);						
-                                $topologyPlusLinks[$place]["INSTANCE"][$index]=$name;
-                                }
-                            }
-                        }
-                    //print_r($entry1);
-                    }
-                }  // ende foreach
-            }
             if ($debug) 
                 {
                 print_r($topologyPlusLinks);

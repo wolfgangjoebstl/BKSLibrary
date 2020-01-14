@@ -5349,14 +5349,17 @@ class Hardware
         {
         switch ($moduleID)
             {
-            case "{3718244C-71A2-B20D-F754-DF5C79340AB4}":
+            case "{3718244C-71A2-B20D-F754-DF5C79340AB4}":      // Homematic Discovery
                 $hardwareType="Homematic";
                 break;
-            case "{E4B2E379-63A8-4B79-3067-AF906DA91C33}":
+            case "{E4B2E379-63A8-4B79-3067-AF906DA91C33}":      // HUE Discovery
                 $hardwareType="HUE";                
                 break;
-            case "{22F51957-348D-9A73-E019-3811573E7CA2}":
+            case "{22F51957-348D-9A73-E019-3811573E7CA2}":      // Harmony Discovery
                 $hardwareType="Harmony";  
+                break;
+            case "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}":       // EchoControl Configurator, kein automatisches Discovery über System, chekt regelmaessig
+                $hardwareType="EchoControl";  
                 break;
             default:
                 $hardwareType=false;
@@ -5802,6 +5805,20 @@ class HardwareHarmony extends Hardware
 		{
         $this->bridgeID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
         $this->deviceID = "{B0B4D0C2-192E-4669-A624-5D5E72DBB555}";
+        parent::__construct($debug);        
+        }
+
+    }
+
+class HardwareEchoControl extends Hardware
+	{
+	
+    protected $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        $this->bridgeID = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";
+        $this->deviceID = "{496AB8B5-396A-40E4-AF41-32F4C48AC90D}";
         parent::__construct($debug);        
         }
 

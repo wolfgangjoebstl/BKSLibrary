@@ -55,19 +55,22 @@ class AutosteuerungAlexaHandler
         return($this->countAlexa);
         }
 
-    public function getAlexaConfig()
+    /* Alexa Konfiguration aus der Instanz laden und analysieren */
+
+    public function getAlexaConfig($debug=false)
         {
         $alexaConfig=array(); 
         $configAlexa=array();             
 	    if ($this->countAlexa != 0) 
             {
+            if ($debug) echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
         	$configStruct=json_decode($this->configAlexa);
 	        //print_r($configStruct);
             foreach ($configStruct as $typ=>$conf)
                 {
                 if ($conf=="") 
                     {
-                    echo "Fehler, kein Parameter.\n";
+                    if ($debug) echo "Fehler, kein Parameter für $typ.\n";
                     $conf="[]";
                     }
         	    $confStruct=json_decode($conf);
@@ -119,13 +122,16 @@ class AutosteuerungAlexaHandler
                         /* neue Funktion ??? */
                         break;										
             		default:
-                        echo "Fehler: kenne den Identifier $typ in der Alexa Config noch nicht.\n";
-                        echo "    ".$typ."    ".$conf."\n";
+                        if ($debug) 
+                            {
+                            echo "Fehler: kenne den Identifier $typ in der Alexa Config noch nicht.\n";
+                            echo "    ".$typ."    ".$conf."\n";
+                            }
 		    	        break;
                     } 
             	foreach ($confStruct as $struct) 
 	            	{
-                    print_r($struct);                       
+                    if ($debug) print_r($struct);                       
                     if ($this->countAlexa > 0)
                         {   // lokal Alexa
                         $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server
@@ -145,7 +151,7 @@ class AutosteuerungAlexaHandler
         			        $alexaConfig[$struct->$id]["Name"]=$struct->Name;
                 			if ($id=="SceneControllerDeactivatableActivateID") $alexaConfig[$struct->$id]["Script"]=$struct->SceneControllerDeactivatableDeactivateID;						
                             }
-				        else echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Config loeschen.\n";							
+				        elseif ($debug) echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Config loeschen.\n";							
                         }
                     else
                         {  // remote Alexa
@@ -166,7 +172,7 @@ class AutosteuerungAlexaHandler
 	            		    $alexaConfig[$struct->$id]["Name"]=$struct->Name;
     		            	if ($id=="SceneControllerDeactivatableActivateID") $alexaConfig[$struct->$id]["Script"]=$struct->SceneControllerDeactivatableDeactivateID;						
                             }
-		        		else echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Config loeschen.\n";							
+		        		elseif ($debug) echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Config loeschen.\n";							
 				        }   // ende else
                     }       // ende foreach 
                 }   // ende foreach

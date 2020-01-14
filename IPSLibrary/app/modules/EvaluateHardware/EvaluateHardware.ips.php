@@ -238,8 +238,9 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	
 	//$includefile='<?'."\n".'$fileList = array('."\n";
 
-	$includefile    = '<?'."\n";             // für die php IP Symcon Runtime
-	$includefileHTML= '<?'."\n";             // für die php user/webfront Runtime    
+	$includefile            = '<?'."\n";             // für die php IP Symcon Runtime
+    $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
+	$includefileHTML        = '<?'."\n";             // für die php user/webfront Runtime    
 
 	/************************************
 	 *
@@ -248,8 +249,13 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	 *
 	 ******************************************/
 
+    $topID=@IPS_GetObjectIDByName("Topology", 0 );
+    if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da     
+
     echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
     $discovery = $modulhandling->getDiscovery();
+    $discovery[]["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
+
     $hardware=array(); $gateway=array();
     $device=array();
     $hardwareTypeDetect = new Hardware();
@@ -283,10 +289,10 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
         }
 
     echo "\n";
-    $includefile .= "\n\n";
-    $includefile .= "function gatewayInstanzen() { return ";
-    $ipsOps->serializeArrayAsPhp($gateway, $includefile);
-    $includefile .= ';}'."\n\n"; 
+    $includefileDevices .= "\n\n";
+    $includefileDevices .= "function gatewayInstanzen() { return ";
+    $ipsOps->serializeArrayAsPhp($gateway, $includefileDevices);        // gateway array in das include File schreiben
+    $includefileDevices .= ';}'."\n\n"; 
 
     $deviceList=array();
     foreach ($hardware as $hardwareType => $deviceEntries)          // die device types durchgehen HUE, Homematic etc.
@@ -307,10 +313,14 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
     $actuators=$hardwareTypeDetect->getDeviceActuatorsFromIpsHeat($deviceList);
     print_r($actuators);
 
-    $includefile .= 'function deviceList() { return ';
-    $ipsOps->serializeArrayAsPhp($deviceList, $includefile, 0, 0, false);          // true mit Debug
-    $includefile .= ';}'."\n\n";        
-       
+    $includefileDevices .= 'function deviceList() { return ';
+    $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
+    $includefileDevices .= ';}'."\n\n";        
+
+	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+	if (!file_put_contents($filename, $includefileDevices)) {
+        throw new Exception('Create File '.$filename.' failed!');
+    		}       
 
 	/************************************
 	 *

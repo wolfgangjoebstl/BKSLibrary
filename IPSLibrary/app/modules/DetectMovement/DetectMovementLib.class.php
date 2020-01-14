@@ -27,8 +27,8 @@
      * DetectMovementHandler extends DetectHandler
      * DetectTemperatureHandler extends DetectHandler
      * DetectHeatControlHandler extends DetectHandler
-     * DetectDeviceHandler extends DetectHandler, writes function IPSDetectDeviceHandler_GetEventConfiguration	 
-     * DetectDeviceListHandler extends DetectHandler, writes function IPSDetectDeviceListHandler_GetEventConfiguration
+     * DetectDeviceHandler extends DetectHandler, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
+     * DetectDeviceListHandler extends DetectHandler, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
      *
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
