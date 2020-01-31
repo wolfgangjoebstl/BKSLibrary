@@ -1,9 +1,36 @@
 <?
 
+    /*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */ 
+	 
 	/**@defgroup Sprachsteuerung
 	 *
-	 * Script um automatisch irgendetwas ein und auszuschalten
+	 * Script um automatisch irgendetwas ein und auszuschalten, Befehl kommt über die ALexa (???)
 	 *
+     *
+     *
+     * benötigt IPSModule:
+     *      OperationCenter
+     *
+     * benötigt Libraries:
+     *
+     *
+     * benötigt Module aus dem Store:
+     *
 	 *
 	 * @file          Sprachsteuerungung_Installation.ips.php
 	 * @author        Wolfgang Joebstl
@@ -44,7 +71,13 @@
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
 	//echo $inst_modules;
-	
+
+    $ipsOps = new ipsOps();
+    $dosOps = new dosOps();
+	$modulhandling = new ModuleHandling();    
+	$wfcHandling = new WfcHandling();
+    $hardware = new Hardware();
+
 	if (isset($installedModules["OperationCenter"]))
 		{
 		IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
@@ -66,6 +99,10 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+    $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
+
+    /* brauch ich die folgenden Variablen noch 
+
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
 
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -81,6 +118,7 @@
 
 	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
 	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
+    */
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -97,43 +135,116 @@
 	// Data
 	// ----------------------------------------------------------------------------------------------------------------------------
 
+    /* mögliche Actions hier aufsetzen */
     $pname="Test";
+	if (IPS_VariableProfileExists($pname) == true)
+        {
+        IPS_DeleteVariableProfile($pname);
+        }    
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 1, 1, 1); //PName, Minimal, Maximal, Schrittweite
-		IPS_SetVariableProfileAssociation($pname, 1, "Test", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileValues($pname, 1, 3, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 1, "Sprechen", "", 0xf13c1e); //P-Name, Value, Association, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Radio", "", 0x3cf11e); //P-Name, Value, Association, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 3, "Pause", "", 0x3c1ef1); //P-Name, Value, Association, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
+    echo "Alle Profileinträge für $pname danach anzeigen:\n";
+    $profile=IPS_GetVariableProfile ($pname);
+    print_r($profile);
 
-	$modulhandling = new ModuleHandling();
-	$echos=$modulhandling->getInstances('EchoRemote');
+	//$echos=$modulhandling->getInstances('EchoRemote');
+
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+    $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],true);
+    echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
+    $echos = array();
+    foreach ($deviceListFiltered as $name => $device) 
+        {
+        echo "   ".str_pad($name,35)."    ".$device["Instances"][0]["OID"]."\n";
+        $echos[]=$device["Instances"][0]["OID"];
+        }
 
     $pname="Echo-Speaker";
+
+    /*
+    echo "Alle Profileinträge für $pname anzeigen, Profil wird gleich gelöscht:\n";
+    $profile=IPS_GetVariableProfile ($pname);
+    print_r($profile);
+    */
+
+    /* Liste mit allen gefunden Echo Lautsprechern erstellen */
+
+	if (IPS_VariableProfileExists($pname) == true)
+        {
+        IPS_DeleteVariableProfile($pname);
+        }
+
 	if (IPS_VariableProfileExists($pname) == false)
 		{
 		//Var-Profil erstellen
 		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 		//IPS_SetVariableProfileValues($pname, 1, 1, 1); //PName, Minimal, Maximal, Schrittweite
+
+        // boolean IPS_SetVariableProfileAssociation (string $ProfilName, float $Wert, string $Name, string $Icon, integer $Farbe)
+        $color=0x113c1e; $inc=4;
+        IPS_SetVariableProfileAssociation($pname, 1, "Default", "",($color+$inc)  ); //P-Name, Value, Association, Icon, Color
+        foreach ($echos as $echo)
+            {
+            IPS_SetVariableProfileAssociation($pname, $echo, IPS_GetName($echo), "",($color+$inc) ); //P-Name, Value, Assotiation, Icon, Color
+            $inc *= 2;
+            }
+
+        echo "Alle Profileinträge für $pname danach anzeigen:\n";
+        $profile=IPS_GetVariableProfile ($pname);
+        print_r($profile);
+
+		echo "Profil ".$pname." erstellt;\n";
+    	}
+
+    echo "Alle in der Alexa programmierten TuneIN Radiostationen:\n";
+    $Configurations = json_decode(IPS_GetConfiguration($echos[0]),true);
+    $TuneInstations = json_decode($Configurations["TuneInStations"],true);
+    print_r($TuneInstations);
+
+    $pname="TuneInStations";
+	if (IPS_VariableProfileExists($pname) == true)
+        {
+        IPS_DeleteVariableProfile($pname);
+        }    
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+		//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		//IPS_SetVariableProfileValues($pname, 1, 2, 1); //PName, Minimal, Maximal, Schrittweite
+        $inc = 8;
+		foreach ($TuneInstations as $station)
+            {
+            IPS_SetVariableProfileAssociation($pname, $station["position"], $station["station"], "", 0xf13c1e+$inc); //P-Name, Value, Association, Icon, Color
+            $inc *=8;
+            }
+		//IPS_SetVariableProfileAssociation($pname, 2, "Radio", "", 0x3cf11e); //P-Name, Value, Association, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
-	$color=0x113c1e; $inc=4;
-	IPS_SetVariableProfileAssociation($pname, 1, "Default", "",($color+$inc)  ); //P-Name, Value, Assotiation, Icon, Color
-	foreach ($echos as $echo)
-		{
-		IPS_SetVariableProfileAssociation($pname, $echo, IPS_GetName($echo), "",($color+$inc) ); //P-Name, Value, Assotiation, Icon, Color
-		$inc *= 2;
-		}
-
+    echo "Alle Profileinträge für $pname danach anzeigen:\n";
+    $profile=IPS_GetVariableProfile ($pname);
+    print_r($profile);
 
 	$categoryId_Auswertungen    = CreateCategory('Auswertungen',   $CategoryIdData, 20);
     //CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
-	$TestnachrichtID = CreateVariable("Testnachricht",3,$categoryId_Auswertungen, 0, "",$scriptIdAction,null,""  );
-    $ButtonID=CreateVariable("Button",0,$categoryId_Auswertungen, 10, "Test",$scriptIdAction,null,""  );
-    $SelectID=CreateVariable("SelectSpeaker",1,$categoryId_Auswertungen, 20, "Echo-Speaker",$scriptIdAction,null,""  );
+	$TestnachrichtID        = CreateVariable("Testnachricht",3,$categoryId_Auswertungen, 0, "",$scriptIdAction,null,""  );
+    $ButtonID               = CreateVariable("Button",1,$categoryId_Auswertungen, 10, "Test",$scriptIdAction,null,""  );
+    $SelectID               = CreateVariable("SelectSpeaker",1,$categoryId_Auswertungen, 20, "Echo-Speaker",$scriptIdAction,null,""  );
+    $TuneInStationConfig    = CreateVariable("TuneInStationConfig",3,$categoryId_Auswertungen, 2000, "",null,null,""  );
+    $TuneInStation          = CreateVariable("TuneInStation",1,$categoryId_Auswertungen, 30, "TuneInStations",$scriptIdAction,null,""  );
+    $SelectedStationId      = CreateVariable("SelectedStationId",3,$categoryId_Auswertungen, 2010, "",null,null,""  );    
+
+    SetValue($TuneInStationConfig,$Configurations["TuneInStations"]);
 
 	//$listinstalledmodules=IPS_GetModuleList();
 	//print_r($listinstalledmodules);
@@ -315,7 +426,14 @@
 						"ADMINISTRATOR" 	=> true,
 						"USER"				=> false,
 						"MOBILE"			=> false,
-							),							
+							),
+                $TuneInStation => array(
+						"NAME"				=> "Select Radiostation",
+						"ORDER"				=> 40,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),                            							
 					),
 			"Nachrichten" => array(
 				$Nachricht_inputID => array(
@@ -332,50 +450,19 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// WebFront Installation
 	// ----------------------------------------------------------------------------------------------------------------------------
-	
-    $wfcHandling = new WfcHandling();
 
-	if ($WFC10_Enabled)
-		{
-		echo "====================================================================================\n";		
-        $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
-		echo "Webportal Administrator installiert in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
-        echo "Webportal Administrator installieren in: ".$WFC10_Path." \n";
-		$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10_Path);
-		IPS_SetHidden($categoryId_WebFrontAdministrator, true); //Objekt verstecken
+    if (isset($configWFront["Administrator"]))
+        {
+        $configWF = $configWFront["Administrator"];
+        installWebfrontSprach($configWF,$webfront_links,"Administrator");
+        }
 
-  		//echo "***** Tabpane ".$tabItem." erzeugen in ".$WFC10_TabPaneItem."\n";
-        //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    /* macht den Notenschlüssel in die oberste Leiste */
-        
-        
-        $wfcHandling->setupWebfront($webfront_links,$WFC10_TabPaneParent,$categoryId_WebFrontAdministrator,"Administrator");
+    if (isset($configWFront["User"]))
+        {
+        $configWF = $configWFront["User"];
+        installWebfrontSprach($configWF,$webfront_links,"User");
+        }
 
-        /*
-        echo "  Kategorie Sprachsteuerung installiert : ".$categoryId_WebFront."  (".IPS_GetName($categoryId_WebFront).")\n"; 
-		CreateLinkByDestination("Nachrichtenverlauf", $Nachricht_inputID,    $categoryId_WebFront,  20);
-        */
-		}
-
-	if ($WFC10User_Enabled)
-		{
-		echo "\nWebportal User installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($WFC10User_Path);
-
-		}
-
-	if ($Mobile_Enabled)
-		{
-		echo "\nWebportal Mobile installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Mobile_Path);
-
-		}
-
-	if ($Retro_Enabled)
-		{
-		echo "\nWebportal Retro installieren: \n";
-		$categoryId_WebFront         = CreateCategoryPath($Retro_Path);
-
-		}
 
     /* test, Sprachausgabe
      *
@@ -385,12 +472,35 @@
         echo "\n\n--------Test Sprachsteuerungsausgabe:-----------\n";
         tts_play(1,'Sprachsteuerung Modul und Library installiert.','',2);
         tts_play(1,'Test Default Lautsprecher','',2);
-        $modulhandling = new ModuleHandling();
         $echos=$modulhandling->getInstances('EchoRemote');
         foreach ($echos as $echo)
             {
             tts_play($echo,'Test Echo '.IPS_GetName($echo).' Lautsprecher','',2);
             }
         }
+
+
+    function installWebfrontSprach($configWF,$webfront_links, $scope)
+        {
+	    $wfcHandling = new WfcHandling();            
+        echo "installWebfrontSprach aufgerufen.\n";
+        if ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )   
+            {
+            if ( (isset($configWF["Path"])) )
+                {
+                $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+                echo "Webfront für ".IPS_GetName($categoryId_WebFront)." ($categoryId_WebFront) Kategorie im Pfad ".$configWF["Path"]." erstellen.\n";
+                echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+                $status=@EmptyCategory($categoryId_WebFront);
+                if ($status) echo "   -> erfolgreich.\n";                
+		        IPS_SetHidden($categoryId_WebFront, true); //Objekt verstecken
+
+                $wfcHandling->setupWebfront($webfront_links,$configWF["TabPaneParent"],$categoryId_WebFront, $scope);
+
+                }
+            }
+
+        }
+
 
 ?>

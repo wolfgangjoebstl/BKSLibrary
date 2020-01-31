@@ -298,8 +298,8 @@
             IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');            
 
             /* Get Topology Liste aus EvaluateHardware_Configuration */
-            $Handler = new DetectDeviceHandler();
-            $topology=$Handler->Get_Topology();
+            $DetectDeviceHandler = new DetectDeviceHandler();
+            $topology=$DetectDeviceHandler->Get_Topology();
 
             /* die Topologie mit den Geräten anreichen. Es gibt Links zu Chíldren, INSTANCE und OBJECT 
              * Children, listet die untergeordneten Eintraege
@@ -843,8 +843,8 @@
     		$worldID=IPS_GetObjectIDByName("World",  $categoryId_WebFrontAdministrator);
             
             /* Get Topology Liste aus EvaluateHardware_Configuration */
-            $Handler = new DetectDeviceHandler();
-            $topology=$Handler->Get_Topology();
+            $DetectDeviceHandler = new DetectDeviceHandler();
+            $topology=$DetectDeviceHandler->Get_Topology();
 
             $wert  = "";
             $wert .= "<style>";

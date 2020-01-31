@@ -52,6 +52,9 @@
       * exectime
       * getVariableId
       *
+      *
+      * AD_ErrorHandler
+      *
 	  * erstellt auch einige für alle brauchbaren Klassen, uebersichtlicher als die verschiedenen einzelnen Routinen
 	  *
       * dosOps
@@ -59,11 +62,22 @@
       * fileOps
       * errorAusgabe
       * ComponentHandling
-	  * WfcHandling
-      * ModuleHandling
+	  * WfcHandling                 Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
+      * ModuleHandling              
+      *
+      * Hardware
+      *     getBridgeID
+      *     getSocketID
+      *
+      *         HardwareHomematic extends Hardware
+      *         HardwareHUE extends Hardware
+      *         HardwareHarmony extends Hardware
+      *         HardwareEchoControl extends Hardware
       *
       * DEPRICIATED
       * verschiedene Routinen die bald geloescht werden sollen
+      *     getNiceFileSize
+      *     getServerMemoryUsage
       *
 	  ****************************************************************/
 
@@ -1458,13 +1472,18 @@ function CreateVariableByNameFull($id, $name, $type, $profile = "")
 
 /******************************************************************/
 
-function Get_IdentByName2($name)
+/* Additional function to create an identifier out of a variable name, space is the new parameter to decide either to remove 
+ * special characters or replace them either by a space or an underscore
+ *
+  */
+
+function Get_IdentByName2($name, $space="")
 {
-		$ident = str_replace(' ', '', $name);
+		$ident = str_replace(' ', $space, $name);
 		$ident = str_replace(array('ö','ä','ü','Ö','Ä','Ü'), array('oe', 'ae','ue','Oe', 'Ae','Ue' ), $ident);
-		$ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), '', $ident);
-		$ident = str_replace(array(',','.',':',';','!','?'), '', $ident);
-		$ident = str_replace(array('+','-','/','*'), '', $ident);
+		$ident = str_replace(array('"','\'','%','&','(',')','=','#','<','>','|','\\'), $space, $ident);
+		$ident = str_replace(array(',','.',':',';','!','?'), $space, $ident);
+		$ident = str_replace(array('+','-','/','*'), $space, $ident);
 		$ident = str_replace(array('ß'), 'ss', $ident);
 		return $ident;
 }
@@ -2172,6 +2191,10 @@ class ipsOps
 			}
         return (false);
         }
+
+    /* Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
+     *
+     */
 
     public function readWebfrontConfig($WFC10_ConfigId, $debug)
         {
@@ -3432,7 +3455,7 @@ class fileOps
                              * Um die Key Spalte richtig zuzuordnen, wird der index in $keyIndex gespeichert.
                              * data   [0=>filename  1=>0712    2=>0812    3=>""    4=>0912    5=>0612    6=>0712  
                              * key=filename, indexKey=0
-                             * filter []  noch niocht implementiert, Spalten entsprechend Angabe filter auf false stellen
+                             * filter []  noch nicht implementiert, Spalten entsprechend Angabe filter auf false stellen
                              * index  
                              *
                              */
@@ -4375,9 +4398,15 @@ class ComponentHandling
 /******************************************************************
  *
  * Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen. 
- * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reeicht der Link.
+ * Darstellung von Variablen nur in Kategorien kann einfacher gelöst werden. Da reicht der Link.
  *
- *
+ *  get_WfcStatus
+ *  write_wfc
+ *  search_wfc
+ *  read_wfc
+ *  setupWebfront
+ *  createSplitPane
+ *  deletePane
  *
  ******************************************************************/
 
@@ -4390,16 +4419,27 @@ class WfcHandling
 		{
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         $this->WFC10_ConfigId       = $moduleManager->GetConfigValueIntDef('ID', 'WFC10', GetWFCIdDefault());
-	    echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
+	    //echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n\n";
     	$WebfrontConfigID=array();
 	    $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
     	foreach ($alleInstanzen as $instanz)
 	    	{
 		    $result=IPS_GetInstance($instanz);
     		$this->WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
-	    	echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
+	    	//echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."  (".$instanz.")\n";
     		}
-	    echo "\n";        
+	    //echo "\n";        
+        }
+
+    public function get_WfcStatus()
+        {
+	    echo "Default WFC10_ConfigId, wenn nicht definiert : ".IPS_GetName($this->WFC10_ConfigId)."  (".$this->WFC10_ConfigId.")\n";
+        // $this->WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+        foreach ($this->WebfrontConfigID as $name => $entry)    
+            {
+            echo "     Webfront Konfigurator Name : ".str_pad($name,20)." ID : ".$entry."\n";
+            }
+        echo "\n";
         }
 
     private function write_wfc($input,$indent,$level)
@@ -4589,12 +4629,25 @@ class WfcHandling
         return ($resultWebfront);    
     	}   // ende function
 
+    /* Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte teil des WebfrontConfigID übergeben */
+
     public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope)
         {
 		if ( isset($this->WebfrontConfigID[$scope]) )
 			{
 	        echo "setupWebfront: mit Parameter aus array in ".$WFC10_TabPaneItem." mit der Katgeorie ".$categoryId_WebFrontAdministrator." für den Webfront Configurator ".$scope."\n";
-         	$WFC10_ConfigId=$this->WebfrontConfigID[$scope];
+            $this->setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$this->WebfrontConfigID[$scope], $scope);
+            }
+		else
+			{	
+			echo "Webfront ConfiguratorID unbekannt.\n";
+			}
+		}
+
+    /* anders probieren, nicht den scope übergeben */
+
+    public function setupWebfrontEntry($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator, $WFC10_ConfigId, $scope)
+        {
 	        if (array_key_exists("Auswertung",$webfront_links) ) 
     	        {
         	    /* Kein Name für den Pane definiert */
@@ -4647,12 +4700,9 @@ class WfcHandling
 					$order += 10;	
     				}  // ende foreach
          	   }       
-            }
-		else
-			{	
-			echo "Webfron ConfiguratorID unbekannt.\n";
-			}
 		}
+
+
 
     /* Erzeuge ein Splitpane mit Name und den Links die in webfront_group angelegt sind in WFC10_TabPaneItem*/
 
@@ -5001,10 +5051,15 @@ class ModuleHandling
             if (strpos($entry["ModuleName"],$search) !== false) 
                 {
                 $configurator[$i]=$entry;
-                $libraryID=IPS_GetModule($entry["ModuleID"])["LibraryID"];
-                $libraryName=$this->getLibrary($libraryID);
-                echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
-                $configurator[$i]["Library"]=$libraryName;
+                $getModule=@IPS_GetModule($entry["ModuleID"]);
+                if ($getModule === false) echo "FEHLER: ".$entry["ModuleName"]." eingetragen, aber nicht mehr installiert. Gehe zum Store.\n";
+                else
+                    {
+                    $libraryID=$getModule["LibraryID"];
+                    $libraryName=$this->getLibrary($libraryID);
+                    echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
+                    $configurator[$i]["Library"]=$libraryName;
+                    }
                 $i++;
                 }
             }
@@ -5320,7 +5375,7 @@ function AD_ErrorHandler($fehlercode, $fehlertext, $fehlerdatei, $fehlerzeile,$V
 class Hardware
     {
 	
-    protected $bridgeID, $deviceID;           // eingeschränkte Sichtbarkeit. Private nicht möglich, da auf selbe Klasse beschränkt
+    protected $socketID, $bridgeID, $deviceID;           // eingeschränkte Sichtbarkeit. Private nicht möglich, da auf selbe Klasse beschränkt
     protected $installedModules;
 
     public function __construct()
@@ -5333,6 +5388,11 @@ class Hardware
             $moduleManager = new IPSModuleManager('EvaluateHardware',$repository);
             }
         $this->installedModules = $moduleManager->GetInstalledModules();
+        }
+
+    public function getSocketID()
+        {
+        return ($this->socketID);
         }
 
     public function getBridgeID()
@@ -5427,6 +5487,8 @@ class Hardware
                     case "IPSCOMPONENTHEATSET_HOMEMATIC":
                     case "IPSCOMPONENTHEATSET_HOMEMATICIP":                
                     //case "IPSCOMPONENTHEATSET_FS20":                              // remote Adresse, OID nicht vorhanden
+                        if (@IPS_ObjectExists($components[1])) echo $components[1]."   ".IPS_GetName($components[1]);
+                        else echo $components[1]."   Error, Object does not exist -------------------------\n";                    
                         echo $components[1]."   ".IPS_GetName($components[1]);
                         $actuators[$components[1]]["ComponentName"]=$components[0];
                         $actuators[$components[1]]["Type"]=$object[IPSHEAT_TYPE];
@@ -5456,6 +5518,55 @@ class Hardware
         return ($actuators);
         }
 
+
+    public function getDeviceListFiltered($deviceList,$filter=array(),$debug=false)
+        {
+        if ($debug)
+            {
+            echo "getDeviceListFiltered aufgerufen. Filter deviceList with:\n";
+            print_r($filter);
+            }
+        $result=array();
+        if (is_array($filter))
+            {
+            $result=$deviceList;    // mit der ganzen Liste anfangen
+            foreach ($filter as $key => $needle)
+                {
+                $deviceListInput = $result;     // und dann langsam kleiner machen
+                $result=array();                 // result wieder loeschen
+                echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege.\n";
+                switch ($key)
+                    {
+                    case "Type":
+                        foreach ($deviceListInput as $device => $entry)
+                            {
+                            if ( (isset($entry[$key])) && ($entry[$key] == $needle) )
+                                {
+                                echo "           Eintrag $device mit $key gleich $needle gefunden.\n";
+                                $result[$device] = $entry;
+                                }
+                            }
+                        break;
+                    case "TYPEDEV":
+                        foreach ($deviceListInput as $device => $entry)
+                            {
+                            $found=false;
+                            if (isset($entry["Instances"]))
+                                {
+                                foreach ($entry["Instances"] as $instance)
+                                    {
+                                    if ( (isset($instance[$key])) && ($instance[$key] == $needle) ) $found = true;
+                                    }                                
+                                }
+                            if ($found) $result[$device] = $entry;
+                            }
+                        break;
+                    }
+                }
+            return($result);                
+            }
+        else return(false);
+        }
 
     /* Plausi und Syntax Check der devicelist. Als Ergebnis werden statistische  Auswertungen geliefert. 
      * Fehlermeldungen werden als echo ausgegeben
@@ -5556,12 +5667,13 @@ class Hardware
 class HardwareHomematic extends Hardware
 	{
 	
-    protected $bridgeID, $deviceID;
+    protected $socketID, $bridgeID, $deviceID;
     protected $installedModules;
 	
 	public function __construct($debug=false)
 		{
-        $this->bridgeID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
+        $this->socketID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
+        $this->bridgeID = "{5214C3C6-91BC-4FE1-A2D9-A3920261DA74}";
         $this->deviceID = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
 
         parent::__construct($debug);
@@ -5571,23 +5683,30 @@ class HardwareHomematic extends Hardware
      * Antwort ist ein Geräteeintrag
      */
 
-    public function getDeviceParameter(&$deviceList,$name, $type, $entry)
+    /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist
+     * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
+     * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
+     */
+
+    public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
         {
         /* Jeder Entry ist ein Device, oder ? */
 
         /* sehr schwierig, Devices sind nicht automatisch Instanzen */
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
 
-        //echo "getDeviceParameter aufgerufen:\n";
         $goOn=true;
         $nameSelect=explode(":",$name);
         if (isset($deviceList[$nameSelect[0]])) 
             {
             if (count($nameSelect)<2) 
                 {
-                echo "    getDeviceParameter Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                echo "    getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
                 }
             }
+        if ($debug) echo "getDeviceParameter:Homematic für Eintrag $name aufgerufen, Ergebnis wird in der deviceList unter ".$nameSelect[0]." eingetragen.";
+
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         //print_r($result);
         if (isset($result["Address"])) 
@@ -5604,13 +5723,13 @@ class HardwareHomematic extends Hardware
                 }
             else 
                 {
-                echo "   getDeviceParameter Fehler, Seriennummer ohne Port.\n";
+                echo "   getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
                 $goOn=false;
                 }
             }
         else 
             {
-            echo "   getDeviceParameter Fehler, keine Seriennummer.\n";
+            echo "   getDeviceParameter:Homematic Fehler, keine Seriennummer.\n";
             $goOn=false;
             }
         if ($goOn)
@@ -5655,11 +5774,24 @@ class HardwareHomematic extends Hardware
                     
                 */
                 $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
-                if ($typedev<>"")  $entry["TYPEDEV"]=$typedev;
-                else echo "   getDeviceParameter Fehler $instanz: kein TYPEDEV ermittelt.\n";
-                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in beschreibender Form aus */
-                if ($typedev<>"")   $deviceList[$nameSelect[0]]["Information"]=$typedev;
-                else echo "   getDeviceParameter Fehler $instanz: kein INFO ermittelt.\n";
+                if ($typedev<>"")  
+                    {
+                    if ($debug) echo "    TYPEDEV: $typedev\n";
+                    $entry["TYPEDEV"]=$typedev;
+                    }
+                else 
+                    {
+                    echo "   getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
+                    $goOn=false;
+                    }
+                
+                if (strpos($nameSelect[0],"HM") === 0) $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+
+                //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
+                $infodev    = $DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+                if ($infodev<>"")   $deviceList[$nameSelect[0]]["Information"]=$infodev;
+                else echo "   getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein INFO ermittelt.\n";
+                $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
                 /*
                 $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
                 if ($typedev<>"")  
@@ -5669,11 +5801,16 @@ class HardwareHomematic extends Hardware
                     }
                 else "Fehler $instanz: keine Channels ermittelt.\n";
                 */
-                }                            
-            $deviceList[$nameSelect[0]]["Type"]=$type;
-            $entry["NAME"]=$name; 
-            $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
-            return (true);
+                } 
+            if ($goOn)
+                {                           
+                $deviceList[$nameSelect[0]]["Type"]=$type;
+                $entry["NAME"]=$name; 
+                $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
+                echo "\n";
+                return (true);
+                }
+            else return (false);                // fehlender Typedev Wert erzeugt keinen Eintrag !!!
             }
         else return (false);
         }
@@ -5769,12 +5906,13 @@ class HardwareHomematic extends Hardware
 class HardwareHUE extends Hardware
 	{
 	
-    protected $bridgeID, $deviceID;
+    protected $socketID, $bridgeID, $deviceID;
 	
 	public function __construct($debug=false)
 		{
-        $this->bridgeID = "{6EFF1F3C-DF5F-43F7-DF44-F87EFF149566}";
-        $this->deviceID = "{83354C26-2732-427C-A781-B3F5CDF758B1}";
+        $this->socketID = "{6EFF1F3C-DF5F-43F7-DF44-F87EFF149566}";             // I/O oder Splitter ist der Socket für das Device
+        $this->bridgeID = "{EE92367A-BB8B-494F-A4D2-FAD77290CCF4}";             // Configurator
+        $this->deviceID = "{83354C26-2732-427C-A781-B3F5CDF758B1}";             // das Gerät selbst
         parent::__construct($debug);        
         }
 
@@ -5799,11 +5937,12 @@ class HardwareHUE extends Hardware
 class HardwareHarmony extends Hardware
 	{
 	
-    protected $bridgeID, $deviceID;
+    protected $socketID, $bridgeID, $deviceID;
 	
 	public function __construct($debug=false)
 		{
-        $this->bridgeID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
+        $this->socketID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
+        $this->bridgeID = "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}";
         $this->deviceID = "{B0B4D0C2-192E-4669-A624-5D5E72DBB555}";
         parent::__construct($debug);        
         }
@@ -5817,10 +5956,85 @@ class HardwareEchoControl extends Hardware
 	
 	public function __construct($debug=false)
 		{
+        $this->socketID = "{C7F853A4-60D2-99CD-A198-2C9025E2E312}";            
         $this->bridgeID = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";
         $this->deviceID = "{496AB8B5-396A-40E4-AF41-32F4C48AC90D}";
         parent::__construct($debug);        
         }
+
+    /* die Device Liste aus der Geräteliste erstellen, übergeben wird $name, $type, $entry["CONFIG"]
+     * Antwort ist ein Geräteeintrag
+     */
+
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        if ($debug) 
+            {   
+            echo "getDeviceParameter HardwareEchoControl Parameter $name $type\n";          
+            print_r($entry);
+            }
+        $configStruct=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        $device=false; $tuneIn=false;         // anhand der Konfig rausfinden ob es ein physikalisches gerät ist 
+        $nofire=(strpos(IPS_GetName($entry["OID"]),"Fire") === false);
+        foreach ($configStruct as $typ=>$conf)
+            {
+            $confStruct=json_decode($conf);
+            switch ($typ)
+                {
+                case "Devicenumber": 
+                    $len = strlen($conf);
+                    if ($len < 17) $device=true;
+                    if ($debug) echo "      ->  ".$typ."    ".$conf."    $len\n";
+                    break;
+                case "Devicetype":
+                    $len = strlen($conf);                    
+                    if ($debug) echo "      ->  ".$typ."    ".$conf."   $len\n";
+                    break;
+                case "TuneInStations":
+                    if ($debug) echo "      ->  ".$typ."     \n";                    
+                    $tuneIn=true;
+                    break;
+                case "ExtendedInfo":
+                case "Mute":
+                case "Title":
+                case "Cover":
+                case "TitleColor":                    
+                case "TitleSize":                    
+                case "Subtitle1":
+                case "Subtitle1Color":
+                case "Subtitle1Size":
+                case "Subtitle2":
+                case "Subtitle2Color":
+                case "Subtitle2Size":
+                    break;
+                case "AlarmInfo":
+                case "TaskList":
+                case "ShoppingList":
+                    break; 
+                case "updateinterval":
+                    if ($conf==0) 
+                        {
+                        if ($debug) echo "      ->  ".$typ."    ".$conf."     change Configuration !\n";                   
+                        }
+                    else
+                        {
+                        if ($debug)  echo "      ->  ".$typ."    ".$conf."  \n";                   
+                        }
+                    break;                   
+                default:
+                    if ($debug) echo "      ->  ".$typ."    ".$conf."\n";                    
+                    break;
+                } 
+            }
+        if ($device && $tuneIn && $nofire) 
+            {
+            $entry["TYPEDEV"]="TYPE_LOUDSPEAKER";
+            }
+        $deviceList[$name]["Type"]=$type;
+        $entry["NAME"]=$name; 
+        $deviceList[$name]["Instances"][]=$entry;
+        return (true);
+        }        
 
     }
 

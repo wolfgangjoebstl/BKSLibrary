@@ -336,53 +336,56 @@
 
     function installWebfrontMon($configWF,$resultStream)
         {
-        $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
-        
-        //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
-		//echo "installWebfront: WF10 Path for WebCamera Monitor         : ".$configWF["Path"]." with this Webfront item name : $tabItem\n";
-        echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
-        echo "----------------------------------------------------------------------------------------------------------------------------------\n";
-
-        echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
-        $status=@EmptyCategory($categoryId_WebFront);
-        if ($status) echo "   -> erfolgreich.\n";
-    	IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-        
-        $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
-
-        $categoryIdOverview  = CreateCategory('Overview',  $categoryId_WebFrontMonitor, 0);             // links davon, um die Cam Bilder in die richtige Größe zu bringen, für Summaries
-        $categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontMonitor, 10);
-        $categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontMonitor, 20);						
-        $categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontMonitor, 30);
-        $categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontMonitor, 40);						
-
-		DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
-		CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
-        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 20 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
-
-		CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdOverview /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
-        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-        CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-    
-        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
-        CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
-
-        $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
-        $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
-        $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
-        $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
-        $count=sizeof($resultStream);
-        for ($i=0;$i<$count;$i++) 
+        if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )   
             {
-            if (isset($resultStream[$i]["Stream"]["Name"]))
+            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
+            
+            //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
+            //echo "installWebfront: WF10 Path for WebCamera Monitor         : ".$configWF["Path"]." with this Webfront item name : $tabItem\n";
+            echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
+            echo "----------------------------------------------------------------------------------------------------------------------------------\n";
+
+            echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+            $status=@EmptyCategory($categoryId_WebFront);
+            if ($status) echo "   -> erfolgreich.\n";
+            IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+            
+            $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+
+            $categoryIdOverview  = CreateCategory('Overview',  $categoryId_WebFrontMonitor, 0);             // links davon, um die Cam Bilder in die richtige Größe zu bringen, für Summaries
+            $categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontMonitor, 10);
+            $categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontMonitor, 20);						
+            $categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontMonitor, 30);
+            $categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontMonitor, 40);						
+
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
+            CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 20 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
+
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdOverview /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+        
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
+
+            $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
+            $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
+            $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
+            $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
+            $count=sizeof($resultStream);
+            for ($i=0;$i<$count;$i++) 
                 {
-                CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
-                //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs 
-                $camID=CreateVariable($resultStream[$i]["Stream"]["Name"],0, $categoryIdOverview,$i*10,"",null,null,"");
-                foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $camID, 10);
+                if (isset($resultStream[$i]["Stream"]["Name"]))
+                    {
+                    CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
+                    //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs 
+                    $camID=CreateVariable($resultStream[$i]["Stream"]["Name"],0, $categoryIdOverview,$i*10,"",null,null,"");
+                    foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $camID, 10);
+                    }
                 }
             }
         }

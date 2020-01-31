@@ -374,6 +374,26 @@ Path=Visualization.Mobile.iTunes
 		/* damit kann man iTunes fernsteuern */
 		
 		}
+    if (true)
+        {
+        /*
+        $order=30;            
+    	foreach ($config["NetPlayer"] as $name => $entry)
+			{
+        	if (isset($entry["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer";            
+			}
+		if (isset($config["NetPlayer"]["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer"; 	 
+		$NetPlayerID  = $CategoryIdDataNP;
+	    $tabname="NetPlayer";
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["TAB"]="NetPlayer";
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["NAME"]=$config["NetPlayer"]["NAME"];
+        $webfront_links[$tabname]["Auswertung"][$NetPlayerID]["ORDER"]=$order;
+
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["ADMINISTRATOR"]=true;
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["USER"]=true;
+		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["MOBILE"]=true;
+        */
+        }
 	echo "Webfront Visualisierungskonfiguration ausgeben:\n"; print_r($webfront_links);
 	
 	/*----------------------------------------------------------------------------------------------------------------------------

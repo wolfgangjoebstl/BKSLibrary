@@ -59,6 +59,7 @@ $scriptIdiTunesSteuerung   = IPS_GetScriptIDByName('iTunes.ActionScript', $Categ
 $dataIdiTunes  = IPS_GetObjectIDByIdent('iTunes', $CategoryIdData);
 $options=IPS_GetChildrenIDs($dataIdiTunes);
 
+echo "Press";
 
 $categoryId_WebFront         = CreateCategoryPath($WFC10_Path);
 

@@ -1164,15 +1164,30 @@ class AutosteuerungOperator
  *
  *      getFunctions			welche AutosteuerungsFunktionen sind aktiviert
  *      isitdark, isitlight, isitsleep, isitwakeup, isitawake, isithome, isitmove, isitalarm, isitheatday	aktuellen Zustand feststellen und ausgeben
- *      getDaylight
- *      switichingTimes
- *      timeright
+ *      isitheatday             schaut nach ob ein Heiztag ist, das ist die Tabelle in Autosteuerung
+ *      getDaylight             gibt die Sonnenauf- und -untergangszeiten aus 
+ *      switichingTimes         Auswertung der Angaben in den Szenen, Berechnung der Werte für sunrise und sunset 
+ *      timeright               Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll
+ *
+ *      statusAnwesenheitSimulation     Konfiguration der Anwesenheitsliste als text ausgeben
+ *      getScenes               Liest die AWS/TIMER Konfiguration aus, filtert auf die AWS Events, oder Eingabe
+ *      getScenesbyId
+ *      getChancesById
+ *
  *      setNewValue, setNewValueIfDif
+ *      setNewStatus
+ *      setNewStatusBounce
+ *
  *      trimCommand
  *
- *      ParseCommand, parseName, parseParameter, parseValue,
+ *      ParseCommand
+ *      parseName, parseParameter, parseValue
+ *      getIdByName
  *
- *      EvaluateCommand, evalCom_IFDIF, evalCom_LEVEL, ControlSwitchLevel
+ *      EvaluateCommand
+ *      evalCondition
+ *      evalCom_IFDIF, evalCom_LEVEL, 
+ *      ControlSwitchLevel
  *
  *      ExecuteCommand, 
  *
@@ -1662,7 +1677,7 @@ class Autosteuerung
 
     /****************************************************
      *
-     * Konfiguration der Anwesenheitsliste ausgeben
+     * Konfiguration der Anwesenheitsliste als text ausgeben
      *
      ********************************************************************/
 
@@ -4259,7 +4274,10 @@ class Autosteuerung
 						}
 					}
 					
-				break;	
+				break;
+            case "EchoRemote": 
+                $this->moduleEchoRemote($result);             	
+                break;
 			case "":			
 				/* kein Modul definiert, auch nicht Default Wert, sicherheitshalber nichts machen 
 				 * ausser wenn OID gesetzt ist, das funktioniert immer. 
@@ -4275,7 +4293,7 @@ class Autosteuerung
 				break;	
 			default:
 				/* nachschauen ob das gesuchte Modul überhaupt installiert ist */
-				echo "Fehler, ".$result["MODULE"]." nicht bekannt.\n";
+				echo "Fehler in class Autosteuerung ExecuteCommand, Module ".$result["MODULE"]." nicht bekannt. Referenziert im Befehl ".json_encode($result)."\n";
 				$instanzID=$this->availableModuleDevice($result["MODULE"],$result["DEVICE"]);				
 				if ($instanzID !== false)
 					{
@@ -4418,6 +4436,26 @@ class Autosteuerung
 		$result["COMMENT"]=$ergebnis;			
 		return ($result);							
 		}
+
+    /* beim Abarbeiten der Befehle wird manchmal auf ein Module verwiesen, hier abarbeiten
+     * es wird die Variable $result als Link übergeben. Änderungen werden direkt drinnen gemacht.
+     */
+
+    private function moduleEchoRemote(&$result)
+        {
+        IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+        $hardware = new Hardware();           
+        $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],false);     // true with Debug
+        //echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
+        $echos = array();
+        foreach ($deviceListFiltered as $name => $device) 
+            {
+            echo "   ".str_pad($name,35)."    ".$device["Instances"][0]["OID"]."\n";
+            $echos[]=$device["Instances"][0]["OID"];
+            }
+
+        }
+
 
     private function getSpeakWert($oid, $value)   
         {

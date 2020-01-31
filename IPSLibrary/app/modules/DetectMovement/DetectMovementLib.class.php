@@ -33,10 +33,12 @@
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
      * DetectHandler provides the following functions as abstract class
-	 *	StoreEventConfiguration
+	 *	StoreEventConfiguration             Store config, the file and function name are given in the final class
 	 *	CreateEvents
 	 *	ListEvents
 	 *	ListGroups
+     *  getMirrorRegisterNameFromConfig
+     *  getMirrorRegisterName                   Einheitliche Funktion um den Namen des Mirror Registers zu ermitteln.
 	 *	CreateEvent
 	 *	sortEventList
 	 *	registerEvent
@@ -46,7 +48,7 @@
 	 *	__construct
 	 *	Get_Configtyp, Get_ConfigFileName, Get_Topology		gemeinsame (self) Konfigurations Variablen
 	 * 	Get_EventConfigurationAuto, Set_EventConfigurationAuto
-	 *	CreateMirrorRegister
+	 *	CreateMirrorRegister                verwendet getMirrorRegisterName, liefert die OID des MirrorRegisters
 	 *	evalTopology
 	 *
 	 *
@@ -67,6 +69,9 @@
 		abstract function CreateMirrorRegister($variableId);
 
 		private $installedModules, $log_OperationCenter;
+
+  		protected $Detect_DataID;												/* Speicherort der Mirrorregister */ 
+        protected $debug;
 		
 		/**
 		 * @public
@@ -96,12 +101,13 @@
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		function StoreEventConfiguration($configuration)
+		function StoreEventConfiguration($configuration, $comment="")
 			{
 			//$configurationSort=$this->sortEventList($configuration);			
             //print_r($configuration);
 			// Build Configuration String
-			$configString = $this->Get_Configtype().' = array(';
+			$configString = $this->Get_Configtype().' = array('.PHP_EOL;
+            $configString .= chr(9).chr(9).chr(9).'/* This is the new comment area : '.$comment.' */';
 			foreach ($configuration as $variableId=>$params) 
                 {
                 if (IPS_ObjectExists($variableId))
@@ -113,7 +119,7 @@
                         $configString .= "'".$params[$i]."','".$params[$i+1]."','".$params[$i+2]."',";
                         }
                     $configString .= '),';
-                    $configString .= '   /*'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId)).'*/';
+                    $configString .= '   //'.IPS_GetName($variableId)."  ".IPS_GetName(IPS_GetParent($variableId));
                     }
 			    }
 			$configString .= PHP_EOL.chr(9).chr(9).chr(9).');'.PHP_EOL.PHP_EOL.chr(9).chr(9);
@@ -275,6 +281,7 @@
 							}
 						break;
 					default:
+                        echo "ListGroups Type $type unknown.\n";
 						if ($params[1] != "")
 							{
 							$result[$params[1]]="available";
@@ -283,6 +290,103 @@
 					}
 				}
 			return ($result);
+			}
+
+		/**
+		 * @public
+		 *
+		 * Listet die ganze Konfiguration eines Events aus.
+		 * 
+		 *
+		 */
+		public function ListConfigurations($oid=false)
+			{
+            $configurationAll = $this->Get_EventConfigurationAuto();
+            if ( ($oid !== false) && (isset($configurationAll[$oid])) ) 
+                {
+                $configuration = array();
+                $configuration[$oid] = $configurationAll[$oid];
+                }
+            else $configuration = $configurationAll;
+
+			$result=array();
+			foreach ($configuration as $oid=>$eventConfig)
+				{
+                //echo "   bearbeite ".$eventConfig[0]."\n";
+                $result[$oid]["Category"] = $eventConfig[0];
+                switch ($eventConfig[0])
+                    {
+					case 'Contact':
+					case 'Feuchtigkeit':
+					case 'Humidity':
+					case 'HeatControl':										
+					case 'Motion':
+					case 'Temperatur':	
+					case 'Topology':
+                        $result[$oid]["Room"] = $eventConfig[1];
+                        $typedevs=explode(",",$eventConfig[2]);
+                        foreach ($typedevs as $typedev)
+                            {
+                            $entry = explode("->",$typedev);
+                            if (count($entry)>1) $result[$oid]["Config"][$entry[0]] = $entry[1];
+                            else $result[$oid]["Config"]["Type"] = $entry[0];
+                            }
+                        break;
+                    default:
+                        break;
+                    }
+				}
+			return ($result);
+			}
+
+		/**
+		 * @public
+		 *
+		 */
+
+        public function getMirrorRegisterNamefromConfig($oid)
+            {
+            $config = $this->ListConfigurations($oid);
+            if (isset($config[$oid]["Config"]["Mirror"])) return ($config[$oid]["Config"]["Mirror"]);
+            else return (false);
+            }  
+
+		/** getMirrorRegisterName
+		 * 
+         *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
+         *  sonst schauen ob der Parent eine Instanz ist, dann den Namen der Instanz nehmen, oder
+         *  wenn nicht den Namen der Variablen nehmen
+         *  
+         * am Ende wird der Name der Variable im entsprechenden Datenbereich gesucht. Wenn nicht vorhanden wird false zurückgegeben
+         * sonst wird bereits die OID des Mirror Registers geliefert
+         *
+		 */
+		public function getMirrorRegisterName($oid)
+			{
+			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
+			//echo "Kategorie der Custom Components Spiegelregister : ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).")\n";
+            $variablename = $this->getMirrorRegisterNamefromConfig($oid);       /* wenn ein Wert in der Config abgelegt ist und der Wert vorhanden ist, gleich diesen nehmen */
+            if ($variablename === false)
+                {
+                $result=@IPS_GetObject($oid);
+                if ($result !== false)
+                    {
+                    $resultParent=IPS_GetObject((integer)$result["ParentID"]);
+                    //print_R($resultParent);
+                    if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+                        {
+                        $variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
+                        //echo "Mirror Register von Hardware Register ".$oid." aufgrund des Namens der übergeordneten Instanz suchen: $variablename\n";                    
+                        }
+                    else
+                        {
+                        $variablename=IPS_GetName($oid);
+                        //echo "Mirror Register von Hardware Register ".$oid." aufgrund des eigenen Namens suchen: $variablename\n";                    
+                        }
+                    }
+                }
+			return($variablename);
 			}
 
 		/**
@@ -383,7 +487,7 @@
          * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
          *
 		 */
-		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams)
+		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $overwrite=false)
 			{
 			$configurationAuto = $this->Get_EventConfigurationAuto();
 			//print_r($configurationAuto);
@@ -417,22 +521,30 @@
 						} */
 					$found = true;
 					$configurationAuto[$variableId][$i]   = $eventType;
-                    /* überschreiben oder doch nicht genauer machen. 
-                     * Es werden nur nicht leere neue Parameter überschrieben. Dazu wird auch in subarrays unterschieden.
+                    /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
+                     * Es werden nur nicht leere neue Parameter überschrieben. 
+                     * Bei moduleParams wird auch in subarrays unterschieden - 
                      */
-					if ($componentParams != "") {	$configurationAuto[$variableId][$i+1] = $componentParams; }
-					if ($moduleParams != "") 
+					if ( ($componentParams != "") ) {	$configurationAuto[$variableId][$i+1] = $componentParams; }     
+					if ( ($moduleParams != "")  || $overwrite)
                         {
-                        $moduleParamsCfgNewCount=count($moduleParamsNew);
-                        if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )
+                        $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
+                        if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
                             {
+                            //print_r($moduleParamsCfg); print_r($moduleParamsNew);
+                            $moduleParamsArray=array();
+                            $result="";
                             for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
                                 {
-                                if ($moduleParamsCfg[$j] != "") $moduleParams[$j]=$moduleParamsNew[$j];
+                                if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $overwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
                                 }
+                            foreach ($moduleParamsArray as $entry) $result .= $entry.",";
+                            //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
+                            $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
                             } 
                         else $configurationAuto[$variableId][$i+2] = $moduleParams; 
                         }
+                    //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
 					}
 				}
 
@@ -473,7 +585,7 @@
 		private static $configtype;
 		private static $configFileName;				
 
-		private $Detect_DataID;												/* Speicherort der Miorrorregister */ 
+		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
 
 		/**
 		 * @public
@@ -514,7 +626,10 @@
 			return self::$configFileName;
 			}				
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* 
+         * DetectHumidityHandler Objektes
+         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+         */
 
 		function Get_EventConfigurationAuto()
 			{
@@ -527,7 +642,7 @@
 			}
 
 		/**
-		 *
+		 * DetectHumidityHandler Objektes
 		 * Setzen der aktuellen Event Konfiguration
 		 *
 		 */
@@ -536,48 +651,25 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
-		/**
-		 * @public
-		 *
-		 */
-		public function getMirrorRegister($oid)
+		public function getMirrorRegister($variableId)
 			{
-			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
-			//echo "Kategorie der Custom Components Spiegelregister : ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).")\n";
-			$result=IPS_GetObject($oid);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($oid);
-				}
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* das sind die geglätteten Register mit Delay */
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            return ($mirrorID);
+            }
 
-			if ($mirrorID===false) $mirrorID=$oid;
-			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
-			return($mirrorID);
-			}
-
+		/**
+		 * Das DetectHumidityHandler Spiegelregister anlegen
+		 * 
+		 */
 		public function CreateMirrorRegister($variableId)
 			{
-			$result=IPS_GetObject($variableId);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($variableId);
-				}
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		
-
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
 			if ($mirrorID===false)			
 				{	// Spiegelregister noch nicht erzeugt
-				$mirrorID=CreateVariable($variablename,0,$this->Detect_DataID,10, '~Humidity', null,false);
+				$mirrorID=CreateVariable($variablename,2,$this->Detect_DataID,10, '~Humidity', null,false);
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
 				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
@@ -588,7 +680,7 @@
 
 		/**
 		 *
-		 * Die Gesamtauswertung_ Variablen erstellen 
+		 * Die Humidity Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
 		function InitGroup($group)
@@ -601,10 +693,10 @@
 				$status=$status || GetValue($oid);
 				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
 				$moid=$this->getMirrorRegister($oid);
-				$status1=$status1 || GetValue($moid);
+				if ($moid !== false) $status1=$status1 || GetValue($moid);
 				}
 			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Humidity', null,false);
+			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Humidity', null,false);
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -705,53 +797,41 @@
 		   	self::$eventConfigurationAuto = $configuration;
 			}
 
+		/** getMirrorRegister
+		 * 
+         *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
+         *  sonst schauen ob der Parent eine Instanz ist, dann den Namen der Instanz nehmen, oder
+         *  wenn der Name der Variablen CAM_Motion ist, dann auch den Name des Parent nehmen, oder
+         *  wenn beides nicht den Namen der Variablen nehmen
+         *  
+         * am Ende wird der Name der Variable im entsprechenden Datenbereich gesucht. Wenn nicht vorhanden wird die OID des aktuellen Registers zurückgegeben
+         *      $this->MoveAuswertungID         Spiegelregister, schnell, Standard
+         *      $this->motionDetect_DataID      Spiegelregister, zusätzliches Register geglättet mit Delay
+         *
+         */
 
-		/**
-		 * @public
-		 *
-		 */
-		public function getMirrorRegister($oid)
+		public function getMirrorRegister($variableId)
 			{
-			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
-			//echo "Kategorie der Custom Components Spiegelregister : ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).")\n";
-			//echo "Kategorie der Detect Movement   Spiegelregister : ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).")\n";
-			$result=IPS_GetObject($oid);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			elseif (IPS_GetName($oid)=="Cam_Motion")					/* was ist mit den Kameras */
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $result=IPS_GetObject($variableId);            
+			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
 				{
 				$variablename=IPS_GetName((integer)$result["ParentID"]);
-				}
-			else
-				{
-				$variablename=IPS_GetName($oid);
-				}
-			//$mirrorID=@IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);		/* das sind die schnellen Register, ohne Delay */
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->motionDetect_DataID);		/* das sind die geglätteten Register mit Delay */
+				}            
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);
+            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") gefunden.\n";
+            return ($mirrorID);
+            }
 
-			if ($mirrorID===false) $mirrorID=$oid;
-			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
-			return($mirrorID);
-			}
+	
 			
 		public function CreateMirrorRegister($variableId)
 			{
-			$result=IPS_GetObject($variableId);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			elseif (IPS_GetName($variableId)=="Cam_Motion")					/* was ist mit den Kameras */
+            $variablename=$this->getMirrorRegisterName($variableId);
+			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
 				{
 				$variablename=IPS_GetName((integer)$result["ParentID"]);
-				}
-			else
-				{
-				$variablename=IPS_GetName($variableId);
 				}
 			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->MoveAuswertungID);		/* das sind die schnellen Register, ohne Delay */
 			if ($mirrorID===false)			
@@ -777,22 +857,22 @@
 
 		/**
 		 *
-		 * Die Gesamtauswertung_ Variablen erstellen 
+		 * Die Movement Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
-		function InitGroup($group)
+		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect Movement Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") und in ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Movement Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->MoveAuswertungID." (".IPS_GetName($this->MoveAuswertungID).") und in ".$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
 			$status=false; $status1=false;
 			foreach ($config as $oid=>$params)
 				{
 				$status=$status || GetValue($oid);
-				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
-				$moid=$this->getMirrorRegister($oid);
-				$status1=$status1 || GetValue($moid);
+				if ($debug) echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+				$moid=$this->getMirrorRegister($oid,$this->motionDetect_DataID);
+				if ($moid !== false) $status1=$status1 || GetValue($moid);
 				}
-			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
+			if ($debug) echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
 			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->MoveAuswertungID,1000, '~Motion', null,false);
 			SetValue($statusID,$status1);
 			$status1ID=CreateVariable("Gesamtauswertung_".$group,0,$this->motionDetect_DataID,1000, '~Motion', null,false);
@@ -825,7 +905,20 @@
 			
 		} /* ende class */	
 
-/******************************************************************************************************************/
+    /**************************************************
+     *
+     * DetectTemperatureHandler
+     *
+     * Erweiterung zum DetectHandler den alle Channels verwenden.
+     * Nachdem es auch Mirror und Gruppen Register gibt, die wenn sich ein Wert ändert auch upgedatet werden, fasst diese Funktion zusammen.
+     * Mit der Config wird in scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php die Funktion IPSDetectTemperatureHandler_GetEventConfiguration upgedatet
+     *
+     *  Get_EventConfigurationAuto
+     *  Set_EventConfigurationAuto
+     *  CreateMirrorRegister
+     *
+     *
+     *****************************************************************/
 
 	class DetectTemperatureHandler extends DetectHandler
 		{
@@ -833,8 +926,9 @@
 		private static $eventConfigurationAuto = array();			/* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
 		private static $configtype;
 		private static $configFileName;	
+        protected $debug;
 		
-		private $Detect_DataID;												/* Speicherort der Miorrorregister */ 
+		protected $Detect_DataID;												/* Speicherort der Mirrorregister, kommt auch in der abstrract class zur Anwendung, daher protected */ 
 
 		/**
 		 * @public
@@ -842,9 +936,10 @@
 		 * Initialisierung des DetectHumidityHandler Objektes
 		 *
 		 */
-		public function __construct()
+		public function __construct($debug=false)
 			{
 			/* Customization of Classes */
+            $this->debug=$debug;
 			self::$configtype = '$eventTempConfiguration';                                          /* <-------- change here */
 			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
 			
@@ -860,7 +955,7 @@
 	 			IPS_SetInfo($mdID, "this category was created by script. ");
 				}			
 			$this->Detect_DataID=$mdID;			
-			
+			if ($debug) echo "DetectTemperatureHandler construct set Detect_DataID=$mdID.\n";
 			parent::__construct();			
 			}
 
@@ -870,6 +965,7 @@
 			{
 			return self::$configtype;
 			}
+
 		function Get_ConfigFileName()
 			{
 			return self::$configFileName;
@@ -903,48 +999,24 @@
 		   	self::$eventConfigurationAuto = $configuration;
 			}
 
-		/**
-		 * @public
-		 *
-		 */
-		public function getMirrorRegister($oid)
+		public function getMirrorRegister($variableId)
 			{
-			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
-			//echo "Kategorie der Custom Components Spiegelregister : ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).")\n";
-			$result=IPS_GetObject($oid);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+            $variablename=$this->getMirrorRegisterName($variableId);
+			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
 				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($oid);
-				}
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
-						
-			if ($mirrorID===false) $mirrorID=$oid;
-			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
-			return($mirrorID);
-			}
+				$variablename=IPS_GetName((integer)$result["ParentID"]);
+				}            
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            return ($mirrorID);
+            }
 
 		public function CreateMirrorRegister($variableId)
 			{
-			$result=IPS_GetObject($variableId);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($variableId);
-				}
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
-
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
 			if ($mirrorID===false)			
 				{	// Spiegelregister noch nicht erzeugt
-				$mirrorID=CreateVariable($variablename,0,$this->Detect_DataID,10, '~Temperature', null,false);
+				$mirrorID=CreateVariable($variablename,2,$this->Detect_DataID,10, '~Temperature', null,false);
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
 				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
@@ -955,29 +1027,36 @@
 
 		/**
 		 *
-		 * Die Gesamtauswertung_ Variablen erstellen 
+		 * Die Temperature Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
-		function InitGroup($group)
+		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect Temperature Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect Temperature Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
-			$status=false; $status1=false;
+			$status=(float)0; $status1=(float)0; $i=0;
 			foreach ($config as $oid=>$params)
 				{
-				$status=$status || GetValue($oid);
-				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+				$status=$status + GetValue($oid);
+				if ($debug) echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),70)."Status: ".GetValue($oid)." ".$status."\n";
 				$moid=$this->getMirrorRegister($oid);
-				$status1=$status1 || GetValue($moid);
+				if ($moid !== false) $status1=$status1 + GetValue($moid);
+                $i++;
 				}
-			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Temperature', null,false);
+            $status=$status/$i;
+            $status1=$status1/$i;
+			if ($debug) echo "Gruppe ".$group." hat neuen Status, Wert im Gerät: ".$status."  Wert im Mirror Register:  ".$status1."\n";
+            $statusID=@IPS_GetObjectIDByName("Gesamtauswertung_".$group,$this->Detect_DataID);
+			if ($statusID===false) 
+                {
+                $statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Temperature', null,false);
+                $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+                AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+                IPS_ApplyChanges($archiveHandlerID);
+                }
 			SetValue($statusID,$status);
-			
-  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
-			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
-			IPS_ApplyChanges($archiveHandlerID);
+            //echo "Gesamtauswertung $statusID auf $status gesetzt.\n";
 			return ($statusID);			
 			}
 			
@@ -994,7 +1073,7 @@
 		private static $configtype;
 		private static $configFileName;				
 
-		private $Detect_DataID;												/* Speicherort der Miorrorregister */ 
+		protected $Detect_DataID;												/* Speicherort der Miorrorregister */ 
 
 		/**
 		 * @public
@@ -1057,43 +1136,20 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 			
-		/**
-		 * @public
-		 *
-		 */
-		public function getMirrorRegister($oid)
+		public function getMirrorRegister($variableId)
 			{
-			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
-			//echo "Kategorie der Custom Components Spiegelregister : ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).")\n";		/* nur Move ist auch in DetectMovement */
-			$result=IPS_GetObject($oid);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
+            $variablename=$this->getMirrorRegisterName($variableId);
+			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
 				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($oid);
-				}
-			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
-
-			if ($mirrorID===false) $mirrorID=$oid;
-			//echo "    Spiegelregister für ".$variablename." ist in ".$mirrorID."  (".IPS_GetName($mirrorID)."/".IPS_GetName(IPS_GetParent($mirrorID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorID))).") \n";
-			return($mirrorID);
-			}
+				$variablename=IPS_GetName((integer)$result["ParentID"]);
+				}            
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            return ($mirrorID);
+            }
 
 		public function CreateMirrorRegister($variableId)			/* für DetectHeatControl */
 			{
-			$result=IPS_GetObject($variableId);
-			$resultParent=IPS_GetObject((integer)$result["ParentID"]);
-			if ($resultParent["ObjectType"]==1)     // Abhängig vom Typ (1 ist Instanz) entweder Parent (typischerweise Homematic) oder gleich die Variable für den Namen nehmen
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);		/* Hardware Komponente */
-				}
-			else
-				{
-				$variablename=IPS_GetName($variableId);
-				}
+            $variablename=$this->getMirrorRegisterName($variableId);
 			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* Ort der Spiegelregister */
 			if ($mirrorID !== false) $powerID=@IPS_GetObjectIDByName($variablename."_Power",variablename); else $powerID=false;
 			if ( ($mirrorID===false) || ($powerID===false) )		
@@ -1119,7 +1175,7 @@
 
 		/**
 		 *
-		 * Die Gesamtauswertung_ Variablen erstellen 
+		 * Die HeatControl Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
 		function InitGroup($group)
@@ -1132,10 +1188,10 @@
 				$status=$status || GetValue($oid);
 				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
 				$moid=$this->getMirrorRegister($oid);
-				$status1=$status1 || GetValue($moid);
+				if ($moid !== false) $status1=$status1 || GetValue($moid);
 				}
 			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,0,$this->Detect_DataID,1000, '~Power', null,false);
+			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Power', null,false);
 			SetValue($statusID,$status);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -1151,7 +1207,11 @@
 
 	/*******************************************************************************
 	 *
-	 * Class Definitionen
+	 * Class Definitionen DetectDeviceHandler
+     *
+     * erzegugt die Config Liste IPSDetectDeviceHandler_GetEventConfiguration in scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php
+     *
+     *
 	 *
 	 ****************************************************************************************/
 
@@ -1360,7 +1420,9 @@
 
 	/*******************************************************************************
 	 *
-	 * Class Definitionen
+	 * Class Definitionen DetectDeviceListHandler
+     *
+     * erzeugt die config IPSDetectDeviceListHandler_GetEventConfiguration in scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php
 	 *
 	 ****************************************************************************************/
 

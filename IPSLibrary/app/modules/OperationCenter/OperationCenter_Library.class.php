@@ -5609,10 +5609,11 @@ class DeviceManagement
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}
         $this->getHomematicSerialNumberList();
-		$this->HomematicAddressesList=$this->getHomematicAddressList();
-		
+
 		$modulhandling = new ModuleHandling();
 		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
+
+        $this->HomematicAddressesList=$this->getHomematicAddressList();         // benötigt die HMIs
 		}
 		
 /****************************************************************************************************************/
@@ -6102,7 +6103,7 @@ class DeviceManagement
 		if ($countHMI>0)
 			{
 			$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
-			foreach ($HMIs as $HMI)
+			foreach ($this->HMIs as $HMI)
 				{
 				$configHMI=IPS_GetConfiguration($HMI);
 				if ($debug)             // no information available in configuration wether creation of report as variable is activated
@@ -6743,7 +6744,14 @@ function getFS20Type($instanz)
 		    $oldvalue=$value;
 			}         
         $found=true; 
-        /*-------------------------------------*/
+        if ($debug) 
+            {
+            echo "                HomematicDeviceType aufgerufen. Parameter \"";
+            foreach ($registerNew as $entry) echo "$entry ";
+            echo "\"\n";
+            }
+
+        /*--Stellmotor-----------------------------------*/
         if ( array_search("VALVE_STATE",$registerNew) !== false) /* Stellmotor */
             {
             //print_r($registerNew);
@@ -6818,13 +6826,14 @@ function getFS20Type($instanz)
             {
             //print_r($registerNew);
             $anzahl=sizeof(array_keys($register,"STATE"));                     
-            if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )
+            if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )     // entweder PROCESS oder WORKING gefunden
                 {
                 $result[0]="Schaltaktor ".$anzahl."-fach";
-                if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )
+                if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )     //entweder Boot oder LOWBAT gefunden
                     {
                     $result[1]="Funk-Schaltaktor ".$anzahl."-fach";
                     }
+                /* "SECTION_STATUS" ist bei den neuen Schaltern auch dabei. Die neuen HomematicIP Schalter geben den Status insgesamt dreimal zurück, Selektion mus ich wohl wo anders machen */
                 else    
                     {
                     $result[1]="IP Funk-Schaltaktor ".$anzahl."-fach";
@@ -6905,7 +6914,16 @@ function getFS20Type($instanz)
             elseif ($outputVersion==3) return ($result[3]);
 			else return ($result[0]);
             }
-        else return (false);
+        else 
+            {
+            if ($outputVersion==4) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
         }
 
 
@@ -6924,18 +6942,93 @@ function getFS20Type($instanz)
 	    	{
 		    $homematic[]=IPS_GetName($cid);
     		}
-    	return ($this->HomematicDeviceType($homematic,$outputVersion));
+    	return ($this->HomematicDeviceType($homematic,$outputVersion, $debug));
     	}
 
     /*********************************
      *
      * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
+     * Voraussetzung ist das das Homematic Inventory Handler Modul installiert ist. Sonst wird ein leerer String zurückgegeben
+     * Abhängig ob der zweite Parameter default oder 1 ist wird entweder der Standard Homematic Name oder eine deutsprachige Beschreibung ausgegeben.
      *
      ***********************************************/
 	 		
-	function getHomematicHMDevice($instanz, $debug=false)
+	function getHomematicHMDevice($instanz, $output=false, $debug=false)
 		{
-		if (isset($this->HomematicAddressesList[IPS_GetProperty($instanz,"Address")]) ) return($this->HomematicAddressesList[IPS_GetProperty($instanz,"Address")]);
+        $matrix=false;
+        $key=IPS_GetProperty($instanz,"Address");
+        if ($debug) echo "Aufruf getHomematicHMDevice mit $instanz die hat Addresse \"$key\"\n";
+        //print_R($this->HomematicAddressesList);
+		if (isset($this->HomematicAddressesList[$key]) ) 
+            {
+            //echo "gefunden";
+            if ($output == false) return($this->HomematicAddressesList[$key]);
+            else
+                {
+                switch ($this->HomematicAddressesList[$key])
+                    {
+                    case "HM-PB-6-WM55":
+                    case "HmIP-WRC6":
+                        $result="Taster 6-fach";
+                        break;
+                    case "HM-PB-4Dis-WM":
+                        $result="Taster 4-fach";
+                        break;
+                    case "HM-PB-2-WM55":
+                        $result="Taster 2-fach";
+                        break;
+                    
+                    case "HM-Sec-SC":
+                    case "HM-Sec-SC-2":
+                        $result="Tuerkontakt";
+                        break;
+                    case "HMIP-eTRV":
+                    case "HmIP-eTRV-B":
+                    case "HM-CC-RT-DN":
+                        $result="Stellmotor";
+                        break;
+
+                    case "HmIP-SMI":
+                    case "HM-Sec-MDIR":
+                    case "HM-Sec-MDIR-2":
+                        $result="Bewegungsmelder";
+                        break;
+                    case "HM-TC-IT-WM-W-EU":
+                    case "HMIP-WTH":
+                        $result="Wandthermostat";
+                        break;
+                    case "HM-LC-Sw1-FM":
+                    case "HM-LC-Sw1-Pl":
+                    case "HM-LC-Sw1-Pl-2":
+                    case "HM-LC-Sw1-Pl-DN-R1":
+                        $result="Schaltaktor 1-fach";
+                        break;
+                    case "HM-LC-Sw4-DR":
+                        $result="Schaltaktor 4-fach";
+                        break;
+                    
+                    case "HM-ES-PMSw1-Pl":
+                    case "HMIP-PSM":
+                        $matrix=[0,2,1,1,2,2,1,2];
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        break;
+                    case "HM-LC-Dim1T-FM":
+                        $result="Dimmer 1-fach";
+                        break;
+                    case "HM-WDS10-TH-O":
+                        $result="Temperatur und Feuchtigkeitssensor";
+                        break;
+
+
+
+                    default:
+                        return ($this->HomematicAddressesList[$key]);
+                        break;
+                    }
+                if ($output == 1) return($result);
+                else return($matrix);
+                }
+            }
 		else return("");
 		}	
 		

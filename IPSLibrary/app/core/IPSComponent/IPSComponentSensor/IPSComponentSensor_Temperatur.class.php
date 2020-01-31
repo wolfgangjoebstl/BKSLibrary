@@ -178,12 +178,34 @@
 
 		private $configuration;
 		private $installedmodules;
-				
+
+        private $DetectTemperatureHandler;      /* andere Module die verwendet werden */
+
+        /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
+         * optional kann ein Variablennamen mitgegeben werden, sonst wird er nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
+         *
+         *
+         */
+
 		function __construct($variable,$variablename=Null)
 			{
             $dosOps= new dosOps();                
 			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
-			
+
+			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+
+			if (isset ($this->installedmodules["DetectMovement"]))
+				{
+				/* Detect Movement kann auch Temperaturen agreggieren */
+				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+				$this->DetectTemperatureHandler = new DetectTemperatureHandler();
+		        $moid=$this->DetectTemperatureHandler->getMirrorRegister($variable);
+			    if ( ($variablename==Null) && ($moid !== false) ) $variablename=IPS_GetName($moid);
+                }
+                            
 			/****************** Variablennamen herausfinden und/oder berechnen */
 			$this->variable=$variable;
 			if ($variablename==Null)
@@ -204,13 +226,11 @@
 				{
 				$this->variablename=$variablename;
 				}			
-		
-			/**************** Speicherort für Nachrichten und Spiegelvarianten herausfinden */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
+
+			/**************** Speicherort für Nachrichten und Spiegelvarianten herausfinden */		
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			echo "  IPSComponentSensor_Temperatur: Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
 			
 			/* Create Category to store the Temperature-LogNachrichten */	
 			$name="Temperatur-Nachrichten";
@@ -236,7 +256,7 @@
 				}
 			$this->TempAuswertungID=$TempAuswertungID;
 
-			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+    		/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
 				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->TempAuswertungID." ".IPS_GetName($this->TempAuswertungID)." anlegen.\n";
@@ -248,7 +268,7 @@
 				IPS_ApplyChanges($archiveHandlerID);
 				}
 
-			/* Filenamen für die Log Eintraege herausfunfen und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["TemperatureLog"]))
@@ -281,18 +301,15 @@
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
-				/* Detect Movement kann auch Temperaturen agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$DetectTemperatureHandler = new DetectTemperatureHandler();
+
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectTemperatureHandler->ListGroups("Temperatur");
+				$groups=$this->DetectTemperatureHandler->ListGroups("Temperatur");
 				foreach($groups as $group=>$name)
 					{
 					echo "Gruppe ".$group." behandeln.\n";
-					$config=$DetectTemperatureHandler->ListEvents($group);
+					$config=$this->DetectTemperatureHandler->ListEvents($group);
 					$status=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)

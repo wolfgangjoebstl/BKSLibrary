@@ -39,8 +39,12 @@
 
 	$categoryId_Auswertungen    = IPS_GetCategoryIdByName('Auswertungen',$CategoryIdData);
 	$ButtonId					= IPS_GetVariableIdByName("Button",$categoryId_Auswertungen);
+    $TuneInStation              = IPS_GetVariableIdByName("TuneInStation",$categoryId_Auswertungen);
 	$TestnachrichtId 			= IPS_GetVariableIdByName("Testnachricht",$categoryId_Auswertungen);
 	$SelectID					= IPS_GetVariableIdByName("SelectSpeaker",$categoryId_Auswertungen);
+
+	$SelectedStationId    		= IPS_GetVariableIdByName("SelectedStationId",$categoryId_Auswertungen);
+    $TuneInStationConfig        = IPS_GetVariableIdByName("TuneInStationConfig",$categoryId_Auswertungen);
 
 $object_data= new ipsobject($CategoryIdData);
 $object_app= new ipsobject($CategoryIdApp);
@@ -99,13 +103,40 @@ Switch ($_IPS['SENDER'])
        break;
     Case "WebFront":        // Zum schalten im Webfront
        	SetValue($_IPS['VARIABLE'] , $_IPS['VALUE']);
+        //echo "Aufruf mit ".$_IPS['VARIABLE']."(".IPS_GetName($_IPS['VARIABLE']).") und Wert :".$_IPS['VALUE']."\n";
 		switch ($_IPS['VARIABLE'])
 			{
 			case $ButtonId:
-				$spreche=GetValue($TestnachrichtId);
-				//echo "Ich wurde aufgerufen und spreche $spreche.\n";
-				tts_play(GetValue($SelectID),$spreche,'',2);
-				break;	
+                $function = GetValue($ButtonId);
+                switch ($function)
+                    {
+                    case 3:
+                        ECHOREMOTE_Pause(GetValue($SelectID));
+                        break;                    
+                    case 2:
+                        //$alexa=IPS_GetName(GetValue($SelectID));
+        				//echo "Ich wurde mit $function aufgerufen und spiele Radio auf \"$alexa\".\n";
+                        //ECHOREMOTE_TuneIn(GetValue($SelectID),"s8007");   // Ö3 s8007  Hitradio FFH s17490
+                        ECHOREMOTE_TuneIn(GetValue($SelectID),GetValue($SelectedStationId));
+                        ECHOREMOTE_Play(GetValue($SelectID));
+                        break;
+                    case 1:
+				        $spreche=GetValue($TestnachrichtId);
+        				echo "Ich wurde mit $function aufgerufen und spreche $spreche.\n";
+				        tts_play(GetValue($SelectID),$spreche,'',2);
+                        break;
+                    default:
+                        break;
+                    }
+				break;
+            case $TuneInStation:
+                $SelectedStation = GetValue($TuneInStation);
+                $TuneInstations = json_decode(GetValue($TuneInStationConfig),true);
+                foreach ($TuneInstations as $station)
+                    {
+                    if ($station["position"]==$SelectedStation) SetValue($SelectedStationId,$station["station_id"]);
+                    }
+                break;	
 			default;
 			
 			}			    
