@@ -105,7 +105,15 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
-	if (isset ($installedModules["EvaluateHardware"])) { echo "Modul EvaluateHardware ist installiert.\n"; } else { echo "Modul EvaluateHardware ist NICHT installiert.\n"; }
+	if (isset ($installedModules["EvaluateHardware"])) 
+        { 
+        echo "Modul EvaluateHardware ist installiert.\n"; 
+        IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");        // jetzt neu unter config
+        } 
+    else 
+        { 
+        echo "Modul EvaluateHardware ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+        }
 	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
 	if (isset ($installedModules["RemoteAccess"]))
 		{
@@ -131,8 +139,7 @@
 	IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
-
+	
     $componentHandling=new ComponentHandling();
     $commentField="zuletzt Konfiguriert von DetectMovement EvaluateMotion um ".date("h:i am d.m.Y ").".";
 
@@ -152,7 +159,7 @@
 	/* Wenn Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
 	echo "***********************************************************************************************\n";
-	echo "Bewegungsmelder Handler wird ausgeführt.\n";
+	echo "Bewegungsmelder und Contact Handler wird ausgeführt.\n";
 	
 	if (function_exists('HomematicList'))
 		{
@@ -164,71 +171,6 @@
 		$componentHandling->installComponentFull(HomematicList(),"TYPE_CONTACT",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
 		} 
 		
-if (false)
-	{
-	if (function_exists('HomematicList'))
-		{
-		echo "\n";
-		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
-		$Homematic = HomematicList();
-		$keyword="MOTION";
-		foreach ($Homematic as $Key)
-			{
-			$found=false;
-			if ( (isset($Key["COID"][$keyword])==true) )
-				{
-	   			/* alle Bewegungsmelder */
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-   				$found=true;
-				}
-
-			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-				{
-				/* alle Kontakte */
-				$oid=(integer)$Key["COID"]["STATE"]["OID"];
-				$found=true;
-				}
-			if ($found)
-				{
-    			$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				else
-					{
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
-
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					//echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-					/* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
-					}
-				}
-			}
-		}
-	}  // ende false
-
-	if (isset ($installedModules["RemoteAccess"]))
-		{
-		echo "!!! Achtung, rufen sie für Install der einzelnen Geraete die entsprechende Remote Access Routine auf .... \n";
-		}
-	else
-		{
-		echo "*** Information, Remote Access ist nicht installiert, gefundene Variablen selbst registrieren.\n";
-		}
 	echo "\n";
 			
 	if (function_exists('FS20List'))
@@ -456,7 +398,7 @@ if (false)
 				{
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
-			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 
 			if (isset ($installedModules["RemoteAccess"]))
 				{
@@ -498,7 +440,7 @@ if (false)
 				{
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
-			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+			$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 
 			if (isset ($installedModules["RemoteAccess"]))
 				{
@@ -616,7 +558,7 @@ if (false)
 				{
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
-			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 
 			if (isset ($installedModules["RemoteAccess"]))
 				{

@@ -328,7 +328,18 @@
                         foreach ($typedevs as $typedev)
                             {
                             $entry = explode("->",$typedev);
-                            if (count($entry)>1) $result[$oid]["Config"][$entry[0]] = $entry[1];
+                            if (count($entry)>1) 
+                                {
+                                switch (strtoupper($entry[0]))          // bekannte Selektoren umwandeln, andere übernehmen
+                                    {
+                                    case "MIRROR":              
+                                        $result[$oid]["Config"]["Mirror"] = $entry[1];    
+                                        break;
+                                    default:
+                                        $result[$oid]["Config"][$entry[0]] = $entry[1];
+                                        break;
+                                    }
+                                }
                             else $result[$oid]["Config"]["Type"] = $entry[0];
                             }
                         break;
@@ -487,79 +498,83 @@
          * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
          *
 		 */
-		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $overwrite=false)
+		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
 			{
 			$configurationAuto = $this->Get_EventConfigurationAuto();
 			//print_r($configurationAuto);
 			//echo "Register Event with VariableID:".$variableId."\n";
 			// Search Configuration
 			$found = false;
-			if (array_key_exists($variableId, $configurationAuto))
-				{
-				//echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
-				//echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-				$moduleParamsNew = explode(',', $moduleParams);
-				//print_r($moduleParamsNew);
-				$moduleClassNew  = $moduleParamsNew[0];
+            if ($variableId !== false)
+                {
+                if (array_key_exists($variableId, $configurationAuto))
+                    {
+                    //echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
+                    //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+                    $moduleParamsNew = explode(',', $moduleParams);
+                    //print_r($moduleParamsNew);
+                    $moduleClassNew  = $moduleParamsNew[0];
 
-				$params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
-				//print_r($params);
-				for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
-					{
-					$moduleParamsCfg = $params[$i+2];           
-					$moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
-					$moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
-					// Found Variable and Module --> Update Configuration
-					//echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-					/* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-					/*if ($moduleClassCfg=$moduleClassNew)
-						{
-						$found = true;
-						$configurationAuto[$variableId][$i]   = $eventType;
-						$configurationAuto[$variableId][$i+1] = $componentParams;
-						$configurationAuto[$variableId][$i+2] = $moduleParams;
-						} */
-					$found = true;
-					$configurationAuto[$variableId][$i]   = $eventType;
-                    /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
-                     * Es werden nur nicht leere neue Parameter überschrieben. 
-                     * Bei moduleParams wird auch in subarrays unterschieden - 
-                     */
-					if ( ($componentParams != "") ) {	$configurationAuto[$variableId][$i+1] = $componentParams; }     
-					if ( ($moduleParams != "")  || $overwrite)
+                    $params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
+                    //print_r($params);
+                    for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
                         {
-                        $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
-                        if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
+                        $moduleParamsCfg = $params[$i+2];           
+                        $moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
+                        $moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
+                        // Found Variable and Module --> Update Configuration
+                        //echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+                        /* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
+                        /*if ($moduleClassCfg=$moduleClassNew)
                             {
-                            //print_r($moduleParamsCfg); print_r($moduleParamsNew);
-                            $moduleParamsArray=array();
-                            $result="";
-                            for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
+                            $found = true;
+                            $configurationAuto[$variableId][$i]   = $eventType;
+                            $configurationAuto[$variableId][$i+1] = $componentParams;
+                            $configurationAuto[$variableId][$i+2] = $moduleParams;
+                            } */
+                        $found = true;
+                        $configurationAuto[$variableId][$i]   = $eventType;
+                        /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
+                        * Es werden nur nicht leere neue Parameter überschrieben. 
+                        * Bei moduleParams wird auch in subarrays unterschieden - 
+                        */
+                        if ( ($componentParams != "") || $componentOverwrite ) { $configurationAuto[$variableId][$i+1] = $componentParams; }     
+                        if ( ($moduleParams    != "") || $moduleOverwrite)
+                            {
+                            $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
+                            if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
                                 {
-                                if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $overwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
-                                }
-                            foreach ($moduleParamsArray as $entry) $result .= $entry.",";
-                            //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
-                            $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
-                            } 
-                        else $configurationAuto[$variableId][$i+2] = $moduleParams; 
+                                //print_r($moduleParamsCfg); print_r($moduleParamsNew);
+                                $moduleParamsArray=array();
+                                $result="";
+                                for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
+                                    {
+                                    if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $moduleOverwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
+                                    }
+                                foreach ($moduleParamsArray as $entry) $result .= $entry.",";
+                                //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
+                                $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
+                                } 
+                            else $configurationAuto[$variableId][$i+2] = $moduleParams; 
+                            }
+                        //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
                         }
-                    //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
-					}
-				}
+                    }
 
-			// Variable NOT found --> Create Configuration
-			if (!$found)
-				{
-				//echo "Create Event."."\n";
-				$configurationAuto[$variableId][] = $eventType;
-				$configurationAuto[$variableId][] = $componentParams;
-				$configurationAuto[$variableId][] = $moduleParams;
-				}
+                // Variable NOT found --> Create Configuration
+                if (!$found)
+                    {
+                    //echo "Create Event."."\n";
+                    $configurationAuto[$variableId][] = $eventType;
+                    $configurationAuto[$variableId][] = $componentParams;
+                    $configurationAuto[$variableId][] = $moduleParams;
+                    }
 
-			$this->StoreEventConfiguration($configurationAuto);
-			$this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
-			$this->CreateMirrorRegister($variableId);
+                $this->StoreEventConfiguration($configurationAuto);
+                $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
+                $this->CreateMirrorRegister($variableId);
+                }
+            else echo "Fehler DetectMovement RegisterEvent, variableId ist false.\n";
 		}
 
 		/**
@@ -829,6 +844,7 @@
 		public function CreateMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
+            $result=IPS_GetObject($variableId);             
 			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
 				{
 				$variablename=IPS_GetName((integer)$result["ParentID"]);

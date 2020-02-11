@@ -71,11 +71,12 @@ echo "\n";
 		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 		}
 
-	echo "Update Konfiguration und register Events\n";
+	echo "Update Konfiguration und register Events:\n\n";
 
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+	//IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");       // neues Include File jetzt in config
+    IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 	$Homematic = HomematicList();
@@ -100,31 +101,31 @@ echo "\n";
 			$variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
-				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			else
 			   {
-				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+				echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 				}
 			$parameter="";
 			foreach ($remServer as $Name => $Server)
 				{
-				echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+				echo "      Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 				if ( $status[$Name]["Status"] == true )
 					{
 					$rpc = new JSONRPC($Server["Adresse"]);
 					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Kontakte"], $Key["Name"], 0);
-	   			$rpc->IPS_SetVariableCustomProfile($result,"Contact");
+	   			    $rpc->IPS_SetVariableCustomProfile($result,"Contact");
 					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
 				}	
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		    $messageHandler = new IPSMessageHandler();
+		    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		    //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+		    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 			if (isset ($installedModules["DetectMovement"]))
 				{
@@ -193,7 +194,7 @@ if (false)
 					}
 				}	
 			}
-		}
-	}
+		}           // ende foreach
+	}               // ende if false
 	
 ?>

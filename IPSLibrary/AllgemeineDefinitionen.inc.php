@@ -3912,7 +3912,7 @@ class ComponentHandling
 				/* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
 				if ($Key["Device"] == $keyword)
 					{
-					echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
+					//echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
 					$found=true; $totalfound=true;
 					switch ($keyword)
 						{
@@ -4240,23 +4240,23 @@ class ComponentHandling
 					    	{
 						    case "HeatControl":					
 							    $DetectHeatControlHandler = new DetectHeatControlHandler();						
-    							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+    							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 	    						break;
 		    				case "Feuchtigkeit":
 			    				$DetectHumidityHandler = new DetectHumidityHandler();		
-				    			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+				    			$DetectHumidityHandler->RegisterEvent($oid,"Feuchtigkeit",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 					    		break;
 						    case "Temperatur":
     							$DetectTemperatureHandler = new DetectTemperatureHandler();						
-	    						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;
 						    case "Motion":
     							$DetectMovementHandler = new DetectMovementHandler();						
-	    						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;		
 						    case "Contact":
     							$DetectMovementHandler = new DetectMovementHandler();						
-	    						$DetectMovementHandler->RegisterEvent($oid,"Contact",'','par3');     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;															
 			    			default:
 				    			break;
@@ -5434,8 +5434,16 @@ class Hardware
      * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
      */
 
-    public function getDeviceParameter(&$deviceList, $name, $type, $entry)
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        /* Fehlerprüfung */
+        if (isset($deviceList[$name])) 
+            {
+            echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
+            return(false);
+            }            
+        /* Durchführung */
+        if ($debug) echo"          getDeviceParameters:Allgemein aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
         $deviceList[$name]["Type"]=$type;
         $entry["NAME"]=$name; 
         $deviceList[$name]["Instances"][]=$entry;
@@ -5447,8 +5455,9 @@ class Hardware
      *
      */
 
-    public function getDeviceChannels(&$deviceList, $name, $type, $entry)
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        if ($debug) echo"          getDeviceChannels:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
         return (true);
         }
 
@@ -5456,8 +5465,9 @@ class Hardware
      *
      */
 
-    public function getDeviceActuators(&$deviceList, $name, $type, $entry)
+    public function getDeviceActuators(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        if ($debug) echo"          getDeviceActuators:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
         return (true);
         }
 
@@ -5683,7 +5693,7 @@ class HardwareHomematic extends Hardware
      * Antwort ist ein Geräteeintrag
      */
 
-    /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+    /* die Homematic Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist
      * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
      * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
@@ -5697,16 +5707,24 @@ class HardwareHomematic extends Hardware
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
 
         $goOn=true;
+        /* Fehlerprüfung */
         $nameSelect=explode(":",$name);
         if (isset($deviceList[$nameSelect[0]])) 
             {
             if (count($nameSelect)<2) 
                 {
-                echo "    getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                echo "        >>getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                }
+            else 
+                {
+                if ($debug) 
+                    {
+                    echo "        getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
+                    foreach ($deviceList[$nameSelect[0]]["Instances"] as $portInfo => $entryInfo) echo $portInfo." ";
+                    echo " bereits definiert.\n";
+                    }
                 }
             }
-        if ($debug) echo "getDeviceParameter:Homematic für Eintrag $name aufgerufen, Ergebnis wird in der deviceList unter ".$nameSelect[0]." eingetragen.";
-
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         //print_r($result);
         if (isset($result["Address"])) 
@@ -5717,13 +5735,18 @@ class HardwareHomematic extends Hardware
                 $port=(integer)$addressSelect[1];
                 if ($port==0) 
                     {
-                    //echo "Fehler, Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
+                    if ($debug) echo "      Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
                     $goOn=false;
+                    }
+                else 
+                    {
+                    if ($debug) echo "       Port $port wird jetzt geschrieben. ".$result["Address"]."\n";
+                    //print_r($entry);
                     }
                 }
             else 
                 {
-                echo "   getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
+                echo "       >>getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
                 $goOn=false;
                 }
             }
@@ -5732,8 +5755,11 @@ class HardwareHomematic extends Hardware
             echo "   getDeviceParameter:Homematic Fehler, keine Seriennummer.\n";
             $goOn=false;
             }
+
+        /* Durchführung */            
         if ($goOn)
             {
+            if ($debug) echo str_pad("          getDeviceParameter:Homematic für \"$name\" :",90).str_pad(" Ergebnis in deviceList unter ".$nameSelect[0].".",40);
             if (isset($result["Protocol"])) 
                 {
                 switch ($result["Protocol"])
@@ -5757,6 +5783,23 @@ class HardwareHomematic extends Hardware
                 $DeviceManager = new DeviceManagement();                    
                 $instanz=$entry["OID"];
 
+                $matrix    = $DeviceManager->getHomematicHMDevice($instanz,2);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+                if (is_array($matrix)) 
+                    {
+                    if ($matrix[$port]>1) 
+                        {
+                        if ($debug) echo "         \"$name\" : Infofeld aus HMInventory: ".$DeviceManager->getHomematicHMDevice($instanz,0)."  ".$DeviceManager->getHomematicHMDevice($instanz,1)."  $port und in der Matrix.\n";
+                        }
+                    else 
+                        {
+                        echo "         >> Fehler Port $port gesperrt von \"$name\" : Infofeld aus HMInventory: ".$DeviceManager->getHomematicHMDevice($instanz,0)."  ".$DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
+                        $goOn=false;
+                        }
+                    //print_r($matrix);
+                    }
+                else echo "   keine Ausgabe der Matrix. Gerät nicht hinterlegt.\n";
+
+
                 //echo " $instanz: ";
                 //$typeInst   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
                 //$HMDevice   = $DeviceManager->getHomematicHMDevice($instanz);
@@ -5776,12 +5819,13 @@ class HardwareHomematic extends Hardware
                 $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
                 if ($typedev<>"")  
                     {
-                    if ($debug) echo "    TYPEDEV: $typedev\n";
+                    if ($debug) echo "    TYPEDEV: $typedev";
                     $entry["TYPEDEV"]=$typedev;
                     }
                 else 
                     {
-                    echo "   getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
+                    echo "       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
+                    echo "                Info : ".$DeviceManager->getHomematicHMDevice($instanz,1)."   \n";
                     $goOn=false;
                     }
                 
@@ -5789,8 +5833,12 @@ class HardwareHomematic extends Hardware
 
                 //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
                 $infodev    = $DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
-                if ($infodev<>"")   $deviceList[$nameSelect[0]]["Information"]=$infodev;
-                else echo "   getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein INFO ermittelt.\n";
+                if ($infodev<>"")   
+                    {
+                    $deviceList[$nameSelect[0]]["Information"]=$infodev;
+                    if ($debug) echo "    INFO: $infodev";
+                    }
+                else echo "\n       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
                 $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
                 /*
                 $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
@@ -5803,11 +5851,12 @@ class HardwareHomematic extends Hardware
                 */
                 } 
             if ($goOn)
-                {                           
+                { 
+                if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
                 $deviceList[$nameSelect[0]]["Type"]=$type;
                 $entry["NAME"]=$name; 
                 $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
-                echo "\n";
+                if ($debug) echo "\n";
                 return (true);
                 }
             else return (false);                // fehlender Typedev Wert erzeugt keinen Eintrag !!!
@@ -5819,15 +5868,16 @@ class HardwareHomematic extends Hardware
      * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
      */
 
-    public function getDeviceChannels(&$deviceList,$name, $type, $entry)
+    public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)
         {
         /* Jeder Entry ist ein Device, oder ? */
 
         /* sehr schwierig, Devices sind nicht automatisch Instanzen */
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
 
-        //echo "    getDeviceChannels aufgerufen:\n";
         $goOn=true;
+
+        /* Fehlerüberprüfung */
         $nameSelect=explode(":",$name);
         if (isset($deviceList[$nameSelect[0]]) === false) 
             {
@@ -5836,20 +5886,29 @@ class HardwareHomematic extends Hardware
                 {
                 $addressSelect=explode(":",$result["Address"]);
                 if (count($addressSelect)>1)
-                    {   
-                    echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]." Port : ".$addressSelect[1]." \n";
+                    {
+                    $port=(integer)$addressSelect[1];
+                    if ($port==0) 
+                        {
+                        //if ($debug) echo "               Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";         // brauch ich nicht noch einmal ausgeben.
+                        $goOn=false;
+                        }                           
+                    else echo "   >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]." Port : ".$addressSelect[1]." \n";
                     }
                 else
                     {
-                    echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]."  \n";
+                    echo "   >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Seriennummer : ".$addressSelect[0]."  \n";
                     }
                 }
-            else echo "   getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Keine Seriennummer gefunden.\n";
+            else echo "   >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Keine Seriennummer gefunden.\n";
             $goOn=false;
             }
         $port= $this->checkConfig($goOn, $entry["CONFIG"]);     	// gibt Port zurück, wenn alles okay wird goOn nicht auf false gesetzt
+        
+        /* Durchführung */
         if ($goOn)
             {
+            if ($debug) echo str_pad("          getDeviceChannels:Homematic  für \"$name\" : ",90).str_pad(" ",40);
             //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
             if (isset($this->installedModules["OperationCenter"])) 
                 {
@@ -5861,8 +5920,10 @@ class HardwareHomematic extends Hardware
                     {
                     $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
                     $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
+                    if ($debug) echo "       Schreibe Channels $port mit Typ ".$typedev["Type"].".\n";
+                    //print_r($typedev);
                     }
-                else echo "   getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+                else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
                 }                            
             return (true);
             }
@@ -5920,8 +5981,16 @@ class HardwareHUE extends Hardware
      * Antwort ist ein Geräteeintrag
      */
 
-    public function getDeviceParameter(&$deviceList, $name, $type, $entry)
+    public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        /* Fehlerpüfung */
+        if (isset($deviceList[$name])) 
+            {
+            echo "          >>getDeviceParameter:HUE   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
+            return(false);
+            }            
+        /* Durchführung */
+        if ($debug) echo"          getDeviceParameters:HUE     aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         //print_r($result);
         if ( (isset($result["DeviceType"])) &&($result["DeviceType"]=="lights") ) $entry["TYPEDEV"]="TYPE_SWITCH";
@@ -5968,9 +6037,16 @@ class HardwareEchoControl extends Hardware
 
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
+        /* Fehlerpüfung */
+        if (isset($deviceList[$name])) 
+            {
+            echo "          >>getDeviceParameter:EchoControl   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
+            return(false);
+            }            
+        /* Durchführung */
         if ($debug) 
             {   
-            echo "getDeviceParameter HardwareEchoControl Parameter $name $type\n";          
+            echo "           getDeviceParameter HardwareEchoControl Parameter $name $type\n";          
             print_r($entry);
             }
         $configStruct=json_decode($entry["CONFIG"],true);   // als array zurückgeben 

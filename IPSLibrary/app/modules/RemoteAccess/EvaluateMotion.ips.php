@@ -90,7 +90,8 @@ echo "\n";
 
    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
 	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+	//IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");   // changed to config
+    IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
 	$Homematic = HomematicList();
@@ -127,21 +128,21 @@ echo "\n";
 		$componentHandling->installComponentFull(HomematicList(),"MOTION",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
 		} 
 	
-if (false)
+if (false)          /* alte Routine zu obiger installComponentFull */
 	{
 	echo "******* Alle Homematic Bewegungsmelder ausgeben.\n";
 	$keyword="MOTION";
 	foreach ($Homematic as $Key)
 		{
 		if ( (isset($Key["COID"][$keyword])==true) )
-	   	{
-	   	/* alle Bewegungsmelder */
+            {
+            /* alle Bewegungsmelder */
 
-	      $oid=(integer)$Key["COID"][$keyword]["OID"];
-      	$variabletyp=IPS_GetVariable($oid);
-      	
-  	   	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-      	if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
+            $oid=(integer)$Key["COID"][$keyword]["OID"];
+            $variabletyp=IPS_GetVariable($oid);
+            
+            $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            if (AC_GetLoggingStatus($archiveHandlerID,$oid)==false)
 				{
 				/* Wenn variable noch nicht gelogged automatisch logging einschalten */
 				AC_SetLoggingStatus($archiveHandlerID,$oid,true);
@@ -150,11 +151,11 @@ if (false)
 				echo "Variable ".$oid." Archiv logging aktiviert.\n";
 				}
 			if ($variabletyp["VariableProfile"]!="")
-			   {
+			    {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 				}
 			else
-			   {
+			    {
 				echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 				}
 			$parameter="";
@@ -171,22 +172,25 @@ if (false)
 					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
 					$parameter.=$Name.":".$result.";";
 					}
-				}
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   echo "Message Handler hat Homematic Bewegungsmelder Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
+				}       // ende foreach
+            $messageHandler = new IPSMessageHandler();
+            $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+            echo "Message Handler hat Homematic Bewegungsmelder Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
+            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+            $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 
 			if (isset ($installedModules["DetectMovement"]))
 				{
 				//echo "Detect Movement anlegen.\n";
-			   $DetectMovementHandler = new DetectMovementHandler();
+			    $DetectMovementHandler = new DetectMovementHandler();
 				$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 				}
-			}
-		}
-    }
+			}       // ende if isset
+		}           // ende foreach
+    }               // ende if false
+
+
+
 	/*
 	 *  FS20
 	 *
@@ -203,51 +207,51 @@ if (false)
 		   	foreach ($TypeFS20 as $Type)
 		   	   {
 		   	   if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-		   	      {
+		   	        {
 				   	echo "   Bewegungsmelder : ".$Key["Name"]." OID ".$Key["OID"]."\n";
 
       				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 		  	      	$variabletyp=IPS_GetVariable($oid);
-						if ($variabletyp["VariableProfile"]!="")
-						   {
-							echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-							}
-						else
-						   {
-							echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-							}
-						$parameter="";
-						foreach ($remServer as $Name => $Server)
-							{
-							echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-							if ( $status[$Name]["Status"] == true )
-								{							
-								$rpc = new JSONRPC($Server["Adresse"]);
-								$result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-								$rpc->IPS_SetVariableCustomProfile($result,"Motion");
-								$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-								$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-								$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-								$parameter.=$Name.":".$result.";";
-								}
-							}
-						$messageHandler = new IPSMessageHandler();
-					   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-			   		echo "Message Handler hat FS20 Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
-					   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-						$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-						
-						if (isset ($installedModules["DetectMovement"]))
-							{
-							//echo "Detect Movement anlegen.\n";
-						   $DetectMovementHandler = new DetectMovementHandler();
-							$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
-							}
-		   	      }
-		   	   }
+                    if ($variabletyp["VariableProfile"]!="")
+                        {
+                        echo str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                        }
+                    else
+                        {
+                        echo str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                        }
+                    $parameter="";
+                    foreach ($remServer as $Name => $Server)
+                        {
+                        echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                        if ( $status[$Name]["Status"] == true )
+                            {							
+                            $rpc = new JSONRPC($Server["Adresse"]);
+                            $result=RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+                            $rpc->IPS_SetVariableCustomProfile($result,"Motion");
+                            $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                            $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+                            $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+                            $parameter.=$Name.":".$result.";";
+                            }
+                        }
+                    $messageHandler = new IPSMessageHandler();
+                    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                    echo "Message Handler hat FS20 Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
+                    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                    $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
+                    
+                    if (isset ($installedModules["DetectMovement"]))
+                        {
+                        //echo "Detect Movement anlegen.\n";
+                        $DetectMovementHandler = new DetectMovementHandler();
+                        $DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
+                        }
+                    }
+                }
 
-			}
-		}
+            }
+        }
 
 	/*
 	 *  IPCams
@@ -262,20 +266,20 @@ if (false)
 
 		$camManager = new IPSCam_Manager();
 		$config     = IPSCam_GetConfiguration();
-	   echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
+	    echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
 		foreach ($config as $cam)
-	   	{
-		   echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
-		   }
-	   echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
+	   	    {
+		    echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
+		    }
+	    echo "Bearbeite lokale Kameras, die im Modul OperationCenter definiert sind:\n";
 		if (isset ($installedModules["OperationCenter"]))
 			{
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 			$OperationCenterConfig = OperationCenter_Configuration();
-			echo "IPSCam und OperationCenter Modul installiert. \n";
+			echo "   IPSCam und OperationCenter Modul installiert. \n";
 			if (isset ($OperationCenterConfig['CAM']))
 				{
-				echo "Im OperationCenterConfig auch die CAm Variablen angelegt.\n";
+				echo "   Im OperationCenterConfig sind auch die CAM Variablen angelegt:\n";
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
 					$OperationCenterScriptId  = IPS_GetObjectIDByIdent('OperationCenter', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.OperationCenter'));
@@ -283,24 +287,24 @@ if (false)
 					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$OperationCenterDataId);
 
 					$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-					echo "   Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
+					echo "       Bearbeite Kamera : ".$cam_name." Cam Category ID : ".$cam_categoryId."  Motion ID : ".$WebCam_MotionID."\n";;
 
     				$oid=$WebCam_MotionID;
     				$cam_name="IPCam_".$cam_name;
-	  	      	$variabletyp=IPS_GetVariable($oid);
+	  	      	    $variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
-					   {
-						echo "      ".str_pad($cam_name,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+					    {
+						echo "          ".str_pad($cam_name,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 						}
 					else
 					   {
-						echo "      ".str_pad($cam_name,30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+						echo "          ".str_pad($cam_name,30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
 						}
 
 					$parameter="";
 					foreach ($remServer as $Name => $Server)
 						{
-						echo "   Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+						echo "        Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
 						if ( $status[$Name]["Status"] == true )
 							{						
 							$rpc = new JSONRPC($Server["Adresse"]);
@@ -313,15 +317,15 @@ if (false)
 							}
 						}
 					$messageHandler = new IPSMessageHandler();
-				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   		echo "Message Handler hat IPCAM Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+				    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		   		    echo "        Message Handler hat IPCAM Event mit ".$oid." und ROIDs mit ".$parameter." angelegt.\n";
+				    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
 					
 					if (isset ($installedModules["DetectMovement"]))
 						{
-						//echo "Detect Movement anlegen.\n";
-					   $DetectMovementHandler = new DetectMovementHandler();
+						echo "           Detect Movement anlegen.\n";
+					    $DetectMovementHandler = new DetectMovementHandler();
 						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');
 						}
 					}

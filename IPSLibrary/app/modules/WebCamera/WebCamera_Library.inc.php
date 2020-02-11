@@ -143,7 +143,7 @@ class WebCamera
             //$localFile       = IPS_GetKernelDir().'Cams/'.$cameraIdx.'/'.$directoryName.'/'.$fileName.'.jpg';
             $localFile       = $directoryName.$fileName;
             echo "   DownloadImageFromCam, $cameraIdx $directoryName$fileName  \n";
-            IPSLogger_Inf(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");
+            IPSLogger_Dbg(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");         // Debug damit im Info Log nicht zuviele Ausgaben sind
 
             $curl_handle=curl_init();
             curl_setopt($curl_handle, CURLOPT_URL, $urlPicture);

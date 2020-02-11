@@ -38,9 +38,11 @@ class TopologyLibraryManagement
     var $modulhandling;         // andere classes die genutzt werden, einmal instanzieren
 
     var $deviceInstances,$roomInstances,$placeInstances,$devicegroupInstances;                       // Instanzenlisten, für schnelleren Zugriff, müssen regelmaessig upgedatet werden.
+    var $debug;
 
-    public function __construct()
+    public function __construct($debug=false)
         {
+        $this->debug=$debug;
         $this->topID=@IPS_GetObjectIDByName("Topology", 0 );
         if ($this->topID === false) 	$this->topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da 
 
@@ -54,13 +56,13 @@ class TopologyLibraryManagement
 
     private function updateInstanceLists()
         {
-        $this->modulhandling->printInstances('TopologyDevice');
+        if ($this->debug) $this->modulhandling->printInstances('TopologyDevice');
         $this->deviceInstances = $this->modulhandling->getInstances('TopologyDevice',"NAME");
-        $this->modulhandling->printInstances('TopologyRoom');        
+        if ($this->debug) $this->modulhandling->printInstances('TopologyRoom');        
         $this->roomInstances = $this->modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-        $this->modulhandling->printInstances('TopologyPlace');        
+        if ($this->debug) $this->modulhandling->printInstances('TopologyPlace');        
         $this->placeInstances = $this->modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-        $this->modulhandling->printInstances('TopologyDeviceGroup');        
+        if ($this->debug) $this->modulhandling->printInstances('TopologyDeviceGroup');        
         $this->devicegroupInstances = $this->modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
         }
 
@@ -174,27 +176,35 @@ class TopologyLibraryManagement
 
     /* devicelist, Bestandteil der config::EvaluateHardware_Include   */
 
-    public function get_DeviceList($hardware)
+    public function get_DeviceList($hardware, $debug=false)
         {
+        if ($debug) echo "  get_DeviceList aus dem Modul TopologyLibraryManagement aufgerufen:\n";
         $deviceList=array();
         $hardwareTypeDetect = new Hardware();        
         foreach ($hardware as $hardwareType => $deviceEntries)          // die device types durchgehen HUE, Homematic etc.
             {
             foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
                 {
+                if ($debug) echo "      Bearbeite Gerät $name vom Typ $hardwareType:\n";
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
-                $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
-                $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
-                $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry);     // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                //if ($debug) echo "          getDeviceParameter aufgerufen:\n";
+                $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+                //if ($debug) echo "          getDeviceChannels aufgerufen:\n";
+                $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry, $debug);      // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+                //if ($debug) echo "          getDeviceActuators aufgerufen:\n";
+                $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
                 }
             }
         ksort($deviceList);
-        //print_r($deviceList);
-        echo "\n";
-        echo "Bereits konfigurierte Actuators aus IPSHeat dazugeben, Ergebnis der Funktion: \n";
         $actuators=$hardwareTypeDetect->getDeviceActuatorsFromIpsHeat($deviceList);
-        //print_r($actuators);
+        if ($debug) 
+            {
+            //print_r($deviceList);
+            echo "\n";
+            echo "Bereits konfigurierte Actuators aus IPSHeat dazugeben, Ergebnis der Funktion: \n";
+            print_r($actuators);
+            }
         return($deviceList);
         }
 

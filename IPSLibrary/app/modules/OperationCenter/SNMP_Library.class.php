@@ -1084,13 +1084,13 @@ class SNMP_OperationCenter
 		
     /*
      *  rausfinden ob das IPS SNMP Modul aus der Babenschneider Bibliothek vorhanden ist.
-     *  wenn die IP Adresse mitgeliefert wird, auch die Konfiguration vergleichen, es ist ja möglcih das mehrere Module angelegt wurden
-     *
+     *  wenn die IP Adresse mitgeliefert wird, auch die Konfiguration vergleichen, es ist ja möglich das mehrere Module angelegt wurden
+     *  wird gleich bei construct aufgerufen.
      */
 
 	public function findSNMPModul($findlibrary="Babenschneider Symcon Modules",$findname="IPSSNMP",$IPAdresse="default")
 		{
-		$localDebug=false;
+		$localDebug=true;
 		if (($this->debug) && $localDebug) echo "Übersicht der verwendeten Bibliotheken:\n";
 		$librarylist=IPS_GetLibraryList(); 
 		foreach ($librarylist as $libraryID)
@@ -1099,7 +1099,7 @@ class SNMP_OperationCenter
 			if ($Leintrag["Name"]==$findlibrary) 
 				{
 				$foundlibraryID=$libraryID;
-				if (($this->debug)  && $localDebug)echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
+				if (($this->debug)  && $localDebug) echo "** ".$libraryID."   ".str_pad($Leintrag["Name"],30)."   ".$Leintrag["URL"]."\n";
 				}
 			else
                 {
@@ -1130,7 +1130,7 @@ class SNMP_OperationCenter
 			$werte=IPS_GetInstance($instanzID);
 			$instanzname=IPS_GetName($instanzID);
 			$modulname=$werte["ModuleInfo"]["ModuleName"];
-			//echo "     ".$instanzID."   ".$modulname."\n";
+			if (($this->debug) && $localDebug) echo "     ".$instanzID."   ".$modulname."\n";
 			//print_r($werte); break;
 			if (isset($modul[$modulname])==true) $modul[$modulname].="|".$instanzname;
 			else $modul[$modulname]=$instanzname;

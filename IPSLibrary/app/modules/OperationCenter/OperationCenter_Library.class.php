@@ -6932,6 +6932,9 @@ function getFS20Type($instanz)
      * gibt für eine Homematic Instanz/Kanal eines Gerätes den Typ aus
      * zB TYPE_METER_TEMPERATURE
      *
+     * Es gibt für ein Homematic Gerät mehrere Instanzen/Channels. Nicht alle sind relevant. Daher ausklammern.
+     *
+     *
      ***********************************************/
 
     function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
@@ -6970,63 +6973,84 @@ function getFS20Type($instanz)
                     case "HM-PB-6-WM55":
                     case "HmIP-WRC6":
                         $result="Taster 6-fach";
+                        $matrix=[0,2,2,2,2,2,2,1];                        
                         break;
+
                     case "HM-PB-4Dis-WM":
                         $result="Taster 4-fach";
+                        $matrix=[0,2,2,2,2,1,1,1];                        
                         break;
+
                     case "HM-PB-2-WM55":
                         $result="Taster 2-fach";
+                        $matrix=[0,2,2,1,1,1,1,1];                        
                         break;
                     
                     case "HM-Sec-SC":
                     case "HM-Sec-SC-2":
                         $result="Tuerkontakt";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
+
                     case "HMIP-eTRV":
                     case "HmIP-eTRV-B":
                     case "HM-CC-RT-DN":
                         $result="Stellmotor";
+                        $matrix=[0,2,1,1,2,1,1,1];                        
                         break;
 
                     case "HmIP-SMI":
                     case "HM-Sec-MDIR":
                     case "HM-Sec-MDIR-2":
                         $result="Bewegungsmelder";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
+
                     case "HM-TC-IT-WM-W-EU":
                     case "HMIP-WTH":
                         $result="Wandthermostat";
+                        $matrix=[0,2,2,1,1,1,1,1];                        
                         break;
+
                     case "HM-LC-Sw1-FM":
                     case "HM-LC-Sw1-Pl":
                     case "HM-LC-Sw1-Pl-2":
                     case "HM-LC-Sw1-Pl-DN-R1":
                         $result="Schaltaktor 1-fach";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
+
                     case "HM-LC-Sw4-DR":
+                        $matrix=[0,2,2,2,2,1,1,1];                        
                         $result="Schaltaktor 4-fach";
                         break;
                     
                     case "HM-ES-PMSw1-Pl":
-                    case "HMIP-PSM":
-                        $matrix=[0,2,1,1,2,2,1,2];
                         $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,2,1,1,1,1,1];
                         break;
+                    
+                    case "HMIP-PSM":
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,1,2,1,1,2,1];
+                        break;
+
                     case "HM-LC-Dim1T-FM":
                         $result="Dimmer 1-fach";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
+
                     case "HM-WDS10-TH-O":
                         $result="Temperatur und Feuchtigkeitssensor";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
-
-
 
                     default:
                         return ($this->HomematicAddressesList[$key]);
                         break;
                     }
                 if ($output == 1) return($result);
-                else return($matrix);
+                else return($matrix);               // wenn $output 2 ist
                 }
             }
 		else return("");
