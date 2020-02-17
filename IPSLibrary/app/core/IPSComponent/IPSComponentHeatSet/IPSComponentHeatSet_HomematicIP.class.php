@@ -48,7 +48,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            echo "IPSComponentHeatSet_HomematicIP, construct, $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+            echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				

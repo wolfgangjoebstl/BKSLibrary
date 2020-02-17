@@ -104,28 +104,7 @@
 			
 			$log=new Switch_Logging($variable);
 			$result=$log->Switch_LogValue();
-			
-			if ($this->remoteOID != Null)
-			   {
-				$params= explode(';', $this->remoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-	            	if (count($para)==2)
-   	            		{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-						   	{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
+			$log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
 			}
 
 
@@ -186,52 +165,41 @@
 		private $variableLogID;
 
 		private $SwitchAuswertungID;
+		private $SwitchNachrichtenID;
 
 		private $configuration;
-		private $installedmodules;
+        private $CategoryIdData;
+
+		protected $installedmodules;              /* installierte Module */
+        protected $DetectHandler;		        /* Unterklasse */        
+        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
 				
 		function __construct($variable)
 			{
+            /************** INIT */
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+			$this->installedmodules=$moduleManager->GetInstalledModules();
+
             $dosOps= new dosOps();
+
 			//echo "Construct IPSComponentSswitch_Remote Logging for Variable ID : ".$variable."\n";
-			$this->variable=$variable;
 			$result=IPS_GetObject($variable);
 			$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist immer der Parent Name 
 		
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-			$name="Switch-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==false)
-				{
-				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
-				IPS_SetName($vid, $name);
-	    		IPS_SetInfo($vid, "this category was created by script IPSComponentSwitch_Remote. ");
-	    		}
-			$name="Switch-Auswertung";
-			$SwitchAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($SwitchAuswertungID==false)
-				{
-				$SwitchAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($SwitchAuswertungID, $CategoryIdData);
-				IPS_SetName($SwitchAuswertungID, $name);
-				IPS_SetInfo($SwitchAuswertungID, "this category was created by script IPSComponentSwitch_Remote. ");
-	    		}
-			$this->SwitchAuswertungID=$SwitchAuswertungID;
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+			$this->SwitchNachrichtenID=$this->CreateCategoryNachrichten("Switch",$this->CategoryIdData);
+			$this->SwitchAuswertungID=$this->CreateCategoryAuswertung("Switch",$this->CategoryIdData);;
+			echo "  Switch_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)." anlegen : [".$this->SwitchNachrichtenID.",".$this->SwitchAuswertungID."]\n";
+
+			/* lokale Spiegelregister aufsetzen */
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister aufsetzen */
-				echo "Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$SwitchAuswertungID." ".IPS_GetName($SwitchAuswertungID)." anlegen.\n";
-				$this->variableLogID=CreateVariable($this->variablename,0,$SwitchAuswertungID, 10, "", null, null );  /* 0 Boolean, 2 steht für Float, alle benötigten Angaben machen, sonst Fehler */
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				IPS_SetVariableCustomProfile($this->variableLogID,'~Switch');
-				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
+		        $this->variable=$variable;   
+				echo "Lokales Spiegelregister als Boolean auf ".$this->variablename." ".$this->SwitchAuswertungID." ".IPS_GetName($this->SwitchAuswertungID)." anlegen.\n";
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->SwitchAuswertungID,0,'~Switch');                   // $this->variableLogID schreiben
 				}
 
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
@@ -241,7 +209,7 @@
 			else {$directory="C:/Scripts/Switch/"; }	
 			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Switch.csv";
-			parent::__construct($filename,$vid);
+			parent::__construct($filename,$this->SwitchNachrichtenID);
 			}
 
 		function Switch_LogValue()

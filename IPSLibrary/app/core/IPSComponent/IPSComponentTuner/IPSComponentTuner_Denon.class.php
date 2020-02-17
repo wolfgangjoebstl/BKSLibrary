@@ -32,7 +32,8 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSComponentTuner_Denon Objektes
+		 * Initialisierung eines IPSComponentTuner_Denon Objektes. 
+         * Dieses Objekt wird auch bei einem normalem SyncState aufgerufen, also nicht so viel Aufwand machen. Mehr bei Handle Event oder SetState reinnehmen.
 		 *
 		 * @param integer $instanceId InstanceId des Dummy Devices
 		 */
@@ -41,9 +42,6 @@
 			$this->TunerName = $TunerName;
 			$this->ZoneName = $ZoneName;
 			$this->ChannelName = trim(strtoupper($ChannelName));
-			$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);
-			//echo "   DataCatID : ".$this->DataCatID."\n";
-            //echo "construct IPSComponentTuner_Denon mit ".$TunerName."  ".$ZoneName."   ".$ChannelName."  \n";
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			if (!isset($moduleManager))
 				{
@@ -54,9 +52,18 @@
 			$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+            $tunerID = @IPS_GetObjectIDByName($TunerName,$CategoryIdData);
+            $zoneID = @IPS_GetObjectIDByName($ZoneName,$tunerID);
+
+            echo "IPSComponentTuner_Denon:construct  mit ".$TunerName."  ".$ZoneName."   ".$ChannelName." in Category  $zoneID \n";
+            if ($zoneID !== false)
+                {
+    			//$this->DataCatID = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.DENONsteuerung.'.$TunerName.".".$ZoneName);
+                $this->DataCatID = $zoneID;
+                }
+
 			$object_data= new ipsobject($CategoryIdData);
 			$object_app= new ipsobject($CategoryIdApp);
-
 			$NachrichtenID = $object_data->osearch("Nachricht");
 			$NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
@@ -80,7 +87,7 @@
 				   $instanz=$config['INSTANZ'];
 				   }
 				}
-			$this->DenonSocketID = IPS_GetObjectIDByName($instanz." Client Socket", 0);
+			$this->DenonSocketID = @IPS_GetObjectIDByName($instanz." Client Socket", 0);
 			$this->instanceId =$TunerName.",".$ZoneName;
 			}
 
@@ -119,53 +126,57 @@
 		 * @param integer $color RGB Farben (Hex Codierung)
 		 * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
 		 */
-		public function SetState($power, $level) {
-			//echo "IPSComponentTuner_Denon SetState mit Parameter : ".($power?"Ein":"Aus")."  ".$level." und \"".$this->ChannelName."\"\n";
-			$this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.".$power." ".$level);
-			$this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
-			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
-			$volumeID=IPS_GetObjectIDByName("MasterVolume",$this->DataCatID);
-			$MainZoneID=IPS_GetObjectIDByName("MainZonePower",$this->DataCatID);
-			$InputSourceID=IPS_GetObjectIDByName("InputSource",$this->DataCatID);
-			$PowerID=IPS_GetObjectIDByName("Power",$this->DataCatID);
-			//echo "DataCatID :".$this->DataCatID."   ".$powerID." ".$volumeID."\n";
-			if ($power == false)
-				{
-				DENON_Power($this->DenonSocketID, "STANDBY");
-				SetValue($PowerID,false);
-				DENON_MainZonePower($this->DenonSocketID, false);
-				SetValue($MainZoneID,false);
-				}
-			else
-				{
-				DENON_Power($this->DenonSocketID, "ON");
-				SetValue($PowerID,true);
-				sleep(1);
-				DENON_MainZonePower($this->DenonSocketID, true);
-				SetValue($MainZoneID,true);
-				sleep(1);
-				$inputsource=$this->GetChannels();
-				//print_r($inputsource);
-				
-				//echo "   \"".$this->ChannelName."\" wird in den ChannelNames des Denon Tuners gesucht. \n";
-				if (isset($inputsource[$this->ChannelName]))
-				    {
-					sleep(1);
-				    //echo "  Set Denon Input Source to ".$inputsource[$this->ChannelName]."\n";
-					DENON_InputSource($this->DenonSocketID, $this->ChannelName);
-					SetValue($InputSourceID,$inputsource[$this->ChannelName]);
-					}
-				}
-			DENON_MasterVolumeFix($this->DenonSocketID, $level-80);
-			SetValue($volumeID,$level-80);
-			//DENON_MainZonePower($this->DenonSocketID, (string)$level."%");
-			//print_r($this);
-			//echo IPS_GetKernelDir()."scripts/".GetValue(IPS_GetObjectIDByName("!LW12_CLibrary",  IPS_GetParent($this->instanceId))).".ips.php";
-			//require(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/LedAnsteuerung/LedAnsteuerung_Library.ips.php");
-			//include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\LedAnsteuerung\LedAnsteuerung_Library.ips.php");
-			//LW12_PowerToggle2($this->instanceId,$power);
-			//LW12_setDecRGB2($this->instanceId,$color);
-		}
+		public function SetState($power, $level) 
+            {
+            if ($this->DenonSocketID !== false)
+                {
+                //echo "IPSComponentTuner_Denon SetState mit Parameter : ".($power?"Ein":"Aus")."  ".$level." und \"".$this->ChannelName."\"\n";
+                $this->log_Denon->LogMessage("Script wurde über IPSLight aufgerufen.".$power." ".$level);
+                $this->log_Denon->LogNachrichten("Script wurde über IPSLight aufgerufen.".$power." ".$level." ".$this->DenonSocketID);
+                include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
+                $volumeID=IPS_GetObjectIDByName("MasterVolume",$this->DataCatID);
+                $MainZoneID=IPS_GetObjectIDByName("MainZonePower",$this->DataCatID);
+                $InputSourceID=IPS_GetObjectIDByName("InputSource",$this->DataCatID);
+                $PowerID=IPS_GetObjectIDByName("Power",$this->DataCatID);
+                //echo "DataCatID :".$this->DataCatID."   ".$powerID." ".$volumeID."\n";
+                if ($power == false)
+                    {
+                    DENON_Power($this->DenonSocketID, "STANDBY");
+                    SetValue($PowerID,false);
+                    DENON_MainZonePower($this->DenonSocketID, false);
+                    SetValue($MainZoneID,false);
+                    }
+                else
+                    {
+                    DENON_Power($this->DenonSocketID, "ON");
+                    SetValue($PowerID,true);
+                    sleep(1);
+                    DENON_MainZonePower($this->DenonSocketID, true);
+                    SetValue($MainZoneID,true);
+                    sleep(1);
+                    $inputsource=$this->GetChannels();
+                    //print_r($inputsource);
+                    
+                    //echo "   \"".$this->ChannelName."\" wird in den ChannelNames des Denon Tuners gesucht. \n";
+                    if (isset($inputsource[$this->ChannelName]))
+                        {
+                        sleep(1);
+                        //echo "  Set Denon Input Source to ".$inputsource[$this->ChannelName]."\n";
+                        DENON_InputSource($this->DenonSocketID, $this->ChannelName);
+                        SetValue($InputSourceID,$inputsource[$this->ChannelName]);
+                        }
+                    }
+                DENON_MasterVolumeFix($this->DenonSocketID, $level-80);
+                SetValue($volumeID,$level-80);
+                //DENON_MainZonePower($this->DenonSocketID, (string)$level."%");
+                //print_r($this);
+                //echo IPS_GetKernelDir()."scripts/".GetValue(IPS_GetObjectIDByName("!LW12_CLibrary",  IPS_GetParent($this->instanceId))).".ips.php";
+                //require(IPS_GetKernelDir()."scripts/IPSLibrary/app/modules/LedAnsteuerung/LedAnsteuerung_Library.ips.php");
+                //include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\LedAnsteuerung\LedAnsteuerung_Library.ips.php");
+                //LW12_PowerToggle2($this->instanceId,$power);
+                //LW12_setDecRGB2($this->instanceId,$color);
+                }
+		    }
 		
 		/**
 		 * @public
@@ -215,9 +226,11 @@
 		 */
 		public function SetChannels($channel)
 			{
-			include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
-			DENON_InputSource($this->DenonSocketID, $channel);
-			
+            if ($this->DenonSocketID !== false)
+                {                
+                include (IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DENONsteuerung\DENON.Functions.ips.php");
+                DENON_InputSource($this->DenonSocketID, $channel);
+                }
 			}
 	}
 

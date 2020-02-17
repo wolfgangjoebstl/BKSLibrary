@@ -19,11 +19,15 @@
 
 
 /*
- * Auf den Logging Server alle objekte wie bei einer generalabfrage setzen
+ * Auf den Logging Server alle Objekte wie bei einer Generalabfrage setzen
+ * passiert jeden Tag um 5:10
+ *
+ *
  *
  */
 
 $startexec=microtime(true);
+$executeObjects=true;
  
 	IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
@@ -39,18 +43,21 @@ if ($_IPS['SENDER']=="Execute")
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	$messageHandler = new IPSMessageHandler();
  	$eventlist = IPSMessageHandler_GetEventConfiguration();
+    $i=0;
 	echo "===================================================================\n";	
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)
 		{
+        echo str_pad($i,4)."Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],30);
 		if (IPS_ObjectExists($oid))
 			{
-			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+			echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),55)."     ".GetValue($oid)."\n";
 			}
 		else
 			{
-			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+			echo "   OID nicht verfügbar !\n";
 			}
+        $i++;
 		}
 	echo "===================================================================\n";	
 	echo "Execute registered Events ".sizeof($eventlist)." Eintraege : \n";
@@ -58,8 +65,9 @@ if ($_IPS['SENDER']=="Execute")
 		{
 		if (IPS_ObjectExists($oid))
 			{
+            echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
 			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
-			$messageHandler->HandleEvent($oid, GetValue($oid));
+			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
 			}
 		else
 			{
@@ -90,7 +98,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			{
 			echo "\n";
 			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
-			$messageHandler->HandleEvent($oid, GetValue($oid));
+			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
 			}
 		else
 			{

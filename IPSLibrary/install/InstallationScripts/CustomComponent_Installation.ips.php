@@ -778,12 +778,12 @@ if ($noinstall==false)
 
 		$camManager = new IPSCam_Manager();
 		$config     = IPSCam_GetConfiguration();
-	   echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
+	    echo "Folgende Kameras sind im Modul IPSCam vorhanden:\n";
 		foreach ($config as $cam)
-	   	{
-		   echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
-		   }
-	   echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
+	   	    {
+		    echo "   Kamera : ".$cam["Name"]." vom Typ ".$cam["Type"]."\n";
+		    }
+	    echo "Bearbeite lokale Kameras im Modul OperationCenter definiert:\n";
 		if (isset ($installedModules["OperationCenter"]))
 			{
 			IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
@@ -803,7 +803,7 @@ if ($noinstall==false)
 
     				$oid=$WebCam_MotionID;
     				$cam_name="IPCam_".$cam_name;
-	  	      	$variabletyp=IPS_GetVariable($oid);
+	  	      	    $variabletyp=IPS_GetVariable($oid);
 					if ($variabletyp["VariableProfile"]!="")
 					   {
 						echo "      ".str_pad($cam_name,30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";

@@ -132,68 +132,57 @@
 		public $variableTimeLogID;				/* ID der entsprechenden lokalen Spiegelvariable für den Zeitpunkt der letzten Änderung */
 				
 		private $HeatControlAuswertungID;
+		private $HeatControlNachrichtenID;
+
 		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
 
 		private $configuration;
-		private $installedmodules;
+		private $CategoryIdData;          
+
+        private $startexecute;                  /* interne Zeitmessung */        
+
+		/* Unter Klassen */
+		
+		protected $installedmodules;                    /* installierte Module */
+        protected $DetectHandler;		                /* Unterklasse */
+        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
 				
+        /* HeatControl_Logging construct
+         * die wichtigsten Variablen initialisieren und anlegen
+         */
+                
 		function __construct($variable,$variablename=Null)
 			{
-            $dosOps= new dosOps();
-			$this->variable=$variable;
-			if ($variablename==Null)
-				{
-				$result=IPS_GetObject($variable);
-				$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist der Parent Name wenn nicht anders angegeben
-				} 
-			else
-				{
-				$this->variablename=$variablename;
-				}
-			echo "Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$this->variable." mit dem Namen ".$this->variablename."\n";
+            $this->startexecute=microtime(true);                 
+			echo "HeatControl_Logging:construct for Variable ID : ".$variable."\n";
+
+            /************** INIT */
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-			$CategoryIdData_Lib     = $moduleManager->GetModuleCategoryID('data');
-			echo "  Kategorie Data im aktuellen Datenverzeichnis: ".$CategoryIdData_Lib."   ".IPS_GetName($CategoryIdData_Lib)."\n";
+
+            $dosOps= new dosOps();
+
+            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+			echo "  Construct IPSComponentSensor HeatControl Logging for Variable ID : ".$this->variable." mit dem Namen ".$this->variablename."\n";
 
 			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			echo "  Kategorie Data im CustomComponents Datenverzeichnis: ".$this->CategoryIdData."  (".IPS_GetName($this->CategoryIdData).")\n";
+
+			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+			$this->HeatControlNachrichtenID=$this->CreateCategoryNachrichten("HeatControl",$this->CategoryIdData);
+			$this->HeatControlAuswertungID=$this->CreateCategoryAuswertung("HeatControl",$this->CategoryIdData);;
 						
-			/* Get or Create Nachrichten Category to store the HeatControl-Nachrichten */				
-			$name="HeatControl-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==false)
-				{
-				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
-				IPS_SetName($vid, $name);
-				IPS_SetInfo($vid, "this category was created by script IPSComponentHeatControl.");
-				}
-				
-			/* Get or Create Auswertung Category to store the HeatControl-Spiegelregister */	
-			$name="HeatControl-Auswertung";
-			$HeatControlAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($HeatControlAuswertungID==false)
-				{
-				$HeatControlAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($HeatControlAuswertungID, $CategoryIdData);
-				IPS_SetName($HeatControlAuswertungID, $name);
-				IPS_SetInfo($HeatControlAuswertungID, "this category was created by script IPSComponentHeatControl_Homematic. ");
-	    		}
-			$this->HeatControlAuswertungID=$HeatControlAuswertungID;
-			
 			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
+    			$this->variable=$variable;
 				echo "  Lokales Spiegelregister als Integer auf ".$this->variablename." unter Kategorie ".$this->HeatControlAuswertungID." ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
-				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-				$this->variableLogID=CreateVariable($this->variablename,1,$this->HeatControlAuswertungID, 10, "~Intensity.100", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatControlAuswertungID,1,'~Intensity.100');                   // $this->variableLogID schreiben
+                IPS_SetHidden($this->variableLogID,false);
 				
 				$this->powerConfig=Null;
 				if (function_exists('get_IPSComponentHeatConfig'))
@@ -202,16 +191,14 @@
 					if ( isset($this->powerConfig[$variable]) )
 						{
 						$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-						echo "Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+						echo "   Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
 						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
-						AC_SetLoggingStatus($archiveHandlerID,$this->variableEnergyLogID,true);
-						AC_SetAggregationType($archiveHandlerID,$this->variableEnergyLogID,0);      /* normaler Wwert */
-						$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-						AC_SetLoggingStatus($archiveHandlerID,$this->variablePowerLogID,true);
-						AC_SetAggregationType($archiveHandlerID,$this->variablePowerLogID,0);      /* normaler Wwert */
-						IPS_ApplyChanges($archiveHandlerID);						
-						$this->variableTimeLogID=CreateVariable($this->variablename."_Changetime",1,$this->variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+						//$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
+						//$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+						//$this->variableTimeLogID=CreateVariable($this->variablename."_Changetime",1,$this->variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+                        $this->variableEnergyLogID = $this->setVariableId($this->variablename."_Energy",$this->variableLogID,2,'~Electricity');
+                        $this->variablePowerLogID = $this->setVariableId($this->variablename."_Power",$this->variableLogID,2,'~Power');
+                        $this->variableTimeLogID = $this->setVariableId($this->variablename."_ChangeTime",$this->variableLogID,1,'~UnixTimestamp');
 						if (GetValue($this->variableTimeLogID) == 0) SetValue($this->variableTimeLogID,time());
 						}
 					else 
@@ -224,19 +211,18 @@
 
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
-			if (isset($directories["LogDirectories"]["HeatControlLog"]))
-		   		 { $directory=$directories["LogDirectories"]["HeatControlLog"]; }
+			if (isset($directories["LogDirectories"]["HeatControlLog"]))  { $directory=$directories["LogDirectories"]["HeatControlLog"]; }
 			else {$directory="C:/Scripts/HeatControl/"; }	
 			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_HeatControl.csv";
-			parent::__construct($filename,$vid);
+			parent::__construct($filename,$this->HeatControlNachrichtenID);
 			}
 
 		/* hier wird der Wert gelogged, Wert immer direkt aus der Variable nehmen, der übergebene Wert hat nur für Remote Write aber nicht für das Logging einen EInfluss */
 
 		function HeatControl_LogValue($value=Null)
 			{
-			// result formatieren
+			// result für Ausgabe in IPSLogger formatieren
 			$variabletyp=IPS_GetVariable($this->variable);
 			if ( ($variabletyp["VariableProfile"]!="" && ($value == Null) ))
 				{
@@ -250,7 +236,7 @@
 				}
 			$results=$result;
 
-
+            /* Spiegelregister Wert setzen */
 			SetValue($this->variableLogID,$value);
 
 			// Leistungs und Energiewerte berechnen
@@ -262,9 +248,9 @@
 				$unchangedvalue=$unchanged;
 				if ($unchangedvalue>100) { $unchangedvalue=$unchangedvalue/60; $unchangedformat="Minuten"; }
 				if ($unchangedvalue>100) { $unchangedvalue=$unchangedvalue/60; $unchangedformat="Stunden"; }
-				echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." %. Alter Wert war : ".$oldvalue." unverändert für ".number_format($unchangedvalue,2,',','.')." ".$unchangedformat.".\n";
+				echo "HeatControl_Logging:HeatControl_LogValue, neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." %. Alter Wert war : ".$oldvalue." % unverändert für ".number_format($unchangedvalue,2,',','.')." ".$unchangedformat.".\n";
 
-				/* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100 */
+				/* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100, alterWert/100*ZeitinSekunden/60/60*Leistung/1000 ergibt kWh , Leistung in kW*/
 				SetValue($this->variableTimeLogID,time());
 				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
 				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));
@@ -282,7 +268,7 @@
 				//print_r($DetectMovementHandler->ListEvents("Motion"));
 				//print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectHeatControlHandler->ListGroups("HeatControl");
+				$groups=$DetectHeatControlHandler->ListGroups("HeatControl",$this->variable);       // nur die Gruppen ausgeben in denen die variable ID auch vorkommt
 				foreach($groups as $group=>$name)
 					{
 					echo "Gruppe ".$group." behandeln.\n";
@@ -300,7 +286,7 @@
 						$count++;
 						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
 						echo "OID: ".$oid;
-						echo " Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status." | ";
+						echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)."Status (LEVEL | POWER) ".GetValue($oid)." ".$status." | ";
 						echo GetValue($mirrorPowerID)."   ".$power."\n";
 						}
 					if ($count>0) { $status=$status/$count; }

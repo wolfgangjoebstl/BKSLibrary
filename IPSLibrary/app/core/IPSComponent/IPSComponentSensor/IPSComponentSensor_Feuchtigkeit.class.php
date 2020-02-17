@@ -1,14 +1,52 @@
 <?
 
-   /**
-    * @class IPSComponentSensor_Temperatur
-    *
-    * Definiert ein IPSComponentSensor_Temperatur Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
-    *
-    * @author Wolfgang Jöbstl
-    * @version
-    *   Version 2.50.1, 09.06.2012<br/>
-    */
+	/*
+	 * This file is part of the IPSLibrary.
+	 *
+	 * The IPSLibrary is free software: you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published
+	 * by the Free Software Foundation, either version 3 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * The IPSLibrary is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License
+	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
+	 */
+	 
+    /**
+     * @class IPSComponentSensor_Feuchtigkeit
+     *
+     * Definiert ein IPSComponentSensor_Feuchtigkeit Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
+     *
+	 * Events werden im Event Handler des IPSMEssageHandler registriert. Bei Änderung oder Update wird der Event Handler aufgerufen.
+	 * In der IPSMessageHandler Config steht wie die Daten Variable ID und Wert zu behandeln sind. Es wird die Modulklasse und der Component vorgegeben.
+	 * 	xxxx => array('OnChange','IPSComponentSensor_Feuchtigkeit,','IPSModuleSensor_Feuchtigkeit,1,2,3',),
+	 * Nach Angabe des Components und des Moduls sind noch weitere Parameter möglich.
+	 * Es wird zuerst der construct mit den obigen weiteren Config Parametern und dann HandleEvent mit VariableID und Wert der Variable aufgerufen.
+	 *
+	 * Wenn RemoteAccess installiert ist:
+	 * der erste Zusatzparameter aus der obigen Konfig sind Pärchen von Remoteserver und remoteOIDs
+	 * in der RemoteAccessServerTable sind alle erreichbaren Log Remote Server aufgelistet, abgeleitet aus der Server Config und dem Status der Erreichbarkeit
+	 * für alle erreichbaren Server wird auch die remote OID mit dem Wert beschrieben 
+	 *
+	 * Logging der Variablen:
+	 * Alle Wertänderungen werden in einem File und einem Nachrichtenspeicher gelogged.
+	 *
+	 * wenn DetectMovement installiert ist:
+	 * auch den Mittelwert aus mehreren Variablen für Gruppen herausrechnen
+
+     * @class IPSComponentSensor_Feuchtigkeit
+     *
+     * Definiert ein IPSComponentSensor_Feuchtigkeit Object, das ein IPSComponentSensor Object für einen Sensor implementiert.
+     *
+     * @author Wolfgang Jöbstl
+     * @version
+     *   Version 2.50.1, 09.06.2012<br/>
+     */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	
@@ -28,7 +66,7 @@
 		/**
 		 * @public
 		 *
-		 * Initialisierung eines IPSModuleSensor_IPStemp Objektes
+		 * Initialisierung eines IPSComponentSensor_Feuchtigkeit Objektes
 		 *
 		 * @param string $tempObject Licht Object/Name (Leuchte, Gruppe, Programm, ...)
 		 * @param integer $RemoteOID OID die gesetzt werden soll
@@ -73,32 +111,22 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			//echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
-						
-			$log=new Feuchtigkeit_Logging($variable);
-			$result=$log->Feuchtigkeit_LogValue();
-
-			if ($this->RemoteOID != Null)
-			   {
-				$params= explode(';', $this->RemoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-      					{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-						   {
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
+            $startexec=microtime(true);            
+            if (GetValue($variable) != $value)
+                {            
+                IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
+			    echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+                            
+                $log=new Feuchtigkeit_Logging($variable);
+                echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
+                $result=$log->Feuchtigkeit_LogValue();
+			    $this->SetValueROID($value);
+                }
+            else 
+                {
+                IPSLogger_Dbg(__file__, 'HandleEvent: Unchanged -> Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			    echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+                }
 			}
 
 		/**
@@ -110,117 +138,210 @@
 		 *
 		 * @return string Parameter String des IPSComponent Object
 		 */
-		public function GetComponentParams() {
+		public function GetComponentParams() 
+            {
 			return get_class($this);
-		}
+		    }
 
-	}
+        /*
+         * Wert auf die konfigurierten remoteServer laden
+         */
+
+        public function SetValueROID($value)
+            {
+			//print_r($this->RemoteOID);
+			//print_r($this->remServer);
+			
+			if ($this->RemoteOID != Null)
+				{
+				$params= explode(';', $this->RemoteOID);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+					if (count($para)==2)
+						{
+						$Server=$this->remServer[$para[0]]["Url"];
+						if ($this->remServer[$para[0]]["Status"]==true)
+							{
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+							$rpc->SetValue($roid, $value);
+							}
+						}
+					}
+				}
+            }
+
+	    }
+
+	/********************************* 
+	 *
+	 * Klasse schreibt lokal in einem Log register mit
+	 *
+	 * legt dazu zwei Kategorien im eigenen data Verzeichnis ab
+	 *
+	 * xxx_Auswertung und xxxx_Nachrichten
+	 *
+	 **************************/
 
 	class Feuchtigkeit_Logging extends Logging
 		{
 		private $variable;
 		private $variablename;
-		public $variableLogID;		/* ID der entsprechenden lokalen Spiegelvariable */
+
 		private $HumidityAuswertungID;
-		
+		private $HumidityNachrichtenID;
+
 		private $configuration;
-		private $installedmodules;		
+		private $CategoryIdData;        
+
+		public $variableLogID;		/* ID der entsprechenden lokalen Spiegelvariable */
+
+        private $startexecute;                  /* interne Zeitmessung */
+
+		/* Unter Klassen */
 		
-		function __construct($variable)
+		protected $installedmodules;              /* installierte Module */
+        protected $DetectHandler;		        /* Unterklasse */
+        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
+
+        /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
+         * optional kann ein Variablennamen mitgegeben werden, sonst wird der
+         * Variablennamen nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
+         * oder aus der Config von DetectMovement übernommen
+         *
+         */
+
+		function __construct($variable,$variablename=Null)
 			{
-            $dosOps = new dosOps();
+            $this->startexecute=microtime(true);                   
 			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
-			$this->variable=$variable;
-			$result=IPS_GetObject($variable);
-			$this->variablename=IPS_GetName((integer)$result["ParentID"]);
-		
+
+            /************** INIT */
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+			/**************** installierte Module und verfügbare Konfigurationen herausfinden */        
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
+
+			/****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
+			if (isset ($this->installedmodules["DetectMovement"]))
+				{
+				/* Detect Movement kann auch Temperaturen agreggieren */
+				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+				$this->DetectHandler = new DetectHumidityHandler();
+                }
+
+            $dosOps = new dosOps();
+            
+            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovemet Config oder selber bestimmen
+		
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			//echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+
+            /* Create Category to store the Feuchtigkeit-LogNachrichten */	
 			$name="Feuchtigkeit-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			$vid=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($vid==false)
 				{
 				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
+				IPS_SetParent($vid, $this->CategoryIdData);
 				IPS_SetName($vid, $name);
 				IPS_SetInfo($vid, "this category was created by script. ");
 				}
+			$this->HumidityNachrichtenID=$vid;
+
+			/* Create Category to store the Temperature-Spiegelregister */	
 			$name="Feuchtigkeit-Auswertung";
-			$TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			$TempAuswertungID=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($TempAuswertungID==false)
 				{
 				$TempAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($TempAuswertungID, $CategoryIdData);
+				IPS_SetParent($TempAuswertungID, $this->CategoryIdData);
 				IPS_SetName($TempAuswertungID, $name);
 				IPS_SetInfo($TempAuswertungID, "this category was created by script. ");
 				}
 			$this->HumidityAuswertungID=$TempAuswertungID;
+
+    		/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
-				/* lokale Spiegelregister aufsetzen */
-				$this->variableLogID=CreateVariable($this->variablename,1,$TempAuswertungID, 10,"",null,null );
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				IPS_SetVariableCustomProfile($this->variableLogID,'~Humidity');
-				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
+                $this->variable=$variable; 
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HumidityAuswertungID,1,"~Humidity");                   // $this->variableLogID schreiben
+                IPS_SetHidden($this->variableLogID,false);                
+				echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Integer unter Kategorie ".$this->HumidityAuswertungID." ".IPS_GetName($this->HumidityAuswertungID)." anlegen.\n";
 				}
 
-		   //echo "Uebergeordnete Variable : ".$this->variablename."\n";
-		   $directories=get_IPSComponentLoggerConfig();
-		   $directory=$directories["LogDirectories"]["HumidityLog"];
-		   $dosOps->mkdirtree($directory);
-		   $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
-		   parent::__construct($filename,$vid);
-	   	}
+			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
+		    $directories=get_IPSComponentLoggerConfig();
+		    $directory=$directories["LogDirectories"]["HumidityLog"];
+		    $dosOps->mkdirtree($directory);
+		    $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
+		    parent::__construct($filename,$vid);
+	   	    }
+
+        /* wird von HandleEvent aus obigem CustomComponent aufgerufen.
+         * Speichert den Wert von ID $this->variable im Spiegelregister mit ID $this->variableLogID
+         *
+         */
 
 		function Feuchtigkeit_LogValue()
 			{
-			$result=number_format(GetValue($this->variable),2,',','.')." %";
-			SetValue($this->variableLogID,GetValue($this->variable));
-			echo "Feuchtigkeit_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %\n";
-
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$installedmodules=$moduleManager->GetInstalledModules();
-			if (isset ($installedmodules["DetectMovement"]))
+			// result formatieren für Ausgabe in den LogNachrichten
+			$variabletyp=IPS_GetVariable($this->variable);
+			if ($variabletyp["VariableProfile"]!="")
 				{
-                echo "Modul DetectMovement installiert. Gruppen behandeln:\n";
-				/* Detect Movement kann auch Feuchtigkeitswerte agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-		   	    $DetectHumidityHandler = new DetectHumidityHandler();
-				//print_r($DetectMovementHandler->ListEvents("Motion"));
-				//print_r($DetectMovementHandler->ListEvents("Contact"));
-
-				$groups=$DetectHumidityHandler->ListGroups("Feuchtigkeit"); // mit Angabe Feuchtigkeit können auch mehrere Gruppen pro Event ausgegeben werden */
+				$result=GetValueFormatted($this->variable);
+				}
+			else
+				{                
+			    $result=number_format(GetValue($this->variable),2,',','.')." %";
+                }
+                
+			$unchanged=time()-$variabletyp["VariableChanged"];
+			$oldvalue=GetValue($this->variableLogID);
+			SetValue($this->variableLogID,GetValue($this->variable));
+			echo "      Feuchtigkeit_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+			IPSLogger_Dbg(__file__, 'CustomComponent Temperature_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
+                
+			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
+			if (isset ($this->installedmodules["DetectMovement"]))
+				{
+				$groups=$this->DetectHandler->ListGroups("Feuchtigkeit",$this->variable);      // nur die Gruppen für dieses Event updaten, mit Angabe Feuchtigkeit können auch mehrere Gruppen pro Event ausgegeben werden */
                 //print_r($groups);
 				foreach($groups as $group=>$name)
 				    {
-				    echo "Gruppe ".$group." behandeln.\n";
-					$config=$DetectHumidityHandler->ListEvents($group);
-                    print_r($config);
+				    echo "       --> Gruppe ".$group." behandeln.\n";
+					$config=$this->DetectHandler->ListEvents($group);
+                    //print_r($config);
 					$status=(float)0;
 					$count=0;
 					foreach ($config as $oid=>$params)
 						{
 						$status+=GetValue($oid);
 						$count++;
-						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),50)."Status: ".GetValue($oid)." ".$status."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
                     else echo "Gruppe ".$group." hat keine eigenen Eintraege.\n";
 					$statusint=(integer)$status;
 				    echo "Gruppe ".$group." hat neuen Status : ".$statusint."\n";
 
-					$log=new Feuchtigkeit_Logging($oid);
-					$class=$log->GetComponent($oid);
+					//$log=new Feuchtigkeit_Logging($oid);
+					//$class=$log->GetComponent($oid);
 					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					$statusID=CreateVariable("Gesamtauswertung_".$group,1,$this->HumidityAuswertungID);
-					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
-					SetValue($statusID,$statusint);
+					$statusID=CreateVariableByName($this->HumidityAuswertungID, "Gesamtauswertung_".$group,1,'~Humidity',null,1000,null);
+                    $oldstatus=GetValue($statusID);
+					if ($oldstatus != $statusint) 
+                        {
+    					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $statusint.\n";
+                        SetValue($statusID,$statusint);     // Vermeidung von Update oder Change Events
+                        }
 			   	    }
 				}
 

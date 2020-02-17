@@ -141,10 +141,15 @@ class Logging
 	private $script_Id="Default";
 	private $nachrichteninput_Id="Default";
 	private $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
-	private $installedmodules;
     private $zeile=array();                     /* Nachrichteninput Objekte OIDs */
     private $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
     private $config=array();                    /* interne Konfiguration */
+
+    /* wird bereits in den children classes verwendet und dort initialisiert */
+
+    protected $installedmodules;
+    protected $DetectHandler;               /* DetectMovement/Humidity ... ist auch ein Teil der Aktivitäten */
+    protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
 	
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
@@ -262,8 +267,176 @@ class Logging
                         $this->zeile15DM = CreateVariable("Zeile15",3,$vid, 150 );
                         $this->zeile16DM = CreateVariable("Zeile16",3,$vid, 160 );			
 				}
-			}																																
+			}	
 	   }
+
+    /**
+        * @public
+        *
+        * Funktion liefert String IPSComponent Constructor String.
+        * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+        * wieder neu zu erzeugen.
+        *
+        * @return string Parameter String des IPSComponent Object
+        */
+    public function GetComponentParams() {
+        return get_class($this);
+        }
+
+    public function GetComponent() {
+        return ($this);
+        }
+
+    public function GetEreignisID() {
+        return ($this->EreignisID);
+        }
+
+    /* in CustomComponent Data werden immer zwei paare an Kategorien erstellet. Auswertung und Nachrichten. Der erste Teil ist variable.
+     *
+     */
+
+    public function CreateCategoryAuswertung($name,$CategoryIdData)
+        {
+        $name .= "-Auswertung";
+        $MoveAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+        if ($MoveAuswertungID==false)
+            {
+            $MoveAuswertungID = IPS_CreateCategory();
+            IPS_SetParent($MoveAuswertungID, $this->CategoryIdData);
+            IPS_SetName($MoveAuswertungID, $name);
+            IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
+            }
+        return ($MoveAuswertungID);
+        }
+
+    public function CreateCategoryNachrichten($name,$CategoryIdData)
+        {
+        /* Create Category to store the Move-LogNachrichten */	
+        $name .= "-Nachrichten";
+        $MoveNachrichtenID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+        if ($MoveNachrichtenID==false)
+            {
+            $MoveNachrichtenID = IPS_CreateCategory();
+            IPS_SetParent($MoveNachrichtenID, $CategoryIdData);
+            IPS_SetName($MoveNachrichtenID, $name);
+            IPS_SetInfo($MoveNachrichtenID, "this category was created by script. ");
+            }
+        return ($MoveNachrichtenID);
+        }
+
+
+    /*
+        * wird in construct und Set_LogValue verwendet
+        */
+
+    public function getVariableName($variable,$variablename=Null)    
+        {
+        /****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
+        if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->DetectHandler !== Null) )
+            {
+            $moid=$this->DetectHandler->getMirrorRegister($variable);
+            if ( ($variablename==Null) && ($moid !== false) ) $variablename=IPS_GetName($moid);
+            echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid\n";
+            }
+        if ($variablename==Null)
+            {
+            $result=IPS_GetObject($variable);
+            $ParentId=(integer)$result["ParentID"];
+            $object=IPS_GetObject($ParentId);
+            if ( $object["ObjectType"] == 1)
+                {				
+                $variablename=IPS_GetName($ParentId);			// Variablenname ist der Parent Name wenn nicht anders angegeben, und der Parent eine Instanz ist.
+                }
+            elseif (IPS_GetName($variable)=="Cam_Motion")					/* was ist mit den Kameras, wird auch bei Temperatur und den anderen verwendet damit einheitlich ist  */
+                {
+                $variablename=IPS_GetName($ParentId);
+                }
+            else
+                {
+                $variablename=IPS_GetName($variable);			// Variablenname ist der Variablen Name wenn der Parent KEINE Instanz ist.
+                }
+            } 
+        return ($variablename);
+        }
+
+    /*
+        * wird in construct und Set_LogValue verwendet
+        */
+
+    public function setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile)    
+        {
+        /* einfaches Logging, formattiert oder nicht */
+        echo '    Logging:setVariableLogId Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile ";
+        $variabletyp=IPS_GetVariable($variable);
+        if ($variabletyp["VariableProfile"]!="")
+            {  /* Formattierung vorhanden */
+            echo " mit Wert ".GetValueFormatted($variable)."\n";
+            IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValueFormatted($variable));
+            }
+        else
+            {
+            echo " mit Wert ".GetValue($variable)."\n";
+            IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValue($variable));
+            }	
+
+        /* lokale Spiegelregister aufsetzen */  
+        $variableLogID=@IPS_GetObjectIDByName($variablename,$AuswertungID);
+        if ( ($variableLogID===false) || (AC_GetLoggingStatus($this->archiveHandlerID,$variableLogID)==false) || (AC_GetAggregationType($this->archiveHandlerID,$variableLogID) != 0) )
+            {                                  			
+            $variableLogID=CreateVariableByName($AuswertungID,$variablename,$type,$profile,null, 10,null );
+            AC_SetLoggingStatus($this->archiveHandlerID,$variableLogID,true);
+            AC_SetAggregationType($this->archiveHandlerID,$variableLogID,0);      /* normaler Wwert */
+            IPS_ApplyChanges($this->archiveHandlerID);
+            }
+        return($variableLogID);                    
+        }
+
+    /* wie setVariableLogId nur ohne echo Wert $variable */
+
+    public function setVariableId($variablename, $AuswertungID,$type,$profile)    
+        {
+        echo '    Logging:setVariableId Spiegelregister erstellen mit Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile.\n";
+        /* lokale Spiegelregister aufsetzen */  
+        $variableLogID=@IPS_GetObjectIDByName($variablename,$AuswertungID);
+        if ( ($variableLogID===false) || (AC_GetLoggingStatus($this->archiveHandlerID,$variableLogID)==false) || (AC_GetAggregationType($this->archiveHandlerID,$variableLogID) != 0) )
+            {                                  			
+            $variableLogID=CreateVariableByName($AuswertungID,$variablename,$type,$profile,null, 10,null );
+            AC_SetLoggingStatus($this->archiveHandlerID,$variableLogID,true);
+            AC_SetAggregationType($this->archiveHandlerID,$variableLogID,0);      /* normaler Wwert */
+            IPS_ApplyChanges($this->archiveHandlerID);
+            }
+        return($variableLogID);                    
+        }
+
+        /*
+         * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
+         */
+
+        public function RemoteLogValue($value, $remServer, $RemoteOID )
+            {
+			if ($RemoteOID != Null)
+				{
+				$params= explode(';', $RemoteOID);
+				foreach ($params as $val)
+					{
+					$para= explode(':', $val);
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
+					if (count($para)==2)
+						{
+						$Server=$remServer[$para[0]]["Url"];
+						if ($remServer[$para[0]]["Status"]==true)
+							{
+							$rpc = new JSONRPC($Server);
+							$roid=(integer)$para[1];
+							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+							$rpc->SetValue($roid, $value);
+							}
+						}
+					}
+				}
+            }
+
+
 
 	function LogMessage($message)
 		{

@@ -257,38 +257,51 @@
 		 * Wenn type angegeben wird und bekannt ist werden auch mehrer Gruppen die durch "," getrennt sind ebenfalls aufgelöst
 		 *
 		 */
-		public function ListGroups($type="")
+		public function ListGroups($type="",$varId=false)
 			{
+            //echo "ListGroups Aufruf mit $type.\n";
 			$configuration = $this->Get_EventConfigurationAuto();
 			$result=array();
-			foreach ($configuration as $variableId=>$params)
-				{
-				//echo "Switch type $type.\n";
-				switch ($type)
-					{
-					case 'Motion':
-					case 'Contact':
-					case 'Topology':
-					case 'Temperatur':										
-					case 'Feuchtigkeit':
-					case 'Humidity':
-					case 'HeatControl':										
-						if (($type==$params[0]) && ($params[1] != ""))
-							{
-							$params1=explode(",",$params[1]);
-							//echo sizeof($params1)."  ".$params1[0]."  ";
-							foreach ($params1 as $entry) $result[$entry]="available";
-							}
-						break;
-					default:
-                        echo "ListGroups Type $type unknown.\n";
-						if ($params[1] != "")
-							{
-							$result[$params[1]]="available";
-							}
-						break;
-					}
-				}
+            if ($varId==false)
+                {
+                foreach ($configuration as $variableId=>$params)
+                    {
+                    //echo "Switch type $type.\n";
+                    switch ($type)
+                        {
+                        case 'Motion':
+                        case 'Contact':
+                        case 'Topology':
+                        case 'Temperatur':										
+                        case 'Feuchtigkeit':
+                        case 'Humidity':
+                        case 'HeatControl':										
+                            if (($type==$params[0]) && ($params[1] != ""))
+                                {
+                                $params1=explode(",",$params[1]);
+                                //echo sizeof($params1)."  ".$params1[0]."  ";
+                                foreach ($params1 as $entry) $result[$entry]="available";
+                                }
+                            break;
+                        default:
+                            if ($type != "") echo "ListGroups Type $type unknown.\n";
+                            if ($params[1] != "")
+                                {
+                                $result[$params[1]]="available";
+                                }
+                            break;
+                        }
+                    }
+                }
+            else
+                {
+                if ( (isset($configuration[$varId])) && ($type==$configuration[$varId][0]) && ($configuration[$varId][1] != "") )    
+                    {
+                    $params1=explode(",",$configuration[$varId][1]);
+                    foreach ($params1 as $entry) $result[$entry]="available";
+                    }
+                else return ($result);
+                }
 			return ($result);
 			}
 
@@ -681,10 +694,10 @@
 		public function CreateMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
-            $mirrorID = IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
 			if ($mirrorID===false)			
 				{	// Spiegelregister noch nicht erzeugt
-				$mirrorID=CreateVariable($variablename,2,$this->Detect_DataID,10, '~Humidity', null,false);
+				$mirrorID=CreateVariable($variablename,1,$this->Detect_DataID,10, '~Humidity', null,false);
 				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
 				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
@@ -732,6 +745,7 @@
 		private static $configtype;
 		private static $configFileName;				
 		
+        protected $CategoryIdData;                          /* Category Data Kategorie des eigenen Moduls */
 		private $MoveAuswertungID;
 		private $motionDetect_DataID;		
 
@@ -765,15 +779,16 @@
 			else $this->MoveAuswertungID=$MoveAuswertungID;
 			
 			$moduleManager_DM = new IPSModuleManager('DetectMovement');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
+			$this->CategoryIdData     = $moduleManager_DM->GetModuleCategoryID('data');
 			$name="Motion-Detect";
-			$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			$mdID=@IPS_GetObjectIDByName($name,$this->CategoryIdData);
 			if ($mdID==false)
 				{
+                echo "Create Category Motion-Detect in ".$this->CategoryIdData."\n";
 				$mdID = IPS_CreateCategory();
-				IPS_SetParent($mdID, $CategoryIdData);
+				IPS_SetParent($mdID, $this->CategoryIdData);
 				IPS_SetName($mdID, $name);
-	 			IPS_SetInfo($mdID, "this category was created by script. ");
+	 			IPS_SetInfo($mdID, "this category was created by script construct of class DetectMovementHandler. ");
 				}			
 			$this->motionDetect_DataID=$mdID;			
 			parent::__construct();
@@ -788,7 +803,25 @@
 		function Get_ConfigFileName()
 			{
 			return self::$configFileName;
-			}				
+			}	
+
+		function Get_CategoryData()
+			{
+			return ($this->CategoryIdData);
+			}
+            
+		function Get_MoveAuswertungID()
+			{
+			return ($this->MoveAuswertungID);
+			}	
+
+		function Set_MoveAuswertungID($MoveAuswertungID=false)
+			{
+			if ($MoveAuswertungID===false) $this->MoveAuswertungID=$MoveAuswertungID;
+			return (true);
+			}	
+            
+            			
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 

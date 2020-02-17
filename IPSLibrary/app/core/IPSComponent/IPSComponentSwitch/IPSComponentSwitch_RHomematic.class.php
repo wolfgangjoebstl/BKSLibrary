@@ -29,9 +29,9 @@
      *  SetState und GetState schalten die lokale Instanz
      * 
      * Auftrennung der unterschiedlichen Klassen und Module:
-     *  IPSComponentSwitch_Homematic    Standard ohne Extras, das ist die Grudnfunktionalitaet
+     *  IPSComponentSwitch_Homematic    Standard ohne Extras, das ist die Grundfunktionalitaet
      *  IPSComponentSwitch_XHomematic   Schaltet eine Remote Variable ohne remote Logging
-     *  IPSComponentSwitch_RHomematic   Schaltet eine lokale Homemeatic Variable mit remote Logging 
+     *  IPSComponentSwitch_RHomematic   Schaltet eine lokale Homematic Variable mit remote Logging 
      *  IPSComponentSwitch_Remote       Ändert eine lokale Variable mit remote Logging    
      *
      * Die RemoteAccessClass muss immer mit IPSLight zusammenpassen. Auch der Aufruf von construct.
@@ -40,6 +40,8 @@
      *
      * RemoteAccessServerTable() ist in AllgemeineDefinitionen definiert und ermittelt die Konfiguration auf Basis des Status der Logging Server. Status Erreichbarkeit wird von OperationCenter erfasst.
      *
+     * Nach Construct wird HandleEvent mit dem neuen Status aufgerufen. Zuerst wird vom konfigurierten Modul aus Sync State aufgerufen.
+     * dann das lokale und das remote Logging.
      *
      * Die Änderung des Schalters könnte als Event wieder gelogged werden.
      * Wird von IPSComponentSwitch_Remote erledigt. Zuordnung erfolgt in remoteAccess Modul:
@@ -122,12 +124,13 @@
 				{								
 				$this->remServer	  = array();
 				}
-   		/* verbiegen des Error Handlers um Duty Cycle Events abzufangen, der alte Error_Handler wird als Variable zu AllgemeneDefinitionen zwischengespeichert */    
+   		    /* verbiegen des Error Handlers um Duty Cycle Events abzufangen, der alte Error_Handler wird als Variable zu AllgemeneDefinitionen zwischengespeichert   
         	$mManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
         	$AllgemeineDefId     = IPS_GetObjectIDByName('AllgemeineDefinitionen',$mManager->GetModuleCategoryID('data'));
-         $this->ErrorHandlerAltID = CreateVariableByName($AllgemeineDefId, "ErrorHandler", 3);
-         $alter_error_handler = set_error_handler("AD_ErrorHandler");
-         SetValue($this->ErrorHandlerAltID,$alter_error_handler);                			
+            $this->ErrorHandlerAltID = CreateVariableByName($AllgemeineDefId, "ErrorHandler", 3);
+            $alter_error_handler = set_error_handler("AD_ErrorHandler");
+            SetValue($this->ErrorHandlerAltID,$alter_error_handler);                			
+            */
 			}
 
 		/**
@@ -142,46 +145,17 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
       	    {
-			echo "IPSComponentSwitch_RHomematic Message Handler für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
-	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
-       
+			echo "IPSComponentSwitch_RHomematic:HandleEvent für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
+	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic: HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
+            $startexec=microtime(true);
 			$module->SyncState($value, $this);
-
-			$log=new Switch_Logging($variable);
-			//echo "Logging.\n";
-			$result=$log->Switch_LogValue();
-			//echo "Logging Done !\n";
-			if ( ($this->remoteOID != Null) && ($this->remoteOID != "") )
-				{
-				echo "Remote Server bearbeiten : ".$this->remoteOID."\n";
-				$params= explode(';', $this->remoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
-			/* foreach ($this->remServer as $Server)
-				{
-				echo "Server : ".$Server."\n";
-				$rpc = new JSONRPC($Server);
-				echo "Remote OID: ".$this->RemoteOID."\n";
-				$roid=(integer)$this->RemoteOID;
-				$rpc->SetValue($roid, $value);
-				}  alte Implementierung, es wird nur eine ROID angegeben, funktioniert nicht für mehrere Server */
-		}
+            echo "Aktuelle Laufzeit nach SyncState ".exectime($startexec)." Sekunden.\n";        
+			$log=new Switch_Logging($variable);         		//echo "Logging.\n";
+			$result=$log->Switch_LogValue();        			//echo "Logging Done !\n";
+            echo "Aktuelle Laufzeit nach LogValue ".exectime($startexec)." Sekunden.\n";        
+            $log->RemoteLogValue($value, $this->remServer, $this->remoteOID );
+            echo "Aktuelle Laufzeit nach RemoteLogValue ".exectime($startexec)." Sekunden.\n";        
+    		}
 
 		/**
 		 * @public

@@ -1340,18 +1340,18 @@ function GetValueIfFormatted($oid)
 /******************************************************************/
 
 
-function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
+function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     {
     //echo "Position steht auf $position.\n";
     //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
     //global $IPS_SELF;
-    $vid = @IPS_GetVariableIDByName($name, $id);
+    $vid = @IPS_GetVariableIDByName($name, $parentID);
     if($vid === false)
         {
         $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $id);
+        IPS_SetParent($vid, $parentID);
         IPS_SetName($vid, $name);
         IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
         }
@@ -4203,7 +4203,7 @@ class ComponentHandling
 			$remServer=$this->listOfRemoteServer();
             $struktur=$this->getStructureofROID($keyword);
 
-			echo "Resultat für gefundene Geraeteregister verarbeiten:\n";
+			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
         	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
       	    	{
 	            //echo "----> $IndexName:\n"; print_r($entry);                  

@@ -373,6 +373,49 @@
 	 ****************************************************************************************************************/
 
     $componentHandling=new ComponentHandling();
+	$commentField="zuletzt Konfiguriert von EvaluateHomematic um ".date("h:i am d.m.Y ").".";
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Temperature
+	 *
+	 ****************************************************************************************************************/
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
+	echo "\n";
+	echo "Homematic Temperatur Sensoren werden registriert.\n";
+	if (function_exists('HomematicList'))
+		{
+		$componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
+		$componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
+		} 
+	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
+	if (function_exists('FHTList'))
+		{
+		$componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
+		}
+
+
+	/****************************************************************************************************************
+	 *
+	 *                                      Humidity
+	 *
+	 ****************************************************************************************************************/
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
+	echo "\n";
+	echo "Homematic Humidity Sensoren werden registriert.\n";
+	if (function_exists('HomematicList'))
+		{
+		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
+		} 
+
+
+if (false)
+    {
+    $componentHandling=new ComponentHandling();
 
 	$DetectTemperatureHandler = new DetectTemperatureHandler();
 	echo "\n";
@@ -646,6 +689,8 @@
 				}
 		   }
 		}
+    }   // ende if false
+
 
 	/****************************************************************************************************************
 	 *

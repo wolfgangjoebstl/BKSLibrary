@@ -182,104 +182,67 @@
 		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
 				
 		private $HeatSetAuswertungID;
+        private $HeatSetNachrichtenID;
+
 		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
 
 		private $configuration;
-		private $installedmodules;
+		private $CategoryIdData;          
+
+        private $startexecute;                  /* interne Zeitmessung */
+
+		/* Unter Klassen */
+		
+		protected $installedmodules;                    /* installierte Module */
+        protected $DetectHandler;		                /* Unterklasse */
+        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
+
+
+        /* HeatSet_Logging construct
+         * die wichtigsten Variablen initialisieren und anlegen
+         */
 				
 		function __construct($variable,$variablename=Null)
 			{
-            $dosOps= new dosOps();                
-			//echo "Construct IPSComponentSensor HeatSet Logging for Variable ID : ".$variable."\n";
-			$this->variable=$variable;
-			if ($variablename==Null)
-				{
-				$result=IPS_GetObject($variable);
-				$this->variablename=IPS_GetName((integer)$result["ParentID"]);			// Variablenname ist der Parent Name wenn nicht anders angegeben
-				} 
-			else
-				{
-				$this->variablename=$variablename;
-				}
+            $this->startexecute=microtime(true);                 
+			echo "HeatSet_Logging:construct for Variable ID : ".$variable."\n";
+
+            /************** INIT */
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-			$CategoryIdData_Lib     = $moduleManager->GetModuleCategoryID('data');
-			echo "  Kategorien im aktuellen Datenverzeichnis:".$CategoryIdData_Lib."   ".IPS_GetName($CategoryIdData_Lib)."\n";
+
+            $dosOps= new dosOps();                
+
+            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+			echo "Spiegelregister Variablename : ".$this->variablename."\n";
 
 			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im CustomComponents Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
-			
-			/* Create Category to store the HeatSet-Nachrichten */				
-			$name="HeatSet-Nachrichten";
-			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($vid==false)
-				{
-				$vid = IPS_CreateCategory();
-				IPS_SetParent($vid, $CategoryIdData);
-				IPS_SetName($vid, $name);
-				IPS_SetInfo($vid, "this category was created by script IPSComponentHeatSet.");
-				}
-				
-			/* Create Category to store the HeatControl-Spiegelregister */	
-			$name="HeatSet-Auswertung";
-			$HeatSetAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-			if ($HeatSetAuswertungID==false)
-				{
-				$HeatSetAuswertungID = IPS_CreateCategory();
-				IPS_SetParent($HeatSetAuswertungID, $CategoryIdData);
-				IPS_SetName($HeatSetAuswertungID, $name);
-				IPS_SetInfo($HeatSetAuswertungID, "this category was created by script IPSComponentHeatSet_Homematic. ");
-	    		}
-			$this->HeatSetAuswertungID=$HeatSetAuswertungID;
+			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+			echo "  Kategorien im CustomComponents Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)."\n";
+
+			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+			$this->HeatSetNachrichtenID=$this->CreateCategoryNachrichten("HeatSet",$this->CategoryIdData);
+			$this->HeatSetAuswertungID=$this->CreateCategoryAuswertung("HeatSet",$this->CategoryIdData);;
 			
 			/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
 			if ($variable<>null)
 				{
+                $this->variable = $variable;
 				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->HeatSetAuswertungID." ".IPS_GetName($this->HeatSetAuswertungID)." anlegen.\n";
-				/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-				$this->variableLogID=CreateVariable($this->variablename,2,$this->HeatSetAuswertungID, 10, "TemperaturSet", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-				AC_SetLoggingStatus($archiveHandlerID,$this->variableLogID,true);
-				AC_SetAggregationType($archiveHandlerID,$this->variableLogID,0);      /* normaler Wwert */
-				IPS_ApplyChanges($archiveHandlerID);
-				
-				if (false)
-				{
-				$this->powerConfig=Null;
-				if (function_exists('get_IPSComponentHeatConfig'))
-					{
-					$this->powerConfig=get_IPSComponentHeatConfig()["HeatingPower"];
-					if ( isset($this->powerConfig[$variable]) )
-						{
-						$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-						echo "Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatSetAuswertungID)." anlegen.\n";
-						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-						$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-						AC_SetLoggingStatus($archiveHandlerID,$this->variableEnergyLogID,true);
-						AC_SetAggregationType($archiveHandlerID,$this->variableEnergyLogID,0);      /* normaler Wwert */
-						$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-						AC_SetLoggingStatus($archiveHandlerID,$this->variablePowerLogID,true);
-						AC_SetAggregationType($archiveHandlerID,$this->variablePowerLogID,0);      /* normaler Wwert */
-						IPS_ApplyChanges($archiveHandlerID);						
-						}
-					else 
-						{
-						echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in get_IPSComponentHeatConfig HeatingPower not available !\n";
-						$this->powerConfig=Null;
-						}	
-					}					
-				} }
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatSetAuswertungID,2,'TemperaturSet');                   // $this->variableLogID schreiben
+                IPS_SetHidden($this->variableLogID,false);
+                }
 
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 			$directories=get_IPSComponentLoggerConfig();
-			if (isset($directories["LogDirectories"]["HeatSetLog"]))
-		   		 { $directory=$directories["LogDirectories"]["HeatSetLog"]; }
+			if (isset($directories["LogDirectories"]["HeatSetLog"])) { $directory=$directories["LogDirectories"]["HeatSetLog"]; }
 			else {$directory="C:/Scripts/HeatSet/"; }	
 			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_HeatSet.csv";
-			parent::__construct($filename,$vid);
+			parent::__construct($filename,$this->HeatSetNachrichtenID);
 			}
 
 		/* hier wird der Wert gelogged, Wert immer direkt aus der Variable nehmen, der übergebene Wert hat nur für Remote Write aber nicht für das Logging einen EInfluss */
