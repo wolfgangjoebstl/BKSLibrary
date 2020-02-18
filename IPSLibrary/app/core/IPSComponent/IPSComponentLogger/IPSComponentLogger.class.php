@@ -331,6 +331,7 @@ class Logging
 
     public function getVariableName($variable,$variablename=Null)    
         {
+        //echo "Logging:getVariableName aufgerufen.\n"; print_r($this->installedmodules); print_r($this->DetectHandler);
         /****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
         if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->DetectHandler !== Null) )
             {

@@ -48,7 +48,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			echo "IPSComponentHeatSet_Homematic:construct\n";
+			//echo "IPSComponentHeatSet_Homematic:construct\n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				

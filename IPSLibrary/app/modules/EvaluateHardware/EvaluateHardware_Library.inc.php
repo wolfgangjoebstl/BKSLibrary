@@ -38,11 +38,21 @@ class TopologyLibraryManagement
     var $modulhandling;         // andere classes die genutzt werden, einmal instanzieren
 
     var $deviceInstances,$roomInstances,$placeInstances,$devicegroupInstances;                       // Instanzenlisten, für schnelleren Zugriff, müssen regelmaessig upgedatet werden.
+
     var $debug;
+    var $installedModules;
 
     public function __construct($debug=false)
         {
         $this->debug=$debug;
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        if (!isset($moduleManager))
+            {
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManager = new IPSModuleManager('OperationCenter',$repository);
+            }
+        $this->installedModules = $moduleManager->GetInstalledModules();
+
         $this->topID=@IPS_GetObjectIDByName("Topology", 0 );
         if ($this->topID === false) 	$this->topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da 
 
@@ -342,11 +352,13 @@ class TopologyLibraryManagement
 
     public function sortTopologyInstances($deviceList, $channelEventList, $deviceEventList)
         {
-
-            $i=0;
-            $onlyOne=true;
-            $parent=$this->topID;
-            foreach ($deviceList as $name => $entry)
+        if (isset($this->installedModules["DetectMovement"])) $DetectDeviceListHandler = new DetectDeviceListHandler();   
+        $i=0;
+        $onlyOne=true;
+        $parent=$this->topID;
+        foreach ($deviceList as $name => $entry)
+            {
+            if (isset($entry["Instances"]))
                 {
                 $instances=$entry["Instances"];
                 //if ($onlyOne)
@@ -421,12 +433,13 @@ class TopologyLibraryManagement
                         IPS_SetConfiguration($InstanzID,$newconfig);
                         */
                         TOPD_SetDeviceList($InstanzID,$instances);
-                        if (isset($installedModules["DetectMovement"]))  $DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
+                        if (isset($this->installedModules["DetectMovement"]))  $DetectDeviceListHandler->RegisterEvent($InstanzID,'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
                         }
                     //$onlyOne=false;
                     $i++;    
                     }
-                }      // end foreach
+                }           // ende isset instances
+            }      // end foreach
         }
 
     }       // ende class

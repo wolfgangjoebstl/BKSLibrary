@@ -48,7 +48,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+            //echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -106,15 +106,15 @@
 			echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Inf(__file__, 'IPSComponentHeatSet_HomematicIP HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
+            $log=new HeatSet_Logging($variable);			
 			if ( ((IPS_GetName($variable))=="CONTROL_MODE") || ((IPS_GetName($variable))=="SET_POINT_MODE") )
 				{
 				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetMode($value, $this);
+				$result=$log->HeatSet_LogValue($value,IPS_GetName($variable));
 				}
 			else
 				{	
 				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this);
-						
-				$log=new HeatSet_Logging($variable);
 				$result=$log->HeatSet_LogValue($value);
 				}
 			

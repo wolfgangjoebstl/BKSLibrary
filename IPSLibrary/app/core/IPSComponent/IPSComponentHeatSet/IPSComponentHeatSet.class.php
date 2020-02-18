@@ -247,7 +247,7 @@
 
 		/* hier wird der Wert gelogged, Wert immer direkt aus der Variable nehmen, der übergebene Wert hat nur für Remote Write aber nicht für das Logging einen EInfluss */
 
-		function HeatSet_LogValue($value=Null)
+		function HeatSet_LogValue($value=Null, $subregister=false)
 			{
 			// result formatieren
 			$variabletyp=IPS_GetVariable($this->variable);
@@ -261,52 +261,58 @@
 				if ($value == Null) { $value=GetValue($this->variable); }
 				$result=number_format($value,2,',','.')." °C";				
 				}
-				
-			$unchanged=time()-$variabletyp["VariableChanged"];
-			$oldvalue=GetValue($this->variableLogID);
-			SetValue($this->variableLogID,$value);
-			echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." °C. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
+            if ($subregister)
+                {
+                $this->variableSubID=$this->setVariableId($this->variablename."_".$subregister,$this->variableLogID,1,'');
+                SetValue($this->variableSubID,$value);
+                }				
+            else
+                {
+                $unchanged=time()-$variabletyp["VariableChanged"];
+                $oldvalue=GetValue($this->variableLogID);
+                SetValue($this->variableLogID,$value);
+                echo "Neuer Wert fuer ".$this->variablename."(".$this->variable.") ist ".$value." °C. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 
-			// Leistungs und Energiewerte berechnen
-			if ( ($this->powerConfig<>Null) && false)
-				{
-				/* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100 */
-				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
-				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));					
-				}				
-			
-			if ( (isset ($this->installedmodules["DetectMovement"])) && false )
-				{
-				/* Detect Movement kann auch Leistungswerte agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$DetectHeatSetHandler = new DetectHeatSetHandler();
-				//print_r($DetectMovementHandler->ListEvents("Motion"));
-				//print_r($DetectMovementHandler->ListEvents("Contact"));
+                // Leistungs und Energiewerte berechnen
+                if ( ($this->powerConfig<>Null) && false)
+                    {
+                    /* Werte sind in Integer Prozenten also 0 bis 100, daher Wert zusätzlich durch 100 */
+                    SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
+                    SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));					
+                    }
+                
+                if ( (isset ($this->installedmodules["DetectMovement"])) && false )
+                    {
+                    /* Detect Movement kann auch Leistungswerte agreggieren */
+                    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+                    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                    $DetectHeatSetHandler = new DetectHeatSetHandler();
+                    //print_r($DetectMovementHandler->ListEvents("Motion"));
+                    //print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$DetectHeatSetHandler->ListGroups();
-				foreach($groups as $group=>$name)
-					{
-					echo "Gruppe ".$group." behandeln.\n";
-					$config=$DetectHeatSetHandler->ListEvents($group);
-					$status=(float)0;
-					$count=0;
-					foreach ($config as $oid=>$params)
-						{
-						$status+=GetValue($oid);
-						$count++;
-						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-						echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status."\n";
-						}
-					if ($count>0) { $status=$status/$count; }
-					echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
-					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
-					//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
-					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
-					//SetValue($statusID,$status);
-					}
-				}
-			
+                    $groups=$DetectHeatSetHandler->ListGroups();
+                    foreach($groups as $group=>$name)
+                        {
+                        echo "Gruppe ".$group." behandeln.\n";
+                        $config=$DetectHeatSetHandler->ListEvents($group);
+                        $status=(float)0;
+                        $count=0;
+                        foreach ($config as $oid=>$params)
+                            {
+                            $status+=GetValue($oid);
+                            $count++;
+                            //echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+                            echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid),30)."Status: ".GetValue($oid)." ".$status."\n";
+                            }
+                        if ($count>0) { $status=$status/$count; }
+                        echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+                        /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+                        //$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->TempAuswertungID,100, "~Temperature", null, null);
+                        echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
+                        //SetValue($statusID,$status);
+                        }
+                    }
+                }
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}

@@ -513,9 +513,10 @@
 		 */
 		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
 			{
+            echo "Aufruf RegisterEvent.\n";
 			$configurationAuto = $this->Get_EventConfigurationAuto();
 			//print_r($configurationAuto);
-			//echo "Register Event with VariableID:".$variableId."\n";
+			$comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
 			// Search Configuration
 			$found = false;
             if ($variableId !== false)
@@ -583,7 +584,7 @@
                     $configurationAuto[$variableId][] = $moduleParams;
                     }
 
-                $this->StoreEventConfiguration($configurationAuto);
+                $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
                 $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
                 $this->CreateMirrorRegister($variableId);
                 }
@@ -592,11 +593,12 @@
 
 		/**
 		 * Ausgeabe der registrierten Events als echo
-		 *
+		 * wenn ein Array als Parameter übergeben wird, dieses Array ausgeben
 		 */
-        public function Print_EventConfigurationAuto()
+        public function Print_EventConfigurationAuto($list=false)
             {
-			$configuration = $this->Get_EventConfigurationAuto();
+            if (is_array($list)) $configuration = $list;
+			else $configuration = $this->Get_EventConfigurationAuto();
 			foreach ($configuration as $variableId=>$params)
                 {
                 echo "  ".$variableId."   ".str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"\n";

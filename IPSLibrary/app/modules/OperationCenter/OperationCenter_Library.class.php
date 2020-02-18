@@ -993,7 +993,9 @@ class OperationCenter
 
 	function writeSysPingResults($actual=true, $html=false, $debug=false)
 		{
-		$result=""; $eDebug=false;
+		$result=""; 
+        //$eDebug=$debug;
+        $eDebug=false;
 
 		$OperationCenterConfig = $this->oc_Configuration;
 		//print_r($OperationCenterConfig);
@@ -1039,7 +1041,7 @@ class OperationCenter
 		   		{
         		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
 		   		//print_r($werte);
-				$status=getValue($oid); $first=true; $timeok=0; 
+				$status=getValue($oid); $first=true; $timeok=time(); 
                 $max=0; $count=0;   // keine Ausgabe der gespeicherte Log EIntraege wenn $max kleiner gleich 1 ist
                 $offTime=0; $onTime=0;
                 $maxend=time()-(30*24*60*60);
@@ -1052,79 +1054,80 @@ class OperationCenter
                     }
 		   		foreach ($werte as $wert)
 		   	   		{
-                    if ($count++ < $max) print_r($wert);
-					if ($status!==$wert["Value"])
+                    if ($count++ < $max) print_r($wert);            // Debugausgabe von Werten zur Orientierung
+                    $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
+                    if ($status!==$wert["Value"])
 						{
-						/******************* Aenderung */
 						if ($first==true)
 							{
-                            $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
+                            echo "             ******************* Aenderung erster Eintrag im Logging zum aktuellem Status - Passen nicht zusammen..\n";
                             If ($wert["Value"]==true) $onTime += $dauer; 
                             If ($wert["Value"]==false) $offTime += $dauer;
                             if ( $debug && $eDebug)
                                 {
                                 echo "       !! Wert im Logging noch nicht aktualisiert.\n";
-                                If ($wert["Value"]==true) echo "     Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
-                                If ($wert["Value"]==false) echo "    Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                If ($wert["Value"]==true) echo "         Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                If ($wert["Value"]==false) echo "        Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
                                 echo " Unverändert seit ".((time()-$wert["TimeStamp"])/60)." Minuten.\n";
                                 }
 							$first=false;
 							}
 						else
 							{
-                            $dauer=$this->Dauer($timeok,$wert["TimeStamp"],$maxend);
+                            /* hier ist die Routine eigentlich immer */
 							If ($wert["Value"]==true) 
 								{
                                 $onTime += $dauer;
-								if ($debug && $eDebug) echo "     Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+								if ($debug && $eDebug) echo "        Wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer online ".number_format($dauer,2)." Minuten. ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
 								}
 							If ($wert["Value"]==false) 
 								{
                                 $offTime += $dauer;
-								if ($debug && $eDebug) echo "    Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
-								if ($dauer>100)	$result .= "        Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
+								if ($debug && $eDebug) echo "      Ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." Dauer offline ".number_format($dauer,2)." Minuten.  ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   \n";
+								if ($dauer>100)	$result .= "          Ausfall länger als 100 Minuten am ".date("D d.m H:i:s",$wert["TimeStamp"])." fuer ".number_format($dauer,2)." Minuten.\n";
 								}
-							$timeok=$wert["TimeStamp"];
                             //echo "  Check : ".$this->MinOrHoursOrDays($onTime+$offTime)."  und  ".$this->MinOrHoursOrDays((time()-$wert["TimeStamp"])/60)."   \n";
 							}	
 						$status=$wert["Value"];
 						}
 					else
 						{
-						/*********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein */
 						if ($first==true)
 							{
+    						//echo "            *********************** keine Aenderung, erster Eintrag im Logfile, so sollte es sein.\n";
                             $dauer=$this->Dauer(time(),$wert["TimeStamp"],$maxend);
 							If ($wert["Value"]==true) 
 								{
                                 $onTime += $dauer;                                    
-								if ($debug && $eDebug) echo "     Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+								if ($debug && $eDebug) echo "       Zuletzt wiederhergestellt am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
 								$result .= IPS_GetName($oid).": Verbindung zuletzt wiederhergestellt am ".date("D d.m H:i:s",$wert["TimeStamp"])."\n";
-								$timeok=$wert["TimeStamp"];
 								}
 							If ($wert["Value"]==false) 
                                 {
                                 $offTime += $dauer;
-                                if ($debug && $eDebug) echo "    Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
+                                if ($debug && $eDebug) echo "       Zuletzt ausgefallen am ".date("d.m H:i:s",$wert["TimeStamp"])." ontime ".$this->MinOrHoursOrDays($onTime)." offtime ".$this->MinOrHoursOrDays($offTime)."   ";
                                 }
                             if ($debug && $eDebug) echo " Unverändert seit $dauer Minuten.\n";
 							$first=false;
 							}
+                        else echo "      *************** hier sollte niemand vorbeikommen, sonst fehlen die Zeiten.\n";
 						}	
-						
+					$timeok=$wert["TimeStamp"];
 		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
 		   	   		//echo "       Wert : ".str_pad(($wert["Value"] ? "Ein" : "Aus"),12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
                     $lastTime=$wert["TimeStamp"]; $lastWert=$wert["Value"];
 		   	   		}
                 $dauer=$this->Dauer($lastTime,$maxend,$maxend);
+                echo "Dauer ".$this->MinOrHoursOrDays($dauer)."  Check ".(($onTime+$offTime+$dauer)/60/24)."\n";
                 If ($lastWert==true) $onTime += $dauer; 
                 If ($lastWert==false) $offTime += $dauer;                
 				$result1[IPS_GetName($oid)]["OID"]=$oid;
                 $available=round((1-($offTime/($onTime+$offTime)))*100,1);
+                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime $onTime offtime $offTime Availability $available %.  Check ".(($onTime+$offTime)/60/24)."\n";
                 $result1[IPS_GetName($oid)]["AVAILABILITY"]=$available;
                 $result1[IPS_GetName($oid)]["ONTIME"]=$this->MinOrHoursOrDays($onTime);
                 $result1[IPS_GetName($oid)]["OFFTIME"]=$this->MinOrHoursOrDays($offTime);
-                echo "       Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
+                echo "   -> Gesamtauswertung ".IPS_GetName($oid)." ontime ".$result1[IPS_GetName($oid)]["ONTIME"]." offtime ".$result1[IPS_GetName($oid)]["OFFTIME"]." Availability ".$available."%.\n";
 		   		}
 			else
 		    	{
@@ -1165,6 +1168,9 @@ class OperationCenter
             }
 		}
 
+    /* getLoggedValues
+     */
+
     function getLoggedValues($objectID=false)
         {
         $result=array();
@@ -1181,6 +1187,9 @@ class OperationCenter
         return ($result);  
         }
 
+    /*
+     */
+
     function MinOrHoursOrDays($minutes)
         {
         if ($minutes <130 ) $result = round($minutes,2)." Minutes";
@@ -1188,6 +1197,9 @@ class OperationCenter
         else $result =round($minutes/24/60,2)." Days";
         return ($result);
         }
+
+    /*
+     */
 
     function Dauer($start,$end,$maxend)
         {
@@ -1438,10 +1450,27 @@ class OperationCenter
 						if (isset ($config["REBOOTSWITCH"]))
 							{
 							$SwitchName = $config["REBOOTSWITCH"];
-							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
-							IPSLight_SetSwitchByName($SwitchName,false);
-							sleep(2);
-							IPSLight_SetSwitchByName($SwitchName,true);
+                            $doIpsHeat=false;
+                            if (isset ($this->installedModules["IPSLight"]))
+                                {
+    							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+                       			$lightManager = new IPSLight_Manager();
+			                    $switchId = @$lightManager->GetSwitchIdByName($lightName);
+                                if ($switchId)
+                                    {
+	    						    IPSLight_SetSwitchByName($SwitchName,false);
+		    					    sleep(2);
+			    				    IPSLight_SetSwitchByName($SwitchName,true);
+                                    }
+                                else $doIpsHeat=true;
+                                }
+                            if ($doIpsHeat)
+                                {
+    							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+                                IPSHeat_SetSwitchByName($SwitchName,false);
+                                sleep(2);
+                                IPSHeat_SetSwitchByName($SwitchName,true);
+                                }
 							if (isset ($config["NOK_MINUTES"])) $logMessage = $device."_".$name." wird seit $reboot_ctr Minuten nicht erreicht. Reboot ".$SwitchName." gerade erfolgt.";
                             else $logMessage = $device."_".$name." wird seit ".round($reboot_ctr/60,0)." Stunden nicht erreicht. Reboot ".$SwitchName." gerade erfolgt";
                             if ($debug) echo $logMessage."\n";

@@ -161,6 +161,15 @@
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
+            if (isset ($this->installedmodules["DetectMovement"]))
+                {
+                /* Detect Movement agreggiert die Bewegungs Ereignisse (oder Verknüpfung) */
+                //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\DetectMovement\DetectMovementLib.class.php");
+                //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\DetectMovement\DetectMovement_Configuration.inc.php");
+                IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+                IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                $this->DetectHandler = new DetectHeatControlHandler();
+                } 
 
             $dosOps= new dosOps();
 
@@ -255,7 +264,7 @@
 				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
 				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));
 				echo 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID)." kWh.\n";
-				IPSLogger_Inf(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID).' kWh.');	
+				IPSLogger_Inf(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.number_format(GetValue($this->variableEnergyLogID),2,',','.').' kWh.');	
 				$results=$result.";".$unchanged.";".number_format(GetValue($this->variablePowerLogID),2,',','.').' kW;'.number_format(GetValue($this->variableEnergyLogID),2,',','.')." kWh";
 				}				
 			
@@ -284,10 +293,12 @@
 						$status+=GetValue($oid);
 						if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
 						$count++;
-						//echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+						/* Ausgabe der Berechnung der Gruppe */
 						echo "OID: ".$oid;
 						echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)."Status (LEVEL | POWER) ".GetValue($oid)." ".$status." | ";
-						echo GetValue($mirrorPowerID)."   ".$power."\n";
+						if ($mirrorPowerID) echo GetValue($mirrorPowerID);
+                        else echo "   0  ";
+                        echo "   ".$power."\n";
 						}
 					if ($count>0) { $status=$status/$count; }
 					echo "Gruppe ".$group." hat neuen Status : ".$status." | ".$power."\n";
