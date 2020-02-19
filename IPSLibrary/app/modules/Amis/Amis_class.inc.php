@@ -486,34 +486,43 @@
 					$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
+                    /* Meter Variablen bestimmen */
+                    $error=false;
 					if ( isset($meter["OID"]) == true )
 						{
 						$result  = $this->getHomematicRegistersfromOID($meter["OID"]);
-						$HMenergieID  = $result["HM_EnergieID"];
-						$HMleistungID = $result["HM_LeistungID"];							
-						echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                        if ($result===false) $error=true;
+                        else
+                            {
+                            $HMenergieID  = $result["HM_EnergieID"];
+                            $HMleistungID = $result["HM_LeistungID"];							
+                            echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                            }
 						}
 					else
 						{
 						$HMenergieID  = $meter["HM_EnergieID"];
 						$HMleistungID = $meter["HM_LeistungID"];
 						}
-	      			$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-	      			$leistung=GetValue($HMleistungID);
-	      			$energievorschub=$energie-GetValue($Homematic_WirkergieID);
-	      			if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
-	         			{
-	         			$offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
-						$energievorschub=$energie;
-	         			SetValue($OffsetID,$offset);
-	         			}
-					SetValue($Homematic_WirkergieID,$energie);
-					$energie_neu=GetValue($EnergieID)+$energievorschub;
-					SetValue($EnergieID,$energie_neu);
-					SetValue($LeistungID,$energievorschub*4);
-	      			echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-	      			echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-	      			echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
+                    if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
+                        {
+                        $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+                        $leistung=GetValue($HMleistungID);
+                        $energievorschub=$energie-GetValue($Homematic_WirkergieID);
+                        if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+                            {
+                            $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+                            $energievorschub=$energie;
+                            SetValue($OffsetID,$offset);
+                            }
+                        SetValue($Homematic_WirkergieID,$energie);
+                        $energie_neu=GetValue($EnergieID)+$energievorschub;
+                        SetValue($EnergieID,$energie_neu);
+                        SetValue($LeistungID,$energievorschub*4);
+                        echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
+                        echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
+                        echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
+                        }
 					}
 				}
 			return ($homematicAvailable);
@@ -582,27 +591,32 @@
 			}
 			
 		/* OID übergeben, schauen ob childrens enthalten sind und die richtigen register rausholen, wenn nicht eine Ebene höher gehen
+         * wenn die OID nicht vorhanden ist als Ergebnis false zurückgeben
 		 */
 				
 		function getHomematicRegistersfromOID($oid)
 			{
 			$result=false;
-			$cids = IPS_GetChildrenIDs($oid);
-			if (sizeof($cids) == 0)		/* vielleicht schon das Energy Register angegeben, mal eine Eben höher schauen */ 
-				{
-				$oid = IPS_GetParent($oid);
-				$cids = IPS_GetChildrenIDs($oid);
-				}					
-			foreach($cids as $cid)
-				{
-				$o = IPS_GetObject($cid);
-				if($o['ObjectIdent'] != "")
-					{
-				 	if ( $o['ObjectName'] == "POWER" ) { $result["HM_LeistungID"]=$o['ObjectID']; }
-					if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $result["HM_EnergieID"]=$o['ObjectID']; }
-					}
-				}
-			return ($result);
+			$cids = @IPS_GetChildrenIDs($oid);
+            if ($cids === false) return(false);
+            else
+                {
+                if (sizeof($cids) == 0)		/* vielleicht schon das Energy Register angegeben, mal eine Eben höher schauen */ 
+                    {
+                    $oid = IPS_GetParent($oid);
+                    $cids = IPS_GetChildrenIDs($oid);
+                    }					
+                foreach($cids as $cid)
+                    {
+                    $o = IPS_GetObject($cid);
+                    if($o['ObjectIdent'] != "")
+                        {
+                        if ( $o['ObjectName'] == "POWER" ) { $result["HM_LeistungID"]=$o['ObjectID']; }
+                        if ( $o['ObjectName'] == "ENERGY_COUNTER" ) { $result["HM_EnergieID"]=$o['ObjectID']; }
+                        }
+                    }
+                return ($result);
+                }
 			}	
 			
 			
