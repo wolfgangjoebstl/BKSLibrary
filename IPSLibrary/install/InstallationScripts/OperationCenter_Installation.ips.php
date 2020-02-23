@@ -882,7 +882,7 @@
 	echo "===========================================\n";
 	echo "Homematic RSSI Variablen anlegen.\n";
 
-	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("Homematic_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 	
 	$CategoryIdHardware = CreateCategoryPath('Hardware.Homematic');

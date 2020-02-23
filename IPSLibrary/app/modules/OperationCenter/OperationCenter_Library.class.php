@@ -3221,7 +3221,7 @@ class OperationCenter
 		
 		if ($filename=="")		/* sonst filename übernehmen */
 			{
-			//$filename=IPS_GetKernelDir().'scripts\IPSLibrary\app\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
+			//$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php';
 			$filenameAktuell=$DIR_copystatusdropbox.date("Ymd").'StatusAktuell.txt';
 			$filenameHistorisch=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
 			
@@ -5668,7 +5668,7 @@ class DeviceManagement
 			/* es gibt nur mehr eine Instanz für die Evaluierung der Hardware und die ist im Modul EvaluateHardware */
 			
 			//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-			IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+			IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
@@ -6993,7 +6993,7 @@ function getFS20Type($instanz)
         //print_R($this->HomematicAddressesList);
 		if (isset($this->HomematicAddressesList[$key]) ) 
             {
-            //echo "gefunden";
+            echo "getHomematicHMDevice , $instanz $key in HMIbReport gefunden.\n";
             if ($output == false) return($this->HomematicAddressesList[$key]);
             else
                 {

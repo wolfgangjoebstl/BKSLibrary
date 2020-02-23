@@ -191,10 +191,13 @@ IPS_SetEventActive($tim1ID,true);
     $socket = $topologyLibrary->get_SocketList($discovery);
     echo "Erstellen der GatewayList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $gateway = $topologyLibrary->get_GatewayList($discovery);
-    echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $hardware = $topologyLibrary->get_HardwareList($discovery);
-    //print_r($hardware);
-    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // in EvaluateHardwareLibrary, true ist Debug
+        //print_r($hardware);
+        echo "   Anordnung nach Gerätetypen:\n";
+        foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
+    echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
     echo "\n";
 
     $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
@@ -229,7 +232,7 @@ IPS_SetEventActive($tim1ID,true);
             $topID=@IPS_GetObjectIDByName("Topology", 0 );
             if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
 
-            $DetectDeviceHandler = new DetectDeviceHandler();                       // aleter Handler für channels, das Event hängt am Datenobjekt
+            $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
             $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
 
             $modulhandling->printInstances('TopologyDevice');

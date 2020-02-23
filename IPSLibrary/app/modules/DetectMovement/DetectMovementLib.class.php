@@ -33,16 +33,18 @@
      * TestMovement, ausarbeiten einer aussagekraeftigen Tabelle basierend auf den Event des MessageHandlers
      *
      * DetectHandler provides the following functions as abstract class
-	 *	StoreEventConfiguration             Store config, the file and function name are given in the final class
-	 *	CreateEvents
-	 *	ListEvents
-	 *	ListGroups
-     *  getMirrorRegisterNameFromConfig
-     *  getMirrorRegisterName                   Einheitliche Funktion um den Namen des Mirror Registers zu ermitteln.
-	 *	CreateEvent
+     *  __construct
+	 *	StoreEventConfiguration             Store config as php function in the file, the file and function name are given in the final class
+	 *	CreateEvents                        Erzeugt anhand der Konfiguration alle Events, ruft CreateEvent auf
+	 *	ListEvents                          Listet anhand der Konfiguration alle Events als array
+	 *	ListGroups                          Listet anhand der Konfiguration alle Gruppen. Das ist der zweite Parameter in der Configuration.
+     *  ListConfigurations                  Liest die ganze Konfiguration eines Events aus. Wertet auch die mirror Register config im par3 aus
+     *  getMirrorRegisterNameFromConfig     liest die configuration des Events aus. Wenn ein Mirror Index vorkommt, diesen ausgeben.
+     *  getMirrorRegisterName               ermittelt den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+	 *	CreateEvent                         hier nur mehr ein check, im MessageHandler wird tatsächlich ein Event kreiert
 	 *	sortEventList
 	 *	registerEvent
-	 *
+	 *  Print_EventConfigurationAuto
 	 *
 	 * DetectDeviceHandler extends DetectHandler with
 	 *	__construct
@@ -203,7 +205,7 @@
 		/**
 		 * @public
 		 *
-		 * Listet anhand der Konfiguration alle Events
+		 * Listet anhand der Konfiguration alle Events als array
 		 * Erster Parameter ist ein bekannter Event Typ. Wenn kein Eventtyp übergeben wird, wird dieser ausgegeben.
 		 * Wenn ein bekannter Eventtyp übergeben wird, wird der nächste Parameter ausgegeben.
 		 * 
@@ -253,9 +255,10 @@
 		/**
 		 * @public
 		 *
-		 * Listet anhand der Konfiguration alle Gruppen.
+		 * Listet anhand der Konfiguration alle Gruppen. Das ist der zweite Parameter.
 		 * Wenn type angegeben wird und bekannt ist werden auch mehrer Gruppen die durch "," getrennt sind ebenfalls aufgelöst
-		 *
+		 * Wenn varID zusaetzlich angegeben ist werden nur die Gruppen aufgelöst in den varID vorkommt.
+         *
 		 */
 		public function ListGroups($type="",$varId=false)
 			{
@@ -308,9 +311,12 @@
 		/**
 		 * @public
 		 *
-		 * Listet die ganze Konfiguration eines Events aus.
-		 * 
-		 *
+		 * ListConfigurations           Liest die ganze Konfiguration eines oder aller Events aus. Wertet auch die mirror Register config im par3 aus
+		 * Rückmeldung ist ein config array. Index ist die Event OID, 
+         *      [Room] ist par2
+		 *      [Type] ist par3
+         * wenn in par3 -> vorkommen, werden diese Register einzelnen Variablen zugeordnet
+         *
 		 */
 		public function ListConfigurations($oid=false)
 			{
@@ -364,7 +370,9 @@
 			}
 
 		/**
-		 * @public
+		 * @public getMirrorRegisterNamefromConfig
+         *
+         * liest die configuration des Events aus. Wenn ein Mirror Index vorkommt, diesen ausgeben.
 		 *
 		 */
 
@@ -375,9 +383,9 @@
             else return (false);
             }  
 
-		/** getMirrorRegisterName
-		 * 
-         *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+		/** 
+		 * getMirrorRegisterName    ermittelt den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+         *
 		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
          *  sonst schauen ob der Parent eine Instanz ist, dann den Namen der Instanz nehmen, oder
          *  wenn nicht den Namen der Variablen nehmen
@@ -425,7 +433,7 @@
 		public function CreateEvent($variableId, $eventType)
 			{
 			
-			/* Funktion nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parameter richtig benannt worden sind */
+			/* Funktion in diesem Kontext nicht mehr klar, wird von Create Events aufgerufen. Hier erfolgt nur ein check ob die Parameter richtig benannt worden sind */
 			
 			switch ($eventType)
 				{
@@ -494,116 +502,151 @@
 		}
 
 
-		/**
-		 * @public
-		 *
-		 * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
-		 * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
-		 * Konfigurations File.
-         *
-         * Beispiel $Handler->RegisterEvent($soid,'Topology','Wohnzimmer','Temperature,Weather');
-		 *
-		 * @param integer $variableId ID der auslösenden Variable
-		 * @param string $eventType Type des Events (OnUpdate oder OnChange)
-		 * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
-		 * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
-         *
-         * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
-         *
-		 */
-		public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
-			{
-            echo "Aufruf RegisterEvent.\n";
-			$configurationAuto = $this->Get_EventConfigurationAuto();
-			//print_r($configurationAuto);
-			$comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
-			// Search Configuration
-			$found = false;
-            if ($variableId !== false)
+    /**
+        * @public
+        *
+        * Registriert ein Event im IPSMessageHandler. Die Funktion legt ein ensprechendes Event
+        * für die übergebene Variable an und registriert die dazugehörigen Parameter im MessageHandler
+        * Konfigurations File.
+        *
+        * Beispiel $Handler->RegisterEvent($soid,'Topology','Wohnzimmer','Temperature,Weather');
+        *
+        * @param integer $variableId ID der auslösenden Variable
+        * @param string $eventType Type des Events (OnUpdate oder OnChange)
+        * @param string $componentParams Parameter für verlinkte Hardware Komponente (Klasse+Parameter)
+        * @param string $moduleParams Parameter für verlinktes Module (Klasse+Parameter)
+        *
+        * Bei den Parameter kann festgelegt werden ob ein Wert überschrieben wird oder wenn er bereits vorhanden ist übernommen wird.
+        *
+        */
+    public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
+        {
+        echo "Aufruf RegisterEvent.\n";
+        $configurationAuto = $this->Get_EventConfigurationAuto();
+        //print_r($configurationAuto);
+        $comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
+        // Search Configuration
+        $found = false;
+        if ($variableId !== false)
+            {
+            if (array_key_exists($variableId, $configurationAuto))
                 {
-                if (array_key_exists($variableId, $configurationAuto))
-                    {
-                    //echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
-                    //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
-                    $moduleParamsNew = explode(',', $moduleParams);
-                    //print_r($moduleParamsNew);
-                    $moduleClassNew  = $moduleParamsNew[0];
+                //echo "Eintrag in Datenbank besteht fuer VariableID:".$variableId."\n";
+                //echo "Search Config : ".$variableId." with Event Type : ".$eventType." Component ".$componentParams." Module ".$moduleParams."\n";
+                $moduleParamsNew = explode(',', $moduleParams);
+                //print_r($moduleParamsNew);
+                $moduleClassNew  = $moduleParamsNew[0];
 
-                    $params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
-                    //print_r($params);
-                    for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
+                $params = $configurationAuto[$variableId];          /* die bisherige Konfiguration zB yayay => array('Topology','Arbeitszimmer','',)   */
+                //print_r($params);
+                for ($i=0; $i<count($params); $i=$i+3)              /* immer Dreiergruppen, es könnten auch mehr als eine sein !!! */
+                    {
+                    $moduleParamsCfg = $params[$i+2];           
+                    $moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
+                    $moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
+                    // Found Variable and Module --> Update Configuration
+                    //echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
+                    /* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
+                    /*if ($moduleClassCfg=$moduleClassNew)
                         {
-                        $moduleParamsCfg = $params[$i+2];           
-                        $moduleParamsCfg = explode(',', $moduleParamsCfg);          /* die ModuleCfg als array */
-                        $moduleClassCfg  = $moduleParamsCfg[0];                     /* der erste Parameter bei der Modulcfg ist die Class : Temperature, Humidity ... */
-                        // Found Variable and Module --> Update Configuration
-                        //echo "ModulclassCfg : ".$moduleClassCfg." New ".$moduleClassNew."\n";
-                        /* Wenn die Modulklasse gleich ist werden die Werte upgedatet */
-                        /*if ($moduleClassCfg=$moduleClassNew)
-                            {
-                            $found = true;
-                            $configurationAuto[$variableId][$i]   = $eventType;
-                            $configurationAuto[$variableId][$i+1] = $componentParams;
-                            $configurationAuto[$variableId][$i+2] = $moduleParams;
-                            } */
                         $found = true;
                         $configurationAuto[$variableId][$i]   = $eventType;
-                        /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
-                        * Es werden nur nicht leere neue Parameter überschrieben. 
-                        * Bei moduleParams wird auch in subarrays unterschieden - 
-                        */
-                        if ( ($componentParams != "") || $componentOverwrite ) { $configurationAuto[$variableId][$i+1] = $componentParams; }     
-                        if ( ($moduleParams    != "") || $moduleOverwrite)
+                        $configurationAuto[$variableId][$i+1] = $componentParams;
+                        $configurationAuto[$variableId][$i+2] = $moduleParams;
+                        } */
+                    $found = true;
+                    $configurationAuto[$variableId][$i]   = $eventType;
+                    /* überschreiben oder doch nicht genauer machen. Neuer Wert ParameterBlock 1 ist componentParams, neuer Wert ParameterBlock 2 ist moduleParams
+                    * Es werden nur nicht leere neue Parameter überschrieben. 
+                    * Bei moduleParams wird auch in subarrays unterschieden - 
+                    */
+                    if ( ($componentParams != "") || $componentOverwrite ) { $configurationAuto[$variableId][$i+1] = $componentParams; }     
+                    if ( ($moduleParams    != "") || $moduleOverwrite)
+                        {
+                        $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
+                        if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
                             {
-                            $moduleParamsCfgNewCount=count($moduleParamsNew);                       // wieviele subParameter hat der neue ParameterBlock 2
-                            if ( (count($moduleParamsCfg)) != ($moduleParamsCfgNewCount) )          // haben sich die subParameter alt zu neu geändert, dann schreiben
+                            //print_r($moduleParamsCfg); print_r($moduleParamsNew);
+                            $moduleParamsArray=array();
+                            $result="";
+                            for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
                                 {
-                                //print_r($moduleParamsCfg); print_r($moduleParamsNew);
-                                $moduleParamsArray=array();
-                                $result="";
-                                for ($j=0;$j<$moduleParamsCfgNewCount;$j++) 
-                                    {
-                                    if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $moduleOverwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
-                                    }
-                                foreach ($moduleParamsArray as $entry) $result .= $entry.",";
-                                //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
-                                $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
-                                } 
-                            else $configurationAuto[$variableId][$i+2] = $moduleParams; 
-                            }
-                        //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
+                                if ( (isset($moduleParamsCfg[$j])==false) || ( (isset($moduleParamsCfg[$j])) && ($moduleParamsCfg[$j] != "") ) || $moduleOverwrite) $moduleParamsArray[$j]=$moduleParamsNew[$j];
+                                }
+                            foreach ($moduleParamsArray as $entry) $result .= $entry.",";
+                            //print_R($moduleParamsArray); echo "ModuleParams Wert wird gesetzt $entry.\n";
+                            $configurationAuto[$variableId][$i+2] = substr($result,0,strlen($result));      // letztes Komma wieder wegnehmen
+                            } 
+                        else $configurationAuto[$variableId][$i+2] = $moduleParams; 
                         }
+                    //echo "RegisterEvent $variableId : ".json_encode($configurationAuto[$variableId])."\n";
                     }
-
-                // Variable NOT found --> Create Configuration
-                if (!$found)
-                    {
-                    //echo "Create Event."."\n";
-                    $configurationAuto[$variableId][] = $eventType;
-                    $configurationAuto[$variableId][] = $componentParams;
-                    $configurationAuto[$variableId][] = $moduleParams;
-                    }
-
-                $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
-                $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
-                $this->CreateMirrorRegister($variableId);
                 }
-            else echo "Fehler DetectMovement RegisterEvent, variableId ist false.\n";
-		}
 
-		/**
-		 * Ausgeabe der registrierten Events als echo
-		 * wenn ein Array als Parameter übergeben wird, dieses Array ausgeben
-		 */
-        public function Print_EventConfigurationAuto($list=false)
+            // Variable NOT found --> Create Configuration
+            if (!$found)
+                {
+                //echo "Create Event."."\n";
+                $configurationAuto[$variableId][] = $eventType;
+                $configurationAuto[$variableId][] = $componentParams;
+                $configurationAuto[$variableId][] = $moduleParams;
+                }
+
+            $this->StoreEventConfiguration($configurationAuto,$comment);             // zweiter Parameter wäre jetzt ein Kommentar
+            $this->CreateEvent($variableId, $eventType);					// Funktion macht eigentlich nichts mehr
+            $this->CreateMirrorRegister($variableId);
+            }
+        else echo "Fehler DetectMovement RegisterEvent, variableId ist false.\n";
+    }
+
+    /**
+     * Print_EventConfigurationAuto Ausgabe der registrierten Events oder einer definierten Liste (Auswahl) als echo print
+     * wenn ein Array als Parameter übergeben wird, dieses Array ausgeben
+     * mit Parameter true kann man eine erweiterte Ausgabe erzwingen
+     */
+
+    public function Print_EventConfigurationAuto($list=false)
+        {
+        $extend=false;
+        if (is_array($list)) $configuration = $list;
+        else 
             {
-            if (is_array($list)) $configuration = $list;
-			else $configuration = $this->Get_EventConfigurationAuto();
-			foreach ($configuration as $variableId=>$params)
+            if ($list==1) $extend=true;
+            $configuration = $this->Get_EventConfigurationAuto();
+            }
+        if ($extend)
+            {
+            $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
+            $eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();        
+            //print_R($eventDeviceConfig);
+            //echo "Classname ".get_class($this)."\n";    
+            echo "      OID    Pfad                                                                     Config aus DetectDeviceHandler (EvaluateHardware)                               Config aus ".get_class($this)."            \n";
+            foreach ($configuration as $oid => $typ)
+                {
+                $moid=$this->getMirrorRegister($oid);
+                if (IPS_GetObject($oid) === false) echo "Register nicht bekannt.\n";
+                else
+                    {
+                    $poid=IPS_GetParent($oid);      // wir brauchen die Parent ID für den Vergleich mit den Instanzen
+                    echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75);
+                    if (isset($eventDeviceConfig[$poid])===false) echo str_pad(" --> DeviceConfig für $poid (".IPS_GetName($poid).") nicht bekannt.",70);
+                    else                                         echo str_pad(json_encode($eventDeviceConfig[$poid]),70);
+                    if (isset($configuration[$oid])===false)  echo "  ".str_pad("--> Config nicht bekannt.\n",60);
+                    else                                        echo "  ".str_pad(json_encode($configuration[$oid]),60);
+                    if ($moid === false) echo "  --> Spiegelregister nicht bekannt.\n";
+                    else                 echo "     ".IPS_GetName($moid);
+                    echo "\n";
+                    }
+                }
+            }
+        else
+            {
+            foreach ($configuration as $variableId=>$params)
                 {
                 echo "  ".$variableId."   ".str_pad("(".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($variableId))).")",60)." \"".$params[0]."\",\"".$params[1]."\",\"".$params[2]."\"\n";
                 }
             }
+        }
 	}
 
 /******************************************************************************************************************/
@@ -2169,7 +2212,7 @@ class TestMovement
 	public function findMotionDetection()
 		{
 		//$alleMotionWerte="\n\nHistorische Bewegungswerte aus den Logs der CustomComponents:\n\n";
-		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
         else $Homematic=array();
 
@@ -2279,7 +2322,7 @@ class TestMovement
 
 	public function findSwitches()
 		{
-		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");		
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");		
 		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
         else $Homematic=array();
 
@@ -2331,7 +2374,7 @@ class TestMovement
 
 	public function findButtons()
 		{
-		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");		
+		IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");		
 		if ( function_exists("HomematicList") ) $Homematic = HomematicList();
 		else $Homematic=array();
 

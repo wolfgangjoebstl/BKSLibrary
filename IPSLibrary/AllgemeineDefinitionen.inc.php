@@ -5381,6 +5381,11 @@ class Hardware
     public function __construct()
         {
         //echo "parent class Hardware construct.\n";
+        $this->setInstalledModules();
+        }
+
+    protected function setInstalledModules()
+        {
         $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
         if (!isset($moduleManager))
             {
@@ -5428,6 +5433,22 @@ class Hardware
         return ($hardwareType);
         }
 
+    /* Allgemein, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     */
+
+    public function getDeviceCheck(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        /* Fehlerprüfung */
+        if (isset($deviceList[$name])) 
+            {
+            echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
+            return(false);
+            }            
+        else return (true);
+        }
+
+
     /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist
      * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
@@ -5436,13 +5457,6 @@ class Hardware
 
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
-        /* Fehlerprüfung */
-        if (isset($deviceList[$name])) 
-            {
-            echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
-            return(false);
-            }            
-        /* Durchführung */
         if ($debug) echo"          getDeviceParameters:Allgemein aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
         $deviceList[$name]["Type"]=$type;
         $entry["NAME"]=$name; 
@@ -5673,25 +5687,127 @@ class Hardware
 
     }
 
+/* Objektorientiertes class Managemenet für Geräte (Hardware)
+ * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
+ * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
+ *
+ */
 
 class HardwareHomematic extends Hardware
 	{
 	
     protected $socketID, $bridgeID, $deviceID;
     protected $installedModules;
+
+    private $DeviceManager;                 /* nur ein Objekt in der class */
 	
 	public function __construct($debug=false)
 		{
         $this->socketID = "{A151ECE9-D733-4FB9-AA15-7F7DD10C58AF}";
         $this->bridgeID = "{5214C3C6-91BC-4FE1-A2D9-A3920261DA74}";
         $this->deviceID = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
-
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+            $this->DeviceManager = new DeviceManagement(); 
+            }
         parent::__construct($debug);
         }
 
     /* die Device Liste aus der Geräteliste erstellen 
      * Antwort ist ein Geräteeintrag
      */
+
+    /* Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     */
+
+    public function getDeviceCheck(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        /* Fehlerprüfung, Name bereits in der Devicelist und wenn dann mit Doppelpunkt. Theoretisch werden Namen ohne : erlaubt wenn keine weitere Instanz vorhanden ist.*/
+        $nameSelect=explode(":",$name);
+        if (isset($deviceList[$nameSelect[0]])) 
+            {
+            if (count($nameSelect)<2) 
+                {
+                echo "        >>getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                return (false);
+                }
+            else 
+                {
+                if ($debug) 
+                    {
+                    echo "        getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
+                    foreach ($deviceList[$nameSelect[0]]["Instances"] as $portInfo => $entryInfo) echo $portInfo." ";
+                    echo " bereits definiert.\n";
+                    }
+                }
+            }
+        // elseif ($debug)  echo "          getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" neuer Eintrag.\n";
+
+        /* Fehlerprüfung anhand der Seriennummer, Adresse. Port 0 wird nicht ausgewertet */
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        //print_r($result);
+        if (isset($result["Address"])) 
+            {
+            $addressSelect=explode(":",$result["Address"]);
+            if (count($addressSelect)>1)
+                {
+                $port=(integer)$addressSelect[1];
+                if ($port==0) 
+                    {
+                    if ($debug) echo "          >>Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
+                    return (false);
+                    }
+                else 
+                    {
+                    /* das ist der positive Pfad, hier gehts weiter. */
+                    //if ($debug) echo "       Port $port wird jetzt geschrieben. ".$result["Address"]."\n";
+                    //print_r($entry);
+                    }
+                }
+            else 
+                {
+                echo "       >>getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
+                return (false);
+                }
+            }
+        else 
+            {
+            echo "       >>getDeviceParameter:Homematic Fehler, keine Seriennummer.\n";
+            return (false);
+            }
+
+        /* erweiterte Fehlerprüfung */
+
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+            $matrix    = $this->DeviceManager->getHomematicHMDevice($instanz,2);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+            if (is_array($matrix)) 
+                {
+                if ($matrix[$port]<=1) 
+                    {
+                    echo "         Info Port $port von \"$name\" (".$result["Address"].") wird nicht berücksichtigt. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
+                    return(false);
+                    }
+                //print_r($matrix);
+                }
+            else echo "   >> Fehler: \"$name\" (".$entry["OID"]."/".$result["Address"].") keine Bewertung der Matrix. Gerät ".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"]))." nicht hinterlegt. Infofeld aus HMInventory: \"".$this->DeviceManager->getHomematicHMDevice($instanz,0)."\"  \"".$this->DeviceManager->getHomematicHMDevice($instanz,1)."\"\n";
+
+            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            if ( ($typedev=="") || ($typedev===false) )
+                {
+                echo "       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
+                echo "                Info : ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."   \n";
+                return(false);
+                }
+            
+            }
+
+        return (true);
+        }
 
     /* die Homematic Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist
@@ -5706,162 +5822,95 @@ class HardwareHomematic extends Hardware
         /* sehr schwierig, Devices sind nicht automatisch Instanzen */
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
 
-        $goOn=true;
-        /* Fehlerprüfung */
         $nameSelect=explode(":",$name);
-        if (isset($deviceList[$nameSelect[0]])) 
-            {
-            if (count($nameSelect)<2) 
-                {
-                echo "        >>getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
-                }
-            else 
-                {
-                if ($debug) 
-                    {
-                    echo "        getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
-                    foreach ($deviceList[$nameSelect[0]]["Instances"] as $portInfo => $entryInfo) echo $portInfo." ";
-                    echo " bereits definiert.\n";
-                    }
-                }
-            }
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
-        //print_r($result);
-        if (isset($result["Address"])) 
-            {
-            $addressSelect=explode(":",$result["Address"]);
-            if (count($addressSelect)>1)
-                {
-                $port=(integer)$addressSelect[1];
-                if ($port==0) 
-                    {
-                    if ($debug) echo "      Port 0 von \"".$nameSelect[0]."\" wird ignoriert : ".$entry["CONFIG"].".\n";
-                    $goOn=false;
-                    }
-                else 
-                    {
-                    if ($debug) echo "       Port $port wird jetzt geschrieben. ".$result["Address"]."\n";
-                    //print_r($entry);
-                    }
-                }
-            else 
-                {
-                echo "       >>getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
-                $goOn=false;
-                }
-            }
-        else 
-            {
-            echo "   getDeviceParameter:Homematic Fehler, keine Seriennummer.\n";
-            $goOn=false;
-            }
+        $addressSelect=explode(":",$result["Address"]);        
+        $port=(integer)$addressSelect[1];
 
         /* Durchführung */            
-        if ($goOn)
+
+        if ($debug) echo "          getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" neuer Eintrag.".str_pad(" In deviceList unter ".$nameSelect[0]." Port $port.",50);
+        if (isset($result["Protocol"])) 
             {
-            if ($debug) echo str_pad("          getDeviceParameter:Homematic für \"$name\" :",90).str_pad(" Ergebnis in deviceList unter ".$nameSelect[0].".",40);
-            if (isset($result["Protocol"])) 
+            switch ($result["Protocol"])
                 {
-                switch ($result["Protocol"])
-                    {
-                    case 0:
-                        $deviceList[$nameSelect[0]]["SubType"]="Funk";                            
-                        break;
-                    case 1:
-                        $deviceList[$nameSelect[0]]["SubType"]="Wired";                            
-                        break;
-                    case 2:
-                        $deviceList[$nameSelect[0]]["SubType"]="IP";                            
-                        break;
-                    default:
-                        break;    
-                    }
+                case 0:
+                    $deviceList[$nameSelect[0]]["SubType"]="Funk";                            
+                    break;
+                case 1:
+                    $deviceList[$nameSelect[0]]["SubType"]="Wired";                            
+                    break;
+                case 2:
+                    $deviceList[$nameSelect[0]]["SubType"]="IP";                            
+                    break;
+                default:
+                    break;    
                 }
-            if (isset($this->installedModules["OperationCenter"])) 
-                {
-                IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
-                $DeviceManager = new DeviceManagement();                    
-                $instanz=$entry["OID"];
-
-                $matrix    = $DeviceManager->getHomematicHMDevice($instanz,2);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
-                if (is_array($matrix)) 
-                    {
-                    if ($matrix[$port]>1) 
-                        {
-                        if ($debug) echo "         \"$name\" : Infofeld aus HMInventory: ".$DeviceManager->getHomematicHMDevice($instanz,0)."  ".$DeviceManager->getHomematicHMDevice($instanz,1)."  $port und in der Matrix.\n";
-                        }
-                    else 
-                        {
-                        echo "         >> Fehler Port $port gesperrt von \"$name\" : Infofeld aus HMInventory: ".$DeviceManager->getHomematicHMDevice($instanz,0)."  ".$DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
-                        $goOn=false;
-                        }
-                    //print_r($matrix);
-                    }
-                else echo "   keine Ausgabe der Matrix. Gerät nicht hinterlegt.\n";
-
-
-                //echo " $instanz: ";
-                //$typeInst   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
-                //$HMDevice   = $DeviceManager->getHomematicHMDevice($instanz);
-                /* if ($typeInst <> "") 
-                    {
-                    echo "TypeInst => $typeInst ";
-                    $entry["TYPE"]=$typeInst;
-                    }
-                if ($HMDevice<>"") 
-                    {
-                    echo "HMDevice => $HMDevice ";
-                    $entry["HMDEVICE"]=$HMDevice;
-                    }
-                echo "\n";
-                    
-                */
-                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
-                if ($typedev<>"")  
-                    {
-                    if ($debug) echo "    TYPEDEV: $typedev";
-                    $entry["TYPEDEV"]=$typedev;
-                    }
-                else 
-                    {
-                    echo "       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
-                    echo "                Info : ".$DeviceManager->getHomematicHMDevice($instanz,1)."   \n";
-                    $goOn=false;
-                    }
-                
-                if (strpos($nameSelect[0],"HM") === 0) $typedev    = $DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
-
-                //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
-                $infodev    = $DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
-                if ($infodev<>"")   
-                    {
-                    $deviceList[$nameSelect[0]]["Information"]=$infodev;
-                    if ($debug) echo "    INFO: $infodev";
-                    }
-                else echo "\n       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
-                $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
-                /*
-                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
-                if ($typedev<>"")  
-                    {
-                    $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
-                    $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
-                    }
-                else "Fehler $instanz: keine Channels ermittelt.\n";
-                */
-                } 
-            if ($goOn)
-                { 
-                if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
-                $deviceList[$nameSelect[0]]["Type"]=$type;
-                $entry["NAME"]=$name; 
-                $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
-                if ($debug) echo "\n";
-                return (true);
-                }
-            else return (false);                // fehlender Typedev Wert erzeugt keinen Eintrag !!!
             }
-        else return (false);
+
+        /* Sonderfunktionen wenn OperationCenter Modul installiert ist */
+
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+            $matrix    = $this->DeviceManager->getHomematicHMDevice($instanz,2);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+            if (is_array($matrix)) 
+                {
+                if ($debug) echo " Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  $port und in der Matrix.";
+                }
+            else echo "   >>keine Ausgabe der Matrix. Gerät nicht hinterlegt.\n";
+
+
+            //echo " $instanz: ";
+            //$typeInst   = $DeviceManager->getHomematicType($instanz);           /* wird für Homematic IPS Light benötigt */
+            //$HMDevice   = $DeviceManager->getHomematicHMDevice($instanz);
+            /* if ($typeInst <> "") 
+                {
+                echo "TypeInst => $typeInst ";
+                $entry["TYPE"]=$typeInst;
+                }
+            if ($HMDevice<>"") 
+                {
+                echo "HMDevice => $HMDevice ";
+                $entry["HMDEVICE"]=$HMDevice;
+                }
+            echo "\n";
+                
+            */
+
+            $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+            if ($debug) echo "    TYPEDEV: $typedev";
+            $entry["TYPEDEV"]=$typedev;
+            
+            if (strpos($nameSelect[0],"HM") === 0) $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+
+            //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
+            $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+            if ($infodev<>"")   
+                {
+                $deviceList[$nameSelect[0]]["Information"]=$infodev;
+                if ($debug) echo "    INFO: $infodev";
+                }
+            else echo "\n       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
+            $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
+            /*
+            $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
+            if ($typedev<>"")  
+                {
+                $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
+                }
+            else "Fehler $instanz: keine Channels ermittelt.\n";
+            */
+
+            if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
+            $deviceList[$nameSelect[0]]["Type"]=$type;
+            $entry["NAME"]=$name; 
+            $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
+            if ($debug) echo "\n";
+            return (true);
+            }
+        else return (false);                // fehlender Typedev Wert erzeugt keinen Eintrag !!!
         }
 
     /* der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)

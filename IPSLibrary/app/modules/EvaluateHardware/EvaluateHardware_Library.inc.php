@@ -198,12 +198,15 @@ class TopologyLibraryManagement
                 if ($debug) echo "      Bearbeite Gerät $name vom Typ $hardwareType:\n";
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
-                //if ($debug) echo "          getDeviceParameter aufgerufen:\n";
-                $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
-                //if ($debug) echo "          getDeviceChannels aufgerufen:\n";
-                $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry, $debug);      // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
-                //if ($debug) echo "          getDeviceActuators aufgerufen:\n";
-                $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))
+                    {
+                    //if ($debug) echo "          $objectClassName=>getDeviceParameter aufgerufen:\n";
+                    $object->getDeviceParameter($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+                    //if ($debug) echo "          $objectClassName=>getDeviceChannels aufgerufen:\n";
+                    $object->getDeviceChannels($deviceList, $name, $hardwareType, $entry, $debug);      // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+                    //if ($debug) echo "          $objectClassName=>getDeviceActuators aufgerufen:\n";
+                    $object->getDeviceActuators($deviceList, $name, $hardwareType, $entry, $debug);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+                    }
                 }
             }
         ksort($deviceList);
