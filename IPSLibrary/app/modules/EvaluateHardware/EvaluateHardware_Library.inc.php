@@ -83,7 +83,7 @@ class TopologyLibraryManagement
      *
      */
 
-    public function get_SocketList($discovery)
+    public function get_SocketList($discovery, $debug=false)
         {
         $gateway=array();
         $hardwareTypeDetect = new Hardware();
@@ -92,7 +92,7 @@ class TopologyLibraryManagement
             $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);
             if ($hardwareType != false) 
                 {
-                //echo "    $hardwareType \n";
+                if ($debug) echo "    get_SocketList, bearbeite $hardwareType \n";
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 $socketID = $object->getSocketID();

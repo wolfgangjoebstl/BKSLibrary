@@ -181,10 +181,14 @@ IPS_SetEventActive($tim1ID,true);
 
     /* wenn keine Discovery verfügbar, dann den Configurator als Übergangslösung verwenden 
      * {44CAAF86-E8E0-F417-825D-6BFFF044CBF5} = AmazonEchoConfigurator
+     * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
      *
      */
     $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
     $input["ModuleName"] = "AmazonEchoConfigurator";
+    $discovery[]=$input;
+    $input["ModuleID"] = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
+    $input["ModuleName"] = "NetatmoWeatherConfig";
     $discovery[]=$input;
 
     echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";

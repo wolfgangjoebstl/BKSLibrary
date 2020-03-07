@@ -6972,7 +6972,7 @@ function getFS20Type($instanz)
 	    $homematic=array();
     	foreach($cids as $cid)
 	    	{
-		    $homematic[]=IPS_GetName($cid);
+		    $homematic[$cid]=IPS_GetName($cid);
     		}
     	return ($this->HomematicDeviceType($homematic,$outputVersion, $debug));
     	}
@@ -6993,7 +6993,7 @@ function getFS20Type($instanz)
         //print_R($this->HomematicAddressesList);
 		if (isset($this->HomematicAddressesList[$key]) ) 
             {
-            echo "getHomematicHMDevice , $instanz $key in HMIbReport gefunden.\n";
+            //echo "getHomematicHMDevice , $instanz $key in HMI Report gefunden.\n";
             if ($output == false) return($this->HomematicAddressesList[$key]);
             else
                 {
@@ -7036,11 +7036,14 @@ function getFS20Type($instanz)
                         break;
 
                     case "HM-TC-IT-WM-W-EU":
+                        $result="Wandthermostat";
+                        $matrix=[0,2,2,1,1,1,1,1];                        // die Homematic Variante hat zwei Kanäle
+                        break;
                     case "HMIP-WTH":
                         $result="Wandthermostat";
-                        $matrix=[0,2,2,1,1,1,1,1];                        
+                        $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
-
+                        
                     case "HM-LC-Sw1-FM":
                     case "HM-LC-Sw1-Pl":
                     case "HM-LC-Sw1-Pl-2":
@@ -7082,7 +7085,11 @@ function getFS20Type($instanz)
                 else return($matrix);               // wenn $output 2 ist
                 }
             }
-		else return("");
+		else 
+            {
+            echo "getHomematicHMDevice , $instanz $key in HMI Report NICHT gefunden. Run HMI_Create Report again. Ensure that Gateway is correctly configured to get updated values.\n";
+            return("");
+            }
 		}	
 		
     /*********************************

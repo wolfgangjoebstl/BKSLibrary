@@ -149,21 +149,26 @@
 
 
     /* configurePort, die AMIS Konfiguration anders anordnen und gleich die Variablen anlegen 
-     * Parameter sind die Konfiguration udn der Parameter ob die IPS Cutter Funktion verwendet weird (true) oder nicht
+     * Parameter sind die Konfiguration und der Parameter ob die IPS Cutter Funktion verwendet weird (true) oder nicht
      *
-     *
+     * es wird eine String Variable mit dem NAME aus der Konfig im Modul Data angelegt. Dient als Über-Kategorie.
      */
 
-        public function getPortConfiguration($MeterConfig, $cutter)
+        public function getPortConfiguration($MeterConfig, $cutter, $debug=false)
             {
             $configPort=array();
             foreach ($MeterConfig as $identifier => $meter)
                 {
+                $identifierTrim=trim($identifier);
+                if ($debug) echo "getPortConfiguration: \"$identifierTrim\"\n";
                 $ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
                 if ($meter["TYPE"]=="Amis")
                     {
-                    //echo"-------------------------------------------------------------\n";
-                    //echo "Create AMIS Variableset for :".$meter["NAME"]." (".$identifier.") \n";
+                    if ($debug)
+                        {
+                        echo"-------------------------------------------------------------\n";
+                        echo "Create AMIS Variableset for :".$meter["NAME"]." (".$identifierTrim.") \n";
+                        }
                     $amismetername=$meter["NAME"];
                     $amisAvailable=true;
                     //echo "Amis Zähler, verfügbare Ports:\n";			
@@ -186,7 +191,7 @@
                     foreach ($serialPortID as $num => $serialPort)
                         {
                         //echo "      Serial Port ".$num." mit OID ".$serialPort." und Bezeichnung ".IPS_GetName($serialPort)."\n";
-                        if (IPS_GetName($serialPort) == $identifier." Serial Port") 
+                        if (IPS_GetName($serialPort) == $identifierTrim." Serial Port") 
                             { 
                             $com_Port = $serialPort;
                             $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
@@ -194,11 +199,11 @@
                                 {
                                 //echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
                                 $configPort[$regVarID]["Name"]=$amismetername;	
-                                $configPort[$regVarID]["ID"]=$identifier;	
+                                $configPort[$regVarID]["ID"]=$identifierTrim;	
                                 $configPort[$regVarID]["Port"]=$serialPort;																				 
                                 }
                             }	
-                        if (IPS_GetName($serialPort) == $identifier." Bluetooth COM") 
+                        if (IPS_GetName($serialPort) == $identifierTrim." Bluetooth COM") 
                             { 
                             $com_Port = $serialPort; 
                             $regVarID = @IPS_GetInstanceIDByName("AMIS RegisterVariable", 	$serialPort);
@@ -206,7 +211,7 @@
                                 {
                                 echo "        Registervariable wenn Cutter nicht aktiv : ".$regVarID."\n";
                                 $configPort[$regVarID]["Name"]=$amismetername;	
-                                $configPort[$regVarID]["ID"]=$identifier;
+                                $configPort[$regVarID]["ID"]=$identifierTrim;
                                 $configPort[$regVarID]["Port"]=$serialPort;							
                                 }					
                             }				
@@ -214,7 +219,7 @@
                     $listCutter=IPS_GetInstanceListByModuleID('{AC6C6E74-C797-40B3-BA82-F135D941D1A2}');
                     foreach ($listCutter as $num => $CutterID)
                         {
-                        if (IPS_GetName($CutterID) == $identifier." Cutter")
+                        if (IPS_GetName($CutterID) == $identifierTrim." Cutter")
                             { 
                             //echo "      Cutter ".$num." mit OID ".$CutterID." und Bezeichnung ".IPS_GetName($CutterID)."\n";
                             $result=IPS_getConfiguration($CutterID);
@@ -228,7 +233,7 @@
                                 {
                                 //echo "        Registervariable : ".$regVarID."\n";
                                 $configPort[$regVarID]["Name"]=$amismetername;	
-                                $configPort[$regVarID]["ID"]=$identifier;
+                                $configPort[$regVarID]["ID"]=$identifierTrim;
                                 $configPort[$regVarID]["Port"]=$CutterID;							
                                 }					
                             }  // Registervariable mit Cutter gefunden
@@ -252,9 +257,9 @@
                             }                                                    							
                         }
                     }  // if AMIS Zähler
-                if (!file_exists("C:\Scripts\Log_Cutter_".$identifier.".csv"))
+                if (!file_exists("C:\Scripts\Log_Cutter_".$identifierTrim.".csv"))
                     {
-                    $handle=fopen("C:\Scripts\Log_Cutter_".$identifier.".csv", "a");
+                    $handle=fopen("C:\Scripts\Log_Cutter_".$identifierTrim.".csv", "a");
                     fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");
                     fclose($handle);
                     }				
@@ -463,75 +468,91 @@
  		 *
  		 * Alle Homematic Energiesensoren auslesen, ignoriert andere Typen
 		 * gibt es gleich darunter als Einzelbefehl
+         *
+         * keine Tätigkeit wenn Meter TYPE nicht HOMEMATIC ist.
  		 *
- 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
+ 		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert:
+         *   Wirkenergie, Wirkleistung, Offset_Wirkenergie, Homemeatic_Wirkenergie -> alle Float
+         *
+         * Das Homemeatic_Wirkenergie Register wird mit dem neuen gemessenen Wert verglichen und auf Plausi überprüft
+         *   Subtraktion neu-alt ist der Vorschub. Wenn zu gross dann ignorieren, wenn negativ dann Offset anrechnen
 		 *
 		 *****************************************************************************************************************************/
 
 		function writeEnergyHomematics($MConfig)			/* alle Werte aus der Config ausgeben */
 			{
-			$homematicAvailable=false;
+			$homematicAvailable=true;
 
-			foreach ($MConfig as $meter)
+			foreach ($MConfig as $identifier => $meter)
 				{
-				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
-					{
-					$homematicAvailable=true;
-					echo "Werte von : ".$meter["NAME"]."\n";
-	   		      
-					$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                echo "   Aufruf von $identifier.\n";
+                $ergebnis = $this->writeEnergyHomematic($meter);
+                $homematicAvailable = $homematicAvailable && $ergebnis;
+                if (false)
+                    {
+                    if (strtoupper($meter["TYPE"])=="HOMEMATIC")
+                        {
+                        $homematicAvailable=true;
+                        echo "Werte von : ".$meter["NAME"]."\n";
+                    
+                        $ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+                        $Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-                    /* Meter Variablen bestimmen */
-                    $error=false;
-					if ( isset($meter["OID"]) == true )
-						{
-						$result  = $this->getHomematicRegistersfromOID($meter["OID"]);
-                        if ($result===false) $error=true;
+                        /* Meter Variablen bestimmen */
+                        $error=false;
+                        if ( isset($meter["OID"]) == true )
+                            {
+                            $result  = $this->getHomematicRegistersfromOID($meter["OID"]);
+                            if ($result===false) $error=true;
+                            else
+                                {
+                                $HMenergieID  = $result["HM_EnergieID"];
+                                $HMleistungID = $result["HM_LeistungID"];							
+                                echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                                }
+                            }
                         else
                             {
-                            $HMenergieID  = $result["HM_EnergieID"];
-                            $HMleistungID = $result["HM_LeistungID"];							
-                            echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                            $HMenergieID  = $meter["HM_EnergieID"];
+                            $HMleistungID = $meter["HM_LeistungID"];
                             }
-						}
-					else
-						{
-						$HMenergieID  = $meter["HM_EnergieID"];
-						$HMleistungID = $meter["HM_LeistungID"];
-						}
-                    if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
-                        {
-                        $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-                        $leistung=GetValue($HMleistungID);
-                        $energievorschub=$energie-GetValue($Homematic_WirkergieID);
-                        if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+                        if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
                             {
-                            $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
-                            $energievorschub=$energie;
-                            SetValue($OffsetID,$offset);
+                            $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+                            $leistung=GetValue($HMleistungID);
+                            $energievorschub=$energie-GetValue($Homematic_WirkergieID);
+                            if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+                                {
+                                $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+                                $energievorschub=$energie;
+                                SetValue($OffsetID,$offset);
+                                }
+                            SetValue($Homematic_WirkergieID,$energie);
+                            $energie_neu=GetValue($EnergieID)+$energievorschub;
+                            SetValue($EnergieID,$energie_neu);
+                            SetValue($LeistungID,$energievorschub*4);
+                            echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
+                            echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
+                            echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n";
+                            echo "  Offset Energiezähler    : ".GetValue($OffsetID)." kWh \n\n";
                             }
-                        SetValue($Homematic_WirkergieID,$energie);
-                        $energie_neu=GetValue($EnergieID)+$energievorschub;
-                        SetValue($EnergieID,$energie_neu);
-                        SetValue($LeistungID,$energievorschub*4);
-                        echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-                        echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-                        echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
+                        else echo "    Fehler, IDs der Energieregister konnte nicht bestimmt werden.\n";
                         }
-					}
-				}
+                    }       // ende if false
+				}       // ende foreach
 			return ($homematicAvailable);
 			}
 
 		/************************************************************************************************************************
  		 *
-		 * Minuetlich von Momentanwerte abfragen Scipt aufgerufen.		 
- 		 * Homematic Energiesensoren auslesen, ignoriert andere Typen als Einzelbefehl
+		 * Minuetlich wird ein Scipt aufgerufen um die Momentanwerte abfragen. Dieses Script kommt alle 15 Minuten dran.
+         * es wird der Einzeleintrag der Konfiguration übergeben, also ohne Identifier. Die Einträge in der Konfiguration durchgehen und auf Brauchbarkeit untersuchen.
+ 		 * Homematic Energiesensoren auslesen, ignoriert andere Typen als Einzelbefehl.
+        * Übergeben wird entweder die Homematic Instanz OID oder die Einzelwerte HM_EnergieID und HM_LeistungID
  		 *
  		 * es wird ein String mit dem Namen als Kategorie angelegt und darunter die Variablen gespeichert
 		 *
@@ -540,52 +561,96 @@
 		function writeEnergyHomematic($meter)		/* nur einen Wert aus der Config ausgeben */
 			{
 			$homematicAvailable=false;
-
+            echo "     writeEnergyHomematic: aufgerufen mit ".json_encode($meter)."\n";
 			if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 				{
 				$homematicAvailable=true;
-				echo "Werte von : ".$meter["NAME"]."\n";
+				echo         "Werte von : ".$meter["NAME"]."\n";
 			      
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
-				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-				$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
+				$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$OffsetID = CreateVariableByName($ID, 'Offset_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+				$Homematic_WirkergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String , prüft ob die Variable schon vorhanden ist */
+            
+                /* Config und History Logging vorbereiten */
+                $ConfigID = CreateVariableByName($ID, 'ConfigReading', 3);
+                $configuration = json_decode(GetValue($ConfigID),true);
+                if ( ($configuration===NULL) || ($configuration==0) ) { $configuration = array(); echo "Configuration neu angelegt.\n"; }
+                //print_r($configuration);
 
-				if ( isset($meter["OID"]) == true )
-					{
-					$result  = $this->getHomematicRegistersfromOID($meter["OID"]);
-					$HMenergieID  = $result["HM_EnergieID"];
-					$HMleistungID = $result["HM_LeistungID"];	
-					echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
-					}
-				else
-					{
-					$HMenergieID  = $meter["HM_EnergieID"];
-					$HMleistungID = $meter["HM_LeistungID"];
-					}
-				$energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
-				$leistung=GetValue($HMleistungID);
-				$energievorschub=$energie-GetValue($Homematic_WirkergieID);
-				if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
-					{
-                    $offset = GetValue($OffsetID);                        
-					$offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
-					$energievorschub=$energie;
-					SetValue($OffsetID,$offset);
-					}
-				if ($energievorschub>10)       /* verbrauchte Energie in einem 15 Minutenintervall ist realsitisch maximal 2 kWh, 10kWh abfragen   */
-					{   /* Unplausibilitaet ebenfalls behandeln */
-					$energievorschub=0;
-					}		
-				SetValue($Homematic_WirkergieID,$energie);
-				$energie_neu=GetValue($EnergieID)+$energievorschub;
-				SetValue($EnergieID,$energie_neu);
-				SetValue($LeistungID,$energievorschub*4);
-				echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-				echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
-				echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n\n";
+                /* Meter Variablen bestimmen */
+                $error=false;
+                if ( isset($meter["OID"]) == true )
+                    {
+                    $result  = $this->getHomematicRegistersfromOID($meter["OID"]);
+                    if ($result===false) $error=true;
+                    else
+                        {
+                        $HMenergieID  = $result["HM_EnergieID"];
+                        $HMleistungID = $result["HM_LeistungID"];							
+                        echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                        }
+                    }
+                else
+                    {
+                    $HMenergieID  = $meter["HM_EnergieID"];
+                    $HMleistungID = $meter["HM_LeistungID"];
+                    }                
+
+                /* Energievorschub bestimmen, plausibilisieren und schreiben */
+                if ( ($HMenergieID != 0) && ($HMleistungID != 0) && !$error)
+                    {
+
+                    /* Config und History Logging machen */
+                    $changeDone=false;
+                    if (isset($configuration["OID"])===false) $configuration["OID"] = $HMenergieID;
+                    else 
+                        {
+                        if ($configuration["OID"] != $HMenergieID)
+                            {
+                            $changeDone=true;
+                            $change = date("d.m.y H:i:s")." change OID from ".$configuration["OID"]." to $HMenergieID;";
+                            if (isset($configuration["HISTORY"]) === false) $configuration["HISTORY"]=$change;
+                            else $configuration["HISTORY"].=$change;
+                            }
+                        }
+                    /* Werte schreiben */
+                    $energie=GetValue($HMenergieID)/1000; /* Homematic Wert ist in Wh, in kWh umrechnen */
+                    $leistung=GetValue($HMleistungID);
+                    $energievorschub=$energie-GetValue($Homematic_WirkergieID);
+                    if ($energievorschub<0)       /* Energieregister in der Homematic Komponente durch Stromausfall zurückgesetzt */
+                        {
+                        $offset = GetValue($OffsetID);                        
+                        $offset+=GetValue($Homematic_WirkergieID); /* als Offset alten bekannten Wert dazu addieren */
+                        $energievorschub=$energie;
+                        SetValue($OffsetID,$offset);
+                        }
+                    if ($energievorschub>10)       /* verbrauchte Energie in einem 15 Minutenintervall ist realistisch maximal 2 kWh, 10kWh abfragen   */
+                        {   /* Unplausibilitaet ebenfalls behandeln */
+                        $energievorschub=0;
+                        }		
+                    if ($changeDone)                /* das Homemeatic Register hat sich geändert. Erster Wert ist Offset. Nächsten Wert erst für den Vorschub verwenden */ 
+                        {
+                        $energievorschub=0;   
+                        }
+                    SetValue($Homematic_WirkergieID,$energie);          /* Spiegelregister für Homematic Energie Register */
+                    $energie_neu=GetValue($EnergieID)+$energievorschub;
+                    SetValue($EnergieID,$energie_neu);
+                    SetValue($LeistungID,$energievorschub*4);
+
+                    //print_r($configuration);
+                    $confiGValue=json_encode($configuration);
+                    echo "  Configuration           : $confiGValue \n";
+                    SetValue($ConfigID, $confiGValue);
+
+                    echo "  Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
+                    echo "  Energievorschub aktuell : ".$energievorschub." kWh\n";
+                    echo "  Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n";
+                    echo "  Offset Energie          : ".GetValue($OffsetID)." kWh \n\n";
+                    }
+                else echo "    Fehler, IDs der Energieregister konnte nicht bestimmt werden.\n";                    
 				}
 			return ($homematicAvailable);
 			}

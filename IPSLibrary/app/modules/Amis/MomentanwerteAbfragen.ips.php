@@ -44,6 +44,17 @@
 	 *    14
      *    15        writeEnergySumme
 	 *
+     * writeEnergyHomematic Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
 	 * @file      
 	 * @author        Wolfgang Joebstl
 	 * @version
@@ -220,7 +231,8 @@ if ($_IPS['SENDER']=="Execute")
 	   }
 
 	echo "\n********************************************VALUES**************************************************************\n\n";
-	$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic schreiben
+	//$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic Register schreiben, verwirrt die 15 minütige Erfassung, daher nicht mehr verwendet
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true);
 	}
 
 

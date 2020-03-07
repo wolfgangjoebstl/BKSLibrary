@@ -291,7 +291,7 @@ function send_status($aktuell, $startexec=0)
 			{
 			if (isset($installedModules["EvaluateHardware"])==true) 
 				{
-				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 				}
 			//else IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
@@ -1064,7 +1064,7 @@ function send_status($aktuell, $startexec=0)
 			IPSUtils_Include ('IPSComponentSensor_Motion.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 			if (isset($installedModules["EvaluateHardware"])==true) 
 				{
-				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+				IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 				}
 			//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 
@@ -1364,7 +1364,7 @@ function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $
 
 /******************************************************************/
 
-function CreateVariableByName2($name, $type,$profile,$action,$visible)
+function CreateVariableByName2($name, $type, $profile, $action, $visible)
     {
     $id=IPS_GetParent($_IPS['SELF']);
     $vid = @IPS_GetVariableIDByName($name, $id);
@@ -1375,13 +1375,13 @@ function CreateVariableByName2($name, $type,$profile,$action,$visible)
         IPS_SetName($vid, $name);
         IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']);
         if($profile!='')
-        {
+            {
             IPS_SetVariableCustomProfile($vid,$profile);
-        }
+            }
         if($action!=0)
-        {
+            {
             IPS_SetVariableCustomAction($vid,$action);
-        }
+            }
         IPS_SetHidden($vid,!$visible);
         }
     return $vid;
@@ -1940,7 +1940,7 @@ function ReadTemperaturWerte()
 	
 	if (isset($installedModules["EvaluateHardware"])==true) 
 		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 		}
 	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	
@@ -1977,7 +1977,7 @@ function ReadThermostatWerte()
 
 	if (isset($installedModules["EvaluateHardware"])==true) 
 		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 		}
 	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	
@@ -2052,7 +2052,7 @@ function ReadAktuatorWerte()
 	$installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
 	if (isset($installedModules["EvaluateHardware"])==true) 
 		{
-		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+		IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 		}
 	//elseif (isset($installedModules["RemoteReadWrite"])==true) IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	$componentHandling=new ComponentHandling();
@@ -5020,8 +5020,46 @@ class ModuleHandling
      */
 	public function getDiscovery()
 		{
+        return ($this->getInstancesByType(5));
+        }
+
+    /* Alle installierten Discovery Instanzen ausgeben
+     *
+     */
+	public function getInstancesByType($type)
+		{
         //echo "getDiscovery aufgerufen :\n"; 
-		return ($this->getInstancesByName("Discovery"));
+        $discovery2=IPS_GetInstanceListByModuleType($type);
+        $result=array();
+        foreach($discovery2 as $instance)
+            {
+            $result[$instance]["OID"]=$instance;
+            $result[$instance]["Name"]=IPS_GetName($instance);
+            $moduleinfo = IPS_GetInstance($instance)["ModuleInfo"];
+            //print_r($moduleinfo);
+            //echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
+            $result[$instance]["ModuleName"] = $moduleinfo["ModuleName"];
+            $result[$instance]["ModuleID"]   = $moduleinfo["ModuleID"];
+            $result[$instance]["ModuleType"] = $moduleinfo["ModuleType"];
+            }
+        $i=0;
+        foreach ($result as $entry)
+            {
+            $configurator[$i]=$entry;
+            $getModule=@IPS_GetModule($entry["ModuleID"]);
+            if ($getModule === false) echo "FEHLER: ".$entry["ModuleName"]." eingetragen, aber nicht mehr installiert. Gehe zum Store.\n";
+            else
+                {
+                $libraryID=$getModule["LibraryID"];
+                $libraryName=$this->getLibrary($libraryID);
+                echo "   ".$entry["OID"]."   ".str_pad($entry["Name"],32)."    ".str_pad($entry["ModuleName"],32)."    ".$libraryName."\n";    
+                $configurator[$i]["Library"]=$libraryName;
+                }
+            $i++;
+            }
+        //print_r($configurator);
+        return ($configurator);
+		//return ($this->getInstancesByName("Discovery"));
 		}
 
     /* Alle installierten Instanzen, die ein Schlüsselwort enthalten ausgeben
@@ -5426,7 +5464,14 @@ class Hardware
             case "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}":       // EchoControl Configurator, kein automatisches Discovery über System, chekt regelmaessig
                 $hardwareType="EchoControl";  
                 break;
+            case "{4A76B170-60F9-C387-2303-3E3587282296}":
+                $hardwareType="DenonAVR";  
+                break;
+            case "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}":
+                $hardwareType="NetatmoWeather";  
+                break;
             default:
+                echo "getHardwareType, hardwareType unknown for ModuleID $moduleID.";
                 $hardwareType=false;
                 break;
             }            
@@ -5471,7 +5516,35 @@ class Hardware
 
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
         {
-        if ($debug) echo"          getDeviceChannels:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
+        if ($debug) echo "          getDeviceChannels:Allgemein aufgerufen für ".$entry["OID"]." mit $name $type. Keine Funktion hinterlegt.\n";
+        //print_r($deviceList[$name]["Instances"]);
+        //print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch.\n";
+        foreach ($oids as $oid => $port)
+            {
+            $cids = IPS_GetChildrenIDs($oid);
+            $register=array();
+            foreach($cids as $cid)
+                {
+                $register[]=IPS_GetName($cid);
+                }
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            /* gleiche Einträge eliminieren */
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                } 
+            $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+            $deviceList[$name]["Channels"][$port]["Name"]=$name;
+            }
         return (true);
         }
 
@@ -5542,6 +5615,9 @@ class Hardware
         return ($actuators);
         }
 
+    /* die devicelist wird nach bestimmten Filterkriterien gefiltert und durchsucht.
+     *
+     */
 
     public function getDeviceListFiltered($deviceList,$filter=array(),$debug=false)
         {
@@ -5558,7 +5634,7 @@ class Hardware
                 {
                 $deviceListInput = $result;     // und dann langsam kleiner machen
                 $result=array();                 // result wieder loeschen
-                echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege.\n";
+                echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege und dabei $needle suchen.\n";
                 switch ($key)
                     {
                     case "Type":
@@ -5571,18 +5647,51 @@ class Hardware
                                 }
                             }
                         break;
-                    case "TYPEDEV":
+                    case "TYPEDEV":     /* Instances durchsuchen */
                         foreach ($deviceListInput as $device => $entry)
                             {
-                            $found=false;
+                            //$found=false;
                             if (isset($entry["Instances"]))
                                 {
                                 foreach ($entry["Instances"] as $instance)
                                     {
-                                    if ( (isset($instance[$key])) && ($instance[$key] == $needle) ) $found = true;
+                                    if (isset($instance[$key]))
+                                        {
+                                        if ($instance[$key] == $needle)  
+                                            {
+                                            //$found = true;
+                                            echo "           Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            $result[$device] = $entry;
+                                            }
+                                        //else echo $instance[$key]." ";
+                                        } 
                                     }                                
                                 }
-                            if ($found) $result[$device] = $entry;
+                            //if ($found) $result[$device] = $entry;
+                            }
+                        break;
+                    case "TYPECHAN":    /* Channels durchsuchen */
+                        foreach ($deviceListInput as $device => $entry)
+                            {
+                            //$found=false;
+                            if (isset($entry["Channels"]))
+                                {
+                                foreach ($entry["Channels"] as $instance)
+                                    {
+                                    //print_r($instance);
+                                    if (isset($instance[$key]))
+                                        {
+                                        if ($instance[$key] == $needle)  
+                                            {
+                                            //$found = true;
+                                            echo "           Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            $result[$device] = $entry;
+                                            }
+                                        //else echo $instance[$key]." ";
+                                        } 
+                                    }                                
+                                }
+                            //if ($found) $result[$device] = $entry;
                             }
                         break;
                     }
@@ -5678,7 +5787,7 @@ class Hardware
                             $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["List"] = $channel["Name"];
                             }
                         }
-                    else echo "Type in den Channels nicht definiert.\n";
+                    else echo "Type in den Channels für $name nicht definiert.\n";
                     }
                 }            
             }    
@@ -5687,7 +5796,41 @@ class Hardware
 
     }
 
+
 /* Objektorientiertes class Managemenet für Geräte (Hardware)
+ * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
+ *
+ */
+
+class HardwareDenonAVR extends Hardware
+    {
+
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        $this->socketID = "{9AE3087F-DC25-4ADB-AB46-AD7455E71032}";           // I/O oder Splitter ist der Socket für das Device
+        $this->bridgeID = "{4A76B170-60F9-C387-2303-3E3587282296}";           // Configurator
+        $this->deviceID = "{DC733830-533B-43CD-98F5-23FC2E61287F}";           // das Gerät selbst
+        parent::__construct($debug);        
+        }
+    }
+
+class HardwareNetatmoWeather extends Hardware
+    {
+
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        $this->socketID = "{26A55798-5CBC-88F6-5C7B-370B043B24F9}";           // I/O oder Splitter ist der Socket für das Device
+        $this->bridgeID = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";           // Configurator
+        $this->deviceID = "{1023DB4A-D491-A0D5-17CD-380D3578D0FA}";           // das Gerät selbst
+        parent::__construct($debug);        
+        }
+    }
+
+/* Objektorientiertes class Management für Geräte (Hardware)
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
  *
@@ -5731,20 +5874,20 @@ class HardwareHomematic extends Hardware
             {
             if (count($nameSelect)<2) 
                 {
-                echo "        >>getDeviceParameter:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                echo "        >>getDeviceCheck:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
                 return (false);
                 }
             else 
                 {
                 if ($debug) 
                     {
-                    echo "        getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
+                    echo "        getDeviceCheck:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
                     foreach ($deviceList[$nameSelect[0]]["Instances"] as $portInfo => $entryInfo) echo $portInfo." ";
                     echo " bereits definiert.\n";
                     }
                 }
             }
-        // elseif ($debug)  echo "          getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" neuer Eintrag.\n";
+        // elseif ($debug)  echo "          getDeviceCheck:Homematic Name \"".$nameSelect[0]."\" neuer Eintrag.\n";
 
         /* Fehlerprüfung anhand der Seriennummer, Adresse. Port 0 wird nicht ausgewertet */
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
@@ -5769,13 +5912,13 @@ class HardwareHomematic extends Hardware
                 }
             else 
                 {
-                echo "       >>getDeviceParameter:Homematic Fehler, Seriennummer ohne Port.\n";
+                echo "       >>getDeviceCheck:Homematic Fehler, Seriennummer ohne Port.\n";
                 return (false);
                 }
             }
         else 
             {
-            echo "       >>getDeviceParameter:Homematic Fehler, keine Seriennummer.\n";
+            echo "       >>getDeviceCheck:Homematic Fehler, keine Seriennummer.\n";
             return (false);
             }
 
@@ -5787,6 +5930,11 @@ class HardwareHomematic extends Hardware
             $matrix    = $this->DeviceManager->getHomematicHMDevice($instanz,2);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
             if (is_array($matrix)) 
                 {
+                if (isset($matrix[$port])===false)
+                    {
+                    echo "        Info Port $port von \"$name\" (".$result["Address"].") hat keinen Eintrag für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  \n";    
+                    return (false);
+                    }    
                 if ($matrix[$port]<=1) 
                     {
                     echo "         Info Port $port von \"$name\" (".$result["Address"].") wird nicht berücksichtigt. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
@@ -5799,7 +5947,7 @@ class HardwareHomematic extends Hardware
             $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
             if ( ($typedev=="") || ($typedev===false) )
                 {
-                echo "       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]\n";
+                echo "       >>getDeviceCheck:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)." \n";
                 echo "                Info : ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."   \n";
                 return(false);
                 }
@@ -5967,7 +6115,14 @@ class HardwareHomematic extends Hardware
                 $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
                 if ($typedev<>"")  
                     {
-                    $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                    //print_r($typedev);        /* typedev nicht immer vollständig, Fehlerüberprüfung */
+                    //$deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                    if (isset(($typedev["Type"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];
+                    else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein TYPECHAN ermittelt.\n";
+                    if (isset(($typedev["Register"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["Register"]=$typedev["Register"];
+                    else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein Register ermittelt.\n";
+                    if (isset(($typedev["RegisterAll"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                    else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein RegisterAll ermittelt.\n";
                     $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
                     if ($debug) echo "       Schreibe Channels $port mit Typ ".$typedev["Type"].".\n";
                     //print_r($typedev);

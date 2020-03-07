@@ -340,7 +340,7 @@
 				echo "Add Variable ID : ".$variable." (".IPS_GetName($variable).") für IPSComponentSensor Motion Logging.\n";
                 $this->variable=$variable;
                 $this->variablename = $this->getVariableName($variable);           // $this->variablename schreiben
-                $this->variableLogID = $this->setVariableLogId($this->variable,$this->variablename,$this->MoveAuswertungID);                   // $this->variableLogID schreiben
+                $this->variableLogID = $this->setVariableLogId($this->variable,$this->variablename,$this->MoveAuswertungID,0,'~Motion');                   // $this->variableLogID schreiben
 				}
 			
 			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
