@@ -6127,7 +6127,7 @@ class DeviceManagement
 	function getHomematicAddressList($debug=false)
 		{
 		$countHMI = sizeof($this->HMIs);
-
+        $callCreateReport=false;
 		$addresses=array();
 		if ($countHMI>0)
 			{
@@ -6138,34 +6138,44 @@ class DeviceManagement
 				if ($debug)             // no information available in configuration wether creation of report as variable is activated
 					{
 					echo "\n-----------------------------------\n";
-					echo "Konfiguration für HMI Report Creator : ".$HMI."\n";
+					echo "Konfiguration für HMI Report Creator : ".$HMI." (".IPS_GetName($HMI).")\n";
 					echo $configHMI."\n";
 					}
 	            $childrens=IPS_GetChildrenIDs($HMI);
     	        if (isset($childrens[0]))
         	        {
-            	    //print_r($childrens);
-                	//echo GetValue($childrens[0]);
-	                $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
-                    if ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) )
+                    if (IPS_GetName($childrens[0]) != "Device Liste") echo "   Name of HMI_CreateReport children not \"Device Liste\", is \"".IPS_GetName($childrens[0])."\"   \n";
+                    else
                         {
-            	        foreach ($HomeMaticEntries as $HomeMaticEntry)
-                	        {
-                    	    if (isset($HomeMaticEntry["HM_address"])) 
-                        	    {
-	                            if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
-					    		$addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
-    	                        //print_r($HomeMaticEntry);
-        	                    }
-            	            }
+                        $lastUpdate=IPS_GetVariable($childrens[0])["VariableChanged"];
+                        if ((time()-$lastUpdate) > (24*60*60) ) 
+                            {
+                            if ($debug) echo "     HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.\n";
+                            $callCreateReport=true;
+                            }
+                        elseif ($debug) echo "    HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
+                        //print_r($childrens);
+                        //echo GetValue($childrens[0]);
+                        $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
+                        if ( ( ( (is_array($HomeMaticEntries)) && (sizeof($HomeMaticEntries)>0) ) === false) || $callCreateReport)
+                            {
+                            if ($debug) echo "     HMI_CreateReport($HMI) aufrufen:";   
+                            HMI_CreateReport($HMI);  
+                            if ($debug) echo "  --> done\n";
+                            $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);                                               
+                            }                    
+                        foreach ($HomeMaticEntries as $HomeMaticEntry)
+                            {
+                            if (isset($HomeMaticEntry["HM_address"])) 
+                                {
+                                if ($debug) echo "Addresse: ".$HomeMaticEntry["HM_address"]." Type ".$HomeMaticEntry["HM_device"]." Devicetyp ".$HomeMaticEntry["HM_devtype"]."\n";
+                                $addresses[$HomeMaticEntry["HM_address"]]=$HomeMaticEntry["HM_device"];
+                                //print_r($HomeMaticEntry);
+                                }
+                            }
                         }
-                    else 
-                        {
-                        echo "HMI_CreateReport wurde noch nicht aufgerufen oder HM Inventory Instanz ist falsch konfiguriert.\n";   
-                        HMI_CreateReport($HMI);                     
-                        }                    
                 	}
-	            else echo "HM Inventory, Abspeicherung in einer variable wurde nicht konfiguriert\n";    
+	            else echo "HM Inventory, Abspeicherung in einer Variable wurde nicht konfiguriert\n";    
 				}					
 			}
 		if ($debug)
@@ -6743,16 +6753,17 @@ function getFS20Type($instanz)
      * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
      * STATE
      *
-     * erkannte Device Typen (unabhängig ob Homematic)
-     *  TYPE_ACTUATOR
-     *  TYPE_THERMOSTAT
-     *  TYPE_METER_TEMPERATURE
-     *  TYPE_BUTTON
-     *  TYPE_SWITCH
-     *  TYPE_CONTACT
-     *  TYPE_DIMMER
-     *  TYPE_SHUTTER
-     *  TYPE_MOTION
+     * erkannte Device Typen (unabhängig ob Homematic, Evaluierung von oben nach unten
+     *  TYPE_ACTUATOR               => VALVE_STATE
+     *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
+     *  TYPE_METER_TEMPERATURE      => TEMPERATURE && HUMIDITY
+     *  TYPE_BUTTON                 => PRESS_SHORT
+     *  TYPE_SWITCH                 => STATE && (PROCESS || WORKING)
+     *  TYPE_CONTACT                => STATE
+     *  TYPE_DIMMER                 => LEVEL && DIRECTION && ERROR_OVERLOAD
+     *  TYPE_SHUTTER                => LEVEL && DIRECTION
+     *  TYPE_MOTION                 => MOTION
+     *  TYPE_RSSI                   => RSSI
      *  TYPE_METER_POWER
      *
      * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
@@ -6775,13 +6786,13 @@ function getFS20Type($instanz)
         $found=true; 
         if ($debug) 
             {
-            echo "                HomematicDeviceType aufgerufen. Parameter \"";
+            echo "                HomematicDeviceType: Info mit Debug aufgerufen. Parameter \"";
             foreach ($registerNew as $entry) echo "$entry ";
             echo "\"\n";
             }
 
         /*--Stellmotor-----------------------------------*/
-        if ( array_search("VALVE_STATE",$registerNew) !== false) /* Stellmotor */
+        if ( array_search("VALVE_STATE",$registerNew) !== false)            /* Stellmotor */
             {
             //print_r($registerNew);
             //echo "Stellmotor gefunden.\n";
@@ -6800,7 +6811,7 @@ function getFS20Type($instanz)
             else $result[3]["Register"][]="VALVE_STATE";
             $result[3]["RegisterAll"]=$registerNew;
             }
-        /*-------------------------------------*/
+        /*-----Wandthermostat--------------------------------*/
         elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
             {
             if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
@@ -6883,6 +6894,7 @@ function getFS20Type($instanz)
                 $result[1] = "Funk-Tuerkontakt";
                 $result[2] = "TYPE_CONTACT";     
                 $result[3]["Type"] = "TYPE_CONTACT";            
+                $result[3]["Register"][]="STATE";                
                 $result[3]["RegisterAll"]=$registerNew;
                 }
             }
@@ -6893,17 +6905,19 @@ function getFS20Type($instanz)
             $result[0] = "Dimmer";
             $result[1] = "Funk-Dimmer";
             $result[2] = "TYPE_DIMMER";            
-            $result[3]["Type"] = "TYPE_DIMMER";            
+            $result[3]["Type"] = "TYPE_DIMMER"; 
+            $result[3]["Register"][]="LEVEL";                       
             $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
-        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )/* Dimmer */
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
             {
             //print_r($registerNew);                
             $result[0] = "Rollladensteuerung";
             $result[1] = "Funk-Rollladensteuerung";
             $result[2] = "TYPE_SHUTTER";     
-            $result[3]["Type"] = "TYPE_SHUTTER";            
+            $result[3]["Type"] = "TYPE_SHUTTER";    
+            $result[3]["Register"][]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
             $result[3]["RegisterAll"]=$registerNew;
             }                    
         /*-------------------------------------*/
@@ -6931,7 +6945,8 @@ function getFS20Type($instanz)
             if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
             else $result[1] = "IP Funk Energiemessgeraet";
             $result[2] = "TYPE_METER_POWER";             
-            $result[3]["Type"] = "TYPE_METER_POWER";            
+            $result[3]["Type"] = "TYPE_METER_POWER";  
+            $result[3]["Register"][]="ENERGY_COUNTER";          
             $result[3]["RegisterAll"]=$registerNew;
             }          
         else $found=false;
@@ -7011,6 +7026,8 @@ function getFS20Type($instanz)
                         break;
 
                     case "HM-PB-2-WM55":
+                    case "HM-PB-2-WM55-2":
+                    case "HM-LC-Sw2-PB-FM":                 // Doppel Taster als Einbauvariante mit Schalter
                         $result="Taster 2-fach";
                         $matrix=[0,2,2,1,1,1,1,1];                        
                         break;
@@ -7031,6 +7048,8 @@ function getFS20Type($instanz)
                     case "HmIP-SMI":
                     case "HM-Sec-MDIR":
                     case "HM-Sec-MDIR-2":
+                    case "HM-Sen-MDIR-O-2":  
+                    case "HM-Sen-MDIR-O":
                         $result="Bewegungsmelder";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -7040,6 +7059,7 @@ function getFS20Type($instanz)
                         $matrix=[0,2,2,1,1,1,1,1];                        // die Homematic Variante hat zwei Kanäle
                         break;
                     case "HMIP-WTH":
+                    case "HmIP-WTH-2":
                         $result="Wandthermostat";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -7053,11 +7073,13 @@ function getFS20Type($instanz)
                         break;
 
                     case "HM-LC-Sw4-DR":
+                    case "HM-LC-Sw4-DR-2":
                         $matrix=[0,2,2,2,2,1,1,1];                        
                         $result="Schaltaktor 4-fach";
                         break;
                     
                     case "HM-ES-PMSw1-Pl":
+                    case "HM-ES-PMSw1-DR":                                  // die Hutschienen Variante dazu 
                         $result="Schaltaktor 1-fach Energiemessung";
                         $matrix=[0,2,2,1,1,1,1,1];
                         break;
@@ -7067,17 +7089,47 @@ function getFS20Type($instanz)
                         $matrix=[0,2,1,2,1,1,2,1];
                         break;
 
+                    case "HmIP-FSM16":                                      // Einbauvariante mit Energiemessung
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,1,2,1,2,1,1];
+                        break;
+
                     case "HM-LC-Dim1T-FM":
+                    case "HM-LC-Dim1T-Pl":
                         $result="Dimmer 1-fach";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
 
+                    case "HM-LC-Bl1-FM"                        :
+                        $result="Rolladensteuerung";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
                     case "HM-WDS10-TH-O":
+                    case "HM-WDS40-TH-I":
+                    case "HmIP-STHD":                                   // sieht aus wie ein Thermostat und hat auch versteckte Thermostatfunktionen
                         $result="Temperatur und Feuchtigkeitssensor";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
 
+                    case "HM-WDS100-C6-O":
+                        $result="Wetterstation";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HmIP-RCV-50":
+                    case "HM-RCV-50":
+                        $result="Receiver for internal messages, 50 channels";
+                        $matrix=[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];            // alle Tasten ignorieren             
+                        break;
+
+                    case "HM-RC-19-SW":
+                        $result="RemoteControl, 19 channels";
+                        $matrix=[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];                        
+                        break;
+
                     default:
+                        echo "getHomematicHMDevice:default, not known, return \"".$this->HomematicAddressesList[$key]."\" for $key.\n";
                         return ($this->HomematicAddressesList[$key]);
                         break;
                     }
@@ -7087,7 +7139,7 @@ function getFS20Type($instanz)
             }
 		else 
             {
-            echo "getHomematicHMDevice , $instanz $key in HMI Report NICHT gefunden. Run HMI_Create Report again. Ensure that Gateway is correctly configured to get updated values.\n";
+            echo "getHomematicHMDevice , Instanz $instanz Key $key in HMI Report NICHT gefunden. Run HMI_CreateReport again. Ensure that Gateway is correctly configured to get updated values.\n";
             return("");
             }
 		}	
@@ -7210,11 +7262,14 @@ function getFS20DeviceType($instanz)
  *
  * den Status der HomematicCCU auslesen, alle Fehlermeldungen
  *
+ * funktioniert für CCU2 und CCU3
+ * alle echo Meldungen werden im String alleHM_errors gesammelt
+ *
  **************/
 
     function HomematicFehlermeldungen()
 	    {
-		$alleHM_Errors="\n\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
+		$alleHM_Errors="\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
 		$texte = Array(
 		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
 		    "LOWBAT" => "Batterieladezustand gering",
@@ -7234,11 +7289,12 @@ function getFS20DeviceType($instanz)
 		    {
 			/* Homematic Instanzen vorhanden, sind sie aber auch aktiv ? */
 			$aktiv=false;
+            $alleHM_Errors.="  Es wurden insgesamt $HomInstanz CCUs gefunden.\n";
 			foreach ($ids as $id)
 	   		    {
-				$ergebnis=IPS_GetConfiguration($id);
-				//echo "Homematic Socket : ".IPS_GetName($id)."  Konfig : ".$ergebnis."\n";
-                $CCUconfig=json_decode($ergebnis);
+				$HM_Config=IPS_GetConfiguration($id);
+				//echo "Homematic Socket : ".IPS_GetName($id)."  Konfig : ".$HM_Config."\n";
+                $CCUconfig=json_decode($HM_Config);
                 //print_r($CCUconfig);
 				if ( $CCUconfig->Open==false )
 				    {
@@ -7247,12 +7303,17 @@ function getFS20DeviceType($instanz)
 				else
 				    {
             		$ccu_name=IPS_GetName($id);
-            		$alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";                        
+            		$alleHM_Errors.="\nHomatic Socket ID ".$id." / ".$ccu_name."   ".sizeof($this->HomematicSerialNumberList[$ccu_name])." Endgeräte angeschlossen.\n";  
 					$msgs = @HM_ReadServiceMessages($id);
 					if($msgs === false)
 					    {
 						//die("Verbindung zur CCU fehlgeschlagen");
 					    $alleHM_Errors.="  ERROR: Verbindung zur CCU fehlgeschlagen!\n";
+                        echo "  ERROR: Verbindung zur CCU $id fehlgeschlagen!\n";
+                        $HM_Status=IPS_GetInstance($id);
+                        //print_r($HM_Status);
+                        if ($HM_Status["InstanceStatus"] != 102) echo "    Instanz $id nicht aktiv.\n";
+                        print_r($HM_Config);
 					    }
 					if ($msgs != Null)
 						{

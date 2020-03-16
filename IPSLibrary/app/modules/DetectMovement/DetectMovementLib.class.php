@@ -74,6 +74,7 @@
 
   		protected $Detect_DataID;												/* Speicherort der Mirrorregister */ 
         protected $debug;
+        protected $archiveHandlerID;
 		
 		/**
 		 * @public
@@ -94,6 +95,7 @@
 			$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+            $this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 			}
 
 		/**
@@ -394,6 +396,7 @@
          * sonst wird bereits die OID des Mirror Registers geliefert
          *
 		 */
+
 		public function getMirrorRegisterName($oid)
 			{
 			//echo "Mirror Register von Hardware Register ".$oid." suchen.\n";
@@ -420,6 +423,71 @@
                 }
 			return($variablename);
 			}
+
+		/** 
+		 * getMirrorRegisters
+         *
+		 */
+
+		public function getMirrorRegisters($events)
+            {
+            echo "getMirrorRegisters, Array mit Spiegelregistern anlegen.\n";
+            //echo "      OID    Pfad                                                                              Config aus EvaluateHardware                                             TemperatureConfig aus DetectMovement            \n";
+            $mirrorsFound=array();
+            foreach ($events as $oid => $typ)
+                {
+                $moid=$this->getMirrorRegister($oid);
+                if (IPS_GetObject($oid) === false) echo "     Fehler, Register nicht bekannt.\n";
+                else
+                    {
+                    if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
+                    else
+                        {
+                        $mirrorsFound[$moid] = IPS_GetName($moid);                
+                        //echo "     ".IPS_GetName($oid)."\n";
+                        }
+                    }
+                }
+            return($mirrorsFound);
+            }
+
+		/** 
+		 * checkMirrorRegisters
+         *
+		 */
+
+		public function checkMirrorRegisters($AuswertungID,$mirrorsFound)
+            {
+            $i=0;
+            $childrens=IPS_getChildrenIDs($AuswertungID);
+            $mirrors = array();
+            foreach ($childrens as $oid)
+                {    
+                $mirrors[IPS_GetName($oid)]=$oid;
+                }
+            ksort($mirrors);
+            //print_r($mirrors);
+            foreach ($mirrors as $oid)
+                {
+                $werte = @AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-120*24*60*60, time(),10000);      // 120 Tage oder 10.000 Werte zurück
+                if ($werte === false) echo "   ".str_pad($i,4).str_pad($oid,6).str_pad("(".IPS_GetName($oid).")",35)."  : no archive\n";
+                else 
+                    {
+                    $count=count($werte);
+                    echo "   ".str_pad($i,4).str_pad($oid,6).str_pad("(".IPS_GetName($oid).")",35)."  : ".str_pad($count,4)."  ";
+                    if ($count>0) 
+                        {
+                        //print_r($werte[0]);
+                        echo " change from ".date("d.m.Y H:i:s",$werte[$count-1]["TimeStamp"])." to ".date("d.m.Y H:i:s",$werte[0]["TimeStamp"]);
+                        //echo " last change ".date("d.m.Y H:i:s",$werte[0]["TimeStamp"]);
+                        }
+                    else echo "                                ";
+                    if (isset($mirrorsFound[$oid])) echo "   -> Mirror in Config";
+                    echo "\n";
+                    }
+                $i++;
+                }
+            }
 
 		/**
 		 * @public
@@ -724,6 +792,11 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
+		/**
+		 * getMirrorRegister für Humidity
+		 * 
+		 */
+
 		public function getMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
@@ -736,6 +809,7 @@
 		 * Das DetectHumidityHandler Spiegelregister anlegen
 		 * 
 		 */
+
 		public function CreateMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
@@ -890,7 +964,7 @@
 		   	self::$eventConfigurationAuto = $configuration;
 			}
 
-		/** getMirrorRegister
+		/** getMirrorRegister für Movement
 		 * 
          *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
 		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
@@ -1093,14 +1167,17 @@
 		   	self::$eventConfigurationAuto = $configuration;
 			}
 
+		/**
+		 * getMirrorRegister für Temperature
+		 * 
+		 */
+
 		public function getMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
-			if ($variablename == "Cam_Motion")					/* was ist mit den Kameras */
-				{
-				$variablename=IPS_GetName((integer)$result["ParentID"]);
-				}            
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($mirrorID === false) echo "Fehler, getMirrorRegister for Temperature $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }
 
@@ -1230,6 +1307,11 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 			
+		/**
+		 * getMirrorRegister für HeatControl
+		 * 
+		 */
+            
 		public function getMirrorRegister($variableId)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);

@@ -20,7 +20,7 @@
     /* Teil des Evaluate Hardware Moduls
      *
      * verbessert und überprüft die aktuelle Systemkonfiguration
-     * mit dem Durchlauf des Scripts sollten Anomalien sichtbar gemachtw erden.
+     * mit dem Durchlauf des Scripts sollten Anomalien sichtbar gemacht werden.
      *
      *
      */
@@ -44,6 +44,16 @@
         }
     $installedModules = $moduleManager->GetInstalledModules();
     $archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+    if (isset($installedModules["OperationCenter"])) 
+        {
+        IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
+        echo "OperationCenter ist installiert. HMI_CreateReport updaten, wenn in den letzten 24h nicht erfolgt.\n\n";
+        $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library, getHomematicAddressList wird auch im construct aufgerufen
+        //$HomematicAddressesList = $DeviceManager->getHomematicAddressList(true);        // noch einmal aufrufen mit Debug
+        //print_r($HomematicAddressesList);
+        //echo "    --done---\n";
+        }  
 
 	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
@@ -69,17 +79,23 @@
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
+        echo "Module DetectMovement und EvaluateHardware sind installiert. TopologyMappingLibrary Instanzen sind vorhanden.\n";
+
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
 
         $DetectDeviceHandler = new DetectDeviceHandler();
         $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
 
+        echo "   Die devicelist von EvaluateHardware_DeviceList.inc.php einlesen.\n";
+
         /* alle Instanzen aus der Topolgie auslesen */
         $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
         $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
         $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
         $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
+
+        echo "   Die Topologie Instanzen aus dem IP Symcon Inventory einlesen.\n";
 
         /* die Konfiguration herauslesen und eventuell hinsichtlich Topologie ergänzen */
         $topology       = $DetectDeviceHandler->Get_Topology();
@@ -102,12 +118,12 @@
             $onlyOne=true;      // schön vorsichtig, nur eine Instanz nach der anderen anschauen
             $parent=$topID;
 
+            echo "   Die EvaluateHardware_Devicelist devicelist() jetzt Gerät für Gerät durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen:\n\n";
             foreach ($deviceList as $name => $entry)
                 {
                 $instances=$entry["Instances"];
                 if ($onlyOne)
                     {
-                    /* die EvaluateHardware_Devicelist devicelist() durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen */
                     if ( (isset($deviceInstances[$name])) === false )
                         {
                         echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
@@ -146,7 +162,7 @@
                                     $writeChannels=true;
                                     }
                                 }
-                            echo "   Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
+                            echo "     Channel ".$instance["OID"]." (".IPS_GetName($instance["OID"]).") mit Configuration :    $config  \n";
                             }
                         echo "     Raum \"$room\" in der Config der Channel Instances gefunden.\n";
                         if (isset($deviceEventList[$InstanzID]))
@@ -399,12 +415,13 @@ if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
 
 
         echo "Ausgabe aller Temperatur Spiegelregister:\n";
-
+       
+    	$events=$DetectTemperatureHandler->ListEvents();
+        $mirrorsFound = $DetectTemperatureHandler->getMirrorRegisters($events);
         /* Get Category to store the Temperature-Spiegelregister */	
         $name="Temperatur-Auswertung";
         $TempAuswertungID=@IPS_GetObjectIDByName($name,$CategoryIdDataCC);
-        checkMirrorRegisters($TempAuswertungID,$mirrorsTempFound);
-
+        $DetectTemperatureHandler->checkMirrorRegisters($TempAuswertungID,$mirrorsFound);
         }
 
     if ( (isset($installedModules["DetectMovement"]) )             )

@@ -336,8 +336,12 @@ class Logging
         if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->DetectHandler !== Null) )
             {
             $moid=$this->DetectHandler->getMirrorRegister($variable);
-            if ( ($variablename==Null) && ($moid !== false) ) $variablename=IPS_GetName($moid);
-            echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid\n";
+            if ( ($variablename==Null) && ($moid !== false) ) 
+                {
+                $variablename=IPS_GetName($moid);
+                echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (from config)\n";
+                }
+            else echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
             }
         if ($variablename==Null)
             {

@@ -578,7 +578,7 @@ Path=Visualization.Mobile.Stromheizung
 						break;
 					default:
 						trigger_error('Unknown WFCItem='.$WFCItem[0]);
-			   	}
+			   	    }
 				}
 			}
 		
@@ -603,6 +603,7 @@ Path=Visualization.Mobile.Stromheizung
 		{
 		/* Default Path ist Visualization.WebFront.Administrator.Stromheizung */
 		$categoryId_WebFront                = CreateCategoryPath($WFC10_Path);   // Administrator.Stromheizung
+        IPS_SetHidden($categoryId_WebFront,true);
 		if ($WFC10_Regenerate) 
 			{
 			EmptyCategory($categoryId_WebFront);

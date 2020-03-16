@@ -44,8 +44,12 @@
 	 *    14
      *    15        writeEnergySumme
 	 *
-     * writeEnergyHomematic Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
+     * writeEnergyHomematic 
+     *   Aufruf mit dem Einzeleintrag der Konfiguration ohne identifier
      *
+     *
+     *
+     * writeEnergySumme
      *
      *
      *

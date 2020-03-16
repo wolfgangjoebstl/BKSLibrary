@@ -5586,7 +5586,7 @@ class Hardware
                     //case "IPSCOMPONENTHEATSET_FS20":                              // remote Adresse, OID nicht vorhanden
                         if (@IPS_ObjectExists($components[1])) echo $components[1]."   ".IPS_GetName($components[1]);
                         else echo $components[1]."   Error, Object does not exist -------------------------\n";                    
-                        echo $components[1]."   ".IPS_GetName($components[1]);
+                        //echo $components[1]."   ".IPS_GetName($components[1]);
                         $actuators[$components[1]]["ComponentName"]=$components[0];
                         $actuators[$components[1]]["Type"]=$object[IPSHEAT_TYPE];
                         break;
@@ -5942,7 +5942,7 @@ class HardwareHomematic extends Hardware
                     }
                 //print_r($matrix);
                 }
-            else echo "   >> Fehler: \"$name\" (".$entry["OID"]."/".$result["Address"].") keine Bewertung der Matrix. Gerät ".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"]))." nicht hinterlegt. Infofeld aus HMInventory: \"".$this->DeviceManager->getHomematicHMDevice($instanz,0)."\"  \"".$this->DeviceManager->getHomematicHMDevice($instanz,1)."\"\n";
+            else echo "   >>getDeviceCheck:Fehler \"$name\" (".$entry["OID"]."/".$result["Address"].") keine Bewertung der Matrix. Gerät ".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"]))." nicht hinterlegt. Infofeld aus HMInventory: \"".$this->DeviceManager->getHomematicHMDevice($instanz,0)."\"  \"".$this->DeviceManager->getHomematicHMDevice($instanz,1)."\"\n";
 
             $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
             if ( ($typedev=="") || ($typedev===false) )
@@ -6030,7 +6030,11 @@ class HardwareHomematic extends Hardware
             if ($debug) echo "    TYPEDEV: $typedev";
             $entry["TYPEDEV"]=$typedev;
             
-            if (strpos($nameSelect[0],"HM") === 0) $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+            if (strpos($nameSelect[0],"HM") === 0) 
+                {
+                echo "      >>getDeviceParameter: Name starts with HM, is probably new one, has not been renamed : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): ";
+                $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */
+                }
 
             //$infodev    = $DeviceManager->getHomematicDeviceType($instanz,1);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ der Instanz in beschreibender Form aus */
             $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
@@ -6039,7 +6043,7 @@ class HardwareHomematic extends Hardware
                 $deviceList[$nameSelect[0]]["Information"]=$infodev;
                 if ($debug) echo "    INFO: $infodev";
                 }
-            else echo "\n       >>getDeviceParameter:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
+            else echo "\n       >>getDeviceParameter:Homematic Fehler : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
             $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
             /*
             $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
@@ -6120,7 +6124,14 @@ class HardwareHomematic extends Hardware
                     if (isset(($typedev["Type"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];
                     else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein TYPECHAN ermittelt.\n";
                     if (isset(($typedev["Register"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["Register"]=$typedev["Register"];
-                    else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein Register ermittelt.\n";
+                    else 
+                        {
+                        echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein Register ermittelt. typedev[register] from getHomematicDeviceType für $instanz / \"$name\" not defined.\n";
+                        $infodev    = $DeviceManager->getHomematicHMDevice($instanz,1);             /* nutzt HMI Create Report */
+                        $type       = $DeviceManager->getHomematicDeviceType($instanz,0,true);     /* noch einmal mit Debug wenn Name mit HM anfangt */                        
+                        echo "      infodev $infodev type $type \n";
+                        print_r($typedev);
+                        }
                     if (isset(($typedev["RegisterAll"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
                     else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein RegisterAll ermittelt.\n";
                     $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;

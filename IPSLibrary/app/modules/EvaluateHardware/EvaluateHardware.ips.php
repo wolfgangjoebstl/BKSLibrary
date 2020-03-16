@@ -33,7 +33,7 @@
  *      function gatewayInstanzen()
  *      function deviceList()  mit Inpout von function hardwareList()
  *
- * Die alte Geräte anhängige Devicelist ist jetzt in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php
+ * Die alte Geräte abhängige Devicelist ist jetzt in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php
  *      mit functions pro gerätetyp
  *	
  * wenn DetectMovement und die TopologyMappingLibrary instaliert ist, wird eine Topologie aufgebaut.
@@ -77,8 +77,8 @@ if (isset($installedModules["DetectMovement"]))
 if (isset($installedModules["OperationCenter"])) 
     {
     IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter'); 
-    echo "OperationCenter ist installiert:\n";
-    $DeviceManager = new DeviceManagement();
+    echo "OperationCenter ist installiert.\n";
+    $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
     //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
     echo $DeviceManager->HomematicFehlermeldungen()."\n";
     //echo "  Homematic Serialnummern erfassen:\n";
