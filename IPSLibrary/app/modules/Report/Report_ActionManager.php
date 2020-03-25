@@ -16,11 +16,15 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */    
 
-	/**@ingroup 	report
+	/**@ingroup 	report action manager
 	 * @{
 	 *
+     * steht im Autoexecute Script für jede der Webfront Variablen, wird bei Abänderung automatisch aufgerufen
+     * ruft mit der variableID in der class report manager die function changesettings auf
+     *
+     *
 	 * @file          Report_ActionManager.php
-	 * @author        Wolfgang J�bstl
+	 * @author        Wolfgang Jöbstl
 	 * @version
 	 *  Version 2.50.1, 2.02.2016<br/>
 	 *

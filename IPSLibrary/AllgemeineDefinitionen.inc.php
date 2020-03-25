@@ -21,6 +21,7 @@
 	  *
 	  * verschiedene Routinen und Definitionen die von allen Modulen benötigt werden können
 	  * 
+      * nf      	    number_format abhängig von Unit oder default
 	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
       *
       *
@@ -174,6 +175,44 @@ define("ADR_SoapServer","10.0.0.20:8085");
 
 //define("ADR_Programs","C:/Program Files/");
 define("ADR_Programs",'C:/Program Files (x86)/');
+
+/* useful functions
+ *
+ */
+
+function nf($value,$unit="")
+    {
+    $result=false;
+    if (is_integer($unit)) $result = number_format($value, $unit, ",",".");
+    else
+        {
+        switch (strtoupper($unit))
+            {
+            case "S":
+            case "SEC":
+                if ($value <(4*60)) $result = number_format($value, 1, ",",".")." sec";
+                elseif ($value <(4*60*60)) $result = number_format(($value/60), 1, ",",".")." m";
+                elseif ($value <(4*24*60*60)) $result = number_format(($value/60/60), 1, ",",".")." h";
+                elseif ($value <(4*24*60*60)) $result = number_format(($value/24/60/60), 1, ",",".")." d";
+                else $result = number_format(($value/7/24/60/60), 1, ",",".")." w";
+                break;
+            case "KWH":
+                $result = number_format($value, 2, ",",".")." $unit";
+                break;
+            case  "KW":
+                $result = number_format($value, 3, ",",".")." $unit";
+                break;
+            case  "W":
+                $result = number_format($value, 0, ",",".")." $unit";
+                break;
+            default:
+                $result = number_format($value, 2, ",",".")." $unit";           // unit wahrscheinlich empty oder ein Wertd en wir nicht kennnen
+                break;
+            }
+        }
+    return($result);    
+    }
+
 
 /****************************************************************************************************
  * immer wenn eine Statusmeldung per email angefragt wird 

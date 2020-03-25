@@ -542,7 +542,7 @@
                         {
                         $HMenergieID  = $result["HM_EnergieID"];
                         $HMleistungID = $result["HM_LeistungID"];							
-                        echo "  OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
+                        echo "     OID der Homematic Register selbst bestimmt : Energie : ".$HMenergieID." Leistung : ".$HMleistungID."\n";
                         }
                     }
                 else
@@ -609,10 +609,10 @@
                         }
                     else
                         {
-                        echo "     Werte aus der Homematic : ".$energie." kWh  ".GetValue($HMleistungID)." W\n";
-                        echo "     Energievorschub aktuell : ".$energievorschub." kWh\n";
-                        echo "     Energiezählerstand      : ".$energie_neu." kWh Leistung : ".GetValue($LeistungID)." kW \n";
-                        echo "     Offset Energie          : ".GetValue($OffsetID)." kWh \n";
+                        echo "     Werte aus der Homematic : ".nf($energie,"kWh")." ".nf(GetValue($HMleistungID),"W")."\n";
+                        echo "     Energievorschub aktuell : ".nf($energievorschub,"kWh")."\n";
+                        echo "     Energiezählerstand      : ".nf($energie_neu,"kWh")." Leistung : ".nf(GetValue($LeistungID),"kW")." \n";
+                        echo "     Offset Energie          : ".nf(GetValue($OffsetID),"kWh")." \n";
                         echo "     Configuration           : $configValue \n\n";
                         }
                     }
@@ -665,7 +665,7 @@
 				}
             if (is_string($oid))
                 {
-                echo "String angegeben.\n"; 
+                //echo "String angegeben.\n"; 
                 $MConfig=$this->MeterConfig;
                 //print_r($MConfig);
                 foreach ($MConfig as $entry)
@@ -673,24 +673,8 @@
                     if ($entry["NAME"]==$oid)
                         {
                         $realOID=$entry["OID"];
-                        echo "   ".$entry["NAME"]." gefunden. OID aus Config übernehmen $realOID ".IPS_GetName($realOID)."\n";
+                        //echo "   ".$entry["NAME"]." gefunden. OID aus Config übernehmen $realOID ".IPS_GetName($realOID)."\n";
                         $result=$this->getRegistersfromOID($realOID);
-                        if (false)
-                            {
-                            switch (strtoupper($entry["TYPE"]))
-                                {
-                                case "HOMEMATIC":
-                                    break;
-                                default:
-                                    break;
-                                }
-                            print_r($entry);
-                            echo "gefundene Energieregister:\n";
-                            print_r($result);
-                            echo "gefundene Homematic Energieregister:\n";
-                            $result1=$this->getHomematicRegistersfromOID($realOID);
-                            print_R($result1);
-                            }
                         }
                     }
                 }
@@ -704,7 +688,7 @@
                             {
                             if ( (strtoupper($meter["TYPE"]))=="HOMEMATIC") 
                                 {
-                                echo "Homematic Gerät abgefragt !\n";
+                                //echo "Homematic Gerät abgefragt !\n";
                                 $cids = @IPS_GetChildrenIDs($oid);
                                 if ($cids === false) return(false);             // OID gibt es nicht, darum false 
                                 else
@@ -728,13 +712,15 @@
                                 }
                             else            // alle anderen Typen, hier sind die Register im Data/module/Amis/meterName und heissen Wirkenergie und Wirkleistung  
                                 {
-                                echo "Irgendein Gerät abgefragt.\n";
+                                //echo "Irgendein Gerät abgefragt.\n";
                                 //$catID=IPS_GetCategoryIDByName($meter["NAME"], $this->CategoryIdData);
                                 $catID=IPS_GetVariableIDByName($meter["NAME"], $this->CategoryIdData);
                                 $result["EnergieID"]=IPS_GetVariableIDByName("Wirkenergie", $catID);
                                 $result["LeistungID"]=IPS_GetVariableIDByName("Wirkleistung", $catID);
-                                echo "    gefunden : ".$oid." in ".$identifier." und Kategorie ".$catID." (".IPS_GetName($catID).") \n";
+                                //echo "    gefunden : ".$oid." in ".$identifier." und Kategorie ".$catID." (".IPS_GetName($catID).") \n";
                                 }
+                            $result["Identifier"]=$identifier;
+                            $result["Name"]=$meter["NAME"];
                             }				
                         }
                     }
@@ -751,14 +737,14 @@
 		 *
 		 *****************************************************************************************************************************/
 		 
-		function writeEnergyRegister($meter)		/* nur einen Wert aus der Config ausgeben */
+		function writeEnergyRegister($meter, $debug=false)		/* nur einen Wert aus der Config ausgeben */
 			{
 			$registerAvailable=false;
 
 			if (strtoupper($meter["TYPE"])=="REGISTER")
 				{
 				$registerAvailable=true;
-				echo "Werte von : ".$meter["NAME"]."\n";
+				if ($debug) echo "writeEnergyRegister, Werte von : ".$meter["NAME"]."\n";
 			      
 				$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
@@ -768,7 +754,7 @@
 				if ( isset($meter["OID"]) == true )
 					{
                     if ( isset($meter["OIDTYPE"]) == true ) $regType=strtoupper($meter["OIDTYPE"]);
-                    elseif ( isset($meter["OIDType"]) == true ) $regType=strtoupper($meter["OIDType"]);
+                    elseif ( isset($meter["OIDType"]) == true ) $regType=strtoupper($meter["OIDType"]);             // alternative Schreibweise
                     else $regType="kWh"; 
 					$HMenergieID = $meter["OID"];
 					echo "  OID des Register für die Messung aus der Konfiguration, Type ist $regType";
@@ -819,7 +805,7 @@
                         //echo "    Last changed ".date("d.m.Y H:i:s",IPS_GetVariable($EnergieID)["VariableChanged"])."   Wert  :  ".GetValue($EnergieID)." \n";
                         echo "  Last updated ".date("d.m.Y H:i:s",$lastChanged)." seit $timeChanged Sekunden,  Wert  :  ".GetValue($EnergieID)." \n";
                         $leistung = (($energie-GetValue($EnergieID))/$timeChanged*3600);
-                        echo "  Umgerechnete Werte aus dem Register : ".$energie." kWh abgeleitet von ".GetValue($HMenergieID)." $regType, vorher war ".GetValue($EnergieID)." Unterschied ".(($energie-GetValue($EnergieID))*1000)." Wh $regType ,  Leistung : $leistung kW\n";
+                        echo "  Umgerechnete Werte aus dem Register : ".$energie." kWh abgeleitet von ".GetValue($HMenergieID)." $regType, vorher war ".GetValue($EnergieID)." $regType. Unterschied ".(($energie-GetValue($EnergieID))*1000)." Wh ,  Leistung : ".($leistung*1000)." W\n";
                         if ($timeChanged>880)   // nur alle 15 Minuten schreiben
                             {
                             $leistung=($energie-GetValue($EnergieID))*4;
@@ -860,22 +846,46 @@
 				if ( isset($meter["Calculate"]) == true )
 					{
 					$calculate = explode(",",$meter["Calculate"]);
-					echo "  die folgenden Register werden zusammengezählt:\n";
-					print_r($calculate);
+					if ($debug) echo "  die folgenden Register werden zusammengezählt: ".$meter["Calculate"]."\n";
+					//print_r($calculate);
+                    $e=0;
 					foreach ($calculate as $oid)
 						{
-						$result=$this->getRegistersfromOID($oid);
+                        $e++;       // Zeilenindex
+						$result=$this->getRegistersfromOID($oid);           // das sind die Quellregister (von Homematic, Register, AMSI Zähler etc.), vor der Verarbeitung
+                        /* nicht die Source sondern die Target Register zusammenzählen 
+                        print_r($result);
 						$energie+=GetValue($result["EnergieID"]);
 						$leistung+=GetValue($result["LeistungID"]);
-						echo "Energie : ".$energie." Leistung : ".$leistung."\n"; 
+                        */
+                        $category=IPS_GetObjectIdByName($result["Name"],$this->CategoryIdData);
+                        if ($category !== false)
+                            {
+                            $wirkEnergie=IPS_GetObjectIdByName("Wirkenergie",$category);
+                            $wirkLeistung=IPS_GetObjectIdByName("Wirkleistung",$category);
+                            if ( ($wirkEnergie !== false) && ($wirkLeistung !== false) )
+                                {
+        						$energie+=GetValue($wirkEnergie);
+		        				$leistung+=GetValue($wirkLeistung);
+        						echo "   $e $wirkEnergie : ".nf(GetValue($wirkEnergie),"kWh")." $wirkLeistung : ".nf(GetValue($wirkLeistung),"kW")." ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
+                                }
+                            }
 						}
 						
 					}
-				$leistungVergleich=($energie-GetValue($EnergieID))*4;
+                $lastChanged=IPS_GetVariable($EnergieID)["VariableUpdated"];
+                $timeChanged=time()-$lastChanged;    // in Sekunden
+                echo "  Last updated ".date("d.m.Y H:i:s",$lastChanged)." seit $timeChanged Sekunden,  Wert  :  ".nf(GetValue($EnergieID),"kWh")." \n";
 
-				SetValue($EnergieID,$energie);
-				SetValue($LeistungID,$leistung);
-				echo "  Neue Werte : ".$energie." kWh  ".$leistung." kW    Zum Vergleich : ".$leistungVergleich." kW\n"; 
+
+				$leistungVergleich=($energie-GetValue($EnergieID))/$timeChanged*15*60*4;
+                if ($timeChanged>880 )      // 15 Minuten sind 900 Sekunden
+                    {
+				    SetValue($EnergieID,$energie);
+				    SetValue($LeistungID,$leistung);
+				    echo "  Neue Werte : ".nf($energie,"kWh")."  ".nf($leistung,"kW")."    Zum Vergleich : ".nf($leistungVergleich,"kW")."\n"; 
+                    }
+                else echo "  Keine Update, Zeitspanne zu kurz. Neue Werte : ".nf($energie,"kWh")."  ".nf($leistung,"kW")."    Zum Vergleich : ".nf($leistungVergleich,"kW")."\n";
 				}
 			return ($registerAvailable);
 			}
@@ -1502,8 +1512,10 @@
 			
 		/* 
 		 * zweiteilige Funktionalitaet, erst die Energieregister samt Einzelwerten der letzten Tage einsammeln und
-		 * dann in einer zweiten Funktion die Ausgabe machen.
-		 * Übergabe erfolgt als Array.
+		 * dann in einer zweiten Funktion die Ausgabe als html oder text machen.
+		 * Übergabe	der Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr erfolgt als Array.
+         *
+         *
 		 */
 		
 		function writeEnergyRegistertoArray($MConfig,$debug=false)
@@ -1616,23 +1628,29 @@
 			}
 
         /* Messwerte aus dem Archive auslesen und gleichzeitig eine Plausicheck machen
+         * weitestgehend als generische Routine geschrieben
          *
          * type unterscheidet "" für Energie das sind Zählwerte, "A" zB für Messwerte
-         *
+         * display aktovoert zusätzliche Anzeigen und 
+         * delete macht eine Bereinigung von falschen Werten
          */
 
-        function getArchiveData($variableID, $starttime, $endtime, $type="")
+        function getArchiveData($variableID, $starttime, $endtime, $type="",$display=false,$deleteCheck="")
             {
             $object = @IPS_GetObject($variableID);
             if ($object === false) 
                 {
-                echo "FEHLER, Variable mit ID  $variableID  nicht vorhanden.\n";
+                echo "FEHLER,getArchiveData Variable mit ID  $variableID  nicht vorhanden.\n";
                 return(false);                
                 }
-            $display=true;
-            $delete=false;          // damit werden geloggte Werte gelöscht
 
-            $initial=true;
+            if ($deleteCheck=="Delete") $delete=true;          // damit werden geloggte Werte die als nicht plausibel gekennzeichnet sind gelöscht
+            else $delete=false;
+            
+            if ($deleteCheck=="Aggregate") $reaggregate=true;           // damit kann die Reaggregation auch bewusst aktiviert werden.
+            else $reaggregate=false;
+            
+            $initial=true;              /* Tätigkeiten nur beim allerersten Mal */
             $ergebnis=0;
             $vorigertag="";
             $disp_vorigertag="";
@@ -1641,34 +1659,31 @@
             $vorwert=0;
             $zaehler=0;
             //$variableID=44113;               
-            echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
-            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            //echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
+            if ($type == "") echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            else echo "getArchiveData: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." mit Typ $type von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
             
             $increment=1;
             //echo "Increment :".$increment."\n";
             $gepldauer=($endtime-$starttime)/24/60/60;
             do {
-                /* es könnten mehr als 10.000 Werte sein
-                    Abfrage generisch lassen
-                */
-
+                /* es könnten mehr als 10.000 Werte sein, Abfrage generisch lassen     
+                 * Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten, nicht mer als 10.000 Werte ...
+                 */
                 $werte = AC_GetLoggedValues($this->archiveHandlerID, $variableID, $starttime, $endtime, 0);
-                /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-                    Nicht mer als 10.000 Werte ...
-                */
                 //print_r($werte);
                 $anzahl=count($werte);
-                echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
 
                 if (($anzahl == 0) & ($zaehler == 0)) 
                     {
-                    echo " Keine Werte archiviert. \n";
+                    echo " Fehler, Variable: ".IPS_GetName($variableID)." hat keine Werte archiviert. \n";
                     break;
                     }   // hartes Ende der Schleife wenn keine Werte vorhanden
 
                 if ($initial)
                     {
                     /* allererster Durchlauf */
+                    echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
                     $ersterwert=$werte['0']['Value'];
                     $ersterzeit=$werte['0']['TimeStamp'];
                     }
@@ -1682,7 +1697,7 @@
                     //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
                     }
 
-                $initial=true;
+                //$initial=true;
 
                 foreach($werte as $wert)
                     {
@@ -1694,23 +1709,25 @@
                         {
                         //print_r($wert);
                         $initial=false;
-                        $vorwert=$aktwert;
-                        echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+                        $vorwert=$aktwert;  $vorzeit=$zeit;         // es gibt noch keine Vorwerte
+                        //echo "   Endzeitpunkt, letzter Wert in Zeitreihe:".date("d.m.Y H:i:s", $wert['TimeStamp'])." -> ".nf($aktwert,3)."\n";
                         }
-                    if ($type=="")      // unplausible Werte bei Energiemessung rausfiltern */
+                    if ($type=="")      /* Energie(zähl)werte, das heisst sie steigen kontinuiertlich */
                         {                        
-                        $vorwertCalc=$vorwert;                    
-                        if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
+                        $vorwertCalc=$vorwert;    $vorzeitCalc=$vorzeit;                      // Vorwert sichwern, wird gleich überschrieben
+                        if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))       // unplausible Werte bei Energiemessung rausfiltern */
                             {
                             if ($delete==true)
                                 {
                                 AC_DeleteVariableData($this->archiveHandlerID, $variableID, $zeit, $zeit);
+                                $reaggregate=true;
                                 }
                             echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
                             }
                         else
                             {
                             $vorwert=$aktwert;
+                            $vorzeit=$zeit;
                             }
                         if ($tag!=$vorigertag)
                             { /* neuer Tag */
@@ -1740,42 +1757,85 @@
                             $vorigertag=$tag;
                             }
                         }
-                    if ( ($display==true) && ($type=="") )
+                    if ($type=="")
                         {
-                        /* jeden Eintrag ausgeben */
+                        /* jeden Eintrag ausgeben, aktwert und zeit sind die Werte aus dem Archiv */
                         //print_r($wert);
                         if ($vorwertCalc != $aktwert)
                             {
-                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            $intervall= ($vorzeitCalc-$zeit);
+                            $multiplikator = (60*60)/$intervall;
+                            $leistung = ($vorwertCalc-$aktwert)*$multiplikator;
+                            if ( ($display==true) || ($multiplikator < (3.9)) || ($multiplikator > (4.1)) ) 
+                                {
+                                echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . nf($aktwert,"kWh")."   ".nf($leistung, "kW")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                                if ( ($multiplikator < (1)) || ($multiplikator > (6)) ) echo "        ==>   Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
+                                elseif ( ($multiplikator < (3.9)) || ($multiplikator > (4.1)) ) echo "              Leistungsberechnung, Zeitdauer ".nf($intervall,"s")." ".nf($multiplikator,1)." \n";
+                                }
                             }
-                        else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                        else 
+                            {       /*  erster Wert */
+                            if  ($display==true) echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . nf($aktwert, "kWh")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            }
                         }
-                    if ( ($display==true) && ($type=="A") )
+                    else
                         {
                         /* jeden Eintrag ausgeben */
-                        echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."\n";
+                        $invalid = false;
+                        switch (strtoupper($type))
+                            {
+                            case "W":               // Plausiprüfung für Leistung, gröer 10kW ist unwahrscheinlich 
+                                if (($aktwert > (10000)) or ($aktwert==0) or ($aktwert<0)) $invalid = true;      // unplausible Werte bei Leistungsmessung rausfiltern
+                                break;
+                            case "KW":               // Plausiprüfung für Leistung, gröer 10kW ist unwahrscheinlich 
+                                if (($aktwert > (10)) or ($aktwert==0) or ($aktwert<0)) $invalid = true;      // unplausible Werte bei Leistungsmessung rausfiltern
+                                break;
+                            default:
+                                break;
+                            }
+                        if ($invalid)
+                            {
+                            if ($delete==true)
+                                {
+                                AC_DeleteVariableData($this->archiveHandlerID, $variableID, $zeit, $zeit);
+                                $reaggregate=true;
+                                }
+                            echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." nicht plausibel ". PHP_EOL;
+                            }
+                        elseif ($display==true) echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")." $type\n";
                         }
 
                     $zaehler+=1;
                     }
                         //$endtime=$zeit;
                 } while (count($werte)==10000);
+            if ($delete && $reaggregate) 
+                {
+                echo "Delete of one value means re aggregate the archive.\n";
+                $result = @AC_ReAggregateVariable($this->archiveHandlerID, $variableID);
+                if ($result===false) echo " Error, take pace, re aggragation takes allready place.\n";
+                }
             }
 
 		
         /* aus den Archivedaten den grössten Wert finden 
+         * Wert zurückmelden
          */
 
         function getArchiveDataMax($variableID, $starttime, $endtime, $display=false)
             {
             $object = @IPS_GetObject($variableID);
-            if ($object === false) return(false);
+            if ($object === false) 
+                {
+                echo "FEHLER,getArchiveDataMax Variable mit ID  $variableID  nicht vorhanden.\n";
+                return(false);                
+                }
 
             $maxwert=0;
             $zaehler=0;
             //$variableID=44113;               
-            echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
-            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            //echo "ArchiveHandler: ".$this->archiveHandlerID." Variable: $variableID (".$this->ipsOps->path($variableID).")\n";
+            echo "getArchiveDataMax: Werte Variable: ".IPS_GetName($variableID)."/".IPS_GetName(IPS_GetParent($variableID))." Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
             
             $gepldauer=($endtime-$starttime)/24/60/60;
 
@@ -1840,7 +1900,7 @@
     /******************************************************************************************************************/
 
         /*
-         * Routinen werden für die Auswertung der Datenströme vom Zähler und zusätzlichen berechnungen verwendet
+         * Routinen werden für die Auswertung der Datenströme vom Zähler und zusätzlichen Berechnungen verwendet
          */
 
         function do_register($config,$content,$zaehlerid)

@@ -17,11 +17,9 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */
 	 
-	/**@defgroup ipstwilight IPSTwilight
-	 * @ingroup modules_weather
-	 * @{
+	/**@defgroup Report
 	 *
-	 * Script zur Weiterleitung von Daten an einen Visualisierungsserver in BKS
+	 * Script zur Visualisierung von Daten mit Highcharts, so ei auch das Wetter und andere Charts
 	 *
 	 *
 	 * @file          Report_Installation.ips.php
@@ -54,16 +52,45 @@
 	echo "\nKernelversion : ".IPS_GetKernelVersion()."\n";
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "IPSModulManager Version : ".$ergebnis."\n";
-	$ergebnis=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
-	echo "CustomComponent Version : ".$ergebnis."\n";
+	$ergebnisCustoComponent=$moduleManager->VersionHandler()->GetVersion('CustomComponent')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
+	echo "CustomComponent Version : ".$ergebnisCustoComponent."\n";
+	$ergebnisHighCharts=$moduleManager->VersionHandler()->GetVersion('IPSHighcharts')."     Status: ".$moduleManager->VersionHandler()->GetModuleState();
+	echo "IPSHighcharts Version   : ".$ergebnisHighCharts."\n";
 
- 	$installedModules = $moduleManager->GetInstalledModules();
-	$inst_modules="\nInstallierte Module:\n";
-	foreach ($installedModules as $name=>$modules)
-		{
-		$inst_modules.=str_pad($name,24)." ".$modules."\n";
-		}
-	echo $inst_modules."\n";
+    echo "\n";
+    $knownModules     = $moduleManager->VersionHandler()->GetKnownModules();
+    $installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+    $inst_modules = "Verfügbare Module und die installierte Version :\n\n";
+    $inst_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+
+    $upd_modules = "Module die upgedated werden müssen und die installierte Version :\n\n";
+    $upd_modules.= "Modulname                  Version    Status/inst.Version         Beschreibung\n";
+
+    foreach ($knownModules as $module=>$data)
+        {
+        $infos   = $moduleManager->GetModuleInfos($module);
+        $inst_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10);
+        if (array_key_exists($module, $installedModules))
+            {
+            //$html .= "installiert als ".str_pad($installedModules[$module],10)."   ";
+            $inst_modules .= "installiert als ".str_pad($infos['CurrentVersion'],10)."   ";
+            if ($infos['Version']!=$infos['CurrentVersion'])
+                {
+                $inst_modules .= "***";
+                $upd_modules .=  str_pad($module,26)." ".str_pad($infos['Version'],10)." ".str_pad($infos['CurrentVersion'],10)."   ".$infos['Description']."\n";
+                $loadfromrepository[]=$module;
+                }
+            }
+        else
+            {
+            $inst_modules .= "nicht installiert            ";
+            }
+        $inst_modules .=  $infos['Description']."\n";
+        }
+        
+    echo $inst_modules;
+    echo "\n".$upd_modules;
+    echo "-----------------------------------------------\n\n";
 
 	if (isset ($installedModules["IPSHighcharts"]))
 		{
@@ -100,7 +127,7 @@
 		/* alle Instanzen dargestellt */
 		//echo IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
 		//print_r($result);
-	}
+	    }
 	
 	echo "\nVorgesehene Webfronts für die Darstellung aus dem .ini File:\n";
 	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
@@ -160,9 +187,11 @@
 		$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
 		}
 
-	// ----------------------------------------------------------------------------------------------------------------------------
-	// Program Installation
-	// ----------------------------------------------------------------------------------------------------------------------------
+/*******************************
+ *
+ * Program Installation, Constants, Associations etc.
+ *
+ ********************************/
 	
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -216,17 +245,26 @@
 	CreateProfile_Associations ('IPSReport_PeriodAndCount',   $associationsPeriodAndCount);
 
 
+/*******************************
+ *
+ * Report Config abarbeiten
+ *
+ ********************************/
+
   	$report_config=Report_GetConfiguration();
+    echo "\n";
+    echo "Report_GetConfiguration abarbeiten. Es gibt ".count($report_config)." Einträge. Das ist die lange detaillierte Liste.\n";
+
   	$count=0;
 	$associationsValues = array();
 	foreach ($report_config as $displaypanel=>$values)
 		{
-		echo "Erstellen von Profileintrag ".$displaypanel."  \n";
+		//echo "     Profileintrag ".$displaypanel."  \n";
 		$associationsValues[$count]=$displaypanel;
 		$count++;
   		}
 	CreateProfile_Associations ('IPSReport_SelectValues',     $associationsValues);
-	print_r($associationsValues);
+	//print_r($associationsValues);
 
 	// ===================================================================================================
 	// Add Variables
@@ -284,14 +322,14 @@
   	$count=0;
 	foreach ($report_config as $displaypanel=>$values)
 		{
-	   echo "Erstellen von Profileintrag ".$displaypanel." mit Farbe ".$values['color'].". \n";
+	   echo "      Profileintrag ".$displaypanel." mit Farbe ".$values['color'].". \n";
 	   IPS_SetVariableProfileAssociation($pname, $count, $displaypanel, "", $values['color']); //P-Name, Value, Assotiation, Icon, Color
 	   $count++;
   		}
-   IPS_SetVariableProfileValues($pname, 0, $count, 1); //PName, Minimal, Maximal, Schrittweite
-	 echo "Profil erstellt mit ".$count. " Einträgen.\n";
+    IPS_SetVariableProfileValues($pname, 0, $count, 1); //PName, Minimal, Maximal, Schrittweite
+	//echo "Profil erstellt mit ".$count. " Einträgen.\n";
 	IPS_SetVariableCustomProfile($ReportPageTypeID,$pname); // Ziel-ID, P-Name
-
+    echo "\n";
 
 /*	$pname="ReportTimeControl";
 	if (IPS_VariableProfileExists($pname) == false)

@@ -4,7 +4,7 @@
 
 
 erstellt verschiedene Reports aus den vorhandenen Daten
-benötigt HighCharts
+benÃ¶tigt HighCharts
 
 
 */
@@ -43,8 +43,10 @@ if ($_IPS['SENDER']=="WebFront")
 
 	}
 
+echo "Report";
+
 /*
- *  nur mehr Testbench da alles nun mit ähnlich wie IPSPower gelagerten Routimnen absolviert wird
+ *  nur mehr Testbench da alles nun mit Ã¤hnlich wie IPSPower gelagerten Routimnen absolviert wird
  *
  */
 
@@ -141,7 +143,7 @@ if ($_IPS['SENDER']=="WebFront")
 									if ($unit==IPSRP_VALUETYPE_TEMPERATURE)
 									   {
 								     	$CfgDaten['yAxis'][$index]['title']['text'] = "Temperaturen";
-						   		 	$CfgDaten['yAxis'][$index]['Unit'] = '°C';
+						   		 	$CfgDaten['yAxis'][$index]['Unit'] = 'Â°C';
 								    	//$CfgDaten['yAxis'][$i]['tickInterval'] = 5;
 						   		 	//$CfgDaten['yAxis'][$i]['min'] = -20;
 							  		 	//$CfgDaten['yAxis'][$i]['max'] = 50;
@@ -185,7 +187,7 @@ if ($_IPS['SENDER']=="WebFront")
 		$jetzt=time();
 		$starttime=$jetzt-24*60*60;
 		//echo "Aktuelle Zeit :".$jetzt."\n";
-		// Zeitraum welcher dargestellt werden soll (kann durch die Zeitvorgaben in den Serien verändert werden)
+		// Zeitraum welcher dargestellt werden soll (kann durch die Zeitvorgaben in den Serien verÃ¤ndert werden)
 		//$CfgDaten['StartTime'] = mktime(0,0,0, date("m", time()), date("d",time())-1, date("Y",time())); // ab 00:00 Uhr von vor 10 Tagen
 		//$CfgDaten['StartTime'] = mktime(date("H", $jetzt),date("i", $jetzt),date("s", $jetzt), date("m", $jetzt), date("d",$jetzt), date("Y",$jetzt)); // ab 00:00 Uhr von vor 10 Tagen
 		//$CfgDaten['EndTime'] = mktime(23,59,59, date("m", time()), date("d",time()), date("Y",time())); // ab heute 23:59 Uhr, oder
@@ -225,20 +227,20 @@ $CfgDaten['RunMode'] = "script";     // file, script, popup
 if ($CfgDaten['RunMode'] == "popup")
     {
     $CfgDaten['WebFrontConfigId'] = 26841;
-    $CfgDaten['WFCPopupTitle'] = "Ich bin der Text, welcher als Überschrift im Popup gezeigt wird";
+    $CfgDaten['WFCPopupTitle'] = "Ich bin der Text, welcher als Ãœberschrift im Popup gezeigt wird";
     }
 
-// IPS Variablen ID´s
+// IPS Variablen IDÂ´s
 
 $CfgDaten["ArchiveHandlerId"]= IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 $CfgDaten["ContentVarableId"]= $contentvar_ID; // ID der Content-Variable
 $CfgDaten["HighChartScriptId"]= 11712;                  // ID des Highcharts Scripts
 
-// Übergabe als File oder ScriptID
+// Ãœbergabe als File oder ScriptID
 $CfgDaten["File"]= true;
 
-// Alle     $CfgDaten["HighChart"] Parameter werden an das IP_Template übergeben
+// Alle     $CfgDaten["HighChart"] Parameter werden an das IP_Template Ã¼bergeben
 $CfgDaten["HighChart"]["Theme"]="IPS.js";   // created by KHC
 
 $CfgDaten["PlotType"]= $chart_style;
@@ -246,7 +248,7 @@ $CfgDaten["PlotType"]= $chart_style;
 // Highcharts oder Highstock (default = Highcharts
 $CfgDaten['Ips']['ChartType'] = 'Highcharts';
 
-// Zeitraum welcher dargestellt werden soll (kann durch die Zeitvorgaben in den Serien verändert werden)
+// Zeitraum welcher dargestellt werden soll (kann durch die Zeitvorgaben in den Serien verÃ¤ndert werden)
 //$CfgDaten['StartTime'] = mktime(0,0,0, date("m", time()), date("d",time())-10, date("Y",time())); // ab 00:00 Uhr von vor 10 Tagen
 //$CfgDaten['EndTime'] = mktime(23,59,59, date("m", time()), date("d",time()), date("Y",time())); // ab heute 23:59 Uhr, oder //$CfgDaten['EndTime'] = time();   // = bis jetzt
 
@@ -398,13 +400,13 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
 
 */
 
-    // Serienübergreifende Einstellung für das Laden von Werten
-    $CfgDaten['AggregatedValues']['HourValues'] = 4;      // ist der Zeitraum größer als X Tage werden Stundenwerte geladen, -1 alle Werte
-    $CfgDaten['AggregatedValues']['DayValues'] = 100;       // ist der Zeitraum größer als X Tage werden Tageswerte geladen
-    $CfgDaten['AggregatedValues']['WeekValues'] = -1;      // ist der Zeitraum größer als X Tage werden Wochenwerte geladen
-    $CfgDaten['AggregatedValues']['MonthValues'] = -1;      // ist der Zeitraum größer als X Tage werden Monatswerte geladen
-    $CfgDaten['AggregatedValues']['YearValues'] = -1;          // ist der Zeitraum größer als X Tage werden Jahreswerte geladen
-    $CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;     // ist der Zeitraum größer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen    $CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
+    // SerienÃ¼bergreifende Einstellung fÃ¼r das Laden von Werten
+    $CfgDaten['AggregatedValues']['HourValues'] = 4;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Stundenwerte geladen, -1 alle Werte
+    $CfgDaten['AggregatedValues']['DayValues'] = 100;       // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Tageswerte geladen
+    $CfgDaten['AggregatedValues']['WeekValues'] = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Wochenwerte geladen
+    $CfgDaten['AggregatedValues']['MonthValues'] = -1;      // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Monatswerte geladen
+    $CfgDaten['AggregatedValues']['YearValues'] = -1;          // ist der Zeitraum grÃ¶ÃŸer als X Tage werden Jahreswerte geladen
+    $CfgDaten['AggregatedValues']['NoLoggedValues'] = 1000;     // ist der Zeitraum grÃ¶ÃŸer als X Tage werden keine Boolean Werte mehr geladen, diese werden zuvor immer als Einzelwerte geladen    $CfgDaten['AggregatedValues']['MixedMode'] = false;     // alle Zeitraumbedingungen werden kombiniert
     $CfgDaten['AggregatedValues']['MixedMode'] = false;
     // Systematik funktioniert jetzt additiv. D.h. die angegebenen Werte gehen ab dem letzten Wert
     //
@@ -417,8 +419,8 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // *** Highcharts Options ***
     // **************************************************************************************
     // Ab hier werden die Bereiche des Highchart-Objektes parametriert.
-    // Dieser Bereich wurde (soweit möglich) identisch der Originalstruktur gehalten.
-    // Informationen über die Parametrierung findet man unter http://www.highcharts.com/ref/
+    // Dieser Bereich wurde (soweit mÃ¶glich) identisch der Originalstruktur gehalten.
+    // Informationen Ã¼ber die Parametrierung findet man unter http://www.highcharts.com/ref/
 
     // **************************************************************************************
     // *** chart *** http://www.highcharts.com/ref/#chart
@@ -434,19 +436,19 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // **************************************************************************************
     // *** title *** siehe http://www.highcharts.com/ref/#title
     // **************************************************************************************
-    // $CfgDaten['title']['text'] = "Chart-Überschrift";  // Überchrift des gesamten Charts
+    // $CfgDaten['title']['text'] = "Chart-Ãœberschrift";  // Ãœberchrift des gesamten Charts
     //        -> veraltet: 'Title' -> verwende ['title']['text']
 
-    //$CfgDaten['title']['text'] = "Chart-Überschrift";
+    //$CfgDaten['title']['text'] = "Chart-Ãœberschrift";
 
     // **************************************************************************************
     // *** subtitle *** siehe http://www.highcharts.com/ref/#subtitle
     // **************************************************************************************
-    // $CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%" // Sub-Überschrift. Wenn nichts angegeben wird wird dieser String als Default verwendet
+    // $CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%" // Sub-Ãœberschrift. Wenn nichts angegeben wird wird dieser String als Default verwendet
     //        -> veraltet: 'SubTitle' -> verwende ['subtitle']['text']
     // $CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i"    // z.B.: "(D) d.m.Y H:i" (wird auch als Default herangezogen wenn nichts konfiguriert wurde)
     //        -> veraltet: 'SubTitleDateTimeFormat' -> verwende ['subtitle']['Ips']['DateTimeFormat']
-    //    -> entfallen: 'SubTitleFormat' -> unnötiger Paramter, wird jetzt in ['subtitle']['text'] angegeben
+    //    -> entfallen: 'SubTitleFormat' -> unnÃ¶tiger Paramter, wird jetzt in ['subtitle']['text'] angegeben
 
     $CfgDaten['subtitle']['text'] = "Zeitraum: %STARTTIME% - %ENDTIME%";
     $CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";
@@ -455,7 +457,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // *** tooltip *** http://www.highcharts.com/ref/#tooltip
     // **************************************************************************************
     // $CfgDaten['tooltip']['enabled'] = false;
-    // $CfgDaten['tooltip']['formatter'] = Null; // IPS erstellt selbständig einen Tooltip
+    // $CfgDaten['tooltip']['formatter'] = Null; // IPS erstellt selbstÃ¤ndig einen Tooltip
     // $CfgDaten['tooltip']['formatter'] = ""; // Standard - Highcharts Tooltip
 
     // **************************************************************************************
@@ -466,7 +468,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // **************************************************************************************
     // *** lang *** http://www.highcharts.com/ref/#lang
     // **************************************************************************************
-    // $CfgDaten['lang']['resetZoom'] = "Zoom zurücksetzten";
+    // $CfgDaten['lang']['resetZoom'] = "Zoom zurÃ¼cksetzten";
 
     // **************************************************************************************
     // *** legend *** http://www.highcharts.com/ref/#legend
@@ -484,7 +486,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // **************************************************************************************
     // $CfgDaten['yAxis'][0]['title']['text'] = "Temperaturen"; // Bezeichnung der Achse
     //        -> veraltet: 'Name' und 'TitleText' -> verwende ['title']['text']
-    // $CfgDaten['yAxis'][0]['Unit'] = "°C";    // Einheit für die Beschriftung die Skalenwerte
+    // $CfgDaten['yAxis'][0]['Unit'] = "Â°C";    // Einheit fÃ¼r die Beschriftung die Skalenwerte
     //    $CfgDaten['yAxis'][0]['min'] = 0; // Achse beginnt bei Min (wenn nichts angegeben wird wird der Min der Achse automatisch eingestellt)
     //    $CfgDaten['yAxis'][0]['max'] = 40; // Achse geht bis Max (wenn nichts angegeben wird wird der Max der Achse automatisch eingestellt)
     //        -> veraltet: 'Min' und 'Max'
@@ -498,7 +500,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
 
 	/*
     $CfgDaten['yAxis'][0]['title']['text'] = "Temperaturen";
-    $CfgDaten['yAxis'][0]['Unit'] = "°C";
+    $CfgDaten['yAxis'][0]['Unit'] = "Â°C";
     $CfgDaten['yAxis'][0]['opposite'] = false;
     $CfgDaten['yAxis'][0]['tickInterval'] = 5;
     $CfgDaten['yAxis'][0]['min'] = 0;
@@ -509,8 +511,8 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     //    $CfgDaten['yAxis'][1]['Unit'] = "%";
     //    $CfgDaten['yAxis'][1]['opposite'] = true;
 
-    //    $CfgDaten['yAxis'][2]['title']['text'] = "Drehgriffkontakte / Türkontakte";
-    //    $CfgDaten['yAxis'][2]['labels']['formatter'] = "@function() { if (this.value == 0.5) return 'geschlossen'; if (this.value == 1) return 'gekippt';if (this.value == 2) return 'geöffnet' }@";
+    //    $CfgDaten['yAxis'][2]['title']['text'] = "Drehgriffkontakte / TÃ¼rkontakte";
+    //    $CfgDaten['yAxis'][2]['labels']['formatter'] = "@function() { if (this.value == 0.5) return 'geschlossen'; if (this.value == 1) return 'gekippt';if (this.value == 2) return 'geÃ¶ffnet' }@";
     //    $CfgDaten['yAxis'][2]['allowDecimals'] = true;
     //    $CfgDaten['yAxis'][2]['showFirstLabel '] = false;
     //    $CfgDaten['yAxis'][2]['showLastLabel '] = false;
@@ -525,40 +527,40 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     // **************************************************************************************
     // $serie['name'] = "Temperatur; // Name der Kurve (Anzeige in Legende und Tooltip)
     //        -> veraltet: 'Name' -> verwende [series']['name']
-    // $serie['Unit'] = "°C"; // Anzeige in automatisch erzeugtem Tooltip
+    // $serie['Unit'] = "Â°C"; // Anzeige in automatisch erzeugtem Tooltip
     //     wenn $serie['Unit'] = NULL; // oder Unit wird gar nicht definiert, wird versucht die Einheit aus dem Variablenprofil automatisch auszulesen
-    // $serie['ReplaceValues'] = false; // Werte werden wie geloggt übernommen
-    //     $serie['ReplaceValues'] = array(0=>0.2,1=>10) // der Wert 0 wird in 0.2 geändert, der Wert 1 wird in 10 geändert
-    //       das macht für die Darstellung von Boolean Werte Sinn, oder für Drehgriffkontakte (Werte 0,1,2)
+    // $serie['ReplaceValues'] = false; // Werte werden wie geloggt Ã¼bernommen
+    //     $serie['ReplaceValues'] = array(0=>0.2,1=>10) // der Wert 0 wird in 0.2 geÃ¤ndert, der Wert 1 wird in 10 geÃ¤ndert
+    //       das macht fÃ¼r die Darstellung von Boolean Werte Sinn, oder fÃ¼r Drehgriffkontakte (Werte 0,1,2)
     // $serie['type'] = 'spline'; // Festlegung des Kuventypes (area, areaspline, line, spline, pie, Column)
     // $serie['yAxis'] = 0; // Nummer welche Y-Achse verwendet werden soll (ab 0)
     //     -> veraltet: 'Param' -> verwende die Highcharts Parameter - sollte eigentlich noch so funktionieren wie in IPS-Highcharts V1.x
-    // $serie['AggType'] = 0 // Festlegung wie die Werte gelesen werden soll (0=Hour, 1=Day, 2=Week, 3=Month, 4=Year), hat Vorrang gegenüber den Einstellungen in AggregatedValues
+    // $serie['AggType'] = 0 // Festlegung wie die Werte gelesen werden soll (0=Hour, 1=Day, 2=Week, 3=Month, 4=Year), hat Vorrang gegenÃ¼ber den Einstellungen in AggregatedValues
     //    wird kein AggType definiert werden alle gelogten Werte angezeigt
     // $serie['AggNameFormat'] = "d.m.Y H:i"; // (gilt nur bei den Pies, wenn eine Id verwendet wird), entspricht dem PHP-date("xxx") Format, welches das Format der Pie Namen festlegt, wenn keine Eingabe werden Default Werte genommen
-    // $serie['Offset'] = 24*60*60; hiermit können Kurven unterschiedlicher Zeiträume in einem Chart dargestellt. Angabe ist in Minuten
-    //    $serie['StartTime'] = mktime(0,0,0,1,1,2012);     // wird für die entsprechende Serie eine Anfangs- und/oder Endzeitpunkt festgelegt wird dieser verwendet. Ansonsten wird
+    // $serie['Offset'] = 24*60*60; hiermit kÃ¶nnen Kurven unterschiedlicher ZeitrÃ¤ume in einem Chart dargestellt. Angabe ist in Minuten
+    //    $serie['StartTime'] = mktime(0,0,0,1,1,2012);     // wird fÃ¼r die entsprechende Serie eine Anfangs- und/oder Endzeitpunkt festgelegt wird dieser verwendet. Ansonsten wird
     // $serie['EndTime'] = mktime(0,0,0,2,1,2012);          // der Zeitpunkt der Zeitpunkt aus den $CfgDaten genommen
     // $serie['ScaleFactor'] = 10; // Skalierungsfaktor mit welchem der ausgelesene Werte multipliziert wird
     // $serie['RoundValue'] = 1; // Anzahl der Nachkommastellen
-    //    $serie['AggValue'] ='Min' // über AggValue kann Min/Max oder Avg vorgewählt werden (Default bei keiner Angabe ist Avg)
+    //    $serie['AggValue'] ='Min' // Ã¼ber AggValue kann Min/Max oder Avg vorgewÃ¤hlt werden (Default bei keiner Angabe ist Avg)
     //        ist sinnvoll wenn nicht Einzelwerte sondern Stundenwerte, Tageswerte, usw. ausgelesen werden
-    // $serie['data'] = array('TimeStamp'=> time(),'Value'=12) // hier kann ein Array an eigenen Datenpunkten übergeben werden.
-	 //        In diesem Fall werden für diese Serie keine Daten aus der Variable gelesenen.
+    // $serie['data'] = array('TimeStamp'=> time(),'Value'=12) // hier kann ein Array an eigenen Datenpunkten Ã¼bergeben werden.
+	 //        In diesem Fall werden fÃ¼r diese Serie keine Daten aus der Variable gelesenen.
 
 
 
 /*    $serie = array();
     $serie['type'] = $chart_style;
 
-	 /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+	 /* wenn Werte fÃ¼r die Serie aus der geloggten Variable kommen : */
 /*	 $serie['name'] = 'Aussen-Ostseite-Temperatur';
-	 $serie['Unit'] = "°C";
+	 $serie['Unit'] = "Â°C";
     $serie['Id'] = 47591 ;
 
     /* oder wenn Daten selbst eingegeben werden : */
-    	//$serie['data'][] = array('name'=>'Wohnzimmer-Temperatur', 'Id' => 43217, 'Unit'=>"°C");
-    	//$serie['data'][] = array('name'=>'Wintergarten-Temperatur', 'Id' => 52093, 'Unit'=>"°C");
+    	//$serie['data'][] = array('name'=>'Wohnzimmer-Temperatur', 'Id' => 43217, 'Unit'=>"Â°C");
+    	//$serie['data'][] = array('name'=>'Wintergarten-Temperatur', 'Id' => 52093, 'Unit'=>"Â°C");
     	//$serie['data'][] = array('name'=>'Luftfeuchte', 'Id' => 17593, 'Unit'=>"%");
 
     //$serie['allowPointSelect'] = true;
@@ -576,7 +578,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
 /*	 $serie = array();
     $serie['name'] = "Wintergarten-Temperatur";
     $serie['Id'] = 52093 ;
-/*    $serie['Unit'] = "°C";
+/*    $serie['Unit'] = "Â°C";
     $serie['ReplaceValues'] = false;
     $serie['RoundValue'] = 0;
     $serie['type'] = $chart_style;
@@ -594,7 +596,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
 	 $serie = array();
     $serie['name'] = "Aussentemperatur";
     $serie['Id'] = 28314 ;
-/*    $serie['Unit'] = "°C";
+/*    $serie['Unit'] = "Â°C";
     $serie['type'] = $chart_style;
     $serie['marker']['enabled'] = false;
     $CfgDaten['series'][] = $serie;
@@ -623,7 +625,7 @@ $CfgDaten["Categories"] = $CfgDaten["Categories"].'"'.IPS_GetName($tmp).'",'."\n
     //    $serie = array();
     //    $serie['name'] = "Drehgriffkontakt";
     //    $serie['Id'] = 44451;
-    //    $serie['Unit'] = array(0=>'geschlossen', 1=>'gekippt', 2=>'geöffnet');
+    //    $serie['Unit'] = array(0=>'geschlossen', 1=>'gekippt', 2=>'geÃ¶ffnet');
     //    $serie['ReplaceValues'] = array(0=>0.5, 1=>1, 2=>2);
     //    $serie['type'] = "line";
     //    $serie['step'] = true;

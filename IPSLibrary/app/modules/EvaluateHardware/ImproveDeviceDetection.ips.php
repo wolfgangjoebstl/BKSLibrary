@@ -61,6 +61,83 @@
     echo "\n";   
     if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
 
+
+    /* 
+     * alle Events auslesen und danach etwas besser strukturieren
+     *
+     *
+     ****************************/
+
+	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
+	
+	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
+	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+
+    $config=IPSMessageHandler_GetEventConfiguration();
+    //print_r($config);
+
+	$result=array();
+    $filter = "";
+    echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+    $filter="IPSMessageHandler_Event";
+	
+                $alleEreignisse = IPS_GetEventList();
+                $index=0;
+                foreach ($alleEreignisse as $ereignis)
+                    {
+                    if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
+                        {
+						$result[$index]["OID"]=$ereignis;
+						$result[$index]["Name"]=IPS_GetName($ereignis);
+						$result[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
+						$details=IPS_GetEvent($ereignis);
+						//print_r($details);
+						switch ($details["EventType"])
+							{
+							case 0:
+								$result[$index]["Type"]="Auslöser";
+								break;
+							case 1:
+								$result[$index]["Type"]="Zyklisch";
+								break;
+							case 2:
+								$result[$index]["Type"]="Wochenplan";
+								break;
+							}
+                        $result[$index]["LastRun"]=$details["LastRun"];
+                        //$result[$index]["EventConditions"]=$details["EventConditions"];
+                        $result[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
+						$script=str_replace("\n","",$details["EventScript"]);
+						$result[$index]["Script"]=$script;
+                        $index++;
+						}
+                    }
+
+        foreach ($result as $index => $entry)
+            {
+    		echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+            if ($filter == "IPSMessageHandler_Event")
+                {
+                $trigger=$entry["TriggerVariableID"];
+                echo str_pad($entry["Name"],15)." ";
+                echo str_pad(IPS_GetName($trigger),24)."  ";
+                if (isset($config[$trigger])) 
+                    {
+                    echo str_pad($config[$trigger][1],50);
+                    }
+                else echo str_pad("-----",50);
+                }
+            else echo str_pad($entry["Name"],40)." ";
+            if ($entry["LastRun"]==0) echo str_pad("nie",20);
+            else 
+                {
+                $timePassed=time()-$entry["LastRun"];
+                echo str_pad("vor ".nf($timePassed,"s"),20);
+                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
+                }
+            echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
+            }
+
     /*
 	$modulhandling->printLibraries();
     echo "\n";
