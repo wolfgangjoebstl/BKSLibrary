@@ -112,15 +112,15 @@ $status=RemoteAccessServerTable();
 		/* alle Temperaturwerte der Heizungssteuerungen ausgeben */
 		if (isset($Key["COID"][$keyword])==true)
   			{
-		   echo "Heizungssteuerung gefunden:\n";
-	      $oid=(integer)$Key["COID"][$keyword]["OID"];
-      	$variabletyp=IPS_GetVariable($oid);
+		    echo "FHT Heizungssteuerung gefunden:\n";
+	        $oid=(integer)$Key["COID"][$keyword]["OID"];
+      	    $variabletyp=IPS_GetVariable($oid);
 			if ($variabletyp["VariableProfile"]!="")
 			   {
 				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			else
-	   		{
+	   		    {
 				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".number_format((microtime(true)-$startexec),2)." Sekunden\n";
 				}
 			//$DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','par3');
@@ -140,9 +140,9 @@ $status=RemoteAccessServerTable();
 					$parameter.=$Name.":".$result.";";
 					}
 				}
-		   $messageHandler = new IPSMessageHandler();
-		   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+		    $messageHandler = new IPSMessageHandler();
+		    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+		    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Temperatur,'.$parameter,'IPSModuleSensor_Temperatur,1,2,3');
 			echo "Heizungssteuerungs Register mit Parameter :".$parameter." erzeugt.\n";
 			}

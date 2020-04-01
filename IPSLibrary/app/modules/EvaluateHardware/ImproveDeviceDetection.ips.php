@@ -73,7 +73,11 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php", "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 
-    $config=IPSMessageHandler_GetEventConfiguration();
+
+    /* gleiche Funktion wie Evaluate_Overview */
+
+	$messageHandler = new IPSMessageHandlerExtended();      /* auch delete von Events moeglich */
+    $config=IPSMessageHandler_GetEventConfiguration();      /* keine vernünftige Auslesefunktion für die Config */
     //print_r($config);
 
 	$result=array();
@@ -113,6 +117,7 @@
 						}
                     }
 
+        $delete=array();
         foreach ($result as $index => $entry)
             {
     		echo str_pad($index,3)." ".str_pad($entry["OID"],6);
@@ -120,7 +125,14 @@
                 {
                 $trigger=$entry["TriggerVariableID"];
                 echo str_pad($entry["Name"],15)." ";
-                echo str_pad(IPS_GetName($trigger),24)."  ";
+                $info=@IPS_GetVariable($trigger);
+                if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
+                else 
+                    {
+                    echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
+                    $delete[$entry["OID"]]=true;
+                    }
+                echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
                 if (isset($config[$trigger])) 
                     {
                     echo str_pad($config[$trigger][1],50);
@@ -137,6 +149,12 @@
                 }
             echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
             }
+        echo "Folgende Events loeschen:\n";
+        print_r($delete);
+        		/*		$messageHandler->UnRegisterEvent($eventID);
+						IPS_DeleteEvent($childrenID);
+                 */
+
 
     /*
 	$modulhandling->printLibraries();

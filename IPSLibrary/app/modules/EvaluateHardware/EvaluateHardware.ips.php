@@ -72,6 +72,14 @@ if (isset($installedModules["DetectMovement"]))
     $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
     }
 
+    echo "\n";
+    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
+    echo "\n";
+
 /* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
 
 if (isset($installedModules["OperationCenter"])) 
@@ -86,14 +94,6 @@ if (isset($installedModules["OperationCenter"]))
     }
 
 //print_r($installedModules); 
-
-    echo "\n";
-    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
-    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
-    echo "\n";
 
     $ipsOps = new ipsOps();
 	$modulhandling = new ModuleHandling();	                	            // in AllgemeineDefinitionen, alles rund um Bibliotheken, Module und Librariestrue bedeutet mit Debug
@@ -198,7 +198,7 @@ IPS_SetEventActive($tim1ID,true);
     echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $hardware = $topologyLibrary->get_HardwareList($discovery);
         //print_r($hardware);
-        echo "   Anordnung nach Gerätetypen:\n";
+        echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
         foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
     echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden

@@ -1376,8 +1376,12 @@ function GetValueIfFormatted($oid)
     return ($result);    
     }
 
-/******************************************************************/
-
+/*****************************************************************
+ *
+ * CreateVariableByName, CreateCategoryByName 
+ * Variable oder Kategorie wird nur angelegt wenn sie noch nicht vorhanden ist
+ *
+ */
 
 function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     {
@@ -1398,6 +1402,20 @@ function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $
     if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
   	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
     if($action!=0) { IPS_SetVariableCustomAction($vid,$action); }
+    return $vid;
+    }
+
+function CreateCategoryByName($parentID, $name, $position=0)
+    {
+    $vid = @IPS_GetCategoryIDByName($name, $parentID);
+    if($vid === false)
+        {
+        $vid = IPS_CreateCategory();
+        IPS_SetParent($vid, $parentID);
+        IPS_SetName($vid, $name);
+        IPS_SetInfo($vid, "this category was created by script #".$_IPS['SELF']." ");
+        }
+	IPS_SetPosition($vid, $position);
     return $vid;
     }
 
@@ -5067,6 +5085,7 @@ class ModuleHandling
      */
 	public function getInstancesByType($type)
 		{
+        $configurator=array();
         //echo "getDiscovery aufgerufen :\n"; 
         $discovery2=IPS_GetInstanceListByModuleType($type);
         $result=array();
@@ -5655,37 +5674,33 @@ class Hardware
         }
 
     /* die devicelist wird nach bestimmten Filterkriterien gefiltert und durchsucht.
+     * Der Filter ist ähnlich wie bei anderen Routinen mit Key => needle generisch aufgebaut
+     * die Filter werden der Reihe nach auf die noch verbleibende Menge angewendet
+     * Es gibt vorgefertigte Filter Keys:
+     *      Type        oder andere, generisch es wird nach dem devicelist[Key] gesucht, die richtige Schreibweise des Keys ist erforderlich
+     *      TypeDev     Instanzen durchsuchen
+     *      TypeChan    Channels durchsuchen
      *
      */
 
-    public function getDeviceListFiltered($deviceList,$filter=array(),$debug=false)
+    public function getDeviceListFiltered($deviceList,$filter=array(),$output=false, $debug=false)
         {
         if ($debug)
             {
-            echo "getDeviceListFiltered aufgerufen. Filter deviceList with:\n";
-            print_r($filter);
+            echo "getDeviceListFiltered aufgerufen. Filter deviceList with: ".json_encode($filter)."\n";
+            //print_r($filter);
             }
         $result=array();
         if (is_array($filter))
             {
-            $result=$deviceList;    // mit der ganzen Liste anfangen
+            $result=$deviceList;    // mit der ganzen Liste anfangen, result ist das Ergebnis der vorigen Runde
             foreach ($filter as $key => $needle)
                 {
-                $deviceListInput = $result;     // und dann langsam kleiner machen
-                $result=array();                 // result wieder loeschen
+                $deviceListInput = $result;     // und dann langsam je Runde kleiner machen
+                $result=array();                 // result wieder loeschen und neu ermitteln
                 echo "    Filter $key anwenden auf ".count($deviceListInput)." Eintraege und dabei $needle suchen.\n";
-                switch ($key)
+                switch (strtoupper($key))
                     {
-                    case "Type":
-                        foreach ($deviceListInput as $device => $entry)
-                            {
-                            if ( (isset($entry[$key])) && ($entry[$key] == $needle) )
-                                {
-                                echo "           Eintrag $device mit $key gleich $needle gefunden.\n";
-                                $result[$device] = $entry;
-                                }
-                            }
-                        break;
                     case "TYPEDEV":     /* Instances durchsuchen */
                         foreach ($deviceListInput as $device => $entry)
                             {
@@ -5699,7 +5714,7 @@ class Hardware
                                         if ($instance[$key] == $needle)  
                                             {
                                             //$found = true;
-                                            echo "           Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            echo "           TYPEDEV: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
                                             $result[$device] = $entry;
                                             }
                                         //else echo $instance[$key]." ";
@@ -5723,7 +5738,7 @@ class Hardware
                                         if ($instance[$key] == $needle)  
                                             {
                                             //$found = true;
-                                            echo "           Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                            echo "           TYPECHAN: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
                                             $result[$device] = $entry;
                                             }
                                         //else echo $instance[$key]." ";
@@ -5733,11 +5748,54 @@ class Hardware
                             //if ($found) $result[$device] = $entry;
                             }
                         break;
+                    case "REGISTER":     /* Registzer Definitionen durchsuchen */
+                        foreach ($deviceListInput as $device => $entry)
+                            {
+                            //$found=false;
+                            if (isset($entry["Channels"]))
+                                {
+                                foreach ($entry["Channels"] as $instance)
+                                    {
+                                    if (isset($instance["Register"]))
+                                        {                     
+                                        foreach ($instance["Register"] as $key => $varName)    
+                                            {
+                                            if ($key == $needle)
+                                                {
+                                                //$found = true;
+                                                echo "           REGISTER: Eintrag $device mit $key gleich $needle gefunden.\n";                                            
+                                                $result[$device] = $entry;
+                                                }
+                                            }
+                                        //else echo $instance[$key]." ";
+                                        } 
+                                    }                                
+                                }
+                            //if ($found) $result[$device] = $entry;
+                            }
+                        break;
+                    case "TYPE":            // generisch, auch für SubType etc.
+                    default:
+                        foreach ($deviceListInput as $device => $entry)
+                            {
+                            if ( (isset($entry[$key])) && ($entry[$key] == $needle) )
+                                {
+                                echo "           TYPE: Eintrag $device mit $key gleich $needle gefunden.\n";
+                                $result[$device] = $entry;
+                                }
+                            }
+                        break;
                     }
+                }           // ende foreach
+            switch (strtoupper($output))
+                {
+
+                default:
+                    return($result);                
+                    break;
                 }
-            return($result);                
             }
-        else return(false);
+        else return(false);         // kein Filter angesetzt, hier false ausgeben, oder alternativ wäre es möglich die ganze devicelist auszugeben
         }
 
     /* Plausi und Syntax Check der devicelist. Als Ergebnis werden statistische  Auswertungen geliefert. 
@@ -5836,7 +5894,7 @@ class Hardware
     }
 
 
-/* Objektorientiertes class Managemenet für Geräte (Hardware)
+/* Objektorientiertes class Management für Geräte (Hardware)
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  *
  */
@@ -5855,6 +5913,13 @@ class HardwareDenonAVR extends Hardware
         }
     }
 
+/* Objektorientiertes class Management für Geräte (Hardware)
+ * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
+ *
+ * getDeviceCheck, getDeviceParameter, getDeviceChannels werden Hardware Typ spezifisch programmiert
+ *
+ */
+
 class HardwareNetatmoWeather extends Hardware
     {
 
@@ -5867,6 +5932,192 @@ class HardwareNetatmoWeather extends Hardware
         $this->deviceID = "{1023DB4A-D491-A0D5-17CD-380D3578D0FA}";           // das Gerät selbst
         parent::__construct($debug);        
         }
+
+    /* NetatmoWeather,cder Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        $debug=true;        // overwrite for local debug
+        if ($debug) echo "          getDeviceChannels:NetatmoWeather aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
+        //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        //echo "Aus den Instanzen ermittelte OIDs:\n"; print_r($oids);
+        if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch, keine OID aus entry übergeben.\n";
+        foreach ($oids as $oid => $port)
+            {
+            $typedev=$this->getNetatmoDeviceType($oid,3,true);
+            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+/*            $cids = IPS_GetChildrenIDs($oid);
+            $register=array();
+            foreach($cids as $cid)
+                {
+                $register[]=IPS_GetName($cid);
+                }
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            // gleiche Einträge eliminieren 
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                } 
+            $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+            $deviceList[$name]["Channels"][$port]["Name"]=$name;    
+
+            $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus 
+            if ($typedev<>"")  
+                {
+                //print_r($typedev);        // typedev nicht immer vollständig, Fehlerüberprüfung 
+                //$deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
+                if (isset(($typedev["Type"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];
+                else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein TYPECHAN ermittelt.\n";
+                if (isset(($typedev["Register"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["Register"]=$typedev["Register"];
+                else 
+                    {
+                    echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein Register ermittelt. typedev[register] from getHomematicDeviceType für $instanz / \"$name\" not defined.\n";
+                    $infodev    = $DeviceManager->getHomematicHMDevice($instanz,1);             // nutzt HMI Create Report 
+                    $type       = $DeviceManager->getHomematicDeviceType($instanz,0,true);     // noch einmal mit Debug wenn Name mit HM anfangt                         
+                    echo "      infodev $infodev type $type \n";
+                    print_r($typedev);
+                    }
+                if (isset(($typedev["RegisterAll"])))  $deviceList[$nameSelect[0]]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                else echo "      >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" kein RegisterAll ermittelt.\n";
+                $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
+                if ($debug) echo "       Schreibe Channels $port mit Typ ".$typedev["Type"].".\n";
+                //print_r($typedev);
+                }
+            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            */
+            if ($typedev<>"")  
+                {
+                /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben */
+                if (isset(($typedev["Type"])))  $deviceList[$name]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];     // umsetzen auf Channeltypischen Filter
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein TYPECHAN ermittelt.\n";
+                if (isset(($typedev["Register"])))  $deviceList[$name]["Channels"][$port]["Register"]=$typedev["Register"];
+                else 
+                    {
+                    echo "      >>getDeviceChannels Fehler, Name \"$name\" kein Register ermittelt. typedev[register] from getHomematicDeviceType für $instanz / \"$name\" not defined.\n";
+                    }
+                if (isset(($typedev["RegisterAll"])))  $deviceList[$name]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein RegisterAll ermittelt.\n";
+                $deviceList[$name]["Channels"][$port]["Name"]=$name;                
+                }
+            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            }
+        echo "===> Ergebnis getDeviceChannels:\n";
+        print_r($deviceList[$name]["Channels"]);
+        return (true);
+        }
+
+    /*********************************
+     *
+     * gibt für eine Netatmo Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     *
+     *
+     ***********************************************/
+
+    function getNetatmoDeviceType($instanz, $outputVersion=false, $debug=false)
+	    {
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $netatmo=array();
+    	foreach($cids as $cid)
+	    	{
+		    $netatmo[$cid]=IPS_GetName($cid);
+    		}
+    	return ($this->NetatmoDeviceType($netatmo,$outputVersion, $debug));
+    	}
+
+    /*********************************
+     * 
+     * Netatmo Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     *
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
+     ****************************************/
+
+    private function NetatmoDeviceType($register, $outputVersion=false, $debug=false)
+        {
+		sort($register);
+        $registerNew=array();
+    	$oldvalue="";        
+        /* gleiche Einträge eliminieren */
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}         
+        $found=true; 
+        if ($debug) 
+            {
+            echo "                NetatmoDeviceType: Info mit Debug aufgerufen. Parameter \"";
+            foreach ($registerNew as $entry) echo "$entry ";
+            echo "\"\n";
+            }
+
+        /*--Raumklimasensor-----------------------------------*/
+        if ( array_search("CO2",$registerNew) !== false)            /* Sensor Raumklima */
+            {
+            echo "                     Sensor Raumklima gefunden.\n";
+            $result[0] = "Raumklimasensor";
+            $result[1] = "Funk Raumklimasensor";
+            $result[2] = "TYPE_METER_CLIMATE";            
+            $result[3]["Type"] = "TYPE_METER_CLIMATE";            
+            $result[3]["Register"]["TEMPERATUTRE"]="Temperatur";
+            $result[3]["Register"]["HUMIDITY"]="Luftfeuchtigkeit";
+            $result[3]["Register"]["CO2"]="CO2";
+            $result[3]["Register"]["BAROPRESSURE"]="Luftdruck";
+            $result[3]["Register"]["NOISE"]="Lärm";
+            $result[3]["RegisterAll"]=$registerNew;
+            }
+        /*--Temperatursensor-----------------------------------*/
+        elseif ( array_search("Temperatur",$registerNew) !== false)            /* Sensor Temperatur */
+            {
+            //print_r($registerNew);
+            echo "                     Sensor Temperatur gefunden.\n";
+            $result[0] = "Temperatursensor";
+            $result[1] = "Funk Temperatursensor";
+            $result[2] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Type"] = "TYPE_METER_TEMPERATURE";            
+            $result[3]["Register"]["TEMPERATURE"]="Temperatur";
+            $result[3]["Register"]["HUMIDITY"]="Luftfeuchtigkeit";
+            $result[3]["RegisterAll"]=$registerNew;
+            }
+        else $found=false;
+
+        if ($found) 
+            {
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion==4) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+        }
+
     }
 
 /* Objektorientiertes class Management für Geräte (Hardware)
@@ -5976,7 +6227,7 @@ class HardwareHomematic extends Hardware
                     }    
                 if ($matrix[$port]<=1) 
                     {
-                    echo "         Info Port $port von \"$name\" (".$result["Address"].") wird nicht berücksichtigt. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
+                    if ($debug) echo "         Info Port $port von \"$name\" (".$result["Address"].") wird nicht berücksichtigt. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)."  ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  \n";
                     return(false);
                     }
                 //print_r($matrix);
