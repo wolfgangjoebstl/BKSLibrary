@@ -9,7 +9,7 @@
  *
  * RouterAufruftimer
  * RouterExectimer
- * SysPingTimer			alle 5 Minuten, wennnicht anders konfiguriert wird alls 60 Minuten syspingalldevices aufgerufen
+ * SysPingTimer			alle 5 Minuten, wenn nicht anders konfiguriert wird alle 60 Minuten syspingalldevices aufgerufen
  *						für alle bekannten Geräte (Router, LED, Denon, Cams) pingen und Status ermitteln
  *						eventuell auch reboot, reset für erhöhte betriebssicherheit
  * CyclicUpdate			Update aller IPS Module, zB immer am 12. des Monates
@@ -998,10 +998,11 @@ if ($_IPS['SENDER']=="TimerEvent")
 			break;
 			
 		case $tim4ID:
-			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
+			IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
 			/********************************************************
 			 *
-			 * Alle 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable
+			 * Alle 5 bzw. 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable, 
+             * für die Verfügbarkeit wird größere Auflösung gefahren
 			 *
 			 **********************************************************/
 			$OperationCenter->SysPingAllDevices($log_OperationCenter);

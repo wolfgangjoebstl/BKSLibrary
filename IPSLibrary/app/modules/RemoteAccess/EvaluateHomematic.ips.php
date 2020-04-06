@@ -64,10 +64,9 @@ $startexec=microtime(true);
         {
         echo "Temperatur Sensoren von verschiedenen Geräten werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
-        print_r($result);
-
-
+        //print_r($result);
         }
+
     if (false)
         {
         echo "Homematic Temperatur Sensoren werden registriert.\n";
@@ -93,7 +92,15 @@ $startexec=microtime(true);
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
-    //if (false)
+    if (function_exists('deviceList'))
+        {
+        echo "Luftfeuchtigkeit Sensoren von verschiedenen Geräten werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
+        //print_r($result);
+        }
+   
+
+    if (false)
         {
         echo "Homematic Humidity Sensoren werden registriert.\n";
         if (function_exists('HomematicList'))
@@ -101,7 +108,7 @@ $startexec=microtime(true);
             $componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
             } 
         }
-    echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden.\n";    
+
 
     /*  alte Berechnung, jetzt überall den selben Algortithmus verwenden
 
@@ -110,5 +117,9 @@ $startexec=microtime(true);
 	$remote->RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur", $startexec);  // rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler 
 	$remote->RPC_CreateVariableField($Homematic, "HUMIDITY", "Humidity", $startexec);  // rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler 
     */
+
+
+    echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden.\n"; 
+
 
 ?>

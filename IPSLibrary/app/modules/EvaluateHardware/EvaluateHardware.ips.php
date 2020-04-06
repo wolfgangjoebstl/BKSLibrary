@@ -196,9 +196,15 @@ IPS_SetEventActive($tim1ID,true);
      *
      *
      */
-    $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add FHT
-    $input["ModuleName"] = "FHT Instanzen";
+    $input["ModuleID"] =   "{56800073-A809-4513-9618-1C593EE1240C}";            // FS20EX Instanzen
+    $input["ModuleName"] = "FS20EX Instanzen";  
     $discovery[]=$input;
+    $input["ModuleID"] =   "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";            // FS20EX Instanzen
+    $input["ModuleName"] = "FS20 Instanzen";          
+    $discovery[]=$input;
+    $input["ModuleID"] =    "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";           // FHT devices Instanzen, kein Konfigurator, kein Discovery, haendische Installation
+    $input["ModuleName"] = "FHT Instanzen";
+    $discovery[]=$input;     
 
     echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $socket = $topologyLibrary->get_SocketList($discovery);

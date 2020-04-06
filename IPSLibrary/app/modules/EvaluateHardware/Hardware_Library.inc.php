@@ -125,6 +125,12 @@ class Hardware
                 $hardwareType="NetatmoWeather";  
                 break;
             case "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}":          // FHT Instanzen
+                $hardwareType="FHTFamily";  
+                break;
+            case "{56800073-A809-4513-9618-1C593EE1240C}":            // FS20EX Instanzen
+                $hardwareType="FS20EXFamily";  
+                break;
+            case "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}":            // FS20EX Instanzen
                 $hardwareType="FS20Family";  
                 break;
             default:
@@ -530,14 +536,14 @@ class HardwareNetatmoWeather extends Hardware
         parent::__construct($debug);        
         }
 
-    /* NetatmoWeather,cder Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+    /* NetatmoWeather,der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
      * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
      */
 
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
         {
         $debug=true;        // overwrite for local debug
-        if ($debug) echo "          getDeviceChannels:NetatmoWeather aufgerufen für ".$entry["OID"]." mit $name $type.\n";
+        if ($debug) echo "          getDeviceChannels: NetatmoWeather aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
         //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
         //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
         $oids=array();
@@ -968,7 +974,7 @@ class HardwareHomematic extends Hardware
         /* Durchführung */
         if ($goOn)
             {
-            if ($debug) echo str_pad("          getDeviceChannels:Homematic  für \"$name\" : ",90).str_pad(" ",40);
+            if ($debug) echo str_pad("          getDeviceChannels: Homematic  für \"$name\" : ",90).str_pad(" ",40);
             //echo "       getDeviceChannels: Channels hinzufügen.\n"; print_r($this->installedModules);
             if (isset($this->installedModules["OperationCenter"])) 
                 {
@@ -1116,6 +1122,144 @@ class HardwareFHTFamily extends Hardware
         parent::__construct($debug);        
         }
 
+    /* FHT, der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        $debug=true;        // overwrite for local debug
+        if ($debug) echo "          getDeviceChannels:FHT aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
+        //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
+        //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        //echo "Aus den Instanzen ermittelte OIDs:\n"; print_r($oids);
+        if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch, keine OID aus entry übergeben.\n";
+        foreach ($oids as $oid => $port)
+            {
+            $typedev=$this->getFHTDeviceType($oid,4,true);
+            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+            if ($typedev<>"")  
+                {
+                /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben 
+                if (isset(($typedev["Type"])))  $deviceList[$name]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];     // umsetzen auf Channeltypischen Filter
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein TYPECHAN ermittelt.\n";
+                if (isset(($typedev["Register"])))  $deviceList[$name]["Channels"][$port]["Register"]=$typedev["Register"];
+                else 
+                    {
+                    echo "      >>getDeviceChannels Fehler, Name \"$name\" kein Register ermittelt. typedev[register] from getHomematicDeviceType für $instanz / \"$name\" not defined.\n";
+                    }
+                if (isset(($typedev["RegisterAll"])))  $deviceList[$name]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein RegisterAll ermittelt.\n";
+                */
+                $deviceList[$name]["Channels"][$port]=$typedev;
+                $deviceList[$name]["Channels"][$port]["Name"]=$name;                
+                }
+            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            }
+        echo "===> Ergebnis getDeviceChannels:\n";
+        print_r($deviceList[$name]["Channels"]);
+        return (true);
+        }
+
+    /*********************************
+     *
+     * gibt für eine FHT Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     *
+     *
+     ***********************************************/
+
+    function getFHTDeviceType($instanz, $outputVersion=false, $debug=false)
+	    {
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $fht=array();
+    	foreach($cids as $cid)
+	    	{
+		    $fht[$cid]=IPS_GetName($cid);
+    		}
+    	return ($this->FHTDeviceType($fht,$outputVersion, $debug));
+    	}
+
+    /*********************************
+     * 
+     * FHT Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     *
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
+     ****************************************/
+
+    private function FHTDeviceType($register, $outputVersion=false, $debug=false)
+        {
+		sort($register);
+        $registerNew=array();
+    	$oldvalue="";        
+        /* gleiche Einträge eliminieren */
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}         
+        $found=true; 
+        if ($debug) 
+            {
+            echo "                FHTDeviceType: Info mit Debug aufgerufen. Parameter \"";
+            foreach ($registerNew as $entry) echo "$entry ";
+            echo "\"\n";
+            }
+
+        /*--Thermostat-----------------------------------*/
+        if ( (array_search("Temperatur",$registerNew) !== false) && (array_search("Soll Temperatur",$registerNew) !== false) )          /* Sensor Temperatur , Sollwert */
+            {
+            //print_r($registerNew);
+            echo "                     Thermostat Soll Temperatur und Sensor Temperatur gefunden.\n";
+            $resultRegTemp["TEMPERATURE"]="Temperatur";
+            $resultReg["SET_TEMPERATURE"]="Soll Temperatur";
+
+            $result[0] = "Wandthermostat";
+            $result[1] = "Funk Wandthermostat";
+            $result[2] = "TYPE_THERMOSTAT";            
+            $result[3]["Type"] = "TYPE_THERMOSTAT";            
+            $result[3]["Register"] = $resultReg;
+            $result[3]["RegisterAll"]=$registerNew;
+
+            $result[4]["TYPECHAN"] = "TYPE_THERMOSTAT,TYPE_METER_TEMPERATURE";              
+            $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
+            $result[4]["TYPE_THERMOSTAT"]=$resultReg;
+            $result[4]["RegisterAll"]=$registerNew;
+            }
+        else $found=false;
+
+        if ($found) 
+            {
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) return ($result[4]);
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+        }
+
     }
 
 class HardwareFS20Family extends Hardware
@@ -1129,6 +1273,142 @@ class HardwareFS20Family extends Hardware
         //$this->bridgeID = "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}";
         $this->deviceID = "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";
         parent::__construct($debug);        
+        }
+
+    /* FS20, der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        $debug=true;        // overwrite for local debug
+        if ($debug) echo "          getDeviceChannels:FS20 aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
+        //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
+        //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        //echo "Aus den Instanzen ermittelte OIDs:\n"; print_r($oids);
+        if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch, keine OID aus entry übergeben.\n";
+        foreach ($oids as $oid => $port)
+            {
+            $typedev=$this->getFS20DeviceType($oid,4,true);
+            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+            if ($typedev<>"")  
+                {
+                /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben 
+                if (isset(($typedev["Type"])))  $deviceList[$name]["Channels"][$port]["TYPECHAN"]=$typedev["Type"];     // umsetzen auf Channeltypischen Filter
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein TYPECHAN ermittelt.\n";
+                if (isset(($typedev["Register"])))  $deviceList[$name]["Channels"][$port]["Register"]=$typedev["Register"];
+                else 
+                    {
+                    echo "      >>getDeviceChannels Fehler, Name \"$name\" kein Register ermittelt. typedev[register] from getHomematicDeviceType für $instanz / \"$name\" not defined.\n";
+                    }
+                if (isset(($typedev["RegisterAll"])))  $deviceList[$name]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
+                else echo "      >>getDeviceChannels Fehler, Name \"$name\" kein RegisterAll ermittelt.\n";
+                */
+                $deviceList[$name]["Channels"][$port]=$typedev;
+                $deviceList[$name]["Channels"][$port]["Name"]=$name;                
+                }
+            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            }
+        echo "===> Ergebnis getDeviceChannels:\n";
+        print_r($deviceList[$name]["Channels"]);
+        return (true);
+        }
+
+    /*********************************
+     *
+     * gibt für eine FS20 Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     *
+     *
+     ***********************************************/
+
+    function getFS20DeviceType($instanz, $outputVersion=false, $debug=false)
+	    {
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $fs20=array();
+    	foreach($cids as $cid)
+	    	{
+		    $fs20[$cid]=IPS_GetName($cid);
+    		}
+    	return ($this->FS20DeviceType($fs20,$outputVersion, $debug));
+    	}
+
+    /*********************************
+     * 
+     * FHT Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     *
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
+     ****************************************/
+
+    private function FS20DeviceType($register, $outputVersion=false, $debug=false)
+        {
+		sort($register);
+        $registerNew=array();
+    	$oldvalue="";        
+        /* gleiche Einträge eliminieren */
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}         
+        $found=true; 
+        if ($debug) 
+            {
+            echo "                FS20DeviceType: Info mit Debug aufgerufen. Parameter \"";
+            foreach ($registerNew as $entry) echo "$entry ";
+            echo "\"\n";
+            }
+
+        /*--Schalter-----------------------------------*/
+        if ( (array_search("Status",$registerNew) !== false) )          /* Schalter */
+            {
+            //print_r($registerNew);
+            echo "                     Schalter gefunden.\n";
+            $resultReg["STATE"]="Status";
+
+            $result[0] = "Schaltaktor 1-fach";
+            $result[1] = "Funk Schaltaktor 1-fach";
+            $result[2] = "TYPE_SWITCH";            
+            $result[3]["Type"] = "TYPE_SWITCH";            
+            $result[3]["Register"] = $resultReg;
+            $result[3]["RegisterAll"]=$registerNew;
+
+            $result[4]["TYPECHAN"] = "TYPE_SWITCH";              
+            $result[4]["TYPE_SWITCH"] = $resultReg;
+            $result[4]["RegisterAll"]=$registerNew;
+            }
+        else $found=false;
+
+        if ($found) 
+            {
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) return ($result[4]);
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
         }
 
     }

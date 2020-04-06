@@ -56,7 +56,7 @@
 		private $RemoteOID;
 		private $tempValue;
 		private $installedmodules;
-
+        private $log;                       // log class
 		private $remServer;
 				
 		/**
@@ -70,12 +70,11 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null)
+		public function __construct($instanceId=Null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ".$var1.".\n";			
-			$this->RemoteOID    = $var1;
-			$this->tempObject   = $lightObject;
-			$this->tempValue    = $lightValue;
+			//echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ".$instanceId.".\n";			
+			$this->RemoteOID    = $remoteOID;
+			$this->tempValue    = $tempValue;
 			
 			IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -116,12 +115,12 @@
 			//echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
             $startexec=microtime(true);            
-            if (GetValue($variable) != $value)
+            $log=new Temperature_Logging($variable);        // es wird kein Variablenname übergeben
+            $mirrorValue=$log->updateMirorVariableValue($value);
+            if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // kann so nicht festgetsellt werden, da der Wert in value bereits die Änderung auslöst. Dazu bräuchte es noch eine Spiegelvariable
                 {
-			    IPSLogger_Dbg(__file__, 'HandleEvent: Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			    IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent mit VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "  IPSComponentSensor_Temperatur:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
-
-                $log=new Temperature_Logging($variable);        // es wird kein Variablenname übergeben
                 //echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Temperature_LogValue();
                 //echo "Aktuelle Laufzeit nach Logging ".exectime($startexec)." Sekunden.\n"; 
@@ -130,7 +129,7 @@
                 }
             else 
                 {
-                IPSLogger_Dbg(__file__, 'HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+                IPSLogger_Inf(__file__, 'HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "  IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 }
 			}
@@ -194,7 +193,8 @@
 		{
 		private $variable;
 		private $variablename;
-		
+		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+
 		private $TempAuswertungID;
 		private $TempNachrichtenID;
 
@@ -225,6 +225,7 @@
             /************** INIT */
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
 
@@ -243,7 +244,10 @@
 			/**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "    Temperatur_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
+            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+            $name="TemperatureMirror_".$this->variablename;
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,2,"~Temperature");       /* 2 float */
+			//echo "    Temperatur_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
 			
 			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
 			$this->TempNachrichtenID=$this->CreateCategoryNachrichten("Temperatur",$this->CategoryIdData);
@@ -254,7 +258,7 @@
 				{
                 $this->variable=$variable;                     
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->TempAuswertungID,2,"~Temperature");                   // $this->variableLogID schreiben
-				echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Float unter Kategorie ".$this->TempAuswertungID." ".IPS_GetName($this->TempAuswertungID)." anlegen.\n";
+				//echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Float unter Kategorie ".$this->TempAuswertungID." ".IPS_GetName($this->TempAuswertungID)." anlegen.\n";
 				}
 
 			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
@@ -265,8 +269,15 @@
 			else {$directory="C:/Scripts/Temperature/"; }	
 			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_Temperature.csv";
-			parent::__construct($filename);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
+			parent::__construct($filename,$this->TempNachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
 			}
+
+        function updateMirorVariableValue($value)
+            {
+            $oldvalue=GetValue($this->mirrorNameID);
+            SetValue($this->mirrorNameID,$value);
+            return($oldvalue);
+            }
 
         /* wird von HandleEvent aus obigem CustomComponent aufgerufen.
          * Speichert den Wert von ID $this->variable im Spiegelregister mit ID $this->variableLogID
@@ -290,11 +301,12 @@
 			$oldvalue=GetValue($this->variableLogID);
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "      Temperature_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." °C. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
-			IPSLogger_Dbg(__file__, 'CustomComponent Temperature_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
+			//IPSLogger_Inf(__file__, 'CustomComponent Temperature_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
+                echo "     DetectMovement ist installiert. Aggregation abarbeiten:\n";
 				$groups=$this->DetectHandler->ListGroups("Temperatur",$this->variable);      // nur die Gruppen für dieses Event updaten
 				foreach($groups as $group=>$name)
 					{
@@ -325,7 +337,7 @@
 			
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
-			//echo "Aktuelle Laufzeit nach File Logging ".exectime($this->startexecute)." Sekunden.\n";
+			echo "Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";
 			}
 
 		public function GetComponent() {

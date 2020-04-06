@@ -810,9 +810,12 @@ class OperationCenter
             {
             $SysPingCount=0;
             $hourPassed=true;
+   			IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
             }
+        elseif ($debug) $hourPassed=true;
         else $hourPassed=false;
         SetValue($SysPingCountID,$SysPingCount);
+    	IPSLogger_Inf(__file__, "SysPingAllDevices: $SysPingCount");
 
 		/************************************************************************************
 		 * Erreichbarkeit IPCams

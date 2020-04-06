@@ -104,6 +104,8 @@ $status=RemoteAccessServerTable();
 		   }
 		}
 
+if (false)
+    {
 	$FHT = FHTList();
 	$keyword="TemeratureVar";
 
@@ -147,5 +149,6 @@ $status=RemoteAccessServerTable();
 			echo "Heizungssteuerungs Register mit Parameter :".$parameter." erzeugt.\n";
 			}
 		}
+    }
 
 ?>

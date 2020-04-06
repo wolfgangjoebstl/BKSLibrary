@@ -38,24 +38,25 @@ $executeObjects=true;
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
+	$messageHandler = new IPSMessageHandler();
+ 	$eventlist = IPSMessageHandler_GetEventConfiguration();
+
 if ($_IPS['SENDER']=="Execute")
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	$messageHandler = new IPSMessageHandler();
- 	$eventlist = IPSMessageHandler_GetEventConfiguration();
-    $i=0;
 	echo "===================================================================\n";	
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+    $i=0;
 	foreach ($eventlist as $oid => $data)
 		{
-        echo str_pad($i,4)."Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],30);
+        echo str_pad($i,4)."Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40);
 		if (IPS_ObjectExists($oid))
 			{
-			echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),55)."     ".GetValue($oid)."\n";
+			echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),55)."    | ".GetValue($oid)."\n";
 			}
 		else
 			{
-			echo "   OID nicht verfügbar !\n";
+			echo "  ---> OID nicht verfügbar !\n";
 			}
         $i++;
 		}
@@ -66,19 +67,84 @@ if ($_IPS['SENDER']=="Execute")
 		if (IPS_ObjectExists($oid))
 			{
             echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
-			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+			echo "  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
 			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
 			}
 		else
 			{
-			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
+			echo "  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)."      ----->    OID nicht verfügbar !\n";
 			}
 		}		
 	}
 	
 if ($_IPS['SENDER']=="TimerEvent")
 	{	
-	$messageHandler = new IPSMessageHandler();
+
+	/*********************************************************************
+	 *
+	 * Ausgabe aller Events die wirklich im System registriert sind
+	 *
+	 * dazu die Childrens (Events) des Eventhandlers auslesen
+	 * Datenbank der verwendeten CFomponents anlegen
+	 *
+	 ***********************************************************************************/
+	
+	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
+	echo"\n";
+	echo "Zusätzliche Checks bei der Eventbearbeitung:\n";
+	echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
+	echo"\n";
+	$children=IPS_GetChildrenIDs($scriptId);
+	$components=array();
+	$i=0;
+	//print_r($children);
+	foreach ($children as $childrenID)
+		{
+		$name=IPS_GetName($childrenID);
+		$eventID_str=substr($name,Strpos($name,"_")+1,10);
+		$eventID=(integer)$eventID_str;
+		if (substr($name,0,1)=="O")
+			{
+            echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." | ";
+            if (isset($eventlist[$eventID_str]))
+                {
+                $componentconfig=explode(",",$eventlist[$eventID_str][1]);
+                //print_r($componentconfig);					
+                $parent=@IPS_GetParent($eventID);
+                if ($parent===false)
+                    {		
+                    echo "  ---> Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Wird als ".$name." gelöscht. Unregister und Delete Event.\n";
+                    $messageHandler->UnRegisterEvent($eventID);
+                    IPS_DeleteEvent($childrenID);
+                    }
+                else
+                    {
+                    $component[$componentconfig[0]][$eventID]["EventName"]=IPS_GetName($childrenID);
+                    $component[$componentconfig[0]][$eventID]["Config"]=$eventlist[$eventID_str][1];
+                    $object=IPS_GetObject($parent);
+                    if ( $object["ObjectType"] == 1)
+                        {
+                        echo $eventID." | Instanz  : ".str_pad(IPS_GetName($parent),36)." | ".$eventlist[$eventID_str][1]."\n";
+                        $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($parent);
+                        }
+                    else
+                        {
+                        echo $eventID." | Register : ".str_pad(IPS_GetName($eventID),36)." | ".$eventlist[$eventID_str][1]."\n";
+                        $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($eventID);
+                        }		
+                    //print_r($eventlist[$eventID_str]);
+                    }
+                }
+            else
+                {
+                echo " ----> Objekt ".$eventID." ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration(), Event wird geloescht.\n";
+                $messageHandler->UnRegisterEvent($eventID);
+                IPS_DeleteEvent($childrenID);
+                }
+			}
+		$i++;
+		//IPS_SetPosition($childrenID,$eventID);
+		}
 
 	/*********************************************************************
 	 * 
@@ -89,7 +155,6 @@ if ($_IPS['SENDER']=="TimerEvent")
 	 ***********************************************************************************/
 
  	//$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
- 	$eventlist = IPSMessageHandler_GetEventConfiguration();
 	echo "===================================================================\n";
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
 	foreach ($eventlist as $oid => $data)

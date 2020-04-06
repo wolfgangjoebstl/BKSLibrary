@@ -329,7 +329,7 @@ class Logging
         * wird in construct und Set_LogValue verwendet
         */
 
-    public function getVariableName($variable,$variablename=Null)    
+    public function getVariableName($variable,$variablename=Null,$debug=false)    
         {
         //echo "Logging:getVariableName aufgerufen.\n"; print_r($this->installedmodules); print_r($this->DetectHandler);
         /****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
@@ -339,9 +339,9 @@ class Logging
             if ( ($variablename==Null) && ($moid !== false) ) 
                 {
                 $variablename=IPS_GetName($moid);
-                echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (from config)\n";
+                if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (from config)\n";
                 }
-            else echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
+            elseif ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
             }
         if ($variablename==Null)
             {
@@ -368,19 +368,19 @@ class Logging
         * wird in construct und Set_LogValue verwendet
         */
 
-    public function setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile)    
+    public function setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile,$debug=false)    
         {
         /* einfaches Logging, formattiert oder nicht */
-        echo '    Logging:setVariableLogId Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile ";
+        if ($debug) echo '    Logging:setVariableLogId Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." (".IPS_GetName($AuswertungID).") mit $type und $profile ";
         $variabletyp=IPS_GetVariable($variable);
         if ($variabletyp["VariableProfile"]!="")
             {  /* Formattierung vorhanden */
-            echo " mit Wert ".GetValueFormatted($variable)."\n";
+            if ($debug) echo " mit Wert ".GetValueFormatted($variable)."\n";
             IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValueFormatted($variable));
             }
         else
             {
-            echo " mit Wert ".GetValue($variable)."\n";
+            if ($debug) echo " mit Wert ".GetValue($variable)."\n";
             IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct: Spiegelregister erstellen, Basis ist '.$variable.' Name "'.$variablename.'" in '.$AuswertungID." mit Wert ".GetValue($variable));
             }	
 
@@ -445,17 +445,19 @@ class Logging
 
 	function LogMessage($message)
 		{
+        //echo "LogMessage: ".$this->log_File."  $message \n";
 		if ($this->log_File != "No-Output")
 			{
 			$handle3=fopen($this->log_File, "a");
 			fwrite($handle3, date("d.m.y H:i:s").";".$this->prefix.$message."\r\n");
 			fclose($handle3);
-			//echo $this->log_File."   ".$message."\n";
+			//echo ""LogMessage: Schreibe in Datei ".$this->log_File." die Zeile ".$message."\n";
 			}
 		}
 
 	function LogNachrichten($message)
 		{
+        //echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." den Wert $message speichern. \n"; 
 		if ($this->nachrichteninput_Id != "Ohne")
 		    {
 			//echo "Nachrichtenverlauf auf  ".$this->nachrichteninput_Id."   \n";
@@ -512,6 +514,7 @@ class Logging
 				SetValue($this->zeile03DM,GetValue($this->zeile02DM));
 				SetValue($this->zeile02DM,GetValue($this->zeile01DM));
 				SetValue($this->zeile01DM,date("d.m.y H:i:s")." : ".$message);
+                echo "    Detect Movement Ausgabe zusätzlich in ".$this->zeile01DM." \n";
 				}
 			}
         if ($this->config["HTMLOutput"]) 

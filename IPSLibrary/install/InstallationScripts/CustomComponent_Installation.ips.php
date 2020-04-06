@@ -31,11 +31,11 @@
     $noinstall=false;        /* keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
     $startexec=microtime(true);     /* Laufzeitmessung */
 
-/*******************************
- *
- * Initialisierung, Modul Handling Vorbereitung
- *
- ********************************/
+    /*******************************
+    *
+    * Initialisierung, Modul Handling Vorbereitung
+    *
+    ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
@@ -69,11 +69,11 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
-/*******************************
- *
- * Zusammenräumen
- *
- ********************************/
+    /*******************************
+    *
+    * Zusammenräumen
+    *
+    ********************************/
 
 	if (isset ($installedModules["IPSTwilight"]))
 		{
@@ -98,8 +98,8 @@
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
-	 * Evaluierung Harwdare starten, CustomComponent baut darauf auf
-	 *
+	 * Evaluierung Harwdare Script starten um die aktuellen Werte zu erfassen, CustomComponent baut darauf auf
+	 * dauert halt auch etwas.
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
 	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
@@ -111,11 +111,11 @@
 	IPS_RunScriptWait($scriptIdEvaluateHardware);
 	echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
-/*******************************
- *
- * Webfront Vorbereitung
- *
- ********************************/
+    /*******************************
+    *
+    * Webfront Vorbereitung
+    *
+    ********************************/
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -317,7 +317,7 @@
 	 * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
-	
+	echo "Darstellung der Variablenprofile, wenn fehlt anlegen:\n";
 	$profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion","mode.HM");
 	foreach ($profilname as $pname)
 		{
@@ -402,19 +402,38 @@
 		{
 		echo "  Category    ID : ".$CategoryId." Name : ".IPS_GetName($CategoryId)."\n";
 		$Params = explode("-",IPS_GetName($CategoryId)); 
-		$SubCategory=IPS_GetChildrenIDs($CategoryId);
-		foreach ($SubCategory as $SubCategoryId)
-			{
-			//echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
-			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
-			$webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["ORDER"]=IPS_GetObject($SubCategoryId)["ObjectPosition"];
-			}
+        if (sizeof($Params)>1)
+            {
+            $SubCategory=IPS_GetChildrenIDs($CategoryId);
+            foreach ($SubCategory as $SubCategoryId)
+                {
+                if (IPS_GetObject($SubCategoryId)["ObjectIsHidden"] == false)           // versteckte Objekte nicht mehr im Webfront anzeigen
+                    {
+                    //echo "       ".IPS_GetName($SubCategoryId)."   ".$Params[0]."   ".$Params[1]."\n";
+                    $webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["NAME"]=IPS_GetName($SubCategoryId);
+                    $webfront_links[$Params[0]][$Params[1]][$SubCategoryId]["ORDER"]=IPS_GetObject($SubCategoryId)["ObjectPosition"];
+                    }
+                }
+            }
 		}
 	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
 	
-    echo "Array webfront_Links als Input für die Webfront Erstellung: \n"; print_r($webfront_links);
+    echo "Array webfront_Links als Input für die Webfront Erstellung: \n"; 
+    //print_r($webfront_links);
+    foreach ($webfront_links as $group => $webfront_link)
+        {
+        echo "Gruppe $group:\n";
+        foreach ($webfront_link as $area => $entries)
+            {
+            echo "     Area $area:\n";
+            if ($area != "Nachrichten")
+                {
+                foreach ($entries as $name => $entry) echo "       ".$entry["NAME"]." ".$entry["ORDER"]."\n";
+                }
+            }
+        }
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
@@ -875,17 +894,26 @@ if ($noinstall==false)
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
-	echo "Homematic Temperatur Sensoren werden registriert.\n";
-	if (function_exists('HomematicList'))
-		{
-		$componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
-		$componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
-		} 
-	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
-	if (function_exists('FHTList'))
-		{
-		$componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
-		} 	
+    if (function_exists('deviceList'))
+        {
+        echo "Temperatur Sensoren von verschiedenen Geräten werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
+        //print_r($result);
+        }
+    if (false) 
+        {
+        echo "Homematic Temperatur Sensoren werden registriert.\n";
+        if (function_exists('HomematicList'))
+            {
+            $componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
+            $componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
+            } 
+        echo "FHT Heizungssteuerung Geräte werden registriert.\n";
+        if (function_exists('FHTList'))
+            {
+            $componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
+            } 	
+        }
 
 	/****************************************************************************************************************
 	 *
@@ -967,7 +995,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 
-
+    
 
 
 
