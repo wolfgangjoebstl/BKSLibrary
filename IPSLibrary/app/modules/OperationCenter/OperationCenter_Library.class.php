@@ -6628,6 +6628,419 @@ function getHomematicType($instanz)
 	return ($type);
 	}
 
+
+    /*********************************
+     * 
+     * Homematic Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+     *
+     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
+     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
+     *
+     * VALVE_STATE                                  Stellmotor, (IP) Funk Stellmotor, TYPE_ACTUATOR
+     * ACTIVE_PROFILE oder WINDOW_OPEN_REPORTING    Wandthermostat, (IP) Funk Wandthermostat, TYPE_THERMOSTAT
+     * TEMPERATURE und HUMIDITY                     Temperatursensor, (IP) Funk Temperatursensor, TYPE_METER_TEMPERATURE
+     * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
+     * STATE
+     *
+     * erkannte Device Typen (unabhängig ob Homematic, Evaluierung von oben nach unten
+     *  TYPE_ACTUATOR               => VALVE_STATE
+     *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
+     *  TYPE_METER_TEMPERATURE      => TEMPERATURE && HUMIDITY
+     *  TYPE_BUTTON                 => PRESS_SHORT
+     *  TYPE_SWITCH                 => STATE && (PROCESS || WORKING)
+     *  TYPE_CONTACT                => STATE
+     *  TYPE_DIMMER                 => LEVEL && DIRECTION && ERROR_OVERLOAD
+     *  TYPE_SHUTTER                => LEVEL && DIRECTION
+     *  TYPE_MOTION                 => MOTION
+     *  TYPE_RSSI                   => RSSI
+     *  TYPE_METER_POWER
+     *
+     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
+     *   false   die aktuelle Kategorisierung
+     *
+     *
+     ****************************************/
+
+    private function HomematicDeviceType($register, $outputVersion=false, $debug=false)
+        {
+		sort($register);
+        $registerNew=array();
+    	$oldvalue="";        
+        /* gleiche Einträge eliminieren */
+	    foreach ($register as $index => $value)
+		    {
+	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
+		    $oldvalue=$value;
+			}         
+        $found=true; 
+        if ($debug) echo "             HomematicDeviceType: Info mit Debug aufgerufen. Parameter ".json_encode($registerNew)."\n";
+
+        /*--Stellmotor-----------------------------------*/
+        if ( array_search("VALVE_STATE",$registerNew) !== false)            /* Stellmotor */
+            {
+            //print_r($registerNew);
+            //echo "Stellmotor gefunden.\n";
+            if (array_search("ACTIVE_PROFILE",$registerNew) !== false) 
+                {
+                $result[1]="IP Funk Stellmotor";
+                }
+            else 
+                {
+                $result[1]="Funk Stellmotor";
+                }                         
+            $result[0]="Stellmotor";                               
+            $resultType="TYPE_ACTUATOR";
+            if (array_search("LEVEL",$registerNew) !== false) $resultReg["VALVE_STATE"]="LEVEL"; 
+            else $resultReg["VALVE_STATE"]="VALVE_STATE";
+            }
+        /*-----Wandthermostat--------------------------------*/
+        elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
+            {
+            if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
+                {
+                $result[1]="Funk Wandthermostat";
+                }
+            else 
+                {
+                $result[1]="IP Funk Wandthermostat";
+                }
+            $result[0] = "Wandthermostat";
+            $resultType="TYPE_THERMOSTAT";
+            if (array_search("SET_TEMPERATURE",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="SET_TEMPERATURE";
+            if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
+            if (array_search("TargetTempVar",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="TargetTempVar";
+            }                    
+        /*-----Temperatur Sensor--------------------------------*/
+        elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
+            {
+            $result[1] = "Funk Temperatursensor";
+            $result[0] = "Temperatursensor";
+            $resultType = "TYPE_METER_TEMPERATURE";            
+            $resultReg["TEMPERATURE"]="TEMPERATURE";
+            $resultReg["HUMIDITY"]="HUMIDITY";
+            }                    
+        /*------Taster-------------------------------*/
+        elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
+            {
+            $anzahl=sizeof(array_keys($register,"PRESS_SHORT")); 
+            if (array_search("INSTALL_TEST",$registerNew) !== false) 
+                {
+                $result[1]="Funk-Taster ".$anzahl."-fach";
+                }
+            else 
+                {
+                $result[1]="IP Funk-Taster ".$anzahl."-fach";
+                }
+            $result[0]="Taster ".$anzahl."-fach";
+            $resultType = "TYPE_BUTTON";            
+            if (array_search("PRESS_SHORT",$registerNew) !== false) $resultReg["PRESS_SHORT"]="PRESS_SHORT";
+            if (array_search("PRESS_LONG",$registerNew) !== false) $resultReg["PRESS_LONG"]="PRESS_LONG";
+            if ($debug) echo "-----> Taster : $resultType ".json_encode($registerNew).json_encode($resultReg)."\n";
+            }
+        /*-------------------------------------*/
+        elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
+            {
+            //print_r($registerNew);
+            $anzahl=sizeof(array_keys($register,"STATE"));                     
+            if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )     // entweder PROCESS oder WORKING gefunden
+                {
+                $result[0]="Schaltaktor ".$anzahl."-fach";
+                if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )     //entweder Boot oder LOWBAT gefunden
+                    {
+                    $result[1]="Funk-Schaltaktor ".$anzahl."-fach";
+                    }
+                /* "SECTION_STATUS" ist bei den neuen Schaltern auch dabei. Die neuen HomematicIP Schalter geben den Status insgesamt dreimal zurück, Selektion mus ich wohl wo anders machen */
+                else    
+                    {
+                    $result[1]="IP Funk-Schaltaktor ".$anzahl."-fach";
+                    }
+                if (array_search("ENERGY_COUNTER",$registerNew) !== false) 
+                    {
+                    $result[0] .= " mit Energiemesung";
+                    $result[1] .= " mit Energiemesung";
+                    }
+                $resultType = "TYPE_SWITCH";            
+                $resultReg["STATE"]="STATE";
+                }
+            else 
+                {
+                $result[0] = "Tuerkontakt";
+                $result[1] = "Funk-Tuerkontakt";
+                $resultType = "TYPE_CONTACT";            
+                $resultReg["CONTACT"]="STATE";                
+                }
+            }
+        /*-------------------------------------*/
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
+            {
+            //print_r($registerNew);                
+            $result[0] = "Dimmer";
+            $result[1] = "Funk-Dimmer";
+            $resultType = "TYPE_DIMMER"; 
+            $resultReg["LEVEL"]="LEVEL";                       
+            }                    
+        /*-------------------------------------*/
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
+            {
+            //print_r($registerNew);                
+            $result[0] = "Rollladensteuerung";
+            $result[1] = "Funk-Rollladensteuerung";
+            $resultType = "TYPE_SHUTTER";    
+            $resultReg["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
+            }                    
+        /*-------------------------------------*/
+        elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
+            {
+            //print_r($registerNew);    
+            $result[0] = "Bewegungsmelder";
+            $result[1] = "Funk-Bewegungsmelder";
+            $resultType = "TYPE_MOTION";            
+            $resultReg["MOTION"]="MOTION";
+            $resultReg["BRIGHTNESS"]="BRIGHTNESS";
+            }
+        elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
+            {
+            $result[0] = "RSSI Wert";
+            if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
+            else $result[1] = "Funk RSSI Wert";
+            $resultType = "TYPE_RSSI";             
+            $resultReg["RSSI"] = "";
+            }            
+        elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
+            {
+            $result[0] = "Energiemessgeraet";
+            if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
+            else $result[1] = "IP Funk Energiemessgeraet";
+            $resultType = "TYPE_METER_POWER";             
+            $resultReg["ENERGY"]="ENERGY_COUNTER";          
+            }          
+        else $found=false;
+
+        if ($found) 
+            {
+            $result[2]                = $resultType;
+            $result[3]["Type"]        = $resultType;
+            $result[3]["Register"]    = $resultReg;
+            $result[3]["RegisterAll"] = $registerNew;
+            $result[4]["TYPECHAN"]    = $resultType;
+            $result[4][$resultType]   = $resultReg;
+            $result[4]["RegisterAll"] = $registerNew;
+
+            if ($outputVersion==false) return($result[2]);
+            elseif ($outputVersion==2) return ($result[1]);
+            elseif ($outputVersion==3) return ($result[3]);
+            elseif ($outputVersion==4) 
+                {       /* bei Output Version 4 mehrere TYPECHANs zulassen */
+                if ($resultType=="TYPE_ACTUATOR")
+                    {
+                    if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                        {
+                        $result[4]["TYPECHAN"]    .= ",TYPE_METER_TEMPERATURE";
+                        $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                        }
+                    }
+                elseif ($resultType=="TYPE_THERMOSTAT")
+                    {
+                    //echo "Wandthermostat erkannt \n"; print_r($registerNew); echo "\n";
+                    if ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("QUICK_VETO_TIME",$registerNew) !== false) )
+                        {
+                        $result[4]["TYPECHAN"]    .= ",TYPE_METER_TEMPERATURE";
+                        $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                        }
+                    }
+                return ($result[4]);
+                }
+			else return ($result[0]);
+            }
+        else 
+            {
+            if ($outputVersion>100) 
+                {
+                $result = "";
+                foreach ($registerNew as $entry) $result .= $entry." ";
+                return ($result);
+                }
+            else return (false);
+            }
+        }
+
+
+    /*********************************
+     *
+     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Typ aus
+     * zB TYPE_METER_TEMPERATURE
+     *
+     * Es gibt für ein Homematic Gerät mehrere Instanzen/Channels. Nicht alle sind relevant. Daher ausklammern.
+     *
+     *
+     ***********************************************/
+
+    function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
+	    {
+        if ($debug) echo "          getHomematicDeviceType : $instanz  \"".IPS_GetName($instanz)."\" Modus : $outputVersion\n";
+    	$cids = IPS_GetChildrenIDs($instanz);
+	    $homematic=array();
+    	foreach($cids as $cid)
+	    	{
+		    $homematic[$cid]=IPS_GetName($cid);
+    		}
+    	return ($this->HomematicDeviceType($homematic,$outputVersion, $debug));
+    	}
+
+    /*********************************
+     *
+     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
+     * Voraussetzung ist das das Homematic Inventory Handler Modul installiert ist. Sonst wird ein leerer String zurückgegeben
+     * Abhängig ob der zweite Parameter default oder 1 ist wird entweder der Standard Homematic Name oder eine deutsprachige Beschreibung ausgegeben.
+     *
+     ***********************************************/
+	 		
+	function getHomematicHMDevice($instanz, $output=false, $debug=false)
+		{
+        $matrix=false;
+        $key=IPS_GetProperty($instanz,"Address");
+        if ($debug) echo "Aufruf getHomematicHMDevice mit $instanz die hat Adresse \"$key\"\n";
+        //print_R($this->HomematicAddressesList);
+		if (isset($this->HomematicAddressesList[$key]) ) 
+            {
+            //echo "getHomematicHMDevice , $instanz $key in HMI Report gefunden.\n";
+            if ($output == false) return($this->HomematicAddressesList[$key]);
+            else
+                {
+                switch ($this->HomematicAddressesList[$key])
+                    {
+                    case "HM-PB-6-WM55":
+                    case "HmIP-WRC6":
+                        $result="Taster 6-fach";
+                        $matrix=[0,2,2,2,2,2,2,1];                        
+                        break;
+
+                    case "HM-PB-4Dis-WM":
+                        $result="Taster 4-fach";
+                        $matrix=[0,2,2,2,2,1,1,1];                        
+                        break;
+
+                    case "HM-PB-2-WM55":
+                    case "HM-PB-2-WM55-2":
+                    case "HM-LC-Sw2-PB-FM":                 // Doppel Taster als Einbauvariante mit Schalter
+                        $result="Taster 2-fach";
+                        $matrix=[0,2,2,1,1,1,1,1];                        
+                        break;
+                    
+                    case "HM-Sec-SC":
+                    case "HM-Sec-SC-2":
+                        $result="Tuerkontakt";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HMIP-eTRV":
+                    case "HmIP-eTRV-B":
+                    case "HmIP-eTRV-2":
+                    case "HM-CC-RT-DN":
+                        $result="Stellmotor";
+                        $matrix=[0,2,1,1,2,1,1,1];                        
+                        break;
+
+                    case "HmIP-SMI":
+                    case "HM-Sec-MDIR":
+                    case "HM-Sec-MDIR-2":
+                    case "HM-Sen-MDIR-O-2":  
+                    case "HM-Sen-MDIR-O":
+                        $result="Bewegungsmelder";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HM-TC-IT-WM-W-EU":
+                        $result="Wandthermostat";
+                        $matrix=[0,2,2,1,1,1,1,1];                        // die Homematic Variante hat zwei Kanäle
+                        break;
+                    case "HMIP-WTH":
+                    case "HmIP-WTH-2":
+                        $result="Wandthermostat";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+                        
+                    case "HM-LC-Sw1-FM":
+                    case "HM-LC-Sw1-Pl":
+                    case "HM-LC-Sw1-Pl-2":
+                    case "HM-LC-Sw1-Pl-DN-R1":
+                        $result="Schaltaktor 1-fach";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HM-LC-Sw4-DR":
+                    case "HM-LC-Sw4-DR-2":
+                        $matrix=[0,2,2,2,2,1,1,1];                        
+                        $result="Schaltaktor 4-fach";
+                        break;
+                    
+                    case "HM-ES-PMSw1-Pl":
+                    case "HM-ES-PMSw1-DR":                                  // die Hutschienen Variante dazu 
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,2,1,1,1,1,1];
+                        break;
+                    
+                    case "HMIP-PSM":
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,1,2,1,1,2,1,1];
+                        break;
+
+                    case "HmIP-FSM16":                                      // Einbauvariante mit Energiemessung
+                        $result="Schaltaktor 1-fach Energiemessung";
+                        $matrix=[0,2,1,2,1,2,1,1];
+                        break;
+
+                    case "HM-LC-Dim1T-FM":
+                    case "HM-LC-Dim1T-Pl":
+                    case "HM-LC-Dim1L-Pl":
+                        $result="Dimmer 1-fach";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HM-LC-Bl1-FM"                        :
+                        $result="Rolladensteuerung";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HM-WDS10-TH-O":
+                    case "HM-WDS40-TH-I":
+                    case "HmIP-STHD":                                   // sieht aus wie ein Thermostat und hat auch versteckte Thermostatfunktionen
+                        $result="Temperatur und Feuchtigkeitssensor";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HM-WDS100-C6-O":
+                        $result="Wetterstation";
+                        $matrix=[0,2,1,1,1,1,1,1];                        
+                        break;
+
+                    case "HmIP-RCV-50":
+                    case "HM-RCV-50":
+                        $result="Receiver for internal messages, 50 channels";
+                        $matrix=[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];            // alle Tasten ignorieren             
+                        break;
+
+                    case "HM-RC-19-SW":
+                        $result="RemoteControl, 19 channels";
+                        $matrix=[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];                        
+                        break;
+
+                    default:
+                        echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz)).", result is default, not known case key of \"".$this->HomematicAddressesList[$key]."\" for $key.\n";
+                        return ($this->HomematicAddressesList[$key]);
+                        break;
+                    }
+                if ($output == 1) return($result);
+                else return($matrix);               // wenn $output 2 ist
+                }
+            }
+		else 
+            {
+            echo "getHomematicHMDevice , Instanz $instanz Key $key in HMI Report NICHT gefunden. Run HMI_CreateReport again. Ensure that Gateway is correctly configured to get updated values.\n";
+            return("");
+            }
+		}	
+
 /*****************************************************
  *
  * HM_TYPE für FS20, FS20EX oder FHT Instanz feststellen
@@ -6739,412 +7152,6 @@ function getFS20Type($instanz)
 	return ($type);
 	}
 
-
-    /*********************************
-     * 
-     * Homematic Device Type, genaue Auswertung nur mehr an einer, dieser Stelle machen 
-     *
-     * Übergabe ist ein array aus Variablennamen/Children einer Instanz oder die Sammlung aller Instanzen die zu einem Gerät gehören
-     * übergeben wird das Array das alle auch doppelte Eintraege hat. Folgende Muster werden ausgewertet:
-     *
-     * VALVE_STATE                                  Stellmotor, (IP) Funk Stellmotor, TYPE_ACTUATOR
-     * ACTIVE_PROFILE oder WINDOW_OPEN_REPORTING    Wandthermostat, (IP) Funk Wandthermostat, TYPE_THERMOSTAT
-     * TEMPERATURE und HUMIDITY                     Temperatursensor, (IP) Funk Temperatursensor, TYPE_METER_TEMPERATURE
-     * PRESS_SHORT                                  Taster x-fach, (IP) Funk Tast x-fach, TYPE_BUTTON
-     * STATE
-     *
-     * erkannte Device Typen (unabhängig ob Homematic, Evaluierung von oben nach unten
-     *  TYPE_ACTUATOR               => VALVE_STATE
-     *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
-     *  TYPE_METER_TEMPERATURE      => TEMPERATURE && HUMIDITY
-     *  TYPE_BUTTON                 => PRESS_SHORT
-     *  TYPE_SWITCH                 => STATE && (PROCESS || WORKING)
-     *  TYPE_CONTACT                => STATE
-     *  TYPE_DIMMER                 => LEVEL && DIRECTION && ERROR_OVERLOAD
-     *  TYPE_SHUTTER                => LEVEL && DIRECTION
-     *  TYPE_MOTION                 => MOTION
-     *  TYPE_RSSI                   => RSSI
-     *  TYPE_METER_POWER
-     *
-     * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
-     *   false   die aktuelle Kategorisierung
-     *
-     *
-     ****************************************/
-
-    private function HomematicDeviceType($register, $outputVersion=false, $debug=false)
-        {
-		sort($register);
-        $registerNew=array();
-    	$oldvalue="";        
-        /* gleiche Einträge eliminieren */
-	    foreach ($register as $index => $value)
-		    {
-	    	if ($value!=$oldvalue) {$registerNew[]=$value;}
-		    $oldvalue=$value;
-			}         
-        $found=true; 
-        if ($debug) 
-            {
-            echo "                HomematicDeviceType: Info mit Debug aufgerufen. Parameter \"";
-            foreach ($registerNew as $entry) echo "$entry ";
-            echo "\"\n";
-            }
-
-        /*--Stellmotor-----------------------------------*/
-        if ( array_search("VALVE_STATE",$registerNew) !== false)            /* Stellmotor */
-            {
-            //print_r($registerNew);
-            //echo "Stellmotor gefunden.\n";
-            if (array_search("ACTIVE_PROFILE",$registerNew) !== false) 
-                {
-                $result[1]="IP Funk Stellmotor";
-                }
-            else 
-                {
-                $result[1]="Funk Stellmotor";
-                }                         
-            $result[0]="Stellmotor";                               
-            $result[2]="TYPE_ACTUATOR";
-            $result[3]["Type"]="TYPE_ACTUATOR";
-            if (array_search("LEVEL",$registerNew) !== false) $result[3]["Register"]["VALVE_STATE"]="LEVEL"; 
-            else $result[3]["Register"]["VALVE_STATE"]="VALVE_STATE";
-            $result[3]["RegisterAll"]=$registerNew;
-            }
-        /*-----Wandthermostat--------------------------------*/
-        elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
-            {
-            if (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false)
-                {
-                $result[1]="Funk Wandthermostat";
-                }
-            else 
-                {
-                $result[1]="IP Funk Wandthermostat";
-                }
-            $result[0] = "Wandthermostat";
-            $result[2] = "TYPE_THERMOSTAT";
-            $result[3]["Type"]="TYPE_THERMOSTAT";
-            if (array_search("SET_TEMPERATURE",$registerNew) !== false) $result[3]["Register"]["SET_TEMPERATURE"]="SET_TEMPERATURE";
-            if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $result[3]["Register"]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
-            if (array_search("TargetTempVar",$registerNew) !== false) $result[3]["Register"]["SET_TEMPERATURE"]="TargetTempVar";
-            $result[3]["RegisterAll"]=$registerNew;
-            }                    
-        /*-------------------------------------*/
-        elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
-            {
-            $result[1] = "Funk Temperatursensor";
-            $result[0] = "Temperatursensor";
-            $result[2] = "TYPE_METER_TEMPERATURE";            
-            $result[3]["Type"] = "TYPE_METER_TEMPERATURE";            
-            $result[3]["Register"]["TEMPERATURE"]="TEMPERATURE";
-            $result[3]["Register"]["HUMIDITY"]="HUMIDITY";
-            $result[3]["RegisterAll"]=$registerNew;
-            }                    
-        /*-------------------------------------*/
-        elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
-            {
-            //print_r($registerNew);
-            $anzahl=sizeof(array_keys($register,"PRESS_SHORT")); 
-            if (array_search("INSTALL_TEST",$registerNew) !== false) 
-                {
-                $result[1]="Funk-Taster ".$anzahl."-fach";
-                }
-            else 
-                {
-                $result[1]="IP Funk-Taster ".$anzahl."-fach";
-                }
-            $result[0]="Taster ".$anzahl."-fach";
-            $result[2]="TYPE_BUTTON";                                        
-            $result[3]["Type"] = "TYPE_BUTTON";            
-            if (array_search("PRESS_SHORT",$registerNew) !== false) $result[3]["Register"]["PRESS_SHORT"]="PRESS_SHORT";
-            if (array_search("PRESS_LONG",$registerNew) !== false) $result[3]["Register"]["PRESS_LONG"]="PRESS_LONG";
-            $result[3]["RegisterAll"]=$registerNew;
-            }
-        /*-------------------------------------*/
-        elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
-            {
-            //print_r($registerNew);
-            $anzahl=sizeof(array_keys($register,"STATE"));                     
-            if ( (array_search("PROCESS",$registerNew) !== false) || (array_search("WORKING",$registerNew) !== false) )     // entweder PROCESS oder WORKING gefunden
-                {
-                $result[0]="Schaltaktor ".$anzahl."-fach";
-                if ( (array_search("BOOT",$registerNew) !== false) || (array_search("LOWBAT",$registerNew) !== false) )     //entweder Boot oder LOWBAT gefunden
-                    {
-                    $result[1]="Funk-Schaltaktor ".$anzahl."-fach";
-                    }
-                /* "SECTION_STATUS" ist bei den neuen Schaltern auch dabei. Die neuen HomematicIP Schalter geben den Status insgesamt dreimal zurück, Selektion mus ich wohl wo anders machen */
-                else    
-                    {
-                    $result[1]="IP Funk-Schaltaktor ".$anzahl."-fach";
-                    }
-                if (array_search("ENERGY_COUNTER",$registerNew) !== false) 
-                    {
-                    $result[0] .= " mit Energiemesung";
-                    $result[1] .= " mit Energiemesung";
-                    }
-                $result[2]="TYPE_SWITCH";     
-                $result[3]["Type"] = "TYPE_SWITCH";            
-                $result[3]["Register"]["STATE"]="STATE";
-                $result[3]["RegisterAll"]=$registerNew;
-                }
-            else 
-                {
-                $result[0] = "Tuerkontakt";
-                $result[1] = "Funk-Tuerkontakt";
-                $result[2] = "TYPE_CONTACT";     
-                $result[3]["Type"] = "TYPE_CONTACT";            
-                $result[3]["Register"]["CONTACT"]="STATE";                
-                $result[3]["RegisterAll"]=$registerNew;
-                }
-            }
-        /*-------------------------------------*/
-        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
-            {
-            //print_r($registerNew);                
-            $result[0] = "Dimmer";
-            $result[1] = "Funk-Dimmer";
-            $result[2] = "TYPE_DIMMER";            
-            $result[3]["Type"] = "TYPE_DIMMER"; 
-            $result[3]["Register"]["LEVEL"]="LEVEL";                       
-            $result[3]["RegisterAll"]=$registerNew;
-            }                    
-        /*-------------------------------------*/
-        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
-            {
-            //print_r($registerNew);                
-            $result[0] = "Rollladensteuerung";
-            $result[1] = "Funk-Rollladensteuerung";
-            $result[2] = "TYPE_SHUTTER";     
-            $result[3]["Type"] = "TYPE_SHUTTER";    
-            $result[3]["Register"]["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
-            $result[3]["RegisterAll"]=$registerNew;
-            }                    
-        /*-------------------------------------*/
-        elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
-            {
-            //print_r($registerNew);    
-            $result[0] = "Bewegungsmelder";
-            $result[1] = "Funk-Bewegungsmelder";
-            $result[2] = "TYPE_MOTION";             
-            $result[3]["Type"] = "TYPE_MOTION";            
-            $result[3]["Register"]["MOTION"]="MOTION";
-            $result[3]["Register"]["BRIGHTNESS"]="BRIGHTNESS";
-            $result[3]["RegisterAll"]=$registerNew;
-            }
-        elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
-            {
-            $result[0] = "RSSI Wert";
-            if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
-            else $result[1] = "Funk RSSI Wert";
-            $result[2] = "TYPE_RSSI";             
-            }            
-        elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
-            {
-            $result[0] = "Energiemessgeraet";
-            if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
-            else $result[1] = "IP Funk Energiemessgeraet";
-            $result[2] = "TYPE_METER_POWER";             
-            $result[3]["Type"] = "TYPE_METER_POWER";  
-            $result[3]["Register"]["ENERGY"]="ENERGY_COUNTER";          
-            $result[3]["RegisterAll"]=$registerNew;
-            }          
-        else $found=false;
-
-        if ($found) 
-            {
-            if ($outputVersion==false) return($result[2]);
-            elseif ($outputVersion==2) return ($result[1]);
-            elseif ($outputVersion==3) return ($result[3]);
-			else return ($result[0]);
-            }
-        else 
-            {
-            if ($outputVersion==4) 
-                {
-                $result = "";
-                foreach ($registerNew as $entry) $result .= $entry." ";
-                return ($result);
-                }
-            else return (false);
-            }
-        }
-
-
-    /*********************************
-     *
-     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Typ aus
-     * zB TYPE_METER_TEMPERATURE
-     *
-     * Es gibt für ein Homematic Gerät mehrere Instanzen/Channels. Nicht alle sind relevant. Daher ausklammern.
-     *
-     *
-     ***********************************************/
-
-    function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
-	    {
-    	$cids = IPS_GetChildrenIDs($instanz);
-	    $homematic=array();
-    	foreach($cids as $cid)
-	    	{
-		    $homematic[$cid]=IPS_GetName($cid);
-    		}
-    	return ($this->HomematicDeviceType($homematic,$outputVersion, $debug));
-    	}
-
-    /*********************************
-     *
-     * gibt für eine Homematic Instanz/Kanal eines Gerätes den Device Typ aus HM Inventory aus
-     * Voraussetzung ist das das Homematic Inventory Handler Modul installiert ist. Sonst wird ein leerer String zurückgegeben
-     * Abhängig ob der zweite Parameter default oder 1 ist wird entweder der Standard Homematic Name oder eine deutsprachige Beschreibung ausgegeben.
-     *
-     ***********************************************/
-	 		
-	function getHomematicHMDevice($instanz, $output=false, $debug=false)
-		{
-        $matrix=false;
-        $key=IPS_GetProperty($instanz,"Address");
-        if ($debug) echo "Aufruf getHomematicHMDevice mit $instanz die hat Adresse \"$key\"\n";
-        //print_R($this->HomematicAddressesList);
-		if (isset($this->HomematicAddressesList[$key]) ) 
-            {
-            //echo "getHomematicHMDevice , $instanz $key in HMI Report gefunden.\n";
-            if ($output == false) return($this->HomematicAddressesList[$key]);
-            else
-                {
-                switch ($this->HomematicAddressesList[$key])
-                    {
-                    case "HM-PB-6-WM55":
-                    case "HmIP-WRC6":
-                        $result="Taster 6-fach";
-                        $matrix=[0,2,2,2,2,2,2,1];                        
-                        break;
-
-                    case "HM-PB-4Dis-WM":
-                        $result="Taster 4-fach";
-                        $matrix=[0,2,2,2,2,1,1,1];                        
-                        break;
-
-                    case "HM-PB-2-WM55":
-                    case "HM-PB-2-WM55-2":
-                    case "HM-LC-Sw2-PB-FM":                 // Doppel Taster als Einbauvariante mit Schalter
-                        $result="Taster 2-fach";
-                        $matrix=[0,2,2,1,1,1,1,1];                        
-                        break;
-                    
-                    case "HM-Sec-SC":
-                    case "HM-Sec-SC-2":
-                        $result="Tuerkontakt";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HMIP-eTRV":
-                    case "HmIP-eTRV-B":
-                    case "HM-CC-RT-DN":
-                        $result="Stellmotor";
-                        $matrix=[0,2,1,1,2,1,1,1];                        
-                        break;
-
-                    case "HmIP-SMI":
-                    case "HM-Sec-MDIR":
-                    case "HM-Sec-MDIR-2":
-                    case "HM-Sen-MDIR-O-2":  
-                    case "HM-Sen-MDIR-O":
-                        $result="Bewegungsmelder";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HM-TC-IT-WM-W-EU":
-                        $result="Wandthermostat";
-                        $matrix=[0,2,2,1,1,1,1,1];                        // die Homematic Variante hat zwei Kanäle
-                        break;
-                    case "HMIP-WTH":
-                    case "HmIP-WTH-2":
-                        $result="Wandthermostat";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-                        
-                    case "HM-LC-Sw1-FM":
-                    case "HM-LC-Sw1-Pl":
-                    case "HM-LC-Sw1-Pl-2":
-                    case "HM-LC-Sw1-Pl-DN-R1":
-                        $result="Schaltaktor 1-fach";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HM-LC-Sw4-DR":
-                    case "HM-LC-Sw4-DR-2":
-                        $matrix=[0,2,2,2,2,1,1,1];                        
-                        $result="Schaltaktor 4-fach";
-                        break;
-                    
-                    case "HM-ES-PMSw1-Pl":
-                    case "HM-ES-PMSw1-DR":                                  // die Hutschienen Variante dazu 
-                        $result="Schaltaktor 1-fach Energiemessung";
-                        $matrix=[0,2,2,1,1,1,1,1];
-                        break;
-                    
-                    case "HMIP-PSM":
-                        $result="Schaltaktor 1-fach Energiemessung";
-                        $matrix=[0,2,1,2,1,1,2,1,1];
-                        break;
-
-                    case "HmIP-FSM16":                                      // Einbauvariante mit Energiemessung
-                        $result="Schaltaktor 1-fach Energiemessung";
-                        $matrix=[0,2,1,2,1,2,1,1];
-                        break;
-
-                    case "HM-LC-Dim1T-FM":
-                    case "HM-LC-Dim1T-Pl":
-                    case "HM-LC-Dim1L-Pl":
-                        $result="Dimmer 1-fach";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HM-LC-Bl1-FM"                        :
-                        $result="Rolladensteuerung";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HM-WDS10-TH-O":
-                    case "HM-WDS40-TH-I":
-                    case "HmIP-STHD":                                   // sieht aus wie ein Thermostat und hat auch versteckte Thermostatfunktionen
-                        $result="Temperatur und Feuchtigkeitssensor";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HM-WDS100-C6-O":
-                        $result="Wetterstation";
-                        $matrix=[0,2,1,1,1,1,1,1];                        
-                        break;
-
-                    case "HmIP-RCV-50":
-                    case "HM-RCV-50":
-                        $result="Receiver for internal messages, 50 channels";
-                        $matrix=[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1];            // alle Tasten ignorieren             
-                        break;
-
-                    case "HM-RC-19-SW":
-                        $result="RemoteControl, 19 channels";
-                        $matrix=[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];                        
-                        break;
-
-                    default:
-                        echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz)).", result is default, not known case key of \"".$this->HomematicAddressesList[$key]."\" for $key.\n";
-                        return ($this->HomematicAddressesList[$key]);
-                        break;
-                    }
-                if ($output == 1) return($result);
-                else return($matrix);               // wenn $output 2 ist
-                }
-            }
-		else 
-            {
-            echo "getHomematicHMDevice , Instanz $instanz Key $key in HMI Report NICHT gefunden. Run HMI_CreateReport again. Ensure that Gateway is correctly configured to get updated values.\n";
-            return("");
-            }
-		}	
-		
     /*********************************
      *
      * gibt für eine FS20 Instanz/Kanal eines Gerätes den Typ aus
@@ -7257,6 +7264,7 @@ function getFS20DeviceType($instanz)
 		}			
 	return ($type);
 	}
+
 
 
 /*****************************************************************

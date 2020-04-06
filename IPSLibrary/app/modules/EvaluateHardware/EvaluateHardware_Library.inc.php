@@ -152,10 +152,11 @@ class TopologyLibraryManagement
 
     /* Liste aller montierten Hardware Instanzen ausgeben
      * Format ist gleich, Key ist der Hardwaretyp dann der Name der Instanz mit den Einträgen OID und CONFIG
-     *
+     * übergeben wird eine Liste von Discovery Instanzen
+     * aus den Discovery Instanzen wird nur die ModulID übernommen
      */
 
-    public function get_HardwareList($discovery)
+    public function get_HardwareList($discovery, $debug=false)
         {
         $hardware=array(); 
         $hardwareTypeDetect = new Hardware();
@@ -164,14 +165,15 @@ class TopologyLibraryManagement
             $hardwareType = $hardwareTypeDetect->getHardwareType($entry["ModuleID"]);
             if ($hardwareType != false) 
                 {
-                //echo "    $hardwareType \n";
+                if ($debug) echo "    get_HardwareList: $hardwareType vom ".$entry["ModuleID"]." \n";
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 $deviceID = $object->getDeviceID();
+                if ($debug) echo "      DeviceID :    $deviceID \n";
                 $devices=$this->modulhandling->getInstances($deviceID);
                 foreach ($devices as $device)
                     {
-                    //echo "           ".IPS_GetName($device)."\n";
+                    if ($debug) echo "           ".IPS_GetName($device)."\n";
                     $config = @IPS_GetConfiguration($device);
                     if ($config !== false) 
                         {                    

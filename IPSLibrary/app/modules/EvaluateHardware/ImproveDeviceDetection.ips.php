@@ -34,6 +34,8 @@
 
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
+    IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
+
     $startexec=microtime(true);
 
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';

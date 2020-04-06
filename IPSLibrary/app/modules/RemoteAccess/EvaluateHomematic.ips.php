@@ -46,6 +46,7 @@ $startexec=microtime(true);
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
 
     $componentHandling=new ComponentHandling();
 	$commentField="zuletzt Konfiguriert von EvaluateHomematic um ".date("h:i am d.m.Y ").".";
@@ -59,19 +60,29 @@ $startexec=microtime(true);
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
-	echo "Homematic Temperatur Sensoren werden registriert.\n";
-	if (function_exists('HomematicList'))
-		{
-		$componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
-		$componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
-		} 
-	echo "\n";
-	echo "FHT Heizungssteuerung Geräte werden registriert.\n";
-	if (function_exists('FHTList'))
-		{
-		$componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
-		}
+    if (function_exists('deviceList'))
+        {
+        echo "Temperatur Sensoren von verschiedenen Geräten werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
+        print_r($result);
 
+
+        }
+    if (false)
+        {
+        echo "Homematic Temperatur Sensoren werden registriert.\n";
+        if (function_exists('HomematicList'))
+            {
+            $componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
+            $componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
+            } 
+        echo "\n";
+        echo "FHT Heizungssteuerung Geräte werden registriert.\n";
+        if (function_exists('FHTList'))
+            {
+            $componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
+            }
+        }
 
 	/****************************************************************************************************************
 	 *
@@ -82,12 +93,14 @@ $startexec=microtime(true);
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
-	echo "Homematic Humidity Sensoren werden registriert.\n";
-	if (function_exists('HomematicList'))
-		{
-		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
-		} 
-
+    //if (false)
+        {
+        echo "Homematic Humidity Sensoren werden registriert.\n";
+        if (function_exists('HomematicList'))
+            {
+            $componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
+            } 
+        }
     echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden.\n";    
 
     /*  alte Berechnung, jetzt überall den selben Algortithmus verwenden

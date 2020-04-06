@@ -53,6 +53,7 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
 
 IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
@@ -189,6 +190,14 @@ IPS_SetEventActive($tim1ID,true);
     $discovery[]=$input;
     $input["ModuleID"] = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
     $input["ModuleName"] = "NetatmoWeatherConfig";
+    $discovery[]=$input;
+
+    /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
+     *
+     *
+     */
+    $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add FHT
+    $input["ModuleName"] = "FHT Instanzen";
     $discovery[]=$input;
 
     echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
