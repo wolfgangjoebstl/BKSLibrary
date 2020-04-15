@@ -207,8 +207,10 @@ IPS_SetEventActive($tim1ID,true);
     $discovery[]=$input;     
 
     echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    $socket=array();
     $socket = $topologyLibrary->get_SocketList($discovery);
     echo "Erstellen der GatewayList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    $gateway=array();
     $gateway = $topologyLibrary->get_GatewayList($discovery);
     echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $hardware = $topologyLibrary->get_HardwareList($discovery);

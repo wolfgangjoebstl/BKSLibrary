@@ -29,7 +29,7 @@
 		protected 	$tempValue;
 		protected 	$installedmodules;
 		protected 	$instanceId;		/* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
-		protected  	$deviceHM;			/* Typoe des gerätes, funktioniert nur wenn HM Inventory installiert ist */
+		protected  	$deviceHM;			/* Typoe des Gerätes, funktioniert nur wenn HM Inventory installiert ist */
 
 		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
 		protected 	$remServer;		/* Liste der Urls und der Kurznamen */

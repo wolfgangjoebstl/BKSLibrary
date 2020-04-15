@@ -96,18 +96,23 @@ class TopologyLibraryManagement
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 $socketID = $object->getSocketID();
-                //echo "        SocketID    $socketID ".IPS_GetModule($socketID)["ModuleName"]."\n";
-                $sockets=$this->modulhandling->getInstances($socketID);
-                foreach ($sockets as $socket)
-                    {
-                    //echo "           ".IPS_GetName($bridge)."\n";
-                    $config = @IPS_GetConfiguration($socket);
-                    if ($config !== false)
+                $validModule = @IPS_GetModule($socketID)["ModuleName"];
+                if ($validModule != "")
+                    {    
+                    if ($debug) echo "        SocketID    $socketID    $validModule   \n";
+                    $sockets=$this->modulhandling->getInstances($socketID);
+                    foreach ($sockets as $socket)
                         {
-                        $gateway[$hardwareType][IPS_GetName($socket)]["OID"]=$socket;
-                        $gateway[$hardwareType][IPS_GetName($socket)]["CONFIG"]=$config;
+                        //echo "           ".IPS_GetName($bridge)."\n";
+                        $config = @IPS_GetConfiguration($socket);
+                        if ($config !== false)
+                            {
+                            $gateway[$hardwareType][IPS_GetName($socket)]["OID"]=$socket;
+                            $gateway[$hardwareType][IPS_GetName($socket)]["CONFIG"]=$config;
+                            }
                         }
                     }
+                elseif ($debug) echo "        SocketID    unbekannt, keine Socketliste anlegen.\n";
                 }
             }
         return($gateway);
@@ -119,7 +124,7 @@ class TopologyLibraryManagement
      *
      */
 
-    public function get_GatewayList($discovery)
+    public function get_GatewayList($discovery, $debug=false)
         {
         $gateway=array();
         $hardwareTypeDetect = new Hardware();
@@ -132,19 +137,23 @@ class TopologyLibraryManagement
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 $bridgeID = $object->getBridgeID();
-                //echo "        BridgeID    $bridgeID ".IPS_GetModule($bridgeID)["ModuleName"]."\n";
-                //echo "        DeviceID    $deviceID ".IPS_GetModule($deviceID)["ModuleName"]."\n";
-                $bridges=$this->modulhandling->getInstances($bridgeID);
-                foreach ($bridges as $bridge)
-                    {
-                    //echo "           ".IPS_GetName($bridge)."\n";
-                    $config = @IPS_GetConfiguration($bridge);
-                    if ($config !== false) 
-                        {                   
-                        $gateway[$hardwareType][IPS_GetName($bridge)]["OID"]=$bridge;
-                        $gateway[$hardwareType][IPS_GetName($bridge)]["CONFIG"]=$config;
+                $validModule = @IPS_GetModule($bridgeID)["ModuleName"];
+                if ($validModule != "")
+                    {    
+                    if ($debug) echo "        BridgeID    $bridgeID    $validModule\n";
+                    $bridges=$this->modulhandling->getInstances($bridgeID);
+                    foreach ($bridges as $bridge)
+                        {
+                        //echo "           ".IPS_GetName($bridge)."\n";
+                        $config = @IPS_GetConfiguration($bridge);
+                        if ($config !== false) 
+                            {                   
+                            $gateway[$hardwareType][IPS_GetName($bridge)]["OID"]=$bridge;
+                            $gateway[$hardwareType][IPS_GetName($bridge)]["CONFIG"]=$config;
+                            }
                         }
                     }
+                elseif ($debug) echo "        BridgeID    unbekannt, keine Gatewayliste anlegen.\n";
                 }
             }
         return($gateway);

@@ -167,10 +167,15 @@
 						$Server=$this->remServer[$para[0]]["Url"];
 						if ($this->remServer[$para[0]]["Status"]==true)
 							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
-							$rpc->SetValue($roid, $value);
+                            $rpc = quickServerPing($Server);
+							//$rpc = new JSONRPC($Server);
+                            if ($rpc !== false)
+                                {
+                                $roid=(integer)$para[1];
+                                //echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+                                $rpc->SetValue($roid, $value);
+                                }
+                            else IPSLogger_Inf(__file__, "SetValueROID: Server $Server offline");			
 							}
 						}
 					}

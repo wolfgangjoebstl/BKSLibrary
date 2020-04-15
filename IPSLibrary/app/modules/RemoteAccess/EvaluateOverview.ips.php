@@ -18,6 +18,7 @@ IPSUtils_Include ("RemoteAccess_Configuration.inc.php","IPSLibrary::config::modu
 // max. Scriptlaufzeit definieren
 ini_set('max_execution_time', 500);
 $startexec=microtime(true);
+$forceDelete=true;
 
 IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::RemoteAccess");
 
@@ -41,12 +42,13 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	 ***********************************************************************************/
 
  	//$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
- 	$eventlist = IPSMessageHandler_GetEventConfiguration();
-	
-	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
-	foreach ($eventlist as $oid => $data)
+ 	$eventConf = IPSMessageHandler_GetEventConfiguration();
+ 	$eventCust = IPSMessageHandler_GetEventConfigurationCust();
+	$eventlist = $eventConf + $eventCust;
+	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
+	foreach ($eventConf as $oid => $data)
 		{
-        echo "  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],80)." | ".str_pad($data[2],40)." | ";
+        echo str_pad($oid,7)." | ".$data[0]." | ".str_pad($data[1],80)." | ".str_pad($data[2],40)." | ";
 		if (IPS_ObjectExists($oid))
 			{
 			echo IPS_GetName($oid)."\n";
@@ -62,13 +64,13 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	 * Ausgabe aller Events die wirklich im System registriert sind
 	 *
 	 * dazu die Childrens (Events) des Eventhandlers auslesen
-	 * Datenbank der verwendeten CFomponents anlegen
+	 * Datenbank der verwendeten Components anlegen
 	 *
 	 ***********************************************************************************/
 	
 	$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
 	echo"\n";
-	echo "Zusätzliche Checks bei der Eventbearbeitung:\n";
+	echo "Zusätzliche Checks bei der Eventbearbeitung, ausgehenbd von den registrierten Events:\n";
 	echo "ScriptID der Eventbearbeitung : ".$scriptId." \n";
 	echo"\n";
 	$children=IPS_GetChildrenIDs($scriptId);
@@ -91,8 +93,12 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
                 if ($parent===false)
                     {		
                     echo "  ---> Objekt ".$eventID." existiert nicht für Event ".$childrenID.". Muss als ".$name." gelöscht werden.\n";
-                    //$messageHandler->UnRegisterEvent($eventID);
-                    //IPS_DeleteEvent($childrenID);
+                    if ($forceDelete)
+                        {
+                        echo " wird geloescht ***********************\n";
+                        $messageHandler->UnRegisterEvent($eventID);
+                        IPS_DeleteEvent($childrenID);
+                        }
                     }
                 else
                     {
@@ -101,12 +107,12 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
                     $object=IPS_GetObject($parent);
                     if ( $object["ObjectType"] == 1)
                         {
-                        echo $eventID." | Instanz  : ".str_pad(IPS_GetName($parent),36)." | ".$eventlist[$eventID_str][1]."\n";
+                        echo $eventID." | Instanz  : ".str_pad(IPS_GetName($parent),46)." | ".$eventlist[$eventID_str][1]."\n";
                         $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($parent);
                         }
                     else
                         {
-                        echo $eventID." | Register : ".str_pad(IPS_GetName($eventID),36)." | ".$eventlist[$eventID_str][1]."\n";
+                        echo $eventID." | Register : ".str_pad(IPS_GetName($eventID),46)." | ".$eventlist[$eventID_str][1]."\n";
                         $component[$componentconfig[0]][$eventID]["VarName"]=IPS_GetName($eventID);
                         }		
                     //print_r($eventlist[$eventID_str]);
@@ -115,8 +121,12 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
             else
                 {
                 echo " ----> Objekt ".$eventID." ".str_pad(IPS_GetName(IPS_GetParent($eventID)),36)." existiert nicht in IPSMessageHandler_GetEventConfiguration().\n";
-                //$messageHandler->UnRegisterEvent($eventID);
-                //IPS_DeleteEvent($childrenID);
+                if ($forceDelete)
+                    {
+                    echo " wird geloescht ***********************\n";
+                    $messageHandler->UnRegisterEvent($eventID);
+                    IPS_DeleteEvent($childrenID);
+                    }
                 }
 			}
 		$i++;
@@ -126,7 +136,7 @@ IPSUtils_Include ("RemoteAccess_class.class.php","IPSLibrary::app::modules::Remo
 	echo "\nAnzeige der konfigurierten IPS Components und die Anzahl der Konfigurationen:\n";
 	foreach ($component as $componentName => $componentEntry)
 		{
-		echo "   ComponentName:  ".$componentName."    ".sizeof($componentEntry)."\n";
+		echo "   ComponentName:  ".str_pad($componentName,51)."  |  ".sizeof($componentEntry)."\n";
 		}
 									
 	echo "\nAnzeige der Paramnetrierung der einzelnen Components. Vorverarbeitung für die Übersichtlichkeit. Untätige Components werden nicht angezeigt.\n";

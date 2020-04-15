@@ -514,9 +514,9 @@ class OperationCenter
         $status=array(); $i=0;
 		foreach ($device_config as $name => $config)
 			{
-            if ( (isset($config["NOK_MINUTES"])) || $hourPassed)       /* Nur alle 5 Minuten durchführen wenn NOK_MINUTES gesetzt wurde */
+            if ( (isset($config["NOK_MINUTES"])) || $hourPassed || $debug)       /* alle 5 Minuten durchführen wenn NOK_MINUTES gesetzt wurde, sonst jede Stunde oder wen Debug */
                 {
-                //print_r($config);
+                //echo "device_ping:   $name\n"; print_r($config);
                 $StatusID = @IPS_GetObjectIDByName($device."_".$name,$this->categoryId_SysPing);
                 $RebootID = @IPS_GetObjectIDByName($device."_".$name,$this->categoryId_RebootCtr);
                 /* Auto Install, neue ping Abfragen werden automatisch angelegt, geloeschte allerdings nicht entfernt ! */
@@ -577,7 +577,8 @@ class OperationCenter
                         }
                     else                        /* nicht gut, Geraet nicht erreichbar */
                         {
-                        if ($debug) echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$ipAdresse."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Minuten.\n";
+                        $lastOK=time()-GetValue($RebootID)*60;
+                        if ($debug) echo "Sys_ping ".$device." Ansteuerung : ".$name." mit IP Adresse ".$ipAdresse."                   wird NICHT erreicht! Zustand seit ".GetValue($RebootID)." Minuten, Reboot Counter since ".date("m.d.Y H:i:s",$lastOK)."\n";
                         if (GetValue($StatusID)==true)
                             {  /* Statusänderung */
                             if ($debug) echo "SysPing Statusaenderung von ".$device.'_'.$name." auf NICHT Erreichbar - mit ".($i+1)." Versuchen.\n";
@@ -594,13 +595,24 @@ class OperationCenter
                             }
                         else            /* schon länger nicht erreichbar, Counter wird erhöht, kann 5 Minuten weise oder stundenweise erfolgen */
                             {
-                            if (isset($config["NOK_MINUTES"])) SetValue($RebootID,(GetValue($RebootID)+5));
-                            else SetValue($RebootID,(GetValue($RebootID)+60));
+                            $lastChange = (time() - IPS_GetVariable($RebootID)["VariableChanged"])/60;
+                            echo "Last Update of Reboot Counter was ".nf($lastChange,"m")." ago. ";
+                            if (isset($config["NOK_MINUTES"])) 
+                                {
+                                echo "Config set to count in 5 minute Intervals.";
+                                if ($debug == false) SetValue($RebootID,(GetValue($RebootID)+5));
+                                }
+                            else 
+                                {
+                                echo "Config set to count in 60 minute Intervals.";
+                                if ($debug == false) SetValue($RebootID,(GetValue($RebootID)+60));
+                                }
+                            echo "\n";
                             }
                         }
                     }	        /* falsche Konfigurationen ignorieren, es gibt eine IP Adresse oder ein array von Adressen */
-                }               /* jede Stunde oder 5Minuten wenn Parameter vorhanden */
-			}       /* ende foreach */
+                }               /* wird nur jede Stunde oder alle 5 Minuten wenn Parameter vorhanden, aufgerufen */
+			}       /* ende foreach device */
         return ($status);
 		}
 
@@ -704,7 +716,7 @@ class OperationCenter
 						$this->log_OperationCenter->LogMessage('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
 						$this->log_OperationCenter->LogNachrichten('SysPing Statusaenderung von Server_'.$Name.' auf NICHT erreichbar');
 						SetValue($ServerStatusID,false);
-			   		}
+			   		    }
 					}
 				else
 					{
@@ -806,16 +818,19 @@ class OperationCenter
 		SetValue($SysPingStatusID,time());
         $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$this->categoryId_SysPing); /* exec time zum besseren Überwachen der Funktion */
         $SysPingCount   = GetValue($SysPingCountID);
-        if (($SysPingCount++)>11)
+        if (($SysPingCount++)>10)                           // alle 60 Minuten, 0,1,2,3,4,5,6,7,8,9,10,
             {
             $SysPingCount=0;
             $hourPassed=true;
-   			IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
+   			if ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every hour.");
             }
-        elseif ($debug) $hourPassed=true;
-        else $hourPassed=false;
+        else
+            {
+        	IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices: $SysPingCount");
+            if ($debug) $hourPassed=true;
+            else $hourPassed=false;
+            }
         SetValue($SysPingCountID,$SysPingCount);
-    	IPSLogger_Inf(__file__, "SysPingAllDevices: $SysPingCount");
 
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
@@ -823,20 +838,32 @@ class OperationCenter
 		 
 		if ( (isset ($this->installedModules["IPSCam"])) && $hourPassed )
 			{
+   			//IPSLogger_Inf(__file__, "SysPingAllDevices: Check the Cams.");
 			$mactable=$this->get_macipTable($this->subnet);
 			//print_r($mactable);
 			foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 				{
-                if (isset($cam_config['MAC']) )
+                if ( (isset($cam_config['IPADRESSE']) ) || (isset($cam_config['MAC'])) )
                     {
+                   // echo "IPADRESSE oder MAC Adresse sollte bekannt sein.\n";
                     $CamStatusID = CreateVariableByName($this->categoryId_SysPing, "Cam_".$cam_name, 0); /* 0 Boolean 1 Integer 2 Float 3 String */
-                    if (isset($mactable[$cam_config['MAC']]))
+                    $ipadresse=""; $macadresse="";
+                    if (isset($cam_config['IPADRESSE'])) $ipadresse=$cam_config['IPADRESSE'];
+                    if (isset($mactable[$cam_config['MAC']])) 
                         {
-                        echo "Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse ".$mactable[$cam_config['MAC']]."\n";
-                        $status=Sys_Ping($mactable[$cam_config['MAC']],1000);
+                        $macadresse=$cam_config['MAC'];
+                        if ($ipadresse == "") $ipadresse=$mactable[$macadresse];
+                        elseif ($ipadresse != $mactable[$macadresse]) echo "Kenn mich nicht aus, zwei unterschiedliche IP Adressen.\n";
+                        }
+                    if ($ipadresse != "")
+                        {    
+                        echo str_pad("Sys_ping Kamera : ".$cam_name." mit MAC Adresse ".$cam_config['MAC']." und IP Adresse $ipadresse",110);
+                        if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
+                        else echo "                  ";
+                        $status=Sys_Ping($ipadresse,1000);
                         if ($status)
                             {
-                            echo "Kamera wird erreicht   !\n";
+                            echo "--->  Kamera wird erreicht.\n";
                             if (GetValue($CamStatusID)==false)
                                 {  /* Statusänderung */
                                 $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf Erreichbar');
@@ -846,7 +873,7 @@ class OperationCenter
                             }
                         else
                             {
-                            echo "Kamera wird NICHT erreicht   !\n";
+                            echo "---> Kamera wird NICHT erreicht   !\n";
                             if (GetValue($CamStatusID)==true)
                                 {  /* Statusänderung */
                                 $log_OperationCenter->LogMessage('SysPing Statusaenderung von Cam_'.$cam_name.' auf NICHT Erreichbar');
@@ -871,8 +898,8 @@ class OperationCenter
 			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
 			$device_config=LedAnsteuerung_Config();
 			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-			$this->device_ping($device_config, $device, $identifier);
-			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier);
+			$this->device_ping($device_config, $device, $identifier, $hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
+			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier, $debug);
 			}
 
 		/************************************************************************************
@@ -889,8 +916,8 @@ class OperationCenter
 				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
 				}
 			$device="DENON"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-			$this->device_ping($deviceConfig, $device, $identifier);
-			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier);
+			$this->device_ping($deviceConfig, $device, $identifier, $hourPassed, $debug);
+			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier, $debug);
 			}
 
         if (isset($OperationCenterConfig['INTERNET'])) 
@@ -899,8 +926,8 @@ class OperationCenter
             * Erreichbarkeit Internet, alle 5 Minuten aufrufen, Routine ignoriert selbst wenn nur jede Stunde notwendig
             *************************************************************************************/
             $device="Internet"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed);
-            $this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed);
+            $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed, $debug);
+            $this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier, $debug);
             }
 
         if ( $hourPassed )
@@ -909,8 +936,8 @@ class OperationCenter
             * Erreichbarkeit Router
             *************************************************************************************/
             $device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier);
-            $this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier);
+            $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier, $hourPassed, $debug);
+            $this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier, $debug);
             
             /********************************************************
                 Sys Uptime lokaler Server ermitteln
@@ -973,7 +1000,7 @@ class OperationCenter
 		Die entfernten logserver auf Erreichbarkeit prüfen
 		**********************************************************/
 
-		if ( (isset ($this->installedModules["RemoteAccess"])) && $hourPassed )
+		if ( (isset ($this->installedModules["RemoteAccess"])) )            // alle 5 Minuten überprüfen um die Anzahl der Fehlermeldungen zu reduzieren
 			{
 			echo "\nSind die RemoteAccess Server erreichbar ....\n";
 			$result=$this->server_ping();
@@ -1407,6 +1434,8 @@ class OperationCenter
 	 * Wenn device_ping zu oft fehlerhaft ist wird das Gerät rebootet, erfordert einen vorgelagerten Schalter und eine entsprechende Programmierung
 	 *
 	 * Übergabe nun das Config file vom Operation Center, LED oder DENON, identifier für IPADRESSE oder IPADR
+     *    nur den Teil der Config übergeben: Operationcenter_Configuration["LED"]
+     *
      * wie bei device_ping, kann alle 5 Minuten oder stundenweise aufgerufen werden
      * RebootCtr zählt nun in Minuten für mehr Transparenz
      * Logging kann ein/aus geschaltet sein
@@ -1436,7 +1465,16 @@ class OperationCenter
                     if ($debug) 
                         {
                         echo "Aufgezeichnete Werte für $name über das Verhalten des Reboot Switch Counters:\n";
-                        print_r($werte);
+                        //print_r($werte);
+                        if (count($werte))
+                            {
+                            foreach ($werte as $wert)
+                                {
+                                //print_r($wert);
+                                echo "    ".date("d.m.Y H:i:s",$wert["TimeStamp"]);
+                                echo  "  ".$wert["Value"]."   ".$wert["Duration"]."\n";
+                                }
+                            }
                         }
                     }
 				$reboot_ctr = GetValue($RebootID);
@@ -1446,34 +1484,59 @@ class OperationCenter
                     $maxCount = $config["NOK_MINUTES"];
                     }
                 else $maxCount = $config["NOK_HOURS"]*60;
+                if ($debug) echo "   Reboot ?  $reboot_ctr > $maxCount ?\n"; print_r($config);
 				if ($reboot_ctr != 0)
 					{
 					if ($reboot_ctr > $maxCount)
 						{
 						if (isset ($config["REBOOTSWITCH"]))
 							{
+                            $oidSwitch=false; $doIpsHeat=false;
 							$SwitchName = $config["REBOOTSWITCH"];
-                            $doIpsHeat=false;
-                            if (isset ($this->installedModules["IPSLight"]))
+                            $forceInteger=(integer)$SwitchName;
+                            if ((is_integer($SwitchName)) || ($forceInteger > 0)) 
                                 {
+                                $oidSwitch=true;
+                                if ($forceInteger > 0) $SwitchName = $forceInteger;
+                                }
+                            if ($debug) echo "    Rebootswitch für $name ist gesetzt. Name \"$SwitchName\" \n";
+                            if ($oidSwitch)
+                                {
+                                //IPSLogger_Inf(__file__, "OID.");    
+                                if ($debug) echo "OID $SwitchName\n";
+                                if (IPS_VariableExists($SwitchName))
+                                    {
+                                    IPSLogger_Inf(__file__, "Reboot Switch OID $SwitchName.");    
+                                    SetValue($SwitchName,false);
+                                    sleep(2);
+                                    SetValue($SwitchName,true);
+                                    }
+                                }
+                            elseif (isset ($installedModules["IPSLight"]))
+                                {
+                                //IPSLogger_Inf(__file__, "IPSLight.");    
     							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
                        			$lightManager = new IPSLight_Manager();
 			                    $switchId = @$lightManager->GetSwitchIdByName($lightName);
                                 if ($switchId)
                                     {
+                                    IPSLogger_Inf(__file__, "Reboot Switch IPSLight $SwitchName.");    
 	    						    IPSLight_SetSwitchByName($SwitchName,false);
 		    					    sleep(2);
 			    				    IPSLight_SetSwitchByName($SwitchName,true);
                                     }
-                                else $doIpsHeat=true;
+                                else $doIpsHeat=true;           // IPSLight installiert aber der Variablenname ist nicht mehr definiert
                                 }
+                            else $doIpsHeat=true;               // kein IPSLight mehr installiert                                
                             if ($doIpsHeat)
                                 {
     							include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
+                                IPSLogger_Inf(__file__, "Reboot Switch IPSHeat $SwitchName.");    
                                 IPSHeat_SetSwitchByName($SwitchName,false);
                                 sleep(2);
                                 IPSHeat_SetSwitchByName($SwitchName,true);
                                 }
+                            IPSLogger_Inf(__file__, "-------------------Reboot Switch $SwitchName erfolgt.");    
 							if (isset ($config["NOK_MINUTES"])) $logMessage = $device."_".$name." wird seit $reboot_ctr Minuten nicht erreicht. Reboot ".$SwitchName." gerade erfolgt.";
                             else $logMessage = $device."_".$name." wird seit ".round($reboot_ctr/60,0)." Stunden nicht erreicht. Reboot ".$SwitchName." gerade erfolgt";
                             if ($debug) echo $logMessage."\n";
@@ -1496,7 +1559,7 @@ class OperationCenter
                                     $this->log_OperationCenter->LogNachrichten($logMessage);
                                     }
                                 }
-                            if ($escalation<25)
+                            elseif ($escalation<25)
                                 {   /* die nächsten 100 Stunden/500 Minuten, Nachricht jede vierte Stunde/jede Stunde ausgeben, dann nur mehr einmal am Tag/jede vierte Stunde */
                                 if (($reboot_ctr%4)==0)
                                     {
@@ -1546,7 +1609,7 @@ class OperationCenter
 
 /***************************************************************************************************************
  *
- * Block im OperationCenter der MAC ADressen, IP Adressen und DomainNames behandelt
+ * Block im OperationCenter der MAC Adressen, IP Adressen und DomainNames behandelt
  *
  *
  *

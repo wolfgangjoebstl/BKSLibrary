@@ -67,13 +67,14 @@ $startexec=microtime(true);
         //print_r($result);
         }
 
+    /*  alte Berechnungen, jetzt überall den selben Algorithmus verwenden
     if (false)
         {
         echo "Homematic Temperatur Sensoren werden registriert.\n";
         if (function_exists('HomematicList'))
             {
-            $componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				/* Temperatursensoren und Homematic Thermostat */
-            $componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		/* HomematicIP Thermostat */
+            $componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				// Temperatursensoren und Homematic Thermostat 
+            $componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		    // HomematicIP Thermostat 
             } 
         echo "\n";
         echo "FHT Heizungssteuerung Geräte werden registriert.\n";
@@ -81,7 +82,7 @@ $startexec=microtime(true);
             {
             $componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
             }
-        }
+        }           */
 
 	/****************************************************************************************************************
 	 *
@@ -99,6 +100,7 @@ $startexec=microtime(true);
         //print_r($result);
         }
    
+    /*  alte Berechnungen, jetzt überall den selben Algortithmus verwenden
 
     if (false)
         {
@@ -108,9 +110,6 @@ $startexec=microtime(true);
             $componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
             } 
         }
-
-
-    /*  alte Berechnung, jetzt überall den selben Algortithmus verwenden
 
 	$remote=new RemoteAccess();    
 	$Homematic = HomematicList();

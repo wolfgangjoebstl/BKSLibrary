@@ -998,7 +998,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 			break;
 			
 		case $tim4ID:
-			IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices");
 			/********************************************************
 			 *
 			 * Alle 5 bzw. 60 Minuten: Sys_Ping durchführen basierend auf ermittelter mactable, 

@@ -27,10 +27,12 @@
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
     IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+    IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
     IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
     IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');           // sonst werden die Event Listen überschrieben
+    IPSUtils_Include ('EvaluateHardware_DeviceList.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
     IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
@@ -64,7 +66,8 @@
     if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
 
 
-    /* 
+    /***************************************************************************
+     * 
      * alle Events auslesen und danach etwas besser strukturieren
      *
      *
@@ -79,8 +82,11 @@
     /* gleiche Funktion wie Evaluate_Overview */
 
 	$messageHandler = new IPSMessageHandlerExtended();      /* auch delete von Events moeglich */
-    $config=IPSMessageHandler_GetEventConfiguration();      /* keine vernünftige Auslesefunktion für die Config */
-    //print_r($config);
+
+  	$eventConf = IPSMessageHandler_GetEventConfiguration();
+ 	$eventCust = IPSMessageHandler_GetEventConfigurationCust();
+	$eventlist = $eventConf + $eventCust;
+	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
 
 	$result=array();
     $filter = "";
@@ -134,10 +140,9 @@
                     echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
                     $delete[$entry["OID"]]=true;
                     }
-                echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
-                if (isset($config[$trigger])) 
+                if (isset($eventlist[$trigger])) 
                     {
-                    echo str_pad($config[$trigger][1],50);
+                    echo str_pad($eventlist[$trigger][1],50);
                     }
                 else echo str_pad("-----",50);
                 }
@@ -157,6 +162,13 @@
 						IPS_DeleteEvent($childrenID);
                  */
 
+
+    /**********************************************************************************
+     *
+     * Topology Mapping, check Libraries
+     *
+     *
+     **********************************/
 
     /*
 	$modulhandling->printLibraries();
@@ -324,9 +336,15 @@
         }
     echo "\n";
             
-    /* statistische Auswertungen */
+    /*****************************************************************
+     *
+     * statistische Auswertungen
+     *
+     *  
+     **********************************************************/
+
     echo "========================================================================\n";    
-    echo "Statistik der Devicelist nach Typen:\n";
+    echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
     $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList);
     print_r($statistic);
 

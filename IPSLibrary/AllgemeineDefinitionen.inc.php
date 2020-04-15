@@ -169,6 +169,8 @@ define("ADR_Programs",'C:/Program Files (x86)/');
 
 /* useful functions
  *
+ * number format with extended functionality
+ *
  */
 
 function nf($value,$unit="")
@@ -186,6 +188,13 @@ function nf($value,$unit="")
                 elseif ($value <(4*24*60*60)) $result = number_format(($value/60/60), 1, ",",".")." h";
                 elseif ($value <(4*24*60*60)) $result = number_format(($value/24/60/60), 1, ",",".")." d";
                 else $result = number_format(($value/7/24/60/60), 1, ",",".")." w";
+                break;
+            case "M":
+            case "MIN":
+                if ($value <(4*60)) $result = number_format(($value), 1, ",",".")." m";
+                elseif ($value <(4*24*60)) $result = number_format(($value/60), 1, ",",".")." h";
+                elseif ($value <(4*24*60)) $result = number_format(($value/24/60), 1, ",",".")." d";
+                else $result = number_format(($value/7/24/60), 1, ",",".")." w";
                 break;
             case "KWH":
                 $result = number_format($value, 2, ",",".")." $unit";
@@ -3908,14 +3917,16 @@ class ComponentHandling
  *
  ****************************************************************************************/    
 
-	function getComponent($Elements,$keywords, $write="Array")
+	function getComponent($Elements,$keywords, $write="Array", $debug=false)
 		{
         $component=array(); $install=array(); $result="";
 	    $detectmovement=false; $profile="";
 		$totalfound=false;
 		
-        if ($this->debug) 
+        if ($this->debug) $debug=true;
+        if ($debug)
             {
+            $once=true;
             if ( is_array($keywords) )
                 {
                 echo "getComponent: Passende Geraeteregister suchen für ";
@@ -3924,7 +3935,9 @@ class ComponentHandling
                 }
             else echo "getComponent: Passende Geraeteregister suchen für $keywords :\n";
             }
-		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */		
+        else $once=false;		
+
+		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */
 		foreach ($Elements as $Key)
 			{
             $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
@@ -3932,6 +3945,7 @@ class ComponentHandling
             /******* devicelist als Formattierung */              
             if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                 {
+                if ($once) echo "     Input Elements ist formatted like deviceList.\n";
                 $typeChanKey="?"; $typeRegKey="?"; 
                 if ( is_array($keywords) )
                     {
@@ -3939,11 +3953,11 @@ class ComponentHandling
                         {
                         if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
                         if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
-                        //echo "    $index => $entry \n";
+                        //if ($once) echo "        $index => $entry \n";
                         }
                     }
                 else $typeChanKey=$keywords;
-                //if ($count == 0) echo " devicelist als Formattierung des Arrays $typeChanKey $typeRegKey.\n";
+                if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
                 $count++;
                 if (isset($Key["Channels"]))
                     {
@@ -3952,6 +3966,7 @@ class ComponentHandling
                         //print_r($instance);
                         if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
                             {
+                            if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
                             $oid          = $Key["Instances"][$index]["OID"];
                             $channelTypes = $Key["Channels"][$index]["TYPECHAN"];
                             $types = explode(",",$channelTypes);
@@ -3964,6 +3979,12 @@ class ComponentHandling
                                     if ($IDkey == $typeRegKey)
                                         {
                                         $coid=@IPS_GetObjectIDByName($varName,$oid);
+                                        $keyword=$typeRegKey;
+                                        }
+                                    elseif ($typeRegKey=="?") 
+                                        {
+                                        $coid=@IPS_GetObjectIDByName($varName,$oid);
+                                        $keyword=$varName;
                                         }
                                     }
                                 }
@@ -3975,7 +3996,6 @@ class ComponentHandling
                             //print_r($Key["Channels"][$index]);
 
                             $keyName=$instance["Name"];
-                            $keyword=$typeRegKey;
                             //echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : $keyName  $oid  $channelTypes \n";
                             } 
                         }                                
@@ -4177,8 +4197,9 @@ class ComponentHandling
                         $result .= "  ".str_pad($keyName."/".$keyword,50)." = ".GetValue($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
                         }
                     }
-                }   // ende found
-			} /* Ende foreach */
+                }   // ende Found
+            $once=false;                // nur einmal manches ausgeben    
+			} /* Ende foreach elements  */
 
 		if (!$totalfound) echo "************Kenne ".json_encode($keywords)." nicht.\n";
         switch ($write)
@@ -4450,6 +4471,77 @@ class ComponentHandling
 		}	
 
     } // endof class ComponentHandling
+
+/***********************************************************************************
+ *
+ *  quick server ping to reduce error messages in log
+ *
+ **************************************************************************************/
+
+    function quickServerPing($UrlAddress)
+        {    		
+        $method="IPS_GetName"; $params=array();
+        $rpc = new JSONRPC($UrlAddress);
+        //echo "Server : ".$UrlAddress." hat Uptime: ".$rpc->IPS_GetUptime()."\n";
+        $data = @parse_url($UrlAddress);
+        if(($data === false) || !isset($data['scheme']) || !isset($data['host']))
+            throw new Exception("Invalid URL");
+        $url = $data['scheme']."://".$data['host'];
+        if(isset($data['port'])) $url .= ":".$data['port'];
+        if(isset($data['path'])) $url .= $data['path'];
+        if(isset($data['user']))
+            {
+            $username = $data['user'];
+            }
+        else
+            {
+            $username = "";
+            }
+        if(isset($data['pass']))
+            {
+            $password = $data['pass'];
+            }
+        else
+            {
+            $password = "";
+            }
+        if (!is_scalar($method)) {
+                throw new Exception('Method name has no scalar value');
+            }
+        if (!is_array($params)) {
+                throw new Exception('Params must be given as array');
+            }
+        $id = round(fmod(microtime(true)*1000, 10000));
+        $params = array_values($params);
+        $strencode = function(&$item, $key) {
+            if ( is_string($item) ) $item = utf8_encode($item);
+            else if ( is_array($item) ) array_walk_recursive($item, $strencode);
+            };
+        array_walk_recursive($params, $strencode);
+        $request = Array(
+                            "jsonrpc" => "2.0",
+                            "method" => $method,
+                            "params" => $params,
+                            "id" => $id
+                        );
+        $request = json_encode($request);
+        $header = "Content-type: application/json"."\r\n";
+        if(($username != "") || ($password != "")) {
+            $header .= "Authorization: Basic ".base64_encode($username.":".$password)."\r\n";
+            }
+        $options = Array(
+                "http" => array (
+                "method"  => 'POST',
+                "header"  => $header,
+                "content" => $request
+                                )
+                    );
+        $context  = stream_context_create($options);
+        $response = @file_get_contents($url, false, $context);
+        echo $UrlAddress."   ".($response?"Ja":"Nein")."\n";
+        if ($response === false) return ($response);
+        else return ($rpc);
+        }
 
 /***********************************************************************************
  *

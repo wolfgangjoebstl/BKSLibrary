@@ -403,6 +403,13 @@ class Hardware
 
     /* Plausi und Syntax Check der devicelist. Als Ergebnis werden statistische  Auswertungen geliefert. 
      * Fehlermeldungen werden als echo ausgegeben
+     * es erfolgen keine Registrierungen
+     * für jeden einzelnen Type, TYPEDEV und TYPECHAN werden Counter angelegt
+     *
+     * jedes Gerät hat mehrere Instances aber nur einen Type
+     *       Type
+     *       Instances   TYPEDEV
+     *       Channels    TYPECHAN
      */
 
     public function getDeviceStatistics($deviceList)
@@ -410,16 +417,6 @@ class Hardware
         $statistic=array();
         foreach ($deviceList as $name => $entry)
             {
-            /* das registrieren muss wo anders passieren:
-            $instances=$entry["Instances"];
-            $first=true;
-            foreach ($instances as $instance)
-                {
-                if ( (isset($installedModules["DetectMovement"])) && $first ) $Handler->RegisterEvent($instance["OID"],'Topology','','');	                    // für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann            
-                $first=false;
-                }
-            */
-                
             if (isset($entry["Type"])) 
                 {
                 if (isset($statistic[$entry["Type"]])) $statistic[$entry["Type"]]["Count"]++;
@@ -427,11 +424,13 @@ class Hardware
                 }
             if (isset($entry["Instances"]))
                 {
+                /* Geräte zählen, also wie oft kommt Instances vor */
                 if (isset($statistic[$entry["Type"]]["Instances"])) $statistic[$entry["Type"]]["Instances"]["Count"]++;
-                else $statistic[$entry["Type"]]["Instances"]["Count"]=1; 
+                else $statistic[$entry["Type"]]["Instances"]["Count"]=1;
+                /* Instanzen der Geräte im Total zählen */
                 foreach ($entry["Instances"] as $instance)
                     {
-                    if (isset($statistic[$entry["Type"]]["Instances"]["CountInstances"])) 
+                    if (isset($statistic[$entry["Type"]]["Instances"]["CountInstances"]))           // Instanzen im Total zählen
                         {
                         $statistic[$entry["Type"]]["Instances"]["CountInstances"]++;
                         }
@@ -453,7 +452,8 @@ class Hardware
                 } 
             if (isset($entry["Channels"]))
                 {
-                if (isset($statistic[$entry["Type"]]["Channels"])) 
+                /* Channels zählen, also wie oft kommt die Instanz Channels vor */
+                if (isset($statistic[$entry["Type"]]["Channels"]))                                      // Channels zählen
                     {
                     $statistic[$entry["Type"]]["Channels"]["Count"]++;
                     //$statistic[$entry["Type"]]["Channels"]["List"] .= ";".$name;
@@ -463,10 +463,10 @@ class Hardware
                     $statistic[$entry["Type"]]["Channels"]["Count"]=1; 
                     //$statistic[$entry["Type"]]["Channels"]["List"] = $name;
                     }
-                
+                /* einzelne Channels im Total zählen */
                 foreach ($entry["Channels"] as $channel)
                     {
-                    if (isset($statistic[$entry["Type"]]["Channels"]["CountChannels"])) 
+                    if (isset($statistic[$entry["Type"]]["Channels"]["CountChannels"]))         // alle Channels im Total zaehlen 
                         {
                         $statistic[$entry["Type"]]["Channels"]["CountChannels"]++;
                         }
@@ -474,20 +474,25 @@ class Hardware
                         {
                         $statistic[$entry["Type"]]["Channels"]["CountChannels"]=1; 
                         }                    
-                    if (isset($channel["Type"]))
-                        {                    
-                        if (isset($statistic[$entry["Type"]]["Channels"][$channel["Type"]])) 
-                            {
-                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["Count"]++;
-                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["List"] .= ";".$channel["Name"];
-                            }
-                        else 
-                            {
-                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["Count"]=1; 
-                            $statistic[$entry["Type"]]["Channels"][$channel["Type"]]["List"] = $channel["Name"];
+                    if (isset($channel["TYPECHAN"]))
+                        {
+                        /* es gibt Untergruppen im Typechan, also vorher aufteilen */
+                        $typechans = explode(",",$channel["TYPECHAN"]);
+                        foreach ($typechans as $typechan)
+                            {                    
+                            if (isset($statistic[$entry["Type"]]["Channels"][$typechan])) 
+                                {
+                                $statistic[$entry["Type"]]["Channels"][$typechan]["Count"]++;
+                                $statistic[$entry["Type"]]["Channels"][$typechan]["List"] .= ";".$channel["Name"];
+                                }
+                            else 
+                                {
+                                $statistic[$entry["Type"]]["Channels"][$typechan]["Count"]=1; 
+                                $statistic[$entry["Type"]]["Channels"][$typechan]["List"] = $channel["Name"];
+                                }
                             }
                         }
-                    else echo "Type in den Channels für $name nicht definiert.\n";
+                    else echo "TYPECHAN in den Channels für $name nicht definiert.\n";
                     }
                 }            
             }    
@@ -1116,8 +1121,8 @@ class HardwareFHTFamily extends Hardware
 	
 	public function __construct($debug=false)
 		{
-        //$this->socketID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
-        //$this->bridgeID = "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}";
+        $this->socketID = "";               // empty string means, there are no sockets
+        $this->bridgeID = "";
         $this->deviceID = "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";         // FHT Devices
         parent::__construct($debug);        
         }
@@ -1269,8 +1274,8 @@ class HardwareFS20Family extends Hardware
 	
 	public function __construct($debug=false)
 		{
-        //$this->socketID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
-        //$this->bridgeID = "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}";
+        $this->socketID = "";               // empty string means, there are no sockets
+        $this->bridgeID = "";
         $this->deviceID = "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";
         parent::__construct($debug);        
         }
@@ -1420,8 +1425,8 @@ class HardwareFS20ExFamily extends Hardware
 	
 	public function __construct($debug=false)
 		{
-        //$this->socketID = "{03B162DB-7A3A-41AE-A676-2444F16EBEDF}";
-        //$this->bridgeID = "{E1FB3491-F78D-457A-89EC-18C832F4E6D9}";
+        $this->socketID = "";               // empty string means, there are no sockets
+        $this->bridgeID = "";
         $this->deviceID = "{56800073-A809-4513-9618-1C593EE1240C}";
         parent::__construct($debug);        
         }
