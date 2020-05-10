@@ -24,7 +24,7 @@
 	IPSUtils_Include ('IPSComponentHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
    	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");	
 
-	class IPSComponentHeatSet_Homematic extends IPSComponentHeatSet {
+	class defaultIPSComponentHeatSet_Homematic extends IPSComponentHeatSet {
 
 		protected 	$tempValue;
 		protected 	$installedmodules;
@@ -141,8 +141,8 @@
 			//$setlevel=$level;
 			if ($this->rpcADR==Null)
 				{
-				echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
-                IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+				echo "   IPSComponentHeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponentHeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
 				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
 			else

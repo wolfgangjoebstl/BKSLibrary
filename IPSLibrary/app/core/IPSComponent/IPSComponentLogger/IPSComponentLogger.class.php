@@ -140,6 +140,8 @@ class Logging
 	private $log_File="Default";
 	private $script_Id="Default";
 	private $nachrichteninput_Id="Default";
+    private $storeTableID = false;              /* ermöglicht längere Speichertiefen für Nachrichten */
+
 	private $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
     private $zeile=array();                     /* Nachrichteninput Objekte OIDs */
     private $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
@@ -210,6 +212,7 @@ class Logging
             if ($this->config["HTMLOutput"]) 
                 {
                 $sumTableID = CreateVariable("MessageTable", 3,  $this->nachrichteninput_Id, 900 , '~HTMLBox',null,null,""); // obige Informationen als kleine Tabelle erstellen
+                $this->storeTableID = CreateVariable("MessageStorage", 3,  $this->nachrichteninput_Id, 910 , '',null,null,""); // die Tabelle in einem größerem Umfeld speichern
                 SetValue($sumTableID,$this->PrintNachrichten(true));
                 }
 			}
@@ -520,6 +523,19 @@ class Logging
         if ($this->config["HTMLOutput"]) 
             {
             $sumTableID = IPS_GetObjectIDByName("MessageTable", $this->nachrichteninput_Id); 
+            if ($this->storeTableID)
+                {
+                $messages = json_decode(GetValue($this->storeTableID),true);
+                $messages[time()]=$message;
+                krsort($messages);
+                if (count($messages)>50)
+                    {
+                    end( $messages );
+                    $key = key( $messages );
+                    unset ($messages[$key]);
+                    }
+                SetValue($this->storeTableID,json_encode($messages));
+                }    
             SetValue($sumTableID,$this->PrintNachrichten(true));
             }            								
 		}
@@ -530,11 +546,31 @@ class Logging
 		{
 		$result=false;
         $PrintHtml="";
-        $PrintHtml.='<style> 
-            table,td {align:center;border:1px solid white;border-collapse:collapse;}
-            </style>';
-        $PrintHtml.='<table>';         
-		if ($this->nachrichteninput_Id != "Ohne")
+        $PrintHtml.='<style>';             
+        $PrintHtml.='.messagy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $PrintHtml.='.messagy table    {table-layout: fixed; width: 100%; }';
+        $PrintHtml.='.messagy td:nth-child(1) { width: 30%; }';
+        $PrintHtml.='.messagy td:nth-child(2) { width: 70%; }';
+        $PrintHtml.='</style>';        
+        $PrintHtml.='<table class="messagy">';
+        if ($this->config["HTMLOutput"] && $this->storeTableID)
+            {
+            $messageJson=GetValue($this->storeTableID);
+            $messages = json_decode($messageJson,true);
+            //IPSLogger_Inf(__file__, "Logging:PrintNachrichten ".$messageJson."   ".$this->log_File."   ".$this->zeile1);
+            $PrintHtml .= '<tr><td>Date</td><td>Message</td></tr>';
+            if (is_array($messages))
+                {
+                if (count($messages)>0) 
+                    {
+                    foreach ($messages as $timeIndex => $message)
+                        {
+                        $PrintHtml .= '<tr><td>'.date("d.m H:i:s",$timeIndex).'</td><td>'.$message.'</td></tr>';
+                        }
+                    }
+                }
+            }  
+		elseif ($this->nachrichteninput_Id != "Ohne")
 		    {
             $result="";
             $count=sizeof($this->zeile);

@@ -86,7 +86,7 @@
 		 * Initialisierung des IPSHeat_Manager Objektes
 		 *
 		 */
-		public function __construct() 
+		public function __construct($debug=false) 
 			{
 			//echo "Construct IPS_HeatManager.\n";
 			$baseId = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Stromheizung');
@@ -541,6 +541,11 @@
 			$groupConfig = IPSHeat_GetGroupConfiguration();
 			$groupName   = $this->GetConfigNameById($groupId);			
 			$groupNameLong   = IPS_GetName($groupId);
+            if ($debug) 
+                {
+                echo "   IPSHeat:SetGroup für $groupId $groupName mit Wert ".nf($value)." aufgerufen.\n";
+                //echo "Check for Index ".IPSHEAT_ACTIVATABLE."\n"; print_r($groupConfig[$groupName]); 
+                }
 			if ($value and !$groupConfig[$groupName][IPSHEAT_ACTIVATABLE]) 
                 {
 				if ($groupName == $groupNameLong) IPSLogger_Trc(__file__, "Ignore ".($value?'On':'Off')." forHeatGroup '$groupName' (not allowed)");
@@ -551,7 +556,7 @@
                 if (GetValue($groupId) != $value)
                     {
                     /* nur aktiv den Wert setzen wenn er unterschiedlich ist, reduziert die Anzahl der LogMeldungen und es wird übersichtlicher */
-                    if ($debug) echo "SetGroup, Aufruf mit $groupName und $groupNameLong. Gruppe aktiviert. ".IPS_GetName($groupId)." : ".GetValue($groupId)." ist der alte Wert und Wert neu ist $value.\n";
+                    if ($debug) echo "   IPSHeat:SetGroup, Aufruf mit $groupName und $groupNameLong. Gruppe aktiviert. ".IPS_GetName($groupId)." : ".(GetValue($groupId)?'On':'Off')." ist der alte Wert und Wert neu ist ".($value?'On':'Off').".\n";
     				SetValue($groupId, $value);
 				    if ($groupName == $groupNameLong) IPSLogger_Inf(__file__, "Turn HeatGroup '$groupName' ".($value?'On':'Off'));
                     else IPSLogger_Inf(__file__, "Set HeatGroup '$groupNameLong' to $value");
@@ -887,7 +892,7 @@
 			$lightConfig  = IPSHeat_GetHeatConfiguration();
 			$groupConfig  = IPSHeat_GetGroupConfiguration();
 			$groupType		= $groupConfig[$groupName][IPSHEAT_TYPE];
-			//echo "SetAllSwitchesByGroup : ".$groupConfig[$groupName][IPSHEAT_TYPE]."   ".$groupName."   (".$groupId.")   ".$groupNameLong."\n";			
+			if ($debug) echo "      SetAllSwitchesByGroup: aufgerufen mit ".$groupConfig[$groupName][IPSHEAT_TYPE]."   ".$groupName."   (".$groupId.")   ".$groupNameLong."\n";			
 			if ($groupName <> $groupNameLong)			/* Wenn Zusatzparameter behandelt wird wie zB #LEVEL */
 				{
 				$pos=strpos($groupNameLong,$groupName);
@@ -896,7 +901,7 @@
 					{
 					$NameExt=substr($groupNameLong,$pos1);
 					$groupState   = GetValue($groupId);     /* GroupState ist ein Wert zB Temperatur oder Farbe */
-					if ($debug) echo "SetAllSwitchesByGroup : ".$groupId."   ".$groupName."   ".$groupNameLong."   ".$NameExt."   ".$groupState."\n";
+					if ($debug) echo "       SetAllSwitchesByGroup: bearbeiten mit ".$groupId."   ".$groupName."   ".$groupNameLong."   ".$NameExt."   ".$groupState."\n";
 					foreach ($lightConfig as $switchName=>$deviceData) 
 						{
 						if ($deviceData[IPSHEAT_TYPE] == $groupType)
@@ -927,6 +932,7 @@
 					//if ($switchInGroup) echo "   ".$switchName."\n";
 					if ($switchInGroup and GetValue($switchId)<>$groupState) 
 						{
+    					if ($debug) echo "       SetAllSwitchesByGroup: Set heat $switchName=".($groupState?'On':'Off')." for Group $groupName .\n";
 						IPSLogger_Trc(__file__, "Set Light $switchName=".($groupState?'On':'Off')." for Group '$groupName'");
 						$this->SetValue($switchId, $groupState);
 						$this->SynchronizeGroupsBySwitch ($switchId);

@@ -780,20 +780,25 @@
 	echo "Sysping Variablen anlegen.\n";
 
 	$categoryId_SysPing    = CreateCategory('SysPing',   $CategoryIdData, 200);
+    $categoryId_SysPingControl    = CreateCategory('SysPingControl',   $categoryId_SysPing, 200);
 
     /* Standardvariablen für den Betrieb von Sysping setzen 
      * Exectime
      * Counter für fast and slow exec mode  (5/60 Minuten)
      */
-	$SysPingStatusID = CreateVariableByName($categoryId_SysPing, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$SysPingStatusID = CreateVariableByName($categoryId_SysPingControl, "SysPingExectime", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
 	IPS_SetVariableCustomProfile($SysPingStatusID,"~UnixTimestamp");
     IPS_SetHidden($SysPingStatusID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-	$SysPingCountID = CreateVariableByName($categoryId_SysPing, "SysPingCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
+	$SysPingCountID = CreateVariableByName($categoryId_SysPingControl, "SysPingCount", 1); /* 0 Boolean 1 Integer 2 Float 3 String */
     IPS_SetHidden($SysPingCountID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
     setValue($SysPingCountID,0);
-	$SysPingTableID = CreateVariable("SysPingTable",   3 /*String*/,  $categoryId_SysPing, 6000 , '~HTMLBox',null,null,"");
+
+    //$SysPingTableID = CreateVariable("SysPingTable",   3 /*String*/,  $categoryId_SysPing, 6000 , '~HTMLBox',null,null,"");
+
+	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-    
+	$SysPingActivityTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingActivityTable",   3 /*String*/, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+    IPS_SetHidden($SysPingActivityTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 
 	if (isset ($installedModules["IPSCam"]))
 		{
@@ -1216,17 +1221,22 @@
         $resultStream[1]["Stream"]["Name"]="Nachrichten";
         $resultStream[1]["Stream"]["OID"]=$MessageTableID;
         }
+    if ($SysPingActivityTableID !== false) 
+        {
+        $resultStream[2]["Stream"]["Name"]="SyspingActivityTabelle";
+        $resultStream[2]["Stream"]["OID"]=$SysPingActivityTableID;
+        }
     if ($SysPingTableID !== false) 
         {
-        $resultStream[2]["Stream"]["Name"]="SyspingTabelle";
-        $resultStream[2]["Stream"]["OID"]=$SysPingTableID;
+        $resultStream[4]["Stream"]["Name"]="SysPingTable";
+        $resultStream[4]["Stream"]["OID"]=$SysPingTableID;
         }
-    $resultStream[4]["Stream"]["Name"]="SysPing";
-    $resultStream[4]["Stream"]["OID"]=$categoryId_SysPing;
 
     if (isset($configWFront["Administrator"]))
         {
+        echo "Administrator:\n";
         $configWF = $configWFront["Administrator"];
+        print_r($configWF); print_r($resultStream);
         installWebfrontMon($configWF,$resultStream); 
 		}
 
@@ -1637,7 +1647,7 @@
      *           $resultStream[0]["Stream"]["OID"]   für Fenster Links oben
      *           $resultStream[1]["Stream"]["Link"]  für Fenster Rechts oben
      *           $resultStream[2]["Stream"]["Link"]  für Fenster Links unten
-     *           $resultStream[3]["Stream"]["Link"]  für Fenster Rechts unten
+     *           //$resultStream[3]["Stream"]["Link"]  für Fenster Rechts unten
      *           $resultStream[4]["Stream"]["Link"]  für grosses Fenster links
      *
      *
@@ -1656,34 +1666,50 @@
             IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
 			EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
 
+            /* Kategorien neu anlegen */
             $categoryIdLeftDn    = CreateCategory('SystemNachrichten',      $categoryId_WebFrontMonitor, 0);             
             $categoryIdLeft      = CreateCategory('SysPingErreichbarkeit',  $categoryId_WebFrontMonitor, 0);             
             $categoryIdLeftUp    = CreateCategory('SystemInfo',      $categoryId_WebFrontMonitor, 0);             
             $categoryIdRightUp    = CreateCategory('RightUp',      $categoryId_WebFrontMonitor, 0);             
             $categoryIdRightDn    = CreateCategory('RightDn',      $categoryId_WebFrontMonitor, 0);             
 
-            DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
+            /*                                                    
+             *    Monitor, TabpaneItem (Tab Arztkoffer im Admin Root)
+             *        Splitpane, TabItem, vertical 30%    (Tab Monitorstecker unter Arztkofer)
+             *             Category Ovw
+             *             Splitpane Show, vertical 50%
+             *                  Splitpane Left, horizontal 50%
+             *                      Category Up
+             *                      Category Down
+             *                  Splitpane right, horizontal 50%
+             *                      Category Up
+             *                      Category Down
+             *
+             */
+            print_r($configWF);
+            DeleteWFCItems($configWF["ConfigId"], $configWF["TabPaneItem"]);		// Einzel Tab loeschen
             CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // OperationCenter Tabpane
-            
             CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"], ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 /*Vertical*/, 30 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');  // Monitor Splitpane
 
             CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"]."_Ovw", $configWF["TabItem"],  10, "","",$categoryIdLeft /*BaseId*/, 'false' /*BarBottomVisible*/ );       // muss angeben werden, sonst schreibt das Splitpane auf die falsche Seite
             CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Show", $configWF["TabItem"], ($configWF["TabOrder"]+200), "Show", "", 1 /*Vertical*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
-            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Show", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Left", $configWF["TabItem"]."_Show", 10, "Left", "", 0 /*Horizontal*/, 35 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            //CreateWFCItemSplitPane ($configWF["ConfigId"], $configWF["TabItem"]."_Right", $configWF["TabItem"]."_Show", 20, "Right", "", 0 /*Horizontal*/, 50 /*Width*/, 0 /*Target=Pane1*/, 0/*UsePixel*/, 'true');
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
+            //CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
         
             CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Left', $configWF["TabItem"]."_Left", 10, '', '', $categoryIdLeftUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Up_Right', $configWF["TabItem"]."_Right", 10, '', '', $categoryIdRightUp   /*BaseId*/, 'false' /*BarBottomVisible*/);
             CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Left', $configWF["TabItem"]."_Left", 20, '', '', $categoryIdLeftDn   /*BaseId*/, 'false' /*BarBottomVisible*/);
-            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"].'Dn_Right', $configWF["TabItem"]."_Right", 20, '', '', $categoryIdRightDn   /*BaseId*/, 'false' /*BarBottomVisible*/);  
 
             if ($resultStream !== false) 
                 {
                 $resultStream[0]["Stream"]["Link"]=$categoryIdLeftUp;
                 $resultStream[1]["Stream"]["Link"]=$categoryIdRightUp;
                 $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
-                $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
-                $resultStream[4]["Stream"]["Link"]=$categoryIdLeft;
+                $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;        // wird nicht mehr verwendet, trotzdem drinnen lassen sonst ist die Struktur zerstört
+                $resultStream[4]["Stream"]["Link"]=$categoryIdLeft;             // das ist das klassische sysping
                 $count=sizeof($resultStream);
                 for ($i=0;$i<$count;$i++) 
                     {

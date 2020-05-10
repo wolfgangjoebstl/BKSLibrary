@@ -24,7 +24,7 @@
 	IPSUtils_Include ('IPSComponentHeatSet.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
    	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");	
 
-	class IPSComponentHeatSet_Homematic extends IPSComponentHeatSet {
+	class defaultIPSComponentHeatSet_Homematic extends IPSComponentHeatSet {
 
 		protected 	$tempValue;
 		protected 	$installedmodules;

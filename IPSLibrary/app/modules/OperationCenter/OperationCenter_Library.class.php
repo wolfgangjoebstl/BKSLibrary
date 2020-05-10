@@ -813,24 +813,33 @@ class OperationCenter
 
 		$OperationCenterConfig = $this->oc_Configuration;
 		//print_r($OperationCenterConfig);
+
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
 		
-		$SysPingStatusID = IPS_GetObjectIDByName("SysPingExectime",$this->categoryId_SysPing); /* exec time zum besseren Überwachen der Funktion */
+		$SysPingStatusID = IPS_GetObjectIDByName("SysPingExectime",$categoryId_SysPingControl); /* exec time zum besseren Überwachen der Funktion */
 		SetValue($SysPingStatusID,time());
-        $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$this->categoryId_SysPing); /* exec time zum besseren Überwachen der Funktion */
+        $hourPassed=false; $fourHourPassed=false;
+        if ($debug) { $hourPassed=true; $fourHourPassed=true; }
+        $SysPingCountID = IPS_GetObjectIDByName("SysPingCount",$categoryId_SysPingControl); /* exec time zum besseren Überwachen der Funktion */
         $SysPingCount   = GetValue($SysPingCountID);
-        if (($SysPingCount++)>10)                           // alle 60 Minuten, 0,1,2,3,4,5,6,7,8,9,10,
+        $SysPingCount++;
+        if (($SysPingCount%12)==0)                           // alle 60 Minuten, 0,1,2,3,4,5,6,7,8,9,10,
             {
-            $SysPingCount=0;
+            if ($SysPingCount>=48) 
+                {
+                $SysPingCount=0;
+                $fourHourPassed=true;
+       			if ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every four hour.");
+                }
+   			elseif ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every hour.");
             $hourPassed=true;
-   			if ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every hour.");
             }
-        else
-            {
-        	IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices: $SysPingCount");
-            if ($debug) $hourPassed=true;
-            else $hourPassed=false;
-            }
+        elseif ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices: $SysPingCount every 5 Minutes");
         SetValue($SysPingCountID,$SysPingCount);
+
+        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+        $SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$categoryId_SysPingControl); 
+        $SysPingResult=array();
 
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
@@ -861,6 +870,7 @@ class OperationCenter
                         if ($macadresse != "") echo " vs ".$mactable[$cam_config['MAC']]."    ";
                         else echo "                  ";
                         $status=Sys_Ping($ipadresse,1000);
+                        $SysPingResult[IPS_getName($CamStatusID)]=$status;
                         if ($status)
                             {
                             echo "--->  Kamera wird erreicht.\n";
@@ -898,7 +908,7 @@ class OperationCenter
 			Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\LedAnsteuerung\LedAnsteuerung_Configuration.inc.php");
 			$device_config=LedAnsteuerung_Config();
 			$device="LED"; $identifier="IPADR"; /* IP Adresse im Config Feld */
-			$this->device_ping($device_config, $device, $identifier, $hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
+			$SysPingResult += $this->device_ping($device_config, $device, $identifier, $hourPassed, $debug);                  // debug setzt weiter oben auch hourspassed
 			$this->device_checkReboot($OperationCenterConfig['LED'], $device, $identifier, $debug);
 			}
 
@@ -916,7 +926,7 @@ class OperationCenter
 				if ( isset ($config["TYPE"]) ) { if ( strtoupper($config["TYPE"]) == "DENON" ) $deviceConfig[$name]=$config; }
 				}
 			$device="DENON"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-			$this->device_ping($deviceConfig, $device, $identifier, $hourPassed, $debug);
+			$SysPingResult += $this->device_ping($deviceConfig, $device, $identifier, $hourPassed, $debug);
 			$this->device_checkReboot($OperationCenterConfig['DENON'], $device, $identifier, $debug);
 			}
 
@@ -926,7 +936,7 @@ class OperationCenter
             * Erreichbarkeit Internet, alle 5 Minuten aufrufen, Routine ignoriert selbst wenn nur jede Stunde notwendig
             *************************************************************************************/
             $device="Internet"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed, $debug);
+            $SysPingResult += $this->device_ping($OperationCenterConfig['INTERNET'], $device, $identifier, $hourPassed, $debug);
             $this->device_checkReboot($OperationCenterConfig['INTERNET'], $device, $identifier, $debug);
             }
 
@@ -936,7 +946,7 @@ class OperationCenter
             * Erreichbarkeit Router
             *************************************************************************************/
             $device="Router"; $identifier="IPADRESSE";   /* IP Adresse im Config Feld */
-            $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier, $hourPassed, $debug);
+            $SysPingResult += $this->device_ping($OperationCenterConfig['ROUTER'], $device, $identifier, $hourPassed, $debug);
             $this->device_checkReboot($OperationCenterConfig['ROUTER'], $device, $identifier, $debug);
             
             /********************************************************
@@ -1005,12 +1015,105 @@ class OperationCenter
 			echo "\nSind die RemoteAccess Server erreichbar ....\n";
 			$result=$this->server_ping();
 			}
-
+        //if ($debug) 
+            {
+            $this->writeSysPingStatistics($this->categoryId_SysPing);
+            }
+        if ($fourHourPassed)
+            {
+            echo "\n\n";
+            echo "Zusammenfassung SyspingAllDevices als Activity Table:\n";
+            $actual=false;
+            $html=$this->writeSysPingActivity($actual, true, $debug);
+            echo $this->writeSysPingActivity($actual, false, false);
+            SetValue($SysPingActivityTableID,$html);                
+            }            
+        return($SysPingResult);
 		}
 
 	/*************************************************************************************************************
 	 *
-	 * writeSysPingResults() , in Textform die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
+	 * writeSysPingStatistics() als html Tabelle die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
+	 *
+	 * es werden die Dateneintraege analysiert und ausgegeben
+	 *   Erreichbarkeit IPCams
+	 *	 writeServerPingResults()
+     *   etc.
+     *
+	 *
+	 *
+	 **************************************************************************************************************/
+
+	function writeSysPingStatistics($categoryId_SysPing=0)
+		{
+        echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
+        if ($categoryId_SysPing==0) $categoryId_SysPing=$this->categoryId_SysPing;        
+        $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
+        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+
+        $ipsOps = new ipsOps();
+        $sysPing=array();
+
+        $PrintHtml="";
+        $PrintHtml.='<style>'; 
+        $PrintHtml.='.sturdy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+        $PrintHtml.='.sturdy table    {table-layout: fixed; width: 100%; }';
+        $PrintHtml.='.sturdy td:nth-child(1) { width: 70%; }';
+        $PrintHtml.='.sturdy td:nth-child(2) { width: 10%; }';
+        $PrintHtml.='.sturdy td:nth-child(3) { width: 20%; }';
+        $PrintHtml.='</style>';        
+        $PrintHtml.='<table class="sturdy"><tr><td>Name</td><td>State</td><td>Since</td></tr>';
+
+        $childrens = IPS_GetChildrenIds($categoryId_SysPing);           // alle Status Variablen
+        foreach ($childrens as $children)
+            {
+            $varname=IPS_GetName($children);
+            switch ($varname)
+                {
+                case "SysPingTable":
+                case "SysPingActivityTable":
+                case "SysPingExectime":
+                case "SysPingCount":
+                case "SysPingControl":                
+                    break;    
+                default:
+                    echo "   ".str_pad($varname,40)."    ";
+                    if (isset($result[$varname])) echo "*";
+                    else echo " ";
+                    $timeChanged=IPS_GetVariable($children)["VariableChanged"];
+                    $time=date("d.m.Y H:i:s",$timeChanged);
+                    $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
+                    echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
+                    if ($timeChanged==0) 
+                        {
+                        echo "   --> delete\n";
+                        IPS_DeleteVariable($children);
+                        } 
+                    else 
+                        {
+                        echo "    \n";
+                        $sysPing[$varname]["VarName"]=$varname;
+                        $sysPing[$varname]["Status"]=GetValue($children);
+                        $sysPing[$varname]["Delay"]=$timeDelay;
+                        //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
+                        }
+                    break;
+                }
+            }
+
+        $ipsOps->intelliSort($sysPing,"VarName");
+        foreach ($sysPing as $entry)
+            {
+            $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
+            }
+        $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
+        $PrintHtml.='</table>';    
+        SetValue($SysPingTableID,$PrintHtml);
+        }
+
+	/*************************************************************************************************************
+	 *
+	 * writeSysPingActivity() , in Textform die Ergebnisse über die Erreichbarkeit von Geräten ausgeben
 	 *
 	 * es werden die Dateneintraege analysiert und ausgegeben
 	 *   Erreichbarkeit IPCams
@@ -1021,7 +1124,7 @@ class OperationCenter
 	 *
 	 **************************************************************************************************************/
 
-	function writeSysPingResults($actual=true, $html=false, $debug=false)
+	function writeSysPingActivity($actual=true, $html=false, $debug=false)
 		{
 		$result=""; 
         //$eDebug=$debug;
@@ -1030,8 +1133,9 @@ class OperationCenter
 		$OperationCenterConfig = $this->oc_Configuration;
 		//print_r($OperationCenterConfig);
 		
-        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$this->categoryId_SysPing);
-        
+        //$SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$this->categoryId_SysPing);
+        //$SysPingActivityTableID = @IPS_GetObjectIDByName("SysPingActivityTable",$this->categoryId_SysPing);        
+
 		/************************************************************************************
 		 * Erreichbarkeit IPCams
 		 *************************************************************************************/
@@ -1176,15 +1280,21 @@ class OperationCenter
             {
             ksort($result1);
             $PrintHtml="";
-            $PrintHtml.='<style> 
-                table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                </style>';
-            $PrintHtml.='<table>';
-            $PrintHtml.='<tr><th>Gerät</th><th>Ontime</th><th>Offtime</th><th>Availability</th></tr>';
+            $PrintHtml.='<style>';             
+            $PrintHtml.='.staty table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+            $PrintHtml.='.staty table    {table-layout: fixed; width: 100%; }';
+            $PrintHtml.='.staty td:nth-child(1) { width: 60%; }';
+            $PrintHtml.='.staty td:nth-child(2) { width: 15%; }';
+            $PrintHtml.='.staty td:nth-child(3) { width: 15%; }';
+            $PrintHtml.='.staty td:nth-child(4) { width: 10%; }';
+            $PrintHtml.='</style>';        
+            $PrintHtml.='<table class="staty">';
+            $PrintHtml.='<tr><td>Gerät</td><td>Ontime</td><td>Offtime</td><td>Availability</td></tr>';
             foreach ($result1 as $name => $entry)
                 {
                 $PrintHtml.='<tr><td>'.$name.'</td><td>'.$entry["ONTIME"].'</td><td>'.$entry["OFFTIME"].'</td><td>'.$entry["AVAILABILITY"].'%</td></tr>';
                 }
+            $PrintHtml.='<tr><td align="right" colspan="4"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
             $PrintHtml.='</table>';
     		return($PrintHtml);
             }
@@ -1198,20 +1308,26 @@ class OperationCenter
             }
 		}
 
-    /* getLoggedValues
+    /****************************************************************************************
+     * 
+     * getLoggedValues, nur Variablen werden als Children zugelassen
+     *
      */
 
     function getLoggedValues($objectID=false)
         {
         $result=array();
         if ($objectID===false) $objectID=$this->categoryId_SysPing;
-        $childrens=IPS_GetChildrenIDs($this->categoryId_SysPing);
+        $childrens=IPS_GetChildrenIDs($objectID);
 		foreach($childrens as $oid)
 			{
-			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)) 
+            if (IPS_GetObject($oid)["ObjectType"]==2)
                 {
-                $result[]=$oid;
-                //echo "    $oid (".IPS_GetName($oid).")\n";
+                if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)) 
+                    {
+                    $result[]=$oid;
+                    //echo "    $oid (".IPS_GetName($oid).")\n";
+                    }
                 }
             }
         return ($result);  
