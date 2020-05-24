@@ -14,6 +14,10 @@
     *
     * Definiert ein IPSComponentHeatSet_HomematicIP Object, das ein IIPSComponentHeatSet Object für HomematicIP implementiert.
     *
+    * __construct   übergibt als Parameter die Instanz für das Register, zB IPSComponentHeatSet_HomematicIP,20699,
+    *               ermittelt zusaetzlich den Homematic Gerätetyp wie zum beispiel HMIP-WTH aus der Homematic Liste
+    *
+    *
     */
 	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -48,7 +52,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            //echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+            echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -84,8 +88,8 @@
             //print_r($instances);    
             if (isset($instances[$this->instanceId]) ) 
 				{
-				//echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
-				//echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
+				echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
+				echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
 				$this->deviceHM = $instances[$this->instanceId];		
 				}
 			$this->remoteServerSet();

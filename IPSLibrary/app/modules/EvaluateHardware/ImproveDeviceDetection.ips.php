@@ -156,13 +156,21 @@
                 }
             echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
             }
-        echo "Folgende Events loeschen:\n";
-        print_r($delete);
-        		/*		$messageHandler->UnRegisterEvent($eventID);
-						IPS_DeleteEvent($childrenID);
-                 */
-
-
+        if (sizeof($delete)>0)
+            {
+            echo "Folgende Events loeschen:\n";
+            //print_r($delete);
+            foreach ($delete as $oid => $state)
+                {
+                $eventName=IPS_GetName($oid);
+                $event=explode("_",$eventName)[1];
+                //echo "   $oid $eventName $event ".IPS_GetName($event)."\n";
+                echo "   $oid $eventName $event \n";
+                $messageHandler->UnRegisterEvent($event);
+                IPS_DeleteEvent($oid);
+                }
+            }
+            
     /**********************************************************************************
      *
      * Topology Mapping, check Libraries

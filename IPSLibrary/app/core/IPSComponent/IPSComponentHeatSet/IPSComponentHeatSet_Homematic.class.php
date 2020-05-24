@@ -14,6 +14,8 @@
     *
     * Definiert ein IPSComponentHeatSet_Homematic Object, das ein IPSComponentHeatSet Object für Homematic implementiert.
     *
+    * construct
+    *
     */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
@@ -50,7 +52,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			//echo "IPSComponentHeatSet_Homematic:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+			echo "IPSComponentHeatSet_Homematic:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -186,7 +188,7 @@
 				$setMode=$mode;
 				if ($this->rpcADR==Null)
 					{
-					echo "   IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+					echo "   IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')." \n";
             	    IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')); 
 					HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
 					}

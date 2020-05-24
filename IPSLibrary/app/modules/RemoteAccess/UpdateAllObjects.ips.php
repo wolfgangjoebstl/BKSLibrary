@@ -39,13 +39,18 @@ $executeObjects=true;
 	IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
 
 	$messageHandler = new IPSMessageHandler();
- 	$eventlist = IPSMessageHandler_GetEventConfiguration();
+
+  	$eventConf = IPSMessageHandler_GetEventConfiguration();
+ 	$eventCust = IPSMessageHandler_GetEventConfigurationCust();
+	$eventlist = $eventConf + $eventCust;
+	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
+    $maxCount=sizeof($eventlist);
 
 if ($_IPS['SENDER']=="Execute")
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	echo "===================================================================\n";	
-	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+	echo "========================================================================================\n";	
+	echo "Overview of registered Events, ".sizeof($eventlist)." Eintraege : \n";
     $i=0;
 	foreach ($eventlist as $oid => $data)
 		{
@@ -62,22 +67,25 @@ if ($_IPS['SENDER']=="Execute")
 		}
 	echo "===================================================================\n";	
 	echo "Execute registered Events ".sizeof($eventlist)." Eintraege : \n";
+    $i=1;
 	foreach ($eventlist as $oid => $data)
 		{
 		if (IPS_ObjectExists($oid))
 			{
             echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
-			echo "  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+			echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)." | ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
 			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
 			}
 		else
 			{
-			echo "  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)."      ----->    OID nicht verfügbar !\n";
+			echo "*********  Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40)."      ----->    OID nicht verfügbar !\n";
 			}
-		}		
+        $i++;  		
+		}
+    echo "\n\n================================================================================================\n\n";  
 	}
 	
-if ($_IPS['SENDER']=="TimerEvent")
+if ( ($_IPS['SENDER']=="TimerEvent") || ($_IPS['SENDER']=="Execute") )
 	{	
 
 	/*********************************************************************
@@ -105,7 +113,7 @@ if ($_IPS['SENDER']=="TimerEvent")
 		$eventID=(integer)$eventID_str;
 		if (substr($name,0,1)=="O")
 			{
-            echo "Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." | ";
+            echo "$i/$maxCount Event ".str_pad($i,3)." mit ID ".$childrenID." und Name ".IPS_GetName($childrenID)." | ";
             if (isset($eventlist[$eventID_str]))
                 {
                 $componentconfig=explode(",",$eventlist[$eventID_str][1]);
@@ -157,18 +165,22 @@ if ($_IPS['SENDER']=="TimerEvent")
  	//$movement_config=IPSDetectMovementHandler_GetEventConfiguration();
 	echo "===================================================================\n";
 	echo "Overview of registered Events ".sizeof($eventlist)." Eintraege : \n";
+    $i=1;
 	foreach ($eventlist as $oid => $data)
 		{
 		if (IPS_ObjectExists($oid))
 			{
 			echo "\n";
-			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
+            echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
+			echo "$i/$maxCount  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."     ".GetValue($oid)."\n";
 			if ($executeObjects) $messageHandler->HandleEvent($oid, GetValue($oid));
 			}
 		else
 			{
+            echo "----------------------------------------------------------------------------------------- ".exectime($startexec)." Sekunden\n";
 			echo "  Oid: ".$oid." | ".$data[0]." | ".$data[1]." | ".$data[2]."          OID nicht verfügbar !\n";
 			}
+        $i++;
 		}
 	}
 

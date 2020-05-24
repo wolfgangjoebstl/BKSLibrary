@@ -19,13 +19,24 @@
 
 /* EvaluateHardware Library
  *
- *	
+ * class 	
+ *  TopologyLibraryManagement
+ *  ImproveDeviceDetection
+ *  EvaluateHardware
+ *
+ *
+ *
  */
 
 
 
 /*
- * class TopologyLibrary
+ * class TopologyLibraryManagement
+ *      updateInstanceLists
+ *      get_SocketList
+ *      get_GatewayList
+ *      get_HardwareList
+ *      get_DeviceList
  *
  *
  */
@@ -62,6 +73,9 @@ class TopologyLibraryManagement
 
     /* die Liste der Instanzen wird gechached und nicht automatisch upgedated.
      * Hier das Update machen
+     *
+     * getInstances TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup
+     *
      */
 
     private function updateInstanceLists()
@@ -195,7 +209,19 @@ class TopologyLibraryManagement
         return($hardware);
         }
 
-    /* devicelist, Bestandteil der config::EvaluateHardware_Include   */
+    /* devicelist, Bestandteil der config::EvaluateHardware_Include   
+     *
+     *    $discovery = $modulhandling->getDiscovery();
+     *    $hardware = $topologyLibrary->get_HardwareList($discovery);
+     *    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+     *
+     *  basierend auf den Ergebnissen der Discovery module zuerst eine Hardwareliste und dann eine Deviceliste erstellen
+     *  array deviceList erstellen, sortieren und um weitere Informationen anreichern    
+     *  erstellen funktioniert mit getDeviceCheck, getDeviceParameter, getDeviceChannels, getDeviceActuators
+     *  alle obigen functions Teil der class Hardware$hadwaretype, hardwaretype kommt aus der getHardwarelist
+     *  diese Klassen findet man unter HardwareLibrary
+     *
+     */
 
     public function get_DeviceList($hardware, $debug=false)
         {
@@ -1054,6 +1080,7 @@ class EvaluateHardware
     function getHomematicInstances(&$includefile,&$summary)
         {
         $guid = "{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}";
+        $HomematicList=array();
         //Auflisten
         $alleInstanzen = IPS_GetInstanceListByModuleID($guid);
         $includefile.='function HomematicList() { return array('."\n";
@@ -1093,7 +1120,15 @@ class EvaluateHardware
                 {
                 if ($result[1]<>"0")
                     {  /* ignore status channel with field RSSI levels and other informations */
-                    $includefile.='"'.IPS_GetName($instanz).'" => array('."\n         ".'"OID" => '.$instanz.', ';
+                    $instanzName=IPS_GetName($instanz);
+                    $HomematicList[$instanzName]["OID"]=$instanz;
+                    $HomematicList[$instanzName]["Adresse"]=IPS_GetProperty($instanz,'Address');
+                    $HomematicList[$instanzName]["Name"]=IPS_GetName($instanz);
+                    $HomematicList[$instanzName]["CCU"]=$HM_CCU_Name;
+                    $HomematicList[$instanzName]["Protocol"]=$protocol;
+                    $HomematicList[$instanzName]["EmulateStatus"]=IPS_GetProperty($instanz,'EmulateStatus');
+
+                    $includefile.='"'.$instanzName.'" => array('."\n         ".'"OID" => '.$instanz.', ';
                     $includefile.="\n         ".'"Adresse" => "'.IPS_GetProperty($instanz,'Address').'", ';
                     $includefile.="\n         ".'"Name" => "'.IPS_GetName($instanz).'", ';
                     $includefile.="\n         ".'"CCU" => "'.$HM_CCU_Name.'", ';
@@ -1112,15 +1147,18 @@ class EvaluateHardware
                     $result=explode(":",IPS_GetProperty($instanz,'Address'));
                     if ($type<>"") 
                         {
+                        $HomematicList[$instanzName]["Type"]=$type;
                         $includefile.="\n         ".'"Type" => "'.$type.'", ';
                         }	
                     if ($typedev<>"") 
                         {
+                        $HomematicList[$instanzName]["Device"]=$typedev;
                         $includefile.="\n         ".'"Device" => "'.$typedev.'", ';
                         $summary[$typedev][]=IPS_GetName($instanz);
                         }
                     if ($HMDevice<>"") 
                         {
+                        $HomematicList[$instanzName]["HMDevice"]=$HMDevice;
                         $includefile.="\n         ".'"HMDevice" => "'.$HMDevice.'", ';
                         }
                                             
@@ -1150,7 +1188,7 @@ class EvaluateHardware
                 }		
             }
 	    $includefile.=');}'."\n";
-        return (true);        
+        return ($HomematicList);        
         }
 
     /************************************

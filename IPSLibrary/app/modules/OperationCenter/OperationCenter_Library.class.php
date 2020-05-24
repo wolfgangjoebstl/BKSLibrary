@@ -6828,6 +6828,7 @@ function getHomematicType($instanz)
      *  TYPE_ACTUATOR               => VALVE_STATE
      *  TYPE_THERMOSTAT             => ACTIVE_PROFILE || WINDOW_OPEN_REPORTING
      *  TYPE_METER_TEMPERATURE      => TEMPERATURE && HUMIDITY
+     *  TYPE_METER_HUMIDITY         => HUMIDITY
      *  TYPE_BUTTON                 => PRESS_SHORT
      *  TYPE_SWITCH                 => STATE && (PROCESS || WORKING)
      *  TYPE_CONTACT                => STATE
@@ -6839,6 +6840,12 @@ function getHomematicType($instanz)
      *
      * Es gibt unterschiedliche Arten der Ausgabe, eingestellt mit outputVersion
      *   false   die aktuelle Kategorisierung
+     *
+     * abhängig vom Gerätetyp bzw. den Instanzeigenschaften werden für die Instanz die Register jeweils mit Typ und Parameter ermittelt
+     *      $resultType[i] = "TYPE_METER_TEMPERATURE";            
+     *      $resultReg[i]["TEMPERATURE"]="TEMPERATURE";
+     *      $resultReg[i]["HUMIDITY"]="HUMIDITY";
+     *
      *
      *
      ****************************************/
@@ -6870,10 +6877,17 @@ function getHomematicType($instanz)
                 {
                 $result[1]="Funk Stellmotor";
                 }                         
-            $result[0]="Stellmotor";                               
-            $resultType="TYPE_ACTUATOR";
-            if (array_search("LEVEL",$registerNew) !== false) $resultReg["VALVE_STATE"]="LEVEL"; 
-            else $resultReg["VALVE_STATE"]="VALVE_STATE";
+            $result[0]="Stellmotor";   
+            $i=0;                            
+            $resultType[$i]="TYPE_ACTUATOR";
+            if (array_search("LEVEL",$registerNew) !== false) $resultReg[$i]["VALVE_STATE"]="LEVEL"; 
+            else $resultReg[$i]["VALVE_STATE"]="VALVE_STATE";
+            if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_TEMPERATURE";
+                $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                }
             }
         /*-----Wandthermostat--------------------------------*/
         elseif ( (array_search("ACTIVE_PROFILE",$registerNew) !== false) || (array_search("WINDOW_OPEN_REPORTING",$registerNew) !== false) )   /* Wandthermostat */
@@ -6887,19 +6901,46 @@ function getHomematicType($instanz)
                 $result[1]="IP Funk Wandthermostat";
                 }
             $result[0] = "Wandthermostat";
-            $resultType="TYPE_THERMOSTAT";
-            if (array_search("SET_TEMPERATURE",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="SET_TEMPERATURE";
-            if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
-            if (array_search("TargetTempVar",$registerNew) !== false) $resultReg["SET_TEMPERATURE"]="TargetTempVar";
+            $i=0;
+            $resultType[$i]="TYPE_THERMOSTAT";
+            if (array_search("SET_TEMPERATURE",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="SET_TEMPERATURE";
+            if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
+            if (array_search("TargetTempVar",$registerNew) !== false) $resultReg[$i]["SET_TEMPERATURE"]="TargetTempVar";
+            //echo "Wandthermostat erkannt \n"; print_r($registerNew); echo "\n";
+            if ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("QUICK_VETO_TIME",$registerNew) !== false) )
+                {
+                $i++;
+                $resultType[$i]= "TYPE_METER_TEMPERATURE";
+                $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                }
+            if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY"; 
+                }
+            if (array_search("HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                }
             }                    
         /*-----Temperatur Sensor--------------------------------*/
         elseif ( (array_search("TEMPERATURE",$registerNew) !== false) && (array_search("HUMIDITY",$registerNew) !== false) )   /* Temperatur Sensor */
             {
             $result[1] = "Funk Temperatursensor";
             $result[0] = "Temperatursensor";
-            $resultType = "TYPE_METER_TEMPERATURE";            
-            $resultReg["TEMPERATURE"]="TEMPERATURE";
-            $resultReg["HUMIDITY"]="HUMIDITY";
+            $i=0;
+            $resultType[$i] = "TYPE_METER_TEMPERATURE";            
+            $resultReg[$i]["TEMPERATURE"]="TEMPERATURE";
+            $resultReg[$i]["HUMIDITY"]="HUMIDITY";
+            if (array_search("HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                }
             }                    
         /*------Taster-------------------------------*/
         elseif (array_search("PRESS_SHORT",$registerNew) !== false) /* Taster */
@@ -6914,10 +6955,10 @@ function getHomematicType($instanz)
                 $result[1]="IP Funk-Taster ".$anzahl."-fach";
                 }
             $result[0]="Taster ".$anzahl."-fach";
-            $resultType = "TYPE_BUTTON";            
-            if (array_search("PRESS_SHORT",$registerNew) !== false) $resultReg["PRESS_SHORT"]="PRESS_SHORT";
-            if (array_search("PRESS_LONG",$registerNew) !== false) $resultReg["PRESS_LONG"]="PRESS_LONG";
-            if ($debug) echo "-----> Taster : $resultType ".json_encode($registerNew).json_encode($resultReg)."\n";
+            $resultType[0] = "TYPE_BUTTON";            
+            if (array_search("PRESS_SHORT",$registerNew) !== false) $resultReg[0]["PRESS_SHORT"]="PRESS_SHORT";
+            if (array_search("PRESS_LONG",$registerNew) !== false) $resultReg[0]["PRESS_LONG"]="PRESS_LONG";
+            if ($debug) echo "-----> Taster : ".$resultType[0]." ".json_encode($registerNew).json_encode($resultReg[0])."\n";
             }
         /*-------------------------------------*/
         elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
@@ -6941,15 +6982,15 @@ function getHomematicType($instanz)
                     $result[0] .= " mit Energiemesung";
                     $result[1] .= " mit Energiemesung";
                     }
-                $resultType = "TYPE_SWITCH";            
-                $resultReg["STATE"]="STATE";
+                $resultType[0] = "TYPE_SWITCH";            
+                $resultReg[0]["STATE"]="STATE";
                 }
             else 
                 {
                 $result[0] = "Tuerkontakt";
                 $result[1] = "Funk-Tuerkontakt";
-                $resultType = "TYPE_CONTACT";            
-                $resultReg["CONTACT"]="STATE";                
+                $resultType[0] = "TYPE_CONTACT";            
+                $resultReg[0]["CONTACT"]="STATE";                
                 }
             }
         /*-------------------------------------*/
@@ -6958,8 +6999,8 @@ function getHomematicType($instanz)
             //print_r($registerNew);                
             $result[0] = "Dimmer";
             $result[1] = "Funk-Dimmer";
-            $resultType = "TYPE_DIMMER"; 
-            $resultReg["LEVEL"]="LEVEL";                       
+            $resultType[0] = "TYPE_DIMMER"; 
+            $resultReg[0]["LEVEL"]="LEVEL";                       
             }                    
         /*-------------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
@@ -6967,8 +7008,8 @@ function getHomematicType($instanz)
             //print_r($registerNew);                
             $result[0] = "Rollladensteuerung";
             $result[1] = "Funk-Rollladensteuerung";
-            $resultType = "TYPE_SHUTTER";    
-            $resultReg["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
+            $resultType[0] = "TYPE_SHUTTER";    
+            $resultReg[0]["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
             }                    
         /*-------------------------------------*/
         elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
@@ -6976,44 +7017,52 @@ function getHomematicType($instanz)
             //print_r($registerNew);    
             $result[0] = "Bewegungsmelder";
             $result[1] = "Funk-Bewegungsmelder";
-            $resultType = "TYPE_MOTION";            
-            $resultReg["MOTION"]="MOTION";
-            $resultReg["BRIGHTNESS"]="BRIGHTNESS";
+            $resultType[0] = "TYPE_MOTION";            
+            $resultReg[0]["MOTION"]="MOTION";
+            $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
             }
         elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
             {
             $result[0] = "RSSI Wert";
             if ( array_search("DUTY_CYCLE",$registerNew) !== false) $result[1] = "IP Funk RSSI Wert";
             else $result[1] = "Funk RSSI Wert";
-            $resultType = "TYPE_RSSI";             
-            $resultReg["RSSI"] = "";
+            $resultType[0] = "TYPE_RSSI";             
+            $resultReg[0]["RSSI"] = "";
             }            
         elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
             {
             $result[0] = "Energiemessgeraet";
             if ( array_search("BOOT",$registerNew) !== false) $result[1] = "Funk Energiemessgeraet";
             else $result[1] = "IP Funk Energiemessgeraet";
-            $resultType = "TYPE_METER_POWER";             
-            $resultReg["ENERGY"]="ENERGY_COUNTER";          
+            $resultType[0] = "TYPE_METER_POWER";             
+            $resultReg[0]["ENERGY"]="ENERGY_COUNTER";          
             }          
         else $found=false;
 
         if ($found) 
             {
-            $result[2]                = $resultType;
-            $result[3]["Type"]        = $resultType;
-            $result[3]["Register"]    = $resultReg;
+            $result[2]                = $resultType[0];
+            $result[3]["Type"]        = $resultType[0];
+            $result[3]["Register"]    = $resultReg[0];
             $result[3]["RegisterAll"] = $registerNew;
-            $result[4]["TYPECHAN"]    = $resultType;
-            $result[4][$resultType]   = $resultReg;
+            $result[4]["TYPECHAN"]    = "";
+            $first=true;
+            foreach ($resultType as $index => $type)            // normalerweise wird nur [0] befüllt, wenn mehrere Register Sets verfügbar auch mehrere
+                {
+                if ($first) $first=false;
+                else $result[4]["TYPECHAN"] .= ",";
+                $result[4]["TYPECHAN"] .= $type;
+                $result[4][$type]   = $resultReg[$index];
+                }
             $result[4]["RegisterAll"] = $registerNew;
 
             if ($outputVersion==false) return($result[2]);
             elseif ($outputVersion==2) return ($result[1]);
             elseif ($outputVersion==3) return ($result[3]);
             elseif ($outputVersion==4) 
-                {       /* bei Output Version 4 mehrere TYPECHANs zulassen */
-                if ($resultType=="TYPE_ACTUATOR")
+                {       
+                /* bei Output Version 4 mehrere TYPECHANs zulassen 
+                if ($resultType[0]=="TYPE_ACTUATOR")
                     {
                     if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
                         {
@@ -7021,7 +7070,7 @@ function getHomematicType($instanz)
                         $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
                         }
                     }
-                elseif ($resultType=="TYPE_THERMOSTAT")
+                elseif ($resultType[0]=="TYPE_THERMOSTAT")
                     {
                     //echo "Wandthermostat erkannt \n"; print_r($registerNew); echo "\n";
                     if ( (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) && (array_search("QUICK_VETO_TIME",$registerNew) !== false) )
@@ -7029,9 +7078,9 @@ function getHomematicType($instanz)
                         $result[4]["TYPECHAN"]    .= ",TYPE_METER_TEMPERATURE";
                         $result[4]["TYPE_METER_TEMPERATURE"]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
                         }
-                    }
+                    }*/
                 return ($result[4]);
-                }
+                } 
 			else return ($result[0]);
             }
         else 

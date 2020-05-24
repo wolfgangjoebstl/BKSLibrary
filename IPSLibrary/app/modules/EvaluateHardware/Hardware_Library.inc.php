@@ -543,11 +543,14 @@ class HardwareNetatmoWeather extends Hardware
 
     /* NetatmoWeather,der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
      * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     * es werden nicht nur die Channels identifiziert sondern auch die Registers mit dem typedev
+     *          $typedev=$this->getNetatmoDeviceType($oid,4,true);
+     *
      */
 
     public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
         {
-        $debug=true;        // overwrite for local debug
+        //$debug=true;        // overwrite for local debug
         if ($debug) echo "          getDeviceChannels: NetatmoWeather aufgerufen für \"".$entry["OID"]."\" mit $name $type.\n";
         //echo "Bereits erstellter/bearbeiteter Eintrag in der deviceList über vorhandene Instanzen:\n";        print_r($deviceList[$name]["Instances"]);
         //echo "Übergebene zusätzliche Parameter:\n";        print_r($entry);
@@ -560,7 +563,7 @@ class HardwareNetatmoWeather extends Hardware
         if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch, keine OID aus entry übergeben.\n";
         foreach ($oids as $oid => $port)
             {
-            $typedev=$this->getNetatmoDeviceType($oid,4,true);
+            $typedev=$this->getNetatmoDeviceType($oid,4,$debug);
             //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
             if ($typedev<>"")  
                 {
@@ -580,8 +583,11 @@ class HardwareNetatmoWeather extends Hardware
                 }
             else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
             }
-        echo "===> Ergebnis getDeviceChannels:\n";
-        print_r($deviceList[$name]["Channels"]);
+        if ($debug)
+            {
+            echo "===> Ergebnis getDeviceChannels:\n";
+            print_r($deviceList[$name]["Channels"]);
+            }
         return (true);
         }
 
@@ -589,7 +595,7 @@ class HardwareNetatmoWeather extends Hardware
      *
      * gibt für eine Netatmo Instanz/Kanal eines Gerätes den Typ aus
      * zB TYPE_METER_TEMPERATURE
-     *
+     * vorher die Childrens der Instanz ermitteln und dann NetatmoDeviceType aufrufen.
      *
      *
      ***********************************************/
@@ -640,9 +646,10 @@ class HardwareNetatmoWeather extends Hardware
         /*--Raumklimasensor-----------------------------------*/
         if ( array_search("CO2",$registerNew) !== false)            /* Sensor Raumklima */
             {
-            echo "                     Sensor Raumklima gefunden.\n";
+            if ($debug) echo "                     Sensor Raumklima gefunden.\n";
             $resultRegTemp["TEMPERATURE"]="Temperatur";
             $resultRegTemp["HUMIDITY"]="Luftfeuchtigkeit";
+            $resultRegHumi["HUMIDITY"]="Luftfeuchtigkeit";
             $resultRegClim["CO2"]="CO2";
             $resultRegClim["BAROPRESSURE"]="Luftdruck";
             $resultRegClim["NOISE"]="Lärm";
@@ -653,18 +660,20 @@ class HardwareNetatmoWeather extends Hardware
             $result[3]["Type"] = "TYPE_METER_CLIMATE";            
             $result[3]["Register"] = array_merge($resultRegTemp, $resultRegClim);
             $result[3]["RegisterAll"]=$registerNew;
-            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE,TYPE_METER_CLIMATE";              
+            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE,TYPE_METER_HUMIDITY,TYPE_METER_CLIMATE";              
             $result[4]["TYPE_METER_CLIMATE"] = $resultRegClim;
             $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
+            $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
             $result[4]["RegisterAll"]=$registerNew;
             }
-        /*--Temperatursensor-----------------------------------*/
+        /*--Temperatursensor, Aussen-----------------------------------*/
         elseif ( array_search("Temperatur",$registerNew) !== false)            /* Sensor Temperatur */
             {
             //print_r($registerNew);
-            echo "                     Sensor Temperatur gefunden.\n";
+            if ($debug) echo "                     Sensor Temperatur gefunden.\n";
             $resultRegTemp["TEMPERATURE"]="Temperatur";
             $resultRegTemp["HUMIDITY"]="Luftfeuchtigkeit";
+            $resultRegHumi["HUMIDITY"]="Luftfeuchtigkeit";
 
             $result[0] = "Temperatursensor";
             $result[1] = "Funk Temperatursensor";
@@ -672,8 +681,9 @@ class HardwareNetatmoWeather extends Hardware
             $result[3]["Type"] = "TYPE_METER_TEMPERATURE";            
             $result[3]["Register"] = $resultRegTemp;
             $result[3]["RegisterAll"]=$registerNew;
-            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE";              
+            $result[4]["TYPECHAN"] = "TYPE_METER_TEMPERATURE,TYPE_METER_HUMIDITY";              
             $result[4]["TYPE_METER_TEMPERATURE"] = $resultRegTemp;
+            $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
             $result[4]["RegisterAll"]=$registerNew;
             }
         else $found=false;
@@ -700,7 +710,7 @@ class HardwareNetatmoWeather extends Hardware
 
     }
 
-/* Objektorientiertes class Management für Geräte (Hardware)
+/* Homematic - Objektorientiertes class Management für Geräte (Hardware)
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
  *
@@ -936,7 +946,14 @@ class HardwareHomematic extends Hardware
         }
 
     /* der Versuch die Informationen zu einem Gerät in drei Kategorien zu strukturieren. Instanzen (Parameter), Channels (Sensoren) und Actuators (Aktuatoren)
-     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     * nachdem bereits eine oder mehrere Instanzen einem Gerät zugeordnet wurden, muss nicht mehr kontrolliert werden ob es das Gerät schon gibt
+     * Homematic Geräte haben immer mehrer Instances. Die Naming Convention ist Gerätename:Channelname
+     * mit den Gerätenamen ist die deviceList indiziert. Der Key muss vorhanden sein.
+     * nur wenn OperationCenter installiert ist werden Channels angelegt. Der geräte Port der den Key der Instanz definiert wird auch für den Channel verwendet.
+     *
+     * mit $DeviceManager->getHomematicDeviceType wird der Typedev bestimmt (Type, Name, RegisterAll, Register ... )
+     * Typedev ist der fertige Channel Eintrag, es wird RegisterAll und Name besonders hervorgehoben
+     *
      */
 
     public function getDeviceChannels(&$deviceList,$name, $type, $entry, $debug=false)
@@ -1147,7 +1164,7 @@ class HardwareFHTFamily extends Hardware
         foreach ($oids as $oid => $port)
             {
             $typedev=$this->getFHTDeviceType($oid,4,true);
-            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+            //echo "Werte für $oid aus getFHTDeviceType:\n"; print_r($result);
             if ($typedev<>"")  
                 {
                 /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben 
@@ -1300,7 +1317,7 @@ class HardwareFS20Family extends Hardware
         foreach ($oids as $oid => $port)
             {
             $typedev=$this->getFS20DeviceType($oid,4,true);
-            //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
+            //echo "Werte für $oid aus getFS20DeviceType:\n"; print_r($result);
             if ($typedev<>"")  
                 {
                 /* Umstellung der neutralen Ausgabe von typedev auf Channel typische Ausgaben 

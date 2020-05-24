@@ -31,7 +31,7 @@
  * Geräteunabhängige decivelist in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php
  *      function socketInstanzen()
  *      function gatewayInstanzen()
- *      function deviceList()  mit Inpout von function hardwareList()
+ *      function deviceList()  mit Input von function hardwareList()
  *
  * Die alte Geräte abhängige Devicelist ist jetzt in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php
  *      mit functions pro gerätetyp
@@ -54,6 +54,7 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('EvaluateHardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
+IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
 IPSUtils_Include ('EvaluateHardware_Configuration.inc.php', 'IPSLibrary::config::modules::EvaluateHardware');
 
@@ -222,7 +223,11 @@ IPS_SetEventActive($tim1ID,true);
     echo "\n";
 
     $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
-    $includefileDevices .= "\n\n";
+    $includefileDevices     .= '/* This file has been generated automatically by EvaluateHardware on '.date("d.m.Y H:i:s").".\n"; 
+    $includefileDevices     .= " *  \n";
+    $includefileDevices     .= " * Please do not edit, file will be overwritten on a regular base.     \n";
+    $includefileDevices     .= " *  \n";
+    $includefileDevices     .= " */    \n\n";
     $includefileDevices .= "function socketInstanzen() { return ";
     $ipsOps->serializeArrayAsPhp($socket, $includefileDevices);        // gateway array in das include File schreiben
     $includefileDevices .= ';}'."\n\n"; 
@@ -299,7 +304,7 @@ IPS_SetEventActive($tim1ID,true);
     $includefile            .= "\n".'/* These are the FS20 Devices: */'."\n\n";
     $evaluateHardware->getFS20Devices($includefile,$summary);
     $includefile            .= "\n".'/* These are the Homematic Devices: */'."\n\n";
-    $evaluateHardware-> getHomematicInstances($includefile,$summary);
+    $homematicList = $evaluateHardware-> getHomematicInstances($includefile,$summary);
 
     $evaluateHardware-> getHomematicDevices($includefile);
 
@@ -322,6 +327,41 @@ IPS_SetEventActive($tim1ID,true);
         asort($devices);
         foreach ($devices as $device) echo "     ".$device."\n";
         }
+
+    $sqlHandle = new sqlHandle();           // default MySQL Instanz
+    if ($sqlHandle !==false)
+        {
+        $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+        $tables = $sqlHandle->showTables();     // SHOW TABLES
+        $config = $sqlHandle->getDatabaseConfiguration();
+
+        /* sync database Configuration */
+        echo "---------------------------------------------------------------------------------\n";
+
+        $sqlOperate = new sqlOperate();           // default MySQL Instanz extends sqlHandle, USE DATABASE in MariaDB bereits gesetzt
+        $sqlOperate->syncTableConfig();
+
+        echo "---------------------------------------------------------------------------------\n";
+
+        $sql_topologies = new sql_topologies();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
+        $sql_deviceList = new sql_deviceList();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
+        $sql_instances = new sql_instances();
+        $sql_channels = new sql_channels();
+        $sql_registers = new sql_registers();
+
+        /* sync database Values */
+        echo "\n";
+        echo "---------------------------------------------------------------------------------\n";
+        echo "Sync Values with MariaDB Database:\n";           // config with tables
+
+        $sql_topologies->syncTableValues(get_Topology());                                        // Topology Table
+        $sql_deviceList->syncTableValues($deviceList);                                      // deviceList Table
+        $sql_deviceList->syncTableProductType($homematicList);                             // Homematic Table
+        $sql_deviceList->syncTablePlaceID(IPSDetectDeviceHandler_GetEventConfiguration());  // Event Table mit Topologie
+
+        }
+
+
 
 /* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
  *
