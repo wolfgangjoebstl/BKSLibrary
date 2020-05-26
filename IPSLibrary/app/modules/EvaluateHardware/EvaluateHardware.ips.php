@@ -328,41 +328,6 @@ IPS_SetEventActive($tim1ID,true);
         foreach ($devices as $device) echo "     ".$device."\n";
         }
 
-    $sqlHandle = new sqlHandle();           // default MySQL Instanz
-    if ($sqlHandle !==false)
-        {
-        $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
-        $tables = $sqlHandle->showTables();     // SHOW TABLES
-        $config = $sqlHandle->getDatabaseConfiguration();
-
-        /* sync database Configuration */
-        echo "---------------------------------------------------------------------------------\n";
-
-        $sqlOperate = new sqlOperate();           // default MySQL Instanz extends sqlHandle, USE DATABASE in MariaDB bereits gesetzt
-        $sqlOperate->syncTableConfig();
-
-        echo "---------------------------------------------------------------------------------\n";
-
-        $sql_topologies = new sql_topologies();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
-        $sql_deviceList = new sql_deviceList();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
-        $sql_instances = new sql_instances();
-        $sql_channels = new sql_channels();
-        $sql_registers = new sql_registers();
-
-        /* sync database Values */
-        echo "\n";
-        echo "---------------------------------------------------------------------------------\n";
-        echo "Sync Values with MariaDB Database:\n";           // config with tables
-
-        $sql_topologies->syncTableValues(get_Topology());                                        // Topology Table
-        $sql_deviceList->syncTableValues($deviceList);                                      // deviceList Table
-        $sql_deviceList->syncTableProductType($homematicList);                             // Homematic Table
-        $sql_deviceList->syncTablePlaceID(IPSDetectDeviceHandler_GetEventConfiguration());  // Event Table mit Topologie
-
-        }
-
-
-
 /* wenn DetectMovement installiert ist zusaetzlich zwei Konfigurationstabellen evaluieren
  *
  *

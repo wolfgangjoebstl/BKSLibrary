@@ -425,6 +425,75 @@ class sql_componentModules extends sqlOperate
         return $config;   
         }
 
+    public function get_ColumnComponentModule($componentConfiguration,$fetch)
+        {
+        echo "get_ColumnComponentModule: Register Tabelle mit Konfiguration in IPSDeviceHandler_GetComponentModules() vergleichen, nur Zeilen ohne componentModuleID ausgeben:\n";
+        $columnComponentModule=array();
+        foreach ($fetch as $singleRow)
+            {
+            $component=false; $module=false;
+            $registerID=$singleRow["registerID"];
+            if ( (isset($singleRow["componentModuleID"]))===false)
+                {
+                echo str_pad($singleRow["Portname"],40).str_pad($singleRow["TYPEREG"],30).str_pad($singleRow["Type"],20).str_pad($singleRow["SubType"],20);
+                if (isset($componentConfiguration[$singleRow["TYPEREG"]]))
+                    {
+                    echo "TYPEREG (ok)";
+                    $typereg=$componentConfiguration[$singleRow["TYPEREG"]];
+                    if (isset($typereg[$singleRow["Type"]])) $type=$typereg[$singleRow["Type"]];
+                    elseif (isset($typereg["*"])) $type=$typereg["*"];
+                    else $type=false;
+                    if ($type !=false)
+                        {
+                        echo " Type (ok)";
+                        if (isset($type[$singleRow["SubType"]])) $subType=$type[$singleRow["SubType"]];
+                        elseif (isset($type["*"])) $subType=$type["*"];
+                        else $subType=false;
+                        if ($subType !=false)
+                            {
+                            echo " SubType (ok) ";
+                            //print_r($subType); 
+                            if (isset($subType["Component"])) { $component=$subType["Component"]; echo "*"; }
+                            if (isset($subType["Module"])) { $module=$subType["Module"]; echo "*"; }
+                            }
+                        }
+                    }
+                if ( ($component != false) && ($module != false) )
+                    {
+                    echo "*";
+                    $columnComponentModule[$registerID]["Component"]=$component;
+                    $columnComponentModule[$registerID]["Module"]=$module;
+                    }
+                echo "\n";
+                }
+            }           // ende foreach
+        return($columnComponentModule);
+        }
+
+    public function get_componentModules($componentConfiguration)
+        {
+        echo "get_componentModules: Tabelle componentModules updaten:\n";
+        $componentModules=array();
+        foreach ($componentConfiguration as $typereg => $entry1)
+            {
+            foreach ($entry1 as $type => $entry2)
+                {
+                $component=""; $module="";
+                foreach ($entry2 as $subType => $entry2)    
+                    {
+                    if (isset($entry2["Component"])) $component=$entry2["Component"];
+                    if (isset($entry2["Nodule"])) $module=$entry2["Module"];
+                    }
+                if ( ($component != "") && ($module != "") )
+                    {
+                    $componentModules[$component]["componentName"]=$component;
+                    $componentModules[$component]["moduleName"]=$module;
+                    }
+                }
+            }
+        return ($componentModules);
+        }
+
     /* syncTableValues für das componentModules Array
      *
      * die Tabellen sind immer gleich aufgebaut, Index=Key, Name=Unique, Werte
@@ -796,7 +865,7 @@ class sql_deviceList extends sqlOperate
 
     public function syncTablePlaceID($instances,$debug=false)
         {
-        echo "syncTablePlaceID:\n"; 
+        if ($debug) echo "syncTablePlaceID: zuerst Table topologies vollständig auslesen.\n"; 
         $sql = "SELECT * FROM topologies;";
         $result1=$this->query($sql);
         $fetch = $result1->fetch();
@@ -807,19 +876,31 @@ class sql_deviceList extends sqlOperate
             {
             $topology[strtoupper($singleRow["Name"])]=$singleRow["topologyID"];
             }
-        //print_R($instances);
+        //print_r($topology);
         $placeIDs=array();
         foreach ($instances as $oid => $instance)
             {
+            if ($debug) echo "    $oid (".str_pad(IPS_GetName($oid).")",45)."  "; 
             if ( (isset($instance[0])) && (strtoupper($instance[0])=="TOPOLOGY") ) 
                 {
+                if ($debug) echo "Topology  ";
                 if (isset($instance[1])) 
                     {
-                    if (isset($topology[strtoupper($instance[1])])) $placeIDs[$oid]=$topology[strtoupper($instance[1])];   
+                    if ($debug) echo "Instance   ";
+                    if (isset($topology[strtoupper($instance[1])])) 
+                        {
+                        echo $topology[strtoupper($instance[1])];
+                        $placeIDs[$oid]=$topology[strtoupper($instance[1])];   
+                        }
                     } 
                 }    
+            if ($debug) echo "\n";
             }
-        //print_r($placeIDs);
+        if ($debug)
+            {
+            //foreach ($placeIDs as $oid => $id) echo "    $oid (".str_pad(IPS_GetName($oid).")",45)."   $id\n";
+            //print_r($placeIDs);
+            }
         $this->syncTableColumnOnOID("placeID",$placeIDs,$debug);    
         }
 
