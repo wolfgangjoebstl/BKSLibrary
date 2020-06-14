@@ -97,6 +97,27 @@
 		/**
 		 * @public
 		 *
+		 * Funktion liefert String IPSComponent Constructor String.
+		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * wieder neu zu erzeugen.
+		 *
+		 * @return string Parameter String des IPSComponent Object
+		 */
+		public function GetComponentParams() 
+			{
+			return get_class($this);
+			}
+
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "";
+            }
+
+		/**
+		 * @public
+		 *
 		 * Zustand Setzen
 		 *
 		 * @param integer $power Geräte Power

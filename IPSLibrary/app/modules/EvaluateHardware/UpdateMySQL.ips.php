@@ -19,6 +19,11 @@
 
 /* UpdateMySQL
  *
+ * synchronisiert die MariaDB Datenbank mit der Konfiguration von IPSymcon
+ * verkürzt die Evaluierung indem auch redundante Konfigurationen abgelegt sind
+ *
+ *      sync database Configuration
+ *
  *
  */
 
@@ -57,13 +62,13 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
         }
 
-        echo "\n";
-        echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
-        echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
-        echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
-        echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
-        echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
-        echo "\n";
+    echo "\n";
+    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
+    echo "\n";
 
     /* DeviceManger muss immer installiert werden, wird in Timer als auch RunScript und Execute verwendet */
 
@@ -98,7 +103,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         $sqlOperate = new sqlOperate();           // default MySQL Instanz extends sqlHandle, USE DATABASE in MariaDB bereits gesetzt
         $sqlOperate->syncTableConfig();
 
-        echo "---------------------------------------------------------------------------------\n";
+        //echo "---------------------------------------------------------------------------------\n";
 
         $sql_serverGateways = new sql_serverGateways();
         $sql_topologies = new sql_topologies();         // eigene Klasse pro Tabelle, extends sqlOperate that extends sqlHandle
@@ -111,7 +116,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         /* sync database Values */
         echo "\n";
         echo "---------------------------------------------------------------------------------\n";
-        echo "Sync Values with MariaDB Database:\n";           // config with tables
+        echo "Sync Values of table serverGateways with MariaDB Database:\n";           // config with tables
 
         $serverGateways=array();
         $serverGateways[IPS_GetName(0)]["parent"]=IPS_GetName(0);                 // Definition der Root, das ist der Node, also Docker oder Virtual Machine      
@@ -120,10 +125,12 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         /* update Values in Tables */
         $sql_serverGateways->syncTableValues($serverGateways);
 
+        echo "\n";
+        echo "Sync Values of table topologies with MariaDB Database:\n";           // config with tables
         $sql_topologies->syncTableValues(get_Topology());                                        // Topology Table, der mit den Räumen udn Gruppen
 
         /* die Tabelle deviceList um die ServerGatewayID erweitern */
-        echo "Get serverGatewayID for ".IPS_GetName(0).":\n";    
+        echo "Tabelle deviceList um die ServerGatewayID für ".IPS_GetName(0)." erweitern:\n";    
         $sql = "SELECT * FROM serverGateways WHERE Name = '".IPS_GetName(0)."';";
         $result1=$sqlHandle->query($sql);
         $serverID = $result1->fetch();
@@ -131,7 +138,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         if (sizeof($serverID)==1) 
             {
             $serverGatewayID=$serverID[0]["serverGatewayID"];
-            echo "gefunden: ".IPS_GetName(0)."=='$serverGatewayID'.\n";
+            echo "    serverGatewayID gefunden: ".IPS_GetName(0)."=='$serverGatewayID'.\n";
             //$sql_deviceList->syncTableServerGatewaysID($serverGatewayID);                 // deviceList Table mit eigener Server ID
             foreach ($deviceList as $name => $device)
                 {
@@ -140,7 +147,10 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
             }
         $sql_deviceList->syncTableValues($deviceList);                                      // deviceList Table
 
+        echo "syncTableProductType Spalte ProductType erweitern\n";
         $sql_deviceList->syncTableProductType(homematicList());                             // Homematic Table
+
+        echo "syncTablePlaceID Spalte placeID erweitern\n";
         $sql_deviceList->syncTablePlaceID(IPSDetectDeviceHandler_GetEventConfiguration());  // Event Table mit Topologie
 
         echo "\n";
@@ -157,11 +167,11 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
                     INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
                     INNER JOIN topologies ON deviceList.placeID=topologies.topologyID;";
         $result3=$sqlHandle->query($sql);
-        $fetch = $result3->fetch();
+        $fetchRegisters = $result3->fetch();
         $result3->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
         echo "\n\n";
-        echo "Registerabfrage ohne componentModules hat ".sizeof($fetch)." Einträge/Zeilen:\n";
-        $columnComponentModule=$sql_componentModules->get_ColumnComponentModule(IPSDeviceHandler_GetComponentModules(),$fetch);
+        echo "Registerabfrage ohne Erweiterung componentModules hat ".sizeof($fetchRegisters)." Einträge/Zeilen:\n";
+        $columnComponentModule=$sql_componentModules->get_ColumnComponentModule(IPSDeviceHandler_GetComponentModules(),$fetchRegisters);
 
         $sql_registers = new sql_registers();
         echo "Echo Values from MariaDB Database componentModules wieder auslesen wegen der Indexes:\n";    
@@ -186,11 +196,35 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         //print_r($columnData);           // Key ist die registerID und data wird die Spalte componentModuleID
         $sql_registers->syncTableColumnOnRegisterID("componentModuleID",$columnData,false);          // true = Debug
 
+        echo "Tabelle valuesOnRegs schreiben. Alle Registers mit korrekten Zuordnungen für diesen Server auslesen.\n";
+        $myServerGatewayID=$sql_serverGateways->getWhere(IPS_GetName(0)); 
+        $filter="WHERE serverGatewayID='$myServerGatewayID'";
+        $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                            registers.componentModuleID,registers.TYPEREG,registers.Configuration 
+                    FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                    INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                    INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
+                    $filter;";
+        $result3=$sqlHandle->query($sql);
+        $fetchRegisters = $result3->fetch();
+        $result3->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
 
-
+        $sql_valuesOnRegs = new sql_valuesOnRegs();
+        /* Zu einer Tabelle der Werte kommen, in eine Register Zeile können mehrere Werte stehen, alle auslesen */
+        $singleRows=array();
+        echo "\nErmittlung der Werte für Tabelle valuesOnRegs:\n";
+        foreach ($fetchRegisters as $singleRow)
+            {
+            $result=getCOIDforRegisterID($singleRow);         // singleRow wird von der function erweitert
+            //print_r($result);
+            if ($result !== false) $singleRows=$singleRows + $result;
+            }
+        print_r($singleRows);
+        $sql_valuesOnRegs->syncTableValues($singleRows);
 
         }
 
+    echo "--------------------------> Exectime Database Handling: ".exectime($startexec)." Seconds.\n";
 
 
 ?>

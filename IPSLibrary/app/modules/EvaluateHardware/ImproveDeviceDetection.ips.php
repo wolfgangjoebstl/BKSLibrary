@@ -88,74 +88,78 @@
 	$eventlist = $eventConf + $eventCust;
 	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
 
-	$result=array();
+	$resultEventList=array();
     $filter = "";
     echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
     $filter="IPSMessageHandler_Event";
-	
-                $alleEreignisse = IPS_GetEventList();
-                $index=0;
-                foreach ($alleEreignisse as $ereignis)
-                    {
-                    if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
-                        {
-						$result[$index]["OID"]=$ereignis;
-						$result[$index]["Name"]=IPS_GetName($ereignis);
-						$result[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
-						$details=IPS_GetEvent($ereignis);
-						//print_r($details);
-						switch ($details["EventType"])
-							{
-							case 0:
-								$result[$index]["Type"]="Auslöser";
-								break;
-							case 1:
-								$result[$index]["Type"]="Zyklisch";
-								break;
-							case 2:
-								$result[$index]["Type"]="Wochenplan";
-								break;
-							}
-                        $result[$index]["LastRun"]=$details["LastRun"];
-                        //$result[$index]["EventConditions"]=$details["EventConditions"];
-                        $result[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
-						$script=str_replace("\n","",$details["EventScript"]);
-						$result[$index]["Script"]=$script;
-                        $index++;
-						}
-                    }
 
-        $delete=array();
-        foreach ($result as $index => $entry)
+    /* Alle Events einsammeln und strukturieren */
+    $alleEreignisse = IPS_GetEventList();
+    $index=0;
+    foreach ($alleEreignisse as $ereignis)
+        {
+        if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
             {
-    		echo str_pad($index,3)." ".str_pad($entry["OID"],6);
-            if ($filter == "IPSMessageHandler_Event")
+            $resultEventList[$index]["OID"]=$ereignis;
+            $resultEventList[$index]["Name"]=IPS_GetName($ereignis);
+            $resultEventList[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
+            $details=IPS_GetEvent($ereignis);
+            //print_r($details);
+            switch ($details["EventType"])
                 {
-                $trigger=$entry["TriggerVariableID"];
-                echo str_pad($entry["Name"],15)." ";
-                $info=@IPS_GetVariable($trigger);
-                if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
-                else 
-                    {
-                    echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
-                    $delete[$entry["OID"]]=true;
-                    }
-                if (isset($eventlist[$trigger])) 
-                    {
-                    echo str_pad($eventlist[$trigger][1],50);
-                    }
-                else echo str_pad("-----",50);
+                case 0:
+                    $resultEventList[$index]["Type"]="Auslöser";
+                    break;
+                case 1:
+                    $resultEventList[$index]["Type"]="Zyklisch";
+                    break;
+                case 2:
+                    $resultEventList[$index]["Type"]="Wochenplan";
+                    break;
                 }
-            else echo str_pad($entry["Name"],40)." ";
-            if ($entry["LastRun"]==0) echo str_pad("nie",20);
+            $resultEventList[$index]["LastRun"]=$details["LastRun"];
+            //$resultEventList[$index]["EventConditions"]=$details["EventConditions"];
+            $resultEventList[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
+            $script=str_replace("\n","",$details["EventScript"]);
+            $resultEventList[$index]["Script"]=$script;
+            $index++;
+            }
+        }
+
+    /* das Ergebnis der Events in resultEventList auswerten */
+    $delete=array();
+    foreach ($resultEventList as $index => $entry)
+        {
+        echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+        if ($filter == "IPSMessageHandler_Event")
+            {
+            $trigger=$entry["TriggerVariableID"];
+            echo str_pad($entry["Name"],15)." ";
+            $info=@IPS_GetVariable($trigger);
+            if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
             else 
                 {
-                $timePassed=time()-$entry["LastRun"];
-                echo str_pad("vor ".nf($timePassed,"s"),20);
-                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
+                echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
+                $delete[$entry["OID"]]=true;
                 }
-            echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
+            if (isset($eventlist[$trigger])) 
+                {
+                echo str_pad($eventlist[$trigger][1],50);
+                }
+            else echo str_pad("-----",50);
             }
+        else echo str_pad($entry["Name"],40)." ";
+        if ($entry["LastRun"]==0) echo str_pad("nie",20);
+        else 
+            {
+            $timePassed=time()-$entry["LastRun"];
+            echo str_pad("vor ".nf($timePassed,"s"),20);
+            //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
+            }
+        echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
+        }
+
+    /* eventuell veraltete unbenutzte Events loeschen */
         if (sizeof($delete)>0)
             {
             echo "Folgende Events loeschen:\n";
@@ -196,6 +200,7 @@
         IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
         IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
+        echo "\n\n";
         echo "Module DetectMovement und EvaluateHardware sind installiert. TopologyMappingLibrary Instanzen sind vorhanden.\n";
 
         $hardwareTypeDetect = new Hardware();
@@ -229,7 +234,7 @@
         $topID=@IPS_GetObjectIDByName("Topology", 0 );
         if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
 
-        //if (false)
+        if (false)              /* für das Anlegen der TopologyDevices */
             {
             $i=0;
             $onlyOne=true;      // schön vorsichtig, nur eine Instanz nach der anderen anschauen
@@ -374,6 +379,7 @@
     $name="Arbeitslicht3"; $parent=17297;
     echo "Eine Device Instanz mit dem Namen $name unter $parent erstellen, wenn sie nicht bereits erstellt wurde:\n";
     $InstanzID = @IPS_GetInstanceIDByName($name, $parent);
+
     if ($InstanzID === false)
         {
         echo "Instanz nicht gefunden, neu anlegen.";
@@ -396,11 +402,13 @@
         echo "  Hier ist die abgespeicherte Konfiguration:\n";
         echo "  $configTopologyDevice  \n";
         }
+
+    $config=array();
+    if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
+
     */
 
 
-$config=array();
-if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
 
 
     /* komplette Datei aus dem HM Inventory auslesen 
@@ -457,9 +465,21 @@ if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
         $DetectMovementHandler->Print_EventConfigurationAuto(true);         // true extended display
         echo "\n";
 
+        $eventListonOID=array();
+        //print_r($resultEventList);
+        foreach ($resultEventList as $index => $entry ) 
+            {
+            $eventListonOID[$entry["TriggerVariableID"]]=$entry;
+            }
+
     	$events=$DetectMovementHandler->ListEvents();               /* Alle Events für DetectMovement */
         $eventMoveConfig=$DetectMovementHandler->Get_EventConfigurationAuto();    
         
+        /*  foreach ($events as $oid => $typ)
+            {
+            if (isset($eventListonOID[$oid])) print_r($eventListonOID[$oid]);   
+            }  */ 
+
         //$detectMoveConfig=$DetectMovementHandler->ListConfigurations();  print_r($detectMoveConfig);
         
         echo "Array mit Spiegelregistern anlegen.\n";
@@ -476,6 +496,11 @@ if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
                 if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
                 else
                     {
+                    if (isset($eventListonOID[$oid])) 
+                        {
+                        $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
+                        $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
+                        }    
                     $mirrorsMoveFound[$moid] = IPS_GetName($moid);                
                     echo "     ".IPS_GetName($moid);
                     }
@@ -503,6 +528,11 @@ if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
                 if ($moid === false) echo "  --> Fehler, Spiegelregister nicht bekannt.\n";
                 else
                     {
+                    if (isset($eventListonOID[$oid])) 
+                        {
+                        $eventListonOID[$oid]["MirrorRegisterID"]=$moid;
+                        $eventListonOID[$oid]["MirrorRegister"]=IPS_GetName($moid);
+                        }    
                     $mirrorsTempFound[$moid] = IPS_GetName($moid);                
                     echo "     ".IPS_GetName($oid)."\n";
                     }
@@ -635,7 +665,7 @@ if ($InstanzID !==false) TOPD_CreateReport($InstanzID,$config);
             }
         }	
 
-
+   print_r($eventListonOID);   
 
         echo "Aktuelle Laufzeit ".(time()-$startexec)." Sekunden.\n";
 

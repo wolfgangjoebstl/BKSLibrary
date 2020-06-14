@@ -53,7 +53,11 @@
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");
+
+    IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+
 
 	class IPSComponentSensor_Feuchtigkeit extends IPSComponentSensor {
 
@@ -97,6 +101,7 @@
 			{
 			return ($this->remServer);			
 			}
+
 																			
 		/**
 		 * @public
@@ -111,13 +116,14 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			//echo "Feuchtigkeit Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-            $startexec=microtime(true);            
-            if (GetValue($variable) != $value)
+            $startexec=microtime(true);
+            $log=new Feuchtigkeit_Logging($variable);        // es wird kein Variablenname übergeben
+            $mirrorValue=$log->updateMirorVariableValue($value);
+            if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // nur durch Vergleich GetValue kann es nicht festgestellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwednen
                 {            
                 IPSLogger_Dbg(__file__, 'HandleEvent: Feuchtigkeit Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 			    echo "  IPSComponentSensor_Feuchtigkeit:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                             
-                $log=new Feuchtigkeit_Logging($variable);
                 echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Feuchtigkeit_LogValue();
 			    $this->SetValueROID($value);
@@ -142,6 +148,13 @@
             {
 			return get_class($this);
 		    }
+
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "";
+            }
 
         /*
          * Wert auf die konfigurierten remoteServer laden
@@ -188,11 +201,10 @@
 
 	class Feuchtigkeit_Logging extends Logging
 		{
-		private $variable;
-		private $variablename;
+		private $variable,  $variablename;
+        private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen
 
-		private $HumidityAuswertungID;
-		private $HumidityNachrichtenID;
+		private $HumidityAuswertungID, $HumidityNachrichtenID;
 
 		private $configuration;
 		private $CategoryIdData;        
@@ -219,8 +231,24 @@
             $this->startexecute=microtime(true);                   
 			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
 
-            /************** INIT */
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+
+            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
+            if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
+            $this->variableType=IPS_GetVariable($variable)["VariableType"];
+
+            $rows=getfromDatabase("COID",$variable);
+            if ( ($rows === false) || (sizeof($rows) != 1) )
+                {
+                if (IPS_GetVariable($variable)["VariableType"]==2) $this->variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
+                else $this->variableTypeReg = "HUMIDITY";
+                }
+            else    // getfromDatabase
+                {
+                print_r($rows);   
+                $this->variableTypeReg = $rows[0]["TypeRegKey"];    
+                }
+
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */        
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
@@ -241,6 +269,9 @@
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			//echo "  Kategorien im Datenverzeichnis:".$CategoryIdData."   ".IPS_GetName($CategoryIdData)."\n";
+            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);                
+            $name="HumidityMirror_".$this->variablename;
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
 
             /* Create Category to store the Feuchtigkeit-LogNachrichten */	
 			$name="Feuchtigkeit-Nachrichten";
@@ -275,6 +306,8 @@
 				echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Integer unter Kategorie ".$this->HumidityAuswertungID." ".IPS_GetName($this->HumidityAuswertungID)." anlegen.\n";
 				}
 
+            print_r($this->getVariableOIDLogging());    // Debug, Übersicht der angelegten Variablen 
+
 			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
 		    $directories=get_IPSComponentLoggerConfig();
@@ -283,6 +316,60 @@
 		    $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
 		    parent::__construct($filename,$vid);
 	   	    }
+
+
+        /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
+        * kannnicht diesselbe class sein, da this verwendet wird
+        */
+
+        private function do_setVariableLogID($variable)
+            {
+            if ($variable<>Null)
+                {
+                $this->variable=$variable;
+                //echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->MoveAuswertungID.")\n";
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile);                   // $this->variableLogID schreiben
+				//echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Integer unter Kategorie ".$this->AuswertungID." ".IPS_GetName($this->AuswertungID)." anlegen.\n";
+                IPS_SetHidden($this->variableLogID,false);
+                }
+            }
+
+
+        /*** get protectet variables
+         *
+         */
+
+		public function GetComponent() {
+			return ($this);
+			}
+
+        public function getVariableNameLogging()   
+            {
+            return $this->variablename;      
+            }
+
+        public function getConfigurationLogging()
+            {
+            return $this->configuration;      
+            }
+
+        /* Detect Movement unterstützt Aggregationen, die werden zur Runtime installiert, keine AUsgabe hier, nur Minimalfunktion */
+
+        public function getVariableOIDLogging()
+            {
+            $result = ["variableID" => $this->variable, "profile" => $this->variableProfile, "type" => $this->variableType, "mirrorID" => $this->mirrorNameID, "variableLogID" => $this->variableLogID, "variablename" => $this->variablename,];
+            return $result;
+            }
+
+        /* Spiegelregister updaten */
+
+        function updateMirorVariableValue($value)
+            {
+            $oldvalue=GetValue($this->mirrorNameID);
+            SetValue($this->mirrorNameID,$value);
+            return($oldvalue);
+            }
+
 
         /* wird von HandleEvent aus obigem CustomComponent aufgerufen.
          * Speichert den Wert von ID $this->variable im Spiegelregister mit ID $this->variableLogID
@@ -306,12 +393,12 @@
 			$oldvalue=GetValue($this->variableLogID);
 			SetValue($this->variableLogID,GetValue($this->variable));
 			echo "      Feuchtigkeit_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValue($this->variable)." %. Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
-			IPSLogger_Dbg(__file__, 'CustomComponent Temperature_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
+			IPSLogger_Dbg(__file__, 'CustomComponent Feuchtigkeit_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename);
                 
 			/*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
 			if (isset ($this->installedmodules["DetectMovement"]))
 				{
-				$groups=$this->DetectHandler->ListGroups("Feuchtigkeit",$this->variable);      // nur die Gruppen für dieses Event updaten, mit Angabe Feuchtigkeit können auch mehrere Gruppen pro Event ausgegeben werden */
+				$groups=$this->DetectHandler->ListGroups("Feuchtigkeit",$this->variable);      // nur die Gruppen für dieses Event updaten, mit Angabe Feuchtigkeit können auch mehrere Gruppen pro Event ausgegeben werden 
                 //print_r($groups);
 				foreach($groups as $group=>$name)
 				    {
@@ -334,7 +421,7 @@
 
 					//$log=new Feuchtigkeit_Logging($oid);
 					//$class=$log->GetComponent($oid);
-					/* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+					// Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann 
 					$statusID=CreateVariableByName($this->HumidityAuswertungID, "Gesamtauswertung_".$group,1,'~Humidity',null,1000,null);
                     $oldstatus=GetValue($statusID);
 					if ($oldstatus != $statusint) 
@@ -343,15 +430,13 @@
                         SetValue($statusID,$statusint);     // Vermeidung von Update oder Change Events
                         }
 			   	    }
-				}
+				}  
 
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
 			}
 
-		public function GetComponent() {
-			return ($this);
-			}
+
 
 		/*************************************************************************************
 		Ausgabe des Eventspeichers in lesbarer Form

@@ -19,11 +19,14 @@
 
 /* MySQL Library
  *
- *	summary of classes
+ *	summary of classes, a few functions are at the end of this script
  *
  *      sqlOperate 
  * 
  */
+
+    IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+
 
 /******************************************************************************************************/
 
@@ -76,7 +79,7 @@ class sqlOperate extends sqlHandle
             else                                    // neue Tabellen entsprechend config anlegen
                 {
                 $configSet=$config[$tableName];
-                echo "not available, create table and columns ";
+                echo "not available, create table and columns.\n";          // hier kommt nix mehr in der selben Zeile 
                 $this->createTableConfig($tableName, $entries);
                 }   // ende Tabelle noch nicht vorhanden
             echo "\n";
@@ -212,7 +215,7 @@ class sqlOperate extends sqlHandle
             $result = $this->makeTableConfig($entry,"CREATE",$debug);           // liefert zB     [topologyID] =>  topologyID int NOT NULL   auto_increment und [KEY] => ADD PRIMARY KEY (topologyID)
             if (isset($result[$column])) 
                 {
-                echo "     $column     CREATE\n";
+                echo "     ".str_pad($column,30)."CREATE ".$result[$column]."\n";
                 $sqlCommand.= $result[$column];        // übernimmt dann wie im Beispiel [topologyID] in den sqlCommand
                 }
             else echo "Fehler, $column not Field Name.\n";
@@ -250,8 +253,8 @@ class sqlOperate extends sqlHandle
         }
 
 
-    /* Update Werte der Tabelle, wird von den übergeordneten Klassen aufgerufen.
-     * es wird nur eine Zeile upgedated
+    /* sqlOperate, Update Werte der Tabelle, wird von den übergeordneten Klassen aufgerufen.
+     * es wird jeweils nur eine Zeile upgedated, die Werte im Array für die in advise[key] gespeicherten Spalten werden wenn erforderlich geändert
      * 
      * Übergeordnete Klassen sind jeweils einer Tabelle zugeordnet und machen den Tabellen spezifischen Teil
      * das ist die Tabellen unabhägige Funktion, die mit dem Array advise gesteuert wird 
@@ -286,8 +289,8 @@ class sqlOperate extends sqlHandle
         /* Konfiguration rausfinden und überprüfen */
         if ($config === false) $config=$this->getDatabaseConfig()[$table];
         if (isset($advise["index"])===false) $advise["index"] = "*";
-        if (isset($advise["key"])===false) { $advise["key"]="Error, Table unknown"; return (false); }
-        $columnValue = $advise["key"];
+        if (isset($advise["key"])===false) $advise["key"]="";                       // Fehlerbehandlung weiter unten bereits vorgesehen
+        $columnValue = $advise["key"];          // mehrere keys möglich, auspacken !
         $keys=explode(",",$columnValue);
         $countKeys=sizeof($keys);
         $vars=array();
@@ -307,7 +310,7 @@ class sqlOperate extends sqlHandle
                 } 
             } 
         //print_r($keys);
-        $text= "Keys: "; 
+        $text= "Keys: ";                                // die Keys der Reihe nach als Text mit ihrem Wert ausgeben und parallel dasselbe auch im array vars den passenden Wert aus der Tabellenspalte speichern
         foreach ($keys as $indexVal => $entry) 
             {
             $text .= $entry."=".$deviceList[$entry]."   ";
@@ -367,13 +370,30 @@ class sqlOperate extends sqlHandle
         return $result;
         }
 
-    /* für die Darstellung als Tabelle */
+    /* für die Darstellung als Tabelle, return array */
 
     public function getFullSelectforShow($config)
         {
         $result=array();
         foreach ($config as $column => $entry) $result[$column]=true;
         return $result;
+        }
+
+    /* convert array of columns to list */
+
+    public function convertColumnArraytoList($result,$table="")
+        {
+        $select=""; $next=false;
+        foreach ($result as $column => $active)
+            {
+            if ($active)
+                {
+                if ($next) $select .= ",";
+                else $next=true;
+                $select .= "$table".$column; 
+                }
+            }
+        return $select;
         }
 
     /* compare size of array with table 
@@ -470,9 +490,9 @@ class sql_componentModules extends sqlOperate
         return($columnComponentModule);
         }
 
-    public function get_componentModules($componentConfiguration)
+    public function get_componentModules($componentConfiguration,$debug=false)
         {
-        echo "get_componentModules: Tabelle componentModules updaten:\n";
+        if ($debug) echo "get_componentModules: Tabelle componentModules updaten:\n";
         $componentModules=array();
         foreach ($componentConfiguration as $typereg => $entry1)
             {
@@ -554,6 +574,7 @@ class sql_componentModules extends sqlOperate
     public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
+        $select=array();
         if ($extend) 
             {
             if ($extend===true) $table="topologies.";
@@ -561,16 +582,7 @@ class sql_componentModules extends sqlOperate
             }
         else $table="";
         $result = $this->getFullSelectforShow($this->configDB);
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
-            {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= "$table".$column; 
-                }
-            }
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -586,6 +598,7 @@ class sql_componentModules extends sqlOperate
  *
  *      _construct      getDataBaseConfiguration und speichere individuelle Konfiguration
  *      getDatabaseConfig
+ *      syncTableValues
  *      updateEntriesValues
  *      getSelectforShow
  *
@@ -632,16 +645,16 @@ class sql_serverGateways extends sqlOperate
         $sql = "SELECT serverGatewayID,Name FROM $table";
         $result1=$this->query($sql);
         $fetch = $result1->fetch();
-        //print_r($fetch);
+        //print_r($fetch);      // index 0,1,2 mit den beiden Eintraegen serverGatewayID und Name
         
         $indexTable=array();
-        foreach ($fetch as $entry)
+        foreach ($fetch as $entry)      // wenn ein Name gesetzt ist ein array mit index name und gateway id
             {
             if (isset($indexTable[$entry["Name"]])===false) $indexTable[$entry["Name"]]=$entry["serverGatewayID"];
             else echo "Fehler, zwei gleiche Gateways/Server in der logischen Anordnung.\n";
             }
         //print_r($parentTable);
-        echo "   Tabelle vergleichen:\n";
+        echo "   Tabelle $table vergleichen, nur Eingabezeilen werden aufgelistet:\n";
         foreach ($serverGateways as $name => $entry)
             {
             echo str_pad($name,30);            
@@ -670,28 +683,38 @@ class sql_serverGateways extends sqlOperate
         return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$debug);
         }
 
+    /* ID für einen Namen finden */
+
+    public function getWhere($filter, $debug=false)
+        {
+        if ($debug) echo "Get serverGatewayID for $filter:\n";    
+        $sql = "SELECT * FROM serverGateways WHERE Name = '$filter';";
+        $result1=$this->query($sql);
+        $serverID = $result1->fetch();
+        $result1->result->close();                      // erst am Ende den vielen Speicher freigeben, sonst ist mysqli_result bereits weg !
+        if (sizeof($serverID)==1) 
+            {
+            $serverGatewayID=$serverID[0]["serverGatewayID"];
+            if ($debug) echo "gefunden: ".IPS_GetName(0)."=='$serverGatewayID'.\n";
+            }
+        else $serverGatewayID=false;
+        return $serverGatewayID;
+        }
+
     /* für die Darstellung als Tabelle */
 
     public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
+        $select=array();
         if ($extend) 
             {
-            if ($extend===true) $table="topologies.";
+            if ($extend===true) $table="serverGateways.";
             else $table="$extend.";
             }
         else $table="";
         $result = $this->getFullSelectforShow($this->configDB);
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
-            {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= "$table".$column; 
-                }
-            }
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -791,6 +814,7 @@ class sql_topologies extends sqlOperate
     public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
+        $select=array();        
         if ($extend) 
             {
             if ($extend===true) $table="topologies.";
@@ -798,16 +822,7 @@ class sql_topologies extends sqlOperate
             }
         else $table="";
         $result = $this->getFullSelectforShow($this->configDB);
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
-            {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= "$table".$column; 
-                }
-            }
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -840,6 +855,7 @@ class sql_deviceList extends sqlOperate
         {
         parent::__construct($oid);
         $this->useDatabase("ipsymcon"); 
+        echo "sql_deviceList: call this->getDatabaseConfig();\n";
         $this->getDatabaseConfig();
         }
 
@@ -847,7 +863,6 @@ class sql_deviceList extends sqlOperate
         {
         if (isset($tableName[0])) $table=$tableName[0];
         else $table="deviceList";
-            
         $config = parent::getDatabaseConfiguration()[$table]; 
         $this->configDB=$config;
         return $config;   
@@ -889,7 +904,7 @@ class sql_deviceList extends sqlOperate
                     if ($debug) echo "Instance   ";
                     if (isset($topology[strtoupper($instance[1])])) 
                         {
-                        echo $topology[strtoupper($instance[1])];
+                        if ($debug) echo $topology[strtoupper($instance[1])];
                         $placeIDs[$oid]=$topology[strtoupper($instance[1])];   
                         }
                     } 
@@ -997,7 +1012,6 @@ class sql_deviceList extends sqlOperate
         $sql_channels = new sql_channels();
         $sql_registers = new sql_registers();
 
-        echo "\n";
         $table="deviceList";        // Datenbank Tabelle in die gespeichert wird
         $columnValue="Name";        // Key aus dem Array und die Spalte aus der Datenbank Tabelle
         $this->compareSizeArrayTable($deviceList,$columnValue,$debug);
@@ -1005,7 +1019,7 @@ class sql_deviceList extends sqlOperate
 
         foreach ($deviceList as $name => $entry)            // alle Geräte aus dem Array durchgehen
             {
-            echo str_pad($name,30);
+            echo "   ".str_pad($name,30);
             $deviceList[$name]["Name"]=$name;
             $result=$this->updateEntriesValues($deviceList[$name],$debug);
             if ($result["Status"] !== false)                // update Geräteeintrag erfolgreich
@@ -1099,20 +1113,18 @@ class sql_deviceList extends sqlOperate
 
     /* für die Darstellung als Tabelle */
 
-    public function getSelectforShow()
+    public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
-        $result = $this->getFullSelectforShow($this->configDB);
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
+        $select=array();
+        if ($extend) 
             {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= $column;
-                }
+            if ($extend===true) $table="deviceList.";
+            else $table="$extend.";
             }
+        else $table="";
+        $result = $this->getFullSelectforShow($this->configDB);
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -1157,8 +1169,8 @@ class sql_instances extends sqlOperate
     public function updateEntriesValues($values, $debug=false)
         {
         $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
-        $advise["index"] = "instanceID";
-        $advise["key"]="deviceID,portID";
+        $advise["index"] = "instanceID";                    // <==================
+        $advise["key"]="deviceID,portID";                   // <==================
         $advise["ident"]="Name";          
         $advise["identTgt"] = "NAME";               // in der deviceliste ist es NAME
         $advise["change"]="Update";
@@ -1169,23 +1181,21 @@ class sql_instances extends sqlOperate
 
     /* für die Darstellung als Tabelle */
 
-    public function getSelectforShow()
+    public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
-        $result = $this->getFullSelectforShow($this->configDB);
-        $result["CONFIG"]=false;
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
+        $select=array();
+        if ($extend) 
             {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= $column;
-                }
+            if ($extend===true) $table="instances.";
+            else $table="$extend.";
             }
+        else $table="";
+        $result = $this->getFullSelectforShow($this->configDB);
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
+
 
     }
 
@@ -1228,35 +1238,32 @@ class sql_channels extends sqlOperate
     public function updateEntriesValues($values, $debug=false)
         {
         $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
-        $advise["index"] = "channelID";
-        $advise["key"]="deviceID,portID";
+        $advise["index"] = "channelID";                                                             // <==================
+        $advise["key"]="deviceID,portID";                                                           // <==================
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
         //echo "sql_channel:updateEntriesValues\n";
         if (isset($values["RegisterAll"])) $values["RegisterAll"] = json_encode($values["RegisterAll"]);
         //print_r($values);
-        return parent::updateTableEntriesValues("channels",$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues("channels",$values,$advise,$this->configDB,$debug);                           // <==================
         }
 
 
     /* für die Darstellung als Tabelle */
 
-    public function getSelectforShow()
+    public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
-        $result = $this->getFullSelectforShow($this->configDB);
-        $result["CONFIG"]=false;
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
+        $select=array();        
+        if ($extend) 
             {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= $column;
-                }
+            if ($extend===true) $table="channels.";                           // <==================
+            else $table="$extend.";
             }
+        else $table="";
+        $result = $this->getFullSelectforShow($this->configDB);
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -1270,6 +1277,7 @@ class sql_channels extends sqlOperate
  *
  * __construct
  * getDatabaseConfig
+ * syncTableColumnOnRegisterID
  * updateEntriesValues
  * getSelectforShow
  *
@@ -1291,7 +1299,7 @@ class sql_registers extends sqlOperate
     public function getDatabaseConfig(...$tableName)
         {
         if (isset($tableName[0])) $table=$tableName[0];
-        else $table="registers";
+        else $table="registers";                                    // <==================
 
         $config = parent::getDatabaseConfig(); 
         $this->configDB=$config[$table];
@@ -1318,9 +1326,9 @@ class sql_registers extends sqlOperate
             //print_r($columnData);
             }
 
-        $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
-        $advise["index"] = "registerID";
-        $advise["key"]="";                  // auch registerID verwenden
+        $advise=array();                                // Index instanceID, Key deviceID,portID, Identifier Name
+        $advise["index"] = "registerID";                //  <==================
+        $advise["key"]="";                              // auch registerID verwenden  <==================
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
@@ -1330,7 +1338,7 @@ class sql_registers extends sqlOperate
         $fetch = $result1->fetch();
         $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
         if ($debug) echo "      SELECT * from registers liefert ".sizeof($fetch)." Zeilen/Ergebnisse.\n";
-        $first=true; $registers=array();
+        $first=true; $registers=array(); $register=array();
         foreach ($fetch as $singleRow)
             {
             if ($first)
@@ -1355,6 +1363,7 @@ class sql_registers extends sqlOperate
                     {
                     if ($debug) echo "Wert fehlt \n";
                     }
+                $registers[$singleRow["registerID"]]=true;   // für Überschreibungserkennung
                 }
             else echo "syncTableColumnOnRegisterID $columnName, ".$singleRow["deviceID"]." : pls see above, double\n";
             if ($debug) echo "\n";
@@ -1381,21 +1390,199 @@ class sql_registers extends sqlOperate
 
     /* für die Darstellung als Tabelle */
 
-    public function getSelectforShow()
+    public function getSelectforShow($extend=false)
         {
         //print_r($this->configDB);
-        $result = $this->getFullSelectforShow($this->configDB);
-        $result["CONFIG"]=false;
-        $select=""; $next=false;
-        foreach ($result as $column => $active)
+        $select=array();        
+        if ($extend) 
             {
-            if ($active)
-                {
-                if ($next) $select .= ",";
-                else $next=true;
-                $select .= $column;
-                }
+            if ($extend===true) $table="registers.";
+            else $table="$extend.";
             }
+        else $table="";
+        $result = $this->getFullSelectforShow($this->configDB);
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
+        return $select;
+        }
+
+    }
+
+/* sql_valuesOnRegs extends sqlOperate
+ *
+ * sqlHandle für die Basisfunktionen, die mehr der Datenbank zugeordnet sind
+ * sqlOperate für dei übergeordneten Funkionen zur Manipulation der Datenbank
+ * sql_xxx für die Tabellen spezifischen Operationen
+ *
+ * __construct
+ * getDatabaseConfig
+ * syncTableColumnOnRegisterID
+ * updateEntriesValues
+ * getSelectforShow
+ *
+ */
+
+class sql_valuesOnRegs extends sqlOperate
+    {
+    private $dataBase;          // Name of used Database, has effect on request default config
+    private $table;             // Name of used Table, has effect on request default config
+    private $configDB;          // Konfiguration der  Database, has effect on request default config
+
+    public function __construct($oid=false)
+        {
+        parent::__construct($oid);
+        $this->useDatabase("ipsymcon"); 
+        $this->getDatabaseConfig();
+        }
+
+    public function getDatabaseConfig(...$tableName)
+        {
+        if (isset($tableName[0])) $table=$tableName[0];
+        else $table="valuesOnRegs";                                     // <===================
+
+        $config = parent::getDatabaseConfig(); 
+        $this->configDB=$config[$table];
+        return $this->configDB;   
+        }
+
+    /* syncTableValues für das valuesOnRegs Array
+     *
+     *
+     */
+
+    public function syncTableValues($valuesOnRegs,$debug=false)
+        {
+        $advise=array();                 // Index, Key und Identifier Name festlegen
+        $advise["index"] = "valueID";
+        $advise["key"]="COID,registerID";           // COID kann bei mehreren IP Symcon Servern doppelt vorkommen, registerID nicht
+        $advise["ident"]="";
+        $advise["change"]="Update";
+        $advise["history"]="";
+            
+        if ($debug) echo "syncTableValues für das valuesOnRegs Array:\n";
+        $table="valuesOnRegs";                                                  // Datenbank Tabelle in die gespeichert wird
+        $columnValue=$advise["key"]; 
+        $indexID=$advise["index"];                                                   // Key aus dem Array und die Spalte aus der Datenbank Tabelle
+        $this->compareSizeArrayTable($valuesOnRegs,$columnValue);     // Name der Tabelle aus dem class Name abgeleitet
+
+        /*   es wird nicht auf sich selber referenziert, kann weggelassen werden 
+        $sql = "SELECT $indexID,$columnValue FROM $table";
+        $result1=$this->query($sql);
+        $fetch = $result1->fetch();
+        //print_r($fetch);      // index 0..n mit allen Eintraegen und jetzt neu sortieren
+        
+        $indexTable=array();
+        foreach ($fetch as $entry)      // wenn ein Name gesetzt ist ein array mit index name und gateway id
+            {
+            if (isset($indexTable[$entry[$columnValue]])===false) $indexTable[$entry[$columnValue]]=$entry["valueID"];          // auf INDEX COID die Referenz zu valueID speichern
+            else echo "Fehler, zwei gleiche $columnValue in der logischen Anordnung.\n";
+            }   */
+
+        echo "   Tabelle $table vergleichen, nur Eingabezeilen werden aufgelistet:\n";
+        foreach ($valuesOnRegs as $index => $entry)
+            {
+            echo str_pad($index,10);                                        // valuesOnRegs hat als index die COID           
+            $valuesOnRegs[$index][$columnValue]=$index;                     // vervollstaendigen, manchmal erforderlich
+            $result=$this->updateEntriesValues($valuesOnRegs[$index],$advise);      // es wird eine Zeile mit den gewünschten neuen Werten übergeben, Index wird selbst gefunden
+            if ($result["Status"] !== false)                // update Geräteeintrag erfolgreich
+                {
+                $valueID=$result["Index"];
+                echo " valueID $valueID\n";
+                }
+            else echo "\n";
+            }
+        }
+
+    /* ändert eine Zeile der Klassenspezifischen Tabelle
+     *
+     * $values ist ein array mit den einzelenen Spalten, die Spaltennamen aus dem neuen array advise muessen zumindestens vorhanden sein
+     * wird von syncTableValues aufgerufen
+     */
+
+    public function updateEntriesValues($values, $advise, $debug=false)
+        {
+        return parent::updateTableEntriesValues("valuesOnRegs",$values,$advise,$this->configDB,$debug);
+        }
+
+
+    /* syncTableColumnOnValueID für den valuesOnRegs Table
+     *    columnName    Name der Tabellenspalte, die geändert werden soll
+     *    columnData    array
+     *
+     *      columnData muss ein auf registerID indiziertes array sein
+     *
+     * es wird die ganze Tabelle valuesOnRegs ausgelesen und dann zeilenweise upgedatet 
+     * dazu parent::updateTableEntriesValues("registers",$register,$advise,$this->configDB,$debug) aufrufen
+     * damit WHERE registerID=$register["registerID"] für Auswahl der Zeile
+     *            und SET $register[columnName] = Wert
+     */
+
+    public function syncTableColumnOnValueID($columnName,$columnData,$debug=false)
+        {
+        if ($debug) 
+            {
+            echo "   syncTableColumnOnValueID:für $columnName.\n";
+            //print_r($columnData);
+            }
+
+        $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
+        $advise["index"] = "valueID";                                                                        // <==================
+        $advise["key"]="COID";                                                                              // <==================
+        $advise["ident"]="";
+        $advise["change"]="Update";
+        $advise["history"]="";
+
+        $sql = "SELECT * FROM valueOnRegs;";
+        $result1=$this->query($sql);
+        $fetch = $result1->fetch();
+        $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+        if ($debug) echo "      SELECT * from valueOnRegs liefert ".sizeof($fetch)." Zeilen/Ergebnisse.\n";
+        $first=true; $values=array(); $value=array();
+        foreach ($fetch as $singleRow)
+            {
+            if ($first)
+                {
+                $first=false;
+                if ($debug) print_r($singleRow);    
+                }
+            $valueID = $singleRow["valueID"];
+            if ($debug) 
+                {
+                echo str_pad($singleRow["valueID"],10);
+                }
+            if (isset($values[$singleRow["valueID"]])===false)       // nur beim ersten Mal ueberschreiben
+                {
+                if (isset($columnData[$valueID]))  
+                    {
+                    $value[$columnName] = $columnData[$valueID];          // für SET columnName Wert
+                    $value["valueID"] = $singleRow["valueID"];         // für WHERE  
+                    $result = parent::updateTableEntriesValues("valueOnRegs",$value,$advise,$this->configDB,$debug);
+                    }
+                else 
+                    {
+                    if ($debug) echo "Wert fehlt \n";
+                    }
+                $values[$singleRow["valueID"]]=true;
+                }
+            else echo "syncTableColumnOnValueID $columnName, ".$singleRow["deviceID"]." : pls see above, double\n";
+            if ($debug) echo "\n";
+            }
+        }
+
+
+    /* für die Darstellung als Tabelle */
+
+    public function getSelectforShow($extend=false)
+        {
+        //print_r($this->configDB);
+        $select=array();        
+        if ($extend) 
+            {
+            if ($extend===true) $table="valuesOnRegs.";                     // <==================
+            else $table="$extend.";
+            }
+        else $table="";
+        $result = $this->getFullSelectforShow($this->configDB);
+        $select["Select"] = $this->convertColumnArraytoList($result,$table);
         return $select;
         }
 
@@ -1437,7 +1624,7 @@ class sqlHandle
      *
      */
 
-    public function __construct($oid=false)
+    public function __construct($oid=false,$debug=false)
         {
         if ($oid === false) 
             {
@@ -1447,15 +1634,33 @@ class sqlHandle
             if (sizeof($oidResult)>0) 
                 {
                 $oid=$oidResult[0];           // ersten treffer newt_checkbox_tree_get_multi_selection
-                echo get_class($this).",sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found. ";
+                if ($debug) echo get_class($this).",sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found. ";
                 }
             else 
                 {
-                echo get_class($this).",sqlHandle: OID einer Instance MySQL not found.\n";
+                if ($debug) echo get_class($this).",sqlHandle: OID einer Instance MySQL not found.\n";
                 return(false);
                 }
             }
-        else echo get_class($this).",sqlHandle: new with $oid (".IPS_GetName($oid).") parameter for MySQL Database. ";
+        elseif (is_numeric($oid)) 
+            {
+            if ($debug) echo get_class($this).",sqlHandle: new with $oid (".IPS_GetName($oid).") parameter for MySQL Database. ";
+            }
+        else            //$oid ist ein String
+            {
+           	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+            $oidResult = $modulhandling->getInstances($oid);
+            if (sizeof($oidResult)>0) 
+                {
+                $oid=$oidResult[0];           // ersten treffer newt_checkbox_tree_get_multi_selection
+                if ($debug) echo get_class($this).",sqlHandle: new $oid (".IPS_GetName($oid).") for MySQL Database found. ";
+                }
+            else 
+                {
+                if ($debug) echo get_class($this).",sqlHandle: OID einer Instance MySQL not found.\n";
+                return(false);
+                }
+            }
 
         $this->oid = $oid; 
         $this->sqlHandle = MySQL_Open($this->oid);
@@ -1465,7 +1670,7 @@ class sqlHandle
             } 
         else 
             {
-            echo " --> Verbindung hergestellt.\n";
+            if ($debug) echo " --> Verbindung hergestellt.\n";
             }
         }
 
@@ -1512,8 +1717,10 @@ class sqlHandle
 
     /* USE database aufrufen */
 
-    public function useDatabase($database)
+    public function useDatabase($database,$debug=false)
         {
+        if ($debug) echo "Aufruf von useDatabase($database,...\n";
+
         $this->dataBase=$database;
         $sql = "USE $database;";
         $result=$this->command($sql);
@@ -1537,7 +1744,7 @@ class sqlHandle
         {
         if ((isset(static::$configDataBase))==false) 
             {
-            echo "getDatabaseConfiguration: return initial Config for Database ".$this->dataBase." with MariaDB:\n";                
+            //echo "getDatabaseConfiguration: return initial Config for Database '".$this->dataBase."' with MariaDB:\n";                
             switch ($this->dataBase)
                 {
                 case "ipsymcon":
@@ -1555,16 +1762,16 @@ class sqlHandle
             }            
         else 
             {
-            echo "getDatabaseConfiguration: return Config for Database ".$this->dataBase." with MariaDB:\n";
+            //echo "getDatabaseConfiguration: return Config for Database ".$this->dataBase." with MariaDB:\n";
             return static::$configDataBase;
             }
         }
 
     /* Konfiguration prüfen und überarbeiten */
 
-    private function checkandrepairDatabaseConfig($config)
+    private function checkandrepairDatabaseConfig($config, $debug=false)
         {
-        echo "   check and repair configuration:\n";
+        if ($debug) echo "   check and repair configuration:\n";
 
         foreach ($config as $tablename => $table)
             {
@@ -1578,7 +1785,7 @@ class sqlHandle
                 if ( ( (isset($column["Key"])) && ($column["Key"]!="") ) ||                                 // ein Key ist gesetzt, automatisch NOT NULL überschreiben
                      ( (isset($column["Extra"])) && (strtoupper($column["Extra"])=="AUTO_INCREMENT") ) )    // auto_increment ist gesetzt, automatisch mit NOT NULL überschreiben
                     {
-                    echo "         Änderung: config[$tablename][$columnID][\"Null\"]=\"NO\"\n";
+                    if ($debug) echo "         Änderung: config[$tablename][$columnID][\"Null\"]=\"NO\"\n";
                     $config[$tablename][$columnID]["Null"] = "NO";   
                     }
                 }
@@ -2190,6 +2397,219 @@ class sqlReturn
 
     }
 
+/*************************************************************************************************************
+ *
+ *
+ *
+ ********************************************************************************/
+
+/* getfromDatabase
+ *
+ *  useDatabase ipsymcon, getServerGatewayID als filter
+ *  als Return die Zeilen der Datenbank auf die der Filter zutrifft
+ *
+ * mit Alternative gesetzt eine abgeänderte SQL Abfrage starten
+ *          ohne INNER JOIN componentModules ON registers.componentModuleID=componentModules.componentModuleID
+ *          dafür Abfrage welche registers.componentModuleID noch NULL sind
+ *
+ * Sonderfälle für typereg
+ *  OID
+ *
+ *
+ *  COID
+ *
+ ********/
+ 
+function getfromDatabase($typereg=false,$register=false,$alternative=false,$debug=false)
+    {
+    if ($debug) echo "\n<br>getfromDatabase($typereg,$register,$alternative,$debug) aufgerufen, ";
+
+    $sqlHandle = new sqlHandle();           // default MySQL Instanz
+    if ($sqlHandle !==false)
+        {
+        $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
+        $sql_serverGateways = new sql_serverGateways();
+        $myServerGatewayID=$sql_serverGateways->getWhere(IPS_GetName(0));
+        /*
+        $sql = "SELECT deviceList.Name,deviceList.Type,instances.portID,instances.Name AS Portname,instances.TYPEDEV 
+                    FROM deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID";
+        $sql = "SELECT deviceList.Name,deviceList.Information,instances.portID,instances.OID,instances.Name AS Portname,registers.TYPEREG,registers.Configuration 
+                    FROM deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID
+                    INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                    WHERE TYPEREG='TYPE_METER_TEMPERATURE';";
+        */
+
+        if ($debug) echo "Values from MariaDB Database registers extended with devicelist,instances,topologies:\n<br>"; 
+        //$filter="WHERE TYPEREG='TYPE_METER_TEMPERATURE'";
+        //$filter="WHERE TYPEREG='TYPE_METER_HUMIDITY'";
+        //$filter="";
+        //$register="HUMIDITY";
+        $regfilter=true;
+        if ($typereg != false) 
+            {
+            if ( (strtoupper($typereg)=="OID") && ($register !== false) )
+                {
+                $regfilter=false;
+                $filter="WHERE instances.OID='$register' AND serverGatewayID='$myServerGatewayID'";
+                }
+            elseif ( (strtoupper($typereg)=="COID") && ($register !== false) )
+                {
+                $regfilter=false;
+                $filter="WHERE valuesOnRegs.COID='$register' AND serverGatewayID='$myServerGatewayID'";
+                }                
+            else $filter="WHERE TYPEREG='$typereg' AND serverGatewayID='$myServerGatewayID'";
+            }
+        else $filter="WHERE serverGatewayID='$myServerGatewayID'";
+        //$filter="WHERE Name='ArbeitszimmerThermostat'";
+
+        if ($alternative)       // look for IS NULL
+        $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                            registers.componentModuleID,registers.TYPEREG,registers.Configuration 
+                    FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                    INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                    INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
+                    WHERE registers.componentModuleID IS NULL AND serverGatewayID='$myServerGatewayID';";
+        
+        elseif (strtoupper($typereg)=="COID")           // COID sucht in valuesOnRegs
+            {
+            $sql = "SELECT valuesOnRegs.COID,valuesOnRegs.TypeRegKey,registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                        registers.componentModuleID,
+                        registers.TYPEREG,registers.Configuration,deviceList.serverGatewayID 
+                 FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                 INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                 INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
+                 INNER JOIN valuesOnRegs ON registers.registerID=valuesOnRegs.registerID
+                 $filter;";                
+            }
+        else                            // alle anderen in registers
+            {
+            $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                            componentModules.componentName,componentModules.moduleName,registers.TYPEREG,registers.Configuration 
+                    FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                    INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                    INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
+                    INNER JOIN componentModules ON registers.componentModuleID=componentModules.componentModuleID
+                    $filter;";
+            }
+                    
+        $result1=$sqlHandle->query($sql);
+        $fetch = $result1->fetch();
+        $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+        //print_r($fetch);
+        if ($debug)
+            {                               // fetch zusaetzlich um die Daten zu dursuchen
+            $result1=$sqlHandle->query($sql);
+            $tableHTML = $result1->fetchSelect("html","darkblue");
+            $result1->result->close();                      // erst am Ende den vielen Speicher freigeben, sonst ist mysqli_result bereits weg !
+            echo $tableHTML;
+            }
+        if ($regfilter)         // Suche nach COID oder OID verwendet den WHERE Filter
+            {
+            $singleRows=array();
+            if ($debug) echo "\nZusaetzlicher Filter für Register, damit kann die OID des Registers festgelegt werden.:\n";
+            if ($register != false)
+                {
+                foreach ($fetch as $singleRow)
+                    {
+                    if (getCOIDforRegisterID($singleRow,$register)) $singleRows[]=$singleRow;
+                    }
+                //return $filter;
+                return $singleRows;
+                }
+            else return ($fetch);           // alles zurückgeben, kein filter angefragt
+            }
+        else return ($fetch);           // alles zurückgeben, kein filter angefragt
+        }
+    else return (false);        // keine MySQL Datenbank angelegt
+    }
+
+/* Übergabe einer Tabellenzeile mit zumindest den Spalten "OID" und "Configuration"
+ * Input ist der OID Wert der Instanz, damit kann die Configuration ausgelesen werden und die Index Value Pärchen ausgelesen werden
+ * Für die Ausgabe der Zeile ist zusätzlich Name portID Portname TYPEREG erforderlich
+ * Es muss kein Register übergeben werden, dann alle Register in der Konfiguration bearbeiten und zurückgeben
+ *
+ * Ergebnis ist die erweiterte singlerow und als return die gesammelten singlerows
+ *
+ */
+
+function getCOIDforRegisterID(&$singleRow, $register=false, $debug=false)
+    {
+    $found=false;
+    $filter=array();
+    $singleRows=array();
+    $childrens=@IPS_GetChildrenIDs($singleRow["OID"]);
+    if ($childrens!==false)
+        {
+        //print_R($childrens); 
+        $configuration=json_decode($singleRow["Configuration"],true);
+        if ($register !== false)
+            {
+            //echo "      $register in ".$singleRow["Configuration"]."\n";print_r($configuration);
+            if (isset($configuration[$register]))
+                {
+                $needle = $configuration[$register];
+                if ($debug) echo str_pad($singleRow["Name"],30).str_pad($singleRow["portID"],8).str_pad($singleRow["OID"],8).str_pad($singleRow["Portname"],50).str_pad($singleRow["TYPEREG"],20).str_pad($singleRow["Configuration"],70); 
+                foreach ($childrens as $children) 
+                    {
+                    if (IPS_GetName($children)==$needle) 
+                        {
+                        //echo "Temperatur Register ist : $children (".IPS_GetName($children).") = ".GetValueFormatted($children).".\n";     
+                        if ($debug) echo "$children ".GetValueIfFormatted($children);
+                        $filter[$children]=1;
+                        $singleRow["COID"]=$children;
+                        //$singleRow["TypeRegKey"]=$needle;         // needle kenn ich eh
+                        $singleRow["TypeRegKey"]=$register;
+                        $found=true;
+                        $singleRows[$children]=$singleRow;                        
+                        }
+                    }
+                if ($debug) echo "\n";
+                }
+            return $found;
+            }
+        else                    //register ist false, alle zurückgeben
+            {
+            //echo "getCOIDforRegisterID, alle KEYS bearbeiten:\n"; print_R($configuration);
+            echo "      ".str_pad($singleRow["Name"],30).str_pad($singleRow["portID"],8).str_pad($singleRow["OID"],8).str_pad($singleRow["Portname"],50).str_pad($singleRow["TYPEREG"],20).str_pad($singleRow["Configuration"],70); 
+            foreach ($configuration as $key => $needle)         // die Keys der Reihe nach suchen
+                {
+                foreach ($childrens as $children) 
+                    {
+                    if (IPS_GetName($children)==$needle) 
+                        {
+                        //echo "Temperatur Register ist : $children (".IPS_GetName($children).") = ".GetValueFormatted($children).".\n";     
+                        if ($debug) echo str_pad("$children ".GetValueIfFormatted($children),30);
+                        $filter[$children]=1;
+                        if ($found==false)                 // nur den ersten Wert übernehmen
+                            {
+                            $singleRow["COID"]=$children;
+                            //$singleRow["TypeRegKey"]=$needle;
+                            $singleRow["TypeRegKey"]=$key;              // wie das Register heisst ist eigentlich egal, der Key soll gleich sein
+                            $found=true;
+                            }
+                        $singleRows[$children]=$singleRow;
+                        $singleRows[$children]["COID"]=$children;
+                        //$singleRows[$children]["TypeRegKey"]=$needle;                        
+                        $singleRows[$children]["TypeRegKey"]=$key;                        
+                        }
+                    }
+                }
+            //echo "\n";
+            }
+        //echo "fertig\n";
+        }
+    else
+        {
+        echo "Fehler, ".$singleRow["OID"]." nicht vorhanden:\n";
+        if ($debug) print_R($singleRow);
+        }
+    if ($found) 
+        {
+        if ($debug) echo "\n";
+        return $singleRows;
+        }
+    else return $found;        
+    }
 
 
 ?>

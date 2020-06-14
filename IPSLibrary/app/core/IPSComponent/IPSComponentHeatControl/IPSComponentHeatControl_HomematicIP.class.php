@@ -3,7 +3,7 @@
 	 * @{
 	 *
  	 *
-	 * @file          IPSComponentHeatControl_Homematic.class.php
+	 * @file          IPSComponentHeatControl_HomematicIP.class.php
 	 * @author        Wolfgang Jöbstl und Andreas Brauneis
 	 *
 	 *
@@ -94,7 +94,30 @@
 			
 			$this->WriteValueRemote($valueInt);
 			}
-			
+
+    
+		/**
+		 * @public
+		 *
+		 * Funktion liefert String IPSComponent Constructor String.
+		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * wieder neu zu erzeugen.
+		 *
+		 * @return string Parameter String des IPSComponent Object
+		 */
+		public function GetComponentParams() 
+			{
+			return get_class($this);
+			}
+
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "";
+            }
+
+		
 		/**
 		 * @public
 		 *

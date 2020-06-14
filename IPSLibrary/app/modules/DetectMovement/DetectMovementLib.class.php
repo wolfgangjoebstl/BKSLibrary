@@ -56,7 +56,8 @@
 	 *
      **********************************************/
 
-   IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
+    IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 
 
 	abstract class DetectHandler {
@@ -589,7 +590,7 @@
         */
     public function RegisterEvent($variableId, $eventType, $componentParams, $moduleParams, $componentOverwrite=false, $moduleOverwrite=false)
         {
-        echo "Aufruf RegisterEvent.\n";
+        echo "Aufruf DetectHandler:RegisterEvent mit VariableID $variableId für EventType $eventType $componentParams $moduleParams \n";
         $configurationAuto = $this->Get_EventConfigurationAuto();
         //print_r($configurationAuto);
         $comment = "Letzter Befel war RegisterEvent mit VariableID ".$variableId." ".date("d.m.Y H:i:s");
@@ -716,6 +717,154 @@
             }
         }
 	}
+
+/******************************************************************************************************************/
+
+	class DetectSensorHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+		private static $configFileName;				
+
+		protected $Detect_DataID;												/* Speicherort der Mirrorregister, private teilt sich den Speicherort nicht mit der übergeordneten Klasse */ 
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectSensorHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+			/* Customization of Classes */
+			self::$configtype = '$eventSensorConfiguration';
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			
+			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
+			$name="Sensor-Auswertung";
+			$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($mdID==false)
+				{
+				$mdID = IPS_CreateCategory();
+				IPS_SetParent($mdID, $CategoryIdData);
+				IPS_SetName($mdID, $name);
+	 			IPS_SetInfo($mdID, "this category was created by script. ");
+				}			
+			$this->Detect_DataID=$mdID;	
+						
+			parent::__construct();
+			}
+
+		/* Customization Part */
+		
+		function Get_Configtype()
+			{
+			return self::$configtype;
+			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
+
+		/* 
+         * DetectSensorHandler Objektes
+         * obige variable in dieser Class kapseln, dannn ist sie static für diese Class 
+         */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+                if ( function_exists('IPSDetectSensorHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectSensorHandler_GetEventConfiguration();
+				else self::$eventConfigurationAuto = array();					
+				}					
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 * DetectSensorHandler Objektes
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+			self::$eventConfigurationAuto = $configuration;
+			}
+
+		/**
+		 * getMirrorRegister für Humidity
+		 * 
+		 */
+
+		public function getMirrorRegister($variableId)
+			{
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($mirrorID === false) echo "Fehler, $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            return ($mirrorID);
+            }
+
+		/**
+		 * Das DetectSensorHandler Spiegelregister anlegen
+		 * 
+		 */
+
+		public function CreateMirrorRegister($variableId)
+			{
+            /* clone profile and type from original variable */
+            $variableProfile=IPS_GetVariable($variableId)["VariableProfile"];
+            if ($variableProfile=="") $variableProfile=IPS_GetVariable($variableId)["VariableCustomProfile"];
+            $variableType=IPS_GetVariable($variableId)["VariableType"];
+                
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,$variableType,$this->Detect_DataID,10, $variableProfile, null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			return ($mirrorID);			
+			}
+
+		/**
+		 *
+		 * Die Sensor Gesamtauswertung_ Variablen erstellen 
+		 *
+		 */
+		function InitGroup($group)
+			{
+			echo "\nDetect Feuchtigkeit Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			$config=$this->ListEvents($group);
+			$status=false; $status1=false;
+			foreach ($config as $oid=>$params)
+				{
+				$status=$status || GetValue($oid);
+				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+				$moid=$this->getMirrorRegister($oid);
+				if ($moid !== false) $status1=$status1 || GetValue($moid);
+
+                /* clone profile and type from original variable */
+                $variableProfile=IPS_GetVariable($variableId)["VariableProfile"];
+                if ($variableProfile=="") $variableProfile=IPS_GetVariable($variableId)["VariableCustomProfile"];
+                $variableType=IPS_GetVariable($variableId)["VariableType"];                
+				}
+			echo "  Gruppe ".$group." hat neuen Status, Wert ".(integer)$status." \n";
+			$statusID=CreateVariable("Gesamtauswertung_".$group,$variableType,$this->Detect_DataID,1000, $variableProfile, null,false);
+			SetValue($statusID,$status);
+			
+  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			return ($statusID);			
+			}
+			
+		}
 
 /******************************************************************************************************************/
 
@@ -991,7 +1140,10 @@
             return ($mirrorID);
             }
 
-	
+		/**
+		 * Das DetectMovementHandler Spiegelregister anlegen
+		 * 
+		 */
 			
 		public function CreateMirrorRegister($variableId)
 			{
@@ -1180,6 +1332,11 @@
             //else echo "getMirrorRegister for Temperature $variablename\n";
             return ($mirrorID);
             }
+		
+        /**
+		 * Das DetectTemperaturHandler Spiegelregister anlegen
+		 * 
+		 */
 
 		public function CreateMirrorRegister($variableId)
 			{
@@ -1322,6 +1479,11 @@
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
             return ($mirrorID);
             }
+
+		/**
+		 * Das DetectHeatControlHandler Spiegelregister anlegen
+		 * 
+		 */
 
 		public function CreateMirrorRegister($variableId)			/* für DetectHeatControl */
 			{
@@ -1547,6 +1709,8 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 
+        /* DetectDeviceHandler, nur da damit keine Fehlermeldung, eigentlich egal */
+
 		public function CreateMirrorRegister($variableId)
 			{
 			}
@@ -1757,6 +1921,8 @@
 			{
 			self::$eventConfigurationAuto = $configuration;
 			}
+
+        /* DetectDeviceListHandler, nur da damit keine Fehlermeldung, eigentlich egal */
 
 		public function CreateMirrorRegister($variableId)
 			{

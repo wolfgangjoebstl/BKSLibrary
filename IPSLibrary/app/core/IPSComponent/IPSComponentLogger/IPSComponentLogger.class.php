@@ -305,7 +305,7 @@ class Logging
         if ($MoveAuswertungID==false)
             {
             $MoveAuswertungID = IPS_CreateCategory();
-            IPS_SetParent($MoveAuswertungID, $this->CategoryIdData);
+            IPS_SetParent($MoveAuswertungID, $CategoryIdData);
             IPS_SetName($MoveAuswertungID, $name);
             IPS_SetInfo($MoveAuswertungID, "this category was created by script. ");
             }
@@ -366,6 +366,7 @@ class Logging
             } 
         return ($variablename);
         }
+
 
     /*
         * wird in construct und Set_LogValue verwendet

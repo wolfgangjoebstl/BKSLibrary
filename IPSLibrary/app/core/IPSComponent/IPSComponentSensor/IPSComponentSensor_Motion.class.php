@@ -42,7 +42,10 @@
 	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 	IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
 	IPSUtils_Include ("IPSModuleManager.class.php","IPSLibrary::install::IPSModuleManager");	
+
+    IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
 
 	/******************************************************************************************************
 	 *
@@ -71,7 +74,7 @@
 			{
 		   //echo "Build Motion Sensor with ".$var1.".\n";
 			$this->tempObject   = $lightObject;
-			$this->RemoteOID    = $var1;
+			$this->RemoteOID    = $var1;                    // par1 manchmal auch par2
 			$this->tempValue    = $lightValue;
 			
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
@@ -85,6 +88,15 @@
 				{								
 				$this->remServer	  = array();
 				}
+			}
+
+		/*
+		 * aktueller Status der remote logging server
+		 */	
+	
+		public function remoteServerAvailable()
+			{
+			return ($this->remServer);			
 			}
 	
 		/**
@@ -103,8 +115,11 @@
 			IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 
 			$log=new Motion_Logging($variable);
-			$result=$log->Motion_LogValue($value);
-			//$this->SetValueBooleanROID($value);                      // wenn unbeding Booloean
+            $mirrorValue=$log->updateMirorVariableValue($value);
+            
+			$result=$log->Motion_LogValue($value);      // hier könnte man gleiche Werte noch unterdrücken
+            
+			//$this->SetValueBooleanROID($value);                      // wenn unbeding Boolean
             $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
 			}
 
@@ -122,9 +137,16 @@
 			return get_class($this);
 			}
 
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "Motion_Logging";
+            }
+
         /*
          * Wert auf die konfigurierten remoteServer laden
-         */
+
 
         public function SetValueBooleanROID($value)
             {
@@ -146,13 +168,13 @@
 							$rpc = new JSONRPC($Server);
 							$roid=(integer)$para[1];
 							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
-							/* bei setValueBoolean muss sichergestellt sein dass gegenüberliegender Server auch auf Boolean formattiert ist. */
+							// bei setValueBoolean muss sichergestellt sein dass gegenüberliegender Server auch auf Boolean formattiert ist. 
 							$rpc->SetValueBoolean($roid, (boolean)$value);
 							}
 						}
 					}
 				}
-            }
+            }           */
 
 	}
 
@@ -165,11 +187,11 @@
 	class Motion_Logging extends Logging
 		{
 
-		private $variable;
-		private $variablename;
+		private $variable, $variablename, $variableTypeReg;              /* Untergruppen, hier MOTION oder BRIGHTNESS */
+        private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen        
+		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
 
-		private $MoveAuswertungID;          /* Auswertung für Custom Component */
-		private $MoveNachrichtenID;
+		private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
 
 		private $configuration;
 		private $CategoryIdData;
@@ -203,11 +225,40 @@
 		 *
 		 *************************************************************************/
 		 	
-		function __construct($variable=Null,$variablename=Null)
+		function __construct($variable,$variablename=Null)          // construct ohen variable nicht mehr akzeptieren
 			{
             $this->startexecute=microtime(true); 
-            /************** INIT */
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+
+            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
+            if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
+            $this->variableType=IPS_GetVariable($variable)["VariableType"];
+                              
+            $rows=getfromDatabase("COID",$variable);
+            if ( ($rows === false) || (sizeof($rows) != 1) )
+                {
+                if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableType = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
+                else $this->variableType = "BRIGHTNESS";
+                }
+            else    // getfromDatabase
+                {
+                //print_r($rows);   
+                $this->variableType = $rows[0]["TypeRegKey"];    
+                }
+            if ($this->variableType =="MOTION") $this->do_init_motion($variable, $variablename);
+            elseif ($this->variableType =="CONTACT") $this->do_init_motion($variable, $variablename);
+            elseif ($this->variableType =="BRIGHTNESS") $this->do_init_brightness($variable, $variablename);
+
+			parent::__construct($this->filename);
+			}
+
+        /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
+         * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+         */
+
+        public function do_init_motion($variable, $variablename)
+            {
+            echo "      Aufruf do_init_motion:\n";
             /**************** installierte Module und verfügbare Konfigurationen herausfinden */
             $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
             $this->installedmodules=$moduleManager->GetInstalledModules();     
@@ -220,78 +271,73 @@
                 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
                 $this->DetectHandler = new DetectMovementHandler();
                 }             
-                              
-            $dosOps= new dosOps();
-            //echo "Construct IPSComponentSensor Motion Logging for Variable ID : ".$variable."\n";
 
             $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
             /* Konfiguration einlesen, ob zusätzliche Spiegelregister mit Delay notwendig sind */ 
-			$this->configuration=get_IPSComponentLoggerConfig();
+            $this->configuration=get_IPSComponentLoggerConfig();
 
-			/**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+            /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
             $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			//echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+            $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+            //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+            $name="MotionMirror_".$this->variablename;
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
 
-			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
-			$this->MoveNachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);
-			$this->MoveAuswertungID=$this->CreateCategoryAuswertung("Bewegung",$this->CategoryIdData);;
+            /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+            $this->NachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);
+            $this->AuswertungID=$this->CreateCategoryAuswertung("Bewegung",$this->CategoryIdData);;
 
-    		/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
-			if ($variable<>Null)
-				{
-				$this->variable=$variable;
-                //echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->MoveAuswertungID.")\n";
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->MoveAuswertungID,0,'~Motion');                   // $this->variableLogID schreiben
-                $this->variableDelayLogID = $this->variableLogID;                                                                                       // sicherheitshalber, kann später noch überschrieben werden.
-                IPS_SetHidden($this->variableLogID,false);
-				}
-			
-			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
-				$this->DetectHandler->Set_MoveAuswertungID($this->MoveAuswertungID);
-				$CategoryIdData     = $this->DetectHandler->Get_CategoryData();
-    		    /* DetectMovement Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
-				//echo "  Datenverzeichnis Category Data :".$CategoryIdData."\n";
-				$name="Motion-Nachrichten";
-				$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
-				if ($vid==false)
-					{
-					$vid = IPS_CreateCategory();
-					IPS_SetParent($vid, $CategoryIdData);
-					IPS_SetName($vid, $name);
-					IPS_SetInfo($vid, "this category was created by script. ");
-					}
-				$this->motionDetect_NachrichtenID=$vid;
+            /* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+            $this->do_setVariableLogID($variable);
+            $this->variableDelayLogID = $this->variableLogID;                                                                                       // sicherheitshalber, kann später noch überschrieben werden.
+            
+            /* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
+            if (isset ($this->installedmodules["DetectMovement"]))
+                {
+                /* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
+                $this->DetectHandler->Set_MoveAuswertungID($this->AuswertungID);
+                $CategoryIdData     = $this->DetectHandler->Get_CategoryData();
+                /* DetectMovement Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+                //echo "  Datenverzeichnis Category Data :".$CategoryIdData."\n";
+                $name="Motion-Nachrichten";
+                $vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+                if ($vid==false)
+                    {
+                    $vid = IPS_CreateCategory();
+                    IPS_SetParent($vid, $CategoryIdData);
+                    IPS_SetName($vid, $name);
+                    IPS_SetInfo($vid, "this category was created by script. ");
+                    }
+                $this->motionDetect_NachrichtenID=$vid;
 
-				$name="Motion-Detect";
-				$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
-				if ($mdID==false)
-					{
+                $name="Motion-Detect";
+                $mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+                if ($mdID==false)
+                    {
                     echo "Create Motion-Detect Kategorie in $CategoryIdData.\n";
-					$mdID = IPS_CreateCategory();
-					IPS_SetParent($mdID, $CategoryIdData);
-					IPS_SetName($mdID, $name);
-		 			IPS_SetInfo($mdID, "this category was created by script. ");
-	 				}
-				$this->motionDetect_DataID=$mdID;
+                    $mdID = IPS_CreateCategory();
+                    IPS_SetParent($mdID, $CategoryIdData);
+                    IPS_SetName($mdID, $name);
+                    IPS_SetInfo($mdID, "this category was created by script. ");
+                    }
+                $this->motionDetect_DataID=$mdID;
 
-				if ($variable<>null)
-					{
-					//echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
-					$directory=$this->configuration["LogDirectories"]["MotionLog"];
-					$dosOps->mkdirtree($directory);
-					$filename=$directory.$this->variablename."_Motion.csv";
+                if ($variable<>null)
+                    {
+                    //echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
+                    $directory=$this->configuration["LogDirectories"]["MotionLog"];
+                    $dosOps= new dosOps();
+                    $dosOps->mkdirtree($directory);
+                    $filename=$directory.$this->variablename."_Motion.csv";
 
-					$variablenameEreignis=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
-					$this->EreignisID=CreateVariableByName($this->motionDetect_DataID,$variablenameEreignis,3,'', null, 100, null );
-					echo "       Ereignisspeicher aufsetzen        : ".$this->EreignisID." \"$variablenameEreignis\"\n";
+                    $variablenameEreignis=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
+                    $this->EreignisID=CreateVariableByName($this->motionDetect_DataID,$variablenameEreignis,3,'', null, 100, null );
+                    echo "       Ereignisspeicher aufsetzen        : ".$this->EreignisID." \"$variablenameEreignis\"\n";
 
-					/* Spiegelregister für Bewegung mit Delay, wenn DetectMovement installiert ist */
-					echo '       Spiegelregister (Delay) erstellen : Basis ist '.$variable.' Name "'.$this->variablename.'" in '.$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).")\n";
+                    /* Spiegelregister für Bewegung mit Delay, wenn DetectMovement installiert ist */
+                    echo '       Spiegelregister (Delay) erstellen : Basis ist '.$variable.' Name "'.$this->variablename.'" in '.$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).")\n";
                     $variableDelayLogID=@IPS_GetObjectIDByName($this->variablename,$this->motionDetect_DataID);
                     if ( ($variableDelayLogID===false) || (AC_GetLoggingStatus($this->archiveHandlerID,$variableDelayLogID)==false) || (AC_GetAggregationType($this->archiveHandlerID,$variableDelayLogID) != 0) )
                         {
@@ -303,26 +349,110 @@
                         IPS_ApplyChanges($this->archiveHandlerID);
                         }
                     else $this->variableDelayLogID=$variableDelayLogID;    					
-					}
-				$variablename="Gesamt_Ereignisspeicher";
+                    }
                 /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
-				$erID=CreateVariableByName($this->motionDetect_DataID,$variablename,3, '', null,10000,null );
-				$this->GesamtID=$erID;
-				//echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
-				$variablename="Gesamt_Ereigniszaehler";
-				$erID=CreateVariableByName($this->motionDetect_DataID,$variablename,1, '', null,10000,null );
-				$this->GesamtCountID=$erID;
-				//echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
-				}
-		
-			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
+                $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereignisspeicher",3, '', null,10000,null );
+                $this->GesamtID=$erID;
+                //echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
+                $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereigniszaehler",1, '', null,10000,null );
+                $this->GesamtCountID=$erID;
+                //echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
+                }
+
 			$directories=get_IPSComponentLoggerConfig();
 			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
             else $directory="C:/Scripts/Switch/";
+            $dosOps= new dosOps();
 			$dosOps->mkdirtree($directory);
-			$filename=$directory.$this->variablename."_Bewegung.csv";
-			parent::__construct($filename);
+			$this->filename=$directory.$this->variablename."_Bewegung.csv";                
+            }
+
+        /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
+         * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+         */
+
+        public function do_init_brightness($variable, $variablename)
+            {
+            echo "      Aufruf do_init_brightness:\n";
+            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+            /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+            $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+            $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+            //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+            $name="HelligkeitMirror_".$this->variablename;
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
+
+            /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+            $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
+            $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
+
+            /* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+            $this->do_setVariableLogID($variable);
+
+			$directories=get_IPSComponentLoggerConfig();
+			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+            else $directory="C:/Scripts/Switch/";
+            $dosOps= new dosOps();
+			$dosOps->mkdirtree($directory);
+			$this->filename=$directory.$this->variablename."_Bewegung.csv";            
+            }
+
+        /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
+        * kannnicht diesselbe class sein, da this verwendet wird
+        */
+
+        private function do_setVariableLogID($variable)
+            {
+            if ($variable<>Null)
+                {
+                $this->variable=$variable;
+                //echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->AuswertungID.")\n";
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile);                   // $this->variableLogID schreiben
+                IPS_SetHidden($this->variableLogID,false);
+                }
+            }
+
+        /*** get protectet variables
+         *
+         */
+
+		public function GetComponent() {
+			return ($this);
 			}
+
+        public function getVariableNameLogging()   
+            {
+            return $this->variablename;      
+            }
+
+        public function getConfigurationLogging()
+            {
+            return $this->configuration;      
+            }
+
+        public function getVariableOIDLogging()
+            {
+            if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->variableType==0) )
+                {
+                $result = ["variableID" => $this->variable, "profile" => $this->variableProfile, "type" => $this->variableType, "variableLogID" => $this->variableLogID, "variableDelayLogID" => $this->variableDelayLogID, "Ereignisspeicher" => $this->EreignisID, "Gesamt_Ereignisspeicher" => $this->GesamtID, "Gesamt_Ereigniszaehler" => $this->GesamtCountID];
+                }
+            elseif ($this->variableType==0) $result = ["variableID" => $this->variable, "profile" => $this->variableProfile, "type" => $this->variableType, "variableLogID" => $this->variableLogID, "variableDelayLogID" => $this->variableDelayLogID];
+            else $result = ["variableID" => $this->variable, "profile" => $this->variableProfile, "type" => $this->variableType, "variableLogID" => $this->variableLogID];
+
+            return $result;
+            }
+
+
+        /* Spiegelregister updaten */
+
+        function updateMirorVariableValue($value)
+            {
+            $oldvalue=GetValue($this->mirrorNameID);
+            SetValue($this->mirrorNameID,$value);
+            return($oldvalue);
+            }
+
 
 		/**********************************************************************
 		 * 
@@ -370,157 +500,202 @@
 		function Motion_LogValue($value)
 			{
 			$result=GetValue($this->variable);
-			if (true)
-				{
-				//$result=$value;		/* für Testzwecke, der mitgelieferte Wert wird normalerweise nicht geschrieben */
-				//echo "NUR FUER TESTZWECKE WERT UEBERMITTELN.\n";
-				}
-			echo "Motion_LogValue Log Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") ";
-			$variabletyp=IPS_GetVariable($this->variable);
-			if ($variabletyp["VariableProfile"]!="")
-				{  /* Formattierung vorhanden */
-				$resultLog=GetValueFormatted($this->variable);
-				echo " mit formattiertem Wert : ".GetValueFormatted($this->variable)."\n";
-				IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValueFormatted($this->variable));
-				}
-			else
-				{
-				$resultLog=GetValue($this->variable);				
-				echo " mit Wert : ".GetValue($this->variable)."\n";
-				IPSLogger_Dbg(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert ".GetValue($this->variable));
-				}
-			if ( (isset($this->configuration["LogConfigs"]["DelayMotion"])) == true)
-				{
-				if ($result==true)
-					{
-					$delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
-					SetValue($this->variableDelayLogID,$result);
-					echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : ".$this->variable."_".$this->variablename."_EVENT"."\n";
-					$now = time();
-					$EreignisID = @IPS_GetEventIDByName($this->variable."_".$this->variablename."_EVENT", IPS_GetParent($_IPS['SELF']));
-					if ($EreignisID === false)
-						{ //Event nicht gefunden > neu anlegen
-						$EreignisID = IPS_CreateEvent(1);
-						IPS_SetName($EreignisID,$this->variable."_".$this->variablename."_EVENT");
-						IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
-						}
-					IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      /* konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird */
-					IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
-					IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
-					IPS_SetEventActive($EreignisID,true);
-					}
-				}	
-			else
-				{
-				/* Kein Delay konfiguriert, Wert egal ob true oder false einfach übernehmen */
-				SetValue($this->variableLogID,$result);				
-				}
-			//print_r($this);
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* etwas kompliziert, wenn DetectMovement nicht installiert is sind beide Variablen auf dem selben Wert.
-				 * wenn installiert, wird Delay abgewickelt, aber es muss noch wer den Wert in CustomComponents setzen
-				 */
-				SetValue($this->variableLogID,$result);
-				
-				/* DetectMovement class verwenden */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				
-																		
-				/* Achtung die folgenden Werte haben keine Begrenzung, sicherstellen dass String Variablen nicht zu gross werden. */
-				$EreignisVerlauf=GetValue($this->EreignisID);
-				$GesamtVerlauf=GetValue($this->GesamtID);
-				$GesamtZaehler=GetValue($this->GesamtCountID);
-				if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
-				if (IPS_GetName($this->variable)=="MOTION")
-					{
-					if (GetValue($this->variable))
-						{
-						$resultLog="Bewegung";
-						//$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
-						$Ereignis=time().";".STAT_Bewegung.";";
-						$GesamtZaehler+=1;
-						$EreignisVerlauf.=$Ereignis;
-						$GesamtVerlauf.=$Ereignis;
-						}
-					else
-						{
-						$resultLog="Ruhe";
-						//$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
-						$Ereignis=time().";".STAT_WenigBewegung.";";
-						$GesamtZaehler-=1;
-						if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
-						//$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
-						$EreignisVerlauf.=$Ereignis;
-						$GesamtVerlauf.=$Ereignis;
-						}
-					}
-				else
-					{
-					$Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
-					if (GetValue($this->variable))
-						{
-						$resultLog="Offen";
-						}
-					else
-						{
-						$resultLog="Geschlossen";
-						}
-					$EreignisVerlauf.=$Ereignis;
-					}
-				echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->EreignisID)." \n";
-				SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
-				echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->GesamtID)." \n";
-				SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
-				SetValue($this->GesamtCountID,$GesamtZaehler);
-			
-				//print_r($DetectMovementHandler->ListEvents("Motion"));
-				//print_r($DetectMovementHandler->ListEvents("Contact"));
+            if ( ($this->variableType =="MOTION") || ($this->variableType =="CONTACT") )
+                {            
+                if (true)
+                    {
+                    //$result=$value;		/* für Testzwecke, der mitgelieferte Wert wird normalerweise nicht geschrieben */
+                    //echo "NUR FUER TESTZWECKE WERT UEBERMITTELN.\n";
+                    }
+                $resultLog=GetValueIfFormatted($this->variable);
+                echo "CustomComponent Motion_LogValue Log Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
+                IPSLogger_Inf(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+                if ( (isset($this->configuration["LogConfigs"]["DelayMotion"])) == true)
+                    {
+                    if ($result==true)
+                        {
+                        $delaytime=$this->configuration["LogConfigs"]["DelayMotion"];
+                        SetValue($this->variableDelayLogID,$result);
+                        echo "   Verzögerung der Events konfiguriert, Timer im selben Verzeichnis wie Script gesetzt : ".$this->variable."_".$this->variablename."_EVENT"."\n";
+                        $now = time();
+                        $EreignisID = @IPS_GetEventIDByName($this->variable."_".$this->variablename."_EVENT", IPS_GetParent($_IPS['SELF']));
+                        if ($EreignisID === false)
+                            { //Event nicht gefunden > neu anlegen
+                            $EreignisID = IPS_CreateEvent(1);
+                            IPS_SetName($EreignisID,$this->variable."_".$this->variablename."_EVENT");
+                            IPS_SetParent($EreignisID, IPS_GetParent($_IPS['SELF']));
+                            }
+                        IPS_SetEventCyclic($EreignisID,0,1,0,0,1,$delaytime);      /* konfigurierbar, zB alle 30 Minuten, d.h. 30 Minuten kann man still sitzen bevor keine Bewegung mehr erkannt wird */
+                        IPS_SetEventCyclicTimeBounds($EreignisID,time(),0);  /* damit die Timer hintereinander ausgeführt werden */
+                        IPS_SetEventScript($EreignisID,"if (GetValue(".$this->variable.")==false) { SetValue(".$this->variableDelayLogID.",false); IPS_SetEventActive(".$EreignisID.",false);} \n");
+                        IPS_SetEventActive($EreignisID,true);
+                        }
+                    }	
+                else
+                    {
+                    /* Kein Delay konfiguriert, Wert egal ob true oder false einfach übernehmen */
+                    SetValue($this->variableLogID,$result);				
+                    }
+                //print_r($this);
+                if (isset ($this->installedmodules["DetectMovement"]))
+                    {
+                    /* etwas kompliziert, wenn DetectMovement nicht installiert is sind beide Variablen auf dem selben Wert.
+                    * wenn installiert, wird Delay abgewickelt, aber es muss noch wer den Wert in CustomComponents setzen
+                    */
+                    SetValue($this->variableLogID,$result);
+                    
+                    /* DetectMovement class verwenden */
+                    IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+                    IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                                                                            
+                    /* Achtung die folgenden Werte haben keine Begrenzung, sicherstellen dass String Variablen nicht zu gross werden. */
+                    $EreignisVerlauf=GetValue($this->EreignisID);
+                    $GesamtVerlauf=GetValue($this->GesamtID);
+                    $GesamtZaehler=GetValue($this->GesamtCountID);
+                    if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
+                    if (IPS_GetName($this->variable)=="MOTION")
+                        {
+                        if (GetValue($this->variable))
+                            {
+                            $resultLog="Bewegung";
+                            //$EreignisVerlauf.=date("H:i").";".STAT_Bewegung.";";
+                            $Ereignis=time().";".STAT_Bewegung.";";
+                            $GesamtZaehler+=1;
+                            $EreignisVerlauf.=$Ereignis;
+                            $GesamtVerlauf.=$Ereignis;
+                            }
+                        else
+                            {
+                            $resultLog="Ruhe";
+                            //$EreignisVerlauf.=date("H:i").";".STAT_WenigBewegung.";";
+                            $Ereignis=time().";".STAT_WenigBewegung.";";
+                            $GesamtZaehler-=1;
+                            if ($GesamtZaehler<STAT_WenigBewegung) {$GesamtZaehler=STAT_WenigBewegung;}
+                            //$GesamtVerlauf.=date("H:i").";".$GesamtZaehler.";";
+                            $EreignisVerlauf.=$Ereignis;
+                            $GesamtVerlauf.=$Ereignis;
+                            }
+                        }
+                    else
+                        {
+                        $Ereignis=time().";".STAT_Bewegung.";".time().";".STAT_WenigBewegung.";";
+                        if (GetValue($this->variable))
+                            {
+                            $resultLog="Offen";
+                            }
+                        else
+                            {
+                            $resultLog="Geschlossen";
+                            }
+                        $EreignisVerlauf.=$Ereignis;
+                        }
+                    echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->EreignisID)." \n";
+                    SetValue($this->EreignisID,$this->evaluateEvents($EreignisVerlauf));
+                    echo "\nEreignisverlauf evaluieren bevor neu geschrieben wird von : ".IPS_GetName($this->GesamtID)." \n";
+                    SetValue($this->GesamtID,$this->evaluateEvents($GesamtVerlauf,60));
+                    SetValue($this->GesamtCountID,$GesamtZaehler);
+                
+                    //print_r($DetectMovementHandler->ListEvents("Motion"));
+                    //print_r($DetectMovementHandler->ListEvents("Contact"));
 
-				$groups=$this->DetectHandler->ListGroups('Motion',$this->variable);      // nur die Gruppen für dieses Event updaten, wenn Parameter Motion angegeben ist gibt es auch ein Explode der mit Komma getrennten Gruppennamen
-				foreach($groups as $group=>$name)
-					{
-					echo "\nMotion_LogValue Log DetectMovement Gruppe ".$group." behandeln.\n";
-					$config=$this->DetectHandler->ListEvents($group);
-					$status=false; $status1=false;
-					foreach ($config as $oid=>$params)
-						{
-						$status=$status || GetValue($oid);
-						echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
-						$moid=$this->DetectHandler->getMirrorRegister($oid);
-						$status1=$status1 || GetValue($moid);
-						}
-					echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-					$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent($this->variableDelayLogID),1000, '~Motion', null,false);
-                    $oldstatus1=GetValue($statusID);
-					if ($oldstatus1 != $status1) 
+                    $groups=$this->DetectHandler->ListGroups('Motion',$this->variable);      // nur die Gruppen für dieses Event updaten, wenn Parameter Motion angegeben ist gibt es auch ein Explode der mit Komma getrennten Gruppennamen
+                    foreach($groups as $group=>$name)
                         {
-    					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus1 auf $status1.\n";
-                        SetValue($statusID,$status1);     // Vermeidung von Update oder Change Events
+                        echo "\nMotion_LogValue Log DetectMovement Gruppe ".$group." behandeln.\n";
+                        $config=$this->DetectHandler->ListEvents($group);
+                        $status=false; $status1=false;
+                        foreach ($config as $oid=>$params)
+                            {
+                            $status=$status || GetValue($oid);
+                            echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
+                            $moid=$this->DetectHandler->getMirrorRegister($oid);
+                            $status1=$status1 || GetValue($moid);
+                            }
+                        echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
+                        $statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent($this->variableDelayLogID),1000, '~Motion', null,false);
+                        $oldstatus1=GetValue($statusID);
+                        if ($oldstatus1 != $status1) 
+                            {
+                            echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus1 auf $status1.\n";
+                            SetValue($statusID,$status1);     // Vermeidung von Update oder Change Events
+                            }
+                        $statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent($this->variableLogID),1000, '~Motion', null,false);
+                        $oldstatus=GetValue($statusID);
+                        if ($oldstatus != $status1) 
+                            {
+                            echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $status.\n";
+                            SetValue($statusID,$status);     // Vermeidung von Update oder Change Events
+                            }
+                        
+                        $ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent($this->variableDelayLogID),0, '', null);
+                        echo "  EreignisID       : ".$ereignisID." (".IPS_GetName($ereignisID).")\n";
+                        echo "  Ereignis         : ".$Ereignis."\n";
+                        //echo "  Size             : ".strlen(GetValue($ereignisID))."\n";
+                        $EreignisVerlauf=GetValue($ereignisID).$Ereignis;
+                        //echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
+                        SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
                         }
-					$statusID=CreateVariable("Gesamtauswertung_".$group,0,IPS_GetParent($this->variableLogID),1000, '~Motion', null,false);
-	                $oldstatus=GetValue($statusID);
-					if ($oldstatus != $status1) 
-                        {
-    					echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $status.\n";
-                        SetValue($statusID,$status);     // Vermeidung von Update oder Change Events
-                        }
-					
-					$ereignisID=CreateVariable("Gesamtauswertung_".$group."_Ereignisspeicher",3,IPS_GetParent($this->variableDelayLogID),0, '', null);
-					echo "  EreignisID       : ".$ereignisID." (".IPS_GetName($ereignisID).")\n";
-					echo "  Ereignis         : ".$Ereignis."\n";
-					//echo "  Size             : ".strlen(GetValue($ereignisID))."\n";
-					$EreignisVerlauf=GetValue($ereignisID).$Ereignis;
-					//echo "  Ereignis Verlauf : ".$EreignisVerlauf."\n";
-					SetValue($ereignisID,$this->addEvents($EreignisVerlauf));
-					}
-				} /* Ende Detect Motion */
-				
+                    } /* Ende Detect Motion */
+                }
+            else
+                {       // log Brightness
+                $resultLog=GetValueIfFormatted($this->variable);
+                echo "CustomComponent Brightness_LogValue Log Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
+                IPSLogger_Inf(__file__, 'CustomComponent Brightness Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+                SetValue($this->variableLogID,$result);		
+                //$this->do_gesamtauswertung("Helligkeit");                		// es gibt keinen DetectMovement Handler für Helligkeit
+                }
 			parent::LogMessage($resultLog);
 			parent::LogNachrichten($this->variablename." mit Status ".$resultLog);
 			}
-			
+
+        /* Gesamtauswertung verallgemeinern, die von Motion hab ich extra gelassen da sie auch die Bewegung mit Delays extra aggregiert */
+
+        private function do_gesamtauswertung($aggType)
+            {
+	                /*****************Agreggierte Variablen beginnen mit Gesamtauswertung_ */
+                if (isset ($this->installedmodules["DetectMovement"]))
+                    {
+                    echo "     DetectMovement ist installiert. Aggregation abarbeiten:\n";
+                    $groups=$this->DetectHandler->ListGroups($aggType,$this->variable);      // nur die Gruppen für dieses Event updaten
+                    foreach($groups as $group=>$name)
+                        {
+                        echo "      --> Gruppe ".$group." behandeln.\n";
+                        $config=$this->DetectHandler->ListEvents($group);
+                        $status=(float)0;
+                        $count=0;
+                        foreach ($config as $oid=>$params)
+                            {
+                            $status+=GetValue($oid);
+                            $count++;
+                            //echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
+                            echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),50)."Status: ".GetValue($oid)." ".$status."\n";
+                            }
+                        switch ($this->variableType)
+                            {
+                            case 2:
+                                if ($count>0) { $statusResult=round($status/$count,1); }
+                                else echo "Gruppe ".$group." hat keine eigenen Eintraege.\n";
+                                break;
+                            case 1:
+                                if ($count>0) { $status=$status/$count; }
+                                else echo "Gruppe ".$group." hat keine eigenen Eintraege.\n";
+                                $statusResult=(integer)$status;                            
+                                break;
+                            }
+                        //echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+                        /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+                        $statusID=CreateVariableByName($this->AuswertungID,"Gesamtauswertung_".$group,$this->variableType, $this->variableProfile, null, 1000, null);
+                        $oldstatus=GetValue($statusID);
+                        if ($oldstatus != $statusResult) 
+                            {
+                            echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID." Änderung Wert von $oldstatus auf $statusResult.\n";
+                            SetValue($statusID,$statusResult);     // Vermeidung von Update oder Change Events
+                            }
+                        }
+                    }	
+            }
+
 		/*************************************************************************************
 		Bearbeiten des Eventspeichers
 		hier nur überprüfen ober der Eventspeicher nicht zu lang wird

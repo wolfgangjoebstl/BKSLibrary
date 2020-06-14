@@ -3,19 +3,18 @@
 	 * @{
 	 *
  	 *
-	 * @file          IPSModuleSensor_IPSShadowing.class.php
+	 * @file          IPSModuleSensor_Feuchtigkeit.class.php
 	 * @author        Andreas Brauneis
 	 *
 	 *
 	 */
 
 	/**
-	 * @class IPSModuleSensor_IPSShadowing
+	 * @class IPSModuleSensor_Feuchtigkeit
 	 *
-	 * Definiert ein IPSModuleSensor Object, das als Wrapper für Sensoren in der IPSLibrary
+	 * Definiert ein IPSModuleSensor Object, das als Wrapper fÃ¼r Sensoren in der IPSLibrary
 	 * verwendet werden kann.
 	 *
-	 * @author Andreas Brauneis
 	 * @version
 	 *  Version 2.50.1, 09.06.2012<br/>
 	 */
@@ -45,7 +44,7 @@
 		/**
 		 * @public
 		 *
-		 * Ermöglicht die Synchronisation von Sensorwerten mit Modulen
+		 * ErmÃ¶glicht die Synchronisation von Sensorwerten mit Modulen
 		 *
 		 * @param string $value Sensorwert
 		 * @param IPSComponentSensor $component Sensor Komponente
@@ -57,7 +56,7 @@
 		/**
 		 * @public
 		 *
-		 * Ermöglicht das Verarbeiten eines Taster Signals
+		 * ErmÃ¶glicht das Verarbeiten eines Taster Signals
 		 *
 		 */
 		public function ExecuteButton () {

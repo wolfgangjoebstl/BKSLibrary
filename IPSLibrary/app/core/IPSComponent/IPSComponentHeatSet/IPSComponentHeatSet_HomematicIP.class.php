@@ -125,6 +125,30 @@
 			$this->WriteValueRemote($value);    /* schreibt alle Remote Server an die in $this->RemoteOID stehen, Format Kurzname:ROID; */
 			}
 			
+
+		/**
+		 * @public
+		 *
+		 * Funktion liefert String IPSComponent Constructor String.
+		 * String kann dazu benützt werden, das Object mit der IPSComponent::CreateObjectByParams
+		 * wieder neu zu erzeugen.
+		 *
+		 * @return string Parameter String des IPSComponent Object
+		 */
+		public function GetComponentParams() 
+			{
+			return get_class($this);
+			}
+
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "";
+            }
+
+
+
 		/**
 		 * @public
 		 *

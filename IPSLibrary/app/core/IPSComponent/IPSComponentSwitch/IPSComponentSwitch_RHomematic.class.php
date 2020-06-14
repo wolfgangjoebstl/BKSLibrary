@@ -170,6 +170,14 @@
 			return get_class($this).','.$this->instanceId;
 		}
 
+        /* return Logging class, shall be stored */
+
+		public function GetComponentLogger() 
+			{
+            return "";
+            }
+
+
 		/**
 		 * @public
 		 *

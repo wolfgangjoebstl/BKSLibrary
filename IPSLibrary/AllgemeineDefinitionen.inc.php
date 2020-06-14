@@ -2197,14 +2197,27 @@ class ipsOps
 
     /* den IPS Pfad ausgeben */
 
-    public function path($objectR)
+    public function path($objectR,$order=false)
         {
+        $path=array();
         $str = IPS_GetName($objectR);
+        $path[]=$objectR;
         while ($objectR=IPS_GetParent($objectR))
             {
+            $path[]=$objectR;
             $str .= ".".IPS_GetName($objectR);
             }
         $str .= ".".IPS_GetName($objectR);
+        if ($order)
+            {
+            $str=""; $first=true;
+            foreach (array_reverse($path) as $oid) 
+                {
+                if ($first==false) $str.=".";
+                else $first=false;
+                $str.=IPS_GetName($oid);    
+                }
+            }
         return($str);
         }
 
@@ -2257,6 +2270,33 @@ class ipsOps
 			}
         return (false);
         }
+
+    /* gibt rekursiv alle scripts nach dem Namen aus */
+
+    function get_ScriptIDs(&$scriptNames, $scriptComponentsID)
+        {    
+        $childrens=IPS_getChildrenIDs($scriptComponentsID);
+        //print_r($childrens);    
+        foreach ($childrens as $children)
+            {
+            $objectType=IPS_getObject($children)["ObjectType"];
+            if ($objectType==3) 
+                {
+                $Name=IPS_GetName($children);
+                if (isset($scriptNames[$Name])===false) $scriptNames[$Name]=$children;
+                else echo "Error, script name $Name double entry.\n";
+                $path=$this->path($children,true);
+                //echo "   $children   $Name   ".str_pad(IPS_GetLocation($children),45)."   $path   ".get_ObjectIDbyPath($path)."\n";
+                echo "   $children   ".str_pad($Name,40)."   $path  \n";
+                }  
+            elseif ($objectType==0) 
+                { 
+                $this->get_ScriptIDs($scriptNames, $children);
+                }
+            else echo "Error, object not expected.\n";
+            }
+        }
+        
 
     /* Aus der Default Webfront Configurator Konfiguration die Items auslesen (IPS_GetConfiguration($WFC10_ConfigId)->Items
      *
@@ -3915,21 +3955,25 @@ class ComponentHandling
 /***********************************************************************************
  *
  * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
- * Die Liste jann entweder die HarwdareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
+ * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
+ * Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
  *
- *
+ * HardwareListe:
  * $keywords kann ein Eintrag oder ein Array sein
  * Die Elements sind die Geräteliste aus EvaluateHardware_include, sortiert nach Name, im COID sind die Unterobjekte nach denen die oder das Keyword verglichen wird
  * Bei einem array ist das ausschlaggebende Keyword immer das erste, die anderen keywords sind zusätzliche Vergleichsoperatoren
  *
  * Es gibt vorgefertigte TYPE_ keywords: TYPE_ACTUATOR, TYPE_CONTACT, TYPE_THERMOSTAT
  *
+ * DeviceList,MySQL
+ * kann nur mehr die TYPE_ keywords und erweitert mit REGISTER
+ *
+ *
  ****************************************************************************************/    
 
 	function getComponent($Elements,$keywords, $write="Array", $debug=false)
 		{
         $component=array(); $install=array(); $result="";
-	    $detectmovement=false; $profile="";
 		$totalfound=false;
 		
         if ($this->debug) $debug=true;
@@ -3938,287 +3982,329 @@ class ComponentHandling
             $once=true;
             if ( is_array($keywords) )
                 {
-                echo "getComponent: Passende Geraeteregister suchen für ";
+                echo "     getComponent: Passende Geraeteregister suchen für ";
                 foreach ($keywords as $index => $entry) echo "$index => $entry ";
                 echo ":\n";
                 }
-            else echo "getComponent: Passende Geraeteregister suchen für $keywords :\n";
+            else echo "     getComponent: Passende Geraeteregister suchen für $keywords :\n";
             }
         else $once=false;		
 
-		/* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */
-		foreach ($Elements as $Key)
-			{
-            $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
-
-            /******* devicelist als Formattierung */              
-            if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
+        if (is_array($Elements))
+            {
+            /* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */
+            foreach ($Elements as $Key)
                 {
-                if ($once) echo "     Input Elements ist formatted like deviceList.\n";
-                $typeChanKey="?"; $typeRegKey="?"; 
-                if ( is_array($keywords) )
+                $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
+
+                /******* devicelist als Formattierung */              
+                if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
-                    foreach ($keywords as $index => $entry)
+                    $count++;                        
+                    $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
+                    /*
+                    if ($once) echo "     Input Elements ist formatted like deviceList.\n";
+                    $typeChanKey="?"; $typeRegKey="?"; 
+                    if ( is_array($keywords) )
                         {
-                        if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
-                        if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
-                        //if ($once) echo "        $index => $entry \n";
-                        }
-                    }
-                else $typeChanKey=$keywords;
-                if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
-                $count++;
-                if (isset($Key["Channels"]))
-                    {
-                    foreach ($Key["Channels"] as $index => $instance)
-                        {
-                        //print_r($instance);
-                        if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
+                        foreach ($keywords as $index => $entry)
                             {
-                            if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
-                            $oid          = $Key["Instances"][$index]["OID"];
-                            $channelTypes = $Key["Channels"][$index]["TYPECHAN"];
-                            $types = explode(",",$channelTypes);
-                            $coid=false;
-                            if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
+                            if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
+                            if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
+                            //if ($once) echo "        $index => $entry \n";
+                            }
+                        }
+                    else $typeChanKey=$keywords;
+                    if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
+
+                    if (isset($Key["Channels"]))
+                        {
+                        foreach ($Key["Channels"] as $index => $instance)
+                            {
+                            //print_r($instance);
+                            if (isset($instance[$typeChanKey]))         // gibt es denn eine TYPECHAN Eintrag im Array
                                 {
-                                $channelRegister = $Key["Channels"][$index][$typeChanKey];    
-                                foreach ($channelRegister as $IDkey => $varName)
+                                if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
+                                $oid          = $Key["Instances"][$index]["OID"];
+                                $channelTypes = $Key["Channels"][$index]["TYPECHAN"];
+                                $types = explode(",",$channelTypes);
+                                $coid=false;
+                                if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
                                     {
-                                    if ($IDkey == $typeRegKey)
+                                    $channelRegister = $Key["Channels"][$index][$typeChanKey];    
+                                    foreach ($channelRegister as $IDkey => $varName)
                                         {
-                                        $coid=@IPS_GetObjectIDByName($varName,$oid);
-                                        $keyword=$typeRegKey;
-                                        }
-                                    elseif ($typeRegKey=="?") 
-                                        {
-                                        $coid=@IPS_GetObjectIDByName($varName,$oid);
-                                        $keyword=$varName;
+                                        if ($IDkey == $typeRegKey)
+                                            {
+                                            $coid=@IPS_GetObjectIDByName($varName,$oid);
+                                            $keyword=$typeRegKey;
+                                            }
+                                        elseif ($typeRegKey=="?") 
+                                            {
+                                            $coid=@IPS_GetObjectIDByName($varName,$oid);
+                                            $keyword=$varName;
+                                            }
                                         }
                                     }
-                                }
-                            if ($coid !== false) 
-                                {
-                                $found = true; $totalfound=true;
-                                }
-                            //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
-                            //print_r($Key["Channels"][$index]);
+                                if ($coid !== false) 
+                                    {
+                                    $found = true; $totalfound=true;
+                                    }
+                                //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
+                                //print_r($Key["Channels"][$index]);
 
-                            $keyName=$instance["Name"];
-                            //echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : $keyName  $oid  $channelTypes \n";
-                            } 
-                        }                                
-                    }
-                
-                }
-            /********** hardwareList als Formattierung 
-             * Übergabe entweder mit einem Keyword oder einem array
-             *
-             */
-            else    
-                {
-                //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
-                if ( is_array($keywords) == true )      // Übergabe Array
-                    {
-                    foreach ($keywords as $entry)
-                        {
-                        /* solange das Keyword uebereinstimmt ist alles gut */
-                        if (strpos($entry,"!")===false)
-                            {
-                            $max++;
-                            if (isset($Key["COID"][$entry])==true) $count++; 
-                            //echo "    Ueberpruefe  ".$entry."    ".$count."/".$max."\n";
-                            }
-                        elseif  (strpos($entry,"!")==0)
-                            {
-                            $maxNo++;
-                            $entry1=substr($entry,1);
-                            if (isset($Key["COID"][$entry1])==true) $countNo++;
-                            //echo "    Ueberpruefe  NICHT ".$entry1."    ".$countNo."/".$maxNo." \n";
-                            }
-                        }
-                    if ( ($max == $count) && ($countNo == 0) ) 
-                        { 
-                        $found=true; $totalfound=true;
-                        //echo "**gefunden\n";
-                        }
-                    $keyword=$keywords[0];	
-                    }	
-                else                                    // Übergabe Keyword
-                    {
-                    if (isset($Key["COID"][$keywords])==true) 
-                        { 
-                        $found=true; $totalfound=true; 
-                        }
-                    $keyword=$keywords; 
-                    }	
-                
-                if ( (isset($Key["Device"])==true) && ($found==false) )
-                    {
-                    /* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
-                    if ($Key["Device"] == $keyword)
-                        {
-                        //echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
-                        $found=true; $totalfound=true;
-                        switch ($keyword)
-                            {
-                            case "TYPE_ACTUATOR":
-                                if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
-                                elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
-                                $detectmovement="HeatControl";
-                                break;
-                            case "TYPE_THERMOSTAT":
-                                if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
-                                if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
-                                if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
-                                break;
-                            case "TYPE_CONTACT":
-                                if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";
-                                $detectmovement="Contact";
-                                break;							
-                            default:	
-                                echo "FEHLER: unknown keyword.\n";
-                            }
-                        }
-                    }
-                if ($found)
-                    {
-                    $keyName=$Key["Name"];
-                    $coid=(integer)$Key["COID"][$keyword]["OID"];
-                    $oid=(integer)$Key["OID"];                                                     
-                    }
-                }           // Ende Hardware Liste durchsuchen
+                                $keyName=$instance["Name"];
+                                //echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : $keyName  $oid  $channelTypes \n";
+                                } 
+                            }                                
+                        } */
+                    }               // ende deviceList durchsuchen
 
-            if ($found)
-                {
-
-                /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
-                * ["COID"]=(integer)$oid;               das Register
-                * ["OID"]=(integer)$Key["OID"];         die Instanz
-                * ["KEY"]=$keyword;
-                * ["TYP"]=$variabletyp;
-                * ["INDEX"]=$index;
-                * ["PROFILE"]=$profile;					 
-                * ["DETECTMOVEMENT"]=$detectmovement;
-                * ["INDEXNAMEEXT"]=$indexNameExt;
-                *
-                *
-                * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-                * index="Bewegung"
+                /********** hardwareList als Formattierung 
+                * Übergabe entweder mit einem Keyword oder einem array
+                * Hardwareliste ist nach COIDs organisiert
                 */
-                $indexNameExt="";
-                switch (strtoupper($keyword))
+                else    
                     {
-                    case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
-                    case "SET_POINT_TEMPERATURE":
-                    case "SET_TEMPERATURE":
-                        $variabletyp=2; 		/* Float */
-                        $index="HeatSet";
-                        //$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-                        $profile="~Temperature";
-                        break;	
-                    case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
-                    case "SET_POINT_MODE":
-                    case "TARGETMODEVAR":				// Thermostat FHT
-                        $variabletyp=1; 		/* Integer */
-                        $index="HeatSet";
-                        $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
-                        $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
-                        break;                    			
-                    case "TEMERATUREVAR";			/* Temperatur auslesen */
-                    case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
-                    case "ACTUAL_TEMPERATURE":
-                        $detectmovement="Temperatur";				
-                        $variabletyp=2; 		/* Float */
-                        $index="Temperatur";
-                        //$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-                        $profile="~Temperature";
-                        break;
-                    case "HUMIDITY":
-                        $detectmovement="Feuchtigkeit";
-                        $variabletyp=1; 		/* Integer */							
-                        $index="Humidity";
-                        $profile="Humidity";
-                        break;
-                    case "POSITIONVAR":
-                    case "VALVE_STATE": 
-                        $detectmovement="HeatControl";
-                        $variabletyp=2; 		/* Float */
-                        $index="HeatControl";
-                        $profile="~Valve.F";
-                        break;					
-                    case "LEVEL":
-                        $detectmovement="HeatControl";
-                        $variabletyp=1; 		/* Integer */	
-                        $index="HeatControl";
-                        $profile="~Intensity.100";
-                        break;
-                    case "STATE":
-                    case "STATUSVARIABLE":
-                        $variabletyp=0; 		/* Boolean */	
-                        $index="Schalter";
-                        $profile="Switch";
-                        break;
-                    case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
-                    case "TYPE_ACTUATOR":
-                        break;
-                    case "MOTION":
-                        $detectmovement="Motion";
-                        $variabletyp=0; 		/* Boolean */					
-                        $index="Bewegung";
-                        $profile="Motion";
-                        break;	
-                    case "CONTACT":
-                        $detectmovement="Contact";
-                        $keyword="STATE";
-                        $variabletyp=0; 		/* Boolean */					
-                        $index="Bewegung";
-                        $profile="Motion";
-                        break;
-                    default:	
-                        $variabletyp=0; 		/* Boolean */	
-                        //echo "************Kenne ".strtoupper($keyword)." nicht.\n";
-                        break;
-                    }
+                    //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
+                    if ( is_array($keywords) == true )      // Übergabe Array mit Keywords für die Hardware Liste, kann auch NOT
+                        {
+                        foreach ($keywords as $entry)
+                            {
+                            /* solange das Keyword uebereinstimmt ist alles gut */
+                            if (strpos($entry,"!")===false)
+                                {
+                                $max++;
+                                if (isset($Key["COID"][$entry])==true) $count++; 
+                                //echo "    Ueberpruefe  ".$entry."    ".$count."/".$max."\n";
+                                }
+                            elseif  (strpos($entry,"!")==0)
+                                {
+                                $maxNo++;
+                                $entry1=substr($entry,1);
+                                if (isset($Key["COID"][$entry1])==true) $countNo++;
+                                //echo "    Ueberpruefe  NICHT ".$entry1."    ".$countNo."/".$maxNo." \n";
+                                }
+                            }
+                        if ( ($max == $count) && ($countNo == 0) ) 
+                            { 
+                            $found=true; $totalfound=true;
+                            //echo "**gefunden\n";
+                            }
+                        $keyword=$keywords[0];	
+                        }	
+                    else                                    // Übergabe Keyword
+                        {
+                        if (isset($Key["COID"][$keywords])==true) 
+                            { 
+                            $found=true; $totalfound=true; 
+                            }
+                        $keyword=$keywords; 
+                        }	
+                    
+                    if ( (isset($Key["Device"])==true) && ($found==false) )
+                        {
+                        /* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
+                        if ($Key["Device"] == $keyword)
+                            {
+                            //echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
+                            $found=true; $totalfound=true;
+                            switch ($keyword)
+                                {
+                                case "TYPE_ACTUATOR":
+                                    if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
+                                    elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+                                    $detectmovement="HeatControl";
+                                    break;
+                                case "TYPE_THERMOSTAT":
+                                    if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
+                                    if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
+                                    if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+                                    break;
+                                case "TYPE_CONTACT":
+                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";
+                                    $detectmovement="Contact";
+                                    break;							
+                                default:	
+                                    echo "FEHLER: unknown keyword.\n";
+                                }
+                            }
+                        }
+                    if ($found)
+                        {
+                        $keyName["Name"]=$Key["Name"];
+                        $keyName["KEY"]=$keyword;
+                        $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
+                        $keyName["OID"]=(integer)$Key["OID"];                                                     
+                        }
+                    }           // Ende Hardware Liste durchsuchen
 
-                if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
-                //echo "********** ".$Key["Name"]."\n"; print_r($Key);
-
-                $component[]=(integer)$coid;
-                $install[$keyName]["COID"]=(integer)$coid;
-                $install[$keyName]["OID"]=$oid;
-                $install[$keyName]["KEY"]=$keyword;
-                $install[$keyName]["TYP"]=$variabletyp;
-                $install[$keyName]["INDEX"]=$index;
-                $install[$keyName]["PROFILE"]=$profile;					 
-                $install[$keyName]["DETECTMOVEMENT"]=$detectmovement;
-                $install[$keyName]["INDEXNAMEEXT"]=$indexNameExt;	 
-
-                $vartyp=IPS_GetVariable($coid);
-                if ($this->debug)
+                if (isset($keyName["Name"]))
                     {
-                    if ($vartyp["VariableProfile"]!="")
-                        {
-                        $result .= "  ".str_pad($keyName."/".$keyword,50)." = ".GetValueFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
-                        }
-                    else
-                        {
-                        $result .= "  ".str_pad($keyName."/".$keyword,50)." = ".GetValue($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
-                        }
-                    }
-                }   // ende Found
-            $once=false;                // nur einmal manches ausgeben    
-			} /* Ende foreach elements  */
+                    $totalfound=true;
+                    $this->addOnKeyName($keyName);
 
-		if (!$totalfound) echo "************Kenne ".json_encode($keywords)." nicht.\n";
+                    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
+                    * ["COID"]=(integer)$oid;               das Register
+                    * ["OID"]=(integer)$Key["OID"];         die Instanz
+                    * ["KEY"]=$keyword;
+                    * ["TYP"]=$variabletyp;
+                    * ["INDEX"]=$index;
+                    * ["PROFILE"]=$profile;					 
+                    * ["DETECTMOVEMENT"]=$detectmovement;
+                    * ["INDEXNAMEEXT"]=$indexNameExt;
+                    *
+                    *
+                    * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+                    * index="Bewegung"
+
+                    $indexNameExt="";
+                    switch (strtoupper($keyName["KEY"]))
+                        {
+                        case "TARGETTEMPVAR":			// Thermostat Temperatur Setzen 
+                        case "SET_POINT_TEMPERATURE":
+                        case "SET_TEMPERATURE":
+                            $variabletyp=2; 		// Float 
+                            $index="HeatSet";
+                            //$profile="TemperaturSet";		// Umstellung auf vorgefertigte Profile, da besser in der Darstellung 
+                            $profile="~Temperature";
+                            break;	
+                        case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
+                        case "SET_POINT_MODE":
+                        case "TARGETMODEVAR":				// Thermostat FHT
+                            $variabletyp=1; 		// Integer 
+                            $index="HeatSet";
+                            $indexNameExt="_Mode";								// gemeinsam mit den Soll Temperaturwerten abspeichern 
+                            $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
+                            break;                    			
+                        case "TEMERATUREVAR";			// Temperatur auslesen 
+                        case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
+                        case "ACTUAL_TEMPERATURE":
+                            $detectmovement="Temperatur";				
+                            $variabletyp=2; 		// Float 
+                            $index="Temperatur";
+                            //$profile="Temperatur";		// Umstellung auf vorgefertigte Profile, da besser in der Darstellung 
+                            $profile="~Temperature";
+                            break;
+                        case "HUMIDITY":
+                            $detectmovement="Feuchtigkeit";
+                            $variabletyp=1; 		// Integer 						
+                            $index="Humidity";
+                            $profile="Humidity";
+                            break;
+                        case "POSITIONVAR":
+                        case "VALVE_STATE": 
+                            $detectmovement="HeatControl";
+                            $variabletyp=2; 		// Float 
+                            $index="HeatControl";
+                            $profile="~Valve.F";
+                            break;					
+                        case "LEVEL":
+                            $detectmovement="HeatControl";
+                            $variabletyp=1; 		// Integer 
+                            $index="HeatControl";
+                            $profile="~Intensity.100";
+                            break;
+                        case "STATE":
+                        case "STATUSVARIABLE":
+                            $variabletyp=0; 		// Boolean 
+                            $index="Schalter";
+                            $profile="Switch";
+                            break;
+                        case "TYPE_THERMOSTAT":		// known keywords, do nothing, all has been done above 
+                        case "TYPE_ACTUATOR":
+                            break;
+                        case "MOTION":
+                            $detectmovement="Motion";
+                            $variabletyp=0; 		// Boolean 					
+                            $index="Bewegung";
+                            $profile="Motion";
+                            break;	
+                        case "CONTACT":
+                            $detectmovement="Contact";
+                            $keyName["Key"]="STATE";
+                            $variabletyp=0; 		// Boolean 				
+                            $index="Bewegung";
+                            $profile="Motion";
+                            break;
+                        case "CO2":
+                            $variabletyp=1; 		// Integer 	
+                            $index="Klima";
+                            $profile="Netatmo.CO2";
+                            break;
+                        default:	
+                            $variabletyp=0; 		// Boolean 
+                            echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                            break;
+                        }
+
+                    if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
+                    //echo "********** ".$Key["Name"]."\n"; print_r($Key);
+                    //$install[$keyName["Name"]]["COID"]=(integer)$coid;
+                    //$install[$keyName["Name"]]["OID"]=$oid;
+                    //$install[$keyName["Name"]]["KEY"]=$keyword;
+                    $install[$keyName["Name"]]["TYP"]=$variabletyp;
+                    $install[$keyName["Name"]]["INDEX"]=$index;
+                    $install[$keyName["Name"]]["PROFILE"]=$profile;					 
+                    $install[$keyName["Name"]]["DETECTMOVEMENT"]=$detectmovement;
+                    $install[$keyName["Name"]]["INDEXNAMEEXT"]=$indexNameExt;	 
+                    */
+
+                    $component[]=(integer)$keyName["COID"];
+                    $install[$keyName["Name"]]=$keyName;
+
+                    if ($this->debug) $result .= "  ".str_pad($keyName["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
+                    }   // ende Found
+                $once=false;                // nur einmal manches ausgeben    
+                } /* Ende foreach elements  */
+            }           // Ende is_array
+        else
+            {           // MySQL Datenbank, es gibt keine Elementsliste als Übergabe
+            if ($debug) echo "         Aufruf der MySQL Datenbank ";
+            IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
+            IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            $typeChanKey="?"; $typeRegKey="?";             
+            if ( is_array($keywords) )
+                {
+                foreach ($keywords as $index => $entry)
+                    {
+                    if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
+                    if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
+                    //if ($once) echo "        $index => $entry \n";
+                    }
+                }
+            else echo "Error\n";
+            if ($debug) echo " mit Channel $typeChanKey und Register $typeRegKey.\n";
+            $keyName=array();
+            //$oids=getfromDatabase($typeChanKey,$typeRegKey,false,$debug);           // dritter Parameter ist alternative
+            $oids=getfromDatabase($typeChanKey,$typeRegKey);           // dritter Parameter ist alternative, keine Debuginfos ausgeben
+            //if ($debug) print_r($oids);
+            $install=array();
+            foreach ($oids as $oid)
+                {
+                $totalfound=true;
+                $keyName["Name"]=$oid["Name"];
+                $keyName["OID"]=$oid["OID"];
+                $keyName["COID"]=$oid["COID"];
+                $keyName["KEY"]=$oid["TypeRegKey"];
+                $keyName["COMPONENT"]=$oid["componentName"];
+                $keyName["MODULE"]=$oid["moduleName"];
+                $this->addOnKeyName($keyName);                          // hier alle Zusatzinformationen dazupacken
+                
+                $component[]=(integer)$keyName["COID"];
+                $install[$keyName["Name"]]=$keyName;
+                }
+            }
+
+		if (!$totalfound) echo "************getComponent, Fehler kenne ".json_encode($keywords)." nicht.\n";
         switch ($write)
             {
             case "Array":
-                echo $result;
+                if ($debug) echo $result;
                 return ($component);
                 break;
             case "Install":
-                echo $result;
+                //if ($debug) echo $result;
                 return ($install);
                 break;
             default:
@@ -4227,6 +4313,200 @@ class ComponentHandling
             }
 		}	
 
+    /* Handle Keys and Keywords on deviceList 
+     *      Key         Eintrag eines Gerätes/device
+     *      keywords    etwas wie ["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"]
+     *
+     * return Keyname with as much as available information to build that:
+     *              ok ["Name"]
+     *              ok ["COID"]=(integer)$coid;
+                    ok ["OID"]=$oid;
+                    ok ["KEY"]=$keyword;
+                    $install[$keyName]["TYP"]=$variabletyp;
+                    $install[$keyName]["INDEX"]=$index;
+                    $install[$keyName]["PROFILE"]=$profile;					 
+                    $install[$keyName]["DETECTMOVEMENT"]=$detectmovement;
+                    $install[$keyName]["INDEXNAMEEXT"]=$indexNameExt;
+     */
+
+    function workOnDeviceList($Key, $keywords, $debug=false)
+        {
+        //if ($debug) echo "workOnDeviceList(...\n";
+        $keyName=array();
+        $once=false;
+        $typeChanKey="?"; $typeRegKey="?"; 
+        if ( is_array($keywords) )
+            {
+            foreach ($keywords as $index => $entry)
+                {
+                if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
+                if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
+                //if ($once) echo "        $index => $entry \n";
+                }
+            }
+        else $typeChanKey=$keywords;
+        /* Umsetzung der Eingabe auf typeChanKey und typeRegKey */
+
+                    if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
+                    if (isset($Key["Channels"]))
+                        {
+                        foreach ($Key["Channels"] as $index => $instance)
+                            {
+                            //print_r($instance);
+                            if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
+                                {
+                                if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
+                                $keyName["OID"] = $Key["Instances"][$index]["OID"];
+                                $oid = $keyName["OID"];
+                                $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
+                                $types = explode(",",$channelTypes);
+                                $keyName["COID"]=false;
+                                if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
+                                    {
+                                    $channelRegister = $Key["Channels"][$index][$typeChanKey];    
+                                    foreach ($channelRegister as $IDkey => $varName)
+                                        {
+                                        if ($IDkey == $typeRegKey)
+                                            {
+                                            //echo "   $IDkey gefunden,suche $varName in $oid !\n";
+                                            $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
+                                            $keyName["KEY"]=$typeRegKey;
+                                            }
+                                        elseif ($typeRegKey=="?") 
+                                            {
+                                            $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
+                                            $keyName["KEY"]=$varName;
+                                            }
+                                        }
+                                    }
+                                //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
+                                //print_r($Key["Channels"][$index]);
+
+                                $keyName["Name"]=$instance["Name"];
+                                if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
+                                } 
+                            }                                
+                        }
+        if ( (isset($keyName["Name"])) && $debug ) print_r($keyName);
+        return $keyName;
+        }
+
+    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
+    * ["COID"]=(integer)$oid;               das Register
+    * ["OID"]=(integer)$Key["OID"];         die Instanz
+    * ["KEY"]=$keyword;
+    * ["TYP"]=$variabletyp;
+    * ["INDEX"]=$index;
+    * ["PROFILE"]=$profile;					 
+    * ["DETECTMOVEMENT"]=$detectmovement;
+    * ["INDEXNAMEEXT"]=$indexNameExt;
+    *
+    *
+    * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+    * index="Bewegung"
+    */
+
+    function addOnKeyName(&$keyName)
+        {
+	    $detectmovement=false; $profile="";
+                    $indexNameExt="";
+                    switch (strtoupper($keyName["KEY"]))
+                        {
+                        case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
+                        case "SET_POINT_TEMPERATURE":
+                        case "SET_TEMPERATURE":
+                            $variabletyp=2; 		/* Float */
+                            $index="HeatSet";
+                            //$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+                            $profile="~Temperature";
+                            break;	
+                        case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
+                        case "SET_POINT_MODE":
+                        case "TARGETMODEVAR":				// Thermostat FHT
+                            $variabletyp=1; 		/* Integer */
+                            $index="HeatSet";
+                            $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
+                            $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
+                            break;                    			
+                        case "TEMERATUREVAR";			/* Temperatur auslesen */
+                        case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
+                        case "ACTUAL_TEMPERATURE":
+                            $detectmovement="Temperatur";				
+                            $variabletyp=2; 		/* Float */
+                            $index="Temperatur";
+                            //$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+                            $profile="~Temperature";
+                            break;
+                        case "HUMIDITY":
+                            $detectmovement="Feuchtigkeit";
+                            $variabletyp=1; 		/* Integer */							
+                            $index="Humidity";
+                            $profile="Humidity";
+                            break;
+                        case "POSITIONVAR":
+                        case "VALVE_STATE": 
+                            $detectmovement="HeatControl";
+                            $variabletyp=2; 		/* Float */
+                            $index="HeatControl";
+                            $profile="~Valve.F";
+                            break;					
+                        case "LEVEL":
+                            $detectmovement="HeatControl";
+                            $variabletyp=1; 		/* Integer */	
+                            $index="HeatControl";
+                            $profile="~Intensity.100";
+                            break;
+                        case "STATE":
+                        case "STATUSVARIABLE":
+                            $variabletyp=0; 		/* Boolean */	
+                            $index="Schalter";
+                            $profile="Switch";
+                            break;
+                        case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
+                        case "TYPE_ACTUATOR":
+                            break;
+                        case "MOTION":
+                            $detectmovement="Motion";
+                            $variabletyp=0; 		/* Boolean */					
+                            $index="Bewegung";
+                            $profile="Motion";
+                            break;	
+                        case "BRIGHTNESS":                              // selber Component wie Motion
+                            $detectmovement="Helligkeit";
+                            $variabletyp=1; 		/* Integer */					
+                            $index="Helligkeit";
+                            $profile="~Brightness.HM";                  // Variablen Profil
+                            break;
+                        case "CONTACT":
+                            $detectmovement="Contact";
+                            $keyName["Key"]="STATE";
+                            $variabletyp=0; 		/* Boolean */					
+                            $index="Bewegung";
+                            $profile="Motion";
+                            break;
+                        case "CO2":
+                            $variabletyp=1; 		/* Integer */	
+                            $index="Klima";
+                            $profile="Netatmo.CO2";
+                            break;
+                        default:	
+                            $variabletyp=0; 		/* Boolean */	
+                            echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                            break;
+                        }
+
+                    if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
+                    //echo "********** ".$Key["Name"]."\n"; print_r($Key);
+                    //$keyName["COID"]=(integer)$coid;
+                    //$keyName["OID"]=$oid;
+                    //$keyName["KEY"]=$keyword;
+                    $keyName["TYP"]=$variabletyp;
+                    $keyName["INDEX"]=$index;
+                    $keyName["PROFILE"]=$profile;					 
+                    $keyName["DETECTMOVEMENT"]=$detectmovement;
+                    $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
+
+        }
 /***********************************************************************************
  *
  * getKeyword
@@ -4361,8 +4641,9 @@ class ComponentHandling
  *
  ****************************************************************************************/
 		
-	function installComponentFull($Elements,$keywords,$InitComponent, $InitModule, $commentField="",$debug=false)
+	function installComponentFull($Elements,$keywords,$InitComponent="", $InitModule="", $commentField="",$debug=false)
 		{
+        if ($debug) echo "installComponentfull mit Keywords ".json_encode($keywords)." aufgerufen:\n";
 		$donotregister=false; $i=0; $maxi=600;		// Notbremse
         $struktur=array();          // Ergbenis, behandelte Objekte
 
@@ -4377,12 +4658,12 @@ class ComponentHandling
          *      [INDEXNAMEEXT] => 
          */   
 		//echo "Passende Geraeteregister suchen:\n"; 
-		$result=$this->getComponent($Elements,$keywords,"Install");        /* passende Geräte aus Elements anhand keywords suchen*/
+		$result=$this->getComponent($Elements,$keywords,"Install",$debug);        /* passende Geräte aus Elements anhand keywords suchen*/
         $count=(sizeof($result));				
         if ($debug) echo "Insgesamt $count Register für die Component Installation gefunden.\n";
 		if  ($count>0) 											/* gibts ueberhaupt etwas zu tun */
 			{		
-			$keyword=$this->getKeyword($result);
+			$keyword=$this->getKeyword($result);            // holt sich den ersten Wert von ["Index"] und kontrolliert die anderen
 			/* Erreichbarkeit Remote Server nur einmal pro Aufruf ermitteln */
 			$remServer=$this->listOfRemoteServer();
             $struktur=$this->getStructureofROID($keyword);
@@ -4391,24 +4672,13 @@ class ComponentHandling
                 echo "Keyword für Component wird aus dem Resultat ermittelt : $keyword\n"; 
                 echo "Remote Server herausfinden und Struktur auslesen:\n";
                 print_r($remServer); print_r($struktur);
+      			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
                 }
-			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
         	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
       	    	{
-	            //echo "----> $IndexName:\n"; print_r($entry);                  
+	            if ($debug) { echo "----> $IndexName:\n"; print_r($entry); }
 				$oid=$entry["COID"];
-				$vartyp=IPS_GetVariable($oid);
-                if ($this->debug)
-                    {                
-    				if ($vartyp["VariableProfile"]!="")
-	    				{
-		    			echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-			    		}
-				    else
-					    {
-    					echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-	    				}
-                    }    
+                if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
 				/* check, es sollten auch alle Quellvariablen gelogged werden */
 				if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
 					{
@@ -4421,7 +4691,7 @@ class ComponentHandling
 				if ($donotregister==false)      /* Notbremse, oder generell deaktivierbares registrieren */
 					{                    
 	   		        $detectmovement=$entry["DETECTMOVEMENT"];
-    				if ($detectmovement !== false)
+    				if ($detectmovement !== false)          // Nachbearbeitung für HeatControl, Feuchtigkeit, Temperatur, Motion, Contact 
 	    				{
 		    			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 			    		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
@@ -4455,6 +4725,11 @@ class ComponentHandling
 	    			$index= $entry["INDEX"];
 		    		$profile=$entry["PROFILE"];
                     $IndexNameExt=$entry["INDEXNAMEEXT"];
+
+                    /* beim registrieren als Event den richtigen Componen/Module Name dazugeben, MySQL kennt das */
+                    if ( (isset($entry["COMPONENT"])) && ($InitComponent == "") ) $InitComponent=$entry["COMPONENT"];
+                    if ( (isset($entry["MODULE"])) && ($InitModule == "") ) $InitModule=$entry["MODULE"];
+
 			    	if (isset ($this->installedModules["RemoteAccess"]))
 				    	{
 						$i++; if ($i>$maxi) { $donotregister=true; }	        /* Notbremse */										
