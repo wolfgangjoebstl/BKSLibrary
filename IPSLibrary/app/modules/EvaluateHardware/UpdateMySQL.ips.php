@@ -156,7 +156,9 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "\n";
         $sql_componentModules = new sql_componentModules();
         $componentModules=$sql_componentModules->get_componentModules(IPSDeviceHandler_GetComponentModules());
-        echo "Die aktuelle Component Liste aus der Konfiguration in einer eigenen Tabelle speichern und indezieren.\n";
+        echo "Die aktuelle Component Liste aus der Konfiguration IPSDeviceHandler_GetComponentModules in einer eigenen Tabelle speichern und indezieren.\n";
+        print_r(IPSDeviceHandler_GetComponentModules());
+        print_r($componentModules);
         $sql_componentModules->syncTableValues($componentModules,false); 
 
         /* den inner join mit den componentModules weglassen um die NUL für componentModuleID zu finden */

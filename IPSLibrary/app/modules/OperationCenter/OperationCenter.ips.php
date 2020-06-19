@@ -311,7 +311,13 @@ if ($_IPS['SENDER']=="WebFront")
                         $BackupCenter->configBackup(["maxcopy" => $value]);
                         }
 
-                    }                   
+                    }  
+                //echo "Had been here $variableId : ".json_encode($ActionButton)."  ";;
+                if (isset($ActionButton[$variableId]["Monitor"]))
+                    {
+                    //echo "Monitor gedrückt"; 
+                    $OperationCenter->writeSysPingStatistics(); 
+                    }                     
 				}	
 			break;
 		}

@@ -1374,7 +1374,7 @@ function writeLogEventClass($event,$class)
 function GetValueIfFormatted($oid)
     {
    	$variabletyp=IPS_GetVariable($oid);
-	if ($variabletyp["VariableProfile"]!="")
+	if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
 		{
 	    $result=GetValueFormatted($oid);
 		}

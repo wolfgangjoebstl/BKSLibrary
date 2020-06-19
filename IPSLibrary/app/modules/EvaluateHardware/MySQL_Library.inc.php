@@ -490,6 +490,15 @@ class sql_componentModules extends sqlOperate
         return($columnComponentModule);
         }
 
+    /* in der evaluateHardware_configuration gibt es jetzt eine Array Configuration um festzulegen welcher Component für welchen Hardware Type und Subtype
+     * zu verwenden ist. Diesen auslesen und eventuell aufbereiten:
+     *
+     * Input Array IPSDeviceHandler_GetComponentModules
+     *
+     * sowohl type als auch subtype erlauben den Identifier * für die vollständige Auswahl
+     *
+     */
+
     public function get_componentModules($componentConfiguration,$debug=false)
         {
         if ($debug) echo "get_componentModules: Tabelle componentModules updaten:\n";
@@ -498,18 +507,22 @@ class sql_componentModules extends sqlOperate
             {
             foreach ($entry1 as $type => $entry2)
                 {
+                if ($debug) echo "  $type ( ";
                 $component=""; $module="";
                 foreach ($entry2 as $subType => $entry2)    
                     {
+                    if ($debug) echo " $subType ";
                     if (isset($entry2["Component"])) $component=$entry2["Component"];
-                    if (isset($entry2["Nodule"])) $module=$entry2["Module"];
+                    if (isset($entry2["Module"])) $module=$entry2["Module"];
                     }
+                if ($debug) echo " ) ";
                 if ( ($component != "") && ($module != "") )
                     {
                     $componentModules[$component]["componentName"]=$component;
                     $componentModules[$component]["moduleName"]=$module;
                     }
                 }
+            if ($debug) echo "\n";
             }
         return ($componentModules);
         }
@@ -2406,7 +2419,10 @@ class sqlReturn
 /* getfromDatabase
  *
  *  useDatabase ipsymcon, getServerGatewayID als filter
+ *  registers extended with devicelist,instances,topologies
+ *
  *  als Return die Zeilen der Datenbank auf die der Filter zutrifft
+ *  wenn return false dann ist diue Datenbank nicht erreichbar/vorhanden
  *
  * mit Alternative gesetzt eine abgeänderte SQL Abfrage starten
  *          ohne INNER JOIN componentModules ON registers.componentModuleID=componentModules.componentModuleID
@@ -2417,6 +2433,10 @@ class sqlReturn
  *
  *
  *  COID
+ *
+ *
+ *  false       nur Filter auf ServerGatewayID
+ *
  *
  ********/
  
@@ -2463,13 +2483,14 @@ function getfromDatabase($typereg=false,$register=false,$alternative=false,$debu
         //$filter="WHERE Name='ArbeitszimmerThermostat'";
 
         if ($alternative)       // look for IS NULL
-        $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+            {
+            $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
                             registers.componentModuleID,registers.TYPEREG,registers.Configuration 
                     FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
                     INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
                     INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
                     WHERE registers.componentModuleID IS NULL AND serverGatewayID='$myServerGatewayID';";
-        
+            }
         elseif (strtoupper($typereg)=="COID")           // COID sucht in valuesOnRegs
             {
             $sql = "SELECT valuesOnRegs.COID,valuesOnRegs.TypeRegKey,registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
@@ -2481,7 +2502,15 @@ function getfromDatabase($typereg=false,$register=false,$alternative=false,$debu
                  INNER JOIN valuesOnRegs ON registers.registerID=valuesOnRegs.registerID
                  $filter;";                
             }
-        else                            // alle anderen in registers
+        elseif ($typereg===false)                            // Generalabfrage
+            {
+            $sql = "SELECT registers.registerID,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                            registers.TYPEREG,registers.Configuration 
+                    FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                    INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                    $filter;";
+            }
+        else // alle anderen in registers
             {
             $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
                             componentModules.componentName,componentModules.moduleName,registers.TYPEREG,registers.Configuration 

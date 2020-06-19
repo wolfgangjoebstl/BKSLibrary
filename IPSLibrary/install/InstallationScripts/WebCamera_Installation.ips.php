@@ -278,15 +278,15 @@
             echo "\n";
 
             }
-        print_r($resultStream);
+        //print_r($resultStream);
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
-    print_r($configWFront);
+    //print_r($configWFront);
 
     if (isset($configWFront["Administrator"]))
         {
         $configWF = $configWFront["Administrator"];
-        installWebfrontMon($configWF,$resultStream);             
+        installWebfrontMon($configWF,$resultStream,true);             
         $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
         $configWF["TabIcon"]="Window";                              // different Icon
         installWebfrontPics($configWF,$CamTablePictureID);        
@@ -295,7 +295,7 @@
     if (isset($configWFront["User"]))
         {
         $configWF = $configWFront["User"];            
-        installWebfrontMon($configWF,$resultStream); 
+        installWebfrontMon($configWF,$resultStream,true); 
         
         $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
         $configWF["TabIcon"]="Window";                              // different Icon
@@ -334,10 +334,31 @@
 /********************************************************************/
 
 
-    function installWebfrontMon($configWF,$resultStream)
+
+
+
+
+
+    /*******************************************************************
+     *
+     * eigenes generisches WebCamera Webfront aufbauen, Default Icon Arztkoffer
+     * es funktioniert noch nicht so dass die Funktion in AllgemeineDateien gespeichert und verwendet wird
+     *
+     * Tab mit 5 Fenster links gross und 4fach im Quadrat
+     *           $resultStream[0]["Stream"]["OID"]   für Fenster Links oben
+     *           $resultStream[1]["Stream"]["Link"]  für Fenster Rechts oben
+     *           $resultStream[2]["Stream"]["Link"]  für Fenster Links unten
+     *           //$resultStream[3]["Stream"]["Link"]  für Fenster Rechts unten
+     *           $resultStream[4]["Stream"]["Link"]  für grosses Fenster links
+     *
+     *
+     **********************************/
+
+    function installWebfrontMon($configWF,$resultStream,, $emptyWebfrontRoot=false)
         {
-        if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )   
-            {
+        //if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )  
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+             {
             $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
             
             //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
@@ -345,18 +366,40 @@
             echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
             echo "----------------------------------------------------------------------------------------------------------------------------------\n";
 
-            echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
-            $status=@EmptyCategory($categoryId_WebFront);
-            if ($status) echo "   -> erfolgreich.\n";
-            IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-            
-            $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+            if ($emptyWebfrontRoot)         // für OperationCenter zB nicht loeschen, es gibt noch andere sub-Webfronts
+                {
+                echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+                $status=@EmptyCategory($categoryId_WebFront);
+                if ($status) echo "   -> erfolgreich.\n";
+                IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                }
 
+            echo "Create Sub-Category ".$configWF["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and empty it.\n";
+            $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
+            IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
+			$status=@EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+            if ($status) echo "   -> erfolgreich.\n";
+
+            /* Kategorien neu anlegen, aktuell Bezeichnung individuell */
             $categoryIdOverview  = CreateCategory('Overview',  $categoryId_WebFrontMonitor, 0);             // links davon, um die Cam Bilder in die richtige Größe zu bringen, für Summaries
             $categoryIdLeftUp  = CreateCategory('LeftUp',  $categoryId_WebFrontMonitor, 10);
             $categoryIdRightUp = CreateCategory('RightUp', $categoryId_WebFrontMonitor, 20);						
             $categoryIdLeftDn  = CreateCategory('LeftDn',  $categoryId_WebFrontMonitor, 30);
             $categoryIdRightDn = CreateCategory('RightDn', $categoryId_WebFrontMonitor, 40);						
+
+            /*                                                    
+             *    Monitor, TabpaneItem (Tab Arztkoffer im Admin Root)
+             *        Splitpane, TabItem, vertical 20%    (Tab Monitorstecker unter Arztkofer)
+             *             Category TabItem_Ovw
+             *             Splitpane TabItem_Show, vertical 50%
+             *                  Splitpane TabItem_Left, horizontal 50%
+             *                      Category Up
+             *                      Category Down
+             *                  Splitpane TabItem_Right, horizontal 50%
+             *                      Category Up
+             *                      Category Down
+             *
+             */
 
             DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen
             CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
@@ -377,14 +420,19 @@
             $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
             $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;
             $count=sizeof($resultStream);
+            print_r($resultStream);
+
             for ($i=0;$i<$count;$i++) 
                 {
                 if (isset($resultStream[$i]["Stream"]["Name"]))
                     {
                     CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
-                    //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs 
-                    $camID=CreateVariable($resultStream[$i]["Stream"]["Name"],0, $categoryIdOverview,$i*10,"",null,null,"");
-                    foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $camID, 10);
+                    //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs
+                    if (isset($resultStream[$i]["Stream"]["Name"]))
+                        { 
+                        $camID=CreateVariable($resultStream[$i]["Stream"]["Name"],0, $categoryIdOverview,$i*10,"",null,null,"");
+                        foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $camID, 10);
+                        }
                     }
                 }
             }

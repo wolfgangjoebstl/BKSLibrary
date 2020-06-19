@@ -317,6 +317,20 @@
     echo "Profil ".$pname." überarbeitet;\n";
 
 
+    /* für Diagnose Funktionen */
+
+	$pname="SortifTableNameStateSince";
+	if (IPS_VariableProfileExists($pname) == false)
+		{
+			//Var-Profil erstellen
+		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+		IPS_SetVariableProfileValues($pname, 0, 2, 1); //PName, Minimal, Maximal, Schrittweite
+		IPS_SetVariableProfileAssociation($pname, 0, "Name", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+		IPS_SetVariableProfileAssociation($pname, 1, "State", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+		IPS_SetVariableProfileAssociation($pname, 2, "Since", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+		echo "Profil ".$pname." erstellt;\n";
+		}
 
 	/******************************************************
 
@@ -797,6 +811,8 @@
 
 	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+    IPS_SetHidden($SysPingSortTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 	$SysPingActivityTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingActivityTable",   3 /*String*/, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingActivityTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 
@@ -1210,6 +1226,8 @@
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
+    echo "\n===================================================================================\n";
+    echo "Webfront Installation:\n";
 	$resultStream=array();
     if ($sumTableHtmlID !== false) 
         {
@@ -1230,6 +1248,7 @@
         {
         $resultStream[4]["Stream"]["Name"]="SysPingTable";
         $resultStream[4]["Stream"]["OID"]=$SysPingTableID;
+        $resultStream[4]["Data"]["Sort"]=$SysPingSortTableID;
         }
 
     if (isset($configWFront["Administrator"]))
@@ -1253,14 +1272,17 @@
         $mobileId               = CreateCategoryPath($configWF["Path"].'.'.$configWF["Name"],$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
 		EmptyCategory($mobileId);
 
+        /* Mobile Links alle auf einen Haufen */
         if ($resultStream !== false) 
             {
-            $count=sizeof($resultStream);
+            $count=sizeof($resultStream); 
+            $j=0;       // es können indexe fehlen, trotzdem durchzählen
             for ($i=0;$i<$count;$i++) 
                 {
-                if (isset($resultStream[$i]["Stream"]["Name"]))
+                if (isset($resultStream[$j]["Stream"]["Name"]))
                     {
-                    CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $mobileId , 10+$i*10);
+                    CreateLink($resultStream[$j]["Stream"]["Name"], $resultStream[$j]["Stream"]["OID"],  $mobileId , 10+$j*10);
+                    $j++;
                     }
                 }
             }	
@@ -1642,6 +1664,7 @@
     /*******************************************************************
      *
      * eigenes OperationCenter Webfront aufbauen, Default Icon Arztkoffer
+     * es funktioniert noch nicht so dass die Funktion in AllgemeineDateien gespeichert und verwendet wird
      *
      * Tab mit 5 Fenster links gross und 4fach im Quadrat
      *           $resultStream[0]["Stream"]["OID"]   für Fenster Links oben
@@ -1653,20 +1676,30 @@
      *
      **********************************/
 
-    function installWebfrontMon($configWF,$resultStream)
+    function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false)
         {
-        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) )
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
             {            
             $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
             
             echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
             echo "----------------------------------------------------------------------------------------------------------------------------------\n";
 
+            if ($emptyWebfrontRoot)         // für OperationCenter zB nicht loeschen, es gibt noch andere sub-Webfronts
+                {
+                echo "Kategorie $categoryId_WebFront (".IPS_GetName($categoryId_WebFront).") Inhalt loeschen und verstecken. Es dürfen keine Unterkategorien enthalten sein, sonst nicht erfolgreich.\n";
+                $status=@EmptyCategory($categoryId_WebFront);
+                if ($status) echo "   -> erfolgreich.\n";
+                IPS_SetHidden($categoryId_WebFront, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+                }
+
+            echo "Create Sub-Category ".$configWF["TabItem"]." in ".IPS_GetName($categoryId_WebFront)." and empty it.\n";
             $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 10);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
             IPS_SetHidden($categoryId_WebFrontMonitor, true);                                                      // nicht im OperationCenter anzeigen, eigener Tab
-			EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+			$status=@EmptyCategory($categoryId_WebFrontMonitor);				        // ausleeren und neu aufbauen, die Geschichte ist gelöscht !
+            if ($status) echo "   -> erfolgreich.\n";
 
-            /* Kategorien neu anlegen */
+            /* Kategorien neu anlegen, aktuell Bezeichnung individuell */
             $categoryIdLeftDn    = CreateCategory('SystemNachrichten',      $categoryId_WebFrontMonitor, 0);             
             $categoryIdLeft      = CreateCategory('SysPingErreichbarkeit',  $categoryId_WebFrontMonitor, 0);             
             $categoryIdLeftUp    = CreateCategory('SystemInfo',      $categoryId_WebFrontMonitor, 0);             
@@ -1676,12 +1709,12 @@
             /*                                                    
              *    Monitor, TabpaneItem (Tab Arztkoffer im Admin Root)
              *        Splitpane, TabItem, vertical 30%    (Tab Monitorstecker unter Arztkofer)
-             *             Category Ovw
-             *             Splitpane Show, vertical 50%
-             *                  Splitpane Left, horizontal 50%
+             *             Category TabItem_Ovw
+             *             Splitpane TabItem_Show, vertical 50%
+             *                  Splitpane TabItem_Left, horizontal 50%
              *                      Category Up
              *                      Category Down
-             *                  Splitpane right, horizontal 50%
+             *                  Splitpane TabItem_Right, horizontal 50%
              *                      Category Up
              *                      Category Down
              *
@@ -1710,12 +1743,17 @@
                 $resultStream[2]["Stream"]["Link"]=$categoryIdLeftDn;
                 $resultStream[3]["Stream"]["Link"]=$categoryIdRightDn;        // wird nicht mehr verwendet, trotzdem drinnen lassen sonst ist die Struktur zerstört
                 $resultStream[4]["Stream"]["Link"]=$categoryIdLeft;             // das ist das klassische sysping
-                $count=sizeof($resultStream);
+                $count=sizeof($resultStream);           // spaetestens jetzt sind es immer 5 Eintraege
+                print_r($resultStream);
                 for ($i=0;$i<$count;$i++) 
                     {
                     if (isset($resultStream[$i]["Stream"]["Name"]))
                         {
                         CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
+                        if (isset($resultStream[$i]["Data"]))
+                            { 
+                            foreach ($resultStream[$i]["Data"] as $name=>$link) CreateLink($name, $link,  $resultStream[$i]["Stream"]["Link"], 1000+$i*10);
+                            }
                         }
                     }
                 }	

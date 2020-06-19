@@ -1015,10 +1015,7 @@ class OperationCenter
 			echo "\nSind die RemoteAccess Server erreichbar ....\n";
 			$result=$this->server_ping();
 			}
-        //if ($debug) 
-            {
-            $this->writeSysPingStatistics($this->categoryId_SysPing);
-            }
+        $this->writeSysPingStatistics($this->categoryId_SysPing,$debug);
         if ($fourHourPassed)
             {
             echo "\n\n";
@@ -1044,71 +1041,101 @@ class OperationCenter
 	 *
 	 **************************************************************************************************************/
 
-	function writeSysPingStatistics($categoryId_SysPing=0)
+	function writeSysPingStatistics($categoryId_SysPing=0,$debug=false)
 		{
-        echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
+        if ($debug) echo "writeSysPingStatistics aufgerufen für Darstellung der Erreichbarkeit der IP fähigen Geräte:\n";
         if ($categoryId_SysPing==0) $categoryId_SysPing=$this->categoryId_SysPing;        
         $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$categoryId_SysPing);
-        $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+        $SysPingTableID            = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
+        $SysPingSortTableID        = @IPS_GetObjectIDByName("SortPingTable",$categoryId_SysPingControl);
 
-        $ipsOps = new ipsOps();
-        $sysPing=array();
-
-        $PrintHtml="";
-        $PrintHtml.='<style>'; 
-        $PrintHtml.='.sturdy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
-        $PrintHtml.='.sturdy table    {table-layout: fixed; width: 100%; }';
-        $PrintHtml.='.sturdy td:nth-child(1) { width: 70%; }';
-        $PrintHtml.='.sturdy td:nth-child(2) { width: 10%; }';
-        $PrintHtml.='.sturdy td:nth-child(3) { width: 20%; }';
-        $PrintHtml.='</style>';        
-        $PrintHtml.='<table class="sturdy"><tr><td>Name</td><td>State</td><td>Since</td></tr>';
-
-        $childrens = IPS_GetChildrenIds($categoryId_SysPing);           // alle Status Variablen
-        foreach ($childrens as $children)
+        if ($SysPingTableID !== false)
             {
-            $varname=IPS_GetName($children);
-            switch ($varname)
+            $ipsOps = new ipsOps();
+            $sysPing=array();
+
+            $PrintHtml="";
+            $PrintHtml.='<style>'; 
+            $PrintHtml.='.sturdy table,td {align:center;border:1px solid white;border-collapse:collapse;}';
+            $PrintHtml.='.sturdy table    {table-layout: fixed; width: 100%; }';
+            $PrintHtml.='.sturdy td:nth-child(1) { width: 70%; }';
+            $PrintHtml.='.sturdy td:nth-child(2) { width: 10%; }';
+            $PrintHtml.='.sturdy td:nth-child(3) { width: 20%; }';
+            $PrintHtml.='</style>';        
+            $PrintHtml.='<table class="sturdy"><tr><td>Name</td><td>State</td><td>Since</td></tr>';
+
+            $childrens = IPS_GetChildrenIds($categoryId_SysPing);           // alle Status Variablen
+            foreach ($childrens as $children)
                 {
-                case "SysPingTable":
-                case "SysPingActivityTable":
-                case "SysPingExectime":
-                case "SysPingCount":
-                case "SysPingControl":                
-                    break;    
-                default:
-                    echo "   ".str_pad($varname,40)."    ";
-                    if (isset($result[$varname])) echo "*";
-                    else echo " ";
-                    $timeChanged=IPS_GetVariable($children)["VariableChanged"];
-                    $time=date("d.m.Y H:i:s",$timeChanged);
-                    $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
-                    echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
-                    if ($timeChanged==0) 
-                        {
-                        echo "   --> delete\n";
-                        IPS_DeleteVariable($children);
-                        } 
-                    else 
-                        {
-                        echo "    \n";
-                        $sysPing[$varname]["VarName"]=$varname;
-                        $sysPing[$varname]["Status"]=GetValue($children);
-                        $sysPing[$varname]["Delay"]=$timeDelay;
-                        //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
-                        }
-                    break;
+                $varname=IPS_GetName($children);
+                switch ($varname)
+                    {
+                    case "SysPingTable":                                // ignore known entries that are not relevant for statistics
+                    case "SysPingActivityTable":
+                    case "SysPingExectime":
+                    case "SysPingCount":
+                    case "SysPingControl":                
+                        break;    
+                    default:
+                        if ($debug) 
+                            {
+                            echo "   ".str_pad($varname,40)."    ";
+                            if (isset($result[$varname])) echo "*";
+                            else echo " ";
+                            }
+                        $timeChanged=IPS_GetVariable($children)["VariableChanged"];
+                        $time=date("d.m.Y H:i:s",$timeChanged);
+                        $timeDelay=(time()-IPS_GetVariable($children)["VariableChanged"]);
+                        if ($debug) echo "     ".str_pad((GetValue($children)?"Ja":"Nein"),10)."$time  ".str_pad(nf($timeDelay,"s"),12);
+                        if ($timeChanged==0) 
+                            {
+                            if ($debug) echo "   --> delete\n";
+                            IPS_DeleteVariable($children);
+                            } 
+                        else 
+                            {
+                            if ($debug) echo "    \n";
+                            $sysPing[$varname]["VarName"]=$varname;
+                            $sysPing[$varname]["Status"]=GetValue($children);
+                            $sysPing[$varname]["Delay"]=$timeDelay;
+                            //$PrintHtml.='<tr><td>'.$varname.'</td><td>'.(GetValue($children)?"Ja":"Nein")."</td><td>".nf($timeDelay,"s")."</td></tr>";    
+                            }
+                        break;
+                    }
                 }
-            }
 
-        $ipsOps->intelliSort($sysPing,"VarName");
-        foreach ($sysPing as $entry)
-            {
-            $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
+            if ($SysPingSortTableID !== false)
+                {
+                switch (GetValueIfFormatted($SysPingSortTableID))
+                    {
+                    case "Name":
+                        $sortTable="VarName";
+                        break;
+                    case "State":
+                        $sortTable="Status";
+                        break;
+                    case "Since":
+                        $sortTable="Delay";
+                        break;
+                    default:
+                        echo "not known.";
+                        $sortTable="VarName";                        
+                        break;
+                    }
+                }
+            else $sortTable="VarName";
+            //echo "Lookup Sort $SysPingSortTableID : ".GetValueIfFormatted($SysPingSortTableID)." => $sortTable   ";
+            $ipsOps->intelliSort($sysPing,$sortTable);
+            //$ipsOps->intelliSort($sysPing,"Delay");
+            foreach ($sysPing as $entry)
+                {
+                $PrintHtml.='<tr><td>'.$entry["VarName"].'</td><td>'.($entry["Status"]?"Ja":"Nein")."</td><td>".nf($entry["Delay"],"s")."</td></tr>";    
+                }
+            $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
+            $PrintHtml.='</table>';    
+            SetValue($SysPingTableID,$PrintHtml);
             }
-        $PrintHtml.='<tr><td align="right" colspan="3"><font size="-1">last update on '.date("m.d.Y H:i:s").'</font></td></tr>';    
-        $PrintHtml.='</table>';    
-        SetValue($SysPingTableID,$PrintHtml);
+        else return (false);
         }
 
 	/*************************************************************************************************************
@@ -2013,6 +2040,11 @@ class OperationCenter
 	                }
 				}
 			}
+        /* es gibt im SysTablePing noch einen ActionButton   */
+    	$categoryId_SysPing         = @IPS_GetObjectIDByName('SysPing',   $this->CategoryIdData);
+        $categoryId_SysPingControl  = @IPS_GetObjectIDByName('SysPingControl',   $categoryId_SysPing);
+    	$SysPingSortTableID         = @IPS_GetObjectIDByName("SortPingTable", $categoryId_SysPingControl ); 
+        $actionButton[$SysPingSortTableID]["Monitor"]["SysPingTable"]=true;
 		return($actionButton);
 		}
 

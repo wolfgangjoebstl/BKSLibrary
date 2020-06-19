@@ -62,8 +62,8 @@
 	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
     $TopologyLibrary=$modulhandling->printModules('TopologyMappingLibrary');
-    echo "\n";   
     if (empty($TopologyLibrary)) echo "TopologyMappingLibrary noch nicht installiert.  \n";
+    echo "\n";   
 
 
     /***************************************************************************
@@ -346,34 +346,35 @@
                     }
                 }      // end foreach
             }
+
+        /*****************************************************************
+        *
+        * statistische Auswertungen
+        *
+        *  
+        **********************************************************/
+
+        echo "========================================================================\n";    
+        echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
+        $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList);
+        print_r($statistic);
+
+
+        echo "========================================================================\n";    
+        echo "Auflisten aller Devices mit dem Device Typ:\n";
+        $i=0;
+        foreach ($deviceList as $name => $entry)
+            {
+            if (isset($entry ["Information"])) echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20).str_pad($entry ["Information"],25)."\n";
+            else echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20)."unknown -------------------\n";
+            $i++;
+            }
+
+        echo "--------------------\n";   
+
         }
     echo "\n";
             
-    /*****************************************************************
-     *
-     * statistische Auswertungen
-     *
-     *  
-     **********************************************************/
-
-    echo "========================================================================\n";    
-    echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
-    $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList);
-    print_r($statistic);
-
-
-    echo "========================================================================\n";    
-    echo "Auflisten aller Devices mit dem Device Typ:\n";
-    $i=0;
-    foreach ($deviceList as $name => $entry)
-        {
-        if (isset($entry ["Information"])) echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20).str_pad($entry ["Information"],25)."\n";
-        else echo str_pad($i,3).str_pad($name,40).str_pad($entry ["Type"],20)."unknown -------------------\n";
-        $i++;
-        }
-
-    echo "--------------------\n";   
-
 
     /*
     $name="Arbeitslicht3"; $parent=17297;
