@@ -53,7 +53,8 @@
 					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSLIGHT_COMPONENT]);
 					//$componentParamsConfig = $componentConfig->GetComponentParams();
 					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
-					if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+					//if ($componentParamsConfig[1]==$componentParamsToSync[1])
+					if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
 						{
 						echo "      IPSModuleSwitch_IPSHeat SyncState synchronize from Type Lightswitch ".$deviceIdent." mit ".$state."\n";
 						$lightManager = new IPSLight_Manager();
@@ -70,7 +71,8 @@
 					$componentConfig       = IPSComponent::CreateObjectByParams($deviceData[IPSHEAT_COMPONENT]);
 					$componentParamsConfig = explode(",",$componentConfig->GetComponentParams());
                     //echo "         Compare $deviceIdent ".$deviceData[IPSHEAT_COMPONENT]." :  ".$componentParamsConfig[1]." == ".$componentParamsToSync[1]." \n";
-					if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+					//if ($componentParamsConfig[1]==$componentParamsToSync[1]) 
+					if ( (isset($componentParamsConfig[1])) && ($componentParamsConfig[1]==$componentParamsToSync[1]) )
 						{
 						echo "     IPSModuleSwitch_IPSHeat SyncState synchronize from Type Heatswitch ".$deviceIdent." mit ".$state."\n";
 						$heatManager = new IPSHeat_Manager();

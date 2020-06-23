@@ -188,7 +188,7 @@
 		{
 
 		private $variable, $variablename, $variableTypeReg;              /* Untergruppen, hier MOTION oder BRIGHTNESS */
-        private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen        
+        private $variableProfile, $variableType, $Type;        // Eigenschaften der input Variable auf die anderen Register clonen        
 		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
 
 		private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
@@ -245,9 +245,15 @@
                 //print_r($rows);   
                 $this->variableType = $rows[0]["TypeRegKey"];    
                 }
+            $this->Type=0;      // Motion und Contact ist boolean
             if ($this->variableType =="MOTION") $this->do_init_motion($variable, $variablename);
             elseif ($this->variableType =="CONTACT") $this->do_init_motion($variable, $variablename);
-            elseif ($this->variableType =="BRIGHTNESS") $this->do_init_brightness($variable, $variablename);
+            elseif ($this->variableType =="BRIGHTNESS") 
+                {
+                $this->do_init_brightness($variable, $variablename);
+                $this->Type=2;  // Brightness ist Integer
+                }
+            else echo "Fehler, kenne den Variable Tyo nicht.\n";
 
 			parent::__construct($this->filename);
 			}
@@ -283,7 +289,7 @@
             //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
             $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
             $name="MotionMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->Type,$this->variableProfile);       /* 2 float ~Temperature*/
 
             /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
             $this->NachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);

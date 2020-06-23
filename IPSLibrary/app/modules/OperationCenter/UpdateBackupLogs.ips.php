@@ -17,7 +17,7 @@ $subnet='10.255.255.255';
 $BackupCenter=new BackupIpsymcon($subnet);
 
 echo "Backup.csv updaten.\n";
-$result=$BackupCenter->getBackupDirectoryStatus("update");
+$result=$BackupCenter->getBackupDirectoryStatus("update",true);         // true ist mit Debug
 echo "SummaryofBackup.csv updaten.\n";  
 $BackupCenter->updateSummaryofBackupFile(); 
 

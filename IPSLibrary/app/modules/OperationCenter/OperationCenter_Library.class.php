@@ -3751,16 +3751,14 @@ class BackupIpsymcon extends OperationCenter
         parent::__construct($subnet);                       // sonst sind die Config Variablen noch nicht eingelesen
 
         //echo "Construct BackupIpSymcon.\n";
-
-        $oc_setup=$this->getSetup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
-        //print_r($oc_setup)
-        if (isset($oc_setup["BACKUP"])) 
+        $configuration=$this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        if ($configuration !== false) 
             {
             //echo "Construct BackupIpSymcon. Backup aktiv. Config now in Setup available.\n";
             $this->backupActive=true;
-            if (isset($oc_setup["BACKUP"]["Directory"])) 
+            if (isset($configuration["Directory"])) 
                 {
-                $BackupDrive=$oc_setup["BACKUP"]["Directory"];
+                $BackupDrive=$configuration["Directory"];
                 $this->BackupDrive=$BackupDrive;      /* ein eventuelle fehlendes Backslash am Ende wird später in der Routine construct automatisch hinzugefügt */
                 }
             else $this->BackupDrive='\Backup\IpSymcon';
@@ -3848,6 +3846,15 @@ class BackupIpsymcon extends OperationCenter
         {
 		SetValue($this->StatusBackupID,$string);
         return ($this->StatusBackupID);    
+        } 
+
+    public function getConfigurationBackup()			// hier wird die Konfiguration für das Backup aus dem OperationCenter_Configuration File ausgelesen
+        {
+        $oc_setup=$this->getSetup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        if (isset($oc_setup["BACKUP"])) return ($oc_setup["BACKUP"]);
+        if (isset($oc_setup["Backup"])) return ($oc_setup["Backup"]);
+        if (isset($oc_setup["backup"])) return ($oc_setup["backup"]);
+        return (false);
         } 
 
     public function getConfigurationStatus($function="json")			// hier wird die Konfiguration für das Backup gespeichert
@@ -4959,12 +4966,13 @@ class BackupIpsymcon extends OperationCenter
 
     function getBackupDirectoryStatus($mode,$debug=false)
         {
+        if ($debug) echo "getBackupDirectoryStatus mit Mode $mode aufgerufen.\n";
 
         $BackupDrive=$this->getBackupDrive();
         $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
 
         /* alle Verzeichnisse im Backup */
-        $BackupDirs=$this->getBackupDirectories();        
+        $BackupDirs=$this->getBackupDirectories($debug);        
         if ($debug) 
             { 
             echo "\ngetBackupDirectoryStatus Mode $mode : Backup Verzeichnisse in $BackupDrive auflisten :\n"; 
@@ -5163,7 +5171,36 @@ class BackupIpsymcon extends OperationCenter
         {
         $BackupDrive=$this->getBackupDrive();
         $BackupDrive = $this->dosOps->correctDirName($BackupDrive);			// sicherstellen das ein Slash oder Backslash am Ende ist
-        $dir=$this->readdirToArray($BackupDrive);
+        if (is_dir($BackupDrive)===false)
+            {
+            echo "   getBackupDirectories: verzeichnis $BackupDrive nicht vorhanden.\n";
+            if (($this->dosOps->mkdirtree($BackupDrive,$debug))===false)
+                {
+                $backupConfig=$this->getConfigurationBackup();
+                if ( (isset($backupConfig["MOUNT"])) && (isset($backupConfig["DRIVELETTER"])) && (isset($backupConfig["USERNAME"])) && (isset($backupConfig["PASSWORD"])) ) 
+                    {
+                    echo "   mkdirtree hat versagt, es ist komplizierter als gedacht, vielleicht als ".$backupConfig["MOUNT"]." mounten.\n";
+                    $location = $backupConfig["MOUNT"];
+                    $user     = $backupConfig["USERNAME"];
+                    $pass     = $backupConfig["PASSWORD"];
+                    $letter   = $backupConfig["DRIVELETTER"];
+                    //print_R($backupConfig);
+                    echo "Map the drive with net use $letter: \"$location\" $pass /user:$user /persistent:no>nul 2>&1\n";
+                    system("net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1");
+                    if (is_dir("Z:")) echo "jetzt gefunden, erfolgreich.\n";
+                    }
+                else die ("Backup nicht möglich, kein Laufwerk zum Speichern vorhanden.");
+                }   
+            }
+        else if ($debug) echo "   getBackupDirectories: aufgerufen und verzeichnis $BackupDrive vorhanden.\n";        
+
+        $dir=$this->dosOps->readdirToArray($BackupDrive);
+        if ($debug) 
+            {
+            if ($dir===false) echo "$BackupDrive laesst sich nicht auslesen.\n";
+            echo "   getBackupDirectories für $BackupDrive aufgerufen:\n";
+            print_R($dir);
+            }
         $BackupDirs=array();
         foreach ($dir as $entry)
             {

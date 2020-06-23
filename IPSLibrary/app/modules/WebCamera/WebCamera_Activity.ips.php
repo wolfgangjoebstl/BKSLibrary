@@ -111,6 +111,24 @@ if ($_IPS['SENDER']=="Execute")
 	{    
     /* eventuelle Ausgaben über den Status */
 
+    echo "Ausgabe der Camera Config aus der OperationCenter CamConfig:\n";
+    print_r($webCamera->getConfiguration());    
+    $camConfig = $webCamera->getStillPicsConfiguration();
+    $zielVerzeichnis = $webCamera->zielVerzeichnis();
+    
+    $maxCount = count($camConfig);    
+    $j=GetValue($camIndexID);
+    for ($i=0; $i<$maxCount; $i++)
+        {
+        $Cam=$camConfig[$j];
+        echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+        $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
+        $j++;
+        if ($j==$maxCount) $j=0;
+        SetValue($camIndexID,$j);
+        if ((microtime(true)-$startexec) > 25)  break;
+        }
+
 
     }
 

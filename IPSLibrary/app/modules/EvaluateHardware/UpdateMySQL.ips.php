@@ -154,7 +154,6 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         $sql_deviceList->syncTablePlaceID(IPSDetectDeviceHandler_GetEventConfiguration());  // Event Table mit Topologie
 
         echo "\n";
-        $sql_componentModules = new sql_componentModules();
         $componentModules=$sql_componentModules->get_componentModules(IPSDeviceHandler_GetComponentModules());
         echo "Die aktuelle Component Liste aus der Konfiguration IPSDeviceHandler_GetComponentModules in einer eigenen Tabelle speichern und indezieren.\n";
         print_r(IPSDeviceHandler_GetComponentModules());

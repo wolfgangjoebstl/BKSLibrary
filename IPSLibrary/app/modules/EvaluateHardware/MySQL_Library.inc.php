@@ -21,11 +21,22 @@
  *
  *	summary of classes, a few functions are at the end of this script
  *
- *      sqlOperate 
+ *
+ *      sqlOperate  extends sqlHandle
+ *
+ *      sql_componentModules extends sqlOperate
+ *      sql_serverGateways extends sqlOperate
+ *      sql_topologies extends sqlOperate
+ *      sql_deviceList extends sqlOperate
+ *      sql_instances extends sqlOperate
+ *      sql_channels extends sqlOperate
+ *      sql_registers extends sqlOperate
+ *      sql_valuesOnRegs extends sqlOperate
  * 
  */
 
     IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+    IPSUtils_Include ("MySQL_Configuration.inc.php","IPSLibrary::app::modules::EvaluateHardware");
 
 
 /******************************************************************************************************/
@@ -421,6 +432,22 @@ class sqlOperate extends sqlHandle
  *
  *******************************************************************************************************/
 
+/* sql_componentModules extends sqlOperate
+ *
+ * sqlHandle für die Basisfunktionen, die mehr der Datenbank zugeordnet sind
+ * sqlOperate für die übergeordneten Funkionen zur Manipulation der Datenbank
+ * sql_xxx für die Tabellen spezifischen Operationen
+ *
+ *      _construct      getDataBaseConfiguration und speichere individuelle Konfiguration
+ *      getDatabaseConfig
+ *      get_ColumnComponentModule       Register Tabelle mit Konfiguration in IPSDeviceHandler_GetComponentModules() vergleichen, nur Zeilen ohne componentModuleID ausgeben
+ *      get_componentModules: Tabelle componentModules updaten
+ *      syncTableValues
+ *      updateEntriesValues
+ *      getSelectforShow
+ *
+ */
+
 class sql_componentModules extends sqlOperate
     {
     private $dataBase;          // Name of used Database, has effect on request default config
@@ -444,6 +471,26 @@ class sql_componentModules extends sqlOperate
         $this->configDB=$config;
         return $config;   
         }
+
+    /* damit richtig funktioniert, sollten die folgenden Programmzeilen davor stehen
+        
+    echo "alle Registers mit korrekten Zuordnungen finden, componentID egal:\n";        // den inner join mit den componentModules weglassen um die NUL für componentModuleID zu finden 
+    $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
+                        registers.componentModuleID,registers.TYPEREG,registers.Configuration 
+                FROM (deviceList INNER JOIN instances ON deviceList.deviceID=instances.deviceID)
+                INNER JOIN registers ON deviceList.deviceID=registers.deviceID AND instances.portID=registers.portID
+                INNER JOIN topologies ON deviceList.placeID=topologies.topologyID
+                $filter;";
+    $result3=$sqlHandle->query($sql);
+    $fetch = $result3->fetch();
+    $result3->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
+    echo "\n\n";
+    echo "Registerabfrage ohne join auf componentModules hat ".sizeof($fetch)." Einträge/Zeilen.\n";
+    $componentConfiguration=IPSDeviceHandler_GetComponentModules();
+
+    *
+    * aus der grossen Tabelle alle Register heraussuchen, bei denen keine ComponentID gespeichert ist
+    */
 
     public function get_ColumnComponentModule($componentConfiguration,$fetch)
         {
@@ -523,6 +570,42 @@ class sql_componentModules extends sqlOperate
                     }
                 }
             if ($debug) echo "\n";
+            }
+        return ($componentModules);
+        }
+
+    /* im reverse Engineering rausfinden welche Components verwendet werden und diese ebenfalls anlegen
+     *
+     *
+     */
+
+    public function get_UsedComponentModules()
+        {
+        echo "\n\n";
+        echo "Die Eventliste des Messagehandler durchgehen (Reverse Engineering !) und den Component und das Module zusätzlich speichern. Damit hat man eine Liste aller bislang verwendeten Components:\n";
+        echo "\n";
+        $eventConf = IPSMessageHandler_GetEventConfiguration();
+        $eventCust = IPSMessageHandler_GetEventConfigurationCust();
+        $eventlist = $eventConf + $eventCust;
+        echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
+        $i=0;
+        $componentModules=array();
+        foreach ($eventlist as $oid => $data)
+            {
+            if (isset($coid[$oid]))             // nur mehr in der coid Liste die in der Tabelle registers erkannten coids
+                {
+                echo "****";
+                $component=explode(",",$data[1])[0];
+                $module=$data[2];
+                $regid[$coid[$oid]]["Component"]=$component;
+                $regid[$coid[$oid]]["Module"]=$module;
+                $componentModules[$component]["componentName"]=$component;
+                $componentModules[$component]["moduleName"]=$module;
+                }
+            echo str_pad($i,4)."Oid: ".$oid." | ".$data[0]." | ".str_pad($data[1],50)." | ".str_pad($data[2],40);
+            if (IPS_ObjectExists($oid)) echo " | ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),55)."    | ".GetValue($oid)."\n";
+            else echo "  ---> OID nicht verfügbar !\n";
+            $i++;
             }
         return ($componentModules);
         }
@@ -1632,9 +1715,12 @@ class sqlHandle
     private $table;             // Name of used Table, has effect on request default config
     
     static $configDataBase;          // Konfiguration der  Database, has effect on request default config, static not private static
+    public $available;              // Status wenn Datenbank verfügbar ist
 
     /* oid der MySQL Instanz oder automatische Erkennung
      *
+     * false als Rückgabe im construct funktioniert nicht da bei new die structur zurückgegeben wird
+     * die tötet den ganzen Ablauf - daher Status available eingeführt 
      */
 
     public function __construct($oid=false,$debug=false)
@@ -1652,6 +1738,7 @@ class sqlHandle
             else 
                 {
                 if ($debug) echo get_class($this).",sqlHandle: OID einer Instance MySQL not found.\n";
+                $this->available=false;
                 return(false);
                 }
             }
@@ -1671,6 +1758,7 @@ class sqlHandle
             else 
                 {
                 if ($debug) echo get_class($this).",sqlHandle: OID einer Instance MySQL not found.\n";
+                $this->available=false;
                 return(false);
                 }
             }
@@ -1679,12 +1767,16 @@ class sqlHandle
         $this->sqlHandle = MySQL_Open($this->oid);
         if ($this->sqlHandle->connect_error) 
             {
-            die("   Verbindung fehlgeschlagen " . $this->sqlHandle->connect_error);
+            echo "   Verbindung fehlgeschlagen " . $this->sqlHandle->connect_error."\n";
+            $this->available=false;
+            return (false);
+            //die("   Verbindung fehlgeschlagen " . $this->sqlHandle->connect_error);
             } 
         else 
             {
             if ($debug) echo " --> Verbindung hergestellt.\n";
             }
+        $this->available=true;
         }
 
     /* SQL Befehl absetzen */
@@ -2445,7 +2537,7 @@ function getfromDatabase($typereg=false,$register=false,$alternative=false,$debu
     if ($debug) echo "\n<br>getfromDatabase($typereg,$register,$alternative,$debug) aufgerufen, ";
 
     $sqlHandle = new sqlHandle();           // default MySQL Instanz
-    if ($sqlHandle !==false)
+    if ($sqlHandle->available) 
         {
         $sqlHandle->useDatabase("ipsymcon");    // USE DATABASE ipsymcon
         $sql_serverGateways = new sql_serverGateways();

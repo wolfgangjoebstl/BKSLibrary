@@ -165,10 +165,12 @@
 		{
 		echo "\n";
 		echo "Homematic Bewegungsmelder werden registriert.\n";
-		//$components=$componentHandling->getComponent(HomematicList(),"MOTION"); print_r($components);
+		// $components=$componentHandling->getComponent(HomematicList(),"MOTION"); print_r($components);
+        // installComponentFull($Elements,$keywords,$InitComponent="", $InitModule="", $commentField="",$debug=false)
 		$componentHandling->installComponentFull(HomematicList(),"MOTION",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
+		echo "Homematic Kontaktgeber werden registriert.\n";        
 		//$components=$componentHandling->getComponent(HomematicList(),"TYPE_CONTACT"); print_r($components);		
-		$componentHandling->installComponentFull(HomematicList(),"TYPE_CONTACT",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
+		$componentHandling->installComponentFull(HomematicList(),"TYPE_CONTACT",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField,true);
 		} 
 		
 	echo "\n";

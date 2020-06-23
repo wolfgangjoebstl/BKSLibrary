@@ -305,21 +305,24 @@
     if (isset($configWFront["Mobile"]))
         {
         $configWF=$configWFront["Mobile"];
-        $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
-        $mobileId               = CreateCategoryPath($configWF["Path"].'.'.$configWF["Name"],$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
-		EmptyCategory($mobileId);
+        if ( (isset($configWF["Path"])) && (isset($configWF["PathOrder"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+            {
+            $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
+            $mobileId               = CreateCategoryPath($configWF["Path"].'.'.$configWF["Name"],$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
+            EmptyCategory($mobileId);
 
-        /* RTSP Streams werden noch nicht am Iphone angezeigt */
+            /* RTSP Streams werden noch nicht am Iphone angezeigt */
 
-        if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Stream"]["Name"], $resultStream[0]["Stream"]["OID"], $mobileId, 10);
-        if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Stream"]["Name"], $resultStream[1]["Stream"]["OID"], $mobileId, 20);
-        if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Stream"]["Name"], $resultStream[2]["Stream"]["OID"], $mobileId, 30);
-        if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Stream"]["Name"], $resultStream[3]["Stream"]["OID"], $mobileId, 40);
+            if (sizeof($resultStream)>0) CreateLink($resultStream[0]["Stream"]["Name"], $resultStream[0]["Stream"]["OID"], $mobileId, 10);
+            if (sizeof($resultStream)>1) CreateLink($resultStream[1]["Stream"]["Name"], $resultStream[1]["Stream"]["OID"], $mobileId, 20);
+            if (sizeof($resultStream)>2) CreateLink($resultStream[2]["Stream"]["Name"], $resultStream[2]["Stream"]["OID"], $mobileId, 30);
+            if (sizeof($resultStream)>3) CreateLink($resultStream[3]["Stream"]["Name"], $resultStream[3]["Stream"]["OID"], $mobileId, 40);
 
-        $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
-        $mobileId               = CreateCategoryPath($configWF["Path"].'.KameraPics',$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
-		EmptyCategory($mobileId);
-        CreateLinkByDestination("Pictures", $CamMobilePictureID, $mobileId,  10,"");	
+            $categoryId_WebFront    = CreateCategoryPath($configWF["Path"],$configWF["PathOrder"],$configWF["PathIcon"]);        // Path=Visualization.Mobile.WebCamera    , 15, Image    
+            $mobileId               = CreateCategoryPath($configWF["Path"].'.KameraPics',$configWF["Order"],$configWF["Icon"]);        // Path=Visualization.Mobile.WebCamera    , 25, Image    
+            EmptyCategory($mobileId);
+            CreateLinkByDestination("Pictures", $CamMobilePictureID, $mobileId,  10,"");	
+            }
         }
 	}
 
@@ -354,7 +357,7 @@
      *
      **********************************/
 
-    function installWebfrontMon($configWF,$resultStream,, $emptyWebfrontRoot=false)
+    function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false)
         {
         //if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )  
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )

@@ -2654,6 +2654,26 @@ function serialize_array(&$array, $root = '$root', $depth = 0)
 class sysOps
     { 
 
+    /* IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist */
+
+    public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
+        {
+				try
+                    {
+                    $result=@IPS_ExecuteEx($command, $path, $show, $wait, $session); 
+                    if ($result===false) 
+                        {
+                        echo "Ergebnis IPS_ExecuteEx $result \n";  
+        				$result=IPS_Execute($command, $path, $show, $wait);   
+                        echo "Ergebnis IPS_Execute $result \n";  
+                        }
+                    }
+                catch (Exception $e) 
+                    { 
+                    echo "Catch Exception, Fehler bei $e.\n";
+                    }
+        }
+
     private function getProcessList()
         {
         $processList=array();
@@ -3199,7 +3219,7 @@ class dosOps
             if ($pos==false) break;
             }
         if ($i >= 20) echo "Fehler bei der Verzeichniserstellung.\n";	
-            
+        return(is_dir($directory));              
         }
 
     function latestChange($dir, $recursive=false)
@@ -3259,7 +3279,11 @@ class dosOps
 					}
 				} // ende foreach
 			} // ende isdir
-		else return (false);
+		else 
+            {
+            echo "ERROR, Verzeichnis $dir not available. Please create manually.\n";
+            return (false);
+            }
 		if ($newest != 0)
 			{
 			if ($newest<0) 
@@ -3982,11 +4006,15 @@ class ComponentHandling
             $once=true;
             if ( is_array($keywords) )
                 {
-                echo "     getComponent: Passende Geraeteregister suchen für ";
-                foreach ($keywords as $index => $entry) echo "$index => $entry ";
-                echo ":\n";
+                if (is_array($Elements))                    
+                    {
+                    echo "     getComponent: Passende Geraeteregister in Elements suchen für ";
+                    foreach ($keywords as $index => $entry) echo "$index => $entry ";
+                    echo ":\n";
+                    }
+                else echo "     getComponent: Passende Geraeteregister in MySQL Database suchen für TYPE_KEYWORD $keywords :\n";
                 }
-            else echo "     getComponent: Passende Geraeteregister suchen für $keywords :\n";
+            else echo "     getComponent: Passende Geraeteregister in ELements suchen für $keywords :\n";
             }
         else $once=false;		
 
@@ -4000,73 +4028,17 @@ class ComponentHandling
                 /******* devicelist als Formattierung */              
                 if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
+                    if ($debug && $once) echo "      ****** devicelist als Formattierung\n";
                     $count++;                        
                     $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
-                    /*
-                    if ($once) echo "     Input Elements ist formatted like deviceList.\n";
-                    $typeChanKey="?"; $typeRegKey="?"; 
-                    if ( is_array($keywords) )
-                        {
-                        foreach ($keywords as $index => $entry)
-                            {
-                            if ( ((strtoupper($index)) == "TYPECHAN") || ($index === 0) )  $typeChanKey=$entry; 
-                            if ( ((strtoupper($index)) == "REGISTER") || ($index === 1) )  $typeRegKey=$entry; 
-                            //if ($once) echo "        $index => $entry \n";
-                            }
-                        }
-                    else $typeChanKey=$keywords;
-                    if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
-
-                    if (isset($Key["Channels"]))
-                        {
-                        foreach ($Key["Channels"] as $index => $instance)
-                            {
-                            //print_r($instance);
-                            if (isset($instance[$typeChanKey]))         // gibt es denn eine TYPECHAN Eintrag im Array
-                                {
-                                if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
-                                $oid          = $Key["Instances"][$index]["OID"];
-                                $channelTypes = $Key["Channels"][$index]["TYPECHAN"];
-                                $types = explode(",",$channelTypes);
-                                $coid=false;
-                                if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
-                                    {
-                                    $channelRegister = $Key["Channels"][$index][$typeChanKey];    
-                                    foreach ($channelRegister as $IDkey => $varName)
-                                        {
-                                        if ($IDkey == $typeRegKey)
-                                            {
-                                            $coid=@IPS_GetObjectIDByName($varName,$oid);
-                                            $keyword=$typeRegKey;
-                                            }
-                                        elseif ($typeRegKey=="?") 
-                                            {
-                                            $coid=@IPS_GetObjectIDByName($varName,$oid);
-                                            $keyword=$varName;
-                                            }
-                                        }
-                                    }
-                                if ($coid !== false) 
-                                    {
-                                    $found = true; $totalfound=true;
-                                    }
-                                //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
-                                //print_r($Key["Channels"][$index]);
-
-                                $keyName=$instance["Name"];
-                                //echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : $keyName  $oid  $channelTypes \n";
-                                } 
-                            }                                
-                        } */
                     }               // ende deviceList durchsuchen
-
-                /********** hardwareList als Formattierung 
-                * Übergabe entweder mit einem Keyword oder einem array
-                * Hardwareliste ist nach COIDs organisiert
-                */
                 else    
                     {
-                    //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
+                    /********** hardwareList als Formattierung 
+                    * Übergabe entweder mit einem Keyword oder einem array
+                    * Hardwareliste ist nach COIDs organisiert
+                    */                    //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
+                    if ($debug && $once) echo "     ****** hardwarelist als Formattierung\n";
                     if ( is_array($keywords) == true )      // Übergabe Array mit Keywords für die Hardware Liste, kann auch NOT
                         {
                         foreach ($keywords as $entry)
@@ -4102,10 +4074,11 @@ class ComponentHandling
                         $keyword=$keywords; 
                         }	
                     
+                    $typeKeyword=$keyword;
                     if ( (isset($Key["Device"])==true) && ($found==false) )
                         {
                         /* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
-                        if ($Key["Device"] == $keyword)
+                        if ($Key["Device"] == $typeKeyword)
                             {
                             //echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
                             $found=true; $totalfound=true;
@@ -4122,7 +4095,8 @@ class ComponentHandling
                                     if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
                                     break;
                                 case "TYPE_CONTACT":
-                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";
+                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";        // nicht STATE verwenden, später umdrehen
+                                    //if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="STATE";
                                     $detectmovement="Contact";
                                     break;							
                                 default:	
@@ -4132,9 +4106,16 @@ class ComponentHandling
                         }
                     if ($found)
                         {
+                        if ( ($typeKeyword!=$keyword) && ($typeKeyword=="TYPE_CONTACT") && ($keyword=="CONTACT") ) 
+                            {
+                            $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
+                            print_r($Key);
+                            }
+                        else $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
+                        
                         $keyName["Name"]=$Key["Name"];
                         $keyName["KEY"]=$keyword;
-                        $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
+                        
                         $keyName["OID"]=(integer)$Key["OID"];                                                     
                         }
                     }           // Ende Hardware Liste durchsuchen
