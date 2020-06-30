@@ -63,26 +63,9 @@ $startexec=microtime(true);
     if (function_exists('deviceList'))
         {
         echo "Temperatur Sensoren von verschiedenen Geräten werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField, false);				/* true ist Debug, Temperatursensoren und Homematic Thermostat */
         //print_r($result);
         }
-
-    /*  alte Berechnungen, jetzt überall den selben Algorithmus verwenden
-    if (false)
-        {
-        echo "Homematic Temperatur Sensoren werden registriert.\n";
-        if (function_exists('HomematicList'))
-            {
-            $componentHandling->installComponentFull(HomematicList(),"TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);				// Temperatursensoren und Homematic Thermostat 
-            $componentHandling->installComponentFull(HomematicList(),"ACTUAL_TEMPERATURE",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);		    // HomematicIP Thermostat 
-            } 
-        echo "\n";
-        echo "FHT Heizungssteuerung Geräte werden registriert.\n";
-        if (function_exists('FHTList'))
-            {
-            $componentHandling->installComponentFull(FHTList(),"TemeratureVar",'IPSComponentSensor_Temperatur','IPSModuleSensor_Temperatur,',$commentField);
-            }
-        }           */
 
 	/****************************************************************************************************************
 	 *
@@ -96,28 +79,10 @@ $startexec=microtime(true);
     if (function_exists('deviceList'))
         {
         echo "Luftfeuchtigkeit Sensoren von verschiedenen Geräten werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,true);				/* Temperatursensoren und Homematic Thermostat */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,false);				/* true ist Debug, Feuchtigkeitssensoren und Homematic Thermostat */
         //print_r($result);
         }
    
-    /*  alte Berechnungen, jetzt überall den selben Algortithmus verwenden
-
-    if (false)
-        {
-        echo "Homematic Humidity Sensoren werden registriert.\n";
-        if (function_exists('HomematicList'))
-            {
-            $componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
-            } 
-        }
-
-	$remote=new RemoteAccess();    
-	$Homematic = HomematicList();
-	$remote->RPC_CreateVariableField($Homematic, "TEMPERATURE", "Temperatur", $startexec);  // rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler 
-	$remote->RPC_CreateVariableField($Homematic, "HUMIDITY", "Humidity", $startexec);  // rpc, remote OID of category, OID Liste, OID Typ daraus, zuzuordnendes Profil, RPC ArchiveHandler 
-    */
-
-
     echo "Aktuelle Laufzeit ".exectime($startexec)." Sekunden.\n"; 
 
 

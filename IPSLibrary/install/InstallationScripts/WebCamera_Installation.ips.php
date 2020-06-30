@@ -51,9 +51,15 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	
-	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
 
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+    IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
+
+    $sysOps = new sysOps();
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    echo "Allocated Memory : ".$sysOps->getNiceFileSize(memory_get_usage(true),false).".\n";
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -67,7 +73,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
     $scriptIdActivity   = IPS_GetScriptIDByName('WebCamera_Activity', $CategoryIdApp);
-    echo "Script ID für regelmaessige Timeraufrufe gefunden:  $scriptIdActivity \n";
+    echo "Script ID für regelmaessige Timeraufrufe gefunden:  $scriptIdActivity (".IPS_GetName($scriptIdActivity).")\n";
 
 	echo "IP Symcon Daten:\n";
 	echo "  Kernelversion : ".IPS_GetKernelVersion()."\n";
@@ -79,6 +85,10 @@
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
+    
+    $subnet="10.255.255.255";
+	$OperationCenter=new OperationCenter($subnet);
+	$LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
 
     $webCamera = new webCamera();       // eigene class starten
 
@@ -142,9 +152,11 @@
 
     	$camManager = new IPSCam_Manager();
 		echo "\n";
-		echo "IPSCam installiert, Ausgabe Konfiguration:\n";
+		echo "IPSCam installiert, Ausgabe Konfiguration, nur zur information, es gilt die Config im OperationCenter_Configuration File :\n";
 		$CamConfig             = IPSCam_GetConfiguration();
-        print_r($CamConfig);
+        //print_r($CamConfig);
+        foreach ($CamConfig as $cam) echo "    ".$cam["Name"]."\n";
+        echo "\n";
         }
 
     /********************************************************************
@@ -172,11 +184,24 @@
 
     echo "====================================================================================\n";
     echo "Ausgabe der OperationCenter spezifischen Cam Konfigurationsdaten:\n";
+	$count=0;    
     if (isset ($OperationCenterConfig['CAM']))
         {
+        echo "   Vorher ein bisschen Move von CamFiles Bilder vom FTP machen. nur so zum Ausprobieren:\n";
+        foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)             /* das sind die Capture Dateien, die häufen sich natürlich wenn mehr Bewegung ist */
+            {
+            if (isset ($cam_config['FTPFOLDER']))         
+                {
+                echo "   ==> Bearbeite Purge Webkamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+                $cam_config['CAMNAME']=$cam_name;
+                if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config,false);        // true ist mit debug
+                //if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER'],true);
+                }
+            }        
+
         $CamTablePictureID=IPS_GetObjectIdByName("CamTablePicture",$CategoryIdDataOverview);
         $CamMobilePictureID=IPS_GetObjectIdByName("CamMobilePicture",$CategoryIdDataOverview);
-        echo "    Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID für die Captured Bilder.\n";
+        echo "   Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview und darin ein Objekt CamTablePicture mit OID $CamTablePictureID / $CamMobilePictureID für die Captured Bilder.\n";
 
         //$OperationCenter->CopyCamSnapshots(); // bereits in die Timer Routine übernommen
         
@@ -185,8 +210,8 @@
          */
 		$resultStream=array(); $idx=0;          // Link zu den Cameras
 
-        echo "    CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
         echo "\n";
+        echo "   CamCapture Ausgabe für folgende Kameras konfiguriert:\n";
         foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
             {
             echo "   ---------------------------------\n";
@@ -205,13 +230,13 @@
                     }
                 else 
                     {
-                    echo "    Verzeichnis $verzeichnis NICHT verfügbar, jetzt erstellen.\n";
+                    echo "    Fehler, Verzeichnis $verzeichnis NICHT verfügbar, jetzt erstellen.\n";
                     $rootDir='C:\\ftp\\';
-                    if (is_dir($rootDir)) echo "    Verzeichnis $rootDir verfügbar.\n";
+                    if (is_dir($rootDir)) echo "      Verzeichnis $rootDir verfügbar. Das Unterverzeichnis erstellen.\n";
                     $dosOps->mkdirtree($verzeichnis,true);          // mit Debug um Fehler rauszufinden
                     }
                 }
-            else echo '       FTP Folder in der Konfiguration disabled. Füge "FTP" => "Enabled" ein.'."\n";
+            else echo 'Fehler, FTP Funktion in der Konfiguration disabled. Füge "FTP" => "Enabled" ein.'."\n";
 
             $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
             if ($cam_categoryId==false)
@@ -220,7 +245,7 @@
                 IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
                 IPS_SetParent($cam_categoryId,$CategoryIdDataOC);
                 }
-            echo "Kategorie pro Kamera : $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
+            echo "      Kategorie pro Kamera vorhanden: $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
 
             if (isset($cam_config['FTPFOLDER']) )
                 {
@@ -242,43 +267,68 @@
                     if ( (isset($cam_config["FORMAT"])) && (isset($cam_config["USERNAME"])) && (isset($cam_config["PASSWORD"])) && (isset($cam_config["IPADRESSE"])) && (isset($cam_config["STREAMPORT"])))
                         {
                         /* a few checks, wether it is a IP Address */
+                        $ok=true;
                         $ipadresse=explode(".",$cam_config["IPADRESSE"]);
                         if (count($ipadresse)==4) 
                             {
-                            $ok=true;
                             foreach ($ipadresse as $ip)
                                 {
                                 $ipNum=(integer)$ip;
                                 if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
                                 }
-                            if ($ok) echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
-                                {
-                                $streamLink="";
-                                if (strtoupper($cam_config["FORMAT"])=="RTSP")
-                                    {
-                                    $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
-                                    echo "    Streaming Media will be set to $streamLink.\n";
-                                    IPS_SetMediaFile($cam_streamId,$streamLink,true);
-
-                                    $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
-                                    $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
-                                    $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
-                                    $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
-                                    $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
-                                    $idx++;
-                                    }
-                                }
                             }
-                        }
-                    }
-                }                           /* nur anlegen wenn FTPFOLDER definiert ist */
+                        else $ok=false;
+                        if ($ok) 
+                            {
+                            echo "IPADRESSE ".$cam_config["IPADRESSE"]." hat ".count($ipadresse)." numerische Eintraege.";
+                            $streamLink="";
+                            if (strtoupper($cam_config["FORMAT"])=="RTSP")
+                                {
+                                $streamLink .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
+                                echo "    Streaming Media will be set to $streamLink.\n";
+                                IPS_SetMediaFile($cam_streamId,$streamLink,true);
 
-            echo "      Konfiguration ".$cam_name."\n";
-            print_r($cam_config);
+                                $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
+                                $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
+                                $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
+                                $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
+                                $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
+                                $idx++;
+                                }
+                            elseif (strtoupper($cam_config["FORMAT"])=="HTTP")
+                                {
+                                echo 'http MJPEG Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie : http://10.0.1.121/videostream.cgi?user=admin&pwd=cloudg06&resolution=8'."\n";
+                                $streamLink .= 'http://'.$cam_config["IPADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
+                                echo "    Streaming Media will be set to $streamLink.\n";
+                                IPS_SetMediaFile($cam_streamId,$streamLink,true);
+
+                                $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
+                                $resultStream[$idx]["Stream"]["Name"]=$cam_name; 
+                                $resultStream[$idx]["Data"]["Cam_letzteBewegung"]=$WebCam_LetzteBewegungID;
+                                $resultStream[$idx]["Data"]["Cam_PhotoCount"]=$WebCam_PhotoCountID;
+                                $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
+                                $idx++;
+                                }
+                            else echo 'Fehler, keine gültiges FORMAT angelegt. Verwende http oder rstp.\n'; 
+                            }
+                        else echo 'Fehler, IPADRESSE hat kein gültiges Format.\n'; 
+                        }
+                    else echo 'Fehler, keine Stream Parameter angelegt. Füge "FORMAT","USERNAME","PASSWORD","IPADRESSE","STREAMPORT" ein.\n'; 
+                    }
+                else echo 'Fehler, kein Stream definiert. Füge "STREAM" => "enabled" ein.\n';
+                }                           /* nur anlegen wenn FTPFOLDER definiert ist */
+            else echo 'Fehler, FTPFOLDER in der Konfiguration nicht definiert. Füge "FTPFOLDER" => FTP_Cam_Verzeichnis ein.'."\n";
+
+            //echo "      Konfiguration ".$cam_name."\n"; print_r($cam_config);
             echo "\n";
 
             }
         //print_r($resultStream);
+
+    /* Webfront Konfiguration aufbauen.
+     * Im array resultstream sind die Links die in jedem Webfront Administrator,User,Mobile gesetzt werden
+     *
+     */
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
     //print_r($configWFront);
@@ -357,7 +407,7 @@
      *
      **********************************/
 
-    function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false)
+    function installWebfrontMon($configWF,$resultStream, $emptyWebfrontRoot=false, $StartIndex=0)
         {
         //if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )  
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
@@ -429,6 +479,7 @@
                 {
                 if (isset($resultStream[$i]["Stream"]["Name"]))
                     {
+                    /* echo die Stream OIDs auf Stream Link und damit in die einzelnen vier Fenster und die LinkVariablen in Data alle gemeinsam in den Overview, Stream Name als Überschrift */
                     CreateLink($resultStream[$i]["Stream"]["Name"], $resultStream[$i]["Stream"]["OID"],  $resultStream[$i]["Stream"]["Link"], 10+$i*10);
                     //$camID=CreateCategory($resultStream[$i]["Stream"]["Name"],$categoryIdOverview,$i*10);             // sonst entstehen parallele Tabs
                     if (isset($resultStream[$i]["Stream"]["Name"]))

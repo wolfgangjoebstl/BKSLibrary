@@ -3881,9 +3881,12 @@ class errorAusgabe
 class ComponentHandling
     {
 
-    private $archiveHandlerID, $installedModules, $debug;
+    private $archiveHandlerID; 
+    private $archiveSQL_HandlerID;                              // zusätzliches Logging in MySQL  
+
+    private $installedModules, $debug;
     private $remote, $messageHandler;
-    private $congigMessage;
+    //private $congigMessage;
 
 	public function __construct($debug=false)
         {
@@ -3899,7 +3902,20 @@ class ComponentHandling
             }
 	    $this->messageHandler = new IPSMessageHandler();
         $this->configMessage=IPSMessageHandler_GetEventConfiguration();
+        
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+        if (isset($modulhandling->getInstances("Archive Control MySQL")[0])) $this->archiveSDQL_HandlerID=$modulhandling->getInstances("Archive Control MySQL")[0];
+        else $this->archiveSDQL_HandlerID=false;
         }
+
+    /* für den Fall dass ein entsprechendes MariaDB Modul installiert ist die passende Instanz dafür zurück geben 
+     */ 
+    public function getArchiveSDQL_HandlerID()
+        {
+        return($this->archiveSDQL_HandlerID);
+        }
+
+    /* Liste der remote Server ausgeben */
 
     public function listOfRemoteServer()
         {
@@ -3915,7 +3931,7 @@ class ComponentHandling
             	echo $text;
     			echo "Liste der ROIDs der Remote Logging Server (mit Status Active und für Logging freigegeben):   \n";
 		    	echo $this->remote->write_listofROIDs();
-        	        }
+        	    }
             }
         return($remServer);
         } 
@@ -3976,24 +3992,24 @@ class ComponentHandling
         else echo "    Event $oid ist bereits korrekt mit \"$update\",\"$component\",\"$module\" registriert.\n";    
         }
 
-/***********************************************************************************
- *
- * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
- * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
- * Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
- *
- * HardwareListe:
- * $keywords kann ein Eintrag oder ein Array sein
- * Die Elements sind die Geräteliste aus EvaluateHardware_include, sortiert nach Name, im COID sind die Unterobjekte nach denen die oder das Keyword verglichen wird
- * Bei einem array ist das ausschlaggebende Keyword immer das erste, die anderen keywords sind zusätzliche Vergleichsoperatoren
- *
- * Es gibt vorgefertigte TYPE_ keywords: TYPE_ACTUATOR, TYPE_CONTACT, TYPE_THERMOSTAT
- *
- * DeviceList,MySQL
- * kann nur mehr die TYPE_ keywords und erweitert mit REGISTER
- *
- *
- ****************************************************************************************/    
+    /***********************************************************************************
+    *
+    * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
+    * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
+    * Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
+    *
+    * HardwareListe:
+    * $keywords kann ein Eintrag oder ein Array sein
+    * Die Elements sind die Geräteliste aus EvaluateHardware_include, sortiert nach Name, im COID sind die Unterobjekte nach denen die oder das Keyword verglichen wird
+    * Bei einem array ist das ausschlaggebende Keyword immer das erste, die anderen keywords sind zusätzliche Vergleichsoperatoren
+    *
+    * Es gibt vorgefertigte TYPE_ keywords: TYPE_ACTUATOR, TYPE_CONTACT, TYPE_THERMOSTAT
+    *
+    * DeviceList,MySQL
+    * kann nur mehr die TYPE_ keywords und erweitert mit REGISTER
+    *
+    *
+    ****************************************************************************************/    
 
 	function getComponent($Elements,$keywords, $write="Array", $debug=false)
 		{
@@ -4014,13 +4030,18 @@ class ComponentHandling
                     }
                 else echo "     getComponent: Passende Geraeteregister in MySQL Database suchen für TYPE_KEYWORD $keywords :\n";
                 }
-            else echo "     getComponent: Passende Geraeteregister in ELements suchen für $keywords :\n";
+            else 
+                {
+                echo "     getComponent: Passende Geraeteregister in ELements suchen für \"$keywords\" :\n";
+                if (is_array($Elements)===false) echo "MySQL Database oder Fehler ?\n";                    
+                }
             }
         else $once=false;		
 
         if (is_array($Elements))
             {
             /* für alle Instanzen in der Liste machen, keyword muss vorhanden sein */
+            if ($debug) echo "     Elements ist ein array mit ".sizeof($Elements)." Eintraegen. Nichts weiter tun. \n";
             foreach ($Elements as $Key)
                 {
                 $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
@@ -4029,7 +4050,8 @@ class ComponentHandling
                 if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
                     if ($debug && $once) echo "      ****** devicelist als Formattierung\n";
-                    $count++;                        
+                    $count++; 
+                    if ($debug) echo "       Aufruf workOnDeviceList(".json_encode($Key).", ".json_encode($keywords).",$debug).\n";                       
                     $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
                     }               // ende deviceList durchsuchen
                 else    
@@ -4277,7 +4299,7 @@ class ComponentHandling
                 }
             }
 
-		if (!$totalfound) echo "************getComponent, Fehler kenne ".json_encode($keywords)." nicht.\n";
+		if ( (!$totalfound) && (sizeof($Elements)>0) ) echo "************getComponent, Fehler kenne ".json_encode($keywords)." nicht.\n";
         switch ($write)
             {
             case "Array":
@@ -4326,48 +4348,48 @@ class ComponentHandling
                 }
             }
         else $typeChanKey=$keywords;
-        /* Umsetzung der Eingabe auf typeChanKey und typeRegKey */
+        //echo " Umsetzung der Eingabe auf $typeChanKey und $typeRegKey \n";
 
-                    if ($once) echo "     devicelist als Formattierung des Arrays [Channels][][$typeChanKey] $typeRegKey.\n";
-                    if (isset($Key["Channels"]))
+        if (isset($Key["Channels"]))
+            {
+            foreach ($Key["Channels"] as $index => $instance)       // es gibt mehrere channels, alle channels durchgehen, index
+                {
+                //print_r($instance);
+                if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
+                    {
+                    if ($debug) echo "          $typeChanKey found ".json_encode($instance[$typeChanKey])."\n";         // Register may still be wrong, then return empty array 
+                    $keyName["OID"] = $Key["Instances"][$index]["OID"];
+                    $oid = $keyName["OID"];
+                    $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
+                    $types = explode(",",$channelTypes);
+                    $keyName["COID"]=false;
+                    if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
                         {
-                        foreach ($Key["Channels"] as $index => $instance)
+                        $channelRegister = $Key["Channels"][$index][$typeChanKey];    
+                        foreach ($channelRegister as $IDkey => $varName)
                             {
-                            //print_r($instance);
-                            if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
+                            if ($IDkey == $typeRegKey)
                                 {
-                                if ($debug) echo "           found ".json_encode($instance[$typeChanKey])."\n";
-                                $keyName["OID"] = $Key["Instances"][$index]["OID"];
-                                $oid = $keyName["OID"];
-                                $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
-                                $types = explode(",",$channelTypes);
-                                $keyName["COID"]=false;
-                                if (array_search($typeChanKey,$types) !== false)            // ungleich false, da tatsächliche Position zurückgemeldet wird, also auch 0
-                                    {
-                                    $channelRegister = $Key["Channels"][$index][$typeChanKey];    
-                                    foreach ($channelRegister as $IDkey => $varName)
-                                        {
-                                        if ($IDkey == $typeRegKey)
-                                            {
-                                            //echo "   $IDkey gefunden,suche $varName in $oid !\n";
-                                            $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
-                                            $keyName["KEY"]=$typeRegKey;
-                                            }
-                                        elseif ($typeRegKey=="?") 
-                                            {
-                                            $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
-                                            $keyName["KEY"]=$varName;
-                                            }
-                                        }
-                                    }
-                                //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
-                                //print_r($Key["Channels"][$index]);
-
-                                $keyName["Name"]=$instance["Name"];
-                                if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
-                                } 
-                            }                                
+                                //echo "   $IDkey gefunden,suche $varName in $oid !\n";
+                                $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
+                                $keyName["KEY"]=$typeRegKey;
+                                }
+                            elseif ($typeRegKey=="?") 
+                                {
+                                $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
+                                $keyName["KEY"]=$varName;
+                                }
+                            }
                         }
+                    //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
+                    //print_r($Key["Channels"][$index]);
+
+                    $keyName["Name"]=$instance["Name"];
+                    if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
+                    } 
+                }                                
+            }
+        if (isset($keyName["KEY"]) === false) $keyName=array();              // ohne gesetztem Key auch nichts gefunden, nachtraeglich korrigieren
         if ( (isset($keyName["Name"])) && $debug ) print_r($keyName);
         return $keyName;
         }
@@ -4660,6 +4682,15 @@ class ComponentHandling
 	            if ($debug) { echo "----> $IndexName:\n"; print_r($entry); }
 				$oid=$entry["COID"];
                 if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
+				$archiveID=$this->getArchiveSDQL_HandlerID();
+                if ($archiveID)
+                    {
+                    echo "MySQL Archiver installed and available. Archive Variables there as well:\n";
+					ACmySQL_SetLoggingStatus($archiveID,$oid,true);
+					//ACmySQL_SetAggregationType($archiveID,$oid,0);            // es gibt nur einen Aggregation Type 0
+					IPS_ApplyChanges($archiveID);
+					echo "       Variable ".$oid." (".IPS_GetName($oid)."), mySQL Archiv logging für dieses Geraeteregister wurde aktiviert.\n";
+                    }
 				/* check, es sollten auch alle Quellvariablen gelogged werden */
 				if (AC_GetLoggingStatus($this->archiveHandlerID,$oid)==false)
 					{
@@ -5370,21 +5401,53 @@ class ModuleHandling
 			echo "   ".str_pad($index,35)."    ".$library."\n";
 			}
 		}
-		
-	/* Alle Libraries als array ausgeben , die ID der Library muss stimmen
+
+	/* Libraries untersuchen, wenn
+     *  false      alle Libraries als array ausgeben
+     *  GUID       Name der Library ausgeben
+     *  Name       Name der Library ausgeben
      */
-	public function getLibrary($needleID)
+	public function getLibrary($needleID=false)
 		{
         $result=false;
-		foreach($this->libraries as $index => $library)
-			{
-			if ($library == $needleID) 
+        if ($needleID!==false)
+            {
+		    $needleID=trim($needleID);
+		    $key=$this->get_string_between($needleID,'{','}');
+    		if (strlen($key)==36) 
                 {
-                //echo "   ".str_pad($index,35)."    ".$library."\n";
-                $result=$index;
+                echo "Gültige GUID mit ".$key."\n";                    
+                foreach($this->libraries as $index => $library)
+                    {
+                    echo "   ".str_pad($index,35)."    ".$library."\n";
+                    if ($library == $needleID) 
+                        {
+                        $result=$index;
+                        }
+                    }
+                return($result);
                 }
-			}
-        return($result);
+            else   
+                {
+                foreach($this->libraries as $index => $library)
+                    {
+                    echo "   ".str_pad($index,35)."    ".$library."\n";
+                    if ($index == $needleID) 
+                        {
+                        $result=$index;
+                        }
+                    }
+                return($result);
+                }
+            }
+        else
+            {
+    		foreach($this->libraries as $index => $library)
+	    		{
+                echo "   ".str_pad($index,35)."    ".$library."\n";
+    			}
+            return($this->libraries);
+            }
 		}
 
 	/* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 

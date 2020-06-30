@@ -111,9 +111,10 @@ if ($_IPS['SENDER']=="Execute")
 	{    
     /* eventuelle Ausgaben über den Status */
 
-    echo "Ausgabe der Camera Config aus der OperationCenter CamConfig:\n";
+    echo "Ausgabe der Camera Config aus der OperationCenter CamConfig nach Cam Namen gegliedert:\n";
     print_r($webCamera->getConfiguration());    
     $camConfig = $webCamera->getStillPicsConfiguration();
+    //print_r($camConfig);                                        // plain mit Index
     $zielVerzeichnis = $webCamera->zielVerzeichnis();
     
     $maxCount = count($camConfig);    

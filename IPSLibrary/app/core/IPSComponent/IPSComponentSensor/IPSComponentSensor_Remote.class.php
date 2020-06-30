@@ -321,20 +321,13 @@
 
 		function Sensor_LogValue()
 			{
-			// result formatieren für Ausgabe in den LogNachrichten
+			// result formatieren für Ausgabe in den LogNachrichten, dieser Component wird für verschiedene Datenobjekte verwendet, keine extra Formattierungen hier
 			$variabletyp=IPS_GetVariable($this->variable);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				$result=GetValueFormatted($this->variable);
-				}
-			else
-				{
-				$result=number_format(GetValue($this->variable),2,',','.')." °C";
-				}		
-
-			$unchanged=time()-$variabletyp["VariableChanged"];
+    		$result=GetValueIfFormatted($this->variable);
+	    	$unchanged=time()-$variabletyp["VariableChanged"];
 			$oldvalue=GetValue($this->variableLogID);
-			SetValue($this->variableLogID,GetValue($this->variable));
+		
+        	SetValue($this->variableLogID,GetValue($this->variable));
 			echo "      Sensor_LogValue: Neuer Wert fuer ".$this->variablename." ist ".GetValueIfFormatted($this->variable).". Alter Wert war : ".$oldvalue." unverändert für ".$unchanged." Sekunden.\n";
 			IPSLogger_Inf(__file__, 'CustomComponent Sensor_LogValue: Variable OID : '.$this->variable.' Name : '.$this->variablename.'  TypeReg : '.$this->variableTypeReg);
 
