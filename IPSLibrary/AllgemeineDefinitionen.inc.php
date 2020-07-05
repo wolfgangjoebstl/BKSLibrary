@@ -2178,10 +2178,14 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
  * path                     gibt den IPS Category Path als string return aus
  * totalChildren            die Anzahl der Children in einer hierarchischen mit Subkategorien aufgebauten Umgebung zählen
  *     countChildren           rekursive Funktion dafür.
+ * searchIDbyName
+ * get_ScriptIDs
  * readWebfrontConfig
  * getMediaListbyType
+ *
  * configWebfront
  * intelliSort              nach einem sub index sortieren
+ * emptyCategory            rekursiv
  *
  ******************************************************/
 
@@ -2602,14 +2606,14 @@ class ipsOps
         return $text;
         } 
 
-    }
 
-function serialize_array(&$array, $root = '$root', $depth = 0)
-{
+
+    function serialize_array(&$array, $root = '$root', $depth = 0)
+        {
         $items = array();
 
         foreach($array as $key => &$value)
-        {
+            {
                 if(is_array($value))
                 {
                         serialize_array($value, $root . '[\'' . $key . '\']', $depth + 1);
@@ -2618,10 +2622,10 @@ function serialize_array(&$array, $root = '$root', $depth = 0)
                 {
                         $items[$key] = $value;
                 }
-        }
+            }
 
         if(count($items) > 0)
-        {
+            {
                 echo $root . ' = array(';
 
                 $prefix = '';
@@ -2632,8 +2636,44 @@ function serialize_array(&$array, $root = '$root', $depth = 0)
                 }
 
                 echo ');' . "\n";
+            }
         }
-}
+
+
+	/** Löschen des Inhalts einer Kategorie inklusve Inhalt
+	 *
+	 * Die Funktion löscht den gesamtem Inhalt einer Kategorie
+	 *
+	 * @param integer $CategoryId ID der Kategory
+	 *
+	 */
+	function emptyCategory($CategoryId) 
+        {
+        echo "ipsOps:emptyCategory aufgerufen mit $CategoryId (".IPS_GetName($CategoryId).").\n";
+		if ($CategoryId==0) 
+            {
+            echo "Root Category could NOT ne deleted!!!\n";    
+			Error ("Root Category could NOT ne deleted!!!");
+		    }
+
+		$ChildrenIds = IPS_GetChildrenIDs($CategoryId);
+		foreach ($ChildrenIds as $ObjectId) 
+            {
+            $subchildren=IPS_GetChildrenIDs($ObjectId);    
+            if (sizeof($subchildren)>0 )
+                {
+                echo "Subchildren found,\n";
+                $this->emptyCategory($ObjectId) ;
+                }
+            if (IPS_GetObject($ObjectId)["ObjectType"]==0) $this->emptyCategory($ObjectId) ;  
+			else DeleteObject($ObjectId);
+		    }
+		Debug ("Empty Category ID=$CategoryId");
+	    }
+        
+
+    }           // ende class ipsOps
+
 
 
 
@@ -3246,10 +3286,13 @@ class dosOps
 	/* gesammelte Funktionen zur Bearbeitung von Verzeichnissen 
 	 *
 	 * ein Verzeichnis einlesen und als Array zurückgeben 
-	 *
+	 *      dir         Name des Verzeichnisses
+     *      recursive   true, auch die Unterverzeichnisse einlesen 
+     *      newest      interressante Funktion, die Dateinamen/Verzeichnisse verkehrt herum sortieren, wenn -n dann nur die ersten n übernehmen, also mit den ältesten Datum
+     *                  Achtung damit wird auch die erste Verzeichnisstrukturebene umbenannt und heisst nur mehr 0...x oder 0..n
 	 */
 	
-	public function readdirToArray($dir,$recursive=false,$newest=0)
+	public function readdirToArray($dir,$recursive=false,$newest=0,$debug=false)
 		{
 	   	$result = array();
 
@@ -3783,6 +3826,9 @@ class fileOps
 
     }    // ende class
 
+
+
+
 /**************************************************************************************************************************
  *
  * timerOps
@@ -4117,8 +4163,9 @@ class ComponentHandling
                                     if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
                                     break;
                                 case "TYPE_CONTACT":
-                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="CONTACT";        // nicht STATE verwenden, später umdrehen
+                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) { $keyword="CONTACT"; $registerName="STATE"; }        // nicht STATE verwenden, später umdrehen
                                     //if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="STATE";
+                                    if ($debug) echo "            TYPE_CONTACT gefunden. Keyword ist jetzt $keyword.\n";
                                     $detectmovement="Contact";
                                     break;							
                                 default:	
@@ -4130,8 +4177,8 @@ class ComponentHandling
                         {
                         if ( ($typeKeyword!=$keyword) && ($typeKeyword=="TYPE_CONTACT") && ($keyword=="CONTACT") ) 
                             {
-                            $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
-                            print_r($Key);
+                            // Sonderbehandlung weil keyName["KEY"]=CONTACT sein muss, aber das Register anders heisst 
+                            $keyName["COID"]=(integer)$Key["COID"][$registerName]["OID"];
                             }
                         else $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
                         
@@ -4357,7 +4404,7 @@ class ComponentHandling
                 //print_r($instance);
                 if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
                     {
-                    if ($debug) echo "          $typeChanKey found ".json_encode($instance[$typeChanKey])."\n";         // Register may still be wrong, then return empty array 
+                    //if ($debug) echo "         First success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
                     $keyName["OID"] = $Key["Instances"][$index]["OID"];
                     $oid = $keyName["OID"];
                     $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
@@ -4370,14 +4417,16 @@ class ComponentHandling
                             {
                             if ($IDkey == $typeRegKey)
                                 {
-                                //echo "   $IDkey gefunden,suche $varName in $oid !\n";
+                                //if ($debug) echo "   $IDkey gefunden,suche $varName in $oid !\n";
                                 $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
                                 $keyName["KEY"]=$typeRegKey;
+                                if ($debug) echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                                 }
                             elseif ($typeRegKey=="?") 
                                 {
                                 $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
                                 $keyName["KEY"]=$varName;
+                                if ($debug) echo "        DeviceList für TYPECHAN => $typeChanKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";                                
                                 }
                             }
                         }
@@ -4670,22 +4719,22 @@ class ComponentHandling
 			/* Erreichbarkeit Remote Server nur einmal pro Aufruf ermitteln */
 			$remServer=$this->listOfRemoteServer();
             $struktur=$this->getStructureofROID($keyword);
+    		$archiveID=$this->getArchiveSDQL_HandlerID();
             if ($debug)
                 {
                 echo "Keyword für Component wird aus dem Resultat ermittelt : $keyword\n"; 
                 echo "Remote Server herausfinden und Struktur auslesen:\n";
                 print_r($remServer); print_r($struktur);
       			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
+                if ($archiveID) echo "MySQL Archiver installed and available. Archive Variables there as well:\n";
                 }
         	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
       	    	{
 	            if ($debug) { echo "----> $IndexName:\n"; print_r($entry); }
 				$oid=$entry["COID"];
                 if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-				$archiveID=$this->getArchiveSDQL_HandlerID();
-                if ($archiveID)
+                if ( $archiveID && (ACmySQL_GetLoggingStatus($archiveID,$oid)==false) )
                     {
-                    echo "MySQL Archiver installed and available. Archive Variables there as well:\n";
 					ACmySQL_SetLoggingStatus($archiveID,$oid,true);
 					//ACmySQL_SetAggregationType($archiveID,$oid,0);            // es gibt nur einen Aggregation Type 0
 					IPS_ApplyChanges($archiveID);

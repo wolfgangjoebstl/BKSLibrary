@@ -2848,11 +2848,12 @@ class OperationCenter
             {
             if (sizeof($camConfig)==0)
                 {
-                if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen.\n";
                 IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
                 IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
                 $camConfig = IPSCam_GetConfiguration();			
+                //if ($debug) echo "Kein Configarray als Übergabeparameter, sich selbst eines überlegen: ".json_encode($camConfig)."\n";
                 }
+            if ($debug) echo "IPSCam installiert. showCamSnapshots aufgerufen mit ".json_encode($camConfig).".\n";            
             $categoryIdCams     		= CreateCategory('Cams',    $this->CategoryIdData, 20);
         
             /* Zielverzeichnis für Anzeige ermitteln */
@@ -2861,9 +2862,13 @@ class OperationCenter
             $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);
 
             $anzahl=sizeof($camConfig);
-            $rows=(integer)($anzahl/2);
-            if ($debug) echo "Es werden im Picture Overview insgesamt ".$anzahl." Bilder in ".$rows." Zeilen mal 2 Spalten angezeigt.\n";		
-            //print_r($camConfig);
+            $rows=(integer)(($anzahl/2)+1);
+            if ($debug) 
+                {
+                $ipsOps = new ipsOps();                    
+                echo "Es werden im Picture Overview insgesamt ".$anzahl." Bilder in ".$rows." Zeilen mal 2 Spalten aus $categoryIdCams (".$ipsOps->path($categoryIdCams).") angezeigt.\n";	
+                print_r($camConfig);                 // das sind die Cams die durchgegangen werden
+                }	
             $CamTablePictureID=IPS_GetObjectIDbyName("CamTablePicture",$categoryIdCams);
             $CamMobilePictureID=IPS_GetObjectIDbyName("CamMobilePicture",$categoryIdCams);
 
@@ -2883,8 +2888,11 @@ class OperationCenter
             foreach ($camConfig as $index=>$data) 
                 {
                 If ( ($count % $columns) == 0) $htmlWeb.="<tr>";
-                $PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
-                $PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
+                // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)  sicherheitshalber einmal erzeugen
+                $PictureTitleID = CreateVariableByName($categoryIdCams,"CamPictureTitle".$index, 3, "", "", 100, null);        // string
+                $PictureTimeID  = CreateVariableByName($categoryIdCams,"CamPictureTime".$index, 1, "", "", 101, null);         // integer, time
+                //$PictureTitleID = IPS_GetObjectIDByName("CamPictureTitle".$index,$categoryIdCams);        // string
+                //$PictureTimeID  = IPS_GetObjectIDByName("CamPictureTime".$index,$categoryIdCams);         // integer, time
                 $text      = GetValue($PictureTitleID);
                 $filemtime = GetValue($PictureTimeID);
                 /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
@@ -5789,6 +5797,8 @@ class LogFileHandler extends OperationCenter
 		$WebCam_PhotoCountID = CreateVariableByName($cam_categoryId, "Cam_PhotoCount", 1);
 		$WebCam_MotionID = CreateVariableByName($cam_categoryId, "Cam_Motion", 0, '~Motion', null ); /* 0 Boolean 1 Integer 2 Float 3 String */
 
+        $this->flattenYearMonthDayDirectory($verzeichnis);
+
         if ($debug) echo "     MoveCamFiles: for $cam_name from $verzeichnis.\n";
 		$count=$this->MoveFiles($verzeichnis,-1,$WebCam_LetzteBewegungID,$debug);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
 		$PhotoCountID = CreateVariableByName($this->CategoryIdData, "Webcam_PhotoCount", 1);
@@ -5805,6 +5815,52 @@ class LogFileHandler extends OperationCenter
 		if ($debug) echo "    Anzahl verschobener Fotos für ".$cam_name." : ".$count."\n";
 		return ($count);
 		}
+
+    /* die Reolink Kameras haben eine neue nicht konfigurierbare Ablagestruktur nach Jahr/Monat/Tag
+     * diese Struktur wieder zurück in eine flache Ablage zurück verwandeln
+     *
+     */
+
+    public function flattenYearMonthDayDirectory($verzeichnis)
+        {
+        $jahr=date("Y", time());
+        $jahrAlt=date("Y", strtotime("-30 day"));
+        echo "Jahre  $jahr  $jahrAlt  überprüfen:\n";
+        if (is_dir($verzeichnis.$jahr) || is_dir($verzeichnis.$jahrAlt))
+            {
+            /* das ganze Verzeichnis auslesen. Mit den Jahren zB 2019, 2020 und einigen neuen Verzeichnissen die aus der Verdichtung entstanden sind */
+                
+            $alldir=$this->dosOps->readdirToArray($verzeichnis,true, 0 , true);
+            //$alldir=$this->dosOps->readdirToStat($verzeichnis,true);            // rekursive Verzeichnisse
+            //echo "Überblick Kameraverzeichnis $cam_name:\n";
+            print_r($alldir);
+            foreach ($alldir as $nameYear => $dir) 
+                {
+                echo "    ----$nameYear  \n";
+                if ( ($nameYear==$jahr) || ($nameYear==$jahrAlt) )
+                    {
+                    $newVerzeichnis=$verzeichnis.$nameYear;
+                    foreach ($dir as $month => $subdir)
+                        {
+                        $newVerzeichnis=$verzeichnis.$nameYear.$month;
+                        echo "    -------M:$month  \n";
+                        foreach ($subdir as $day => $subsubdir)
+                            {
+                            $newVerzeichnis=$verzeichnis.$nameYear.$month.$day;
+                            echo "    ---------D:$day  ($newVerzeichnis)\n";
+                            foreach ($subsubdir as $index => $file)
+                                {
+                                echo "    -----------------$index   $file\n";
+                                rename($verzeichnis."\\".$nameYear."\\".$month."\\".$day."\\".$file,$verzeichnis.$file);
+                                //echo "    ------------$index  (".json_encode($YmDdir).")\n";
+                                //foreach ($YmDdir as $key => $file) echo "    ------------------------$key   $file\n";
+                                }
+                            }
+                        }    
+                    }
+                } 
+            }
+        }
 
 	}   // ende class
 
