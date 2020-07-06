@@ -38,6 +38,7 @@ class WebCamera
 
     function __construct()
         {
+        echo "Webcamera Create:\n";            
         $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
         if (!isset($moduleManager))
             {
@@ -67,7 +68,7 @@ class WebCamera
             $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
             $this->CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 
-            $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$this->CategoryIdDataOC);
+            $categoryIdCams=IPS_GetObjectIDByName("Cams",$this->CategoryIdDataOC);
 
             $subnet="10.255.255.255";
             $OperationCenter=new OperationCenter($subnet);
@@ -78,10 +79,13 @@ class WebCamera
                 {
                 $this->camConfiguration=$OperationCenterConfig['CAM'];
                 }
+            $camConfig = $this->getStillPicsConfiguration(true);                // Debug Ausgabe ist default, um alle konfigurierten Kameras zu sehen
+            foreach ($camConfig as $index=>$data) 
+                {
+                $PictureTitleID=CreateVariable("CamPictureTitle".$index,3, $categoryIdCams,100,"",null,null,"");        // string
+                $PictureTimeID =CreateVariable("CamPictureTime".$index,1, $categoryIdCams,101,"",null,null,"");         // integer, time
+                }
             }
-
-
-
         }
 
     /* aktuell gilt die Operation Center Configuration als die treibende Konfiguration. 
@@ -96,19 +100,19 @@ class WebCamera
     /* aus der Operation Center Configuration die Component Information raussuchen
      */
 
-    public function getStillPicsConfiguration()
+    public function getStillPicsConfiguration($debug=false)
         {
         $i=0; $j=0; $configCamPicture=array();
         foreach($this->camConfiguration as $camera => $entry) 
             {
             if (isset($entry["COMPONENT"])) 
                 {
-                echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]."\n";
+                if ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]."\n";
                 $configCamPicture[$j]=$entry;
                 $configCamPicture[$j]["NAME"]=$camera;
                 $j++;
                 }
-            else echo "    $i : ".str_pad($camera,30)." ".$entry["IPADRESSE"]."\n";
+            elseif ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["IPADRESSE"]."\n";
             $i++;
             }
         return($configCamPicture);
@@ -172,7 +176,7 @@ class WebCamera
             else
                 {       /* erfolgeich eine Datei erstellt, die begleitenden Informationen updaten */
                 $filemtime=filemtime($localFile);
-                if ($debug) echo "      Kamera ".$componentParams["NAME"]." :  write to ".$picVerzeichnisFull." File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
+                if ($debug) echo "      Kamera ".$componentParams["NAME"]." :  write to  $localFile. File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
                 SetValue($PictureTitleID,$componentParams["NAME"]."   ".date ("F d Y H:i:s.", $filemtime));
                 SetValue($PictureTimeID,$filemtime);
                 }

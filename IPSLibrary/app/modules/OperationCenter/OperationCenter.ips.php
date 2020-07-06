@@ -83,6 +83,12 @@ $scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryI
  	 *
 	 *************************************************************/
 
+if (isset ($installedModules["WebCamera"]))
+	{
+    IPSUtils_Include ("WebCamera_Configuration.inc.php","IPSLibrary::config::modules::WebCamera");
+	IPSUtils_Include ("WebCamera_Library.inc.php","IPSLibrary::app::modules::WebCamera");
+    }
+
 if (isset ($installedModules["IPSCam"]))
 	{
 	//echo "Modul IPSCam ist installiert.\n";
@@ -948,11 +954,16 @@ if ($_IPS['SENDER']=="TimerEvent")
                         }
                     }
 				/* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
-				//$OperationCenter->copyCamSnapshots();	
-				$OperationCenter->showCamSnapshots();	
-				
-				/* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
-				$OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM']);
+				//$OperationCenter->copyCamSnapshots();
+                if (isset ($installedModules["WebCamera"]))
+                    {
+                    $webCamera = new webCamera();       // eigene class starten
+                    $camConfig = $webCamera->getStillPicsConfiguration();
+                    $OperationCenter->showCamSnapshots($camConfig);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
+                    
+                    /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
+                    $OperationCenter->showCamCaptureFiles($camConfig);
+                    }
 				} /* Ende isset */
 			if ($count>0)
 				{

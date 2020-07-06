@@ -2842,7 +2842,7 @@ class OperationCenter
 	 */
 	function showCamSnapshots($camConfig=array(), $debug=false)
 		{
-        if ($debug) echo "showCamSnapshots aufgerufen.\n";            
+        if ($debug) echo "showCamSnapshots aufgerufen für insgesamt ".sizeof($camConfig)." Kameras.\n";            
         $status=false;  // Rückmeldecode
         if (isset($this->installedModules["IPSCam"]))
             {
@@ -2867,7 +2867,7 @@ class OperationCenter
                 {
                 $ipsOps = new ipsOps();                    
                 echo "Es werden im Picture Overview insgesamt ".$anzahl." Bilder in ".$rows." Zeilen mal 2 Spalten aus $categoryIdCams (".$ipsOps->path($categoryIdCams).") angezeigt.\n";	
-                print_r($camConfig);                 // das sind die Cams die durchgegangen werden
+                //print_r($camConfig);                 // das sind die Cams die durchgegangen werden
                 }	
             $CamTablePictureID=IPS_GetObjectIDbyName("CamTablePicture",$categoryIdCams);
             $CamMobilePictureID=IPS_GetObjectIDbyName("CamMobilePicture",$categoryIdCams);
@@ -2875,7 +2875,6 @@ class OperationCenter
             $html="";
             $html.='<style> 
                         table {width:100%}
-                        td {width:50%}						
                         table,td {align:center;border:1px solid white;border-collapse:collapse;}
                         .bildmittext {border: 5px solid darkslategrey; position: relative;}
                         .bildmittext img {display:block;}
@@ -2884,7 +2883,9 @@ class OperationCenter
                         </style>';
 
             $htmlWeb='<table>';
-            $count=0; $columns=2;
+            $count=0; 
+            if ($anzahl>6) $columns=3;
+            else $columns=2;
             foreach ($camConfig as $index=>$data) 
                 {
                 If ( ($count % $columns) == 0) $htmlWeb.="<tr>";
@@ -2898,10 +2899,11 @@ class OperationCenter
                 /* Parameter imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span") */
                 if ((time()-$filemtime)>60) $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text,"spanRed").' </td>'; 			
                 else $htmlWeb.='<td frameborder="1"> '.$this->imgsrcstring($picVerzeichnis,"Cam".$count.".jpg","Cam".$count.".jpg",$text).' </td>';
-                If ( ($count % 2) == 1) $htmlWeb.="</tr>";
+                If ( ($count % $columns) == ($columns-1) ) $htmlWeb.="</tr>";
                 $count++;
                 }
             If ( ($count % $columns) == 0) $htmlWeb.="<td> </td> </tr>";
+            $htmlWeb.="<tr><td colspan=\"".$columns."\">Aktualisierte Snapshots direkt von der Cam, zuletzt aktualisiert ".date("d.m.Y H:i:s")."</td></tr>";
             $htmlWeb.="</table>";	
 
             $htmlMob='<table>';
@@ -5821,11 +5823,11 @@ class LogFileHandler extends OperationCenter
      *
      */
 
-    public function flattenYearMonthDayDirectory($verzeichnis)
+    public function flattenYearMonthDayDirectory($verzeichnis, $debug=false)
         {
         $jahr=date("Y", time());
         $jahrAlt=date("Y", strtotime("-30 day"));
-        echo "Jahre  $jahr  $jahrAlt  überprüfen:\n";
+        if ($debug) echo "Jahre  $jahr  $jahrAlt  überprüfen:\n";
         if (is_dir($verzeichnis.$jahr) || is_dir($verzeichnis.$jahrAlt))
             {
             /* das ganze Verzeichnis auslesen. Mit den Jahren zB 2019, 2020 und einigen neuen Verzeichnissen die aus der Verdichtung entstanden sind */
@@ -5833,24 +5835,24 @@ class LogFileHandler extends OperationCenter
             $alldir=$this->dosOps->readdirToArray($verzeichnis,true, 0 , true);
             //$alldir=$this->dosOps->readdirToStat($verzeichnis,true);            // rekursive Verzeichnisse
             //echo "Überblick Kameraverzeichnis $cam_name:\n";
-            print_r($alldir);
+            if ($debug) print_r($alldir);
             foreach ($alldir as $nameYear => $dir) 
                 {
-                echo "    ----$nameYear  \n";
+                if ($debug) echo "    ----$nameYear  \n";
                 if ( ($nameYear==$jahr) || ($nameYear==$jahrAlt) )
                     {
                     $newVerzeichnis=$verzeichnis.$nameYear;
                     foreach ($dir as $month => $subdir)
                         {
                         $newVerzeichnis=$verzeichnis.$nameYear.$month;
-                        echo "    -------M:$month  \n";
+                        if ($debug) echo "    -------M:$month  \n";
                         foreach ($subdir as $day => $subsubdir)
                             {
                             $newVerzeichnis=$verzeichnis.$nameYear.$month.$day;
-                            echo "    ---------D:$day  ($newVerzeichnis)\n";
+                            if ($debug) echo "    ---------D:$day  ($newVerzeichnis)\n";
                             foreach ($subsubdir as $index => $file)
                                 {
-                                echo "    -----------------$index   $file\n";
+                                if ($debug) echo "    -----------------$index   $file\n";
                                 rename($verzeichnis."\\".$nameYear."\\".$month."\\".$day."\\".$file,$verzeichnis.$file);
                                 //echo "    ------------$index  (".json_encode($YmDdir).")\n";
                                 //foreach ($YmDdir as $key => $file) echo "    ------------------------$key   $file\n";

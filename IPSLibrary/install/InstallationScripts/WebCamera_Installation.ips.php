@@ -94,6 +94,7 @@
 	$LogFileHandler=new LogFileHandler($subnet);    // handles Logfiles und Cam Capture Files
 
     $webCamera = new webCamera();       // eigene class starten
+    echo "\n";
 
 	/******************************************************
 	 *
@@ -158,7 +159,7 @@
 		echo "IPSCam installiert, Ausgabe Konfiguration, nur zur information, es gilt die Config im OperationCenter_Configuration File :\n";
 		$CamConfig             = IPSCam_GetConfiguration();
         //print_r($CamConfig);
-        foreach ($CamConfig as $cam) echo "    ".$cam["Name"]."\n";
+        foreach ($CamConfig as $cam) echo "    ".str_pad($cam["Name"],30).$cam["Component"]."\n";
         echo "\n";
         }
 
@@ -195,7 +196,7 @@
             {
             if (isset ($cam_config['FTPFOLDER']))         
                 {
-                echo "   ==> Bearbeite Purge Webkamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
+                echo "   ==> Bearbeite MoveCamFiles für die Webkamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
                 $cam_config['CAMNAME']=$cam_name;
                 if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config,false);        // true ist mit debug
                 //if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER'],true);
@@ -239,7 +240,11 @@
                     $dosOps->mkdirtree($verzeichnis,true);          // mit Debug um Fehler rauszufinden
                     }
                 }
-            else echo 'Fehler, FTP Funktion in der Konfiguration disabled. Füge "FTP" => "Enabled" ein.'."\n";
+            else 
+                {
+                /* bei externen Kameras ist der FTP Folder nicht vorhanden */    
+                //echo 'Fehler, FTP Funktion in der Konfiguration disabled. Füge "FTP" => "Enabled" ein.'."\n";
+                }
 
             $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdDataOC);
             if ($cam_categoryId==false)
@@ -320,7 +325,11 @@
                     }
                 else echo 'Fehler, kein Stream definiert. Füge "STREAM" => "enabled" ein.\n';
                 }                           /* nur anlegen wenn FTPFOLDER definiert ist */
-            else echo 'Fehler, FTPFOLDER in der Konfiguration nicht definiert. Füge "FTPFOLDER" => FTP_Cam_Verzeichnis ein.'."\n";
+            else 
+                {
+                /* bei externen Kameras gibt es keinen FTP Fiolder */
+                //echo 'Fehler, FTPFOLDER in der Konfiguration nicht definiert. Füge wenn erforderlich "FTPFOLDER" => FTP_Cam_Verzeichnis ein.'."\n";
+                }
 
             //echo "      Konfiguration ".$cam_name."\n"; print_r($cam_config);
             echo "\n";
@@ -355,11 +364,11 @@
             }
             
         echo "-------showCamSnapshots  \n";
-        $OperationCenter->showCamSnapshots(array(),true);	
+        $OperationCenter->showCamSnapshots($camConfig,true);	
         
         /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
         echo "-------showCamCaptureFiles  \n";
-        $OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM']);
+        $OperationCenter->showCamCaptureFiles($camConfig);
 
         /************************************************************************************************************** 
          *

@@ -110,14 +110,15 @@ if ($_IPS['SENDER']=="TimerEvent")
 if ($_IPS['SENDER']=="Execute") 
 	{    
     /* eventuelle Ausgaben über den Status */
-
+    echo "\n";
     echo "Ausgabe der Camera Config aus der OperationCenter CamConfig nach Cam Namen gegliedert:\n";
-    print_r($webCamera->getConfiguration());    
+    //print_r($webCamera->getConfiguration());    
     $camConfig = $webCamera->getStillPicsConfiguration();
     //print_r($camConfig);                                        // plain mit Index
     $zielVerzeichnis = $webCamera->zielVerzeichnis();
     
-    $maxCount = count($camConfig);    
+    $maxCount = count($camConfig);  
+    echo "   ---StillPics download from $maxCount Cams to $zielVerzeichnis\n";  
     $j=GetValue($camIndexID);
     for ($i=0; $i<$maxCount; $i++)
         {

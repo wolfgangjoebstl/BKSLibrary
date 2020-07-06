@@ -157,7 +157,8 @@ class Logging
 		{
 		//echo "Logfile Construct\n";
 		$this->prefix=$prefix;
-		$this->log_File=$logfile;
+		//$this->log_File=$logfile;
+		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // ales wegloeschen das einem korrekten Filenamen widerspricht
 		$this->nachrichteninput_Id=$nachrichteninput_Id;
         $this->config["Prefix"]=$prefix;
         $this->config["HTMLOutput"]=$html;
