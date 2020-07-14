@@ -951,6 +951,8 @@ if ($_IPS['SENDER']=="TimerEvent")
                         $cam_config['CAMNAME']=$cam_name;
                         if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
                         if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
+                        /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
+                        $OperationCenter->showCamCaptureFiles($cam_config);
                         }
                     }
 				/* Die Snapshots der IPS Cam Kameras auf einen Bildschirm bringen, kann auch Modul Webcamera übernehmen */	
@@ -960,9 +962,6 @@ if ($_IPS['SENDER']=="TimerEvent")
                     $webCamera = new webCamera();       // eigene class starten
                     $camConfig = $webCamera->getStillPicsConfiguration();
                     $OperationCenter->showCamSnapshots($camConfig);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
-                    
-                    /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
-                    $OperationCenter->showCamCaptureFiles($camConfig);
                     }
 				} /* Ende isset */
 			if ($count>0)

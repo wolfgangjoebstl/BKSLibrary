@@ -95,7 +95,6 @@ if ($_IPS['SENDER']=="TimerEvent")
     for ($i=0; $i<$maxCount; $i++)
         {
         $Cam=$camConfig[$j];
-        echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
         $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
         $j++;
         if ($j==$maxCount) $j=0;
@@ -123,7 +122,7 @@ if ($_IPS['SENDER']=="Execute")
     for ($i=0; $i<$maxCount; $i++)
         {
         $Cam=$camConfig[$j];
-        echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+        if (isset($Cam["COMPONENT"])) echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
         $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
         $j++;
         if ($j==$maxCount) $j=0;

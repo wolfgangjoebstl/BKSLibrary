@@ -2943,13 +2943,17 @@ class OperationCenter
 	function showCamCaptureFiles($ocCamConfig,$debug=false)
 		{
         $status=false;
+        $sysOps = new sysOps();
+
         if ($this->moduleManagerCam)
             {
             $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
             if ($debug) echo "showCamCaptureFiles: started, Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
             $count=0; $index=0;		
-            foreach ($ocCamConfig as $cam_name => $cam_config)
+            foreach ($ocCamConfig as $indexName => $cam_config)
                 {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
                 if (isset ($cam_config['FTPFOLDER']))         
                     {                    
                     $index++;
@@ -3022,7 +3026,7 @@ class OperationCenter
                     if ($debug) 
                         {
                         echo "Files aus dem Verzeichnis $verzeichnis werden kopiert.\n";
-                        print_r($picdir);
+                        //print_r($picdir);         // doppelte Ausgabe, nicht notwendig
                         }
                     if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
                         {
@@ -3032,18 +3036,21 @@ class OperationCenter
                         $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
                         for ($i=0;$i<$size;$i++)
                             {
-                            if ($debug) echo "   ".$picdir[$i];
+                            //if ($debug) echo "   ".$picdir[$i];           // so sieht man die avi files auch
                             $path_parts = pathinfo($picdir[$i]);
                             if ($path_parts['extension']=="jpg")
                                 {
+                                if ($debug) echo "   ".str_pad($verzeichnis."\\".$picdir[$i],50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$picdir[$i])),16)."    ".
+                                                      date("H:i:s",filemtime($verzeichnis."\\".$picdir[$i]));
                                 //echo "       Dirname: ".$path_parts['dirname'], "\n";
                                 //echo "       Basename: ".$path_parts['basename'], "\n";
                                 //echo "       Extension: ".$path_parts['extension'], "\n";
                                 //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
                                 if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; if ($debug) echo "  *"; };
                                 $k++;		// eigener Index, da manche Files übersprungen werden
+                                if ($debug) echo "\n";
                                 } 
-                            if ($debug) echo "\n";
+                            //if ($debug) echo "\n";
                             }
                         echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
                         echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	

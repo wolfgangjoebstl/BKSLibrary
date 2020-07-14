@@ -3138,7 +3138,8 @@ class sysOps
  * fileAvailable        eine Datei in einem Verzeichnis suchen, auch mit Wildcards
  * mkdirtree
  * readdirToArray       ein Verzeichnis samt Unterverzeichnisse einlesen und als Array zurückgeben
- * dirToArray          verwendet für das rekursive aufrufen
+ * readdirtoStat        nur statistische Informationen über das Verzeichnis zurückmelden
+ * dirToArray           verwendet für das rekursive aufrufen
  * correctDirName
  * rrmdir               ein Verzeichnis rekursiv loeschen
  * readFile             eine Datei ausgeben
@@ -3262,15 +3263,19 @@ class dosOps
         return(is_dir($directory));              
         }
 
+	/* letzte Änderung in einem Verzeichnis finden 
+     * dazu nocheinmal das gesamte Verzeichnis auslesen, geht aber nicht rekursiv
+     */
+
     function latestChange($dir, $recursive=false)
         {
         //echo "LatestChange: mit $dir aufgerufen.\n";
         $latestdate=0;
-        $dirs=$this->readdirToArray($dir,$recursive);
+        $dirs=$this->readdirToArray($dir,false);
         //print_r($dirs);
         foreach ($dirs as $filename)
             {
-            $file=$dir.$filename;
+            $file=$dir.$filename;           // bei Rekurisv kann filename auch ein array sien, dann die selbe Routine rekursiv noch einmal aufrufen
             if (is_dir($file)) 
                 {
                 // echo "Fehler";
@@ -3378,12 +3383,13 @@ class dosOps
         $stat=array();
         $stat["files"]=0; 
         $stat["dirs"]=0;
+        $stat["latestdate"]=0;
 
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $dir ) )
 			{
             $this->dirToStat($dir,$stat,$recursive);   
-            if (false)
+            //if (false)            // Notbremse wie eine grosse Anzahl an Dateien im Verzeichnis war
                 {		
                 $cdir = scandir($dir);
                 foreach ($cdir as $key => $value)
@@ -3395,7 +3401,7 @@ class dosOps
                             if ($recursive)
                                 { 
                                 //echo "DirtoArray, vor Aufruf (".memory_get_usage()." Byte).\n";					
-                                $this->dirToStat($dir . DIRECTORY_SEPARATOR . $value,$stat);
+                                $this->dirToStat($dir . DIRECTORY_SEPARATOR . $value,$stat,$recursive);
                                 $stat["dirs"]++;
                                 //echo "  danach (".memory_get_usage()." Byte).  ".sizeof($result)."/".sizeof($result[$value])."\n";
                                 }
@@ -3405,6 +3411,8 @@ class dosOps
                         else
                             {
                             $stat["files"]++;
+                            $file = $dir . DIRECTORY_SEPARATOR . $value;
+                            if ((filemtime($file))>$stat["latestdate"]) $stat["latestdate"]=filemtime($file);
                             }
                         }
                     } // ende foreach
@@ -3438,6 +3446,8 @@ class dosOps
 	         	else
 	         		{
 	            	$stat["files"]++;
+                    $file = $dir . DIRECTORY_SEPARATOR . $value;
+                    if ((filemtime($file))>$stat["latestdate"]) $stat["latestdate"]=filemtime($file);
 	         		}
 	      		}
 	   		}

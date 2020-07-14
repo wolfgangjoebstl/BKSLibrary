@@ -79,7 +79,7 @@ class WebCamera
                 {
                 $this->camConfiguration=$OperationCenterConfig['CAM'];
                 }
-            $camConfig = $this->getStillPicsConfiguration(true);                // Debug Ausgabe ist default, um alle konfigurierten Kameras zu sehen
+            $camConfig = $this->getStillPicsConfiguration(false);                // true Debug Ausgabe, um alle konfigurierten Kameras zu sehen
             foreach ($camConfig as $index=>$data) 
                 {
                 $PictureTitleID=CreateVariable("CamPictureTitle".$index,3, $categoryIdCams,100,"",null,null,"");        // string
@@ -97,25 +97,109 @@ class WebCamera
         return ($this->camConfiguration);
         }
 
-    /* aus der Operation Center Configuration die Component Information raussuchen
+    /* aus der Operation Center Configuration die Component Information zusammenstellen
+     * und die Anordnung erfolgt nicht mehr nach Namen sondern nach Indexnummern. Wichtig wenn nicht alle Kameras in einem Durchlauf gemacht werden können
+     * Wenn keine IPSCam oder so installiert, definiert, dann ist das Array leer
+     * Eintraege ohne "COMPONET" nicht mehr igorieren
+     *
      */
 
     public function getStillPicsConfiguration($debug=false)
         {
-        $i=0; $j=0; $configCamPicture=array();
+        $i=0; $configCamPicture=array();
         foreach($this->camConfiguration as $camera => $entry) 
             {
             if (isset($entry["COMPONENT"])) 
                 {
-                if ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]."\n";
-                $configCamPicture[$j]=$entry;
-                $configCamPicture[$j]["NAME"]=$camera;
-                $j++;
+                if ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]." (vorher)\n";
+                $componentDef=explode(",",$entry["COMPONENT"]);
+                //print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
+                if (isset($entry["DOMAINADRESSE"])) $componentDef[1]=$entry["DOMAINADRESSE"];
+                elseif (isset($entry["IPADRESSE"])) $componentDef[1]=$entry["IPADRESSE"];
+                else 
+                    {
+                    if ($debug) echo "                        keine detaillierten Angaben zur Netzwerk Adresse, Component nicht überschreiben, es bleibt bei ".$componentDef[1]."\n";
+                    }
+                if (isset($entry["USERNAME"])) $componentDef[2]=$entry["USERNAME"];
+                else
+                    {
+                    if ($debug)  echo "                      keine detaillierten Angaben zum Usernamen, Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
+                    }
+                if (isset($entry["PASSWORD"])) $componentDef[3]=$entry["PASSWORD"];
+                else 
+                    {
+                    if ($debug) echo "                       keine detaillierten Angaben zum Passwort, Component nicht überschreiben, es bleibt bei ".$componentDef[3]."\n";
+                    }
+                $entry["COMPONENT"]=implode(",",$componentDef);
+                if ($debug) echo "        ".str_pad("",30)." ".$entry["COMPONENT"]."\n";
                 }
             elseif ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["IPADRESSE"]."\n";
+            $configCamPicture[$i]=$entry;
+            $configCamPicture[$i]["NAME"]=$camera;          // sonst wird es woeder überschrieben
             $i++;
             }
         return($configCamPicture);
+        }
+
+    /* etwas schwierig mit den Components:
+     * rstp streams werden vom IP Symcom Server umgesetzt, daher immer lokale IP Adresse
+     * http mjpeg streams greifen direkt zu, daher externe IP Adresse
+     *
+     */
+
+    public function getComponentIntern($entry)
+        {
+        if (isset($entry["COMPONENT"])) 
+            {
+            $componentDef=explode(",",$entry["COMPONENT"]);
+            //print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
+            if (isset($entry["DOMAINADRESSE"])) $componentDef[1]=$entry["DOMAINADRESSE"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[1]."\n";
+            if (isset($entry["USERNAME"])) $componentDef[2]=$entry["USERNAME"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
+            if (isset($entry["PASSWORD"])) $componentDef[3]=$entry["PASSWORD"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[3]."\n";
+            $entry["COMPONENT"]=implode(",",$componentDef);
+            return($entry);
+            }
+        else return (false); 
+        }
+
+    public function getComponentExtern($entry)
+        {
+        if (isset($entry["COMPONENT"])) 
+            {
+            if (IPAdrQuickCheck($entry["IPADRESSE"])==false) unset($entry["IPADRESSE"]);                
+            $componentDef=explode(",",$entry["COMPONENT"]);
+            //print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
+            if (isset($entry["IPADRESSE"])) $componentDef[1]=$entry["IPADRESSE"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[1]."\n";
+            if (isset($entry["USERNAME"])) $componentDef[2]=$entry["USERNAME"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
+            if (isset($entry["PASSWORD"])) $componentDef[3]=$entry["PASSWORD"];
+            else echo "Component nicht überschreiben, es bleibt bei ".$componentDef[3]."\n";
+            $entry["COMPONENT"]=implode(",",$componentDef);
+            return($entry);
+            }
+        else return (false); 
+        }
+
+    /* a few checks, whether it is a IP Address */
+
+    public function IPAdrQuickCheck($ip)
+        {
+        $ok=true;
+        $ipadresse=explode(".",$ip);
+        if (count($ipadresse)==4) 
+            {
+            foreach ($ipadresse as $ip)
+                {
+                $ipNum=(integer)$ip;
+                if ( ($ipNum !== false) && ($ipNum < 256) ) ; else $ok=false;
+                }
+            }
+        else $ok=false;
+        return ($ok);
         }
 
     public function getCategoryIdData()

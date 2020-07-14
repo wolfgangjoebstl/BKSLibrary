@@ -19,25 +19,24 @@
 /**@addtogroup ipscomponent
  * @{
  *
- * @file          IPSComponentCam_Instar1080pSeries.class.php
- * @author        bumaas
+ * @file          IPSComponentCam_Reolink.class.php
+ * @author        wolfgangjoebstl
  *
  */
 
 /**
- * @class IPSComponentCam_Instar1080pSeries
+ * @class IPSComponentCam_Reolink
  *
  * Definiert ein IPSComponentCam Object, das die Funktionen einer Cam Componente für eine
- * Instar1080pSeries Kamera implementiert
+ * Reolink rtsp Kamera implementiert
  *
- * @author bumaas
- * @version
- *   Version 2.50.2, 21.06.2018<br/>
+ * @author wolfgangjoebstl
+ * 
  */
 
 IPSUtils_Include ('IPSComponentCam.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentCam');
 
-class IPSComponentCam_Instar1080pSeries extends IPSComponentCam {
+class IPSComponentCam_Reolink extends IPSComponentCam {
 
     private $ipAddress;
     private $username;
@@ -46,7 +45,7 @@ class IPSComponentCam_Instar1080pSeries extends IPSComponentCam {
     /**
      * @public
      *
-     * Initialisierung eines IPSComponentCam_Instar1080pSeries Objektes
+     * Initialisierung eines IPSComponentCam_Reolink Objektes
      *
      * @param string $ipAddress IP Adresse der Kamera
      * @param string $username Username für Kamera Zugriff
@@ -80,61 +79,80 @@ class IPSComponentCam_Instar1080pSeries extends IPSComponentCam {
      *
      * Liefert URL des Kamera Live Streams
      *
+     *   Reolink                         rtsp://admin:111111@192.168.0.110:554//h264Preview_01_main
+     *                      Sub Stream:  rtsp://admin:111111@192.168.0.110:554//h264Preview_01_sub      
+     *
      * @param integer $size Größe des Streams, mögliche Werte:
      *                      IPSCOMPONENTCAM_SIZE_SMALL, IPSCOMPONENTCAM_SIZE_MIDDLE oder IPSCOMPONENTCAM_SIZE_LARGE
      * @return string URL des Streams
      */
-    public function Get_URLLiveStream($size=IPSCOMPONENTCAM_SIZE_MIDDLE) {
-        $chn = '';
-        switch ($size) {
+     
+    public function Get_URLLiveStream($size=IPSCOMPONENTCAM_SIZE_MIDDLE) 
+        {
+        switch ($size) 
+            {
             case  IPSCOMPONENTCAM_SIZE_SMALL:
-                $chn = '13';
+                $url = 'rtsp://'.$this->username.':'.$this->password.'@'.$this->ipAddress.':554/h264Preview_01_sub';
                 break;
             case  IPSCOMPONENTCAM_SIZE_MIDDLE:
-                $chn = '12';
-                break;
             case  IPSCOMPONENTCAM_SIZE_LARGE:
-                $chn = '11';
+                $url = 'rtsp://'.$this->username.':'.$this->password.'@'.$this->ipAddress.':554/h264Preview_01_main';
                 break;
             default:
                 trigger_error('Unknown Size '.$size);
-        }
+            }
 
-        $url = 'http://'.$this->ipAddress.'/mjpegstream.cgi?-chn='.$chn.'&-usr='.$this->username.'&-pwd='.$this->password;
         IPS_LogMessage	(get_class($this), $url);
         return $url;
-    }
+        }
 
     /**
      * @public
      *
      * Liefert URL des Kamera Bildes
      *
+     *   Reolink                            /cgi-bin/api.cgi?cmd=Snap&channel=0&rs=(any combination of numbers and letters)&user=admin&password=cloudg06
+     *
      * @param integer $size Größe des Bildes, mögliche Werte:
      *                      IPSCOMPONENTCAM_SIZE_SMALL, IPSCOMPONENTCAM_SIZE_MIDDLE oder IPSCOMPONENTCAM_SIZE_LARGE
      * @return string URL des Bildes
      */
-    public function Get_URLPicture($size=IPSCOMPONENTCAM_SIZE_MIDDLE) {
-        $snapshot = '';
+    public function Get_URLPicture($size=IPSCOMPONENTCAM_SIZE_MIDDLE) 
+        {
+        $strRand=$this->str_rand(8);
 
-        switch ($size){
+        switch ($size)
+            {
             case IPSCOMPONENTCAM_SIZE_SMALL:
-                $snapshot = 'auto2.jpg';
-                break;
             case IPSCOMPONENTCAM_SIZE_MIDDLE:
-                $snapshot = 'auto.jpg';
-                break;
             case IPSCOMPONENTCAM_SIZE_LARGE:
-                $snapshot = 'snap.jpg';
+                $url = 'http://'.$this->ipAddress.'/cgi-bin/api.cgi?cmd=Snap&channel=0&rs='.$strRand.'&user='.$this->username.'&password='.$this->password;
                 break;
             default:
                 trigger_error('Unknown Size '.$size);
                 break;
-        }
-        $url = 'http://'.$this->ipAddress.'/tmpfs/'.$snapshot.'?usr='.$this->username.'&pwd='.$this->password;
+            }
         IPS_LogMessage	(get_class($this), $url);
         return $url;
-    }
+        }
+
+    function str_rand(int $length = 20)
+        {
+        $ascii_codes = range(48, 57) + range(97, 122);
+        $codes_lenght = (count($ascii_codes)-1);
+        shuffle($ascii_codes);
+        $string = '';
+        for($i = 1; $i <= $length; $i++)
+            {
+            $previous_char = $char ?? '';
+            $char = chr($ascii_codes[random_int(0, $codes_lenght)]);
+            while($char == $previous_char){
+                $char = chr($ascii_codes[random_int(0, $codes_lenght)]);
+            }
+            $string .= $char;
+            }
+        return $string;
+        }
 
     /**
      * @public
@@ -211,13 +229,9 @@ class IPSComponentCam_Instar1080pSeries extends IPSComponentCam {
 
         switch ($size) {
             case  IPSCOMPONENTCAM_SIZE_SMALL:
-                $return = 320;
-                break;
             case  IPSCOMPONENTCAM_SIZE_MIDDLE:
-                $return = 640;
-                break;
             case  IPSCOMPONENTCAM_SIZE_LARGE:
-                $return = 1920;
+                $return = 2340;
                 break;
 
             default:
@@ -240,11 +254,7 @@ class IPSComponentCam_Instar1080pSeries extends IPSComponentCam {
 
         switch ($size) {
             case  IPSCOMPONENTCAM_SIZE_SMALL:
-                $return = 176;
-                break;
             case  IPSCOMPONENTCAM_SIZE_MIDDLE:
-                $return = 352;
-                break;
             case  IPSCOMPONENTCAM_SIZE_LARGE:
                 $return = 1080;
                 break;
