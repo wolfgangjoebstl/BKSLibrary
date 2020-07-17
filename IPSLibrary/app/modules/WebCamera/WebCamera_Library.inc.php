@@ -123,7 +123,7 @@ class WebCamera
                 if (isset($entry["USERNAME"])) $componentDef[2]=$entry["USERNAME"];
                 else
                     {
-                    if ($debug)  echo "                      keine detaillierten Angaben zum Usernamen, Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
+                    if ($debug) echo "                       keine detaillierten Angaben zum Usernamen, Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
                     }
                 if (isset($entry["PASSWORD"])) $componentDef[3]=$entry["PASSWORD"];
                 else 
@@ -216,58 +216,72 @@ class WebCamera
         return ($picVerzeichnisFull);
         }
 
+    /* StillPics Download, den richtigen Befehl aus dem Component ableiten und aufrufen,. Wenn es zu lange dauert Abbruch !
+     *
+     */
+
     function DownloadImageFromCam($cameraIdx, $componentParams, $directoryName, $size, $fileName, $debug=false) 
         {
-        $categoryIdCams     		= IPS_GetObjectIDByName('Cams',    $this->CategoryIdDataOC);
-        $PictureTitleID             = IPS_GetObjectIDByName("CamPictureTitle".$cameraIdx, $categoryIdCams);        // string
-        $PictureTimeID              = IPS_GetObjectIDByName("CamPictureTime".$cameraIdx, $categoryIdCams);         // integer, time                    
-        
-        $result = IPS_SemaphoreEnter('IPSCam_'.$cameraIdx, 5000);
-        if ($result) 
+        if ($debug) echo "DownloadImageFromCam aufgerufen mit folgenden Parametern aus der Konfiguration:\n"; 
+        if (isset($componentParams["COMPONENT"]))
             {
-            //$componentParams = $this->config[$cameraIdx][IPSCAM_PROPERTY_COMPONENT];
-            $component       = IPSComponent::CreateObjectByParams($componentParams["COMPONENT"]);
-            $urlPicture      = $component->Get_URLPicture($size);
-            //$localFile       = IPS_GetKernelDir().'Cams/'.$cameraIdx.'/'.$directoryName.'/'.$fileName.'.jpg';
-            $localFile       = $directoryName.$fileName;
-            echo "   DownloadImageFromCam, $cameraIdx $directoryName$fileName  \n";
-            IPSLogger_Dbg(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");         // Debug damit im Info Log nicht zuviele Ausgaben sind
-
-            $curl_handle=curl_init();
-            curl_setopt($curl_handle, CURLOPT_URL, $urlPicture);
-            curl_setopt($curl_handle, CURLOPT_CONNECTTIMEOUT, 20);
-            curl_setopt($curl_handle, CURLOPT_TIMEOUT, 30);  
-            curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER,true);
-            curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($curl_handle, CURLOPT_FAILONERROR, true);
-            $fileContent = curl_exec($curl_handle);
-            curl_close($curl_handle);
-
-            if ($fileContent===false) 
+            $categoryIdCams     		= IPS_GetObjectIDByName('Cams',    $this->CategoryIdDataOC);
+            $PictureTitleID             = IPS_GetObjectIDByName("CamPictureTitle".$cameraIdx, $categoryIdCams);        // string
+            $PictureTimeID              = IPS_GetObjectIDByName("CamPictureTime".$cameraIdx, $categoryIdCams);         // integer, time                    
+            
+            $result = IPS_SemaphoreEnter('IPSCam_'.$cameraIdx, 5000);
+            if ($result) 
                 {
+                //$componentParams = $this->config[$cameraIdx][IPSCAM_PROPERTY_COMPONENT];
+                print_r($componentParams);
+                $component       = IPSComponent::CreateObjectByParams($componentParams["COMPONENT"]);
+                $urlPicture      = $component->Get_URLPicture($size);
+                //$localFile       = IPS_GetKernelDir().'Cams/'.$cameraIdx.'/'.$directoryName.'/'.$fileName.'.jpg';
+                $localFile       = $directoryName.$fileName;
+                echo "   DownloadImageFromCam, $cameraIdx $directoryName$fileName  \n";
+                IPSLogger_Dbg(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");         // Debug damit im Info Log nicht zuviele Ausgaben sind
+
+                $curl_handle=curl_init();
+                curl_setopt($curl_handle, CURLOPT_URL, $urlPicture);
+                curl_setopt($curl_handle, CURLOPT_CONNECTTIMEOUT, 20);
+                curl_setopt($curl_handle, CURLOPT_TIMEOUT, 30);  
+                curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER,true);
+                curl_setopt($curl_handle, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($curl_handle, CURLOPT_FAILONERROR, true);
+                $fileContent = curl_exec($curl_handle);
+                curl_close($curl_handle);
+
+                if ($fileContent===false) 
+                    {
+                    IPS_SemaphoreLeave('IPSCam_'.$cameraIdx);
+                    //IPSLogger_Dbg (__file__, 'File '.$this->GetLoggingTextFromURL($urlPicture).' could NOT be found on the Server !!!');
+                    echo "Error, filecontent false.\n";
+                    return false;
+                    }
+                $result = file_put_contents($localFile, $fileContent);
                 IPS_SemaphoreLeave('IPSCam_'.$cameraIdx);
-                //IPSLogger_Dbg (__file__, 'File '.$this->GetLoggingTextFromURL($urlPicture).' could NOT be found on the Server !!!');
-                echo "Error, filecontent false.\n";
-                return false;
-                }
-            $result = file_put_contents($localFile, $fileContent);
-            IPS_SemaphoreLeave('IPSCam_'.$cameraIdx);
 
-            if ($result===false) 
-                {
-                trigger_error('Error writing File Content to '.$localFile);
+                if ($result===false) 
+                    {
+                    trigger_error('Error writing File Content to '.$localFile);
+                    }
+                else
+                    {       /* erfolgeich eine Datei erstellt, die begleitenden Informationen updaten */
+                    $filemtime=filemtime($localFile);
+                    if ($debug) echo "      Kamera ".$componentParams["NAME"]." :  write to  $localFile. File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
+                    SetValue($PictureTitleID,$componentParams["NAME"]."   ".date ("F d Y H:i:s.", $filemtime));
+                    SetValue($PictureTimeID,$filemtime);
+                    }
+                return $localFile;
                 }
-            else
-                {       /* erfolgeich eine Datei erstellt, die begleitenden Informationen updaten */
-                $filemtime=filemtime($localFile);
-                if ($debug) echo "      Kamera ".$componentParams["NAME"]." :  write to  $localFile. File Datum vom ".date ("F d Y H:i:s.", $filemtime)."\n";	
-                SetValue($PictureTitleID,$componentParams["NAME"]."   ".date ("F d Y H:i:s.", $filemtime));
-                SetValue($PictureTimeID,$filemtime);
-                }
-            return $localFile;
+            else echo "Error, semaphore IPSCam_".$cameraIdx." busy.\n";
+            return false;
             }
-        else echo "Error, semaphore IPSCam_".$cameraIdx." busy.\n";
-        return false;
+        else 
+            {
+            echo "Parameter [\"COMPONENT\"] nicht definiert.\n";
+            return false;
+            }
         }
 
 		private function GetLoggingTextFromURL($url) {

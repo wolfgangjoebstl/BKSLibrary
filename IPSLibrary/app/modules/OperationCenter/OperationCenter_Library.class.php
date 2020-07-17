@@ -2948,178 +2948,236 @@ class OperationCenter
         if ($this->moduleManagerCam)
             {
             $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
+            $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
             if ($debug) echo "showCamCaptureFiles: started, Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
+
+            $childrens = IPS_GetChildrenIDs($categoryId_WebFrontAdministrator);
+            $camsFound=array();
+            foreach ($childrens as $children)
+                {
+                $camsFound[$children]=true;
+                if ($debug) echo "   $children  ".IPS_GetName($children)."\n";
+                }
+            //if ($debug) print_r($childrens);         // alle Unterobjekte, Cameras ausgeben, nicht mehr verwendete muessen gelöscht werden
+
             $count=0; $index=0;		
             foreach ($ocCamConfig as $indexName => $cam_config)
                 {
                 if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
                 else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
                 if (isset ($cam_config['FTPFOLDER']))         
-                    {                    
-                    $index++;
-                    if ($debug)
-                        {
-                        echo "\n---------------------------------------------------------\n";
-                        echo "  Webfront Tabname für ".$cam_name." erstellen.\n";
-                        }
-                    $heute=date("Ymd", time());
-                    //echo "    Heute      : ".$heute."    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
-
-                    /* in data/OperationCenter/ jeweils pro Camera eine Kategorie mit Cam_Name anlegen 
-                    * sollte bereits vorhanden sein, hier werden die Infos über letzte Bewegung und Anzahl Capture Bilder gesammelt
-                    *
-                    */
-                    $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
-                    if ($cam_categoryId==false)
-                        {
-                        $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-                        IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-                        IPS_SetParent($cam_categoryId,$this->CategoryIdData);
-                        }
-                    /* im Webfront visualization/adminstrator/ eine IPSCam_Capture Kategorie mit jeweils pro Kamera eigener Kategorie anlegen 
-                    * dort wird die Variable für die html box gespeichert
-                    *  ändern auf Link, damit später auch link von user geht
-                    */	
-                    $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
-                    $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$index);
-                
-                    /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen */
-                    $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox');
-                    /*$html.='<style> 
-                            table {width:100%}
-                            td {width:50%}						
-                            table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                            .bildmittext {border: 5px solid red;position: relative;}
-                            .bildmittext img {display:block;}
-                            .bildmittext span {background-color: red;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                            </style>';
-                    $html.='<table>'; */
-                
-                    $box="";
-                    $box.='<style> 
-                            table {width:100%}
-                            td {width:20%}						
-                            table,td {align:center;border:1px solid white;border-collapse:collapse;}
-                            .bildmittext {border: 5px solid green;position: relative;}
-                            .bildmittext img {display:block;}
-                            .bildmittext span {background-color: grey;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
-                            </style>';
-                    $box.='<table>';		
-                    /* $box.='<style> .container { position: relative; text-align: center; color: white; } 
-                    .bottom-left { position: absolute; bottom: 8px; left: 16px; } 
-                    .top-left {position: absolute; top: 8px; left: 16px; } 
-                    .top-right { position: absolute; top: 8px; right: 16px; } 
-                    .bottom-right { position: absolute; bottom: 8px; right: 16px; } 
-                    .centered { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); } </style>';
-                    $box.='<table frameborder="1" width="100%">'; */
-
-                    $verzeichnis=$cam_config['FTPFOLDER'].$heute;
-                
-                    /* Kamerabilderverzeichnis muss innerhalb Webfront entstehen, daher Bilder dorthin kopieren */
-                    $imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
-                    $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
-                    $imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
-                    //echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
-                    if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
-                
-                    $picdir=$this->readdirToArray($verzeichnis,false,-500);
-                    if ($debug) 
-                        {
-                        echo "Files aus dem Verzeichnis $verzeichnis werden kopiert.\n";
-                        //print_r($picdir);         // doppelte Ausgabe, nicht notwendig
-                        }
-                    if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
-                        {
-                        /* Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
-                        $size=sizeof($picdir);
-                        $j=0;$k=0;
-                        $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
-                        for ($i=0;$i<$size;$i++)
+                    {  
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                        
+                        $index++;
+                        if ($debug)
                             {
-                            //if ($debug) echo "   ".$picdir[$i];           // so sieht man die avi files auch
-                            $path_parts = pathinfo($picdir[$i]);
-                            if ($path_parts['extension']=="jpg")
-                                {
-                                if ($debug) echo "   ".str_pad($verzeichnis."\\".$picdir[$i],50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$picdir[$i])),16)."    ".
-                                                      date("H:i:s",filemtime($verzeichnis."\\".$picdir[$i]));
-                                //echo "       Dirname: ".$path_parts['dirname'], "\n";
-                                //echo "       Basename: ".$path_parts['basename'], "\n";
-                                //echo "       Extension: ".$path_parts['extension'], "\n";
-                                //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
-                                if (($k % 6)==2) { $logdir[$j++]=$picdir[$i]; if ($debug) echo "  *"; };
-                                $k++;		// eigener Index, da manche Files übersprungen werden
-                                if ($debug) echo "\n";
-                                } 
-                            //if ($debug) echo "\n";
+                            echo "\n  ---------------------------------------------------------\n";
+                            echo "  Webfront Tabname für ".$cam_name." erstellen.\n";
                             }
-                        echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
-                        echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-                        //print_r($logdir);	
-                        $check=array();
-                        $handle=opendir ($imgVerzeichnisFull);
-                        while ( false !== ($datei = readdir ($handle)) )
+                        $heute=date("Ymd", time());
+                        //echo "    Heute      : ".$heute."    Gestern    : ".date("Ymd", strtotime("-1 day"))."\n";
+
+                        /* in data/OperationCenter/ jeweils pro Camera eine Kategorie mit Cam_Name anlegen 
+                        * sollte bereits vorhanden sein, hier werden die Infos über letzte Bewegung und Anzahl Capture Bilder gesammelt
+                        *
+                        */
+                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$this->CategoryIdData);
+                        if ($cam_categoryId==false)
                             {
-                            if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
-                                {
-                                $check[$datei]=true;
-                                }
+                            $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                            IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                            IPS_SetParent($cam_categoryId,$this->CategoryIdData);
                             }
-                        closedir($handle);
-                        /* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
-                        $c=0;
-                        foreach ($logdir as $filename)
+
+                        /* im Webfront visualization/adminstrator/ eine IPSCam_Capture Kategorie mit jeweils pro Kamera eigener Kategorie anlegen 
+                        * dort wird die Variable für die html box gespeichert
+                        *  ändern auf Link, damit später auch link von user geht
+                        */	
+                        $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$index);
+                        if (isset($camsFound[$categoryIdCapture])) 
                             {
-                            if ( isset($check[$filename]) == true )
-                                {
-                                $check[$filename]=false;
-                                if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
-                                }
-                            else
-                                {	
-                                echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
-                                copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
-                                $c++;
-                                }
-                            }		
-                        if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
-                        $i=0; $d=0;
-                        foreach ($check as $filename => $delete)
+                            echo "  Camera Cam_$cam_name ($categoryIdCapture) in ".IPS_GetName($categoryId_WebFrontAdministrator)." ($categoryId_WebFrontAdministrator) found.\n";
+                            unset ($camsFound[$categoryIdCapture]);
+                            IPS_SetHidden($categoryIdCapture, false);
+                            }
+                    
+                        /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen */
+                        $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox');
+                        /*$html.='<style> 
+                                table {width:100%}
+                                td {width:50%}						
+                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                                .bildmittext {border: 5px solid red;position: relative;}
+                                .bildmittext img {display:block;}
+                                .bildmittext span {background-color: red;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                                </style>';
+                        $html.='<table>'; */
+                    
+                        $box="";
+                        $box.='<style> 
+                                table {width:100%}
+                                td {width:20%}						
+                                table,td {align:center;border:1px solid white;border-collapse:collapse;}
+                                .bildmittext {border: 5px solid green;position: relative;}
+                                .bildmittext img {display:block;}
+                                .bildmittext span {background-color: grey;position: absolute;bottom: 0;width:100%;line-height: 2em;text-align: center;}
+                                </style>';
+                        $box.='<table>';		
+                        /* $box.='<style> .container { position: relative; text-align: center; color: white; } 
+                        .bottom-left { position: absolute; bottom: 8px; left: 16px; } 
+                        .top-left {position: absolute; top: 8px; left: 16px; } 
+                        .top-right { position: absolute; top: 8px; right: 16px; } 
+                        .bottom-right { position: absolute; bottom: 8px; right: 16px; } 
+                        .centered { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); } </style>';
+                        $box.='<table frameborder="1" width="100%">'; */
+
+                        $verzeichnis=$cam_config['FTPFOLDER'].$heute;
+                    
+                        /* Kamerabilderverzeichnis muss innerhalb Webfront entstehen, daher Bilder dorthin kopieren */
+                        $imgVerzeichnis="user/OperationCenter/Cams/".$cam_name."/";
+                        $imgVerzeichnisFull=IPS_GetKernelDir()."webfront/".$imgVerzeichnis;
+                        $imgVerzeichnisFull = str_replace('\\','/',$imgVerzeichnisFull);
+                        //echo "Quellverzeichnis : ".$verzeichnis."   Zielverzeichnis : ".$imgVerzeichnisFull."\n";
+                        if ( is_dir ( $imgVerzeichnisFull ) == false ) $this->dosOps->mkdirtree($imgVerzeichnisFull);
+                    
+                        $picdir=$this->readdirToArray($verzeichnis,false,-500);
+                        if ($debug) 
                             {
-                            if ($delete == true)
+                            echo "Files aus dem Verzeichnis $verzeichnis werden kopiert.\n";
+                            //print_r($picdir);         // doppelte Ausgabe, nicht notwendig
+                            }
+                        if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
+                            {
+                            /* Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
+                            $size=sizeof($picdir);
+                            $j=0;$k=0;$l=0; $timeWindow=0;
+                            $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
+                            for ($i=0;$i<$size;$i++)
                                 {
-                                if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
-                                unlink($imgVerzeichnisFull.$filename);
-                                $d++;
+                                //if ($debug) echo "   ".$picdir[$i];           // so sieht man die avi files auch
+                                $path_parts = pathinfo($picdir[$i]);
+                                if ($path_parts['extension']=="jpg")
+                                    {
+                                    if ($debug) echo "   ".str_pad($verzeichnis."\\".$picdir[$i],50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$picdir[$i])),16)."    ".
+                                                        date("H:i:s",filemtime($verzeichnis."\\".$picdir[$i]));
+                                    $timeFile=filemtime($verzeichnis."\\".$picdir[$i]);
+                                    if ($timeWindow==0) $timeWindow=$timeFile;      // initialisieren
+                                    if ($timeFile<($timeWindow-60))             // es geht rückwärts also 60 Sekundenfenster vorsehen
+                                        {
+                                        if ($debug) echo "   ";   
+                                        $timeWindow=$timeFile;
+                                        $l=0;
+                                        }
+                                    else
+                                        {
+                                        $l++;
+                                        if ($debug) 
+                                            {
+                                            if ($l==3) echo "  +"; 
+                                            else echo "  |";
+                                            }
+                                        }
+                                    //echo "       Dirname: ".$path_parts['dirname'], "\n";
+                                    //echo "       Basename: ".$path_parts['basename'], "\n";
+                                    //echo "       Extension: ".$path_parts['extension'], "\n";
+                                    //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
+                                    if (($k % 6)==2) 
+                                        { 
+                                        $logdir[$j++]=$picdir[$i]; 
+                                        if ($debug) echo "  *"; 
+                                        };
+                                    $k++;		// eigener Index, da manche Files übersprungen werden
+                                    if ($debug) echo "\n";
+                                    } 
+                                //if ($debug) echo "\n";
                                 }
-                            else
+                            echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
+                            echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
+                            //print_r($logdir);	
+                            $check=array();
+                            $handle=opendir ($imgVerzeichnisFull);
+                            while ( false !== ($datei = readdir ($handle)) )
                                 {
-                                if ($debug) echo "   ".$filename."\n";
-                                $i++;		
+                                if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($imgVerzeichnisFull.$datei) == false)) 
+                                    {
+                                    $check[$datei]=true;
+                                    }
+                                }
+                            closedir($handle);
+                            /* im array check steht für vorhandene Dateien ein true, wenn sie auch im Quellverzeichnis sind wird nicht kopiert */
+                            $c=0;
+                            foreach ($logdir as $filename)
+                                {
+                                if ( isset($check[$filename]) == true )
+                                    {
+                                    $check[$filename]=false;
+                                    //if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen.\n";
+                                    }
+                                else
+                                    {	
+                                    echo "copy ".$verzeichnis."\\".$filename." nach ".$imgVerzeichnisFull.$filename." \n";	
+                                    copy($verzeichnis."\\".$filename,$imgVerzeichnisFull.$filename);
+                                    $c++;
+                                    }
+                                }		
+                            if ($debug) echo "Verzeichnis für Anzeige im Webfront: ".$imgVerzeichnisFull."\n";	
+                            $i=0; $d=0;
+                            foreach ($check as $filename => $delete)
+                                {
+                                if ($delete == true)
+                                    {
+                                    //if ($debug) echo "Datei ".$filename." wird gelöscht.\n";
+                                    unlink($imgVerzeichnisFull.$filename);
+                                    $d++;
+                                    }
+                                else
+                                    {
+                                    //if ($debug) echo "   ".$filename."\n";
+                                    $i++;		
+                                    }	
                                 }	
-                            }	
-                        echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
-            
-                        $end=sizeof($logdir);
-                        if ($end>100) $end=100;		
-                        for ($j=1; $j<$end;$j++)
-                            {
-                            if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td> </tr>'; }
-                            elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
-                            else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],$this->extractTime($logdir[$j-1])).' </td>'; }
-                            }
-            
-                        $box.='</table>';
-                        SetValue($pictureFieldID,$box);
-                        //echo $box;		
-                        }
+                            echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
+                
+                            $end=sizeof($logdir);
+                            if ($end>100) $end=100;		
+                            for ($j=1; $j<$end;$j++)
+                                {
+                                /* nutzt imgsrcstring($imgVerzeichnis,$filename,$title,$text="",$span="span")
+                                 */
+                                //echo "Suche Datei hier: ".$imgVerzeichnisFull.$logdir[$j-1].":\n";
+                                //$timeFile=@filemtime($imgVerzeichnisFull.$logdir[$j-1]);            // Fehlermeldung unterdrücken wenn es Datei zb nicht mehr gibt
+                                echo "Suche Datei hier: ".$verzeichnis."\\".$logdir[$j-1].":\n";
+                                $timeFile=@filemtime($verzeichnis."\\".$logdir[$j-1]);            // nicht die kopierte, sondern die originale Datei evaluieren
+                                if ($timeFile) $timeToDisplay=date("d.m.Y H:i:s",$timeFile);
+                                else $timeToDisplay=$this->extractTime($logdir[$j-1]);
+                                if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Wolfgang",$timeToDisplay).' </td> </tr>'; }
+                                elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Claudia",$timeToDisplay).' </td>'; }
+                                else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"WeissNicht",$timeToDisplay).' </td>'; }
+                                }
+                
+                            $box.='</table>';
+                            SetValue($pictureFieldID,$box);
+                            //echo $box;		
+                            }                   /* ende ftp enabled */
+                        }                   /* ende ftpfolder */
                     }
                 }           // ende foreach
+            echo "Bilder für alle Kameras wurden kopiert. Die folgenden Kameras blieben unbehandelt und werden geloescht oder versteckt.\n";
+            //print_r($camsFound);
+            foreach ($camsFound as $camFound => $status)
+                {
+                if ($debug) echo "   $camFound  ".IPS_GetName($camFound)." wird versteckt.\n";
+                IPS_SetHidden($camFound, true);
+                }
+            
             }
         return ($status);
 		}	
 						
 	/*
 	 * Bei jedem Bild als html Verzeichnis und alternativem Bildtitel darstellen
+     * nutzt class bildmittext bild ist $imgVerzeichnis.$filename
 	 *
 	 */
 
@@ -3136,9 +3194,14 @@ class OperationCenter
 		$pos=strpos($filename,$year);
 		if ($pos !== false)
 			{
-			//echo "Suche : ".$year." in ".$filename." gefunden auf ".$pos."\n";
 			$time=substr($filename,$pos+8,2).":".substr($filename,$pos+10,2).":".substr($filename,$pos+12,2);
+			echo "extractTime, Suche : ".$year." in ".$filename." gefunden auf ".$pos." ergibt \"$time\"\n";
 			}
+        else 
+            {
+            echo "extractTime, keine Ahnung wo im Filenamen $filename eine Zeitangabe stecken sollte. Hab nach $year gesucht!\n";
+            $time="12011966";
+            }
 		return ($time);
 		}			
 			
@@ -5808,7 +5871,7 @@ class LogFileHandler extends OperationCenter
 
         $this->flattenYearMonthDayDirectory($verzeichnis);
 
-        if ($debug) echo "     MoveCamFiles: for $cam_name from $verzeichnis.\n";
+        echo "MoveCamFiles: for $cam_name from $verzeichnis.\n";
 		$count=$this->MoveFiles($verzeichnis,-1,$WebCam_LetzteBewegungID,$debug);      /* in letzteBewegungID wird das Datum/Zeit des letzten kopierten Fotos geschrieben */
 		$PhotoCountID = CreateVariableByName($this->CategoryIdData, "Webcam_PhotoCount", 1);
 		SetValue($PhotoCountID,GetValue($PhotoCountID)+$count);                   /* uebergeordneten Counter und Cam spezifischen Counter nachdrehen */

@@ -1517,21 +1517,37 @@
 				$i=0;
 				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
 					{
-					$i++;
-					echo "  Webfront Tabname für ".$cam_name." \n";
-					$cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
-					if ($cam_categoryId==false)
-						{
-						$cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
-						IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
-						IPS_SetParent($cam_categoryId,$CategoryIdData);
-						}
-					$categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
-					CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
-					echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
-					$pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
-					$box='<iframe frameborder="0" width="100%">     </iframe>';
-					SetValue($pictureFieldID,$box);
+					$i++; $found=false;
+                    if (isset ($cam_config['FTPFOLDER']))         
+                        {
+                        if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                            {
+                            echo "  Webfront Tabname für ".$cam_name." \n";
+                            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                            if ($cam_categoryId==false)
+                                {
+                                $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                                IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                                }
+                            $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
+                            CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+                            echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
+                            $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
+                            $box='<iframe frameborder="0" width="100%">     </iframe>';
+                            SetValue($pictureFieldID,$box);
+                            $found=true;
+                            }
+                        }
+                    if (!$found)
+                        {
+                        echo "  Webfront Tabname für ".$cam_name." wird nicht mehr benötigt, loeschen.\n";
+                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                        if ($cam_categoryId !== false)
+                            {
+                            DeleteWFCItems($WFC10_ConfigId, "Cam_".$cam_name);    
+                            }
+                        }
 					}
 				}
 				

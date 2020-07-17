@@ -208,10 +208,15 @@
     $CamMobilePictureID=IPS_GetObjectIdByName("CamMobilePicture",$CategoryIdDataOverview);
     echo "Kategorie Cams in OperationCenter Data : $CategoryIdDataOverview übernehmen und darin ein Objekt CamTablePicture mit OID $CamTablePictureID und OID $CamMobilePictureID für die Captured Bilder.\n";
 
-    /* Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
-        * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
-        */
+    /**************************************************
+     *
+     * Überblick der Webcams angeführt nach den einzelnen IPCams in deren OperationCenter Konfiguration 
+     * Darstellung erfolgt unabhängig von den Einstellungen in der Konfig des IPSCam Moduls
+     *
+     ******************************************************************************************************/
+
     $resultStream=array(); $idx=0;          // Link zu den Cameras
+    $debug=false;
 
     echo "\n";
     echo "Webcam Kamera Ausgabe für die folgenden Kameras konfigurieren:\n";
@@ -221,10 +226,10 @@
 
         echo "   ---------------------------------\n";
         echo "   Bearbeite WebCamera $cam_name:\n";
-        print_r($cam_config);        
+        if ($debug) print_r($cam_config);        
         if ( (isset($cam_config["FTP"])) && (strtoupper($cam_config["FTP"])=="ENABLED") ) 
             {
-            echo "    Kamera FTP Server speichert für Kamera ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
+            if ($debug) echo "    Kamera FTP Server speichert für Kamera ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";  
             $verzeichnis = $cam_config['FTPFOLDER'];  
             if (is_dir($verzeichnis)) 
                 {
@@ -255,7 +260,7 @@
             IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
             IPS_SetParent($cam_categoryId,$CategoryIdDataOC);
             }
-        echo "    Kategorie pro Kamera vorhanden: $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
+        if ($debug) echo "    Kategorie pro Kamera vorhanden: $cam_categoryId.  ".$ipsOps->path($cam_categoryId)."\n";
 
         if (isset($cam_config['FTPFOLDER']) )
             {
@@ -287,25 +292,31 @@
                 if (isset($cam_config["TYPE"])) $type = strtoupper($cam_config["TYPE"]);
                 else $type="";
                 $know=false;
-                echo "    rtsp/http Stream link für $cam_streamId zusammenbauen. Camera Type is \"$type\":\n";
+                if ($debug) echo "    rtsp/http Stream link für $cam_streamId zusammenbauen. Camera Type is \"$type\":\n";
                 switch ($type)
                     {
                     /* http only */
+                    case "INSTAR-3011":
                     case "INSTAR-6014":
                         if (isset($cam_config["COMPONENT"]))
                             {
-                            echo $index."  ".$cam_config["NAME"]."   ".$cam_config["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+                            if ($debug) echo "    $index  ".$cam_config["NAME"]."   ".$cam_config["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
                             $component       = IPSComponent::CreateObjectByParams($cam_config["COMPONENT"]);
                             $size=0; $command=100;
                             //$urlPicture      = $component->Get_URLPicture($size);
                             $urlLiveStream   = $component->Get_URLLiveStream($size);
+                            if ((isset($cam_config["DOMAINADRESSE"])))
+                                {
+                                $urlLiveStream .= 'http://'.$cam_config["DOMAINADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
+                                }
+                            else $urlLiveStream   = $component->Get_URLLiveStream($size);
                             }
                         break;
                     /* rstp only */
                     case "REOLINK":
                         if (isset($cam_config["COMPONENT"]))
                             {
-                            echo $index."  ".$cam_config["NAME"]."   ".$cam_config["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+                            if ($debug) echo "    $index  ".$cam_config["NAME"]."   ".$cam_config["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
                             $component       = IPSComponent::CreateObjectByParams($cam_config["COMPONENT"]);
                             $size=0; $command=100;
                             //$urlPicture      = $component->Get_URLPicture($size);
@@ -322,7 +333,7 @@
                         $urlLiveStream="";
                         if (isset($cam_config["FORMAT"])) $streamFormat=strtoupper($cam_config["FORMAT"]);
                         else $streamFormat="";
-                        echo "     Streamformat is \"$streamFormat\",\n";
+                        if ($debug) echo "     Streamformat is \"$streamFormat\",\n";
                         if ($streamFormat=="RTSP")
                             {
                             $urlLiveStream .= 'rtsp://'.$cam_config["USERNAME"].':'.$cam_config["PASSWORD"].'@'.$cam_config["IPADRESSE"].':554'.$cam_config["STREAMPORT"];
@@ -330,13 +341,17 @@
                         elseif ($streamFormat=="HTTP")
                             {
                             //echo 'http MJPEG Stream link für $cam_streamId zusammenbauen. Sollte ähnlich lauten wie : http://10.0.1.121/videostream.cgi?user=admin&pwd=cloudg06&resolution=8'."\n";
-                            $urlLiveStream .= 'http://'.$cam_config["IPADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
+                            if ((isset($cam_config["DOMAINADRESSE"])))
+                                {
+                                $urlLiveStream .= 'http://'.$cam_config["DOMAINADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
+                                }
+                            else $urlLiveStream .= 'http://'.$cam_config["IPADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
                             }
                         else echo 'Fehler, keine gültiges FORMAT mit $streamFormat angelegt. Verwende http oder rstp.\n'; 
                         break;
                     }           // ende switch
 
-                echo "    Streaming Media will be set to $urlLiveStream.\n";
+                echo "       Streaming Media will be set to $urlLiveStream.\n";
                 IPS_SetMediaFile($cam_streamId,$urlLiveStream,true);
 
                 $resultStream[$idx]["Stream"]["OID"]=$cam_streamId;
@@ -424,6 +439,7 @@
         * Webfront Konfiguration aufbauen.
         *
         * Im array resultstream sind die Links die in jedem Webfront Administrator,User,Mobile gesetzt werden
+        * es werden nur die Live monitore rtsp und http mjpeg 
         *
         *******************************************************************************************************/
 
