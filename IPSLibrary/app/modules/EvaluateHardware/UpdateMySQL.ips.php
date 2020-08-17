@@ -112,6 +112,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         $sql_channels = new sql_channels();
         $sql_registers = new sql_registers();
         $sql_componentModules = new sql_componentModules();
+        $sql_auditTrail = new sql_auditTrail();
 
         /* sync database Values */
         echo "\n";

@@ -21,15 +21,10 @@
 	  *
 	  * verschiedene Routinen und Definitionen die von allen Modulen benötigt werden können
 	  *
-      * prsaktische Funktionen für alle Programme und Funktionen
+      * praktische Funktionen für alle Programme und Funktionen
       * 
       * nf      	    number_format abhängig von Unit oder default
-      *
-      *
-      *
 	  * send_status  Ausgabe des aktuellen Status aktuell oder historisch
-      *
-      *
 	  * GetInstanceIDFromHMID
 	  * writeLogEvent
 	  * writeLogEventClass
@@ -73,6 +68,11 @@
       * ComponentHandling
 	  * WfcHandling                 Vereinfachter Webfront Aufbau wenn SplitPanes verwendet werden sollen, vorerst von Modulen AMIS und Sprachsteuerung verwendet
       * ModuleHandling              
+      *
+      *
+      *
+      *
+      *
       *
       * DEPRICIATED
       * verschiedene Routinen die bald geloescht werden sollen
@@ -230,7 +230,7 @@ function nf($value,$unit="")
  *
  ****************************************************************************************/
 
-function send_status($aktuell, $startexec=0)
+function send_status($aktuell, $startexec=0, $debug=false)
 	{
 	if ($startexec==0) { $startexec=microtime(true); }
 	$sommerzeit=false;
@@ -241,12 +241,12 @@ function send_status($aktuell, $startexec=0)
 	if ($aktuell)
 	   {
 	   $einleitung.="Ausgabe der aktuellen Werte vom Gerät : ".IPS_GetName(0)." .\n";
-	   echo ">>Ausgabe der aktuellen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+	   if ($debug) echo ">>Ausgabe der aktuellen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 	   }
 	else
 	   {
 	   $einleitung.="Ausgabe der historischen Werte - Vortag vom Gerät : ".IPS_GetName(0).".\n";
-	   echo ">>Ausgabe der historischen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+	   if ($debug) echo ">>Ausgabe der historischen Werte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 	   }
 	if (date("I")=="1")
 		{
@@ -297,7 +297,7 @@ function send_status($aktuell, $startexec=0)
 	   {
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.modules.Amis');
 		$updatePeriodenwerteID=IPS_GetScriptIDByName('BerechnePeriodenwerte',$parentid);
-		//echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID."\n";
+		if ($debug) echo "Script zum Update der Periodenwerte:".$updatePeriodenwerteID." aufrufen. ".exectime($startexec)." Sek \n";
 		IPS_RunScript($updatePeriodenwerteID);
 		echo ">>AMIS Update Periodenwerte. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 		}
@@ -312,13 +312,13 @@ function send_status($aktuell, $startexec=0)
 	$ServerRemoteAccess="";
 	$SystemInfo="";
 
-/******************************************************************************************
- *
- * Allgemeiner Teil, unabhängig von Hardware oder Server
- *
- * zuerst aktuell dann historisch
- *		
- ******************************************************************************************/
+    /******************************************************************************************
+    *
+    * Allgemeiner Teil, unabhängig von Hardware oder Server
+    *
+    * zuerst aktuell dann historisch
+    *		
+    ******************************************************************************************/
 
 	if ($aktuell) /* aktuelle Werte */
 		{
@@ -348,6 +348,7 @@ function send_status($aktuell, $startexec=0)
 
 			$alleTempWerte.="\n\nAktuelle Temperaturwerte direkt aus den HW-Registern:\n\n";
 			$alleTempWerte.=ReadTemperaturWerte();
+            if ($debug) echo "$alleTempWerte \n";
 
 			$alleHumidityWerte.="\n\nAktuelle Feuchtigkeitswerte direkt aus den HW-Registern:\n\n";
 		
@@ -360,6 +361,7 @@ function send_status($aktuell, $startexec=0)
 					$alleHumidityWerte.=str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
 					}
 				}
+            if ($debug) echo "$alleHumidityWerte \n";
 
 			$alleHelligkeitsWerte.="\n\nAktuelle Helligkeitswerte direkt aus den HW-Registern:\n\n";
 			foreach ($Homematic as $Key)
@@ -381,7 +383,7 @@ function send_status($aktuell, $startexec=0)
 						}
 					}
 				}
-
+            if ($debug) echo "$alleHelligkeitsWerte \n";
 
 			$alleMotionWerte.="\n\nAktuelle Bewegungswerte direkt aus den HW-Registern:\n\n";
 			foreach ($Homematic as $Key)
@@ -455,6 +457,7 @@ function send_status($aktuell, $startexec=0)
 						}
 					}
 				}
+            if ($debug) echo "$alleMotionWerte \n";
 
 			$alleStromWerte.="\n\nAktuelle Energiewerte direkt aus den HW-Registern:\n\n";
 			foreach ($Homematic as $Key)
@@ -476,10 +479,11 @@ function send_status($aktuell, $startexec=0)
 						}
 					}
 				}
-
+            //if ($debug) echo "$alleStromWerte \n";                //wird weiter unten noch erweitert
 
 			$alleHeizungsWerte.=ReadThermostatWerte();
 			$alleHeizungsWerte.=ReadAktuatorWerte();
+            if ($debug) echo "$alleHeizungsWerte \n";
 						
 			$ergebnisRegen.="\n\nAktuelle Regenmengen direkt aus den HW-Registern:\n\n";
 			$regenmelder=0;
@@ -520,8 +524,12 @@ function send_status($aktuell, $startexec=0)
 		   				" mm Regen. Max pro Stunde ca. ".number_format($regeneintrag["Max"], 1, ",", "")."mm/Std.\n";
 					}				
 				}
+            if ($debug) 
+                {
+                if ($regenmelder==0) echo "Es wurde kein Regensensor installiert.\n";
+                else echo "$ergebnisRegen \n";
+                }
 				
-
 		  	echo ">>RemoteReadWrite. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			}
 
@@ -584,11 +592,12 @@ function send_status($aktuell, $startexec=0)
 
 					} /* endeif */
 				} /* ende foreach */
-		  	echo ">>AMIS. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
+            if ($debug) echo "$alleStromWerte \n";
+            echo ">>AMIS. Abgelaufene Zeit : ".exectime($startexec)." Sek \n";
 			} /* endeif */
 
 		/******************************************************************************************/
-
+        echo "===============================================================\n";
 
 		if (isset($installedModules["OperationCenter"])==true)
 			{
@@ -603,17 +612,21 @@ function send_status($aktuell, $startexec=0)
 			$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CatIdData, 20);
 			$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 			$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+            if ($debug) echo "log Operation center vorbereitet. \n";
 
 			$subnet="10.255.255.255";
 			$OperationCenter=new OperationCenter($subnet);
-            $DeviceManager = new DeviceManagement();
+            echo "DeviceManagement initialisiern:\n";
+            $DeviceManager = new DeviceManagement($debug);
 			
 			$ergebnisOperationCenter.="Lokale IP Adresse im Netzwerk : \n";
-			$result=$OperationCenter->ownIPaddress();
+            echo "Lokale IP Adresse im Netzwerk suchen.\n";
+			$result=$OperationCenter->ownIPaddress($debug);
 			foreach ($result as $ip => $data)
 				{
 				$ergebnisOperationCenter.="  Port \"".$data["Name"]."\" hat IP Adresse ".$ip." und das Gateway ".$data["Gateway"].".\n";
 				}
+            if ($debug) echo "$ergebnisOperationCenter \n";
 			
 			$result=$OperationCenter->whatismyIPaddress1()[0];
 			if ($result["IP"]== true)
@@ -621,11 +634,15 @@ function send_status($aktuell, $startexec=0)
 				$ergebnisOperationCenter.= "Externe IP Adresse : \n";
 				$ergebnisOperationCenter.= "  Server liefert : ".$result["IP"]."\n\n";
 				}
+            if ($debug) echo "$ergebnisOperationCenter \n";
+
 			$ergebnisOperationCenter.="Systeminformationen : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->readSystemInfo()."\n";
 				
 			$ergebnisOperationCenter.="Angeschlossene bekannte Endgeräte im lokalen Netzwerk : \n\n";
 			$ergebnisOperationCenter.=$OperationCenter->find_HostNames();
+            if ($debug) echo "$ergebnisOperationCenter \n";
+
 			$OperationCenterConfig = OperationCenter_Configuration();
 
 			$ergebnisOperationCenter.="\nAktuelles Datenvolumen für die verwendeten Router : \n";
@@ -686,6 +703,7 @@ function send_status($aktuell, $startexec=0)
 			
 			$ergebnisOperationCenter.="\n\nErreichbarkeit der Hardware Register/Instanzen, zuletzt erreicht am .... :\n\n"; 
 			$ergebnisOperationCenter.=$DeviceManager->HardwareStatus(true);
+            if ($debug) echo "$ergebnisOperationCenter \n";
 			
 			$ergebnisErrorIPSLogger.="\nAus dem Error Log der letzten Tage :\n\n";
 			$ergebnisErrorIPSLogger.=$OperationCenter->getIPSLoggerErrors();
@@ -3412,6 +3430,7 @@ class dosOps
                             {
                             $stat["files"]++;
                             $file = $dir . DIRECTORY_SEPARATOR . $value;
+                            $file=str_replace('\\\\','\\',$file);                            
                             if ((filemtime($file))>$stat["latestdate"]) $stat["latestdate"]=filemtime($file);
                             }
                         }
@@ -3428,17 +3447,18 @@ class dosOps
 	private function dirToStat($dir, &$stat, $recursive)
 		{
 	   	$result = array();
-	
+	    $dir=str_replace('\\\\','\\',$dir);     // keine doppelten Directory Seperators ...
 		$cdir = scandir($dir);
 		foreach ($cdir as $key => $value)
 			{
 			if (!in_array($value,array(".","..")))
 				{
-				if (is_dir($dir . DIRECTORY_SEPARATOR . $value))
+                $dirfile=str_replace('\\\\','\\',$dir . DIRECTORY_SEPARATOR . $value);     // keine doppelten Directory Seperators ...
+				if (is_dir($dirfile))
 	         		{
                     if ($recursive)
                         {                          
-					    $this->dirToStat($dir . DIRECTORY_SEPARATOR . $value,$stat, $recursive);
+					    $this->dirToStat($dirfile,$stat, $recursive);
                         $stat["dirs"]++;
                         }
                     else $stat["dirs"]++;                        
@@ -5011,6 +5031,7 @@ class ComponentHandling
  *  search_wfc
  *  read_wfc
  *  setupWebfront
+ *  setupWebfrontEntry
  *  createSplitPane
  *  deletePane
  *
@@ -5235,7 +5256,130 @@ class WfcHandling
         return ($resultWebfront);    
     	}   // ende function
 
-    /* Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte teil des WebfrontConfigID übergeben */
+    /******
+     *
+     * die beiden Webfronts anlegen und das Standard Webfront loeschen 
+     *
+     */
+
+    public function installWebfront()
+        {
+
+        echo "installWebfront, Webfront GUID herausfinden:\n";
+        $wfcTree=$this->read_wfc();
+        //print_r($wfcTree);	
+
+        echo "\n";
+        $WebfrontConfigID=array();
+        $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
+        foreach ($alleInstanzen as $instanz)
+            {
+            $result=IPS_GetInstance($instanz);
+            $WebfrontConfigID[IPS_GetName($instanz)]=$result["InstanceID"];
+            echo "Webfront Konfigurator Name : ".str_pad(IPS_GetName($instanz),20)." ID : ".$result["InstanceID"]."\n";
+            $config=json_decode(IPS_GetConfiguration($instanz));
+            echo "  Remote Access Webfront Password set : (".$config->Password.")\n";
+            echo "  Mobile Webfront aktiviert : ".$config->MobileID."\n";		
+            echo "  Retro Webfront aktiviert : ".$config->RetroID."\n";		
+            if (false)
+                {
+                $config=json_decode(IPS_GetConfiguration($instanz));
+                $configItems = json_decode(json_decode(IPS_GetConfiguration($instanz))->Items);
+                print_r($configItems);	
+                }	
+            }
+        //print_r($WebfrontConfigID);
+        
+        /* webfront Configuratoren anlegen, wenn noch nicht vorhanden */
+        if ( isset($WebfrontConfigID["Administrator"]) == false )
+        //$AdministratorID = @IPS_GetInstanceIDByName("Administrator", 0);
+        //if(!IPS_InstanceExists($AdministratorID))
+            {
+            echo "\nWebfront Configurator Administrator  erstellen !\n";
+            $AdministratorID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+            IPS_SetName($AdministratorID, "Administrator");
+            $config = IPS_GetConfiguration($AdministratorID);
+            echo " Konfig: ".$config."\n";
+            IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
+            IPS_ApplyChanges($AdministratorID);	
+            IPS_ApplyChanges($AdministratorID);
+            $WebfrontConfigID["Administrator"]=$AdministratorID;
+            echo "Webfront Configurator Administrator aktiviert : ".$AdministratorID." \n";
+            }
+        else
+            {
+            $AdministratorID = $WebfrontConfigID["Administrator"];
+            echo "Webfront Configurator Administrator bereits vorhanden : ".$AdministratorID." \n";
+            /* kein Mobile Access für Administratoren */
+            IPS_SetConfiguration($AdministratorID,'{"MobileID":-1}');
+            IPS_ApplyChanges($AdministratorID);			
+
+            }		
+
+        if ( isset($WebfrontConfigID["User"]) == false )
+            //$UserID = @IPS_GetInstanceIDByName("User", 0);
+            //if(!IPS_InstanceExists($UserID))
+            {
+            echo "\nWebfront Configurator User  erstellen !\n";
+            $UserID = IPS_CreateInstance("{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}"); // Administrator Webfront Configurator anlegen
+            IPS_SetName($UserID, "User");
+            $config = IPS_GetConfiguration($UserID);
+            echo "Konfig : ".$config."\n";
+            $categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
+            IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
+            IPS_ApplyChanges($UserID);
+            $WebfrontConfigID["User"]=$UserID;
+            echo "Webfront Configurator User aktiviert : ".$UserID." \n";
+            }
+        else
+            {
+            $UserID = $WebfrontConfigID["User"];
+            echo "Webfront Configurator User bereits vorhanden : ".$UserID." \n";
+            $categoryId_Mobile         = CreateCategoryPath("Visualization.Mobile");		
+            //$config = IPS_GetConfiguration($UserID);
+            //echo "Konfig : ".$config."\n";
+            IPS_SetConfiguration($UserID,'{"MobileID":'.$categoryId_Mobile.'}');
+            IPS_ApplyChanges($UserID);			
+            }	
+
+        echo "\n";
+
+        /* check nach weiteren Webfront Konfiguratoren */
+
+        echo "Security and Configuration check.\n";
+        foreach ($WebfrontConfigID as $Key=>$Item)
+            {
+            $config=json_decode(IPS_GetConfiguration($Item));
+            switch ($Key)
+                {
+                case "User":	
+                    if ($config->MobileID < 0) 
+                        {
+                        echo "  ".$Key.": Mobile Access for User not set (".$config->MobileID.").   --> setzen\n";
+                        }
+                case "Administrator":
+                    if ($config->Password == "") 
+                        {
+                        echo "  ".$Key.": Remote Access Webfront Password not set.   --> setzen\n";
+                        }
+                    else	
+                        {
+                        echo "  OK ".$Key.": Remote Access Webfront Password set : (".$config->Password.")\n";
+                        }					
+                    break;
+                default:
+                    echo "    Zusaetzlichen Webfront Configurator gefunden.  --> loeschen\n";
+                }
+            }	
+
+            
+        }
+
+    /******
+     *
+     * Aufbau einer Webfront Seite, es wird immer mitgegeben ob es sich um einen Administrator, User etc, handelt, es wird der richtigte teil des WebfrontConfigID übergeben 
+     *
+     */
 
     public function setupWebfront($webfront_links,$WFC10_TabPaneItem,$categoryId_WebFrontAdministrator,$scope)
         {

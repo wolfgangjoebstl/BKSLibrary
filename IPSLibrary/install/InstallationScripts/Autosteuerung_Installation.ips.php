@@ -300,6 +300,10 @@
  * Für jede dieser Gruppen kann festgelegt werden ob es ein Eigenes Tab gibt oder die Informationen auf einer Seite zusammengefasst werden.
  *
  ********************************/
+    
+    echo "\n";
+    echo "====================================================================\n";
+    echo "\n";
 
 	$AutoSetSwitches = Autosteuerung_SetSwitches();
     //print_r($AutoSetSwitches);
@@ -597,7 +601,7 @@
 			default:
 				break;
 			}
-		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");
+		$register->registerAutoEvent($AutosteuerungID, $eventType, "par1", "par2");         // class AutosteuerungHandler
 		$webfront_links[$AutosteuerungID]["NAME"]=$AutoSetSwitch["NAME"];
 		$webfront_links[$AutosteuerungID]["ADMINISTRATOR"]=$AutoSetSwitch["ADMINISTRATOR"];
 		$webfront_links[$AutosteuerungID]["USER"]=$AutoSetSwitch["USER"];
@@ -622,13 +626,21 @@
 	 * war schon einmal ausgeklammert, wird aber intuitiv von der Install Routine erwartet dass auch die Events registriert werden
 	 *
 	 */
+    echo "\n";
+    echo "====================================================================\n";
+    echo "\n";
+
 	echo "\nProgramme für Schalter registrieren nach OID des Events.  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 
 	$AutoConfiguration = Autosteuerung_GetEventConfiguration();
 	foreach ($AutoConfiguration as $variableId=>$params)
 		{
-		echo "   Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
-		$register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
+        if (IPS_ObjectExists($variableId))
+            {
+            echo "   Create Event für ID : ".$variableId."   ".IPS_GetName($variableId)." \n";
+            $register->CreateEvent($variableId, $params[0], $scriptIdAutosteuerung);
+            }
+        else echo "   Delete Event für ID : ".$variableId."  does no loger exists !!! \n";
 		}
 
 

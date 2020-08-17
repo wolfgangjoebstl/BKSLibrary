@@ -289,11 +289,11 @@ class sqlOperate extends sqlHandle
      *
      */
 
-    public function updateTableEntriesValues($table,$deviceList,$advise,$config=false,$debug=false)
+    public function updateTableEntriesValues($table,$deviceList,$advise,$config=false,$updated=true,$debug=false)
         {
         if ($debug)
             { 
-            echo "updateTableEntriesValue('$table', ...), "; 
+            echo "sqlOperate:updateTableEntriesValue('$table', ...), ".json_encode($advise)."\n"; 
             //print_r($advise); 
             }
 
@@ -352,20 +352,21 @@ class sqlOperate extends sqlHandle
             else
                 {
                 echo "Tabelle hat einen weiteren Identifier, der nur einmal in der Tabelle vorkommen darf: ".$advise["ident"]." mit Wert ".$deviceList[$advise["identTgt"]]." Kommt bereits $countIdent mal vor, update erforderlich.\n";
-                $update = $this->updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $debug);
+                $update = $this->updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $updated, $debug);
                 }
             $update=true;
             }   
         elseif ($count > 1)         // mehrere Eintraege
             {
-            if ($debug) echo "updateTableValue: Eintrag ".vars[0]." mit $count Duplicates. Delete younger ones !\n";
+            if ($debug) echo "updateTableEntriesValue: Eintrag ".vars[0]." mit $count Duplicates. Delete younger ones !\n";
             $sqlCommand = "DELETE u1 FROM $table u1, $table u2 WHERE u1.deviceID > u2.deviceID AND u1.$column = u2.column;";
             echo " >SQL Command : $sqlCommand\n";    
             $result=$this->command($sqlCommand);
             }
         else        // count == 1, ein eintrag vorhanden, also Updaten
             {
-            $update = $this->updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $debug);
+            if ($debug) echo "updateTableEntriesValue: Eintrag in Tabelle '$table' vorhanden, update machen:\n";                
+            $update = $this->updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $updated, $debug);
             }
 
         $result=array();
@@ -432,6 +433,48 @@ class sqlOperate extends sqlHandle
  *
  *******************************************************************************************************/
 
+/* sql_auditTrail extends sqlOperate
+ *
+ * sqlHandle für die Basisfunktionen, die mehr der Datenbank zugeordnet sind
+ * sqlOperate für die übergeordneten Funkionen zur Manipulation der Datenbank
+ * sql_xxx für die Tabellen spezifischen Operationen
+ *
+ *      _construct      getDataBaseConfiguration und speichere individuelle Konfiguration
+ *      getDatabaseConfig
+ *      get_ColumnComponentModule       Register Tabelle mit Konfiguration in IPSDeviceHandler_GetComponentModules() vergleichen, nur Zeilen ohne componentModuleID ausgeben
+ *      get_componentModules: Tabelle componentModules updaten
+ *      syncTableValues
+ *      updateEntriesValues
+ *      getSelectforShow
+ *
+ */
+
+class sql_auditTrail extends sqlOperate
+    {
+    private $dataBase;          // Name of used Database, has effect on request default config
+    private $tableName;             // Name of used Table, has effect on request default config
+    private $configDB;          // Konfiguration der  Database, has effect on request default config
+
+    public function __construct($oid=false)
+        {
+        parent::__construct($oid);          // ruft sqlHandle construct auf
+        $this->useDatabase("ipsymcon"); 
+        $this->tableName="auditTrail";
+        $this->getDatabaseConfig($this->tableName);
+        }
+
+    public function getDatabaseConfig(...$tableName)
+        {
+        if (isset($tableName[0])) $table=$tableName[0];
+        else $table="auditTrail";
+
+        $config = parent::getDatabaseConfiguration()[$table]; 
+        $this->configDB=$config;
+        return $config;   
+        }
+
+    }
+
 /* sql_componentModules extends sqlOperate
  *
  * sqlHandle für die Basisfunktionen, die mehr der Datenbank zugeordnet sind
@@ -472,7 +515,9 @@ class sql_componentModules extends sqlOperate
         return $config;   
         }
 
-    /* damit richtig funktioniert, sollten die folgenden Programmzeilen davor stehen
+    /*  sql_componentModules
+     *
+    damit richtig funktioniert, sollten die folgenden Programmzeilen davor stehen
         
     echo "alle Registers mit korrekten Zuordnungen finden, componentID egal:\n";        // den inner join mit den componentModules weglassen um die NUL für componentModuleID zu finden 
     $sql = "SELECT registers.registerID,topologies.Name AS Ort,deviceList.Name,instances.portID,instances.OID,deviceList.Type,deviceList.SubType,instances.Name AS Portname,
@@ -537,7 +582,9 @@ class sql_componentModules extends sqlOperate
         return($columnComponentModule);
         }
 
-    /* in der evaluateHardware_configuration gibt es jetzt eine Array Configuration um festzulegen welcher Component für welchen Hardware Type und Subtype
+    /* sql_componentModules
+     *
+     * in der evaluateHardware_configuration gibt es jetzt eine Array Configuration um festzulegen welcher Component für welchen Hardware Type und Subtype
      * zu verwenden ist. Diesen auslesen und eventuell aufbereiten:
      *
      * Input Array IPSDeviceHandler_GetComponentModules
@@ -574,7 +621,9 @@ class sql_componentModules extends sqlOperate
         return ($componentModules);
         }
 
-    /* im reverse Engineering rausfinden welche Components verwendet werden und diese ebenfalls anlegen
+    /* sql_componentModules
+     *
+     * im reverse Engineering rausfinden welche Components verwendet werden und diese ebenfalls anlegen
      *
      *
      */
@@ -610,7 +659,7 @@ class sql_componentModules extends sqlOperate
         return ($componentModules);
         }
 
-    /* syncTableValues für das componentModules Array
+    /* sql_componentModules:syncTableValues für das componentModules Array
      *
      * die Tabellen sind immer gleich aufgebaut, Index=Key, Name=Unique, Werte
      * die Arrays sind immer ohne Index, Name => Werte
@@ -652,9 +701,9 @@ class sql_componentModules extends sqlOperate
             }
         }
 
-    /* wird von syncTableValues aufgerufen */
+    /* sql_componentModules wird von syncTableValues aufgerufen */
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false, $debug=false)
         {
         $advise=array();  // Index deviceID, Identifier name
         $advise["index"] = "componentModuleID";
@@ -662,7 +711,7 @@ class sql_componentModules extends sqlOperate
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
-        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB, $updated, $debug);
         }
 
     /* für die Darstellung als Tabelle */
@@ -768,7 +817,7 @@ class sql_serverGateways extends sqlOperate
 
     /* wird von syncTableValues aufgerufen */
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false,$debug=false)
         {
         $advise=array();  // Index deviceID, Identifier name
         $advise["index"] = "serverGatewayID";
@@ -776,7 +825,7 @@ class sql_serverGateways extends sqlOperate
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
-        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$updated, $debug);
         }
 
     /* ID für einen Namen finden */
@@ -894,7 +943,7 @@ class sql_topologies extends sqlOperate
 
     /* wird von syncTableValues aufgerufen */
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false,$debug=false)
         {
         $advise=array();  // Index deviceID, Identifier name
         $advise["index"] = "topologyID";
@@ -902,7 +951,7 @@ class sql_topologies extends sqlOperate
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
-        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues($this->tableName,$values,$advise,$this->configDB,$updated, $debug);
         }
 
     /* für die Darstellung als Tabelle */
@@ -964,7 +1013,59 @@ class sql_deviceList extends sqlOperate
         return $config;   
         }
 
-    /* syncTablePlaceID für das deviceList Array
+    /* sql_deviceList:touchTableOnDevice 
+     *
+     * Funktion für das deviceList Array, hier wird die wirkliche DeviceList übergeben.
+     * Name für Name diese deviceList durchgehen und updateEntriesValues aufrufen, als Key wird der Name verwendet
+     * OID funktioniert nicht, da nicht alle Geräte eine OID haben, Homematic sind es nur die Instances mit einer eigenen OID
+     * alle auf root Ebene der devicelist liegende Parameter ebenfalls mit synchronisieren  
+     *
+     * Name ist aber nicht eindeutig, der kann sich jederzeit ändern, besser wäre eine OID auf Geräteebene
+     * OID bleibt aber Gerätenamen ändert sich
+     *
+     */
+
+    public function touchTableOnDevice($deviceList,$debug=false)
+        {
+        echo "sql_deviceList:touchTableOnDevice aufgerufen.\n";
+        //$instances=array();
+        //$this->syncTableColumnOnOID("Touch",$instances, $debug); 
+        $touch = date("YmdHis");   
+        $first=true;
+        foreach ($deviceList as $name => $entry)            // alle Geräte aus dem Array durchgehen
+            {
+            echo "   ".str_pad($name,30);
+            $deviceList[$name]["Name"]=$name;
+            $deviceList[$name]["Touch"]=$touch;
+            // update Geräteeintrag für folgende Spalten
+            $columns="";
+            foreach ($entry as $column=>$row) 
+                {
+                switch (strtoupper($column))
+                    {
+                    case "CHANNELS":
+                    case "ACTUATORS":
+                    case "INSTANCES":
+                        break;
+                    default:
+                        if ($first) $columns.=$column;
+                        else $columns.="|".$column;
+                        break;
+                    }
+                }
+            echo str_pad($columns,45);
+            //if ($first) 
+                {
+                $result=$this->updateEntriesValues($deviceList[$name],false,false);          // kann auch die ganze devicelist ohne foreach, als deviceList übergeben da vorher ergänzt wurde, false no update of column changed
+                echo json_encode($result);
+                }
+            echo "\n";
+            if ($first) $first=false;
+            }
+        return ($touch);
+        }
+
+    /* sql_deviceList syncTablePlaceID für das deviceList Array
      *
      *  zuerst die Tabelle topologies auslesen, 
      *  dann die einzelnen Zeilen so umbauen:
@@ -1015,7 +1116,7 @@ class sql_deviceList extends sqlOperate
         $this->syncTableColumnOnOID("placeID",$placeIDs,$debug);    
         }
 
-    /* syncTableProductType für das deviceList Array
+    /* sql_deviceList syncTableProductType für das deviceList Array
      *
      *   
      *
@@ -1035,7 +1136,7 @@ class sql_deviceList extends sqlOperate
         $this->syncTableColumnOnOID("ProductType",$instances, $debug);    
         }
 
-    /* syncTableColumnOnOID für den deviceList Table erweitert um die instances wegen portID, OID und Name
+    /* sql_deviceList syncTableColumnOnOID für den deviceList Table erweitert um die instances wegen portID, OID und Name
      *    columnName    Name der Tabellenspalte
      *    columnData    array
      *
@@ -1048,7 +1149,7 @@ class sql_deviceList extends sqlOperate
         {
         if ($debug) 
             {
-            echo "   syncTableColumnOnOID:für $columnName.\n";
+            echo "   syncTableColumnOnOID:für $columnName und folgende insgesamt ".sizeof($columnData)." Werte.\n";
             print_r($columnData);
             }
         $sql = "SELECT deviceList.deviceID,deviceList.Name,deviceList.Type,instances.portID,instances.OID,instances.Name AS Portname 
@@ -1058,13 +1159,19 @@ class sql_deviceList extends sqlOperate
         $fetch = $result1->fetch();
         $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
         if ($debug) echo "      devicelist SELECT liefert ".sizeof($fetch)." Ergebnisse.\n";
-        $first=true; $deviceID=array();
+        $first=true; 
+        $deviceID=array();          // es gibt mehrere Einträge für ein Gerät
         foreach ($fetch as $singleRow)
             {
             if ($first)
                 {
                 $first=false;
-                //print_r($singleRow);    
+                if ($debug) 
+                    {
+                    echo "          Erste Zeile ausgeben zur Orientierung :\n";
+                    print_r($singleRow);    
+                    echo "DeviceID   OID   Name (empty if additional instance)  Type  Portname  newData\n";                    
+                    }
                 }
             $oid = $singleRow["OID"];       // sync table based on OID, aktuelle OID auslesen
             if ($debug) 
@@ -1076,23 +1183,29 @@ class sql_deviceList extends sqlOperate
                 if ($debug) echo " | ".str_pad($singleRow["Name"],30);
                 $deviceList=array();                                    // Input Array für Update zusammenstellen: Name, columndata[oid]
                 $deviceList["Name"]=$singleRow["Name"];
-                $deviceID[$singleRow["deviceID"]]=true;                 // damit beim nächsten Mal nicht mehr dran kommt
+                $deviceID[$singleRow["deviceID"]]=$singleRow["Portname"];                 // damit beim nächsten Mal nicht mehr dran kommt
                 if (isset($columnData[$oid])) 
                     {
                     $deviceList[$columnName]=$columnData[$oid];         // umschlüsseln von Key oid auf Key Name, der Wert bleibt unverändert
                     if ($debug) str_pad($singleRow["Type"],20).str_pad($singleRow["Portname"],40)."   ".$columnData[$oid];
-                    $result = $this->updateEntriesValues($deviceList);
+                    $result = $this->updateEntriesValues($deviceList,true);         // true for update of column changed
                     }
                 }
             else 
                 {
+                $deviceID[$singleRow["deviceID"]].="|".$singleRow["Portname"];
                 //echo "syncTableColumnOnOID $columnName, ".$singleRow["deviceID"]." : pls see above, double\n";  // kein Fehler
                 }
             if ($debug) echo "\n";
             }
+        if ($debug) 
+            {
+            echo "    insgesamt ".sizeof($deviceID)." Geräte behandelt.\n";
+            //print_R($deviceID);
+            }
         }
 
-    /* syncTableValues für das deviceList Array
+    /* sql_deviceList syncTableValues für das deviceList Array
      *
      *    Die Sub-Tabellen werden ebenfalls gleichzeitig synchronisiert
      *    geht nicht anders weil immer gleich der passende Identifier in die nächste Tabelle/Ebene mitgenommen wird
@@ -1117,7 +1230,7 @@ class sql_deviceList extends sqlOperate
             {
             echo "   ".str_pad($name,30);
             $deviceList[$name]["Name"]=$name;
-            $result=$this->updateEntriesValues($deviceList[$name],$debug);
+            $result=$this->updateEntriesValues($deviceList[$name],true, $debug);                // true for update of column changed
             if ($result["Status"] !== false)                // update Geräteeintrag erfolgreich
                 {
                 $deviceID=$result["Index"];
@@ -1136,7 +1249,7 @@ class sql_deviceList extends sqlOperate
                             {
                             $entryInstance["portID"]=$portId;
                             $entryInstance["deviceID"]=$deviceID;
-                            $result=$sql_instances->updateEntriesValues($entryInstance,$debug);
+                            $result=$sql_instances->updateEntriesValues($entryInstance,true, $debug);
                             if ($result["Update"]) 
                                 {
                                 $i++;
@@ -1151,7 +1264,7 @@ class sql_deviceList extends sqlOperate
                             {
                             $entryChannel["portID"]=$portId;
                             $entryChannel["deviceID"]=$deviceID;
-                            $result=$sql_channels->updateEntriesValues($entryChannel,$debug);
+                            $result=$sql_channels->updateEntriesValues($entryChannel,true, $debug);
                             if ($result["Update"]) 
                                 {
                                 $i++;
@@ -1171,8 +1284,16 @@ class sql_deviceList extends sqlOperate
                                         $entryRegister["deviceID"]=$deviceID;
                                         $entryRegister["Name"]=$entry["Instances"][$portId]["NAME"];
                                         $entryRegister["TYPEREG"]=$register;
-                                        $entryRegister["Configuration"]=json_encode($entry["Channels"][$portId][$register]);
-                                        $result=$sql_registers->updateEntriesValues($entryRegister,$debug);
+                                        if (isset($entry["Channels"][$portId][$register]))
+                                            {
+                                            $result=$sql_registers->updateEntriesValues($entryRegister,true, $debug);
+                                            }
+                                        else 
+                                            {
+                                            echo "Configuration für $portId $register nicht verfügbar. Speichere leeren String.:\n";    
+                                            print_R($entry["Channels"]); 
+                                            $entryRegister["Configuration"]="";
+                                            }
                                         if ($result["Update"])
                                             {
                                             $i++;
@@ -1191,12 +1312,14 @@ class sql_deviceList extends sqlOperate
             }       // ende foreach
         }        // ende function
 
-    /* Update einer Zeile in der Tabelle, Werte stehen in values
-     * für die Keys muss ein Wert da sein für das WHERE ststement und dann zumindestens ein Feld für das Update
+    /* sql_deviceList:updateEntriesValues 
+     *
+     * Update einer Zeile in der Tabelle, Werte stehen in values
+     * für die Keys muss ein Wert da sein für das WHERE statement und dann zumindestens ein Feld für das Update
      *
      */
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false,$debug=false)
         {
         $advise=array();  // Index deviceID, Identifier name
         $advise["index"] = "deviceID";
@@ -1204,7 +1327,7 @@ class sql_deviceList extends sqlOperate
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
-        return parent::updateTableEntriesValues("deviceList",$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues("deviceList",$values,$advise,$this->configDB,$updated, $debug);
         }
 
     /* für die Darstellung als Tabelle */
@@ -1262,7 +1385,11 @@ class sql_instances extends sqlOperate
         return $config;   
         }
 
-    public function updateEntriesValues($values, $debug=false)
+    /* sql_instances updateEntriesValues
+     * wenn updated true wird auch der Zeitstempel in der Zeile nachgestellt
+     */
+
+    public function updateEntriesValues($values, $updated=false, $debug=false)
         {
         $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
         $advise["index"] = "instanceID";                    // <==================
@@ -1272,7 +1399,7 @@ class sql_instances extends sqlOperate
         $advise["change"]="Update";
         $advise["history"]="";
         
-        return parent::updateTableEntriesValues("instances",$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues("instances",$values,$advise,$this->configDB,$updated,$debug);
         }
 
     /* für die Darstellung als Tabelle */
@@ -1331,7 +1458,7 @@ class sql_channels extends sqlOperate
         return $config;   
         }
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false, $debug=false)
         {
         $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
         $advise["index"] = "channelID";                                                             // <==================
@@ -1342,7 +1469,7 @@ class sql_channels extends sqlOperate
         //echo "sql_channel:updateEntriesValues\n";
         if (isset($values["RegisterAll"])) $values["RegisterAll"] = json_encode($values["RegisterAll"]);
         //print_r($values);
-        return parent::updateTableEntriesValues("channels",$values,$advise,$this->configDB,$debug);                           // <==================
+        return parent::updateTableEntriesValues("channels",$values,$advise,$this->configDB,$updated,$debug);                           // <==================
         }
 
 
@@ -1472,7 +1599,7 @@ class sql_registers extends sqlOperate
      * wird von syncTableValues aufgerufen
      */
 
-    public function updateEntriesValues($values, $debug=false)
+    public function updateEntriesValues($values, $updated=false, $debug=false)
         {
         $advise=array();                 // Index instanceID, Key deviceID,portID, Identifier Name
         $advise["index"] = "registerID";
@@ -1480,7 +1607,7 @@ class sql_registers extends sqlOperate
         $advise["ident"]="";
         $advise["change"]="Update";
         $advise["history"]="";
-        return parent::updateTableEntriesValues("registers",$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues("registers",$values,$advise,$this->configDB,$updated,$debug);
         }
 
 
@@ -1540,7 +1667,7 @@ class sql_valuesOnRegs extends sqlOperate
         return $this->configDB;   
         }
 
-    /* syncTableValues für das valuesOnRegs Array
+    /* sql_valuesOnRegs:syncTableValues für das valuesOnRegs Array
      *
      *
      */
@@ -1588,15 +1715,17 @@ class sql_valuesOnRegs extends sqlOperate
             }
         }
 
-    /* ändert eine Zeile der Klassenspezifischen Tabelle
+    /* sql_valuesOnRegs:updateEntriesValues
+     *
+     * ändert eine Zeile der Klassenspezifischen Tabelle
      *
      * $values ist ein array mit den einzelenen Spalten, die Spaltennamen aus dem neuen array advise muessen zumindestens vorhanden sein
      * wird von syncTableValues aufgerufen
      */
 
-    public function updateEntriesValues($values, $advise, $debug=false)
+    public function updateEntriesValues($values, $advise, $updated=false, $debug=false)
         {
-        return parent::updateTableEntriesValues("valuesOnRegs",$values,$advise,$this->configDB,$debug);
+        return parent::updateTableEntriesValues("valuesOnRegs",$values,$advise,$this->configDB,$updated,$debug);
         }
 
 
@@ -2134,11 +2263,11 @@ class sqlHandle
     public function compareTableConfig($columnSoll,$columnIst,$debug=false)
         {
         $name=$columnSoll["Field"];
+        $soll = $this->makeTableConfig($columnSoll);
+        $ist = $this->makeTableConfig($columnIst);
         if ($debug) 
             {
             echo "compareTableConfig: Compare Soll with Ist Config:\n";
-            $soll = $this->makeTableConfig($columnSoll);
-            $ist = $this->makeTableConfig($columnIst);
             echo "  Soll: ".$soll[$name]."   ".$soll["KEY"]."\n";
             echo "  Ist : ".$ist[$name]."    ".$ist["KEY"]."\n";
             }
@@ -2148,12 +2277,15 @@ class sqlHandle
             $same["Status"]=false;
             echo "compareTableConfig, Field not the same (Soll/Ist): ".$columnSoll["Field"]." != ".$columnIst["Field"]."\n";
             }
-        if ($columnSoll["Null"] != $columnIst["Null"]) 
+        if ($columnSoll["Null"] != $columnIst["Null"])              /* to remove a NOT NULL Statement from database configuration is tricky zB ALTER TABLE deviceList MODIFY COLUMN  Changed timestamp   ; */
             {
             if (!( ($columnSoll["Null"] == "") && (strtoupper($columnIst["Null"]) == "YES") ))
                 {
                 $same["Status"]=false;
                 echo "compareTableConfig, Null not the same (Soll/Ist): ".$columnSoll["Null"]." != ".$columnIst["Null"]."\n";
+                echo "  Soll: ".$soll[$name]."   ".$soll["KEY"]."\n";
+                echo "  Ist : ".$ist[$name]."    ".$ist["KEY"]."\n"; 
+                $same["Command"]=" MODIFY ".$soll[$name]."   ".$soll["KEY"]." NULL";               // Befehl wird zusätzlich abgearbeitet. Vor dem Standard Befehl.
                 }
             }
         if ($columnSoll["Key"] != $columnIst["Key"]) 
@@ -2264,17 +2396,17 @@ class sqlHandle
      *
      */
 
-    public function updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $debug)
+    public function updateTableEntryValues($table, $sql, $text, $deviceList, $advise, $config, $updated=true, $debug)
         {
         $update=false;
         if ($debug) 
             {
             echo "updateTableEntryValues($table, $sql, $text, ...)\n";
-            print_r($deviceList);
+            print_r($deviceList); print_r($config);
             }
 
             $sqlCommand = "SELECT * FROM $table $sql;";
-            //if ($debug) echo "updateTableValue: Update, einen Wert gefunden. Abfrage SQL : $sqlCommand.\n";       // nur ausgeben, wenn wirklich ein update
+            //if ($debug) echo "updateTableEntryValues: Update, einen Wert gefunden. Abfrage SQL : $sqlCommand.\n";       // nur ausgeben, wenn wirklich ein update
             $result1=$this->query($sqlCommand);
             $row = $result1->fetch()[0];
             $result1->result->close();                      // erst am Ende, sonst ist mysqli_result bereits weg !
@@ -2313,14 +2445,16 @@ class sqlHandle
                     }
                 $textUpd .= "\n";
                 }
+            if ($debug) 
+                {
+                if ($update) echo "updateTableValue: Update, einen Wert gefunden. Abfrage SQL : $sqlCommand.\n";
+                echo $textUpd;
+                }
+    
             if ($update)        // nur wenn Update wirklich erforderlich
                 {
-                if ($debug) 
-                    {
-                    echo "updateTableValue: Update, einen Wert gefunden. Abfrage SQL : $sqlCommand.\n";
-                    echo $textUpd;
-                    }
                 echo "     Unterschiedlicher Eintrag in den Spalten '$vars' gefunden. Update notwendig:\n";
+                if ($updated) $sqlCommand .= "changed = '".date("Y-m-d H:i:s")."' ";
                 //echo $textUpd; 
                 $sqlCommand .= $sql;        // add WHERE statement für richtige Zeile
                 

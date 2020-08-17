@@ -58,6 +58,12 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Stromheizung');
 	echo "\nModul Stromheizung Version : ".$ergebnis."   Status : ".$moduleManager->VersionHandler()->GetModuleState()."\n";
 
+/*******************************
+ *
+ * INIT
+ *
+ ********************************/
+
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
@@ -274,16 +280,22 @@ Path=Visualization.Mobile.Stromheizung
 	
 	echo "Action Script hat OID: ".$scriptIdActionScript."\n";
 	
-	// ===================================================================================================
-	// Add Heat or Light Devices
-	// ===================================================================================================
+	/* ===================================================================================================
+	 * Add Heat or Light Devices
+     *
+     * for switches and groups
+     *
+     * in der data categorie immer für alle children hide machen und nur mehr die auch wirklich in der Konfigiuration sind wieder unhiden 
+     * Am Ende müssen eine Menge Objekte gelöscht werden.
+     *
+	 * ===================================================================================================   */
 
     echo "\n";
     echo "Create Mirror Variables for Switches, dependent on Type create one or more objects.\n";
     $childs=IPS_GetChildrenIDs($categoryIdSwitches);
-    foreach ($childs as $child) IPS_SetHidden($child,true);
+    foreach ($childs as $child) IPS_SetHidden($child,true);         // alle Switches hide
 	$idx = 100;
-	$lightConfig = IPSHeat_GetHeatConfiguration();
+	$lightConfig = IPSHeat_GetHeatConfiguration();                  // Switches Configuration, bekannte Switched wieder unhide
 	//print_r($lightConfig);
 	foreach ($lightConfig as $deviceName=>$deviceData) 
 		{
@@ -349,22 +361,34 @@ Path=Visualization.Mobile.Stromheizung
     echo "Create Mirror Variables for Groupes, dependent on Type create one or more objects.\n";
     /* cleanup unused variables */
     $childs=IPS_GetChildrenIDs($categoryIdGroups);
-    foreach ($childs as $child) IPS_SetHidden($child,true);
+    foreach ($childs as $child) IPS_SetHidden($child,true);         // alle Gruppen Hide
 
 	$idx = 100;
-	$groupConfig = IPSHeat_GetGroupConfiguration();
+	$groupConfig = IPSHeat_GetGroupConfiguration();             // Gruppenkonfiguration, bearbeitete Gruppen wieder unhide
 	foreach ($groupConfig as $groupName=>$groupData) 
 		{
 		if ( Isset($groupData[IPSHEAT_TYPE]) )
 			{
 			$groupType = $groupData[IPSHEAT_TYPE];		
+            echo "   $groupName $groupType\n";                
 			switch ($groupType) 
 				{
+                case IPSHEAT_TYPE_RGB:                    
+					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+					$colorId  = CreateVariable($groupName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdGroups,  $idx, '~HexColor', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
+					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                    IPS_SetHidden($switchId,false); IPS_SetHidden($colorId,false); IPS_SetHidden($levelId,false);                
+                    break;
                 case IPSHEAT_TYPE_AMBIENT:                    
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 					$miredId  = CreateVariable($groupName.IPSHEAT_DEVICE_AMBIENCE, 1 /*Integer*/, $categoryIdGroups,  $idx, 'ColorTemperatureSelect.Hue', $scriptIdActionScript, false, 'HollowDoubleArrowRight');
 					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
                     IPS_SetHidden($switchId,false); IPS_SetHidden($miredId,false); IPS_SetHidden($levelId,false);                
+                    break;
+                case IPSHEAT_TYPE_DIMMER:                    
+					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
+					$levelId  = CreateVariable($groupName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdGroups,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
+                    IPS_SetHidden($switchId,false); IPS_SetHidden($levelId,false);                
                     break;
 				case IPSHEAT_TYPE_SET:
 					$switchId = CreateVariable($groupName,                       0 /*Boolean*/, $categoryIdGroups,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
@@ -764,65 +788,36 @@ Path=Visualization.Mobile.Stromheizung
 	}
 
 
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Mobile Installation von IPSLight explizit entfernen
+	// ----------------------------------------------------------------------------------------------------------------------------
 
-	/****************************************************************************
-	 *
-	 * Andere Routinen
-	 *
-	 *  
-	 * 
-	 *
-	 *****************************************************************************************/
-	
-	if (false)
-		{  /* bereits bei Custom Components implementiert */
-		
-	echo "FHT Heizungssteuerung Geräte mit Positionswerten werden registriert.\n";
+    if (isset($installedModules["IPSLight"]))
+        { 
+        echo "\n";
+        echo "IPSLight Mobile Webfront Installation:\n";
+        $moduleManagerLight = new IPSModuleManager('IPSLight');
+        $mobile_Enabled       = $moduleManagerLight->GetConfigValue('Enabled', 'Mobile');    
+        $mobile_Path          = $moduleManagerLight->GetConfigValue('Path', 'Mobile');
+        $mobile_PathOrder     = $moduleManagerLight->GetConfigValueInt('PathOrder', 'Mobile');
+        $mobile_PathIcon      = $moduleManagerLight->GetConfigValue('PathIcon', 'Mobile');
 
-	$StromheizungHandler = new StromheizungHandler();
+        if ($mobile_Enabled ) 
+            {
+            echo "Mobile enabled.\n";
+            }
+        else
+            {
+            $mobileId  = CreateCategoryPath($mobile_Path, $mobile_PathOrder, $mobile_PathIcon);
+            EmptyCategory($mobileId);    
+            echo "Mobile disabled.\n";
+            DeleteCategory($mobileId);
+            }
+        }
 
-	$FHT = FHTList();
-	$keyword="PositionVar";
-
-	foreach ($FHT as $Key)
-		{
-		/* alle Positionswerte der Heizungssteuerungen ausgeben */
-		if (isset($Key["COID"][$keyword])==true)
-			{
-			$oid=(integer)$Key["COID"][$keyword]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-				}
-			else
-				{
-				echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
-				}
-				
-			$StromheizungHandler->RegisterEvent($oid,"Heizung",'','');	
-
-			if (isset ($installedModules["RemoteAccess"]))
-				{
-				//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-				}
-			else
-				{
-				/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-				echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-				$messageHandler = new IPSMessageHandler();
-				$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-
-				/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-				$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentHeatControl_FS20','IPSModuleHeatControl_All,1,2,3');
-				}
-
-			}  /* Ende isset Heizungssteuerung */
-		} /* Ende foreach */
-
-		} /* ende iffalse */
-
-
+	echo "\n";
+	echo "=====================================================\n";
+	echo "Stromheizung Installation erfolgreich ebgeschlossen !\n";
+	echo "\n";
 
 ?>

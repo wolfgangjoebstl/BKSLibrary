@@ -32,6 +32,8 @@ class WebCamera
     var $CategoryIdData,  $CategoryIdApp;               // zur Orientierung, wo ist was
     var $CategoryIdDataOC;
 
+    var $categoryId_CamPictures, $camIndexID;           // Variablen für die StillPics downloads
+
     var $camConfiguration;                              // die Konfiguration
 
     var $ipsOps, $dosOps;                               // praktische Module
@@ -49,6 +51,9 @@ class WebCamera
 
         $this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
         $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+    	$this->categoryId_CamPictures	= CreateCategory('CamPictures',   $this->CategoryIdData, 230);
+	    $this->camIndexID   			= CreateVariableByName($this->categoryId_CamPictures, "Hostname", 1, "", "", 1000); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
 
         /*******************************
         *
@@ -68,7 +73,7 @@ class WebCamera
             $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);
             $this->CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 
-            $categoryIdCams=IPS_GetObjectIDByName("Cams",$this->CategoryIdDataOC);
+            $categoryIdCams=IPS_GetObjectIDByName("Cams",$this->CategoryIdDataOC);          // im OperationCenter/data
 
             $subnet="10.255.255.255";
             $OperationCenter=new OperationCenter($subnet);
@@ -111,27 +116,39 @@ class WebCamera
             {
             if (isset($entry["COMPONENT"])) 
                 {
+                $alt=false;                    // Berechnung von alternativem Zugang über lokale IP Adresse
                 if ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["COMPONENT"]." (vorher)\n";
                 $componentDef=explode(",",$entry["COMPONENT"]);
                 //print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
-                if (isset($entry["DOMAINADRESSE"])) $componentDef[1]=$entry["DOMAINADRESSE"];
+                if (isset($entry["DOMAINADRESSE"])) 
+                    {
+                    $componentDef[1]=$entry["DOMAINADRESSE"];
+                    if (isset($entry["IPADRESSE"])) $alt=true;                         // alternative interne IP Adresse definieren
+                    }
                 elseif (isset($entry["IPADRESSE"])) $componentDef[1]=$entry["IPADRESSE"];
                 else 
                     {
-                    if ($debug) echo "                        keine detaillierten Angaben zur Netzwerk Adresse, Component nicht überschreiben, es bleibt bei ".$componentDef[1]."\n";
+                    if ($debug) echo "                                    keine detaillierten Angaben zur Netzwerk Adresse, Component nicht überschreiben, es bleibt bei ".$componentDef[1]."\n";
                     }
                 if (isset($entry["USERNAME"])) $componentDef[2]=$entry["USERNAME"];
                 else
                     {
-                    if ($debug) echo "                       keine detaillierten Angaben zum Usernamen, Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
+                    if ($debug)  echo "                                    keine detaillierten Angaben zum Usernamen, Component nicht überschreiben, es bleibt bei ".$componentDef[2]."\n";
                     }
                 if (isset($entry["PASSWORD"])) $componentDef[3]=$entry["PASSWORD"];
                 else 
                     {
-                    if ($debug) echo "                       keine detaillierten Angaben zum Passwort, Component nicht überschreiben, es bleibt bei ".$componentDef[3]."\n";
+                    if ($debug)  echo "                                    keine detaillierten Angaben zum Passwort, Component nicht überschreiben, es bleibt bei ".$componentDef[3]."\n";
                     }
                 $entry["COMPONENT"]=implode(",",$componentDef);
-                if ($debug) echo "        ".str_pad("",30)." ".$entry["COMPONENT"]."\n";
+                if ($alt)
+                    {
+                    $componentDefAlt=$componentDef;
+                    $componentDefAlt[1]=$entry["IPADRESSE"];
+                    $entry["COMPONENTALT"]=implode(",",$componentDefAlt);
+                    if ($debug) echo "        ".str_pad("",30)." ".$entry["COMPONENT"]." und alternativ auch ".$entry["COMPONENTALT"]."\n";
+                    }
+                elseif ($debug) echo "        ".str_pad("",30)." ".$entry["COMPONENT"]."\n";
                 }
             elseif ($debug) echo "    $i : ".str_pad($camera,30)." ".$entry["IPADRESSE"]."\n";
             $configCamPicture[$i]=$entry;
@@ -202,27 +219,100 @@ class WebCamera
         return ($ok);
         }
 
+    /* Data Category ausgeben */
+
     public function getCategoryIdData()
         {
         return ($this->CategoryIdData);
         }
 
+    /* Zielverzeichnis für Anzeige ermitteln */
+
     public function zielVerzeichnis()
         {
-        /* Zielverzeichnis für Anzeige ermitteln */
         $picVerzeichnis="user/OperationCenter/AllPics/";
         $picVerzeichnisFull=IPS_GetKernelDir()."webfront/".$picVerzeichnis;
         $picVerzeichnisFull = str_replace('\\','/',$picVerzeichnisFull);            
         return ($picVerzeichnisFull);
         }
 
-    /* StillPics Download, den richtigen Befehl aus dem Component ableiten und aufrufen,. Wenn es zu lange dauert Abbruch !
+    /***************************
+     *  Download alle StillPics
+     *
+     *******************/
+
+    function DownloadImageFromCams($camConfig, $zielVerzeichnis)
+        {
+        $startexec=microtime(true);            
+        $maxCount = count($camConfig);    
+        echo "StillPics download from $maxCount Cams to $zielVerzeichnis\n";
+        $j=GetValue($this->camIndexID);
+        for ($i=0; $i<$maxCount; $i++)
+            {
+            $Cam=$camConfig[$j];
+            if (isset($Cam["COMPONENT"]))
+                {
+                echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
+
+                /* 
+                $componentDef=explode(",",$Cam["COMPONENT"]);
+                print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
+
+                $component       = IPSComponent::CreateObjectByParams($Cam["COMPONENT"]);
+                $size=0; $command=100;
+                $urlPicture      = $component->Get_URLPicture($size);
+                $urlLiveStream   = $component->Get_URLLiveStream($size);
+                $urlCommand      = $component->Get_URL($command); // zum steuern wenn beweglich
+                //Get_Width, Get_Height
+
+                Livestream
+                Instar       small||medium||large    /videostream.cgi?user=admin&pwd=cloudg06&resolution={8||8||32}
+                Instar 720p  small||medium||large    /cgi-bin/hi3510/mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
+                Instar 1080p small||medium||large    /mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
+                                small||medium||large    rtsp://admin:instar@IP-Address:RTSP-Port/{13||12||11}
+                Reolink                              rtsp://admin:111111@192.168.0.110:554//h264Preview_01_main
+                                        Sub Stream:  rtsp://admin:111111@192.168.0.110:554//h264Preview_01_sub      
+                        
+                pictures
+                Instar                             /snapshot.cgi?user=admin&pwd=cloudg06&next_url=snapshot.jpg
+                Instar  720p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
+                Instar 1080p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
+                Reolink                            /cgi-bin/api.cgi?cmd=Snap&channel=0&rs=(any combination of numbers and letters)&user=admin&password=cloudg06
+
+
+                */
+
+                //print_R($Cam);
+                $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");         // $Cam ist Camer Configuration
+                if ($status === false) 
+                    {
+                    echo "    Download Image from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
+                    if (isset($Cam["COMPONENTALT"])) 
+                        {
+                        $Cam["COMPONENT"]=$Cam["COMPONENTALT"];
+                        $status = $this->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg", true);     // true Debug
+                        if ($status === false) echo "    Download Image (alt. try) from Camera ".$Cam["NAME"]." mit ".$Cam["COMPONENT"]." nicht erfolgreich.\n";
+                        }
+                    }
+                }                   // kein Component verfügbar , der Nächste bitte
+            $j++;
+            if ($j==$maxCount) $j=0;                // Beim nächsten Mal gehts hier weiter. Bei Timeouts einfach mit der nächsten Kamera weitermachen
+            SetValue($this->camIndexID,$j);
+            if ((microtime(true)-$startexec) > 25)  return (false);
+            }
+        return (true);   
+        }
+
+    /* StillPics Download von einer Camera mit Index
+     *
+     * Den richtigen Befehl aus dem Component ableiten und aufrufen. 
+     * Wenn es zu lange dauert Abbruch !
      *
      */
 
     function DownloadImageFromCam($cameraIdx, $componentParams, $directoryName, $size, $fileName, $debug=false) 
         {
-        if ($debug) echo "DownloadImageFromCam aufgerufen mit folgenden Parametern aus der Konfiguration:\n"; 
+        echo "DownloadImageFromCam für Camera $cameraIdx aufgerufen:\n";
         if (isset($componentParams["COMPONENT"]))
             {
             $categoryIdCams     		= IPS_GetObjectIDByName('Cams',    $this->CategoryIdDataOC);
@@ -233,12 +323,16 @@ class WebCamera
             if ($result) 
                 {
                 //$componentParams = $this->config[$cameraIdx][IPSCAM_PROPERTY_COMPONENT];
-                print_r($componentParams);
                 $component       = IPSComponent::CreateObjectByParams($componentParams["COMPONENT"]);
                 $urlPicture      = $component->Get_URLPicture($size);
                 //$localFile       = IPS_GetKernelDir().'Cams/'.$cameraIdx.'/'.$directoryName.'/'.$fileName.'.jpg';
                 $localFile       = $directoryName.$fileName;
-                echo "   DownloadImageFromCam, $cameraIdx $directoryName$fileName  \n";
+                if ($debug) 
+                    {
+                    echo "Bearbeite Kamera IPSCam_$cameraIdx (".$componentParams["NAME"].") mit folgenden Parametern aus der Konfiguration:\n"; 
+                    print_r($componentParams);
+                    echo "   DownloadImageFromCam, $cameraIdx with $urlPicture to $directoryName$fileName  \n";
+                    }
                 IPSLogger_Dbg(__file__, "WebCamera Copy ".$this->GetLoggingTextFromURL($urlPicture)." --> $localFile");         // Debug damit im Info Log nicht zuviele Ausgaben sind
 
                 $curl_handle=curl_init();
@@ -284,7 +378,10 @@ class WebCamera
             }
         }
 
-		private function GetLoggingTextFromURL($url) {
+    /*   GetLoggingTextFromURL                     */
+
+	private function GetLoggingTextFromURL($url) 
+        {
 			return str_replace(parse_url($url, PHP_URL_USER).":".parse_url($url, PHP_URL_PASS)."@", "<<user:pwd>>",$url);
 		}
 

@@ -146,32 +146,43 @@
          * @brief Zustand Setzen 
          *
          * mit Ambience=true wird $color zu Farbtemperatur in mired
+         * mit 2 Parametern wird es zu einer Philips Dimmer Ledlampe
          *
          *
          * @param boolean $power RGB Gerät On/Off
          * @param integer $color RGB Farben (Hex Codierung)
          * @param integer $level Dimmer Einstellung der RGB Beleuchtung (Wertebereich 0-100)
          */
-		public function SetState($power, $color, $level, $ambience=false) 
+		public function SetState($power, $color, $level=512, $ambience=false) 
 			{
-			//echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."  Typ ".($ambience?"Ambience":"RGB")."    \n";
+            $debug=false;
 			if (!$power) 
 				{
+			    if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."\n";
 				//HUE_SetValue($this->lampOID, "STATE",$power);
                 PHUE_SwitchMode($this->lampOID, $power);
 				} 
-			elseif ($ambience)
+			elseif ($ambience)                      // als Ambience ELD Lampe aufgerufen
 				{
 				//IPSLight is using percentage in variable Level, Hue is using [0..255] 
+    			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Mired $color  Level $level  Typ ".($ambience?"Ambience":"RGB")."    \n";
 				$level = round($level * 2.54);
-
                 PHUE_SwitchMode($this->lampOID, $power);
                 PHUE_CTSet($this->lampOID, $color);
                 PHUE_DimSet($this->lampOID, $level);
 				//echo "Level:".$level."\n";				
 				}
-			else	    
+			elseif ($level==512)	                // als Dimmer aufgerufen
+                {
+                $level = round($color * 2.54);
+    			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Level $color ($level)   \n";
+                PHUE_SwitchMode($this->lampOID, $power);
+                PHUE_DimSet($this->lampOID, $level);
+                }
+            else                                    // als RGB aufgerufen
 				{
+    			if ($debug) echo "IPSComponentRGB_HUE SetState mit Power ".($power?"Ein":"Aus")."  Color ".dechex($color)."   Level ".$level."  Typ ".($ambience?"Ambience":"RGB")."    \n";
+				$level = round($level * 2.54);
                 PHUE_SwitchMode($this->lampOID, $power);
                 PHUE_ColorSet($this->lampOID, $color);
                 PHUE_DimSet($this->lampOID, $level);

@@ -230,25 +230,21 @@
 		echo "   Timer Event CyclicUpdate bereits angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
   		IPS_SetEventActive($tim5ID,true);
   		}
-
-	
+		
 	$tim1ID=$timer->CreateTimerOC("RouterAufruftimer",00,20);				/* Eventuell Router regelmaessig auslesen */	
-
 	$tim10ID=$timer->CreateTimerOC("Maintenance",01,20);						/* Starte Maintanenance Funktionen */	
+	$tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
+	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
+	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
+	$tim14ID=$timer->CreateTimerOC("UpdateStatus",03,40);
+	$tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
+	$tim13ID=$timer->CreateTimerOC("CleanUpEndofDay",22,40);	
+		
 	$tim11ID=$timer->CreateTimerSync("MoveLogFiles",150);						/* Maintanenance Funktion: Move Log Files, Backup Funktion */	
-
 	$tim2ID=$timer->CreateTimerSync("MoveCamFiles",150);
 	$tim3ID=$timer->CreateTimerSync("RouterExectimer",150);
-		
-	$tim6ID=$timer->CreateTimerOC("CopyScriptsTimer",02,20);	
-	$tim7ID=$timer->CreateTimerOC("FileStatus",03,50);
-	$tim8ID=$timer->CreateTimerOC("SystemInfo",02,30);
-	
-	$tim9ID=$timer->CreateTimerOC("Homematic",02,40);	
-	
 	$tim12ID=$timer->CreateTimerSync("HighSpeedUpdate",10);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
-	$tim13ID=$timer->CreateTimerOC("CleanUpEndofDay",22,40);	
 
 
 	/*******************************

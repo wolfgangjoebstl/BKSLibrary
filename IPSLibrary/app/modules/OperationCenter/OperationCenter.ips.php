@@ -117,6 +117,7 @@ $tim11ID = @IPS_GetEventIDByName("MoveLogFiles",$scriptId);						/* Maintenance 
 $tim12ID = @IPS_GetEventIDByName("HighSpeedUpdate",$scriptId);					/* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
 
 $tim13ID = @IPS_GetEventIDByName("CleanUpEndofDay",$scriptId);                  /* CleanUp für Backup starten, sollte alte Backups loeschen */
+$tim14ID  = @IPS_GetEventIDByName("UpdateStatus", $scriptId);                   /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */ 
 
 /*********************************************************************************************/
 
@@ -506,7 +507,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
                         echo "   Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
                         $cam_config['CAMNAME']=$cam_name;
                         if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
-                        if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
+                        $OperationCenter->PurgeCamFiles($cam_config);
                         }
                     }
                 }
@@ -991,8 +992,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 		case $tim2ID:
 			IPSLogger_Dbg(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam FTP Dateien zusammenraeumen:");
 			/********************************************************
-		   nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
-			**********************************************************/
+		     * nun die Webcam zusammenraeumen, derzeit alle 150 Sekunden
+			 **********************************************************/
 			$count=0;
 			if (isset ($OperationCenterConfig['CAM']))
 				{
@@ -1004,8 +1005,10 @@ if ($_IPS['SENDER']=="TimerEvent")
                             {                        
                             echo "Bearbeite Kamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
                             $cam_config['CAMNAME']=$cam_name;
-                            if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config);
-                            if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER']);
+                            if ( (isset($cam_config["MOVECAMFILES"])) && ($cam_config["MOVECAMFILES"]) ) $count+=$LogFileHandler->MoveCamFiles($cam_config);
+			                else IPSLogger_Err(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam FTP Dateien wegraeumen nicht aktiviert, kann zum Speicherüberlauf führen.");
+                            if ( (isset($cam_config["PURGECAMFILES"])) && ($cam_config["PURGECAMFILES"]) ) $OperationCenter->PurgeCamFiles($cam_config);
+			                else IPSLogger_Err(__file__, "TimerEvent from ".$_IPS['EVENT']." Webcam FTP Verzeichnisse loeschen nicht aktiviert, kann zum Speicherüberlauf führen.");
                             }
                         }
                     }
@@ -1020,7 +1023,7 @@ if ($_IPS['SENDER']=="TimerEvent")
                     /* die wichtigsten Capture Files auf einen Bildschirm je lokaler Kamera bringen */
                     $OperationCenter->showCamCaptureFiles($camConfig);
 
-                    $OperationCenter->showCamSnapshots($camConfig);	            // sonst wertden die Objekte der IPSCam verwendet, sind viel weniger
+                    $OperationCenter->showCamSnapshots($camConfig);	            // sonst werden die Objekte der IPSCam verwendet, sind viel weniger
                     }
 				} /* Ende isset */
 			if ($count>0)

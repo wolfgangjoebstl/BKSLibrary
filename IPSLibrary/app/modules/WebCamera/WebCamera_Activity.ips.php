@@ -44,12 +44,6 @@ Include(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
         }
     $installedModules = $moduleManager->GetInstalledModules();
 
-    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
-
-	$categoryId_CamPictures	= CreateCategory('CamPictures',   $CategoryIdData, 230);
-	$camIndexID   			= CreateVariableByName($categoryId_CamPictures, "Hostname", 1, "", "", 1000); /* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */
-
 	/*******************************
      *
      * Init, wichtige Variablen
@@ -90,17 +84,7 @@ if ($_IPS['SENDER']=="TimerEvent")
     $camConfig = $webCamera->getStillPicsConfiguration();
     $zielVerzeichnis = $webCamera->zielVerzeichnis();
     
-    $maxCount = count($camConfig);    
-    $j=GetValue($camIndexID);
-    for ($i=0; $i<$maxCount; $i++)
-        {
-        $Cam=$camConfig[$j];
-        $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
-        $j++;
-        if ($j==$maxCount) $j=0;
-        SetValue($camIndexID,$j);
-        if ((microtime(true)-$startexec) > 25)  break;
-        }
+    $webCamera->DownloadImageFromCams($camConfig, $zielVerzeichnis);        // bricht nach 2 nicht erreichbaren Kameras (ca. 40 Sekunden) automatisch ab
     }
 
 
@@ -116,19 +100,7 @@ if ($_IPS['SENDER']=="Execute")
     //print_r($camConfig);                                        // plain mit Index
     $zielVerzeichnis = $webCamera->zielVerzeichnis();
     
-    $maxCount = count($camConfig);  
-    echo "   ---StillPics download from $maxCount Cams to $zielVerzeichnis\n";  
-    $j=GetValue($camIndexID);
-    for ($i=0; $i<$maxCount; $i++)
-        {
-        $Cam=$camConfig[$j];
-        if (isset($Cam["COMPONENT"])) echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
-        $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
-        $j++;
-        if ($j==$maxCount) $j=0;
-        SetValue($camIndexID,$j);
-        if ((microtime(true)-$startexec) > 25)  break;
-        }
+    $webCamera->DownloadImageFromCams($camConfig, $zielVerzeichnis);
 
 
     }

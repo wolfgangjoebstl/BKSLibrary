@@ -19,6 +19,21 @@
 
 /* Hardware Library
  *
+ * overview of classes
+ *
+ * Hardware
+ *      HardwareDenonAVR extends Hardware
+ *      HardwareNetatmoWeather extends Hardware
+ *      HardwareHomematic
+ *      HardwareHUE
+ *      HardwareHarmony
+ *      HardwareFHTFamily
+ *      HardwareFS20Family
+ *      HardwareFS20ExFamily
+ *      HardwareEchoControl
+ *
+ *
+ *
  *	summary of class Hardware
  *
  *
@@ -150,7 +165,9 @@ class Hardware
         /* Fehlerprüfung */
         if (isset($deviceList[$name])) 
             {
-            echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
+            echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"$name\" bereits definiert.\n";
+            print_r($deviceList[$name]);
+            //echo "          >>getDeviceParameter:Allgemein   Fehler, Name \"".$deviceList[$name]."\" bereits definiert.\n";
             return(false);
             }            
         else return (true);
@@ -563,7 +580,8 @@ class HardwareNetatmoWeather extends Hardware
         if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch, keine OID aus entry übergeben.\n";
         foreach ($oids as $oid => $port)
             {
-            $typedev=$this->getNetatmoDeviceType($oid,4,$debug);
+            //$typedev=$this->getNetatmoDeviceType($oid,4,$debug);
+            $typedev=$this->getNetatmoDeviceType($oid,4,false);
             //echo "Werte für $oid aus getNetatmoDeviceType:\n"; print_r($result);
             if ($typedev<>"")  
                 {
@@ -581,9 +599,12 @@ class HardwareNetatmoWeather extends Hardware
                 $deviceList[$name]["Channels"][$port]=$typedev;
                 $deviceList[$name]["Channels"][$port]["Name"]=$name;                
                 }
-            else echo "   >>getDeviceChannels, Fehler $instanz: keine Channels ermittelt.\n";
+            else
+                {
+                echo "   >>getDeviceChannels, Fehler $name: keine Channels ermittelt.\n";
+                }
             }
-        if ($debug)
+        if ( ($debug) && false)
             {
             echo "===> Ergebnis getDeviceChannels:\n";
             print_r($deviceList[$name]["Channels"]);
@@ -686,7 +707,24 @@ class HardwareNetatmoWeather extends Hardware
             $result[4]["TYPE_METER_HUMIDITY"] = $resultRegHumi;
             $result[4]["RegisterAll"]=$registerNew;
             }
-        else $found=false;
+        elseif ( array_search("Status",$registerNew) !== false)            /* Sensor Temperatur */
+            {
+            //print_r($registerNew);
+            if ($debug) echo "                     Ort der Wetterstation gefunden.\n";
+            $result[0] = "Statusinformation";
+            $result[1] = "Funk Statusinformation";
+            $result[2] = "TYPE_STATUS";            
+            $result[3]["Type"] = "TYPE_STATUS";            
+            $result[3]["RegisterAll"]=$registerNew;
+            $result[4]["TYPECHAN"] = "TYPE_STATUS";              
+            $result[4]["RegisterAll"]=$registerNew;
+            } 
+        else
+            {
+            $found=false;
+            echo "   >>NetatmoDeviceType, Fehler kenne Objekt nicht. Werte im Objekt sind :\n";
+            print_r($registerNew);
+            }
 
         if ($found) 
             {
@@ -1003,7 +1041,8 @@ class HardwareHomematic extends Hardware
                 IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
                 $DeviceManager = new DeviceManagement();                    
                 $instanz=$entry["OID"];
-                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,false);     /* true debug, wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                //$typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,$debug);     /* true debug, wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
+                $typedev    = $DeviceManager->getHomematicDeviceType($instanz,4,false);
                 if ($typedev !== false)  
                     {
                     /*
@@ -1025,8 +1064,15 @@ class HardwareHomematic extends Hardware
                         $deviceList[$nameSelect[0]]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];
                         $deviceList[$nameSelect[0]]["Channels"][$port]=$typedev;
                         $deviceList[$nameSelect[0]]["Channels"][$port]["Name"]=$name;
-                        if ($debug) echo "       Schreibe Channels $port mit Typ ".$typedev["Type"].".\n";
-                        //print_r($typedev);
+                        if ($debug) 
+                            {
+                            if (isset($typedev["TYPECHAN"])) echo "       Schreibe Channels $port mit Typ ".$typedev["TYPECHAN"].".\n";         // Ausgabemodus 4
+                            else    
+                                {
+                                echo "       getDeviceChannels in HardwareHomematic, Schreibe Channels $port typedev config ist:\n";
+                                print_r($typedev);
+                                }
+                            }
                         }
                     else 
                         {
@@ -1096,13 +1142,14 @@ class HardwareHUE extends Hardware
     public function getDeviceParameter(&$deviceList, $name, $type, $entry, $debug=false)
         {
         /* Fehlerpüfung */
+        //$debug=true;
         if (isset($deviceList[$name])) 
             {
             echo "          >>getDeviceParameter:HUE   Fehler, Name \"".$nameSelect[0]."\" bereits definiert.\n";
             return(false);
             }            
         /* Durchführung */
-        if ($debug) echo"          getDeviceParameters:HUE     aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
+        if ($debug) echo "          getDeviceParameters:HUE     aufgerufen. Eintrag \"$name\" hinterlegt.\n";            
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         //print_r($result);
         if ( (isset($result["DeviceType"])) &&($result["DeviceType"]=="lights") ) $entry["TYPEDEV"]="TYPE_SWITCH";
@@ -1482,7 +1529,7 @@ class HardwareEchoControl extends Hardware
         if ($debug) 
             {   
             echo "           getDeviceParameter HardwareEchoControl Parameter $name $type\n";          
-            print_r($entry);
+            //print_r($entry);
             }
         $configStruct=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
         $device=false; $tuneIn=false;         // anhand der Konfig rausfinden ob es ein physikalisches gerät ist 
@@ -1495,14 +1542,14 @@ class HardwareEchoControl extends Hardware
                 case "Devicenumber": 
                     $len = strlen($conf);
                     if ($len < 17) $device=true;
-                    if ($debug) echo "      ->  ".$typ."    ".$conf."    $len\n";
+                    //if ($debug) echo "      ->  ".$typ."    ".$conf."    $len\n";
                     break;
                 case "Devicetype":
                     $len = strlen($conf);                    
-                    if ($debug) echo "      ->  ".$typ."    ".$conf."   $len\n";
+                    //if ($debug) echo "      ->  ".$typ."    ".$conf."   $len\n";
                     break;
                 case "TuneInStations":
-                    if ($debug) echo "      ->  ".$typ."     \n";                    
+                    //if ($debug) echo "      ->  ".$typ."     \n";                    
                     $tuneIn=true;
                     break;
                 case "ExtendedInfo":
@@ -1525,11 +1572,11 @@ class HardwareEchoControl extends Hardware
                 case "updateinterval":
                     if ($conf==0) 
                         {
-                        if ($debug) echo "      ->  ".$typ."    ".$conf."     change Configuration !\n";                   
+                        //if ($debug) echo "      ->  ".$typ."    ".$conf."     change Configuration !\n";                   
                         }
                     else
                         {
-                        if ($debug)  echo "      ->  ".$typ."    ".$conf."  \n";                   
+                        //if ($debug)  echo "      ->  ".$typ."    ".$conf."  \n";                   
                         }
                     break;                   
                 default:

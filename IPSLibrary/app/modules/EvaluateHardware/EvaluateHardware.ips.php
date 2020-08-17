@@ -90,7 +90,8 @@ if (isset($installedModules["OperationCenter"]))
     echo "OperationCenter ist installiert.\n";
     $DeviceManager = new DeviceManagement();            // class aus der OperationCenter_Library
     //echo "  Aktuelle Fehlermeldung der der Homematic CCUs ausgeben:\n";      
-    echo $DeviceManager->HomematicFehlermeldungen()."\n";
+    $homematicErrors = $DeviceManager->HomematicFehlermeldungen();
+    echo "$homematicErrors\n";
     //echo "  Homematic Serialnummern erfassen:\n";
     $serials=$DeviceManager->addHomematicSerialList_Typ();      // kein Debug
     }
@@ -219,7 +220,7 @@ IPS_SetEventActive($tim1ID,true);
         echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
         foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
     echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+    $deviceList = $topologyLibrary->get_DeviceList($hardware, true);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
     echo "\n";
 
     $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
@@ -239,7 +240,8 @@ IPS_SetEventActive($tim1ID,true);
     $includefileDevices .= 'function deviceList() { return ';
     $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
     $includefileDevices .= ';}'."\n\n";        
-
+	
+    $includefileDevices .= "\n".'?>';
 	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
 	if (!file_put_contents($filename, $includefileDevices)) {
         throw new Exception('Create File '.$filename.' failed!');
@@ -339,9 +341,9 @@ if (isset($installedModules["DetectMovement"]))
 
     echo "\n";
 	echo "=======================================================================\n";
-	echo "Summenregister suchen und evaluieren :\n";
+	echo "DetectMovement Summenregister suchen und evaluieren :\n";
     echo "\n";
-	echo "Bewegungsregister hereinholen:\n";								
+	echo "DetectMovement Bewegungsregister hereinholen:\n";								
 	$DetectMovementHandler = new DetectMovementHandler();
 	$groups=$DetectMovementHandler->ListGroups("Motion");       /* Type angeben damit mehrere Gruppen aufgelöst werden können */
 	$events=$DetectMovementHandler->ListEvents();
@@ -360,7 +362,7 @@ if (isset($installedModules["DetectMovement"]))
 		}	
 	
     echo "\n";
-	echo "Temperaturregister hereinholen, Spiegelregister auch registrieren:\n";								
+	echo "DetectMovement Temperaturregister aus der Configuration hereinholen, Spiegelregister auch registrieren:\n";								
     $DetectTemperatureHandler = new DetectTemperatureHandler();
 	$eventDeviceConfig=$DetectDeviceHandler->Get_EventConfigurationAuto();
     $eventTempConfig=$DetectTemperatureHandler->Get_EventConfigurationAuto();    	
@@ -376,14 +378,18 @@ if (isset($installedModules["DetectMovement"]))
             if ($werte === false) echo "Kein Logging für Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).")\n";
             if (isset($eventDeviceConfig[$oid])&& isset($eventTempConfig[$oid])) 
                 {
-                echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
-                        json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
-                /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
-                    * Config function DetectDevice follows detecttemperaturehandler
-                    */            
-                $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
-                $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
-                $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                if (IPS_ObjectExists($oid))
+                    {    
+                    echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75).
+                            json_encode($eventDeviceConfig[$oid])."  ".json_encode($eventTempConfig[$oid])." Spiegelregister $moid (".IPS_GetName($moid).".".IPS_GetName(IPS_GetParent($moid)).") Archive Groesse : ".count($werte)."\n";
+                    /* check and get mirror register,. It is taken from config file. If config file is empty it is calculated from parent or other inputs and stored afterwards 
+                        * Config function DetectDevice follows detecttemperaturehandler
+                        */            
+                    $DetectTemperatureHandler->RegisterEvent($oid,"Temperatur",'','Mirror->'.$mirror);     /* par2 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben , Mirror Register als Teil der Konfig*/
+                    $DetectDeviceHandler->RegisterEvent($moid,'Topology','','Temperature',false, true);	        // par 3 config overwrite
+                    $DetectDeviceHandler->RegisterEvent($oid,'Topology','','Temperature,Mirror->'.$mirror,false, true);	        	/* par 3 config overwrite, Mirror Register als Zusatzinformation, nicht relevant */
+                    }
+                else echo "Fehler, $oid nicht mehr vorhanden aber in config eingetragen.\n";
                 }
             else echo "     ".$oid."  ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)).".".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))),75)." ---->   not in config.\n";
             }
@@ -399,7 +405,7 @@ if (isset($installedModules["DetectMovement"]))
 		}	
 
     echo "\n";
-	echo "Feuchtigkeitsregister hereinholen:\n";								
+	echo "DetectMovement Feuchtigkeitsregister hereinholen:\n";								
 	$DetectHumidityHandler = new DetectHumidityHandler();
 	$groups=$DetectHumidityHandler->ListGroups("Humidity");
 	$events=$DetectHumidityHandler->ListEvents();
@@ -418,7 +424,7 @@ if (isset($installedModules["DetectMovement"]))
 		}	
 
     echo "\n";
-	echo "Stellwertsregister hereinholen:\n";								
+	echo "DetectMovement Stellwertsregister hereinholen:\n";								
 	$DetectHeatControlHandler = new DetectHeatControlHandler();
 	$groups=$DetectHeatControlHandler->ListGroups("HeatControl");
 	$events=$DetectHeatControlHandler->ListEvents();
@@ -502,7 +508,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 	/* IPS Heat analysieren */
 	if ( isset($installedModules["Stromheizung"]) )
 		{
-		echo "\nStromheizung ist installiert. Configuration auslesen.\n";
+		echo "\nIPSHeat Stromheizung ist installiert. Configuration auslesen.\n";
 		IPSUtils_Include ("IPSInstaller.inc.php",            "IPSLibrary::install::IPSInstaller");		
 		IPSUtils_Include ("IPSHeat.inc.php",                "IPSLibrary::app::modules::Stromheizung");		
 		IPSUtils_Include ("IPSHeat_Constants.inc.php",      "IPSLibrary::app::modules::Stromheizung");		
@@ -537,7 +543,7 @@ if ( ( ($_IPS['SENDER']=="Execute") || ($_IPS['SENDER']=="RunScript") ) && $Exec
 		}
 
 	echo "\n==================================================================\n";
-	echo "es geht weiter mit der Timer Routine\n";
+
 	} /* ende if execute */
 
 

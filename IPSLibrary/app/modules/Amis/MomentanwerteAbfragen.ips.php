@@ -81,13 +81,13 @@ IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$amis=new Amis();
-$MeterConfig = $amis->getMeterConfig();
-//print_r($MeterConfig);
+    $amis=new Amis();
+    $MeterConfig = $amis->getMeterConfig();
+    //print_r($MeterConfig);
 
-/* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
-$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-$TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    /* Damit kann das Auslesen der Zähler Allgemein gestoppt werden */
+    $MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    $TimeSlotReadID = CreateVariableByName($CategoryIdData, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 
 

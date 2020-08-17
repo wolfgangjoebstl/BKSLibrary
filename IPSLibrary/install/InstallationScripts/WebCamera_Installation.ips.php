@@ -197,10 +197,13 @@
         $cam_name=$cam_config['NAME'];    
         if (isset ($cam_config['FTPFOLDER']))         
             {
-            echo "   ==> Bearbeite LogFileHandler->MoveCamFiles für die Webkamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."\n";
-            $cam_config['CAMNAME']=$cam_name;
-            if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config,false);        // true ist mit debug
-            //if (isset($cam_config["PURGECAMFILES"])) if ($cam_config["PURGECAMFILES"]) $OperationCenter->PurgeFiles(14,$cam_config['FTPFOLDER'],true);
+            if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                {                        
+                echo "\n ==> Bearbeite LogFileHandler->MoveCamFiles für die Webkamera : ".$cam_name." im Verzeichnis ".$cam_config['FTPFOLDER']."       -> ".number_format((microtime(true)-$startexec),1)." Sekunden vergangen.\n";
+                $cam_config['CAMNAME']=$cam_name;
+                if (isset($cam_config["MOVECAMFILES"])) if ($cam_config["MOVECAMFILES"]) $count+=$LogFileHandler->MoveCamFiles($cam_config,false);        // true ist mit debug
+                $OperationCenter->PurgeCamFiles($cam_config,true);      // true for debug
+                }
             }
         }        
 
@@ -218,14 +221,14 @@
     $resultStream=array(); $idx=0;          // Link zu den Cameras
     $debug=false;
 
-    echo "\n";
+    echo "\n=============================================================\n";
     echo "Webcam Kamera Ausgabe für die folgenden Kameras konfigurieren:\n";
     foreach ($camConfig as $index => $cam_config)             /* das sind die Capture Dateien, die häufen sich natürlich wenn mehr Bewegung ist */
         {
         $cam_name=$cam_config['NAME'];    
 
         echo "   ---------------------------------\n";
-        echo "   Bearbeite WebCamera $cam_name:\n";
+        echo "   Bearbeite WebCamera $cam_name:       -> ".number_format((microtime(true)-$startexec),1)." Sekunden vergangen\n";
         if ($debug) print_r($cam_config);        
         if ( (isset($cam_config["FTP"])) && (strtoupper($cam_config["FTP"])=="ENABLED") ) 
             {
@@ -326,6 +329,8 @@
                     /* http or rstp, kann Component nicht verwenden */
                     case "INSTAR-8015":
                     case "INSTAR-8003":
+                    case "INSTAR-5905":                    
+                    
                         $know=true;
                     default:
                         echo $index."  ".$cam_config["NAME"]."   ".$cam_config["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
@@ -347,7 +352,7 @@
                                 }
                             else $urlLiveStream .= 'http://'.$cam_config["IPADRESSE"].'/videostream.cgi?user='.$cam_config["USERNAME"].'&pwd='.$cam_config["PASSWORD"].'&resolution='.$cam_config["STREAMPORT"];
                             }
-                        else echo 'Fehler, keine gültiges FORMAT mit $streamFormat angelegt. Verwende http oder rstp.\n'; 
+                        else echo "Fehler, keine gültiges FORMAT mit $streamFormat angelegt. Verwende http oder rstp.\n"; 
                         break;
                     }           // ende switch
 
@@ -361,9 +366,9 @@
                 $resultStream[$idx]["Data"]["Cam_Motion"]=$WebCam_MotionID;
                 $idx++;
                 }
-            else echo 'Fehler, keine Stream Parameter angelegt. Füge "FORMAT","USERNAME","PASSWORD","IPADRESSE","STREAMPORT" ein.\n'; 
+            else echo "    Kein Stream Parameter angelegt. Füge \"FORMAT\",\"USERNAME\",\"PASSWORD\",\"IPADRESSE\",\"STREAMPORT\" ein.\n"; 
             }
-        else echo 'Fehler, kein Stream definiert. Füge "STREAM" => "enabled" ein.\n';
+        else echo "     Kein Stream definiert. Füge \"STREAM\" => \"enabled\" ein.\n";
         }
 
     //echo "      Konfiguration ".$cam_name."\n"; print_r($cam_config);
@@ -378,54 +383,10 @@
      *
      *******************************************************************************************************/
 
-    echo "\n";
+    echo "\n==========================================================\n";
     //echo "------StillPics View aufbauen, so wie auch im Timer\n";
     $zielVerzeichnis = $webCamera->zielVerzeichnis();
-    $maxCount = count($camConfig);    
-    echo "------StillPics download from $maxCount Cams to $zielVerzeichnis\n";
-    $j=GetValue($camIndexID);
-    for ($i=0; $i<$maxCount; $i++)
-        {
-        $Cam=$camConfig[$j];
-        if (isset($Cam["COMPONENT"]))
-            {
-            echo $j."  ".$Cam["NAME"]."   ".$Cam["COMPONENT"]."    ".number_format((microtime(true)-$startexec),1)." Sekunden   \n";
-
-            /* 
-            $componentDef=explode(",",$Cam["COMPONENT"]);
-            print_r($componentDef);        // 0 component 1 domainname:port 2 user 3 password  , 1 bis 3 aus den anderen Angaben vervollstaendigen 
-
-            $component       = IPSComponent::CreateObjectByParams($Cam["COMPONENT"]);
-            $size=0; $command=100;
-            $urlPicture      = $component->Get_URLPicture($size);
-            $urlLiveStream   = $component->Get_URLLiveStream($size);
-            $urlCommand      = $component->Get_URL($command); // zum steuern wenn beweglich
-            //Get_Width, Get_Height
-
-            Livestream
-            Instar       small||medium||large    /videostream.cgi?user=admin&pwd=cloudg06&resolution={8||8||32}
-            Instar 720p  small||medium||large    /cgi-bin/hi3510/mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
-            Instar 1080p small||medium||large    /mjpegstream.cgi?-chn={13||12||11}&-usr=admin&-pwd=cloudg06
-                            small||medium||large    rtsp://admin:instar@IP-Address:RTSP-Port/{13||12||11}
-            Reolink                              rtsp://admin:111111@192.168.0.110:554//h264Preview_01_main
-                                    Sub Stream:  rtsp://admin:111111@192.168.0.110:554//h264Preview_01_sub      
-                    
-            pictures
-            Instar                             /snapshot.cgi?user=admin&pwd=cloudg06&next_url=snapshot.jpg
-            Instar  720p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
-            Instar 1080p small||medium||large  /tmpfs/{auto2.jpg||auto.jpg||snap.jpg}?usr=admin&pwd=cloudg06 
-            Reolink                            /cgi-bin/api.cgi?cmd=Snap&channel=0&rs=(any combination of numbers and letters)&user=admin&password=cloudg06
-
-
-            */
-
-            }
-        $webCamera->DownloadImageFromCam($j, $Cam, $zielVerzeichnis, 2, "Cam".$j.".jpg");
-        $j++;
-        if ($j==$maxCount) $j=0;                // Beim nächsten Mal gehts hier weiter. Bei Timeouts einfach mit der nächsten Kamera weitermachen
-        SetValue($camIndexID,$j);
-        if ((microtime(true)-$startexec) > 25)  break;
-        }
+    $webCamera->DownloadImageFromCams($camConfig, $zielVerzeichnis);            // von allen Cameras ein Bild herunterladen, wenn zwei Kameras nicht erreichbar sind abbrechen
             
     echo "-------showCamSnapshots  \n";
     $OperationCenter->showCamSnapshots($camConfig,true);	
@@ -435,28 +396,35 @@
     $OperationCenter->showCamCaptureFiles($OperationCenterConfig['CAM'],true);
 
     /************************************************************************************************************** 
-        *
-        * Webfront Konfiguration aufbauen.
-        *
-        * Im array resultstream sind die Links die in jedem Webfront Administrator,User,Mobile gesetzt werden
-        * es werden nur die Live monitore rtsp und http mjpeg 
-        *
-        *******************************************************************************************************/
+     *
+     * Webfront Konfiguration aufbauen.
+     *
+     * Im array resultstream sind die Links die in jedem Webfront Administrator,User,Mobile gesetzt werden
+     * es werden nur die Live monitore rtsp und http mjpeg 
+     *
+     *******************************************************************************************************/
 
-    echo "\n";
-    echo "    Webfront aufbauen für Monitor und StillPics.\n";
-    print_r($resultStream);
+    echo "============================================\n";
+    echo "Webfront aufbauen für Monitor und StillPics.\n";
+    
+    //print_r($resultStream);           // für die Live Streams
+    //echo $CamTablePictureID;          // für die regelmaessig upgedateten Pictures
+    $CamTableCaptureID=$OperationCenter->getPictureFieldIDs($OperationCenterConfig['CAM'],true);
+    print_R($CamTableCaptureID);
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
-    //print_r($configWFront);
+    print_r($configWFront);
 
     if (isset($configWFront["Administrator"]))
         {
         $configWF = $configWFront["Administrator"];
-        installWebfrontMon2($configWF,$resultStream,true);             
+        installWebfrontMon2($configWF,$resultStream,true);              // TabItem und TabIcon entsprechend der Konfiguration
         $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
         $configWF["TabIcon"]="Window";                              // different Icon
-        installWebfrontPics($configWF,$CamTablePictureID);        
+        installWebfrontPics($configWF,$CamTablePictureID);  
+        $configWF["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
+        $configWF["TabIcon"]="Window";                              // different Icon
+        installWebfrontCaptures($configWF,$CamTableCaptureID,true);                
         }
         
     if (isset($configWFront["User"]))
@@ -467,6 +435,9 @@
         $configWF["TabItem"]="CamPicture";                          // different path item from WebCamera, local override for regularily loaded Pictures
         $configWF["TabIcon"]="Window";                              // different Icon
         installWebfrontPics($configWF,$CamTablePictureID);            
+        $configWF["TabItem"]="CamCapture";                          // different path item from WebCamera, local override for captured selected Pictures
+        $configWF["TabIcon"]="Window";                              // different Icon
+        installWebfrontCaptures($configWF,$CamTableCaptureID,true);                
         }
 
     if (isset($configWFront["Mobile"]))
@@ -510,7 +481,11 @@
 
     /*******************************************************************
      *
-     * eigenes generisches WebCamera Webfront aufbauen, Default Icon Arztkoffer
+     * eigenes generisches WebCamera Webfront aufbauen
+     *
+     *      CreateWFCItemTabPane      $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
+     *        CreateWFCItemSplitPane  $configWF["TabItem"],     $configWF["TabPaneItem"],    ($configWF["TabOrder"]+200), "Monitor", $configWF["TabIcon"], 1 Vertical, 20 Width, 0 Target=Pane1, 0  UsePixel, 'true');  // Monitor Splitpane
+     *
      * es funktioniert noch nicht so dass die Funktion in AllgemeineDateien gespeichert und verwendet wird
      *
      * Tab mit 5 Fenster links gross und 4fach im Quadrat
@@ -529,7 +504,7 @@
             
         //if  ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )  
         if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
-             {
+            {
             $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
             
             //$tabItem = $configWF["TabPaneItem"].$configWF["TabItem"];																				
@@ -608,9 +583,18 @@
             }
         }
 
+    /*******************************************************************
+     *
+     * selber Aufbau in jeder der Routinen, Input configWF wird abgeändert
+     *     
+     *      CreateWFCItemTabPane        $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
+     *           CreateWFCItemCategory  $configWF["TabItem"],     $configWF["TabPaneItem"],   ($configWF["TabOrder"]+300), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor BaseId, 'false' BarBottomVisible );
+     *
+     **********************************/
+
     function installWebfrontPics($configWF,$CamTablePictureID)
         {
-        $full=false;            // nur zusätzlich installieren
+        $full=false;            // nur zusätzlich installieren, nicht notwendig macht WebfrontMon
         $ipsOps=new ipsOps();
         $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
 
@@ -618,7 +602,7 @@
             {
             echo "installWebfront Path : ".$configWF["Path"]." with this Webfront Tabpane Item Name : ".$configWF["TabPaneItem"]."\n";
             echo "----------------------------------------------------------------------------------------------------------------------------------\n";            $categoryId_WebFront         = CreateCategoryPath($configWF["Path"]);        // Path=Visualization.WebFront.User/Administrator/Mobile.WebCamera
-            if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabPaneItem"])==false )           /* nur wenn uebergeordnetes Webfront nicht da ist, die entsprechende Kategorie loeschen */
+            if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabPaneItem"]) )           /* nur wenn uebergeordnetes Webfront nicht da ist, die entsprechende Kategorie loeschen */
                 {
                 CreateWFCItemTabPane   ($configWF["ConfigId"], $configWF["TabPaneItem"], $configWF["TabPaneParent"],  $configWF["TabPaneOrder"], $configWF["TabPaneName"], $configWF["TabPaneIcon"]);        // WebCamera Tabpane
                 $ipsOps->emptyCategory($categoryId_WebFront);
@@ -628,7 +612,7 @@
         
         $categoryId_WebFrontMonitor  = CreateCategory($configWF["TabItem"],  $categoryId_WebFront, 50);        // gleich wie das Tabitem beschriften, erleichtert die Wiedererkennung
 
-        if ( exists_WFCItem($configWF["ConfigId"], $configWF["TabItem"]) )
+        if ( ( exists_WFCItem($configWF["ConfigId"], $configWF["TabItem"]) ) && $full)
             {
             echo "Einzel Tab loeschen und neu anlegen: DeleteWFCItems(".$configWF["ConfigId"].", ".$configWF["TabItem"].")\n";		
 		    DeleteWFCItems($configWF["ConfigId"], $configWF["TabItem"]);		// Einzel Tab loeschen und neu anlegen
@@ -636,12 +620,86 @@
     	    IPS_SetHidden($categoryId_WebFrontMonitor, true); 		// in der normalen Viz Darstellung Kategorie verstecken
             }
 		
-        /* im TabPane entweder eine Kategorie oder ein SplitPane und Kategorien anlegen */
+        /* im TabPane entweder eine Kategorie oder ein SplitPane mit Unterkategorien anlegen */
         CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"],   ($configWF["TabOrder"]+300), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
 
         // definition CreateLinkByDestination ($Name, $LinkChildId, $ParentId, $Position, $ident="") {
         CreateLinkByDestination("Pictures", $CamTablePictureID, $categoryId_WebFrontMonitor,  10,"");								
         }
+
+
+    /************************
+     *
+     * Anlegen des Capture Overviews von allen Kameras, ähnlich wie im OperationCenter
+     * Ziel ist es die Anzeige aus den IPSCam Webfroint Tab in das WebCamera Webfron hinüberzubringen
+     *
+     * einzelne Tabs pro Kamera mit den interessantesten Bildern der letzten Stunden oder Tage
+     * die Daten werden aus den FTP Verzeichnissen gesammelt.
+     *
+     ************************/
+							
+    function installWebfrontCaptures($configWF,$CamTableCaptureID, $debug=false)
+        {
+        $full=false;
+        $ipsOps=new ipsOps();
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+            {
+            /* im TabPane entweder eine Kategorie oder ein SplitPane mit Unterkategorien anlegen */
+            $categoryId_WebFrontMonitor = $CamTableCaptureID["Base"];
+            CreateWFCItemCategory  ($configWF["ConfigId"], $configWF["TabItem"], $configWF["TabPaneItem"],   ($configWF["TabOrder"]+600), $configWF["TabItem"], $configWF["TabIcon"], $categoryId_WebFrontMonitor /*BaseId*/, 'false' /*BarBottomVisible*/ );
+
+        if (false)
+            {    
+			echo "\nWebportal Administrator.IPSCam.Overview Datenstruktur installieren in: \"".$WFC10Cam_Path."_Capture\"\n";			
+			$categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
+			EmptyCategory($categoryId_WebFrontAdministrator);
+			IPS_SetHidden($categoryId_WebFrontAdministrator, true); 		// in der normalen Viz Darstellung Kategorie verstecken
+
+			//CreateWFCItemTabPane   ($WFC10User_ConfigId, $WFC10User_TabPaneItem, $WFC10User_TabPaneParent,  $WFC10User_TabPaneOrder, $WFC10User_TabPaneName, $WFC10User_TabPaneIcon);
+			CreateWFCItemTabPane  ($WFC10_ConfigId, "CamCapture", $WFC10Cam_TabPaneItem, ($WFC10Cam_TabOrder+1000), 'CamCapture', $WFC10Cam_TabIcon);
+			if (isset ($OperationCenterConfig['CAM']))
+				{
+				$i=0;
+				foreach ($OperationCenterConfig['CAM'] as $cam_name => $cam_config)
+					{
+					$i++; $found=false;
+                    if (isset ($cam_config['FTPFOLDER']))         
+                        {
+                        if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                            {
+                            echo "  Webfront Tabname für ".$cam_name." \n";
+                            $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                            if ($cam_categoryId==false)
+                                {
+                                $cam_categoryId = IPS_CreateCategory();       // Kategorie anlegen
+                                IPS_SetName($cam_categoryId, "Cam_".$cam_name); // Kategorie benennen
+                                IPS_SetParent($cam_categoryId,$CategoryIdData);
+                                }
+                            $categoryIdCapture  = CreateCategory("Cam_".$cam_name,  $categoryId_WebFrontAdministrator, 10*$i);
+                            CreateWFCItemCategory  ($WFC10_ConfigId, "Cam_".$cam_name,  "CamCapture",    (10*$i),  "Cam_".$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture /*BaseId*/, 'false' /*BarBottomVisible*/);
+                            echo "     CreateWFCItemCategory  ($WFC10_ConfigId, Cam_$cam_name,  CamCapture,    ".(10*$i).",  Cam_$cam_name,     $WFC10Cam_TabIcon, $categoryIdCapture, false);\n";
+                            $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox',null,null,"");
+                            $box='<iframe frameborder="0" width="100%">     </iframe>';
+                            SetValue($pictureFieldID,$box);
+                            $found=true;
+                            }
+                        }
+                    if (!$found)
+                        {
+                        echo "  Webfront Tabname für ".$cam_name." wird nicht mehr benötigt, loeschen.\n";
+                        $cam_categoryId=@IPS_GetObjectIDByName("Cam_".$cam_name,$CategoryIdData);
+                        if ($cam_categoryId !== false)
+                            {
+                            DeleteWFCItems($WFC10_ConfigId, "Cam_".$cam_name);    
+                            }
+                        }
+					}
+				}
+            }  // false
+
+            }
+        }
+
 
 
 ?>

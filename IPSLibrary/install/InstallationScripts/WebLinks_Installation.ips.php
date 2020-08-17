@@ -57,6 +57,11 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+    /* check if Administarto0r and User >Webfronts allread available */
+
+    $wfcHandling =  new WfcHandling();
+    $wfcHandling->installWebfront();
+
 	// definition CreateCategory ($Name, $ParentId, $Position, $Icon=null)
 	$CategoryIdDataWL=CreateCategory("WebLinks",IPS_GetParent($CategoryIdData),2000,"");
 	echo "Kategorie WebLinks : ".$CategoryIdDataWL."  ".IPS_GetName($CategoryIdDataWL)."/".IPS_GetName(IPS_GetParent($CategoryIdDataWL))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataWL)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataWL))))."\n";
@@ -232,28 +237,50 @@
          	echo "      ---Modul WEBLINKS:\n";
 				foreach ($config as $entry)
 					{
-					print_r($entry);
+					//print_r($entry);
 					if (isset($entry["NAME"])==false) $entry["NAME"]=$entry["LINK"];
 					if (isset($entry["TITLE"])==false) $entry["TITLE"]=$entry["NAME"];
-               if (isset($entry["TYPE"])==false) $entry["TYPE"]="extern";
+                    if (isset($entry["TYPE"])==false) $entry["TYPE"]="extern";
 					$html.='<tr> <td>'.$entry["NAME"].'</td> <td> ';
-               if ($entry["TYPE"]=="extern") 
+                    if ($entry["TYPE"]=="extern") 
 						{
 						$html .= "</td> <td>";
-               	$html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> </tr>';
+               	        $html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> </tr>';
 						}
 					else
 						{	
-               	$html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> ';
+               	        $html .= '<a href="'.$entry["LINK"].'" target="_blank">'.$entry["TITLE"].'</a> </td> ';
 						$html .= '<td> </td> </tr>';
 						}
 					}
 				break;
 			case "CAMERAS":
-				if (isset ($installedModules["IPSCam"]))
+				if (isset ($installedModules["OperationCenter"]))
 					{
-               echo "      ---Modul CAMERAS:\n";
-             	IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
+                    echo "      ---Modul CAMERAS von OperationCenter:\n";
+                	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+                    $operationCenter = new OperationCenter();
+                    $camConfig = $operationCenter->getCAMConfiguration();
+                    print_R($camConfig);
+					foreach ($camConfig as $name=>$data) 
+						{
+                        $type="CameraTypeUnknown";                    
+                        $ipAdresse="";
+                        $domainName="";
+                        //if ( (isset($data["FTP"])) && ((strtoupper($data["FTP"]))=="ENABLED") )             // alle oder nur die lokalen Kameras anzeigen
+                            {
+                            if (isset($data["IPADRESSE"])) $ipAdresse=$data["IPADRESSE"];
+                            if (isset($data["DOMAINNAME"])) $domainName=$data["DOMAINNAME"];
+                            if (isset($data["TYPE"])) $type=$data["TYPE"];
+    					    $html.='<tr> <td>'.$type.' '.$name.'</td> <td> <a href="'.'http://'.$ipAdresse.'" target="_blank">'.$type.'</a> </td> <td> <a href="'.'http://'.$domainName.'" target="_blank">'.$type.'</a> </td> </tr>';
+                            }
+                        }
+					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
+                    }
+				elseif (isset ($installedModules["IPSCam"]))
+					{
+                    echo "      ---Modul CAMERAS von IPSCam:\n";
+             	    IPSUtils_Include ("IPSCam_Constants.inc.php",      "IPSLibrary::app::modules::IPSCam");
 					IPSUtils_Include ("IPSCam_Configuration.inc.php",  "IPSLibrary::config::modules::IPSCam");
 					$camConfig = IPSCam_GetConfiguration();
 					foreach ($camConfig as $idx=>$data) 

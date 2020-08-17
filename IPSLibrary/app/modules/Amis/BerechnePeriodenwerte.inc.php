@@ -193,137 +193,137 @@ if ($_IPS['SENDER'] == "Execute")
             $Amis->getArchiveData($variableID, $starttime, $endtime, "A");  
             }
 
-    if (false)
-        {
-	$display=true;
-	$delete=false;          // damit werden geloggte Werte gelöscht
+        if (false)
+            {
+            $display=true;
+            $delete=false;          // damit werden geloggte Werte gelöscht
 
-	$initial=true;
-	$ergebnis=0;
-	$vorigertag="";
-	$disp_vorigertag="";
-	$neuwert=0;
+            $initial=true;
+            $ergebnis=0;
+            $vorigertag="";
+            $disp_vorigertag="";
+            $neuwert=0;
 
 
-		$vorwert=0;
-		$zaehler=0;
-		//$variableID=44113;
+            $vorwert=0;
+            $zaehler=0;
+            //$variableID=44113;
 
-		echo "ArchiveHandler: ".$archiveHandlerID." Variable: $variableID (".$ipsOps->path($variableID).")\n";
-		echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
-		
-		$increment=1;
-		//echo "Increment :".$increment."\n";
-		$gepldauer=($endtime-$starttime)/24/60/60;
-		do {
-			/* es könnten mehr als 10.000 Werte sein
-				Abfrage generisch lassen
-			*/
+            echo "ArchiveHandler: ".$archiveHandlerID." Variable: $variableID (".$ipsOps->path($variableID).")\n";
+            echo "Werte von ".date("d.m.Y H:i:s",$starttime)." bis ".date("d.m.Y H:i:s",$endtime)."\n";
+            
+            $increment=1;
+            //echo "Increment :".$increment."\n";
+            $gepldauer=($endtime-$starttime)/24/60/60;
+            do {
+                /* es könnten mehr als 10.000 Werte sein
+                    Abfrage generisch lassen
+                */
 
-			$werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
-			/* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
-				Nicht mer als 10.000 Werte ...
-			*/
-			//print_r($werte);
-			$anzahl=count($werte);
-			echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
+                $werte = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime, $endtime, 0);
+                /* Dieser Teil erstellt eine Ausgabe im Skriptfenster mit den abgefragten Werten
+                    Nicht mer als 10.000 Werte ...
+                */
+                //print_r($werte);
+                $anzahl=count($werte);
+                echo "   Variable: ".IPS_GetName($variableID)." mit ".$anzahl." Werte. \n";
 
-			if (($anzahl == 0) & ($zaehler == 0)) 
-				{
-				echo " Keine Werte archiviert. \n";
-				break;
-				}   // hartes Ende der Schleife wenn keine Werte vorhanden
+                if (($anzahl == 0) & ($zaehler == 0)) 
+                    {
+                    echo " Keine Werte archiviert. \n";
+                    break;
+                    }   // hartes Ende der Schleife wenn keine Werte vorhanden
 
-			if ($initial)
-				{
-				/* allererster Durchlauf */
-				$ersterwert=$werte['0']['Value'];
-				$ersterzeit=$werte['0']['TimeStamp'];
-				}
+                if ($initial)
+                    {
+                    /* allererster Durchlauf */
+                    $ersterwert=$werte['0']['Value'];
+                    $ersterzeit=$werte['0']['TimeStamp'];
+                    }
 
-			if ($anzahl<10000)
-		   		{
-	   			/* letzter Durchlauf */
-		   		$letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
-			   	$letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
-				//echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
-				//     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
-				}
+                if ($anzahl<10000)
+                    {
+                    /* letzter Durchlauf */
+                    $letzterwert=$werte[sprintf('%d',$anzahl-1)]['Value'];
+                    $letzterzeit=$werte[sprintf('%d',$anzahl-1)]['TimeStamp'];
+                    //echo "   Erster Wert : ".$werte[sprintf('%d',$anzahl-1)]['Value']." vom ".date("D d.m.Y H:i:s",$werte[sprintf('%d',$anzahl-1)]['TimeStamp']).
+                    //     " Letzter Wert: ".$werte['0']['Value']." vom ".date("D d.m.Y H:i:s",$werte['0']['TimeStamp'])." \n";
+                    }
 
-			$initial=true;
+                $initial=true;
 
-			foreach($werte as $wert)
-				{
-				$zeit=$wert['TimeStamp'];
-				$tag=date("d.m.Y", $zeit);
-				$aktwert=(float)$wert['Value'];
+                foreach($werte as $wert)
+                    {
+                    $zeit=$wert['TimeStamp'];
+                    $tag=date("d.m.Y", $zeit);
+                    $aktwert=(float)$wert['Value'];
 
-				if ($initial)
-					{
-					//print_r($wert);
-					$initial=false;
-					$vorwert=$aktwert;
-					echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
-					}
-                $vorwertCalc=$vorwert;                    
-				if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
-				   {
-				 	if ($delete==true)
-			   		{
-						AC_DeleteVariableData($archiveHandlerID, $variableID, $zeit, $zeit);
-						}
-					echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-				   }
-				else
-				   {
-					$vorwert=$aktwert;
-					}
-				if ($tag!=$vorigertag)
-			   	{ /* neuer Tag */
-			   	$altwert=$neuwert;
-			   	$neuwert=$aktwert;
-			   	switch ($increment)
-			   		{
-			   		case 1:
-							$ergebnis=$aktwert;
-			   		   break;
-			   		case 2:
-						   if ($altwert<$neuwert)
-						      {
-								$ergebnis+=($neuwert-$altwert);
-								}
-							else
-							   {
-								//$ergebnis+=($altwert-$neuwert);
-								//$ergebnis=$aktwert;
-								}
-							break;
-						case 0:
-							$ergebnis+=$aktwert;
-	                  break;
-	               default:
-	               }
-				   $vorigertag=$tag;
-				   }
+                    if ($initial)
+                        {
+                        //print_r($wert);
+                        $initial=false;
+                        $vorwert=$aktwert;
+                        echo "   Initial Startzeitpunkt:".date("d.m.Y H:i:s", $wert['TimeStamp'])."\n";
+                        }
+                    $vorwertCalc=$vorwert;                    
+                    if (($aktwert>$vorwert) or ($aktwert==0) or ($aktwert<0))
+                        {
+                        if ($delete==true)
+                            {
+                            AC_DeleteVariableData($archiveHandlerID, $variableID, $zeit, $zeit);
+                            }
+                        echo "****".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "") ." ergibt in Summe         : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                        }
+                    else
+                        {
+                        $vorwert=$aktwert;
+                        }
+                    if ($tag!=$vorigertag)
+                        { /* neuer Tag */
+                        $altwert=$neuwert;
+                        $neuwert=$aktwert;
+                        switch ($increment)
+                            {
+                            case 1:
+                                    $ergebnis=$aktwert;
+                            break;
+                            case 2:
+                                if ($altwert<$neuwert)
+                                    {
+                                        $ergebnis+=($neuwert-$altwert);
+                                        }
+                                    else
+                                    {
+                                        //$ergebnis+=($altwert-$neuwert);
+                                        //$ergebnis=$aktwert;
+                                        }
+                                    break;
+                                case 0:
+                                    $ergebnis+=$aktwert;
+                            break;
+                            default:
+                            }
+                    $vorigertag=$tag;
+                    }
 
-				if ($display==true)
-					{
-			   	    /* jeden Eintrag ausgeben */
-			   	    //print_r($wert);
-                    if ($vorwertCalc != $aktwert)
-			   	        {
-						echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
-						}
-                    else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                    if ($display==true)
+                        {
+                        /* jeden Eintrag ausgeben */
+                        //print_r($wert);
+                        if ($vorwertCalc != $aktwert)
+                            {
+                            echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."   ".number_format(($vorwertCalc-$aktwert)*4, 3, ".", "")." ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
+                            }
+                        else echo "   ".date("d.m.Y H:i:s", $wert['TimeStamp']) . " -> " . number_format($aktwert, 3, ".", "")."         ergibt in Summe (Tageswert) : " . number_format($ergebnis, 3, ".", "") . PHP_EOL;
 
-					}
-				$zaehler+=1;
-				}
-				
-				//$endtime=$zeit;
-		} while (count($werte)==10000);
-       }    // ende if false
-	}
+                        }
+                    $zaehler+=1;
+                    }
+                    
+                    //$endtime=$zeit;
+                } while (count($werte)==10000);
+            }    // ende if false
+	    }       // ende foreach
 
     $Amis->getArchiveData(17449, $starttime, $endtime, "A");  
     $Amis->getArchiveData(46020, $starttime, $endtime, "A"); 

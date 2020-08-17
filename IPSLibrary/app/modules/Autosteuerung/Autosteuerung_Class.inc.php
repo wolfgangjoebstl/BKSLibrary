@@ -205,12 +205,12 @@ class AutosteuerungHandler
 		 *
 		 * @param string[] $configuration Konfigurations Array
 		 */
-		private static function StoreEventConfiguration($configuration)
+		private static function StoreEventConfiguration($configuration, $debug=false)
 		   {
 			// Build Configuration String
 			$configString = '$eventConfiguration = array(';
-			echo "StoreEventConfiguration, Configuration wird jetzt wieder gespeichert:\n";
-			print_r($configuration);
+			if ($debug) echo "StoreEventConfiguration, Configuration wird jetzt wieder gespeichert:\n";
+			//print_r($configuration);
 
 			foreach ($configuration as $variableId=>$params) 
 				{
@@ -223,12 +223,12 @@ class AutosteuerungHandler
                 $configString .= '),';                
                 if (IPS_ObjectExists($variableId)==false) 
                     {
-                    echo "Objekt $variableId nicht angelegt. Parameter: ".json_encode($params).". Trotzdem in config übernehmen damit es nicht verloren geht ...\n";
+                    if ($debug) echo "Objekt $variableId nicht angelegt. Parameter: ".json_encode($params).". Trotzdem in config übernehmen damit es nicht verloren geht ...\n";
                     $configString .= '        /* !!! UNKNOWN variableID  */';                    
                     }
                 else
                     {
-                    echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
+                    if ($debug) echo "   process ".$variableId."  (".IPS_GetName(IPS_GetParent($variableId))."/".IPS_GetName($variableId).")\n";
                     $configString .= '        /* '.IPS_GetName($variableId).'  '.IPS_GetName(IPS_GetParent($variableId)).'     */';
                     }
 				}
@@ -249,7 +249,8 @@ class AutosteuerungHandler
 			$fileContentNew = substr($fileContent, 0, $pos1).$configString.substr($fileContent, $pos2);
 			file_put_contents($fileNameFull, $fileContentNew);
 			self::Set_EventConfigurationAuto($configuration);
-						}
+			}
+            
 		/************************************************************************
 		 *
 		 * Events neu registrieren
@@ -258,16 +259,16 @@ class AutosteuerungHandler
 		 *		
 		 ********************************************************************************/	
 
-		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams)
+		function registerAutoEvent($variableId, $eventType, $componentParams, $moduleParams, $debug=false)
 			{
 			$configuration = self::Get_EventConfigurationAuto();
-            echo "register Autoevent für $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).")\n";
+            if ($debug) echo "register Autoevent für $variableId (".IPS_GetName($variableId)."/".IPS_GetName(IPS_GetParent($variableId)).")\n";
 			//echo "---> war gespeichert.\n";
 
 			if (array_key_exists($variableId, $configuration))
 				{
-                echo "  Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." vorhanden.\n";
-    			print_r($configuration[$variableId]);
+                if ($debug) echo "  Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." vorhanden.\n";
+    			//print_r($configuration[$variableId]);
 				$moduleParamsNew = explode(',', $moduleParams);
 				$moduleClassNew  = $moduleParamsNew[0];
 
@@ -277,7 +278,7 @@ class AutosteuerungHandler
 				$ct_par=count($params);
 				if (($ct_par%3)>0)
 				    {
-					echo "Anzahl Parameter bei ID ".$variableId." : ".$ct_par." da sind ",($ct_par%3)." Parameter zuviel.\n";
+					if ($debug) echo "Anzahl Parameter bei ID ".$variableId." : ".$ct_par." da sind ",($ct_par%3)." Parameter zuviel.\n";
 					$ct_parN=$ct_par-($ct_par%3);
 					for ($i=$ct_parN; $i<$ct_par; $i++)
 						{
@@ -305,7 +306,7 @@ class AutosteuerungHandler
                 }
             else
                 {
-                echo "Lege neue Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
+                if ($debug) echo "Lege neue Variable mit ID : ".$variableId." : Event Type $eventType und Parameter, ComponentPars: ".$componentParams." ModulPars: ".$moduleParams." an.\n";
                 //echo "Variable with ID ".$variableId. " not found\n";
                 // Variable NOT found --> Create Configuration
                 $configuration[$variableId][] = $eventType;

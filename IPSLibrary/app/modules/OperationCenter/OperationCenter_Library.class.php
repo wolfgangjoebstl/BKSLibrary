@@ -20,19 +20,22 @@
 /*********************************************************************************************/
 /*********************************************************************************************/
 /*                                                                                           */
-/*                              Functions   , Klassendefinitionen                            */
+/*                              Functions, Klassendefinitionen                               */
 /*                                                                                           */
 /*********************************************************************************************/
 /*********************************************************************************************
  *
+ * diese Klassen werden hier behandelt:
+ *
  * OperationCenter
- *      BackupIpsymcon
- *      LogFileHandler
+ *      BackupIpsymcon          extend OperationCenter
+ *      LogFileHandler          extend OperationCenter
  * DeviceManagement
  * statusDisplay
  * parsefile
  * TimerHandling
  *
+ * und einige Allgemeine Funktionen
  */
 
 
@@ -94,31 +97,10 @@
  * FileStatusDelete		verschobene Files gemeinsam mit den Verzeichnisssen loeschen
  * getFileStatusDir
  *
- * HardwareStatus
- *
- * Verwenden gemeinsames Array $HomematicSerialNumberList:
- * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweiterbar ist
- * addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
- * writeHomematicSerialNumberList	Ausgabe der Liste
- * getHomematicDeviceList
- *
  * getIPSLoggerErrors	aus dem HTML Info Feld des IPS Loggers die Errormeldungen wieder herausziehen
  * stripHTMLTags
  *
- *
- * Klasse parsefile
- * ================
- *
- * Klasse TimerHandling
- * =====================
- * Funktionen ausserhalb der Klassen
- *
- * move_camPicture
- * get_Data
- * extractIPaddress		
- * dirtoArray, dirtoArray2
- * tts_play				Ausgabe von Ton für Sprachansagen
- * CyclicUpdate 		updatet und installiert neue Versionen der Module
+ * andere classes, siehe weiter unten
  *
  ****************************************************************************************************************/
 
@@ -205,7 +187,7 @@ class OperationCenter
 		$this->AllHostnames = LogAlles_Hostnames();
 		}
 		
-/****************************************************************************************************************/
+    /****************************************************************************************************************/
 
     public function getSetup()
         {
@@ -215,6 +197,57 @@ class OperationCenter
     public function getConfiguration()
         {
         return ($this->oc_Configuration);
+        }
+
+    public function getCAMConfiguration()
+        {
+        if (isset($this->oc_Configuration["CAM"])) return ($this->oc_Configuration["CAM"]);
+        else    
+            {
+            echo "OperationCenter, keine Kameras konfiguriert.\n";
+            return (array());
+            }
+        }
+
+    public function getINTERNETConfiguration()
+        {
+        if (isset($this->oc_Configuration["INTERNET"])) return ($this->oc_Configuration["INTERNET"]);
+        else    
+            {
+            echo "OperationCenter, keine INTERNET Überwachung konfiguriert.\n";
+            return (array());
+            }
+        }
+
+    public function getROUTERConfiguration()
+        {
+        if (isset($this->oc_Configuration["ROUTER"])) return ($this->oc_Configuration["ROUTER"]);
+        else    
+            {
+            echo "OperationCenter, keine ROUTER Auswertungen konfiguriert.\n";
+            return (array());
+            }
+        }
+
+    public function getLEDConfiguration()
+        {
+        if (isset($this->oc_Configuration["LED"])) return ($this->oc_Configuration["LED"]);
+        else    
+            {
+            echo "OperationCenter, keine LED Auswertungen konfiguriert.\n";
+            return (array());
+            }
+        }
+
+
+    public function getDENONConfiguration()
+        {
+        if (isset($this->oc_Configuration["DENON"])) return ($this->oc_Configuration["DENON"]);
+        else    
+            {
+            echo "OperationCenter, keine Audio Auswertungen (DENON) konfiguriert.\n";
+            return (array());
+            }
         }
 
     public function getCategoryIdData()
@@ -419,14 +452,14 @@ class OperationCenter
 	 *
 	 */
 	 
-	function ownIPaddress()
+	function ownIPaddress($debug=false)
 		{
 	   
 		/********************************************************
 	   	Eigene Ip Adresse immer ermitteln
 		**********************************************************/
 
-		echo "\nIPConfig Befehl liefert ...\n";
+		if ($debug) echo "\nIPConfig Befehl liefert ...\n";
 		$ipall=""; $hostname="unknown"; $lookforgateway=false;
 		exec('ipconfig /all',$catch);   /* braucht ein MSDOS Befehl manchmal laenger als 30 Sekunden zum abarbeiten ? */
 		//exec('ipconfig',$catch);   /* ohne all ist es eigentlich ausreichend Information, doppelte Eintraege werden vermieden, allerdings fehlt dann der Hostname */
@@ -479,17 +512,19 @@ class OperationCenter
 				}  /* ende strlen */
 		  	}
 		if ($ipall == "") {$ipall="unknown";}
-
-		echo "\n";
-		echo "Hostname ist          : ".$hostname."\n";
-		echo "Eigene IP Adresse ist : ".$ipall."\n";
-		echo "\n";
-
+        
+        if ($debug)
+            { 
+            echo "\n";
+            echo "Hostname ist          : ".$hostname."\n";
+            echo "Eigene IP Adresse ist : ".$ipall."\n";
+            echo "\n";
+            }
 		//print_r($ipports);
 		return ($ipports);
 		}
 
-/****************************************************************************************************************/
+    /****************************************************************************************************************/
 
 	/**
 	 * @public
@@ -1381,7 +1416,7 @@ class OperationCenter
         return($dauer);
         }
 
-/**************************************************************************************************************/
+    /**************************************************************************************************************/
 
 	/**
 	 * @public
@@ -1569,7 +1604,7 @@ class OperationCenter
         else return ($PrintLn);
 		}
 
-/****************************************************************************************************************/
+    /****************************************************************************************************************/
 
 	/**
 	 * @public
@@ -1750,13 +1785,13 @@ class OperationCenter
 			}               // ende foreach
 		}                   // ende function
 
-/***************************************************************************************************************
- *
- * Block im OperationCenter der MAC Adressen, IP Adressen und DomainNames behandelt
- *
- *
- *
- */
+    /***************************************************************************************************************
+    *
+    * Block im OperationCenter der MAC Adressen, IP Adressen und DomainNames behandelt
+    *
+    *
+    *
+    */
 
 	/**
 	 * @public
@@ -1999,7 +2034,7 @@ class OperationCenter
 		return ($ergebnis);
 	   }
 
-/****************************************************************************************************************/
+    /****************************************************************************************************************/
 
 	/**
 	 * Zusammenfassung der ActionButtons der class OperationCenter
@@ -2943,14 +2978,14 @@ class OperationCenter
 	function showCamCaptureFiles($ocCamConfig,$debug=false)
 		{
         $status=false;
-        $sysOps = new sysOps();
-
         if ($this->moduleManagerCam)
             {
+            /*
             $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
             $categoryId_WebFrontAdministrator         = CreateCategoryPath($WFC10Cam_Path."_Capture");
             if ($debug) echo "showCamCaptureFiles: started, Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
-
+            */
+            $categoryId_WebFrontAdministrator=$this->getWebfrontID();
             $childrens = IPS_GetChildrenIDs($categoryId_WebFrontAdministrator);
             $camsFound=array();
             foreach ($childrens as $children)
@@ -3002,8 +3037,8 @@ class OperationCenter
                             IPS_SetHidden($categoryIdCapture, false);
                             }
                     
-                        /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen */
-                        $pictureFieldID = CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox');
+                        /* hmtl box in Vizualization anlegen statt in data und einen Link darauf setzen $pictureFieldID = CreateVariable("pictureField",   3 ,  $categoryIdCapture, 50 , '~HTMLBox'); */
+                        $pictureFieldID = $this->createVariablePictureField($categoryIdCapture);
                         /*$html.='<style> 
                                 table {width:100%}
                                 td {width:50%}						
@@ -3049,7 +3084,12 @@ class OperationCenter
                             }
                         if ($picdir !== false)			// ignorieren wenn picdir kein verzeichnis ist
                             {
-                            /* Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
+                            //$mode="standard";       // jedes 6te Bild
+                            $mode="time";         // ein Bild alle 120 Sekunden
+                            $logdir= $this->selectFilesfromList($picdir, $verzeichnis,$mode, $debug);
+                                
+                            /* 
+                            //Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht 
                             $size=sizeof($picdir);
                             $j=0;$k=0;$l=0; $timeWindow=0;
                             $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
@@ -3094,7 +3134,7 @@ class OperationCenter
                                 }
                             echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
                             echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
-                            //print_r($logdir);	
+                            //print_r($logdir);	*/
                             $check=array();
                             $handle=opendir ($imgVerzeichnisFull);
                             while ( false !== ($datei = readdir ($handle)) )
@@ -3139,6 +3179,7 @@ class OperationCenter
                                 }	
                             echo "insgesamt ".$i." Dateien im Zielverzeichnis. Dazu wurden ".$c." Dateien kopiert und ".$d." Dateien im Zielverzeichnis ".$imgVerzeichnisFull." geloescht.\n";
                 
+                            /* ein schönes Tablearray machen mit 5 Spalten */
                             $end=sizeof($logdir);
                             if ($end>100) $end=100;		
                             for ($j=1; $j<$end;$j++)
@@ -3147,10 +3188,18 @@ class OperationCenter
                                  */
                                 //echo "Suche Datei hier: ".$imgVerzeichnisFull.$logdir[$j-1].":\n";
                                 //$timeFile=@filemtime($imgVerzeichnisFull.$logdir[$j-1]);            // Fehlermeldung unterdrücken wenn es Datei zb nicht mehr gibt
-                                echo "Suche Datei hier: ".$verzeichnis."\\".$logdir[$j-1].":\n";
+                                echo "Suche Datei hier: ".$verzeichnis."\\".$logdir[$j-1].":";
                                 $timeFile=@filemtime($verzeichnis."\\".$logdir[$j-1]);            // nicht die kopierte, sondern die originale Datei evaluieren
-                                if ($timeFile) $timeToDisplay=date("d.m.Y H:i:s",$timeFile);
-                                else $timeToDisplay=$this->extractTime($logdir[$j-1]);
+                                if ($timeFile) 
+                                    {
+                                    $timeToDisplay=date("d.m.Y H:i:s",$timeFile);
+                                    echo "   ok      $j\n";
+                                    }
+                                else 
+                                    {
+                                    $timeToDisplay=$this->extractTime($logdir[$j-1]);
+                                    echo "   extract $j\n";
+                                    }
                                 if (($j % 5)==0) { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Wolfgang",$timeToDisplay).' </td> </tr>'; }
                                 elseif (($j % 5)==1) { $box.='<tr> <td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"Claudia",$timeToDisplay).' </td>'; }
                                 else { $box.='<td frameborder="1"> '.$this->imgsrcstring($imgVerzeichnis,$logdir[$j-1],"WeissNicht",$timeToDisplay).' </td>'; }
@@ -3174,7 +3223,152 @@ class OperationCenter
             }
         return ($status);
 		}	
-						
+
+    /*                     */
+    
+    public function getWebfrontID($debug=false)
+        {
+        $WFC10Cam_Path        	 = $this->moduleManagerCam->GetConfigValue('Path', 'WFC10');
+        if ($debug) echo "getWebfrontID from Webfont Path of IPSCam Module in $WFC10Cam_Path\n";
+        return (CreateCategoryPath($WFC10Cam_Path."_Capture"));
+        }
+
+    /*                     */
+
+    public function createVariablePictureField($categoryIdCapture)
+        {
+        return ( CreateVariable("pictureField",   3 /*String*/,  $categoryIdCapture, 50 , '~HTMLBox'));            
+        }
+
+    /*                     */
+    
+    public function getPictureFieldIDs($ocCamConfig, $debug=false)
+        {
+        $pictureFieldIDs=array(); $index=0;
+        if ($this->moduleManagerCam)
+            {
+            $categoryId_WebFrontAdministrator=$this->getWebfrontID(); 
+            $pictureFieldIDs["Base"] = $categoryId_WebFrontAdministrator;      
+            if ($debug) echo "getPictureFieldIDs aufgerufen. Bearbeite die Kategorie ".IPS_GetName($categoryId_WebFrontAdministrator)."  ($categoryId_WebFrontAdministrator)\n";
+            foreach ($ocCamConfig as $indexName => $cam_config)
+                {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
+                if (isset ($cam_config['FTPFOLDER']))         
+                    { 
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                                    
+                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $categoryId_WebFrontAdministrator);
+                        $fieldID = $this->createVariablePictureField($categoryIdCapture);
+                        $pictureFieldIDs[$index]["Data"] = $fieldID;
+                        if ($debug) echo "   Camera $cam_name hat PictureFieldID $fieldID  \n";
+                        $index++;
+                        }
+                    }           // ende isset ftpfolder
+                }           // ende foreach
+            }           // ende IPSCam
+        return ($pictureFieldIDs);
+        }        
+
+    /**************************
+     *
+     * aus einer Liste nach dem Mode ein paar Dateien aussuchen
+     * picdir Fileliste die kopiert werden soll, hier für die Auswahl relevant
+     *
+     ********************************************/
+
+    private function selectFilesfromList($picdir, $verzeichnis,$mode="standard", $debug=false)
+        {
+        $sysOps = new sysOps();
+        if ($mode=="") $mode="standard";        // default mode
+        $span=120;                              // Zeitspanne innerhalb der ein Bild ausgesucht wird
+        /* picdir Fileliste die kopiert werden soll, vorhandene Dateien werden nicht kopiert, andere Dateien werden gelöscht */
+        $size=sizeof($picdir);      // input ist picdir array, output ist logdir, parameter sind verzeichnis
+        if ($debug) echo "selectFilesfromList, Liste mit $size Dateien übergeben. mode $mode.\n";
+
+        /* picdir sortiern, entweder nach den Dateinamen, oder dem tatsächlichen File Create Datum */
+        $datesort=array();
+        foreach ($picdir as $pic) $datesort[filemtime($verzeichnis."\\".$pic)]=$pic;
+        krsort($datesort); 
+        //foreach ($datesort as $time => $pic) echo "    ".date("H:i:s",$time)."   $pic\n";
+
+        $j=0;$k=0;$l=0; $timeWindow=0;
+        $logdir=array();  // logdir loeschen, sonst werden die Filenamen vom letzten Mal mitgenommen
+        foreach ($datesort as $time => $pic)
+            {
+            $path_parts = pathinfo($pic);
+            if ($path_parts['extension']=="jpg")
+                {
+                if ($debug) echo "   ".str_pad($verzeichnis."\\".$pic,50)."   ".str_pad($sysOps->getNiceFileSize(filesize($verzeichnis."\\".$pic)),16)."    ".
+                                    date("H:i:s",$time);
+                if ($timeWindow==0) 
+                    {
+                    $timeWindow=$time;      // initialisieren, erstes Foto immer anzeigen
+                    if ($debug) echo "  + init";  
+                    $oldpic=$pic; 
+                    $logdir[$j]=$pic;
+                    $j++;
+                    }
+                elseif ($time<($timeWindow-$span))             // es geht rückwärts, 60 Sekundenfenster vorsehen, ausserhalb
+                    {
+                    if ($l<3) 
+                        {
+                        if ($debug) echo "  +";
+                        if ($mode=="time")
+                            {
+                            $logdir[$j]=$oldpic;
+                            $j++;
+                            } 
+                        }
+                    else
+                        {
+                        if ($debug) echo "  \\";
+                        }   
+                    $timeWindow=$time;
+                    $l=0;
+                    }
+                else                                            // im 60 Sekundenfenster
+                    {
+                    $l++;
+                    if ($l==3)  
+                        {
+                        if ($debug) echo "  +"; 
+                        if ($mode=="time")
+                            {
+                            $logdir[$j]=$pic;
+                            $j++;
+                            } 
+                        }
+                    else 
+                        {
+                        if ($debug) echo "  |";
+                        }
+                    }
+                //echo "       Dirname: ".$path_parts['dirname'], "\n";
+                //echo "       Basename: ".$path_parts['basename'], "\n";
+                //echo "       Extension: ".$path_parts['extension'], "\n";
+                //echo "       Filename: ".$path_parts['filename'], "\n"; // seit PHP 5.2.0			
+                if (($k % 6)==2) 
+                    { 
+                    if ($mode=="standard")
+                        {
+                        $logdir[$j]=$pic;
+                        $j++;
+                        } 
+                    if ($debug) echo "  *"; 
+                    };
+                $k++;		// eigener Index, da manche Files übersprungen werden
+                if ($debug) echo "\n";
+                $oldpic=$pic;           // manchmal wird das vorige Bild benötigt
+                }       // if jpeg
+            //if ($debug) echo "\n";
+            }    // foreach
+        echo "Im Quellverzeichnis ".$verzeichnis." sind insgesamt ".$size." Dateien :\n";
+        echo "Es wird nur jeweils aus sechs jpg Dateien die dritte genommen.\n"; 	
+
+        return($logdir);	
+        }
+
 	/*
 	 * Bei jedem Bild als html Verzeichnis und alternativem Bildtitel darstellen
      * nutzt class bildmittext bild ist $imgVerzeichnis.$filename
@@ -3264,7 +3458,7 @@ class OperationCenter
 		return($dir);		
 		}
 
-/*
+    /*
 	function correctDirName($verzeichnis)
 		{
 		$len=strlen($verzeichnis); $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");
@@ -3272,21 +3466,45 @@ class OperationCenter
 		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
 		return ($verzeichnis);
 		}
-*/
+    */
+
+
+    function purgeCamFiles($cam_config,$debug=false)
+        {
+        /* Default Konfiguration herausarbeiten */
+        if ( (isset($cam_config["PURGECAMFILES"])) && ($cam_config["PURGECAMFILES"]) )
+            {    
+            if (isset($cam_config['PURGESIZE'])) $remain=$cam_config['PURGESIZE'];
+            else $remain = 14;
+            if (isset($cam_config['PURGEAMOUNT'])) $remainFiles=$cam_config['PURGEAMOUNT'];
+            else $remainFiles=1000*$remain;
+            }
+        else 
+            {
+            $remain=2;
+            print_r($cam_config);
+            }
+
+        return ($this->purgeFiles($remain,$cam_config['FTPFOLDER'],$debug));
+        }
+
 
 	/*
 	 *  Die in einem Ordner pro Tag zusammengefassten Logfiles loeschen.
-	 *  Es werden die älteren Dateien bis zur Anzahl x geloescht.
-	 *
+	 *  Es werden die älteren Verzeichnisse bis zur Anzahl remain geloescht.
+     *  Wenn kein Purge definiert ist einfach nur 2 Verzeichnisse stehen lassen. Sonst ist der Server schnell einmal überfüllt
+	 * Zusätzlich die Anzahl der Captured Pictures auf 1.000 pro tag limitieren, oder Parameter
 	 */
 
-	function PurgeFiles($remain=false,$verzeichnis="")
+	function PurgeFiles($remain=false, $verzeichnis="", $debug=false)
 		{
-		if ($remain===false)
-			{
-			$remain=$this->oc_Setup['CONFIG']['PURGESIZE'];
-			}
-		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';			
+        /* Default Konfiguration für Purge LogFiles herausarbeiten */
+        if ($remain===false)
+            {
+            if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])) $remain=$this->oc_Setup['CONFIG']['PURGESIZE'];
+            else $remain = 14;
+            }
+		if ($verzeichnis=="") $verzeichnis=IPS_GetKernelDir().'logs/';	
 
 		echo "PurgeFiles: Überschüssige (>".$remain.") Sammel-Verzeichnisse von ".$verzeichnis." löschen. Die letzen ".$remain." Verzeichnisse bleiben.\n";
 		//echo "Heute      : ".date("Ymd", time())."\n";
@@ -3294,6 +3512,7 @@ class OperationCenter
 
 		$count=0;
 		$dir=array();
+        $dirSize=array();
 		
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $verzeichnis ) )
@@ -3310,14 +3529,38 @@ class OperationCenter
 						$dateityp=filetype( $verzeichnis.$file );
 						if ($dateityp == "dir")
 							{
-							//echo "   Erfasse Verzeichnis ".$verzeichnis.$file."\n";
 							$count++;
 							$dir[]=$verzeichnis.$file;
+							if ($debug) echo "   Erfasse Verzeichnis ".$verzeichnis.$file;                              // aufteilen, für bessere Fehlererkennung
+                            $dirSize[$file]=$this->dosOps->readdirtoStat($verzeichnis.$file,true);       // true rekursiv
+                            if ($debug) 
+                                {
+                                echo " mit insgesamt ".$dirSize[$file]["files"]." gespeicherten Dateien.\n";                                    
+                                //print_r($dirsize);
+                                }                       
 							}
 						}	
 					//echo "    ".$file."    ".$dateityp."\n";
 					} /* Ende while */
 				//echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt.\n";	
+
+                /* zusätzlich haerausfinden ob die Anzahl von 14.000 Files überschritten wurde, dann auch mehr Verzeichnisse löschen */
+                krsort($dirSize);                               // verkehrt rum zählen, die neuesten Dateien zuerst
+                $filesize=0; $max=0;
+                foreach ($dirSize as $entry)
+                    {
+                    $filesize += $entry["files"];
+                    if ($filesize < 14000) $max++;          // Wenn filesize unter 14000 bleibt ist max gleich gross wie count
+                    }
+                if ($max < $remain) 
+                    {
+                    //print_r($dirSize);
+                    $remain = $max;             // es gibt 14 Verzeichnisse (=count) aber max wurde nur 10 gross, dann auf 10 Verzeichnisse einkürzen, d.h. 4 verzeichnisse löschen
+                    }
+				if ($debug) 
+                    {
+                    echo "   Insgesamt wurden ".$count." Verzeichnisse entdeckt mit insgesamt $filesize Dateien. Es bleiben $remain Verzeichnisse.\n";	
+                    } 
 				closedir($handle);
 				} /* end if dir */
 			}/* ende if isdir */
@@ -3325,6 +3568,11 @@ class OperationCenter
 			{
 			echo "Kein Verzeichnis mit dem Namen \"".$verzeichnis."\" vorhanden.\n";
 			}
+        if ($debug && false)
+            {
+            echo "Zusammenfasung, bevor es mit dem Löschen losgeht: ($count - $remain)>0 bedeutet Loeschen !!!\n";    
+            print_r($dirSize);    
+            }
 		if (($count-$remain)>0) 
 			{	
 			echo "Loeschen von 0 bis ".($count-$remain)."\n";
@@ -3500,17 +3748,31 @@ class OperationCenter
 	 *
 	 */
 
-	function FileStatus($filename="")
+	function FileStatus($filename="", $debug=false)
 		{
+        if ($debug)
+            {
+            echo "OperationCenter::FilesStatus aufgerufen. Filename \"$filename\"\n";
+		    print_r($this->oc_Setup);
+            }
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
-		print_r($this->oc_Setup);
 		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
-
+        if ($debug)echo "Name Directory für Ergebnisse von send_status ist $DIR_copystatusdropbox.\n";
 		$this->dosOps->mkdirtree($DIR_copystatusdropbox);
-
-		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true).
+        if ($debug) 
+            {
+            echo "===================================\n";
+            echo "Send_status aktuelle Werte berechnen:\n\n";
+            }
+        /* Aufruf send_status aktuell/historisch, Zeit für execute time Berechnung, Debug */ 
+		$event1=date("D d.m.y h:i:s")." Die aktuellen Werte aus der Hausautomatisierung: \n\n".send_status(true, 0, $debug).
 			"\n\n************************************************************************************************************************\n";
-		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false).
+        if ($debug) 
+            {
+            echo "===================================\n";
+            echo "Send_status historische Werte berechnen:\n";
+            }
+		$event2=date("D d.m.y h:i:s")." Die historischen Werte aus der Hausautomatisierung: \n\n".send_status(false, 0, $debug).
 			"\n\n************************************************************************************************************************\n";
 		
 		if ($filename=="")		/* sonst filename übernehmen */
@@ -3520,16 +3782,19 @@ class OperationCenter
 			$filenameHistorisch=$DIR_copystatusdropbox.date("Ymd").'StatusHistorie.txt';
 			
 			if (!file_put_contents($filenameAktuell, $event1)) {
+                echo "Error, Create File $filename failed!\n";
     	  	  	throw new Exception('Create File '.$filename.' failed!');
     			}
 
 			if (!file_put_contents($filenameHistorisch, $event2)) {
+                echo "Error, Create File $filename failed!\n";
     	  	  	throw new Exception('Create File '.$filename.' failed!');
     			}
 			}
 		else
 			{	
 			if (!file_put_contents($filename, $event1.$event2)) {
+                echo "Error, Create File $filename failed!\n";
     	  	  	throw new Exception('Create File '.$filename.' failed!');
     			}
 			}
@@ -5947,15 +6212,29 @@ class LogFileHandler extends OperationCenter
  *      HomematicSerialNumberList
  *
  * HardwareStatus                       Statusinfo von Hardware, auslesen der Sensoren und Alarm wenn laenger keine Aktion.
- * getHomematicSerialNumberList
- * addHomematicSerialList_Typ
+ * Verwenden gemeinsames Array $HomematicSerialNumberList:
+ * getHomematicSerialNumberList		erfasst alle Homematic Geräte anhand der Seriennumme und erstellt eine gemeinsame liste die mit anderen Funktionen erweiterbar ist
+ * get_ActionButton                     Standardfunktion für die Activities aus dem Webfront
+ * getHomematicAddressList
+ *
+ * addHomematicSerialList_Typ		die Homematic Liste wird um weitere Informationen erweitert:  Typ
  * addHomematicSerialList_RSSI
  * addHomematicSerialList_DetectMovement
- * writeHomematicSerialNumberList
+ *
+ * writeHomematicSerialNumberList	Ausgabe der Liste
  * tableHomematicSerialNumberList
  *
+ * getHomematicDeviceList
+ * getHomematicType
+ * HomematicDeviceType
+ * getHomematicDeviceType
+ * getHomematicHMDevice
+ * getFS20Type
+ * getFS20DeviceType
  *
  * HomematicFehlermeldungen
+ * getHomematicDeviceList
+ *
  *
  **************************************************************************************************************************/
 
@@ -5964,6 +6243,7 @@ class DeviceManagement
 
 	var $CategoryIdData       	= 0;
 	var $archiveHandlerID     	= 0;
+    var $debug                  = false;            /* wenig Debug Info ausgeben */
  
 	var $log_OperationCenter  	= array();
 	var $oc_Configuration     	= array();
@@ -5982,9 +6262,9 @@ class DeviceManagement
 	 * Initialisierung des DeviceManagement Class Objektes
 	 *
 	 */
-	public function __construct()
+	public function __construct($debug=false)
 		{
-
+        $this->debug=$debug;
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -6016,15 +6296,24 @@ class DeviceManagement
 			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}
+        if ($debug) 
+            { 
+            echo "Aufbau des OperationCenter Setups. Fehlende Werte in der Konfiguration ersetzen.\n";
+            print_r($this->oc_Setup);
+            }
+
         $this->getHomematicSerialNumberList();
 
+        if ($debug) echo "ModulHandling aufrufen:\n";
 		$modulhandling = new ModuleHandling();
 		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
 
-        $this->HomematicAddressesList=$this->getHomematicAddressList();         // benötigt die HMIs
+        if ($debug) echo "getHomematicAddressList aufrufen:\n";
+        $this->HomematicAddressesList=$this->getHomematicAddressList($debug);         // benötigt die HMIs
+        if ($debug) echo "DeviceManagement Modul vollständig initialisiert.\n";
 		}
 		
-/****************************************************************************************************************/
+    /****************************************************************************************************************/
 
 
 	/*
@@ -6855,157 +7144,157 @@ class DeviceManagement
 				$HMaddress=explode(":",HM_GetAddress($instanceId));
 				$serienNummer[$HM_CCU_Name][$HMaddress[0]]["RSSI"]=$value;
 				}			
-	
-	print_r($serienNummer);
+        
+        print_r($serienNummer);
 
-	/* Tabelle indexiert nach Seriennummern ausgeben, es wird pro Homematic Socket eine eigene Tabelle erstellt */
+        /* Tabelle indexiert nach Seriennummern ausgeben, es wird pro Homematic Socket eine eigene Tabelle erstellt */
 
-	$str="";
-	$ccuNum=1;	
-	foreach ($serienNummer as $ccu => $geraete)
- 		{
-		$str .= "<table width='90%' align='center'>"; 
-		$str .= "<tr><td><b>".$ccu."</b></td></tr>";
-		$str .= "<tr><td><b>Seriennummer</b></td><td><b>GeräteName</b></td><td><b>Protokoll</b></td><td><b>GeraeteTyp</b></td><td><b>UpdateTime</b></td><td><b>RSSI</b></td></tr>";
-		foreach ($geraete as $name => $geraet)
-			{
-			if (isset($geraet["Typ"])==true)
-				{
-				if (isset($geraet["RSSI"])==true)
-					{
-					$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
-						date("d.m H:i",$geraet["Update"])."</td><td>".$geraet["RSSI"]."</td></tr>";
-					}
-				else
-					{	
-					$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
-						date("d.m H:i",$geraet["Update"])."</td></tr>";
-					}
-				}
-			else
-				{
-				$str .= "<tr><td>".$name."</td><td>   </td><td>      </td></tr>";				
-				//$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
-				}		
-			}		
-		$ccuNum++;
-		}
-	echo $str; 		
+        $str="";
+        $ccuNum=1;	
+        foreach ($serienNummer as $ccu => $geraete)
+            {
+            $str .= "<table width='90%' align='center'>"; 
+            $str .= "<tr><td><b>".$ccu."</b></td></tr>";
+            $str .= "<tr><td><b>Seriennummer</b></td><td><b>GeräteName</b></td><td><b>Protokoll</b></td><td><b>GeraeteTyp</b></td><td><b>UpdateTime</b></td><td><b>RSSI</b></td></tr>";
+            foreach ($geraete as $name => $geraet)
+                {
+                if (isset($geraet["Typ"])==true)
+                    {
+                    if (isset($geraet["RSSI"])==true)
+                        {
+                        $str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+                            date("d.m H:i",$geraet["Update"])."</td><td>".$geraet["RSSI"]."</td></tr>";
+                        }
+                    else
+                        {	
+                        $str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td><td>".$geraet["Typ"]."</td><td>".
+                            date("d.m H:i",$geraet["Update"])."</td></tr>";
+                        }
+                    }
+                else
+                    {
+                    $str .= "<tr><td>".$name."</td><td>   </td><td>      </td></tr>";				
+                    //$str .= "<tr><td>".$name."</td><td>".$geraet["Name"]."</td><td>".$geraet["Protokoll"]."</td></tr>";				
+                    }		
+                }		
+            $ccuNum++;
+            }
+        echo $str; 		
 
     	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	    $HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox');
 	    SetValue($HomematicGeraeteliste,$str);
 		}
 
-/*****************************************************
- *
- * HM_TYPE für Homematic feststellen
- *
- * anhand einer Homatic Instanz ID ermitteln 
- * um welchen Typ von Homematic Geraet es sich handeln koennte,
- * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
- */
+    /*****************************************************
+    *
+    * HM_TYPE für Homematic feststellen
+    *
+    * anhand einer Homatic Instanz ID ermitteln 
+    * um welchen Typ von Homematic Geraet es sich handeln koennte,
+    * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
+    */
 
-function getHomematicType($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	//print_r($cids);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	//print_r($homematic);
-	/* 	define ('HM_TYPE_LIGHT',					'Light');
-	define ('HM_TYPE_SHUTTER',					'Shutter');
-	define ('HM_TYPE_DIMMER',					'Dimmer');
-	define ('HM_TYPE_BUTTON',					'Button');
-	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
-	define ('HM_TYPE_SWITCH',					'Switch'); */
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				//echo "Funk-Tür-/Fensterkontakt\n";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					//echo "Taster 6fach\n";
-					}
-				else
-					{
-					//echo "Funk-Display-Wandtaster\n";
-					}
-				$type="HM_TYPE_BUTTON";
-				break;
-			case "ACTUAL_HUMIDITY":
-				//echo "Funk-Wandthermostat\n";
-				break;
-			case "ACTUAL_TEMPERATURE":
-				//echo "Funk-Heizkörperthermostat\n";
-				break;
-			case "BRIGHTNESS":
-				//echo "Funk-Bewegungsmelder\n";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					//echo "Dimmer\n";
-					$type="HM_TYPE_DIMMER";						
-					}
-				else
-					{
-					//echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				//echo "Funk-Schaltaktor 1-fach\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "BOOT":
-				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				//echo "Energiemessung\n";
-				break;
-			case "HUMIDITY":
-				//echo "Funk-Thermometer\n";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					//echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					//echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					//echo "IP Funk-Schaltaktor\n";
-					$type="HM_TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				//echo "unknown\n";
-				//print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		//echo "   noch nicht angelegt.\n";
-		}			
+    function getHomematicType($instanz)
+        {
+        $cids = IPS_GetChildrenIDs($instanz);
+        //print_r($cids);
+        $homematic=array();
+        foreach($cids as $cid)
+            {
+            $homematic[]=IPS_GetName($cid);
+            }
+        sort($homematic);
+        //print_r($homematic);
+        /* 	define ('HM_TYPE_LIGHT',					'Light');
+        define ('HM_TYPE_SHUTTER',					'Shutter');
+        define ('HM_TYPE_DIMMER',					'Dimmer');
+        define ('HM_TYPE_BUTTON',					'Button');
+        define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
+        define ('HM_TYPE_SWITCH',					'Switch'); */
+        $type=""; echo "       ";
+        if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+            {
+            switch ($homematic[0])
+                {
+                case "ERROR":
+                    //echo "Funk-Tür-/Fensterkontakt\n";
+                    break;
+                case "INSTALL_TEST":
+                    if ($homematic[1]=="PRESS_CONT")
+                        {
+                        //echo "Taster 6fach\n";
+                        }
+                    else
+                        {
+                        //echo "Funk-Display-Wandtaster\n";
+                        }
+                    $type="HM_TYPE_BUTTON";
+                    break;
+                case "ACTUAL_HUMIDITY":
+                    //echo "Funk-Wandthermostat\n";
+                    break;
+                case "ACTUAL_TEMPERATURE":
+                    //echo "Funk-Heizkörperthermostat\n";
+                    break;
+                case "BRIGHTNESS":
+                    //echo "Funk-Bewegungsmelder\n";
+                    break;
+                case "DIRECTION":
+                    if ($homematic[1]=="ERROR_OVERHEAT")
+                        {
+                        //echo "Dimmer\n";
+                        $type="HM_TYPE_DIMMER";						
+                        }
+                    else
+                        {
+                        //echo "Rolladensteuerung\n";
+                        }
+                    break;
+                case "PROCESS":
+                case "INHIBIT":
+                    //echo "Funk-Schaltaktor 1-fach\n";
+                    $type="HM_TYPE_SWITCH";
+                    break;
+                case "BOOT":
+                    //echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+                    $type="HM_TYPE_SWITCH";
+                    break;
+                case "CURRENT":
+                    //echo "Energiemessung\n";
+                    break;
+                case "HUMIDITY":
+                    //echo "Funk-Thermometer\n";
+                    break;
+                case "CONFIG_PENDING":
+                    if ($homematic[1]=="DUTYCYCLE")
+                        {
+                        //echo "Funkstatusregister\n";
+                        }
+                    elseif ($homematic[1]=="DUTY_CYCLE")
+                        {
+                        //echo "IP Funkstatusregister\n";
+                        }
+                    else
+                        {
+                        //echo "IP Funk-Schaltaktor\n";
+                        $type="HM_TYPE_SWITCH";
+                        }
+                    //print_r($homematic);
+                    break;					
+                default:
+                    //echo "unknown\n";
+                    //print_r($homematic);
+                    break;
+                }
+            }
+        else
+            {
+            //echo "   noch nicht angelegt.\n";
+            }			
 
-	return ($type);
-	}
+        return ($type);
+        }
 
 
     /*********************************
@@ -7200,6 +7489,15 @@ function getHomematicType($instanz)
             $resultReg[0]["LEVEL"]="LEVEL";                       
             }                    
         /*-------------------------------------*/
+        elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("LEVEL_STATUS",$registerNew) !== false) )/* HomematicIP Dimmer */
+            {
+            //print_r($registerNew);                
+            $result[0] = "Dimmer";
+            $result[1] = "Funk-Dimmer";
+            $resultType[0] = "TYPE_DIMMER"; 
+            $resultReg[0]["LEVEL"]="LEVEL";                       
+            }         
+        /*-------------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
             {
             //print_r($registerNew);                
@@ -7234,7 +7532,15 @@ function getHomematicType($instanz)
             $resultType[0] = "TYPE_METER_POWER";             
             $resultReg[0]["ENERGY"]="ENERGY_COUNTER";          
             }          
-        else $found=false;
+        else 
+            {
+            $found=false;
+            if ($debug)
+                { 
+                echo "             HomematicDeviceType: kein bekanntes Muster für ein gerät entdeckt. Wirklich so schwierig ?\n";
+                print_r($registerNew);
+                }
+            }
 
         if ($found) 
             {
@@ -7299,7 +7605,13 @@ function getHomematicType($instanz)
      * zB TYPE_METER_TEMPERATURE
      *
      * Es gibt für ein Homematic Gerät mehrere Instanzen/Channels. Nicht alle sind relevant. Daher ausklammern.
-     *
+     * Routine ermittelt alle Children eines Objektes und übergibt sie als array zur Prüfung
+     * ruft HomematicDeviceType auf, es gibt verschieden Ausgabeformate
+     *   0   Beispiel  "Bewegungsmelder";
+     *   1   Beispiel  "Funk-Bewegungsmelder";
+     *   2   Beispiel  TYPE_MOTION
+     *   3   { "Type"=>TYPE_MOTION,"Register"=> $resultReg[0],"RegisterAll"=>  }
+     *   4
      *
      ***********************************************/
 
@@ -7425,6 +7737,11 @@ function getHomematicType($instanz)
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
 
+                    case "HmIP-PDT":
+                        $result="Dimmer 1-fach";                            // wie HomematicIP Steckdosen Schalter, aber mit Dimmer und ohne Energiemessung
+                        $matrix=[0,2,1,2,1,1,1,1];                        
+                        break;
+
                     case "HM-LC-Bl1-FM"                        :
                         $result="Rolladensteuerung";
                         $matrix=[0,2,1,1,1,1,1,1];                        
@@ -7453,8 +7770,10 @@ function getHomematicType($instanz)
                         $matrix=[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];                        
                         break;
 
+                    case "-":
+                        echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
                     default:
-                        echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz)).", result is default, not known case key of \"".$this->HomematicAddressesList[$key]."\" for $key.\n";
+                        echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz)).", result is default, not known case key of \"".$this->HomematicAddressesList[$key]."\" for key $key.\n";
                         return ($this->HomematicAddressesList[$key]);
                         break;
                     }
@@ -7469,116 +7788,116 @@ function getHomematicType($instanz)
             }
 		}	
 
-/*****************************************************
- *
- * HM_TYPE für FS20, FS20EX oder FHT Instanz feststellen
- *
- * anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
- * um welchen Typ von Gerät es sich handeln koennte,
- * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
- *
- *******************************************************************/
+    /*****************************************************
+    *
+    * HM_TYPE für FS20, FS20EX oder FHT Instanz feststellen
+    *
+    * anhand einer FS20, FS20EX oder FHT Instanz ID ermitteln 
+    * um welchen Typ von Gerät es sich handeln koennte,
+    * es wird nur HM_TYPE_BUTTON, HM_TYPE_SWITCH, HM_TYPE_DIMMER, HM_TYPE_SHUTTER unterschieden
+    *
+    *******************************************************************/
 
-function getFS20Type($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	//print_r($cids);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	//print_r($homematic);
-	/* 	define ('HM_TYPE_LIGHT',					'Light');
-	define ('HM_TYPE_SHUTTER',					'Shutter');
-	define ('HM_TYPE_DIMMER',					'Dimmer');
-	define ('HM_TYPE_BUTTON',					'Button');
-	define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
-	define ('HM_TYPE_SWITCH',					'Switch'); */
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		switch ($homematic[0])
-			{
-			case "ERROR":
-				//echo "Funk-Tür-/Fensterkontakt\n";
-				break;
-			case "INSTALL_TEST":
-				if ($homematic[1]=="PRESS_CONT")
-					{
-					//echo "Taster 6fach\n";
-					}
-				else
-					{
-					//echo "Funk-Display-Wandtaster\n";
-					}
-				$type="HM_TYPE_BUTTON";
-				break;
-			case "ACTUAL_HUMIDITY":
-				//echo "Funk-Wandthermostat\n";
-				break;
-			case "ACTUAL_TEMPERATURE":
-				//echo "Funk-Heizkörperthermostat\n";
-				break;
-			case "BRIGHTNESS":
-				//echo "Funk-Bewegungsmelder\n";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					//echo "Dimmer\n";
-					$type="HM_TYPE_DIMMER";						
-					}
-				else
-					{
-					//echo "Rolladensteuerung\n";
-					}
-				break;
-			case "PROCESS":
-			case "INHIBIT":
-				//echo "Funk-Schaltaktor 1-fach\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "BOOT":
-				//echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="HM_TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				//echo "Energiemessung\n";
-				break;
-			case "HUMIDITY":
-				//echo "Funk-Thermometer\n";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					//echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					//echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					//echo "IP Funk-Schaltaktor\n";
-					$type="HM_TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				//echo "unknown\n";
-				//print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		//echo "   noch nicht angelegt.\n";
-		}			
+    function getFS20Type($instanz)
+        {
+        $cids = IPS_GetChildrenIDs($instanz);
+        //print_r($cids);
+        $homematic=array();
+        foreach($cids as $cid)
+            {
+            $homematic[]=IPS_GetName($cid);
+            }
+        sort($homematic);
+        //print_r($homematic);
+        /* 	define ('HM_TYPE_LIGHT',					'Light');
+        define ('HM_TYPE_SHUTTER',					'Shutter');
+        define ('HM_TYPE_DIMMER',					'Dimmer');
+        define ('HM_TYPE_BUTTON',					'Button');
+        define ('HM_TYPE_SMOKEDETECTOR',			'SmokeDetector');
+        define ('HM_TYPE_SWITCH',					'Switch'); */
+        $type=""; echo "       ";
+        if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+            {
+            switch ($homematic[0])
+                {
+                case "ERROR":
+                    //echo "Funk-Tür-/Fensterkontakt\n";
+                    break;
+                case "INSTALL_TEST":
+                    if ($homematic[1]=="PRESS_CONT")
+                        {
+                        //echo "Taster 6fach\n";
+                        }
+                    else
+                        {
+                        //echo "Funk-Display-Wandtaster\n";
+                        }
+                    $type="HM_TYPE_BUTTON";
+                    break;
+                case "ACTUAL_HUMIDITY":
+                    //echo "Funk-Wandthermostat\n";
+                    break;
+                case "ACTUAL_TEMPERATURE":
+                    //echo "Funk-Heizkörperthermostat\n";
+                    break;
+                case "BRIGHTNESS":
+                    //echo "Funk-Bewegungsmelder\n";
+                    break;
+                case "DIRECTION":
+                    if ($homematic[1]=="ERROR_OVERHEAT")
+                        {
+                        //echo "Dimmer\n";
+                        $type="HM_TYPE_DIMMER";						
+                        }
+                    else
+                        {
+                        //echo "Rolladensteuerung\n";
+                        }
+                    break;
+                case "PROCESS":
+                case "INHIBIT":
+                    //echo "Funk-Schaltaktor 1-fach\n";
+                    $type="HM_TYPE_SWITCH";
+                    break;
+                case "BOOT":
+                    //echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+                    $type="HM_TYPE_SWITCH";
+                    break;
+                case "CURRENT":
+                    //echo "Energiemessung\n";
+                    break;
+                case "HUMIDITY":
+                    //echo "Funk-Thermometer\n";
+                    break;
+                case "CONFIG_PENDING":
+                    if ($homematic[1]=="DUTYCYCLE")
+                        {
+                        //echo "Funkstatusregister\n";
+                        }
+                    elseif ($homematic[1]=="DUTY_CYCLE")
+                        {
+                        //echo "IP Funkstatusregister\n";
+                        }
+                    else
+                        {
+                        //echo "IP Funk-Schaltaktor\n";
+                        $type="HM_TYPE_SWITCH";
+                        }
+                    //print_r($homematic);
+                    break;					
+                default:
+                    //echo "unknown\n";
+                    //print_r($homematic);
+                    break;
+                }
+            }
+        else
+            {
+            //echo "   noch nicht angelegt.\n";
+            }			
 
-	return ($type);
-	}
+        return ($type);
+        }
 
     /*********************************
      *
@@ -7587,126 +7906,133 @@ function getFS20Type($instanz)
      *
      ***********************************************/
 
-function getFS20DeviceType($instanz)
-	{
-	$cids = IPS_GetChildrenIDs($instanz);
-	$homematic=array();
-	foreach($cids as $cid)
-		{
-		$homematic[]=IPS_GetName($cid);
-		}
-	sort($homematic);
-	$type=""; echo "       ";
-	if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
-		{
-		if (strpos($homematic[0],"(") !== false) 	$auswahl=substr($homematic[0],0,(strpos($homematic[0],"(")-1));
-		else $auswahl=$homematic[0];
-		echo "Auf ".$auswahl." untersuchen.\n";
-		switch ($auswahl)
-			{
-			case "ERROR":
-				echo "Funk-Tür-/Fensterkontakt\n";
-				$type="TYPE_CONTACT";
-				break;
-			case "Gerät":
-				echo "Funk-Display-Wandtaster\n";
-				$type="TYPE_BUTTON";
-				break;
-			case "Batterie":
-				echo "Funk-Wandthermostat\n";
-				$type="TYPE_THERMOSTAT";
-				break;
-			case "ACTIVE_PROFILE":
-				if ($homematic[15]=="VALVE_ADAPTION")
-					{
-					echo "Stellmotor\n";
-					$type="TYPE_ACTUATOR";
-					}
-				else
-					{
-					echo "Wandthermostat (IP)\n";
-					$type="TYPE_THERMOSTAT";
-					}
-				break;
-			case "ACTUAL_TEMPERATURE":
-				echo "Funk-Heizkörperthermostat\n";
-				$type="TYPE_ACTUATOR";
-				break;
-		 	case "ILLUMINATION":
-			case "BRIGHTNESS":
-				echo "Funk-Bewegungsmelder\n";
-				$type="TYPE_MOTION";
-				break;
-			case "DIRECTION":
-				if ($homematic[1]=="ERROR_OVERHEAT")
-					{
-					echo "Dimmer\n";
-					$type="TYPE_DIMMER";						
-					}
-				else
-					{
-					echo "Rolladensteuerung\n";
-					}
-				break;
-			case "Daten":
-				echo "Funk-Schaltaktor 1-fach\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "BOOT":
-				echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
-				$type="TYPE_SWITCH";
-				break;
-			case "CURRENT":
-				echo "Energiemessung\n";
-				$type="TYPE_METER_POWER";
-				break;
-			case "HUMIDITY":
-				echo "Funk-Thermometer\n";
-				$type="TYPE_METER_TEMPERATURE";
-				break;
-			case "CONFIG_PENDING":
-				if ($homematic[1]=="DUTYCYCLE")
-					{
-					echo "Funkstatusregister\n";
-					}
-				elseif ($homematic[1]=="DUTY_CYCLE")
-					{
-					echo "IP Funkstatusregister\n";
-					}
-				else
-					{
-					echo "IP Funk-Schaltaktor\n";
-					$type="TYPE_SWITCH";
-					}
-				//print_r($homematic);
-				break;					
-			default:
-				echo "unknown\n";
-				print_r($homematic);
-				break;
-			}
-		}
-	else
-		{
-		echo "   noch nicht angelegt.\n";
-		}			
-	return ($type);
-	}
+    function getFS20DeviceType($instanz)
+        {
+        $cids = IPS_GetChildrenIDs($instanz);
+        $homematic=array();
+        foreach($cids as $cid)
+            {
+            $homematic[]=IPS_GetName($cid);
+            }
+        sort($homematic);
+        $type=""; echo "       ";
+        if ( isset ($homematic[0]) ) /* es kann auch Homematic Variablen geben, die zwar angelegt sind aber die Childrens noch nicht bestimmt wurden. igorieren */
+            {
+            if (strpos($homematic[0],"(") !== false) 	$auswahl=substr($homematic[0],0,(strpos($homematic[0],"(")-1));
+            else $auswahl=$homematic[0];
+            echo "Auf ".$auswahl." untersuchen.\n";
+            switch ($auswahl)
+                {
+                case "ERROR":
+                    echo "Funk-Tür-/Fensterkontakt\n";
+                    $type="TYPE_CONTACT";
+                    break;
+                case "Gerät":
+                    echo "Funk-Display-Wandtaster\n";
+                    $type="TYPE_BUTTON";
+                    break;
+                case "Batterie":
+                    echo "Funk-Wandthermostat\n";
+                    $type="TYPE_THERMOSTAT";
+                    break;
+                case "ACTIVE_PROFILE":
+                    if ($homematic[15]=="VALVE_ADAPTION")
+                        {
+                        echo "Stellmotor\n";
+                        $type="TYPE_ACTUATOR";
+                        }
+                    else
+                        {
+                        echo "Wandthermostat (IP)\n";
+                        $type="TYPE_THERMOSTAT";
+                        }
+                    break;
+                case "ACTUAL_TEMPERATURE":
+                    echo "Funk-Heizkörperthermostat\n";
+                    $type="TYPE_ACTUATOR";
+                    break;
+                case "ILLUMINATION":
+                case "BRIGHTNESS":
+                    echo "Funk-Bewegungsmelder\n";
+                    $type="TYPE_MOTION";
+                    break;
+                case "DIRECTION":
+                    if ($homematic[1]=="ERROR_OVERHEAT")
+                        {
+                        echo "Dimmer\n";
+                        $type="TYPE_DIMMER";						
+                        }
+                    else
+                        {
+                        echo "Rolladensteuerung\n";
+                        }
+                    break;
+                case "Daten":
+                    echo "Funk-Schaltaktor 1-fach\n";
+                    $type="TYPE_SWITCH";
+                    break;
+                case "BOOT":
+                    echo "Funk-Schaltaktor 1-fach mit Energiemessung\n";
+                    $type="TYPE_SWITCH";
+                    break;
+                case "CURRENT":
+                    echo "Energiemessung\n";
+                    $type="TYPE_METER_POWER";
+                    break;
+                case "HUMIDITY":
+                    echo "Funk-Thermometer\n";
+                    $type="TYPE_METER_TEMPERATURE";
+                    break;
+                case "CONFIG_PENDING":
+                    if ($homematic[1]=="DUTYCYCLE")
+                        {
+                        echo "Funkstatusregister\n";
+                        }
+                    elseif ($homematic[1]=="DUTY_CYCLE")
+                        {
+                        echo "IP Funkstatusregister\n";
+                        }
+                    else
+                        {
+                        echo "IP Funk-Schaltaktor\n";
+                        $type="TYPE_SWITCH";
+                        }
+                    //print_r($homematic);
+                    break;					
+                default:
+                    echo "unknown\n";
+                    print_r($homematic);
+                    break;
+                }
+            }
+        else
+            {
+            echo "   noch nicht angelegt.\n";
+            }			
+        return ($type);
+        }
 
 
 
-/*****************************************************************
- *
- * den Status der HomematicCCU auslesen, alle Fehlermeldungen
- *
- * funktioniert für CCU2 und CCU3
- * alle echo Meldungen werden im String alleHM_errors gesammelt
- *
- **************/
+    /*****************************************************************
+    *
+    * den Status der HomematicCCU auslesen, alle Fehlermeldungen
+    *
+    * funktioniert für CCU2 und CCU3
+    * alle echo Meldungen werden im String alleHM_errors gesammelt
+    *
+    **************/
 
-    function HomematicFehlermeldungen()
+    function HomematicFehlermeldungen($mode=false, $debug=false)
 	    {
+        if ($debug) 
+            {
+            echo "HomematicFehlermeldungen für die Ausgabe der aktuellen Fehlermeldungen der Homematic Funkkommunikation aufgerufen. Ausgabeart :";
+            if ($mode) echo "Array\n";
+            else "Text\n";
+            }
 		$alleHM_Errors="\nAktuelle Fehlermeldungen der Homematic Funkkommunikation:\n";
+        $arrHM_Errors=array();
 		$texte = Array(
 		    "CONFIG_PENDING" => "Konfigurationsdaten stehen zur Übertragung an",
 		    "LOWBAT" => "Batterieladezustand gering",
@@ -7726,16 +8052,19 @@ function getFS20DeviceType($instanz)
 		    {
 			/* Homematic Instanzen vorhanden, sind sie aber auch aktiv ? */
 			$aktiv=false;
+            if ($debug) echo "  Es wurden insgesamt $HomInstanz CCUs gefunden.\n";            
             $alleHM_Errors.="  Es wurden insgesamt $HomInstanz CCUs gefunden.\n";
 			foreach ($ids as $id)
 	   		    {
 				$HM_Config=IPS_GetConfiguration($id);
-				//echo "Homematic Socket : ".IPS_GetName($id)."  Konfig : ".$HM_Config."\n";
+				if ($debug) echo "      Homematic Socket : ".IPS_GetName($id)."  Konfig : ".$HM_Config."\n";
                 $CCUconfig=json_decode($HM_Config);
                 //print_r($CCUconfig);
 				if ( $CCUconfig->Open==false )
 				    {
-					$alleHM_Errors.="\nHomatic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.\n";
+                    if ($debug) echo "               Homematic Socket ID ".$id." / ".IPS_GetName($id)."   -> im IO Socket Homematic Funk nicht aktiviert.\n";
+					$alleHM_Errors.="\nHomematic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.\n";
+                    $arrHM_Errors[$id]["ErrorMessage"]="Homematic Socket ID ".$id." / ".IPS_GetName($id)."   -> Port nicht aktiviert.";
 					}
 				else
 				    {
@@ -7751,6 +8080,7 @@ function getFS20DeviceType($instanz)
                         //print_r($HM_Status);
                         if ($HM_Status["InstanceStatus"] != 102) echo "    Instanz $id nicht aktiv.\n";
                         print_r($HM_Config);
+                        $arrHM_Errors[$id]["ErrorMessage"]="Verbindung zur CCU $id fehlgeschlagen";
 					    }
 					if ($msgs != Null)
 						{
@@ -7759,16 +8089,16 @@ function getFS20DeviceType($instanz)
 							//echo "Keine Servicemeldungen!\n";
 					   	    $alleHM_Errors.="OK, keine Servicemeldungen!\n";
 							}
-
+                        //print_r($msgs);
 						foreach($msgs as $msg)
 						    {
 				   		    if(array_key_exists($msg['Message'], $texte))
 								{
-      					  	    $text = $texte[$msg['Message']];
+      					  	    $text = $msg['Address']."   ".$texte[$msg['Message']]."(".$msg['Value'].")";
 		   					    }
 							else
 								{
-	      	  				    $text = $msg['Message'];
+	      	  				    $text = $msg['Address']."   ".$msg['Message']."(".$msg['Value'].")";
 			        			}
 						    $HMID = GetInstanceIDFromHMID($msg['Address']);
 					    	if(IPS_InstanceExists($HMID))
@@ -7780,18 +8110,23 @@ function getFS20DeviceType($instanz)
 			      	  		    $name = "Gerät nicht in IP-Symcon eingerichtet";
     							}
 			  				//echo "Name : ".$name."  ".$msg['Address']."   ".$text." \n";
-						  	$alleHM_Errors.="  NACHRICHT : ".str_pad($name,60)."  ".$msg['Address']."   ".$text." \n";
+						  	$alleHM_Errors.="  NACHRICHT : ".str_pad($name,60)."  $text \n";
+                            $arrHM_Errors[$HMID]["ErrorMessage"]="$name $text";
 							}
 						}
 					}
 				}
 			}
-		return($alleHM_Errors);
+		if ($mode) return($arrHM_Errors);
+        else return($alleHM_Errors);
     	}
 
     } /* ende class DeviceManagement */
 
 /*********************************************************************************************
+ *
+ *
+ * 
  *
  *
  ***********************************************************************************************/
@@ -7888,7 +8223,10 @@ class statusDisplay
 
 /********************************************************************************************
  *
- *  Eigene Klasse für parsefile
+ * Klasse parsefile
+ * ================
+ *
+ *
  *
  ***************************************************************************************************/
 
@@ -8046,8 +8384,17 @@ class parsefile
 
 /********************************************************************************************
  *
- *  Eigene Klasse für Timer
+ * Klasse TimerHandling
+ * =====================
+ * Funktionen ausserhalb der Klassen
  *
+ * move_camPicture
+ * get_Data
+ * extractIPaddress		
+ * dirtoArray, dirtoArray2
+ * tts_play				Ausgabe von Ton für Sprachansagen
+ * CyclicUpdate 		updatet und installiert neue Versionen der Module
+ * 
  ***************************************************************************************************/
 
 class TimerHandling
