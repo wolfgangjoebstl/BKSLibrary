@@ -1420,6 +1420,7 @@ function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $
     $vid = @IPS_GetVariableIDByName($name, $parentID);
     if($vid === false)
         {
+        echo "Create Variable Name $name Type $type in $parentID:\n";
         $vid = IPS_CreateVariable($type);
         IPS_SetParent($vid, $parentID);
         IPS_SetName($vid, $name);
@@ -5259,6 +5260,7 @@ class WfcHandling
     /******
      *
      * die beiden Webfronts anlegen und das Standard Webfront loeschen 
+     * $WebfrontConfigID als return
      *
      */
 
@@ -5372,7 +5374,7 @@ class WfcHandling
                 }
             }	
 
-            
+        return ($WebfrontConfigID);  
         }
 
     /******

@@ -370,8 +370,8 @@ class Logging
 
 
     /*
-        * wird in construct und Set_LogValue verwendet
-        */
+     * wird in construct und Set_LogValue verwendet
+     */
 
     public function setVariableLogId($variable, $variablename, $AuswertungID,$type,$profile,$debug=false)    
         {

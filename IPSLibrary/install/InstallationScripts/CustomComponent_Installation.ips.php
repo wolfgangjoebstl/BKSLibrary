@@ -123,10 +123,10 @@
 	echo "\n";
 	echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";
 
-    /* check if Administartor and User Webfronts allready available */
+    /* check if Administrator and User Webfronts already available */
     
     $wfcHandling =  new WfcHandling();
-    $wfcHandling->installWebfront();
+    $WebfrontConfigID = $wfcHandling->installWebfront();
 
 /*******************************
  *

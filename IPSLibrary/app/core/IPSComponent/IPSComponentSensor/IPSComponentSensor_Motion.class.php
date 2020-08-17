@@ -250,8 +250,8 @@
             elseif ($this->variableType =="CONTACT") $this->do_init_motion($variable, $variablename);
             elseif ($this->variableType =="BRIGHTNESS") 
                 {
+                $this->Type=1;  // Brightness ist Integer
                 $this->do_init_brightness($variable, $variablename);
-                $this->Type=2;  // Brightness ist Integer
                 }
             else echo "Fehler, kenne den Variable Tyo nicht.\n";
 
@@ -387,13 +387,14 @@
             //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
             $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
             $name="HelligkeitMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
+            echo "CreateVariableByName at ".$this->mirrorCatID." mit Name \"$name\" Type ".$this->Type." Profile ".$this->variableProfile." Variable available : ".(@IPS_GetVariableIDByName($name, $this->mirrorCatID)?"Yes":"No")." \n";
+            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->Type,$this->variableProfile);       /* 2 float ~Temperature*/
 
-            /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+            echo "Create Category to store the Move-LogNachrichten und Spiegelregister:\n";	
             $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
             $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
 
-            /* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+            echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
             $this->do_setVariableLogID($variable);
 
 			$directories=get_IPSComponentLoggerConfig();
@@ -414,7 +415,7 @@
                 {
                 $this->variable=$variable;
                 //echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->AuswertungID.")\n";
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile);                   // $this->variableLogID schreiben
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->Type,$this->variableProfile);                   // $this->variableLogID schreiben
                 IPS_SetHidden($this->variableLogID,false);
                 }
             }
