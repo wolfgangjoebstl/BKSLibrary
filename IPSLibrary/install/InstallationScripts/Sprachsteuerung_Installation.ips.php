@@ -175,27 +175,7 @@
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
     $configWFront=$ipsOps->configWebfront($moduleManager,false);     // wenn true mit debug Funktion
-
-    /* brauch ich die folgenden Variablen noch 
-
-	$RemoteVis_Enabled    = $moduleManager->GetConfigValue('Enabled', 'RemoteVis');
-
-	$WFC10_Enabled        = $moduleManager->GetConfigValue('Enabled', 'WFC10');
-	$WFC10_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10');
-	$WFC10_TabPaneItem    = $moduleManager->GetConfigValueDef('TabPaneItem', 'WFC10',"SpeakTPA");
-	$WFC10_TabPaneParent  = $moduleManager->GetConfigValueDef('TabPaneParent', 'WFC10',"SystemTP");    
-
-	$WFC10User_Enabled    = $moduleManager->GetConfigValue('Enabled', 'WFC10User');
-	$WFC10User_Path        	 = $moduleManager->GetConfigValue('Path', 'WFC10User');
-
-	$Mobile_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Mobile');
-	$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-
-	$Retro_Enabled        = $moduleManager->GetConfigValue('Enabled', 'Retro');
-	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
-    */
-
-
+    //print_r($configWFront);
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Data
@@ -271,10 +251,18 @@
 		echo "Profil ".$pname." erstellt;\n";
     	}
 
-    echo "Alle in der Alexa programmierten TuneIN Radiostationen:\n";
-    $Configurations = json_decode(IPS_GetConfiguration($echos[0]),true);
-    $TuneInstations = json_decode($Configurations["TuneInStations"],true);
-    print_r($TuneInstations);
+    if (isset($echos[0]))
+        {
+        echo "Alle in der Alexa programmierten TuneIN Radiostationen:\n";
+        $Configurations = json_decode(IPS_GetConfiguration($echos[0]),true);
+        $TuneInstations = json_decode($Configurations["TuneInStations"],true);
+        print_r($TuneInstations);
+        }
+    else
+        {
+        echo "Es sind keine Alexa vorhanden um die programmierten TuneIN Radiostationen auszulesen:\n";
+        $TuneInstations=array();
+        }
 
     $pname="TuneInStations";
 	if (IPS_VariableProfileExists($pname) == true)

@@ -362,6 +362,7 @@ if ($_IPS['SENDER']=="TimerEvent")
             break;
 		case $timerAufrufID:
 			/* alle 5 Minuten aufrufen */
+			$StatusAnwesend=$operate->Anwesend();            
             $Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);            
 			$AWSFunktionStatus=( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) ));
 			if ( $AWSFunktionStatus ) 

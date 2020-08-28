@@ -134,15 +134,18 @@
 	 * Hardware Evaluierung starten, auf Fertigstellung warten
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
-	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
-	$CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
-	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
-	echo "\n";
-	echo "Die EvaluateHardware Scripts sind in App auf               ".$CategoryIdAppEH."\n";
-	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	IPS_RunScriptWait($scriptIdEvaluateHardware);
-	echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
-	
+	if (isset ($installedModules["EvaluateHardware"])) 
+		{     
+        $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+        $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
+        $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
+        echo "\n";
+        echo "Die EvaluateHardware Scripts sind in App auf               ".$CategoryIdAppEH."\n";
+        echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware." und wird jetzt gestartet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        IPS_RunScriptWait($scriptIdEvaluateHardware);
+        echo "Script Evaluate Hardware gestartet wurde mittlerweile abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";	
+        }
+
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -150,7 +153,7 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$scriptIdOperationCenter   = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
+	$scriptId                 = IPS_GetScriptIDByName('OperationCenter', $CategoryIdApp);
 	$scriptIdDiagnoseCenter   = IPS_GetScriptIDByName('DiagnoseCenter', $CategoryIdApp);
 
 	$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
@@ -195,11 +198,11 @@
 	$timer = new TimerHandling();
 	//print_r($timer->listScriptsUsed());
 	
-	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptIdOperationCenter);
+	$tim4ID = @IPS_GetEventIDByName("SysPingTimer", $scriptId);
 	if ($tim4ID==false)
 		{
 		$tim4ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim4ID, $scriptIdOperationCenter);
+		IPS_SetParent($tim4ID, $scriptId);
 		IPS_SetName($tim4ID, "SysPingTimer");
         /* das Event wird alle 5 Minuten aufgerufen, der Standard Sysping, wenn nicht als FAST gekennzeichnet, läuft allerdings alle 60 Minuten */
 		IPS_SetEventCyclic($tim4ID,0,1,0,0,2,5);      /* alle 5 Minuten , Tägliche Ausführung, keine Auswertung, Datumstage, Datumstageintervall, Zeittyp-2-alle x Minute, Zeitintervall */
@@ -216,11 +219,11 @@
 		IPS_SetEventCyclicTimeFrom($tim4ID,0,4,0);
   		}
   		
-	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptIdOperationCenter);
+	$tim5ID = @IPS_GetEventIDByName("CyclicUpdate", $scriptId);
 	if ($tim5ID==false)
 		{
 		$tim5ID = IPS_CreateEvent(1);
-		IPS_SetParent($tim5ID, $scriptIdOperationCenter);
+		IPS_SetParent($tim5ID, $scriptId);
 		IPS_SetName($tim5ID, "CyclicUpdate");
 		IPS_SetEventCyclic($tim5ID,4,1,0,12,0,0);    /* jeden 12. des Monats , Monatliche Ausführung, alle 1 Monate, Datumstage, Datumstageintervall,  */
 		echo "   Timer Event CyclicUpdate neu angelegt. Timer jeden 12. des Monates ist aktiviert.\n";
@@ -490,9 +493,9 @@
 						else IPS_SetHidden($result,true);	// alle anderen variablen mit _ werden als Hilfsvariablen betrachtet und versteckt 	
 						}
 					}
-				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptIdOperationCenter, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterFastPoll_ID=CreateVariable("SNMP Fast Poll",0, $fastPollId,100,"~Switch",$scriptId, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 				$ifTable_ID=CreateVariable("ifTable",3, $fastPollId,150,"~HTMLBox",null, null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptIdOperationCenter,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+				$SchalterSortSnmp_ID=CreateVariable("Tabelle sortieren",1, $fastPollId,110,"SortifTable",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 				IPS_SetHidden($SchalterFastPoll_ID,false);	
 				IPS_SetHidden($ifTable_ID,false);	
 				IPS_SetHidden($SchalterSortSnmp_ID,false);
@@ -565,10 +568,10 @@
 
 	$categoryId_BackupFunction	= CreateCategory('Backup',   $CategoryIdData, 500);
 	/* Hilfe zur Verwendeung von CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon ); */
-	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptIdOperationCenter,null,"");
-	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptIdOperationCenter,null,"");
-	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptIdOperationCenter,null,"");
-    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptIdOperationCenter,null,"");
+	$StatusSchalterBackupID		       = CreateVariable("Backup-Funktion",1, $categoryId_BackupFunction,100,"AusEinAuto",$scriptId,null,"");
+	$StatusSchalterActionBackupID	   = CreateVariable("Backup-Actions",1, $categoryId_BackupFunction,110,"RepairRestartFullIncrementCleanup",$scriptId,null,"");
+	$StatusSchalterOverwriteBackupID   = CreateVariable("Backup-Overwrite",1, $categoryId_BackupFunction,120,"KeepOverwriteAuto",$scriptId,null,"");
+    $StatusSliderMaxcopyID   = CreateVariable("Maxcopy per Session",1, $categoryId_BackupFunction,130,"MaxCopySlider",$scriptId,null,"");
 
 	$StatusBackupId				= CreateVariable("Status",3, $categoryId_BackupFunction, 20, "", null, null, ""); 		/* Category, Name, 0 Boolean 1 Integer 2 Float 3 String */	
 	$ConfigurationBackupId		= CreateVariable("Configuration",3, $categoryId_BackupFunction, 2000, "", null, null, ""); 		/* speichert die konfiguration im json Format */	
@@ -807,7 +810,7 @@
 
 	$SysPingTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingTable",   3 /*String*/, '~HTMLBox', "", 6000, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
-	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptIdOperationCenter );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+	$SysPingSortTableID = CreateVariableByName($categoryId_SysPingControl, "SortPingTable",   1 /*Integer*/, 'SortifTableNameStateSince', "", 9000, $scriptId );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingSortTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
 	$SysPingActivityTableID = CreateVariableByName($categoryId_SysPingControl, "SysPingActivityTable",   3 /*String*/, '~HTMLBox', "", 6010, null );        // CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
     IPS_SetHidden($SysPingActivityTableID, true); 		// in der normalen Viz Darstellung Kategorie verstecken
@@ -909,7 +912,7 @@
 	$HomematicErreichbarkeit = CreateVariable("ErreichbarkeitHomematic",   3 /*String*/,  $CategoryIdHomematicErreichbarkeit, 50 , '~HTMLBox',null,null,"");
 	$UpdateErreichbarkeit = CreateVariable("UpdateErreichbarkeit",   1 /*Integer*/,  $CategoryIdHomematicErreichbarkeit, 500 , '~UnixTimestamp',null,null,"");
     
-    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptIdOperationCenter,null,"");
+    $ExecuteRefreshID = CreateVariable("UpdateDurchfuehren",   0 /*Boolean*/,  $CategoryIdHomematicErreichbarkeit, 400 , '~Switch',$scriptId,null,"");
 
 	$CategoryIdHomematicGeraeteliste = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicDeviceList');
 	$HomematicGeraeteliste = CreateVariable("HomematicGeraeteListe",   3 /*String*/,  $CategoryIdHomematicGeraeteliste, 50 , '~HTMLBox',null,null,"");
@@ -1195,7 +1198,7 @@
 			$CategoryIdHomematicCCU=CreateCategory("HomematicInventory_".$HMI,$CategoryIdHomematicInventory,$order+5);
 			// function CreateVariableByName($id, $name, $type, $profile="", $ident="", $position=0, $action=0)
 			$HomematicInventory = CreateVariableByName($CategoryIdHomematicCCU,IPS_GetName($HMI),3,"~HTMLBox","",$order+5);		// String
-			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptIdOperationCenter);		// String
+			$SortInventory = CreateVariableByName($CategoryIdHomematicCCU,"Sortieren",1,"SortTableHomematic","",$order,$scriptId);		// String
             $html='<iframe frameborder="0" width="100%" height="4000px"  src="../user/OperationCenter/Homematics/'.$HMI.'/HM_inventory.html"</iframe>';
 			//HMI_CreateReport($HMI);	SetValue($HomematicInventory,$html);			
 			$order +=10;

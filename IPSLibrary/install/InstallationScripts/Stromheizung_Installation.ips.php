@@ -303,18 +303,18 @@ Path=Visualization.Mobile.Stromheizung
         echo "   $deviceName $deviceType\n";
 		switch ($deviceType) 
 			{
-			case IPSLIGHT_TYPE_SWITCH:
+			//case IPSLIGHT_TYPE_SWITCH:
 			case IPSHEAT_TYPE_SWITCH:			
 				$switchId = CreateVariable($deviceName,    0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch', $scriptIdActionScript, false, 'Bulb');
                 IPS_SetHidden($switchId,false);
 				break;
-			case IPSLIGHT_TYPE_DIMMER:
+			//case IPSLIGHT_TYPE_DIMMER:
 			case IPSHEAT_TYPE_DIMMER:			
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$levelId  = CreateVariable($deviceName.IPSHEAT_DEVICE_LEVEL, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~Intensity.100', $scriptIdActionScript, false, 'Intensity');
                 IPS_SetHidden($switchId,false); IPS_SetHidden($levelId,false);
 				break;
-			case IPSLIGHT_TYPE_RGB:
+			//case IPSLIGHT_TYPE_RGB:
 			case IPSHEAT_TYPE_RGB:
 				$switchId = CreateVariable($deviceName,                       0 /*Boolean*/, $categoryIdSwitches,  $idx, '~Switch',        $scriptIdActionScript, false, 'Bulb');
 				$colorId  = CreateVariable($deviceName.IPSHEAT_DEVICE_COLOR, 1 /*Integer*/, $categoryIdSwitches,  $idx, '~HexColor',      $scriptIdActionScript, false, 'HollowDoubleArrowRight');
