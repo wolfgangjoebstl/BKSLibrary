@@ -519,6 +519,7 @@
 				$TemperaturZuletztID = CreateVariable("TemperaturZuletzt", 2, $AutosteuerungID, 0, "",null,0,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */			
 				break;
 			case "ANWESENHEITSSIMULATION":
+                $AnwesenheitssimulationID = CreateVariableByName($categoryId_Autosteuerung,"Anwesenheitssimulation",1,"AusEinAuto",null,0,$scriptIdWebfrontControl);    
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Schaltbefehle'));
 				$simulation=new AutosteuerungAnwesenheitssimulation();
                 echo " --> AutosteuerungAnwesenheitssimulation erfolgreich aufgerufen.\n";
@@ -664,6 +665,18 @@
 		}
 	IPS_SetEventActive($tim1ID,true);
 		
+	$tim3ID = @IPS_GetEventIDByName("Anwesendtimer", $scriptIdAutosteuerung);
+	if ($tim3ID==false)
+		{
+		$tim3ID = IPS_CreateEvent(1);
+		IPS_SetParent($tim3ID, $scriptIdAutosteuerung);
+		IPS_SetName($tim3ID, "Anwesendtimer");
+		IPS_SetEventCyclic($tim3ID,0,0,0,0,1,60);		/* alle 60 Sekunden , kein Datumstyp, 0, 0 ,0 2 minütlich/ 1 sekündlich */
+		}
+	IPS_SetEventActive($tim3ID,true);
+
+    /* für die Heizungsregelung zusaetzlich einen reset einbauen */
+
 	$tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
 	if ($tim2ID==false)
 		{
@@ -673,6 +686,9 @@
 		IPS_SetEventCyclicTimeFrom($tim2ID,0,0,10);  /* immer um 00:00:10 */
 		}
 	IPS_SetEventActive($tim2ID,true);
+
+
+
 
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *

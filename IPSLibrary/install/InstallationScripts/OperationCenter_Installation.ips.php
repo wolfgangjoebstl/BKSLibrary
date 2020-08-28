@@ -1044,7 +1044,28 @@
 		$TableEventsDM_ID=CreateVariable("TableEvents",3, $categoryId_DetectMovement,0,"~HTMLBox",null,null,"");
 		$SchalterSortDM_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DetectMovement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
-		
+
+	/********************************************************
+	 *
+	 *		INIT Device Management
+     *
+     * Geraete Darstellung und Auswertung
+	 *
+	 ***************************************************/
+
+    echo "===========================================\n";
+    echo "Device Management Variablen für Webfront anlegen.\n";		
+
+    $categoryId_DeviceManagement    = CreateCategory('DeviceManagement',   $CategoryIdData, 150);
+    IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken 
+
+    /* Diese Werte wurden schon lange nicht mehr upgedatet, verwendet von AUtosteuerung ? */       
+    $TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
+    $SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+
+    /* HMI_CreateReport hängt manchmal wenn CCU abstürzt. Diesen Zustand erkennen sonst funktioniert OperationCenter und vieles mehr nicht mehr. */
+    $HMIStatus_DevMan_ID=CreateVariable("HMI_ReportStatus",3, $categoryId_DeviceManagement,100,"",null,null,"");
+
 	/********************************************************
 	 *
 	 *		INIT Autosteuerung Event Darstellung und Auswertung
@@ -1088,20 +1109,6 @@
 		$categoryId_AutosteuerungSimulation    = CreateCategory('TimerSimulation',   $CategoryIdData, 150);
         IPS_SetHidden($categoryId_AutosteuerungSimulation, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
 		$TableEventsButton_ID=CreateVariable("TableEvents",3, $categoryId_AutosteuerungSimulation,0,"~HTMLBox",null,null,"");
-
-	/********************************************************
-	 *
-	 *		INIT Geraete Darstellung und Auswertung
-	 *
-	 ***************************************************/
-
-	    echo "===========================================\n";
-	    echo "Device Management Variablen für Webfront anlegen.\n";		
-
-		$categoryId_DeviceManagement    = CreateCategory('DeviceManagement',   $CategoryIdData, 150);
-		IPS_SetHidden($categoryId_DeviceManagement, true); 		// in der normalen Viz Darstellung Kategorie verstecken        
-		$TableEventsDevMan_ID=CreateVariable("TableEvents",3, $categoryId_DeviceManagement,0,"~HTMLBox",null,null,"");
-		$SchalterSortDevMan_ID=CreateVariable("Tabelle sortieren",1, $categoryId_DeviceManagement,0,"SortTableEvents",$scriptId,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 		}
 		
 	/********************************************************

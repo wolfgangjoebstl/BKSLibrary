@@ -19,12 +19,20 @@
 	 
 	/**@defgroup Sprachsteuerung
 	 *
-	 * Script um automatisch irgendetwas ein und auszuschalten, Befehl kommt über die ALexa (???)
+	 * Script um Sprache auszugeben, soweit umgebaut dass es egal ist ob die Sprache 
 	 *
+     *  lokal über einen IP Symcon Mediaplayer ausgegeben wird
+     *  remote über einen IP Symcon Mediaplayer eines anderen Servers 
+     *  über eine Alexa Instanz
      *
+     * legt in System ein eigenes Tab an um Infos zu geben was gerade gesprochen wird. Wenn Silent Mode ein ist erfolgt keine Ausgabe.
+     * mit den Alexas kann auch ein Radiosender von TuneIn abgespielt werden, Modul EchoControl ist erforderlich
+     *
+     * verwendet tts_play, function ist im OperationCenter und in der Sparachsteuerung Library definiert.
+     * üblicherweise kann die Funktion im OperationCenter verwendet werden. Die eigene Library nur einbinden wenn kein OperationCenter Modul installiert wurde
      *
      * benötigt IPSModule:
-     *      OperationCenter
+     *      OperationCenter, EvaluateHardware
      *
      * benötigt Libraries:
      *
@@ -70,13 +78,80 @@
 		{
 		$inst_modules.=str_pad($name,20)." ".$modules."\n";
 		}
+    //echo $inst_modules;
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Sprachsteuerung',   $CategoryIdData, 20);
+	$Nachricht_inputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+
+	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
+    $scriptIdAction            = IPS_GetScriptIDByName('Sprachsteuerung_Actionscript', $CategoryIdApp);
+
+    echo "ScriptId Spachsteuerung ".$scriptIdSprachsteuerung." Action ".$scriptIdAction." und Nachrichten Input ".$Nachricht_inputID."\n";
+
+    $html="";
+    $html .= '<style>';
+    $html .= 'table.ovw { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
+    $html .= ' font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; font-weight:400; text-decoration:none; color:white; white-space:pre-wrap; }';
+    $html .= 'table.ovw th { padding: 2px; background-color:#98dcff; border:solid 2px #006CFF; }';
+    $html .= 'table.ovw td { padding: 2px; border:solid 1px grey; }';
+    $html .= 'table.head tr { margin:0; padding:4px; }';
+    $html .= '.quick.green {border:solid green; color:green;}';
+    $html .= '';
+    $html .= '</style>';
+    $html .= '<table class="ovw">';
+
+	if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
+        {
+        echo "Modul Sprachsteuerung richtig installiert. Wird von tts_play des OperationCenter verwendet.\n";
+		$config=Sprachsteuerung_Configuration();
+		if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) )  
+            { 
+            $url=$config["RemoteAddress"]; 
+            $oid=$config["ScriptID"];
+			$rpc = new JSONRPC($url);
+			//$monitor=array("Text" => $ansagetext);
+			//$rpc->IPS_RunScriptEx($oid,$monitor);            
+            $scriptName=$rpc->IPS_GetName($oid);
+            echo "    Verwendet die Sprachsteuerung des Servers $url und ruft dort dieses Script $oid auf.\n";
+            $html .= '<tr><td colspan="2">Verwendet eine remote Sprachsteuerung:</td></tr>';            
+            $html .= '<tr><td style="text-align:right">Server</td><td>'.$url.'</td></tr>';
+            $html .= '<tr><td style="text-align:right">Script</td><td>'.$oid.'</td></tr>';
+            if ( ($scriptName=="Sprachsteuerung_Actionscript") || ($scriptName=="Sprachsteuerung") ) 
+                {
+                $html .= '<tr><td style="text-align:right">Scriptname</td><td>'.$scriptName.'</td></tr>';
+                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' ok</td></tr>';
+                }
+            else 
+                {
+                echo " Scriptname unknown $scriptName.\n";
+                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' NOK !!!!!!</td></tr>';
+                }
+            }
+        }
+    else
+        {       // lokale Sprachsteuerung, Statusausgabe, Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist.
+        echo "Sprache lokal ausgeben.\n";
+        $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+        $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+        $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+        $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+        $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+        $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+        $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+        $html .= '<tr><td colspan="2">Verwendet die lokale Sprachsteuerung:</td></tr>';            
+        $html .= '<tr><td style="text-align:right">MP-Musik</td><td>'.$id_sk1_musik.'</td></tr>';
+        $html .= '<tr><td style="text-align:right">MP-Ton</td><td>'.$id_sk1_ton.'</td></tr>';
+        $html .= '<tr><td style="text-align:right">Text-To-Speach</td><td>'.$id_sk1_tts.'</td></tr>';
+        }
 	//echo $inst_modules;
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
 	$modulhandling = new ModuleHandling();    
 	$wfcHandling = new WfcHandling();
-    $hardware = new Hardware();
 
 	if (isset($installedModules["OperationCenter"]))
 		{
@@ -120,16 +195,7 @@
 	$Retro_Path        	 = $moduleManager->GetConfigValue('Path', 'Retro');
     */
 
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Sprachsteuerung',   $CategoryIdData, 20);
-	$Nachricht_inputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-
-	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
-    $scriptIdAction            = IPS_GetScriptIDByName('Sprachsteuerung_Actionscript', $CategoryIdApp);
-
-    echo "ScriptId Spachsteuerung ".$scriptIdSprachsteuerung." Action ".$scriptIdAction." und Nachrichten Input ".$Nachricht_inputID."\n";
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Data
@@ -152,32 +218,31 @@
 		IPS_SetVariableProfileAssociation($pname, 3, "Pause", "", 0x3c1ef1); //P-Name, Value, Association, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
-    echo "Alle Profileinträge für $pname danach anzeigen:\n";
-    $profile=IPS_GetVariableProfile ($pname);
-    print_r($profile);
+    //$profile=IPS_GetVariableProfile ($pname);
+    //echo "Alle Profileinträge für $pname danach anzeigen:\n";
+    //print_r($profile);
 
 	//$echos=$modulhandling->getInstances('EchoRemote');
 
-    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
-    $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],true);
-    echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
     $echos = array();
-    foreach ($deviceListFiltered as $name => $device) 
-        {
-        echo "   ".str_pad($name,35)."    ".$device["Instances"][0]["OID"]."\n";
-        $echos[]=$device["Instances"][0]["OID"];
+	if (isset($installedModules["EvaluateHardware"]))
+		{
+		IPSUtils_Include ("Hardware_Library.inc.php","IPSLibrary::app::modules::EvaluateHardware");
+        IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+        $hardware = new Hardware();
+        $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],true);
+        echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
+        foreach ($deviceListFiltered as $name => $device) 
+            {
+            echo "   ".str_pad($name,35)."    ".$device["Instances"][0]["OID"]."\n";
+            $echos[]=$device["Instances"][0]["OID"];
+            }
         }
 
-    $pname="Echo-Speaker";
-
-    /*
-    echo "Alle Profileinträge für $pname anzeigen, Profil wird gleich gelöscht:\n";
-    $profile=IPS_GetVariableProfile ($pname);
-    print_r($profile);
-    */
 
     /* Liste mit allen gefunden Echo Lautsprechern erstellen */
 
+    $pname="Echo-Speaker";
 	if (IPS_VariableProfileExists($pname) == true)
         {
         IPS_DeleteVariableProfile($pname);
@@ -199,9 +264,9 @@
             $inc *= 2;
             }
 
-        echo "Alle Profileinträge für $pname danach anzeigen:\n";
-        $profile=IPS_GetVariableProfile ($pname);
-        print_r($profile);
+        //echo "Alle Profileinträge für $pname danach anzeigen:\n";
+        //$profile=IPS_GetVariableProfile ($pname);
+        //print_r($profile);
 
 		echo "Profil ".$pname." erstellt;\n";
     	}
@@ -231,9 +296,9 @@
 		//IPS_SetVariableProfileAssociation($pname, 2, "Radio", "", 0x3cf11e); //P-Name, Value, Association, Icon, Color
 		echo "Profil ".$pname." erstellt;\n";
 		}
-    echo "Alle Profileinträge für $pname danach anzeigen:\n";
-    $profile=IPS_GetVariableProfile ($pname);
-    print_r($profile);
+    //echo "Alle Profileinträge für $pname danach anzeigen:\n";
+    //$profile=IPS_GetVariableProfile ($pname);
+    //print_r($profile);
 
 	$categoryId_Auswertungen    = CreateCategory('Auswertungen',   $CategoryIdData, 20);
     //CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
@@ -243,8 +308,12 @@
     $TuneInStationConfig    = CreateVariable("TuneInStationConfig",3,$categoryId_Auswertungen, 2000, "",null,null,""  );
     $TuneInStation          = CreateVariable("TuneInStation",1,$categoryId_Auswertungen, 30, "TuneInStations",$scriptIdAction,null,""  );
     $SelectedStationId      = CreateVariable("SelectedStationId",3,$categoryId_Auswertungen, 2010, "",null,null,""  );    
+    $InfoBoxID              = CreateVariable("InfoBox",3,$categoryId_Auswertungen, 40, "~HTMLBox",null,null,""  );                              //InfoBox über Konfiguration
 
     SetValue($TuneInStationConfig,$Configurations["TuneInStations"]);
+
+    $html .= '</table>';
+    SetValue($InfoBoxID,$html);
 
 	//$listinstalledmodules=IPS_GetModuleList();
 	//print_r($listinstalledmodules);
@@ -434,7 +503,14 @@
 						"USER"				=> false,
 						"MOBILE"			=> false,
 							),                            							
-					),
+                $InfoBoxID => array(
+						"NAME"				=> "Info Box",
+						"ORDER"				=> 100,
+						"ADMINISTRATOR" 	=> true,
+						"USER"				=> false,
+						"MOBILE"			=> false,
+							),   
+    					),
 			"Nachrichten" => array(
 				$Nachricht_inputID => array(
 						"NAME"				=> "Nachrichten",

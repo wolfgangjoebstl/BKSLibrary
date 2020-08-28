@@ -848,6 +848,8 @@ class OperationCenter
 
 		$OperationCenterConfig = $this->oc_Configuration;
 		//print_r($OperationCenterConfig);
+        if (isset($_IPS['EVENT'])) $ipsEvent="TimerEvent from :".$_IPS['EVENT']." ";
+        else $ipsEvent="";
 
         $categoryId_SysPingControl = @IPS_GetObjectIDByName("SysPingControl",$this->categoryId_SysPing);
 		
@@ -864,12 +866,12 @@ class OperationCenter
                 {
                 $SysPingCount=0;
                 $fourHourPassed=true;
-       			if ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every four hour.");
+       			if ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices every four hour.");
                 }
-   			elseif ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices every hour.");
+   			elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices every hour.");
             $hourPassed=true;
             }
-        elseif ($debug==false) IPSLogger_Inf(__file__, "TimerEvent from :".$_IPS['EVENT']." SysPingAllDevices: $SysPingCount every 5 Minutes");
+        elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices: $SysPingCount every 5 Minutes");
         SetValue($SysPingCountID,$SysPingCount);
 
         $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
@@ -2541,22 +2543,26 @@ class OperationCenter
 		$result1=array();
 		foreach($result as $oid)
 			{
-			if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
-		   		{
-        		$werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
-		   		//print_r($werte);
-		   		echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
-		   		foreach ($werte as $wert)
-		   	   		{
-		   	   		//echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
-		   	   		echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
-		   	   		}
-				$result1[IPS_GetName($oid)]=$oid;
-		   		}
-			else
-		    	{
-				echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
-		    	}
+            echo "Behandle Variable $oid (".IPS_GetName($oid).":".IPS_GetName(IPS_GetParent($oid)).") Type ".IPS_GetObject($oid)["ObjectType"]."\n";
+            if (IPS_GetObject($oid)["ObjectType"]==2)           // Unterkategorien nicht behandeln
+                {
+                if (AC_GetLoggingStatus($this->archiveHandlerID,$oid))
+                    {
+                    $werte = AC_GetLoggedValues($this->archiveHandlerID,$oid, time()-30*24*60*60, time(),1000); 
+                    //print_r($werte);
+                    echo "   ".IPS_GetName($oid)." Variable wird gelogged, in den letzten 30 Tagen ".sizeof($werte)." Werte.\n";
+                    foreach ($werte as $wert)
+                        {
+                        //echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])." mit Abstand von ".str_pad($wert["Duration"],12," ",STR_PAD_LEFT)."\n";
+                        echo "       Wert : ".str_pad($wert["Value"],12," ",STR_PAD_LEFT)." vom ".date("d.m H:i:s",$wert["TimeStamp"])."\n";
+                        }
+                    $result1[IPS_GetName($oid)]=$oid;
+                    }
+                else
+                    {
+                    echo "   ".IPS_GetName($oid)." Variable wird NICHT gelogged.\n";
+                    }
+                }
 			}
 		//ksort($result1);
 		//print_r($result1);
@@ -6224,6 +6230,10 @@ class LogFileHandler extends OperationCenter
  * writeHomematicSerialNumberList	Ausgabe der Liste
  * tableHomematicSerialNumberList
  *
+ *                      "Type"    = $DeviceManager->getHomematicType($instanz);           wird für Homematic IPS Light benötigt 
+ *                      "Device"  = $DeviceManager->getHomematicDeviceType($instanz);     wird für CustomComponents verwendet, gibt als echo auch den Typ aus 
+ *                      "HMDevice"= $DeviceManager->getHomematicHMDevice($instanz);
+ *
  * getHomematicDeviceList
  * getHomematicType
  * HomematicDeviceType
@@ -6255,6 +6265,7 @@ class DeviceManagement
 	var $HomematicAddressesList	= array();
 	
 	var $HMIs = array();							/* Zusammenfassung aller Homatic Inventory module */
+    var $HMI_ReportStatusID   = 0;                  /* der HMI_CreateReport wird regelmaessig aufgerufen, diesen auch überwachen. */
 	
 	/**
 	 * @public
@@ -6279,8 +6290,14 @@ class DeviceManagement
 		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+
+		$categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$this->CategoryIdData);
+        $this->HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
+        if ($debug) echo "found $categoryId_DeviceManagement und ".$this->HMI_ReportStatusID."\n";
+        
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		$this->oc_Configuration = OperationCenter_Configuration();
+		
+        $this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
 		
 		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt */
@@ -6309,7 +6326,7 @@ class DeviceManagement
 		$this->HMIs=$modulhandling->getInstances('HM Inventory Report Creator');	
 
         if ($debug) echo "getHomematicAddressList aufrufen:\n";
-        $this->HomematicAddressesList=$this->getHomematicAddressList($debug);         // benötigt die HMIs
+        $this->HomematicAddressesList=$this->getHomematicAddressList(false,$debug);         // benötigt die HMIs, kommt in einen eigenen Timer
         if ($debug) echo "DeviceManagement Modul vollständig initialisiert.\n";
 		}
 		
@@ -6789,13 +6806,18 @@ class DeviceManagement
 	 *
 	 * erfasst alle Homematic Geräte anhand der Hardware Addressen und erstellt eine gemeinsame liste mit dem DeviceTyp aus HM Inventory 
      * wird bei construct bereits gestartet als gemeinsames Datenobjekt
+     *
+     * etwas komplizierte Überwachung der HMI_CreateReport Funktion:
+     *
+     * wenn länger als einen Tag kein Update dann wird das Update neu angefordert
+     * wenn das Update angefordert wurde und noch nicht erfolgt ist gibt es eine Fehlermeldung und es wird nicht mehr angefordert
 	 *
 	 *****************************************************************************/
 
-	function getHomematicAddressList($debug=false)
+	function getHomematicAddressList($callCreateReport=false, $debug=false)
 		{
+        echo "DeviceManagement::getHomematicAddressList aufgerufen.\n";
 		$countHMI = sizeof($this->HMIs);
-        $callCreateReport=false;
 		$addresses=array();
 		if ($countHMI>0)
 			{
@@ -6816,12 +6838,39 @@ class DeviceManagement
                     else
                         {
                         $lastUpdate=IPS_GetVariable($childrens[0])["VariableChanged"];
-                        if ((time()-$lastUpdate) > (24*60*60) ) 
+                        $noUpdate=time()-$lastUpdate;
+                        if ( $noUpdate > (24*60*60) ) 
                             {
-                            if ($debug) echo "     HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.\n";
-                            $callCreateReport=true;
+                            if ( $noUpdate > (50*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
+                                {
+                                IPSLogger_Err(__file__, "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check.");
+                                }
+                            else
+                                {
+                                $message = "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". Do right now.";
+                                if ($debug) echo "     $message\n";
+                                if ( $noUpdate > (25*60*60) )
+                                    {
+                                    SetValue($this->HMI_ReportStatusID,$message);
+                                    $callCreateReport=true;
+                                    }
+                                else
+                                    {
+                                    $hoursnok=round($noUpdate/60/60);
+                                    if (GetValue($this->HMI_ReportStatusID)==$message) IPSLogger_Err(__file__, "HMI_CreateReport did not execute for $hoursnok hours. CCU might had crashed. Please check.");
+                                    else 
+                                        {
+                                        SetValue($this->HMI_ReportStatusID,$message);
+                                        $callCreateReport=true;
+                                        }
+                                    }
+                                }
                             }
-                        elseif ($debug) echo "    HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
+                        else
+                            {
+                            if ($debug) echo "    HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.\n";
+                            SetValue($this->HMI_ReportStatusID,"HMI_CreateReport wurde zuletzt am ".date("d.m.y H:i:s",$lastUpdate)." upgedatet.");
+                            }
                         //print_r($childrens);
                         //echo GetValue($childrens[0]);
                         $HomeMaticEntries=json_decode(GetValue($childrens[0]),true);
@@ -7613,6 +7662,8 @@ class DeviceManagement
      *   3   { "Type"=>TYPE_MOTION,"Register"=> $resultReg[0],"RegisterAll"=>  }
      *   4
      *
+     *  0/false ist Default
+     *
      ***********************************************/
 
     function getHomematicDeviceType($instanz, $outputVersion=false, $debug=false)
@@ -8386,14 +8437,6 @@ class parsefile
  *
  * Klasse TimerHandling
  * =====================
- * Funktionen ausserhalb der Klassen
- *
- * move_camPicture
- * get_Data
- * extractIPaddress		
- * dirtoArray, dirtoArray2
- * tts_play				Ausgabe von Ton für Sprachansagen
- * CyclicUpdate 		updatet und installiert neue Versionen der Module
  * 
  ***************************************************************************************************/
 
@@ -8479,6 +8522,14 @@ class TimerHandling
  *
  *  Allgemeine Funktionen
  *
+ * Funktionen ausserhalb der Klassen
+ *
+ * move_camPicture
+ * get_Data
+ * extractIPaddress		
+ * dirtoArray, dirtoArray2
+ * tts_play				Ausgabe von Ton für Sprachansagen
+ * CyclicUpdate 		updatet und installiert neue Versionen der Module 
  *
  *
  *****************************************************************************************************************/

@@ -1,6 +1,18 @@
 <?
 
 /***********************************************************************
+ *
+ * Alle automatischen Steuerungen zB bei Tastendruck oder Werteänderung hier vereinen
+ *
+ * macht abhängig von der Art des Aufrufes unterschiedliche Funktionen
+ *
+ * Webfront
+ * RunScript
+ * Variable
+ * TimerEvent           Anwesenheitserkennung und -simulation
+ * Execute
+ *
+
 
 Automatisches Ansteuern der Heizung, durch Timer, mit Overwrite etc.
 
@@ -17,12 +29,12 @@ IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::mod
 Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 
 /******************************************************
+ *
+ *				INIT
+ *
+ *************************************************************/
 
-				INIT
-
-*************************************************************/
-
-$debug=false;
+    $debug=false;
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -38,6 +50,10 @@ $debug=false;
 		{
 		include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
 		}
+    if (isset($installedModules["EvaluateHardware"]))
+        {
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');    
+        }
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -45,6 +61,8 @@ $debug=false;
 
 	$scriptIdWebfrontControl   = IPS_GetScriptIDByName('WebfrontControl', $CategoryIdApp);
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+
+    $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 /********************************************************************************************
  *
@@ -68,67 +86,84 @@ $debug=false;
     $log_Anwesenheitserkennung=new Logging($setup["LogDirectory"]."Anwesenheitserkennung.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitserkennung;");
 
 
-/* wird jetzt in der jeweiligen Klasse gemacht: 
-$NachrichtenID = $object_data->osearch("Schaltbefehle");	// Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben 
-$object4= new ipsobject($NachrichtenID);
-$NachrichtenInputID=$object4->osearch("Input");
-$log_Anwesenheit=new Logging($setup["LogDirectory"]."Anwesenheit.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitssimulation;");
-*/
+    /* wird jetzt in der jeweiligen Klasse gemacht: 
+    $NachrichtenID = $object_data->osearch("Schaltbefehle");	// Beim ersten Auftreten des Textes im Variablennamen in der Children Liste, diese OID zurückgeben 
+    $object4= new ipsobject($NachrichtenID);
+    $NachrichtenInputID=$object4->osearch("Input");
+    $log_Anwesenheit=new Logging($setup["LogDirectory"]."Anwesenheit.csv",$NachrichtenInputID,IPS_GetName(0).";Anwesenheitssimulation;");
+    */
 
-$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	
-$timerAufrufID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
-$tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
+/***************************
+ *
+ * Timer Handling 
+ *
+ ********************************/
+        
+    $timerAufrufID = @IPS_GetEventIDByName("Aufruftimer", $scriptIdAutosteuerung);
+    $tim2ID = @IPS_GetEventIDByName("KalenderTimer", $scriptIdHeatControl);
+    $tim3ID = @IPS_GetEventIDByName("Anwesendtimer", $scriptIdAutosteuerung);
 
-if ($timerAufrufID==false) $fatalerror=true;
-if ($tim2ID==false) $fatalerror=true;
+    if ($timerAufrufID==false) $fatalerror=true;
+    if ($tim2ID==false) $fatalerror=true;
 
-/* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
-/* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
+/*****************************
+ *
+ * Anwesenheitserkennung und Simulation
+ *
+ *****************************************************/
 
-$name="Ansteuerung";
-$categoryId_Autosteuerung  = CreateCategory($name, $CategoryIdData, 10);
-$AnwesenheitssimulationID = @IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
-if ($AnwesenheitssimulationID === false)
-	{
-	$AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );
-	}
-$AnwesenheitserkennungID = IPS_GetObjectIDByName("Anwesenheitserkennung",$categoryId_Autosteuerung);
-$StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitserkennungID);
-$StatusAnwesendZuletztID=IPS_GetObjectIDByName("StatusAnwesendZuletzt",$AnwesenheitserkennungID);
+    /* Dummy Objekte für typische Anwendungsbeispiele erstellen, geht nicht automatisch */
+    /* könnte in Zukunft automatisch beim ersten Aufruf geschehen */
 
-$StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
+    $categoryId_Autosteuerung  = CreateCategory("Ansteuerung", $CategoryIdData, 10);
+    //function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+    /*   $AnwesenheitssimulationID = @IPS_GetObjectIDByName("Anwesenheitssimulation",$categoryId_Autosteuerung);
+    if ($AnwesenheitssimulationID === false)
+        {
+        $AnwesenheitssimulationID = CreateVariable("Anwesenheitssimulation", 1, $categoryId_Autosteuerung, 0, "AutosteuerungProfil",$scriptIdWebfrontControl,null,""  );
+        } */
+    //$AnwesenheitssimulationID = CreateVariableByName($categoryId_Autosteuerung,"Anwesenheitssimulation",1,"AutosteuerungProfil",null,0,$scriptIdWebfrontControl);    
+    $AnwesenheitssimulationID = CreateVariableByName($categoryId_Autosteuerung,"Anwesenheitssimulation",1,"AusEinAuto",null,0,$scriptIdWebfrontControl);    
+    $AnwesenheitserkennungID = IPS_GetObjectIDByName("Anwesenheitserkennung",$categoryId_Autosteuerung);
+    $StatusAnwesendID=IPS_GetObjectIDByName("StatusAnwesend",$AnwesenheitserkennungID);
+    $StatusAnwesendZuletztID=IPS_GetObjectIDByName("StatusAnwesendZuletzt",$AnwesenheitserkennungID);
 
-/* wichtigste Parameter vorbereiten */
+    $StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
 
-$configuration = Autosteuerung_GetEventConfiguration();
-$scenes=Autosteuerung_GetScenes();
-//print_r($configuration);
+/********************
+ *
+ * Autosteuerung wichtigste Parameter vorbereiten 
+ *
+ *****************************/
 
-$speak_config=Autosteuerung_Speak();
+    $configuration = Autosteuerung_GetEventConfiguration();
+    $scenes=Autosteuerung_GetScenes();
+    //print_r($configuration);
 
-$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-$register=new AutosteuerungHandler($scriptIdAutosteuerung);
-$operate=new AutosteuerungOperator($debug);
-$auto=new Autosteuerung();
+    $speak_config=Autosteuerung_Speak();
 
-$simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");  // automatisch eigenen File und Nachrichtenspeicher anlegen
-// Regler ist auch eine Autosteuerungsfunktion
-// Alexa ist auch eine Autosteuerungsfunktion
-// Stromheizung ist auch eine Autosteuerungsfunktion
+    $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
+    $operate=new AutosteuerungOperator($debug);
+    $auto=new Autosteuerung();
 
-if ( isset($installedModules["OperationCenter"]) === true )
-	{
-    IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-    $statusAWS=new statusDisplay();        // eine OperationCenter Library für die Anwesenheitssimulation
-    }
-else
-    {   /* zweimal tts_play deklariert */
-	if ( isset($installedModules["Sprachsteuerung"]) === true )
-		{
-		Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
-		}            
-    }        
+    $simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");  // automatisch eigenen File und Nachrichtenspeicher anlegen
+    // Regler ist auch eine Autosteuerungsfunktion
+    // Alexa ist auch eine Autosteuerungsfunktion
+    // Stromheizung ist auch eine Autosteuerungsfunktion
+
+    if ( isset($installedModules["OperationCenter"]) === true )
+        {
+        IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
+        $statusAWS=new statusDisplay();        // eine OperationCenter Library für die Anwesenheitssimulation
+        }
+    else
+        {   /* zweimal tts_play deklariert */
+        if ( isset($installedModules["Sprachsteuerung"]) === true )
+            {
+            Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Sprachsteuerung\Sprachsteuerung_Library.class.php");
+            }            
+        }        
 
 /*********************************************************************************************/
 
@@ -140,7 +175,11 @@ if ($_IPS['SENDER']=="WebFront")
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	}
 
-/*********************************************************************************************/
+/*********************************************************************************************
+ *
+ * Script extern aufgerufen
+ *
+ ************/
 
 if ($_IPS['SENDER']=="RunScript")
 	{
@@ -307,8 +346,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 	 ****************************************************************/
 	switch ($_IPS['EVENT'])
 		{
-		case $timerAufrufID:
-			/* alle 5 Minuten aufrufen */
+        case $tim3ID:
+			/* alle 60 Sekunden aufrufen */
 			$StatusAnwesend=$operate->Anwesend();
             if ($StatusAnwesend<>GetValue($StatusAnwesendID))
                 {
@@ -316,13 +355,14 @@ if ($_IPS['SENDER']=="TimerEvent")
                 $log_Anwesenheitserkennung->LogNachrichten('Änderung Status Anwesenheit auf '.($StatusAnwesend?"Anwesend":"Abwesend"));                    
 			    SetValue($StatusAnwesendID,$StatusAnwesend );
                 }
-			$Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);
-			
 			/* Kurzüberblick als Tabelle machen über Bewegnung in den Räumen */
 			$topology = $operate->getLogicAnwesend();
 			$html=$operate->writeTopologyTable($topology);
 			SetValue($StatusTableMapHtml,$html);
-				
+            break;
+		case $timerAufrufID:
+			/* alle 5 Minuten aufrufen */
+            $Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);            
 			$AWSFunktionStatus=( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) ));
 			if ( $AWSFunktionStatus ) 
 				{
@@ -459,18 +499,21 @@ if ($_IPS['SENDER']=="TimerEvent")
  *
  * Execute aufgerufen, simuliert die Parametereingaben
  *
- +
+ *
  *************************************************************************************************************************************/
 
 
 if ($_IPS['SENDER']=="Execute")
 	{	/* von der Konsole aus gestartet */
 	echo "--------------------------------------------------------------\n";
-	echo "        EXECUTE (Überprüfung mit Testwerten)\n";
+	echo "        EXECUTE aufgerufen, es erfolgt die Überprüfung mit Testwerten:\n";
 	echo "--------------------------------------------------------------\n\n";
 	//IPSLogger_Dbg(__file__, 'Exec aufgerufen ...');
 	
-	test();		/* gibt die IDs von Anwesenheitsimulation, Nachrichten Script und Nachrichten Input aus.\n";
+	// gibt die IDs von Anwesenheitsimulation, Nachrichten Script und Nachrichten Input aus
+	echo "Anwesenheitsimulation  ID : ".$AnwesenheitssimulationID." \n";
+	//echo "Nachrichten Script     ID : ".$NachrichtenScriptID."\n";
+	echo "Nachrichten Input      ID : ".$NachrichtenInputID."\n";    
 	
 	// testweise Sprache ausgeben */
 	//tts_play(1,"Claudia, ich hab dich so lieb.",'',2);

@@ -30,17 +30,115 @@
 	 *
 	 */
 
+	function IPSHeat_GetHeatConfiguration() 
+		{
+		return array(
+
+            );
+        }
+
+	function IPSHeat_GetGroupConfiguration() 
+		{
+		return array(
+
+            );
+        }
+
+	function IPSHeat_GetProgramConfiguration() 
+		{
+		return array(
+
+            );
+        }
+
+	function IPSHeat_GetWebFrontConfiguration() 
+		{
+		return array(
+
+            );
+        }
+
+	function IPSHeat_GetWebFrontUserConfiguration() 
+		{
+		return array(
+
+            );
+        }
 
 
-	function get_IPSComponentHeatControlConfig() {
-		$Configuration = array(
 
+	/**@addtogroup IPSHEAT_configuration
+	 * @{
+	 *
+	 * Es gibt derzeit 4 Callback Methoden, diese ermöglichen es vor oder nach dem Schalten/Dimmen eines Lichtes eigene Aktionen auszuführen
+	 *
+	 * Funktionen:
+	 *  - function IPSHEAT_BeforeSwitch($control, $value)
+	 *  - function IPSHEAT_AfterSwitch($control, $value)
+	 *  - function IPSHEAT_BeforeSynchronizeSwitch ($SwitchId, $DeviceState)
+	 *  - function IPSHEAT_AfterSynchronizeSwitch ($SwitchId, $DeviceState)
+	 *
+	 * @file          IPSHEAT_Custom.inc.php
+	 * @author        Andreas Brauneis
+	 * @version
+	 *   Version 2.50.1, 26.07.2012<br/>
+	 *
+	 * Callback Methoden für IPSHEAT
+	 *
+	 */
 
-
-			);
-
-		return $Configuration;
+	/**
+	 * Diese Funktion wird vor dem Schalten eines Lichtes ausgeführt.
+	 *
+	 * Parameters:
+	 *   @param integer $lightId  ID des Beleuchtungs Switches in IPSHEAT
+	 *   @param boolean $value Wert für Ein/Aus
+	 *   @result boolean TRUE für OK, bei FALSE wurde die Ansteuerung der Beleuchtung bereits in der Callback Funktion erledigt
+	 *
+	 */
+	function IPSHeat_BeforeSwitch($lightId, $value) {
+		return true;
 	}
+
+	/**
+	 * Diese Funktion wird nach dem Schalten eines Lichtes ausgeführt.
+	 *
+	 * Parameters:
+	 *   @param integer $lightId  ID des Beleuchtungs Switches in IPSHEAT
+	 *   @param boolean $value Wert für Ein/Aus
+	 *
+	 */
+	function IPSHeat_AfterSwitch($lightId, $value) {
+
+	}
+
+	/**
+	 * Diese Funktion wird vor dem Synchronisieren eines Licht Schaltvorganges durch ein externes System ausgeführt.
+	 *
+	 * Parameters:
+	 *   @param integer $lightId  ID des Beleuchtungs Switches in IPSHEAT
+	 *   @param boolean $value Wert für Ein/Aus
+	 *   @result boolean TRUE für OK, bei FALSE erfolgt keine Synchronisierung
+	 *
+	 */
+	function IPSHeat_BeforeSynchronizeSwitch ($lightId, $value) {
+
+		return true;
+	}
+
+	/**
+	 * Diese Funktion wird nach dem Synchronisieren eines Licht Schaltvorganges durch ein externes System ausgeführt.
+	 *
+	 * Parameters:
+	 *   @param integer $lightId  ID des Beleuchtungs Switches in IPSHEAT
+	 *   @param boolean $value Wert für Ein/Aus
+	 *
+	 */
+	function IPSHeat_AfterSynchronizeSwitch ($lightId, $value) {
+	}
+
+	 
+
 
 	 
 	 

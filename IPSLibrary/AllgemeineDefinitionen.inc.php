@@ -1136,7 +1136,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
-			$log=new Motion_Logging();
+			$log=new Motion_LoggingStatistics();                  // construct ohne Variable wird nicht mehr akzeptiert
 		   
 			$cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 		   
@@ -4936,6 +4936,10 @@ class ComponentHandling
 /***********************************************************************************
  *
  *  selectProtocol, selectProtocolDevice
+ *
+ * Beide Routinen gehen die HomematicList durch
+ * typischer Befehl: foreach ( (selectProtocolDevice("","TYPE_THERMOSTAT",HomematicList())) as $entry) echo "   ".$entry["Name"]."\n";
+ *
  *
  **************************************************************************************/
 

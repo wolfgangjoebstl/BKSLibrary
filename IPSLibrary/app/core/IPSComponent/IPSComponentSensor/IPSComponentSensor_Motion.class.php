@@ -225,46 +225,55 @@
 		 *
 		 *************************************************************************/
 		 	
-		function __construct($variable,$variablename=Null)          // construct ohen variable nicht mehr akzeptieren
+		function __construct($variable,$variablename=Null)          // construct ohne variable nicht mehr akzeptieren
 			{
             $this->startexecute=microtime(true); 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-
-            $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
-            if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
-            $this->variableType=IPS_GetVariable($variable)["VariableType"];
-                              
-            $rows=getfromDatabase("COID",$variable);
-            if ( ($rows === false) || (sizeof($rows) != 1) )
-                {
-                if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableType = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
-                else $this->variableType = "BRIGHTNESS";
-                }
-            else    // getfromDatabase
-                {
-                //print_r($rows);   
-                $this->variableType = $rows[0]["TypeRegKey"];    
-                }
-            $this->Type=0;      // Motion und Contact ist boolean
-            if ($this->variableType =="MOTION") $this->do_init_motion($variable, $variablename);
-            elseif ($this->variableType =="CONTACT") $this->do_init_motion($variable, $variablename);
-            elseif ($this->variableType =="BRIGHTNESS") 
-                {
-                $this->Type=1;  // Brightness ist Integer
-                $this->do_init_brightness($variable, $variablename);
-                }
-            else echo "Fehler, kenne den Variable Tyo nicht.\n";
-
-			parent::__construct($this->filename);
+            $this->do_init($variable,$variablename);              // $variable kann auch false sein
+			parent::__construct($this->filename);                                       // this->filename wird ion do_init_xxx geschrieben
 			}
+
+
+        private function do_init($variable,$variablename=NULL)
+            {
+            if ($variable!==false)
+                {
+                $this->$variable=$variable;
+                $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
+                if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
+                $this->variableType=IPS_GetVariable($variable)["VariableType"];
+                                
+                $rows=getfromDatabase("COID",$variable);
+                if ( ($rows === false) || (sizeof($rows) != 1) )
+                    {
+                    if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableType = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
+                    else $this->variableType = "BRIGHTNESS";
+                    }
+                else    // getfromDatabase
+                    {
+                    //print_r($rows);   
+                    $this->variableType = $rows[0]["TypeRegKey"];    
+                    }
+                $this->Type=0;      // Motion und Contact ist boolean
+                if ($this->variableType =="MOTION") $this->do_init_motion($variable, $variablename);
+                elseif ($this->variableType =="CONTACT") $this->do_init_motion($variable, $variablename);
+                elseif ($this->variableType =="BRIGHTNESS") 
+                    {
+                    $this->Type=1;  // Brightness ist Integer
+                    $this->do_init_brightness($variable, $variablename);
+                    }
+                else echo "Fehler, kenne den Variable Typ nicht.\n";
+                }
+            else $this->do_init_statistics();                
+            }
 
         /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
          * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
          */
 
-        public function do_init_motion($variable, $variablename)
+        public function do_init_motion($variable, $variablename, $debug=false)
             {
-            echo "      Aufruf do_init_motion:\n";
+            if ($debug) echo "      Aufruf do_init_motion:\n";
             /**************** installierte Module und verfügbare Konfigurationen herausfinden */
             $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
             $this->installedmodules=$moduleManager->GetInstalledModules();     
@@ -377,9 +386,9 @@
          * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
          */
 
-        public function do_init_brightness($variable, $variablename)
+        public function do_init_brightness($variable, $variablename, $debug=false)
             {
-            echo "      Aufruf do_init_brightness:\n";
+            if ($debug) echo "      Aufruf do_init_brightness:\n";
             $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
             /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
             $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
@@ -402,7 +411,28 @@
             else $directory="C:/Scripts/Switch/";
             $dosOps= new dosOps();
 			$dosOps->mkdirtree($directory);
-			$this->filename=$directory.$this->variablename."_Bewegung.csv";            
+			$this->filename=$directory.$this->variablename."_Helligkeit.csv";      
+            }
+
+        /* wird beim construct aufgerufen, wenn keine Variable übvergeben wurde.
+         * Klasse wird für Statistische Auswertungen verwendet.
+         */
+
+        public function do_init_statistics()
+            {
+            echo "      Aufruf do_init_statistics:\n";
+            /**************** Speicherort für Nachrichten und Spiegelregister definieren */		
+            $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+            $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+            $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
+            $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
+			$directories=get_IPSComponentLoggerConfig();
+			if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+            else $directory="C:/Scripts/Switch/";
+            $dosOps= new dosOps();
+			$dosOps->mkdirtree($directory);
+			$this->filename=$directory."Statistik.csv";      
             }
 
         /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
@@ -472,12 +502,11 @@
 
 		function Set_LogValue($variable)
 			{
-			if ($variable<>null)
+			if ( ($variable<>null) && ($variable<>false) )
 				{
 				echo "Add Variable ID : ".$variable." (".IPS_GetName($variable).") für IPSComponentSensor Motion Logging.\n";
-                $this->variable=$variable;
-                $this->variablename = $this->getVariableName($variable);           // $this->variablename schreiben
-                $this->variableLogID = $this->setVariableLogId($this->variable,$this->variablename,$this->MoveAuswertungID,0,'~Motion');                   // $this->variableLogID schreiben
+                $this->do_init($variable);                                                                                                  // initialisiserung gleich wie in construct
+                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->Type,$this->variableProfile);                   // $this->variableLogID schreiben aus do_setVariableLogId
 				}
 			
 			/* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
@@ -957,102 +986,125 @@
 		zweiter Parameter true: nimmt statt dem aktuellem Event den Gesamtereignisspeicher
 		*************************************************************************************/
 
-	public function writeEvents($comp=true,$gesamt=false)
+        public function writeEvents($comp=true,$gesamt=false)
+            {
+            if (isset ($this->installedmodules["DetectMovement"]))
+                {
+                if ($gesamt)
+                {
+                    $value=GetValue($this->GesamtID);
+                    $diftimemax=60;
+                    }
+                else
+                {
+                    $value=GetValue($this->EreignisID);
+                    $diftimemax=15;
+                    }
+                /* es erfolgt zwar eine Kompromierung aber keine Speicherung in den Events, das ist nur bei Auftreten eines Events */
+                if ($comp)
+                    {
+                    $value=$this->evaluateEvents($value, $diftimemax);
+                    $value=$this->evaluateEvents($value, $diftimemax);
+                    }
+                $EventArray = explode(";", $value);
+                echo "Write Eventliste von ".IPS_GetName($this->EreignisID)." : ".$value."\n";
+
+                /* Umsetzung des kodierten Eventarrays in lesbaren Text */
+                $event2="";
+                $array_size = count($EventArray);
+                for ($k=1; $k<($array_size); $k++ )
+                    {
+                    $event2=$event2.date("d.m H:i",(integer)$EventArray[$k-1])." : ";
+                    //echo "check : ".$EventArray[$k]."\n";
+                    switch ($EventArray[$k])
+                        {
+                        case STAT_KommtnachHause:
+                            $event2=$event2."Kommt nach Hause";
+                        break;
+                    case STAT_Bewegung9:
+                        $event2=$event2."Bewegung 9 Sensoren";
+                        break;
+                        case STAT_Bewegung8:
+                        $event2=$event2."Bewegung 8 Sensoren";
+                        break;
+                    case STAT_Bewegung7:
+                        $event2=$event2."Bewegung 7 Sensoren";
+                        break;
+                        case STAT_Bewegung6:
+                        $event2=$event2."Bewegung 6 Sensoren";
+                        break;
+                    case STAT_Bewegung5:
+                        $event2=$event2."Bewegung 5 Sensoren";
+                        break;
+                        case STAT_Bewegung4:
+                        $event2=$event2."Bewegung 4 Sensoren";
+                        break;
+                    case STAT_Bewegung3:
+                        $event2=$event2."Bewegung 3 Sensoren";
+                        break;
+                        case STAT_Bewegung2:
+                        $event2=$event2."Bewegung 2 Sensoren";
+                        break;
+                    case STAT_Bewegung:
+                        $event2=$event2."Bewegung";
+                        break;
+                        case STAT_WenigBewegung:
+                        $event2=$event2."Wenig Bewegung";
+                        break;
+                        case STAT_KeineBewegung;
+                        $event2=$event2."Keine Bewegung";
+                        break;
+                        case STAT_Unklar:
+                        $event2=$event2."Unklar";
+                        break;
+                        case STAT_Undefiniert:
+                        $event2=$event2."Undefiniert";
+                        break;
+                        case STAT_vonzuHauseweg:
+                        $event2=$event2."Von zu Hause weg";
+                        break;
+                        case STAT_nichtzuHause:
+                        $event2=$event2."Nicht zu Hause";
+                        break;
+                        case STAT_Abwesend:
+                        $event2=$event2."Abwesend";
+                        break;
+                        }
+                    $k++;
+                $event2=$event2."\n";
+                    }
+                return ($event2);
+                }
+            else
+                {
+                return ("");
+                }		
+            } /* ende function */
+            
+        } /* ende class */	
+
+	/******************************************************************************************************
+	 *
+	 *   Class Motion_LoggingStatistics
+     *
+     * Erweiterung der Klasse um statistische Auswertungen. Aktuell sind die Routinen noch in der child class
+     *
+	 *
+	 ************************************************************************************************************/
+
+	class Motion_LoggingStatistics extends Motion_Logging
 		{
-		if (isset ($this->installedmodules["DetectMovement"]))
-			{
-			if ($gesamt)
-			   {
-  				$value=GetValue($this->GesamtID);
-  				$diftimemax=60;
-  				}
-  			else
-  			   {
-				$value=GetValue($this->EreignisID);
-  				$diftimemax=15;
-				}
-			/* es erfolgt zwar eine Kompromierung aber keine Speicherung in den Events, das ist nur bei Auftreten eines Events */
-			if ($comp)
-				{
-				$value=$this->evaluateEvents($value, $diftimemax);
-				$value=$this->evaluateEvents($value, $diftimemax);
-				}
-			$EventArray = explode(";", $value);
-			echo "Write Eventliste von ".IPS_GetName($this->EreignisID)." : ".$value."\n";
 
-			/* Umsetzung des kodierten Eventarrays in lesbaren Text */
-			$event2="";
-			$array_size = count($EventArray);
-		 	for ($k=1; $k<($array_size); $k++ )
-				{
-				$event2=$event2.date("d.m H:i",(integer)$EventArray[$k-1])." : ";
-				//echo "check : ".$EventArray[$k]."\n";
-				switch ($EventArray[$k])
-					{
-					case STAT_KommtnachHause:
-						$event2=$event2."Kommt nach Hause";
-		 	   		break;
- 	   			case STAT_Bewegung9:
- 	   				$event2=$event2."Bewegung 9 Sensoren";
-		 	   		break;
-					case STAT_Bewegung8:
- 	   				$event2=$event2."Bewegung 8 Sensoren";
-		 	   		break;
- 	   			case STAT_Bewegung7:
- 	   				$event2=$event2."Bewegung 7 Sensoren";
-		 	   		break;
-					case STAT_Bewegung6:
- 	   				$event2=$event2."Bewegung 6 Sensoren";
-		 	   		break;
- 	   			case STAT_Bewegung5:
- 	   				$event2=$event2."Bewegung 5 Sensoren";
-		 	   		break;
-					case STAT_Bewegung4:
- 	   				$event2=$event2."Bewegung 4 Sensoren";
-		 	   		break;
- 	   			case STAT_Bewegung3:
- 	   				$event2=$event2."Bewegung 3 Sensoren";
-		 	   		break;
-					case STAT_Bewegung2:
- 	   				$event2=$event2."Bewegung 2 Sensoren";
-		 	   		break;
- 	   			case STAT_Bewegung:
- 	   				$event2=$event2."Bewegung";
-		 	   		break;
-					case STAT_WenigBewegung:
- 	   				$event2=$event2."Wenig Bewegung";
-		 	   		break;
-					case STAT_KeineBewegung;
- 	   				$event2=$event2."Keine Bewegung";
-		 	   		break;
-					case STAT_Unklar:
-		 	   		$event2=$event2."Unklar";
- 	   				break;
-					case STAT_Undefiniert:
- 	   				$event2=$event2."Undefiniert";
- 	   				break;
-					case STAT_vonzuHauseweg:
- 	   				$event2=$event2."Von zu Hause weg";
- 	   				break;
-					case STAT_nichtzuHause:
- 	   				$event2=$event2."Nicht zu Hause";
- 	   				break;
-					case STAT_Abwesend:
- 	   				$event2=$event2."Abwesend";
- 	   				break;
-					}
-				$k++;
-      		$event2=$event2."\n";
-				}
-			return ($event2);
+		function __construct()          // construct ohne variable nur für übergeordnete Aufrufe erlauben
+			{
+            $this->startexecute=microtime(true); 
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+
+    		parent::__construct(false);
 			}
-		else
-			{
-			return ("");
-			}		
-		} /* ende function */
-		
-	} /* ende class */	
 
+
+
+        }
 	/** @}*/
 ?>

@@ -358,7 +358,7 @@ Path=Visualization.Mobile.iTunes
 			{
         	if (isset($entry["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer";            
 			}
-		if (isset($config["NetPlayer"]["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer"; 	 
+		if (isset($config["NetPlayer"]["NAME"])==false) $config["NetPlayer"]["NAME"]="NetPlayer"; 
 		$NetPlayerID  = $CategoryIdDataNP;
 	    $tabname="NetPlayer";
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["TAB"]="NetPlayer";
@@ -368,7 +368,28 @@ Path=Visualization.Mobile.iTunes
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["ADMINISTRATOR"]=true;
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["USER"]=true;
 		$webfront_links[$tabname]["Auswertung"][$NetPlayerID]["MOBILE"]=true;
+
 		}
+    if (isset($config["ttsPlayer"])) 
+		{
+        $order=50;            
+    	foreach ($config["ttsPlayer"] as $name => $entry)
+			{
+        	if (isset($entry["NAME"])==false) $config["ttsPlayer"]["NAME"]="ttsPlayer";            
+			}
+		if (isset($config["ttsPlayer"]["NAME"])==false) $config["ttsPlayer"]["NAME"]="NetPlayer"; 
+
+		$ttsPlayerID  = CreateCategory("ttsPlayer", $CategoryIdData, $order); 
+	    $tabname="ttsPlayer";
+		$webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["TAB"]="ttsPlayer";
+		$webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["NAME"]=$config["ttsPlayer"]["NAME"];
+        $webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["ORDER"]=$order;
+
+		$webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["ADMINISTRATOR"]=true;
+		$webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["USER"]=true;
+		$webfront_links[$tabname]["Auswertung"][$ttsPlayerID]["MOBILE"]=true;
+		}
+
 	if (isset($config["iTunesSteuerung"]))			// war früher in der Config iTunes
         {
 		/* damit kann man iTunes fernsteuern */
@@ -401,6 +422,17 @@ Path=Visualization.Mobile.iTunes
 	 * WebFront Administrator Installation
      *
      * Algorithmen siehe auch CustomComponent_Installation 
+     *
+     *  erzeugt Tabpane TabPaneItem/TabPaneParent und Kategorie Path
+     *
+     * es wird das Array webfront_links übergeben. Struktur:
+     *
+     * Variante
+     * (1)   $webfront_links[$tabname][$name]["Auswertung"]         erzeugt Kategorie name
+     * (2)   $webfront_links[$tabname]["Auswertung"]                erzeugt Kategorie name
+     * (2a)      es existiert auch ...["Nachrichten"]               erzeugt Splitpane
+     * (3)   $webfront_links["Auswertung"]                          wird ignoriert
+     *
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 	 
@@ -414,7 +446,7 @@ Path=Visualization.Mobile.iTunes
 		 *
 		 */
 		
-		echo "====================================================================================\n";		
+		echo "=====================================================================================================================\n";		
         $categoryId_AdminWebFront=CreateCategoryPath("Visualization.WebFront.Administrator");
 		echo "Webportal Administrator im Webfront Konfigurator ID ".$WFC10_ConfigId." installiert in Kategorie ". $categoryId_AdminWebFront." (".IPS_GetName($categoryId_AdminWebFront).")\n";
 
@@ -429,6 +461,7 @@ Path=Visualization.Mobile.iTunes
 		/*************************************/
 
 		/* Parameter WebfrontConfigId, TabName, TabPaneItem,  Position, TabPaneName, TabPaneIcon, $category BaseI, BarBottomVisible */
+        echo "======================================================================================================================\n";
 		echo "Webfront TabPane mit    Parameter ConfigID:".$WFC10_ConfigId.",Item:".$WFC10_TabPaneItem.",Parent:".$WFC10_TabPaneParent.",Order:".$WFC10_TabPaneOrder.",Name:".$WFC10_TabPaneName.",Icon:".$WFC10_TabPaneIcon."\n";        
 		echo "***** Tabpane ".$WFC10_TabPaneItem." erzeugen in ".$WFC10_TabPaneParent."\n";
         CreateWFCItemTabPane   ($WFC10_ConfigId, $WFC10_TabPaneItem, $WFC10_TabPaneParent,  $WFC10_TabPaneOrder, $WFC10_TabPaneName, $WFC10_TabPaneIcon);    /* macht den Notenschlüssel in die oberste Leiste */
@@ -453,8 +486,8 @@ Path=Visualization.Mobile.iTunes
 		    	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.
 			     * Der Name für die Felder wird selbst erfunden.
     			 */
-
-                echo "\n**** iTunes Visualization, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
+                echo "*******************************==============================================================\n";
+                echo "**** iTunes Visualization, erstelle Kategorie ".$Name." in ".$categoryId_WebFrontAdministrator." (".IPS_GetName($categoryId_WebFrontAdministrator)."/".IPS_GetName(IPS_GetParent($categoryId_WebFrontAdministrator)).").\n";
 		    	$categoryId_WebFrontTab         = CreateCategory($Name,$categoryId_WebFrontAdministrator, 10);
 			    EmptyCategory($categoryId_WebFrontTab);   
                 echo "Kategorien erstellt, Main install for ".$Name." : ".$categoryId_WebFrontTab." in ".$categoryId_WebFrontAdministrator." Kategorie Inhalt geloescht.\n";
@@ -468,13 +501,14 @@ Path=Visualization.Mobile.iTunes
   			    	echo "**Webfront ".$WFC10_ConfigId." erzeugt TabItem :".$tabItem." in ".$WFC10_TabPaneItem."\n";
 					if (array_key_exists("Nachrichten",$webfront_group) )
 						{
+                        // Kurzfassung, zusammengefasst als function
                     	createSplitPane($WFC10_ConfigId,$webfront_group,$Name,$tabItem,$WFC10_TabPaneItem,$categoryId_WebFrontTab,"Administrator");
 						}
 					else
 						{	
-	                    //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");    
-						foreach ($webfront_group as $Group => $webfront_link)
+						foreach ($webfront_group as $Group => $webfront_link)           // group ist Auswertung
 							{
+                            //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");            // eigenes TabPane für den Netplayer
 							foreach ($webfront_link as $OID => $link)
 								{
 								/* Hier erfolgt die Aufteilung auf linkes und rechtes Feld
@@ -486,10 +520,14 @@ Path=Visualization.Mobile.iTunes
 							 		{
 			 						echo "erzeuge Link mit Name ".$link["NAME"]." auf ".$OID." in der Category ".$categoryId_WebFrontTab."\n";
 									CreateLinkByDestination($link["NAME"], $OID,    $categoryId_WebFrontTab,  $link["ORDER"]);						
-									CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,   $WFC10_TabPaneOrder, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+									//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,   $WFC10_TabPaneOrder, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
+                                    //CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");            // eigenes TabPane für den Netplayer
+									//CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1", $tabItem,    $WFC10_TabPaneOrder, $Name."1", '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
 									}
 								}
 							}
+	                    CreateWFCItemTabPane   ($WFC10_ConfigId, $tabItem, $WFC10_TabPaneItem,  $WFC10_TabPaneOrder, $Name, "");            // eigenes TabPane für den Netplayer
+                        CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem."1", $tabItem,    $WFC10_TabPaneOrder, '', '', $categoryId_WebFrontTab   /*BaseId*/, 'false' /*BarBottomVisible*/);
 						}
                     }
                 else

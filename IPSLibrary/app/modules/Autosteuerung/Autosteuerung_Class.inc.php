@@ -1005,8 +1005,9 @@ class AutosteuerungOperator
      * hier ausgeben wie berechnet wurde. Könnte als Zusatzinfo in Autosteuerung Anwesenheitserkennung gemacht werden.
      *
      */ 
-	public function getLogicAnwesend($debug=false)
+	public function getLogicAnwesend($htmlOut=false,$debug=false)
 		{
+        $html='<table id="infoAnwesenheit">';                                 // style definition in writeTopologyTable
 		$delayed = $this->logicAnwesend["Config"]["Delayed"];
 		if ($debug) print_r($this->logicAnwesend );
         $result=false; $resultDelayed=false;
@@ -1016,43 +1017,92 @@ class AutosteuerungOperator
 			{
 			if ($type == "OR")
 				{
-				$operator.="OR";
+				$operator.="OR(";
+                $html.='<tr><td colspan="6">'."Operation OR</td></tr>";
+                $html.="<tr><td>Name</td><td>OID</td><td>Bewegung Ist</td><td>Delayed</td><td>Summe<br>Status</td><td>Koordinaten</td></tr>";
+
 				//print_r($operation);
+                $first=true;
 				foreach ($operation as $oid=>$topology)
 					{
 					$result1=GetValueBoolean($oid);
-					$result = $result || $result1;
-					
-					if (isset($topology["Delayed"])) $resultDelayed1 = GetValueBoolean($topology["Delayed"]);
-					else $resultDelayed1 = false; 
+					$statusChanged=IPS_GetVariable($oid)["VariableChanged"];
+
+                    $result = $result || $result1;
+
+					if (isset($topology["Delayed"])) 
+                        {
+                        $resultDelayed1 = GetValueBoolean($topology["Delayed"]);
+                        $statusDelayedChanged=IPS_GetVariable($topology["Delayed"])["VariableChanged"];
+                        }
+					else 
+                        {
+                        $resultDelayed1 = false; 
+                        $statusDelayedChanged = $statusChanged;
+                        }
+                    $statusDelay = round(($statusDelayedChanged - $statusChanged)/60);    
+                    if ($statusDelay<0) $statusDelay=0;
 					$resultDelayed = $resultDelayed || $resultDelayed1;
+
+                   echo "Aktualität der Einträge : ".date("Ymd H:i:s",$statusChanged)." für $statusDelay Minuten, geändert ".date("Ymd H:i:s",$statusDelayedChanged)."\n";
 					
+                    if ($first) $first=false;
+                    else $operator.=",";
+
 					if ( (isset($topology["Delayed"])) && ($delayed) ) $operator.=" ".IPS_GetName($topology["Delayed"])."(d)";
 					else $operator.=" ".IPS_GetName($oid);
 					
 					echo "Operation OR for OID : ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50)." (".$oid.") ".($result1?"Anwesend":"Abwesend")."  ".($resultDelayed1?"Anwesend":"Abwesend")." Result : ".($result+$resultDelayed)."   [".$topology["x"].",".$topology["y"]."]\n";
+                    $html.="<tr><td>".IPS_GetName($oid)."</td><td>".$oid."</td>".$this->colorCodeAnwesenheit($result1).$this->colorCodeAnwesenheit($resultDelayed1,$statusDelay)."<td>".($result+$resultDelayed)."</td><td>[".$topology["x"].",".$topology["y"]."]</td></tr>";
 					$topologyStatus[$topology["y"]][$topology["x"]]["Status"]=(integer)GetValueBoolean($oid);
 					if (isset($topology["Delayed"])) $topologyStatus[$topology["y"]][$topology["x"]]["Status"]+=(integer)GetValueBoolean($topology["Delayed"]);
 					if (isset($topology["ShortName"])) $topologyStatus[$topology["y"]][$topology["x"]]["ShortName"]=$topology["ShortName"];
 					}
+                $operator.=" ) "; 
 				}
+   
 			if ($type == "AND")
 				{
-				$operator.=" AND";				
-				foreach ($operation as $oid=>$topology)
+				$operator.=" AND(";				
+                $html.='<tr><td colspan="6">'."Operation OR</td></tr>";
+                $html.="<tr><td>Name</td><td>OID</td><td>Bewegung Ist</td><td>Delayed</td><td>Summe<br>Status</td><td>Koordinaten</td></tr>";
+				
+                $first=true;
+                foreach ($operation as $oid=>$topology)
 					{
 					$result = $result && GetValue($oid);
+
+                    if ($first) $first=false;
+                    else $operator.=",";
+
 					$operator.=" ".IPS_GetName($oid);
 					echo "Operation AND for OID : ".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))." (".$oid.") ".(GetValue($oid)?"Anwesend":"Abwesend")." ".$result."   [".$topology["x"].",".$topology["y"]."]\n";
+                    $html.="<tr><td>".IPS_GetName($oid)."</td><td>".$oid."</td>".$this->colorCodeAnwesenheit(GetValue($oid))."<td></td><td>".($result)."</td><td>[".$topology["x"].",".$topology["y"]."]</td></tr>";
 					$topologyStatus[$topology["y"]][$topology["x"]]["Status"]=(integer)GetValueBoolean($oid);
 					if (isset($topology["Delayed"])) $topologyStatus[$topology["y"]][$topology["x"]]["Status"]+=(integer)GetValueBoolean($topology["Delayed"]);
 					if (isset($topology["ShortName"])) $topologyStatus[$topology["y"]][$topology["x"]]["ShortName"]=$topology["ShortName"];
 					}
+                $operator.=" ) "; 
 				}
 			}
 		echo 'AutosteuerungOperator, Anwesenheitsauswertung: '.$operator.'.= '.($result?"Anwesenheit":"Abwesend")."\n";
-		return ($topologyStatus);
+        $html.="</table>";
+        $html.='<table id="summAnwesenheit"><tr><td>'."Anwesenheitsauswertung:<br> $operator = ".($result?"Anwesenheit":"Abwesend")."</td></tr></table>";
+        if ($htmlOut) return ($html);
+		else return ($topologyStatus);
 		}			
+
+    private function colorCodeAnwesenheit($status,$statusDelay=0)
+        {
+        if ($status) 
+            {
+            if ($statusDelay>0) return ('<td class="colorGreen">Anwesend ('.$statusDelay.' Min)</td>');
+            else return ('<td class="colorGreen">Anwesend</td>');
+            }
+        else return ('<td class="colorRed">Abwesend</td>');
+
+        }
+
 
 	/*
 	 * die Topologischen Werte für die ANzeige des Status verwenden, derzeit Anzeige als simple Tabelle, gibt aber schon einen grundsätzlichen Überblick
@@ -1063,9 +1113,13 @@ class AutosteuerungOperator
 		{
 		ksort($topology);
 		$html="";
-		$html.="<style>";
+		$html.="<style>";                               // arbeiten mit IDs, eine ID ist ein Feld das mit Java adressierbar ist, hier definieren wie es auszuschauen hat
 		$html.="#anwesenheit { border-collapse: collapse; border: 1px solid #ddd;   }";
 		$html.="#anwesenheit td, #anwesenheit th { border: 1px solid #ddd; text-align: center; height: 50px; width: 50px; }";
+		$html.="#infoAnwesenheit { border-collapse: collapse; border: 1px solid #ddd; width:100%  }";
+		$html.="#infoAnwesenheit td, #infoAnwesenheit th { border: 1px solid #ddd; text-align: center; }";
+		$html.="#summAnwesenheit { border-collapse: collapse; border: 1px solid #af0; text-align: center; height: 200px; }";    
+        $html.="td.colorRed {color:#a00000} td.colorGreen {color:#00a000}";     
 		$html.="</style>";
 		$html.="<table id=anwesenheit>";
 		$maxx=1;
@@ -1088,7 +1142,12 @@ class AutosteuerungOperator
 				}
 			$html.="</tr>";
 			}
-		$html.="</table>";		
+        $html.="</table><br>";
+        $html.='<table><tr><td colspan="3">Legende</td></tr>';
+        $html.='<tr><td bgcolor="0000FF">off</td><td bgcolor="00FFFF">delayed</td><td bgcolor="00FF00">active</td></tr>';
+		$html.="</table><br>";
+        $html.=$this->getLogicAnwesend(true);           // html Output
+        $html.="<br>zuletzt aktualisert am ".date("d.m.Y H:i:s");
 		return ($html);
 		}
 
@@ -2543,7 +2602,75 @@ class Autosteuerung
 			}	
 		return($value);
 		}
-	
+
+	/**********************************
+     * findSimilar
+     *
+     *
+     ***************************************/
+
+	function findSimilar($befehl, $echos=false, $debug=false)
+        {
+        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug, für EchoControl Loadspeaker Ausgabe verwendet
+        $resultInt=0; $result=array();
+        if ($echos===false) $echos=$modulhandling->getInstances('EchoRemote');
+        if ($debug) echo "findSimilar, Befehl LOUDSPEAKER, check ob ".$befehl." im Amazon Echo Loudspeaker Array von ".json_encode($echos)." ist.\n";
+        if (is_numeric($befehl)) 
+            {
+            $resultFloat=(float)$befehl;
+            $resultInt=(integer)$resultFloat;   
+            if ($debug) echo "Auswertung: es ist eine Zahl $resultFloat .\n";
+            if ( ($resultInt) > 0) 
+                {
+                if ($debug) echo "Auswertung: es ist eine OID. Name: ".IPS_GetName($resultInt)."\n";
+                }
+            if (in_array($resultInt,$echos)) 
+                {
+                if ($debug) echo "      -> JA\n";
+                $result["equal"][]=$resultInt;    
+                }
+            }
+        else
+            {
+            if ($debug) 
+                {
+                echo "keine Zahl angegeben, es ist ein Name, korrektes Match möglich ?\n";
+                echo "     es gibt folgende Echos:\n";
+                }
+            foreach ($echos as $echo) 
+                {
+                $echoName=IPS_GetName($echo);
+                if ($debug) echo "        $echo ($echoName)\n";
+                if ($befehl == $echoName)   
+                    {
+                    if ($debug) echo "                    --> tata, gefunden.\n";
+                    $result["similar"][]=$echo;
+                    }
+                $pos = strstr($echoName,$befehl);
+                if ($pos !== false) 
+                    {
+                    if ($debug) echo "      ähnlichen Eintrag gefunden, $befehl ist in $echoName auf Position $pos.\n";
+                    $result["inbetween"][]=$echo;
+                    }
+                $pos = stristr($echoName,$befehl);
+                if ($pos !== false) 
+                    {
+                    if ($debug) echo "      ähnlichen Eintrag gefunden, $befehl ist in $echoName auf Position $pos.\n";
+                    $result["inBetWEEN"][]=$echo;
+                    }
+                }
+            if ($debug) echo "\n";    
+            }
+        /* Auswertung */
+        if ( (isset($result["equal"])) && (sizeof($result["equal"])==1) ) $result["result"]=$result["equal"][0];
+        elseif ( (isset($result["similar"])) && (sizeof($result["similar"])==1) ) $result["result"]=$result["similar"][0];
+        elseif ( (isset($result["inbetween"])) && (sizeof($result["inbetween"])==1) ) $result["result"]=$result["inbetween"][0];
+        elseif ( (isset($result["inBetWEEN"])) && (sizeof($result["inBetWEEN"])==1) ) $result["result"]=$result["inBetWEEN"][0];
+        else $result["result"]=false;
+
+        return ($result);
+        }
+
 	/**********************************
      * getIdByName
      *
@@ -2680,10 +2807,20 @@ class Autosteuerung
 				$result[$Befehl0]=$befehl[1];
 				break;
 			case "LOUDSPEAKER":			/* wenn echocontrol installiert ist kann auch auf einem Amazon Gerät ausgegeben werden. macht nicht tts_play */
-                /* Plausibilitätscheck gleich hier durchführen, wenn keine EchoControl installiert ist bei tts_play als default bleiben */
-                $echos=$modulhandling->getInstances('EchoRemote');
-               // echo "  Check if ".$befehl[1]." is im Amazon Echo Loudspeaker Array von ".json_encode($echos)."\n";
-                if (in_array((integer)$befehl[1],$echos)) $result[$Befehl0]=$befehl[1];
+                /* Plausibilitätscheck gleich hier durchführen, wenn keine EchoControl installiert ist bei tts_play als default bleiben, zusaetzlich
+                 * Umwandlung auf OID machgen. muss nicht später erfolgen. Gehtr gleich hier. 
+                 */
+                //print_r($befehl); 
+                $loudspeaker=$this->findSimilar($befehl[1]);                
+                if ($loudspeaker["result"]!==false) 
+                    {
+                    $result[$Befehl0]=$loudspeaker["result"];
+                    if ( (isset($befehl[2])) && (strtoupper($befehl[2])=="FORCE") ) $result["FORCE"]=true;
+                    }
+                else 
+                    {
+                    echo "      -> Loudspeaker ".$befehl[1]." nicht vorhanden es gibt ";
+                    }
 				break;
 			case "NAME":		/* Default IPSLight identifier, kann aber auch etwas anderes sein, wenn Module definiert ist */
 				$result["NAME"]=$befehl[1];
@@ -2696,7 +2833,25 @@ class Autosteuerung
 					//echo "   Befehl NAME, Wert OID von ".$result["NAME"]." : ".$switchID." mit Wert wie bisher : ".$result["VALUE"]." \n";	
 					}	
 				break;
-				
+			case "STATUS":
+                echo "    --> STATUS Befehl erkannt ....\n";
+				$value_on=strtoupper($befehl[1]);
+                switch ($value_on)
+                    {
+                    case "TRUE":
+                        if ($result["STATUS"]) $result["ON"]="TRUE";
+                        else $result["ON"]="FALSE"; 
+                        break;
+                    case "FALSE":	
+                        if ($result["STATUS"]) $result["OFF"]="FALSE";              // ob ON oder oFF ist eigentlich egal
+                        else $result["OFF"]="TRUE"; 
+                        break;
+                    default:
+                        echo "new Status command. add some lines of code.\n";
+                        break;
+                    }
+                print_r($result);
+                break;	
 			case "ON#COLOR":
 			case "ON#LEVEL":
 				$result["NAME_EXT"]=strtoupper(substr($befehl[0],strpos($befehl[0],"#"),10));
@@ -4013,7 +4168,7 @@ class Autosteuerung
 		echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-		IPSLogger_Dbg(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
+		IPSLogger_Inf(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 
 		if (isset($result["MODULE"])==false) $result["MODULE"]="";	// damit Switch bei leeren Befehlen keinen Fehler macht 
 		$this->log->LogMessage("ExecuteCommand;Module ".$result["MODULE"]."; ".json_encode($result));		
@@ -4347,6 +4502,7 @@ class Autosteuerung
 					}
 				break;
 			}
+   		IPSLogger_Inf(__file__, 'Aufruf execute, Ergebnis ist "'.$ergebnis.'"');
 					
 		/***********************************************************
 		 *
@@ -4409,10 +4565,12 @@ class Autosteuerung
 					}
 				else $pos = false;	/* sicherheitshalber hier Ende festlegen wenn nur ein # erkannt wurde */	
 				}  while ($pos !== false);
-				
+    		//IPSLogger_Inf(__file__, 'Aufruf execute '.json_encode($result));
+			
 			if ($result["SWITCH"]===true)			/* nicht nur die Schaltbefehle mit If Beeinflussen, auch die Sprachausgabe */
 				{
-				if ( ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) ) &&  (self::getFunctions("SilentMode")["VALUE"] != 1) )
+				if ( ( (isset($result["FORCE"])) && ($result["FORCE"]==true) ) || 
+                           ( ( (self::isitsleep() == false) || (self::getFunctions("SilentMode")["VALUE"] == 0) ) &&  (self::getFunctions("SilentMode")["VALUE"] != 1) ) )
 					{
                     //print_r($result);
 					if ( isset($result["LOUDSPEAKER"]) )
@@ -4445,7 +4603,7 @@ class Autosteuerung
     private function moduleEchoRemote(&$result)
         {
         IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
-        $hardware = new Hardware();           
+        $hardware = new Hardware();           // in Hardware_Library definiert, entsprechendes include machen
         $deviceListFiltered = $hardware->getDeviceListFiltered(deviceList(),["Type" => "EchoControl", "TYPEDEV" => "TYPE_LOUDSPEAKER"],false);     // true with Debug
         //echo "Ausgabe aller Geräte mit Type EchoControl und TYPEDEV TYPE_LOUDSPEAKER:\n";
         $echos = array();
@@ -4624,6 +4782,8 @@ class Autosteuerung
 			echo $ergebnis."\n";
 			}
 		$result["UNDO"]=$undo;			// auch wenn Simulate ist die DIM und DELAY Funktionen austesten
+   		//IPSLogger_Inf(__file__, 'Switch Object '.json_encode($result));
+
 		return($ergebnis);		
 		}
 
@@ -7009,18 +7169,6 @@ function defineWebfrontLink($AutoSetSwitch, $default)
     }
 
 
-/*********************************************************************************************/
-
-function test()
-	{
-	global $AnwesenheitssimulationID,$NachrichtenScriptID,$NachrichtenInputID;
-
-	echo "Anwesenheitsimulation  ID : ".$AnwesenheitssimulationID." \n";
-	echo "Nachrichten Script     ID : ".$NachrichtenScriptID."\n";
-	echo "Nachrichten Input      ID : ".$NachrichtenInputID."\n";
-	}
-
-/*********************************************************************************************/
 
 
 

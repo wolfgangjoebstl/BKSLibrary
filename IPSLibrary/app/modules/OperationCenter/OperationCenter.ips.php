@@ -33,7 +33,7 @@ IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationC
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
-$ExecuteExecute=true;             	// Execute machen
+$ExecuteExecute=false;             	// Execute machen
 $debug=false;	                    // keine lokalen Echo Ausgaben
 
 /******************************************************
@@ -157,7 +157,7 @@ $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
 	$OperationCenterConfig = $OperationCenter->getConfiguration();
 	$OperationCenterSetup = $OperationCenter->getSetup();
     
-	$DeviceManager = new DeviceManagement();
+	$DeviceManager = new DeviceManagement();                            // stürzt aktuell mit HMI_CreateReport ab
 
 /**********************************
  *
@@ -336,7 +336,7 @@ if ($_IPS['SENDER']=="WebFront")
 if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	{
 	echo "\nVon der Konsole aus gestartet.      Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-
+	IPSLogger_Dbg(__file__, "Operation Center von Konsole aus gestartet:");
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
@@ -368,9 +368,12 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	echo "  Timer FileStatus OID        : ".$tim7ID."\n";
 	echo "  Timer SystemInfo OID        : ".$tim8ID."\n";
 	echo "  Timer Reserved OID          : ".$tim9ID."\n";
-	echo "  Timer Maintenance OID       : ".$tim10ID."\n";
-	echo "  Timer MoveLogs OID          : ".$tim11ID."\n";
-		
+	echo "  Timer Maintenance OID       : ".$tim10ID."\n";                /* Starte Maintennance Funktionen */
+	echo "  Timer MoveLogs OID          : ".$tim11ID."\n";              /* Maintenance Funktion: Move Log Files */
+	echo "  Timer HighSpeedUpdate OID   : ".$tim12ID."\n";              /* alle 10 Sekunden Werte updaten, zB die Werte einer SNMP Auslesung über IPS SNMP */
+	echo "  Timer CleanUpEndofDay OID   : ".$tim13ID."\n";              /* CleanUp für Backup starten, sollte alte Backups loeschen */
+	echo "  Timer UpdateStatus OID      : ".$tim14ID."\n";              /* rausfinden welche Module ein Update benötigen, war früher bei FleStatus Timer dabei. */
+
 	/********************************************************
    	Erreichbarkeit Hardware im Execute
 	**********************************************************/
@@ -780,8 +783,10 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 			$OperationCenter->get_routerdata($router);
 			}
 		if ($router['TYP']=='RT1900ac')
-		   {
-			$OperationCenter->get_routerdata($router);
+		    {
+			//$OperationCenter->get_routerdata($router);
+            $OperationCenter->get_routerdata_RT1900($router);
+            //$OperationCenter->get_routerdata_RT1900($router,true);
 			}
 		}
 
@@ -1363,13 +1368,16 @@ if ($_IPS['SENDER']=="TimerEvent")
             $BackupCenter->setBackupStatus("Cleanup ".date("d.m.Y H:i:s"));                     
 			IPS_SetEventActive($tim11ID,true);	
             break;
+		case $tim14ID:            
+			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Update Status");    // Dbg is less than inf
+            break;
 		default:
 			IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." ID unbekannt.");
 		   break;
 		}
 	}
 
-
+    echo "\nDurchlaufzeit : ".(microtime(true)-$startexec)." Sekunden\n";
 
 
 	
