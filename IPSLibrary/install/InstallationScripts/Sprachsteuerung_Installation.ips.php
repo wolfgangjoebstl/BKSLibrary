@@ -262,6 +262,8 @@
         {
         echo "Es sind keine Alexa vorhanden um die programmierten TuneIN Radiostationen auszulesen:\n";
         $TuneInstations=array();
+        $Configurations=array();
+        $Configurations["TuneInStations"]="";
         }
 
     $pname="TuneInStations";
