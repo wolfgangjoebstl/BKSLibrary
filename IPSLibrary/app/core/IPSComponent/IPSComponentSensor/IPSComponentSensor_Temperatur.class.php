@@ -258,7 +258,7 @@
             elseif ($this->variableTypeReg == "HUMIDITY") $this->do_init_humidity($variable, $this->variablename);
             else IPSLogger_Err(__file__, 'IPSComponentSensor_Temperatur:Logging mit VariableID '.$variable.' Variablename '.$this->variablename.' kennt folgenden TypeReg nicht '.$this->variableTypeReg); 
 
-		    IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:Construct Logging mit VariableID '.$variable.' Variablename "'.$this->variablename.'" MirrorNameID "'.$this->mirrorNameID.' "und TypeReg "'.$this->variableTypeReg.'"');			
+		    //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:Construct Logging mit VariableID '.$variable.' Variablename "'.$this->variablename.'" MirrorNameID "'.$this->mirrorNameID.' "und TypeReg "'.$this->variableTypeReg.'"');			
 			parent::__construct($this->filename,$this->NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
 			}
 

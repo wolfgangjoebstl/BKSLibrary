@@ -2206,6 +2206,8 @@ function getVariableId($name, $switchCategoryId, $groupCategoryId, $categoryIdPr
  * intelliSort              nach einem sub index sortieren
  * emptyCategory            rekursiv
  *
+ * trimCommand
+ *
  ******************************************************/
 
 class ipsOps
@@ -2690,6 +2692,46 @@ class ipsOps
 		Debug ("Empty Category ID=$CategoryId");
 	    }
         
+	/**
+	 *
+	 * Command trimmen, damit es in einer Zeile ausgegeben werden kann, Befehl wird oft formatiert für bessere Lesbarkeit
+	 *
+	 * @return string[] Event Konfiguration
+	 */
+	function trimCommand($command) 
+		{
+	    $kommandotrim=array();
+        $kommandogruppe=explode(";",$command);
+        foreach ($kommandogruppe as $index => $kommando)
+            {
+            $befehlsgruppe=explode(",",$kommando);
+            foreach ( $befehlsgruppe as $count => $befehl)
+                {
+                $result=trim($befehl);
+                if ($result != "")
+                    {
+                    //echo "   ".$index." ".$count."  ".$result."\n ";
+                    $kommandotrim[$index][$count]=$result;
+                    }
+                }
+            }
+        $entry3="";  $semi="";  
+        //print_r($kommandotrim);
+        foreach ($kommandotrim as $kommando)
+            {
+            //print_r($kommando);
+            $comma="";
+            $entry3.=$semi;
+            if ($semi=="") $semi=";"; 
+            foreach ($kommando as $befehl)
+               {
+               //echo $befehl;
+               $entry3.=$comma.$befehl;
+               if ($comma=="") $comma=",";
+               }
+           }
+    	return ($entry3);
+	    }
 
     }           // ende class ipsOps
 

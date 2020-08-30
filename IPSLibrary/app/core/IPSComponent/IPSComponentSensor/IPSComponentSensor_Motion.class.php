@@ -545,7 +545,7 @@
                     }
                 $resultLog=GetValueIfFormatted($this->variable);
                 echo "CustomComponent Motion_LogValue Log Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
-                IPSLogger_Inf(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+                IPSLogger_Inf(__file__, 'DetectMovement Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
                 if ( (isset($this->configuration["LogConfigs"]["DelayMotion"])) == true)
                     {
                     if ($result==true)

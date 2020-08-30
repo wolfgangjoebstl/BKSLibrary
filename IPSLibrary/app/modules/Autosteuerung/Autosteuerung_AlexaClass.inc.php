@@ -4,10 +4,12 @@
  *
  * Hier besondere Alexa Mangement Funktionen zusammenfassen. Hier wird die Alexa Konfiguration ausgegeben und für Debugzwecke analysiert.
  * Die Config AUswertung greift auch auf Remote Server zu.
- * Temperaturwerte werden nur abgefragt. Kommen aus den Spiegelregistern oder aud den RemoteAccess Registern.
+ * Temperaturwerte werden nur abgefragt. Kommen aus den Spiegelregistern oder aus den RemoteAccess Registern.
  * Stellwerte veraendern eine lokale Variable die auch gleichzeitig ein Script aufruft. Der Entry in das Script Austosteuerung_AlexaControl ist VoiceControl.
  * Bei der Config überprüfen ob das Autorun Script auch gesetzt ist.
  *
+ * countAlexa sind die Anzahl der vorhandenen Alexas. Wenn der WEert negativ ist, handelt es sich um remote Alexas
+ * 
  *
  **************************************************************************************************************/ 
 
@@ -23,6 +25,7 @@ class AutosteuerungAlexaHandler
         {
 		$this->instances=IPS_GetInstanceListByModuleID("{CC759EB6-7821-4AA5-9267-EF08C6A6A5B3}");
         $this->countAlexa = sizeof($this->instances);
+        //echo "Anzahl Aleaxa Instanzen: ".$this->countAlexa."\n"; print_R($this->instances);
         if ($this->countAlexa==0)        // keine lokalen Alexas, Remote weitersuchen
             {
             $remServer=RemoteAccessServerTable();

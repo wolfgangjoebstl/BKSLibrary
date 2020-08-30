@@ -2,9 +2,9 @@
 
 /****************************************************************************************
 *
-* Autosteuerung, Spezialroutinen für Alexa Control
+* Modul Autosteuerung,Script Autosteuerung_AlexaControl Funktion Spezialroutinen für Alexa Control
 *
-* Befehle die >Alexa aktuell unterstützt:
+* Befehle die Alexa aktuell unterstützt:
 *
 * PowerController			Alexa, schalte Smart Home-Gerät ein/aus
 * PowerLevelController		Alexa set the power to 40% on device, Alexa stelle Smart Home gerät auf 40 Prozent.
@@ -128,7 +128,9 @@ Switch ($_IPS['SENDER'])
 				else
 					{
 					$nachrichten->LogNachrichten("VoiceControl : ".$params[0]."  ".$params[1]."   ".$params[2]."  ");
-					$variableID=(Integer)$params[2];				
+					// es gibt jetzt ein Configurations Array das wie bei Autosteuerung strukturiert ist
+                    //$variableID=(Integer)$params[2];				
+                    $variableID=$params[2];     // es wird ein Befehl oder ein Identifier übertragen
 					}										
 				$request["VARIABLE"]=	$variableID;
 				$request["VALUE"]=		$_IPS['VALUE'];
@@ -152,6 +154,7 @@ Switch ($_IPS['SENDER'])
 		$request=array();
 		if (isset($_IPS['MODULE'])) 
 			{
+		    IPSLogger_Inf(__file__,"Extern VoiceControl Request (RunScript mit Module ".$_IPS['MODULE']." und Request ".$_IPS['REQUEST'].") mit Variable ".$_IPS['VARIABLE']." und Wert ".($_IPS['VALUE']?"Ein":"Aus"));	                
 			switch ($_IPS['REQUEST'])
 				{
 				case "DeviceGenericSwitch":
@@ -176,8 +179,9 @@ Switch ($_IPS['SENDER'])
 			}
 		else 
 			{
+  		    IPSLogger_Inf(__file__,"Extern VoiceControl Request (RunScript) mit Variable ".$_IPS['VARIABLE']." und Wert ".($_IPS['VALUE']?"Ein":"Aus"));	                
 			$nachrichten->LogNachrichten("Extern Alexa ".$_IPS['SENDER']." empfängt : ".$_IPS['VARIABLE']."  ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus")." .");
-			IPSLogger_Dbg(__file__,"Extern Alexa RunScript empfaengt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus"));
+			//IPSLogger_Dbg(__file__,"Extern Alexa RunScript empfaengt : ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".($_IPS['VALUE']?"Ein":"Aus"));
 			$request["REQUEST"]=	$_IPS['REQUEST'];			
 			}
 		$request["VARIABLE"]=	$_IPS['VARIABLE'];
@@ -186,7 +190,7 @@ Switch ($_IPS['SENDER'])
 		break;
 	Case "Execute":
 		$nachrichten->LogNachrichten("AlexaControl Execute aufgerufen.");
-    	echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." : ";
+    	echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." (negativer Wert für remote Geräte): ";
 	    foreach ($Alexa->getInstances() as $oid) echo $oid."   ";
 		echo "\n";
     	echo "Alexa Configuration:\n";
@@ -198,7 +202,7 @@ Switch ($_IPS['SENDER'])
 		$request["VALUE"]=		true;
 		//$request["REQUEST"]=	"TurnOnRequest";
 		//executeAlexa($request);
-		test_execute($request);
+		test_execute($request);             // die eigentliche Execute Routine
 		echo $nachrichten->PrintNachrichten();
 	 	break;
 	Case "TimerEvent":
@@ -269,6 +273,7 @@ function executeAlexa($request)
 
 function test_execute($request)
 	{
+    echo "================================================================";
     echo "function test_execute aufgerufen:\n\n";
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -286,8 +291,8 @@ function test_execute($request)
 	print_r($params);
 
 	echo "\n=====================================================================\n";
-	echo "Execute aufgerufen. Analyse der einzelnen abgespeicherten Befehle.\n";
-	$register->PrintAutoEvent();
+	echo "Execute aufgerufen. Analyse der einzelnen abgespeicherten Alexa Befehle aus .\n";
+	$register->PrintAutoEvent(true);            // true für Debug
 	$entries=$register->getAutoEvent();
 	$i=0;
 	echo "\n";

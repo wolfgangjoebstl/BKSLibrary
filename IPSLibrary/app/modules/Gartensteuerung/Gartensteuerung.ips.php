@@ -135,8 +135,8 @@ $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
  if ($_IPS['SENDER']=="Execute")
 	{
 	$log_Giessanlage->LogMessage("Gartengiessanlage Execute aufgerufen");
-	$variableTempID=get_aussentempID();
-	$variableID=get_raincounterID();
+	$variableTempID = $gartensteuerung->getConfig_aussentempID();
+	$variableID     = $gartensteuerung->getConfig_raincounterID();
 	
 	echo "\n";	
 	echo "=======EXECUTE====================================================\n";

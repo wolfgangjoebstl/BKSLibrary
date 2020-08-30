@@ -635,26 +635,30 @@ abstract class AutosteuerungConfiguration
 
 		/**
 		 *
-		 * Druckt die aktuelle Auto Event Konfiguration
+		 * Druckt die aktuelle Auto Event Konfiguration von function Alexa_GetEventConfiguration
 		 *
 		 * @return string[] Event Konfiguration
 		 */
-		function PrintAutoEvent() 
+
+		function PrintAutoEvent($debug=false) 
 			{
+            if ($debug) echo "PrintAutoEvent, Function Identifier ".$this->identifier."\n";
 			$configuration = $this->Get_EventConfigurationAuto();
 			//print_r($configuration);
 			if (sizeof($configuration)==0 )
 				{
-				echo "No configuration stored.\n";
+				if ($debug) echo "  No configuration stored.\n";
 				}
 			else
 				{
 				$print=array();
-				echo "Configuration has ".sizeof($configuration)." entries.\n";
+				if ($debug) echo "  Configuration has ".sizeof($configuration)." entries.\n";
 				foreach ($configuration as $id => $entry)
 					{
+                    /*    
+                    //if ($debug) print_r($entry);
                     $entry2=str_replace("\n","",$entry[2]);
-                    //echo $entry2."\n";  
+                    //if ($debug) echo "$id    $entry2 \n";                   // entry2 ist zu lange, ueberschüssige blanks weiterhin enthalten, daraus eine Standard Routine machen
                     $kommandotrim=array();
                     $kommandogruppe=explode(";",$entry2);
                     foreach ($kommandogruppe as $index => $kommando)
@@ -685,13 +689,18 @@ abstract class AutosteuerungConfiguration
                             if ($comma=="") $comma=",";
                             }
                         }
+                    echo "Befehl $entry3 \n"; */
+                    $ips = new ipsOps();
+                    $command=$ips->trimCommand($entry[2]);
 					$print[$id]["ID"]=$id;
-					$print[$id]["NAME"]=IPS_GetName($id)."/".IPS_GetName(IPS_GetParent($id))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($id)));
+                    if ((is_numeric($id))==false) $print[$id]["NAME"]="unknown OID";
+					else $print[$id]["NAME"]=IPS_GetName($id)."/".IPS_GetName(IPS_GetParent($id))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($id)));
 					$print[$id]["MODE"]=$entry[0];
 					$print[$id]["FUNCTION"]=$entry[1];
-					$print[$id]["COMMAND"]=$entry3;
+					$print[$id]["COMMAND"]=$command;
 					}
 				/* sortieren */
+                print_r($print);
 				unset($entry);
 				foreach ($this->sortList("NAME",$print,"SORT_ASC") as $entry) echo "  ".$entry["ID"]." (".str_pad($entry["NAME"].")",50)." => (".$entry["MODE"]."|".$entry["FUNCTION"]."|".$entry["COMMAND"].",)\n";
 
@@ -3143,10 +3152,12 @@ class Autosteuerung
 			case "IFAND":	/* überschreibt den Wert vom vorigen if wenn false, gleich wie mehrere if hintereinander */
             case "ANDIF":
 			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
-                if ($this->evalCondition($befehl,$result,true)) ;                // gleich bekannte Befehle gemeinsam abarbeiten  (true normal, false invertiert)
+                $state=true;            // Rückgabewert
+                $if=trim(strtoupper($befehl[0]));
+                if ($this->evalCondition($befehl,$result,$state,true)) ;                // gleich bekannte Befehle gemeinsam abarbeiten  dritter Parameter true normal, false invertiert, vierter Debug
                 else
-                    {	                                                    // wenn befehle nicht bekannt hier weitermachen
-                    $result["COND"]=$Befehl1;
+                    {	                                                    // wenn Befehle in evalCondition noch nicht bekannt hier weitermachen
+                    $result["COND"]=$Befehl1;                             // Befehl1 wäre mit trim und strtoupper
                     switch ($result["COND"])
                         {
                         case "STATUS": 		/* andere Befehldarstellung IF:STATUS:EQ:parameter */
@@ -3194,156 +3205,12 @@ class Autosteuerung
                                     break;
                                 }
                             break;
-                    /*    case "ON":
-                            // nur Schalten wenn Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich 
-                            if ($result["STATUS"] == false)
-                                {
-                                $result["SWITCH"]=false;						
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist true ');								
-                                }									
-                            break;	
-                        case "OFF":
-                            // nur Schalten wenn Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich 
-                            if ($result["STATUS"] !== false)
-                                {
-                                $result["SWITCH"]=false;						
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist true ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist false ');								
-                                }								
-                            break;										
-                        case "LIGHT":
-                            // nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist 
-                            if (self::isitdark())
-                                {
-                                $result["SWITCH"]=false;						
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist hell ');								
-                                }								
-                            break;
-                        case "DARK":
-                            // nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist 
-                            if (self::isitlight())
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist dunkel ');								
-                                }								
-                            break;  	
-                        case "SLEEP":
-                            // nur Schalten wenn wir nicht schlafen 
-                            if ( self::isitwakeup() || self::isitawake() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim schlafen ');								
-                                }								
-                            break;
-                        case "AWAKE":
-                            // nur Schalten wenn wir nicht munter sind
-                            if ( self::isitwakeup() || self::isitsleep() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind beim aufwachen oder schlafen ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind munter ');								
-                                }								
-                            break;  
-                        case "WAKEUP":
-                            // nur Schalten wenn wir nicht im aufwachen sind 
-                            if ( self::isitawake() || self::isitsleep() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim aufwachen ');								
-                                }								
-                            break;
-                        case "MOVE":
-                            // nur Schalten wenn wir zuhause sind 
-                            if ( self::isitmove() == false )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir bewegen uns ');								
-                                }
-                            break;
-                        case "HOME":
-                            // nur Schalten wenn wir zuhause sind 
-                            if ( self::isithome() == false )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind zu Hause ');								
-                                }
-                            break;
-                        case "ALARM":
-                            // nur Schalten wenn Alarmanlage aktiv
-                            if ( self::isitalarm() == false )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Alarmanlage aktiviert ');								
-                                }
-                            break;
-                        case "HEATDAY":
-                            // nur Schalten wenn der Kalender aktiv 
-                            if ( self::isitheatday() == false )
-                                {
-                                $result["SWITCH"]=false;
-                                echo 'Autosteuerung Befehl if:heatday ergibt  Nicht Schalten,kein Heiztag '."\n";
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:heatday ergibt Nicht Schalten,kein Heiztag ');
-                                }
-                            elseif ( strtoupper($befehl[0]) == "IFOR" ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor: Schalten, Heiztag ');								
-                                }
-                            break;  */
                         case "TURNON":
                         case "TURNOFF":
                         case "SETPERCENTAGE":
                         case "SETTARGETTEMPERATURE":
                             $gefunden=false;
-                            if ($result["SOURCEID"]==$cond) $gefunden=true;
+                            if ($result["SOURCEID"]==$result["COND"]) $gefunden=true;
                             else
                                 {
                                 $reqpos=strpos($result["SOURCEID"],"REQUEST");
@@ -3357,86 +3224,33 @@ class Autosteuerung
                             if ($gefunden==false)
                                 {
                                 $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:'.$cond.' ');
+                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:'.$result["COND"].' ');
                                 }
                             elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
                                 {
                                 $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:'.$cond.' ');
+                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:'.$result["COND"].' ');
                                 }
                             break;
                         default:
-                            /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-                            echo "Evaluate: \"IF:".$befehl[1]."\" . \n";
-                            $compare=explode("=",$befehl[1]);
-                            $sizeBefehl=sizeof($compare);
-                            //print_r($compare);
-                            $ergebnisTyp=$this->getIdByName($compare[0]);
-                            //print_r($ergebnisTyp);
-                            if ($ergebnisTyp["MODULE"]=="IPSLight")
-                                {
-                                $checkId = $this->lightManager->GetSwitchIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                                if ($checkId == false)
-                                    {
-                                    $checkId = $this->lightManager->GetGroupIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                                    if ($checkId == false)
-                                        {
-                                        if ($sizeBefehl>1)
-                                            {
-                                            $checkId = $this->lightManager->GetProgramIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                                            if ($checkId !== false)
-                                                {
-                                                echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
-                                                $statusCheck = ($compare[1]==GetValueFormatted($checkId));
-                                                IPSLogger_Inf(__file__, 'Autosteuerung IPSLight Befehl IF: Program '.$compare[0]."   ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
-                                                }
-                                            }
-                                        }
-                                    else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert von der Group	
-                                    }
-                                else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert vom Switch	
-                                }
-                            else
-                                {
-                                $checkId=$ergebnisTyp["ID"];
-                                switch ($ergebnisTyp["TYP"])
-                                    {
-                                    case "Switch":
-                                    case "Group":
-                                        $statusCheck=$this->heatManager->GetValue($checkId);
-                                        break;
-                                    case "Program":
-                                        echo "Es ist ein IPSHeat Program mit Wertvergleich, abgefragt auf ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."  (".GetValue($checkId).")  \n";
-                                        if ($sizeBefehl>1)
-                                            {
-                                            $statusCheck = ($compare[1]==GetValueFormatted($checkId));
-                                            IPSLogger_Inf(__file__, 'Autosteuerung IPSHeat Befehl IF: Program '.$compare[0]."   ".$compare[1].".vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
-                                            }
-                                        break;
-                                    default:
-                                        $checkId=false;
-                                        break;
-                                    }
-                                }
-                            if ($checkId !== false)
-                                {
-                                if ( (strtoupper($befehl[0]) == "IFAND") || (strtoupper($befehl[0]) == "ANDIF") )
-                                    {
-                                    $result["SWITCH"]=$result["SWITCH"] && $statusCheck;
-                                    }
-                                else
-                                    {	
-                                    $result["SWITCH"]=$statusCheck;
-                                    }
-                                echo "Auswertung IF:".$befehl[1]." Wert ist ".($statusCheck?"gleich":"ungleich")." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
-                                }
-                            else 
-                                {
-                                echo "Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.  $checkId  \n";	
-                                }
+                            if ($this->evalConditionExtended($befehl,$result,$state,true)) echo "erfolgreich\n";
                             break;
                             }       // ende switch cond
+                        }           // ende else
+                    /* Berechnung von IF Ergebnis gesamt */
+                    if ( $if == "IF" )
+                        {
+                        $result["SWITCH"] = $state;
                         }
+                    elseif ( $if == "IFOR" ) 
+                        {
+                        if ($state) $result["SWITCH"] = $state;
+                        }
+                    elseif ( $if == "IFAND" )
+                        {
+                        $result["SWITCH"] = $state;
+                        }                      		
+                    echo "   Ergebnis Evaluierung ".($result["SWITCH"]?"true":"false")."\n";
 				break;
 			case "IFDIF":           /* bei Temperaturwerten ist das der Abstand, der zum alten Wert erreicht werden muss bevor der befehl ausgeführt wird */
 				$dif=(float)($befehl[1]);
@@ -3448,133 +3262,35 @@ class Autosteuerung
 			case "IFANDNOT":
 			case "IFORNOT":	
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
-                if ($this->evalCondition($befehl,$result,false)) ;	
+                $state=false;            // Rückgabewert
+                $if=trim(strtoupper($befehl[0]));
+                if ($this->evalCondition($befehl,$result,$state,true)) echo "erfolgreich\n";	            // Zusammenfassung der if Bearbeitung, verändert result, dritter Parameter true normal, false invertiert, vierter Debug ! 
                 else
                     {
-                    $cond=strtoupper($befehl[1]);
-                    $result["COND"]=$cond;
-                    switch ($cond)
+                    $result["COND"]=$Befehl1;                             // Befehl1 wäre mit trim und strtoupper
+                    switch ($result["COND"])
                         {
-                        /*
-                        case "LIGHT":				
-                            // Nicht Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist 
-                            if ( self::isitlight( ))
-                                {
-                                $result["SWITCH"]=false;						
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht dunkel ');
-                                }
-                            break;	
-                        case "DARK":							
-                            // Nicht Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist 
-                            if ( self::isitdark() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht hell ');
-                                }
-                            break;
-                        case "SLEEP":
-                            // Nicht Schalten wenn wir schlafen 
-                            if ( self::isitsleep() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
-                                }
-                            break;
-                        case "AWAKE":
-                            // Nicht Schalten wenn wir munter sind 
-                            if ( self::isitawake() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                                }
-                            break;
-                        case "WAKEUP":
-                            // Nicht Schalten wenn wir im aufwachen sind 
-                            if ( self::isitwakeup() )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                                }
-                            break;
-                        case "MOVE":
-                            // Nicht Schalten wenn wir zuhause sind 
-                            if ( self::isitmove() == true )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
-                                }
-                            break;
-                        case "HOME":
-                            // Nicht Schalten wenn wir zuhause sind 
-                            if ( self::isithome() == true )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
-                                }
-                            break;
-                        case "ALARM":
-                            // Nicht Schalten wenn Alarmanlage aktiv 
-                            if ( self::isitalarm() == true )
-                                {
-                                $result["SWITCH"]=false;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
-                                }
-                            break;	
-                        case "HEATDAY":
-                            // Nicht Schalten wenn der Kalender aktiv 
-                            if ( self::isitheatday() == true )
-                                {
-                                $result["SWITCH"]=false;
-                                echo 'Autosteuerung Befehl ifnot: Nicht Schalten, Heiztag '."\n";
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifnot: Nicht Schalten, Heiztag ');
-                                }
-                            break;
-                        */                            
+
+
                         default:
-                            /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
-                            $compare=explode("=",$befehl[1]);
-                            $sizeBefehl=sizeof($compare);
-                            //print_r($compare);
-                            $checkId = $this->lightManager->GetSwitchIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                            if ($checkId == false)
-                                {
-                                $checkId = $this->lightManager->GetGroupIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                                if ($checkId == false)
-                                    {
-                                    if ($sizeBefehl>1)
-                                        {
-                                        $checkId = $this->lightManager->GetProgramIdByName($compare[0]);		/* Light Manager ist context sensitive */
-                                        if ($checkId !== false)
-                                            {
-                                            echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
-                                            $statusCheck = ($compare[1]==GetValueFormatted($checkId));
-                                            IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifnot: Program '.$compare[0]."   ".$compare[1].".vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
-                                            }
-                                        }
-                                    }
-                                else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert von der Group	
-                                }
-                            else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert vom Switch	
-                            if ($checkId !== false)
-                                {
-                                $result["SWITCH"]=!$statusCheck;
-                                if ( strtoupper($befehl[0]) == "IFANDNOT" )
-                                    {
-                                    $result["SWITCH"]=$result["SWITCH"] && !$statusCheck;
-                                    }
-                                else
-                                    {	
-                                    $result["SWITCH"]=!$statusCheck;
-                                    }
-                                echo "Auswertung IF:".$befehl[1]." Wert ist ".$statusCheck." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
-                                }
-                            else 
-                                {
-                                echo "Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.\n";	
-                                }
+                            if ($this->evalConditionExtended($befehl,$result,$state,true)) echo "erfolgreich\n";
                             break;          // von default
                             }           // ende switch
-                        }	        // ende else von eval condition		
+                        }	        // ende else von eval condition
+                    /* Berechnung von IF Ergebnis gesamt */
+                    if ( $if == "IFNOT" )
+                        {
+                        $result["SWITCH"] = $state;             // IF ist der Beginn, Status Switch wird bestimmt
+                        }
+                    elseif ( $if == "IFORNOT" ) 
+                        {
+                        if ($state) $result["SWITCH"] = $state;     // bei OR überschrebt true
+                        }
+                    elseif ( $if == "IFANDNOT" )
+                        {
+                        $result["SWITCH"] = $state;             // bei AND überschreibt der aktuelle Wert
+                        }
+                    echo "   Ergebnis Evaluierung ".($result["SWITCH"]?"true":"false")."\n";
                     break;
             default:
                 echo "Function EvaluateCommand, Befehl unbekannt: \"".strtoupper($befehl[0])."\" ".$befehl[1]."   \n";
@@ -3587,20 +3303,31 @@ class Autosteuerung
     /***********************************
      *
      * IF Befehl wird mehrfach evaluiert, einmal bei IF und einmal bei IFNOT, in einer Routine soweit möglich zusammenfassen zu versuchen
-     * wenn true rückgemelkdet wurde, ist der Befehl bearbeitet wirden, sonst muss er noch weiter bearbeitet werden. 
+     * wenn true rückgemeldet wird, ist der Befehl bearbeitet worden, sonst muss er noch weiter bearbeitet werden. 
+     * es werden sowohl befehl und result als Zeiger übergeben und abgeändert. dritter Parameter state für Funktion true normal, false invertiert,
+     *
+     * Befehl[0]  ist IF, IFNOT, IFOR etc.
+     * Befehl[1]
+     *          ON,OFF überprüft "STATUS" für die Entscheidung
+     *          ist ein bekannter Zustand wie LIGHT,DARK,SLEEP,AWAKE,WAKEUP,MOVE,HOME,ALARM,HEATDAY der überprüft wird 
+     *          oder ein Ausdruck oder sonst irgend etwas neues, !!!! wird noch nicht hier behandelt
+     *          zusaetzlich gibt es BOUNCE, BOUNCES
      *
      */
 
 
-	private function evalCondition(&$befehl,&$result,$state, $debug=false)
+	private function evalCondition(&$befehl,&$result,&$state,$debug=false)
 		{
         $found=true;
         $if=trim(strtoupper($befehl[0]));
 		$cond=trim(strtoupper($befehl[1]));
+        $remain="";
+        if (count($befehl)>2) foreach ($befehl as $index => $entry) if ($index>2) $remain .= $entry;
         if ($debug)
             {
-		    echo "evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls $if:$cond.\n";
-            IPSLogger_Inf(__file__, 'evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls "'.$if.':'.$cond.'".');
+		    echo "evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls $if:$cond ";
+            if ($remain != "") echo " und es gibt weitere Zusatzbefehle: \"$remain\".";
+            //IPSLogger_Inf(__file__, 'evalCondition: allgemeine Funktion zur Evaluierung von Varianten des Befehls "'.$if.':'.$cond.'".');
             }
         $result["COND"]=$cond;
         switch ($cond)
@@ -3625,12 +3352,12 @@ class Autosteuerung
                 $bounce=$this->setNewStatusBounce($result["SOURCEID"],$result["STATUS"],$interval, $update);
                 if ($debug)
                     {
-                    echo "Befehl Bounce mit Parameter $interval gefunden. Ignore status change : ".($bounce?"Yes":"No")."\n";
+                    echo "\nBefehl Bounce mit Parameter $interval gefunden. Ignore status change : ".($bounce?"Yes":"No")."\n";
                     IPSLogger_Inf(__file__, 'Autosteuerung, evalCondition, setNewStatusBounce : Befehl IF:BOUNCE:'.$interval.' gefunden. Ignore status change : '.($bounce?"Yes":"No"));
                     }
                 if ($bounce) 
                     {
-                    $result["SWITCH"]=false;
+                    $state=false;
                     //IPSLogger_Inf(__file__, 'Autosteuerung, evalCondition, setNewStatusBounce : Bounce erkannt, Befehl IF:BOUNCE:'.$interval.' with decision no switch.');					
                     }            
             case "ON":
@@ -3639,21 +3366,16 @@ class Autosteuerung
                     /* nur Schalten wenn Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
                     if ($result["STATUS"] == false)
                         {
-                        $result["SWITCH"]=false;						
+                        $state=false;						
                         if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
                         }
-                    elseif ( $if == "IFOR" ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist true ');								
-                        }	
                     }
                 else            // NOT
                     {
                     /* nur Schalten wenn Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
                     if ($result["STATUS"] !== false)
                         {
-                        $result["SWITCH"]=false;						
+                        $state=false;						
                         if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
                         }                    								
                     }
@@ -3664,261 +3386,152 @@ class Autosteuerung
                     /* nur Schalten wenn Statusvariable false ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
                     if ($result["STATUS"] !== false)
                         {
-                        $result["SWITCH"]=false;						
+                        $state=false;						
                         if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist true ');
                         }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, Triggervariable ist false ');								
-                        }								
-                    break;                        
                     }
                 else            // NOT
                     {
                     /* nur Schalten wenn Statusvariable true ist, OnUpdate wird ignoriert, da ist die Statusvariable immer gleich */
                     if ($result["STATUS"] == false)
                         {
-                        $result["SWITCH"]=false;						
+                        $state=false;						
                         if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Triggervariable ist false ');
                         }
                     }
                 break;					
-            case "LIGHT":				
-                if ($state)     // normal
-                    {
-                    /* nur Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-                    if ($this->isitdark())
-                        {
-                        $result["SWITCH"]=false;						
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist dunkel ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist hell ');								
-                        }								
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn es hell ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-                    if ( $this->isitlight() )
-                        {
-                        $result["SWITCH"]=false;						
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht dunkel ');
-                        }
-                    }
+            case "LIGHT":		
+                /* wenn es hell ist soll geschalten werden, der STATUS bleibt unverändert, Teil der Info bei ON oder OFF */		
+                if (($this->isitlight())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert						
                 break;	
             case "DARK":							
-                if ($state)     // normal
-                    {
-                    /* nur Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-                    if ($this->isitlight() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist hell ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, es ist dunkel ');								
-                        }								
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn es dunkel ist, geschaltet wird nur wenn ein variablenname bekannt ist */
-                    if ( $this->isitdark() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, es ist nicht hell ');
-                        }
-                    }
+                if (($this->isitdark())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert						
                 break;
             case "SLEEP":
-                if ($state)     // normal
-                    {
-                    if ( $this->isitwakeup() || $this->isitawake() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim schlafen ');								
-                        }								
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn wir schlafen */
-                    if ( $this->isitsleep() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter oder im aufwachen');
-                        }
-                    }
+                if (($this->isitsleep()) ==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             case "AWAKE":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn wir nicht munter sind
-                    if ( $this->isitwakeup() || $this->isitsleep() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind beim aufwachen oder schlafen ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind munter ');								
-                        }								
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn wir munter sind */
-                    if ( $this->isitawake() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                        }
-                    }
+                if (($this->isitawake()) ==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             case "WAKEUP":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn wir nicht im aufwachen sind 
-                    if ( $this->isitawake() || $this->isitsleep() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind beim aufwachen ');								
-                        }								
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn wir im aufwachen sind */
-                    if ( $this->isitwakeup() )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind munter ');
-                        }
-                    }
+                if (( $this->isitwakeup())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             case "MOVE":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn wir zuhause sind 
-                    if ( $this->isitmove() == false )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, wir bewegen uns ');								
-                        }
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn wir zuhause sind */
-                    if ( $this->isitmove() == true )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir bewegen uns nicht ');
-                        }
-                    }
+                if (( $this->isitmove())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             case "HOME":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn wir zuhause sind 
-                    if ( $this->isithome() == false )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, wir sind zu Hause ');								
-                        }
-                        
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn wir zuhause sind */
-                    if ( $this->isithome() == true )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, wir sind nicht zu Hause ');
-                        }
-                    }
+                if (( $this->isithome())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             case "ALARM":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn Alarmanlage aktiv
-                    if ( $this->isitalarm() == false )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
-                        }
-                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, Alarmanlage aktiviert ');								
-                        }
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn Alarmanlage aktiv */
-                    if ( $this->isitalarm() == true )
-                        {
-                        $result["SWITCH"]=false;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if: Nicht Schalten, Alarmanlage deaktiviert ');
-                        }
-                    }
+                if (( $this->isitalarm())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;	
             case "HEATDAY":
-                if ($state)     // normal
-                    {
-                    // nur Schalten wenn der Kalender aktiv 
-                    if ( $this->isitheatday() == false )
-                        {
-                        $result["SWITCH"]=false;
-                        echo 'Autosteuerung Befehl if:heatday ergibt  Nicht Schalten,kein Heiztag '."\n";
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl if:heatday ergibt Nicht Schalten,kein Heiztag ');
-                        }
-                    elseif ( strtoupper($befehl[0]) == "IFOR" ) 
-                        {
-                        $result["SWITCH"]=true;
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifor: Schalten, Heiztag ');								
-                        }
-                    }
-                else            // NOT
-                    {
-                    /* Nicht Schalten wenn der Kalender aktiv */
-                    if ( $this->isitheatday() == true )
-                        {
-                        $result["SWITCH"]=false;
-                        echo 'Autosteuerung Befehl ifnot: Nicht Schalten, Heiztag '."\n";
-                        if ($debug) IPSLogger_Inf(__file__, 'Autosteuerung Befehl ifnot: Nicht Schalten, Heiztag ');
-                        }
-                    }
+                if (( $this->isitheatday())==false) $state=!$state;                // IF State Ergebnis bleibt sonst wird es geändert
                 break;
             default:
-                if ($debug) echo "keinen Parameter gefunden, normale Variante weitermachen.\n";
+                if ($debug) echo " --> keinen Parameter gefunden, normale Variante weitermachen.\n";
                 $found=false;
                 break;	
-            }            
+            } 
+        if ($debug) echo " --> Ergebnis : ".($state?"true":"false")."\n";           
         return ($found);     // andere evaluierung des IF Befehls findet auch statt
 		}
 
+
+
+	private function evalConditionExtended(&$befehl,&$result,&$state,$debug)
+        {
+        $found=true;
+        $if=trim(strtoupper($befehl[0]));
+		$cond=trim(strtoupper($befehl[1]));
+        $remain="";
+        if ($debug)
+            {
+		    echo "evalConditionExtended: allgemeine Funktion zur Evaluierung von besonderen Varianten des Befehls $if:$cond ";
+            if ($remain != "") echo " und es gibt weitere Zusatzbefehle: \"$remain\".\n";
+            else echo "\n";
+            IPSLogger_Inf(__file__, 'evalConditionExtended: allgemeine Funktion zur Evaluierung von besonderen Varianten des Befehls "'.$if.':'.$cond.'".');
+            }
+        /* weder light noch dark, wird ein IPSLight Variablenname sein. Wert ermitteln */
+        $compare=explode("=",$befehl[1]);
+        $sizeBefehl=sizeof($compare);
+        $checkId=false;                                 // false wenn nix erkannt wurde
+        $ergebnisTyp=$this->getIdByName($compare[0]);
+        if ($debug) 
+            {
+            if ($sizeBefehl>1) echo "Vergleichsoperator = gefunden. vergleicht Wert von ".$compare[0]." mit ".$compare[1]." \n";    
+            //print_r($compare);
+            //print_r($ergebnisTyp);
+            }
+        if ($ergebnisTyp["MODULE"]=="IPSLight")
+            {
+            if ($debug) echo "Suche Name in IPSLight: \n";    
+            $checkId = $this->lightManager->GetSwitchIdByName($compare[0]);		/* Light Manager ist context sensitive */
+            if ($checkId == false)
+                {
+                $checkId = $this->lightManager->GetGroupIdByName($compare[0]);		/* Light Manager ist context sensitive */
+                if ($checkId == false)
+                    {
+                    if ($sizeBefehl>1)
+                        {
+                        $checkId = $this->lightManager->GetProgramIdByName($compare[0]);		/* Light Manager ist context sensitive */
+                        if ($checkId !== false)
+                            {
+                            echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
+                            $statusCheck = ($compare[1]==GetValueFormatted($checkId));
+                            IPSLogger_Inf(__file__, 'Autosteuerung IPSLight Befehl IF: Program '.$compare[0]."   ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
+                            }
+                        }
+                    }
+                else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert von der Group	
+                }
+            else $statusCheck=$this->lightManager->GetValue($checkId);		// Wert vom Switch	
+            }
+        elseif ($ergebnisTyp["MODULE"]=="IPSHeat")
+            {
+            $checkId=$ergebnisTyp["ID"];
+            switch ($ergebnisTyp["TYP"])
+                {
+                case "Switch":
+                case "Group":
+                    $statusCheck=$this->heatManager->GetValue($checkId);
+                    break;
+                case "Program":
+                    echo "Es ist ein IPSHeat Program mit Wertvergleich, abgefragt auf ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."  (".GetValue($checkId).")  \n";
+                    if ($sizeBefehl>1)
+                        {
+                        $statusCheck = ($compare[1]==GetValueFormatted($checkId));
+                        IPSLogger_Inf(__file__, 'Autosteuerung IPSHeat Befehl IF: Program '.$compare[0]."   ".$compare[1].".vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
+                        }
+                    break;
+                default:
+                    $checkId=false;
+                    break;
+                }
+            }
+        if ($checkId !== false)
+            {
+            if ( (strtoupper($befehl[0]) == "IFAND") || (strtoupper($befehl[0]) == "ANDIF") )
+                {
+                $result["SWITCH"]=$result["SWITCH"] && $statusCheck;
+                }
+            else
+                {	
+                $result["SWITCH"]=$statusCheck;
+                }
+            echo "Auswertung IF:".$befehl[1]." Wert ist ".($statusCheck?"gleich":"ungleich")." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+            }
+        else 
+            {
+            echo "Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.  $checkId  \n";	
+            }
+        }       // ende function
+
+    /******************
+     *
+     *
+     *
+     **************************************/
 
 	private function evalCom_IFDIF(&$befehl,&$result)
 		{
@@ -4163,12 +3776,12 @@ class Autosteuerung
 	 *
 	 *******************************************************/
 
-	public function ExecuteCommand($result,$simulate=false)
+	public function ExecuteCommand($result,$simulate=false, $debug=false)
 		{
-		echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
+		if ($debug) echo "   Execute Command, Befehl nun abarbeiten und dann eventuell Sprachausgabe:\n";
 		$ergebnis="";  // fuer Rückmeldung dieser Funktion als COMMENT
 		$command="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-		IPSLogger_Inf(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
+		//IPSLogger_Inf(__file__, 'Function ExecuteCommand Aufruf mit Wert: '.json_encode($result));
 
 		if (isset($result["MODULE"])==false) $result["MODULE"]="";	// damit Switch bei leeren Befehlen keinen Fehler macht 
 		$this->log->LogMessage("ExecuteCommand;Module ".$result["MODULE"]."; ".json_encode($result));		
@@ -4187,7 +3800,7 @@ class Autosteuerung
 			case "IPSLight":
 				if (isset($result["OID"]) == true)
 					{
-					IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
+					//IPSLogger_Dbg(__file__, 'OID '.$result["OID"]);
 					$result["IPSLIGHT"]="None";
 					$command.="SetValue(".$result["OID"].",false);";
 					$result["COMMAND"]=$command;
@@ -4213,7 +3826,7 @@ class Autosteuerung
                             case "Switch":
       					    	if (isset($result["NAME_EXT"])==true)           // wert für einen Schalter
 		      				    	{
-				      			    IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
+				      			    //IPSLogger_Dbg(__file__, 'Wert '.$name.' ist Wert für einen Schalter. ');
     						       	$result["TYPE"]=$result["NAME_EXT"];	
           							if ($result["MODULE"]=="IPSLight") 
 										{
@@ -4236,7 +3849,7 @@ class Autosteuerung
 	    	      					}
 		    		      		else                                        // Schalter Ein/Aus
 			    			      	{	 				
-      			    				IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
+      			    				//IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Schalter. ');
           							if ($result["MODULE"]=="IPSLight") 
                                         {
                                         $command.="IPSLight_SetSwitchByName(\"".$name."\", false);\n";
@@ -4256,7 +3869,7 @@ class Autosteuerung
                            case "Group":
                                 if (isset($result["NAME_EXT"])==true)       // Wert für eine Gruppe
 		      				    	{
-				      			    IPSLogger_inf(__file__, 'Wert '.$name.' ist eine Gruppe mit Extension '.$result["NAME_EXT"].'. ');
+				      			    //IPSLogger_inf(__file__, 'Wert '.$name.' ist eine Gruppe mit Extension '.$result["NAME_EXT"].'. ');
     						       	$result["TYPE"]=$result["NAME_EXT"];	
           							if ($result["MODULE"]=="IPSLight") 
 										{
@@ -4279,7 +3892,7 @@ class Autosteuerung
                                     }
                                 else                                        // Gruppe Ein/Aus
                                     {
-			    		            IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
+			    		            //IPSLogger_Dbg(__file__, 'Wert '.$name.' ist eine Gruppe. ');
                                     if ($result["MODULE"]=="IPSLight") 
                                         {
                                         $command.="IPSLight_SetGroupByName(\"".$name."\", false);\n";
@@ -4297,8 +3910,8 @@ class Autosteuerung
                                 $ergebnis .= $this->switchObject($result,$simulate);
                                 break;                            
                           case "Program":
-	    				        IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
-                          	    echo "Hier ist die IPSLight/Heat Programm-Abarbeitung. Ergebnistyp: \n"; print_r($ergebnisTyp);
+	    				        //IPSLogger_Dbg(__file__, 'Wert '.$name.' ist ein Programm. ');
+                          	    if ($debug) echo "Hier ist die IPSLight/Heat Programm-Abarbeitung. Ergebnistyp: \n"; print_r($ergebnisTyp);
                                 if ($result["MODULE"]=="IPSLight") $result["OID"] = $this->lightManager->GetProgramIdByName($name);
                                 else $result["OID"] = $this->heatManager->GetProgramIdByName($name);
 				    			if (isset($result["ON"]))
@@ -4502,7 +4115,7 @@ class Autosteuerung
 					}
 				break;
 			}
-   		IPSLogger_Inf(__file__, 'Aufruf execute, Ergebnis ist "'.$ergebnis.'"');
+   		//IPSLogger_Inf(__file__, 'Aufruf execute, Ergebnis ist "'.$ergebnis.'"');
 					
 		/***********************************************************
 		 *
@@ -4723,9 +4336,9 @@ class Autosteuerung
 	 *
 	 *******************************************************/
 	 
-	private function switchObject(array &$result,$simulate=false)
+	private function switchObject(array &$result,$simulate=false,$debug=false)
 		{
-        //echo "SwitchObject : \n"; print_r($result);
+        if ($debug) echo "Autosteuerung::SwitchObject mit ".json_encode($result)." aufgerufen. \n";
 		$ergebnis=""; $undo="";
 		//IPSLogger_Inf(__file__, 'SwitchObject :  '.json_encode($result));	
 		if ($result["SWITCH"]===true)
@@ -4803,10 +4416,10 @@ class Autosteuerung
 	 *
 	 */
 	
-	private function switchObjectNow($result,$state)
+	private function switchObjectNow($result,$state,$debug=false)
 		{
         //IPSLogger_Inf(__file__, 'switchObjectNow('.$result["NAME"].','.$state.')'."  Result: ".json_encode($result));	
-
+        //echo "Autosteuerung::switchObjectNow mit ".json_encode($result)." und Status ".($state?"true":"false")." aufgerufen.\n";
 		$undo=""; 
 		//$value=0;		// wenn Variable undefined ist, liegt ein Fehler vor, doch noch so radikal debuggen
 		if ( (isset($result["ON"])==true) && (isset($result["VALUE_ON"])==true) )  $value=$result["VALUE_ON"];
@@ -4858,6 +4471,7 @@ class Autosteuerung
             }
         else
             {
+            echo "Autosteuerung::switchObjectNow (IPS_Heat) mit Status ".($state?"true":"false")." aufgerufen (".json_encode($result).").\n";
             if ($result["IPSLIGHT"]=="Group")  	
                 {
                 if ($result["TYPE"]=="Group")                                    	
@@ -4883,8 +4497,9 @@ class Autosteuerung
                 {	
                 if ($result["TYPE"]=="Switch")
                     {
+                    if ($debug) echo 'Aufruf IPSHeat_SetSwitchByName("'.$result["NAME"].'",'.($state?"true":"false").");";								
                     IPSHeat_SetSwitchByName($result["NAME"],$state); 
-                    $undo.='IPSHeat_SetSwitchByName("'.$result["NAME"].'",'.($state?"false":"true").");";								
+                    $undo.='IPSHeat_SetSwitchByName("'.$result["NAME"].'",'.($state?"false":"true").");";				// wegen undo genau umgekehrt aufloesen
                     } 
                 if ($result["TYPE"]=="#COLOR") 	
                     {	
@@ -6317,7 +5932,7 @@ function Anwesenheit($params,$status,$variableID,$simulate=false,$wertOpt="")
 	foreach ($parges as $Kommando)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
-		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
+		$command[$entry]["STATUS"]=$status;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, übernimmt den Status beim Aufruf */
 		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 		$switch=true; $delayValue=0; $speak="Status"; $switchOID=0; // fuer Kompatibilitaetszwecke
 		
@@ -6568,7 +6183,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
                     {
                     default:
                         $auto->EvaluateCommand($befehl,$command[$entry],$simulate);
-                        echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n";
+                        if ($debug) echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n";
                         break;
                     }	
                 } /* Ende foreach Befehl */
@@ -6631,7 +6246,7 @@ function StatusParallel($params,$status,$variableID,$simulate=false,$wertOpt="")
 					break;
 				}	
 			} /* Ende foreach Befehl */
-		echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n\n";			
+		if ($debug) echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n\n";			
         /* für die beiden folgenden Befehle ein eigenes script starten, Übergabe wie bei Alexa */
         $request['REQUEST']=json_encode($command[$entry]);      // Übergabe von mehrstufigen Arrays nicht möglich, Übergabe daher serialisiert
         $request['MODULE']="Autosteuerung";
@@ -6675,7 +6290,7 @@ function statusRGB($params,$status,$variableID,$simulate=false,$wertOpt="")
 	foreach ($parges as $Kommando)
 		{
 		$command[$entry]["SWITCH"]=true;	  /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird geschaltet */
-		$command[$entry]["STATUS"]=true;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
+		$command[$entry]["STATUS"]=$status;		 /* versteckter Befehl, wird in der Kommandozeile nicht verwendet, default bedeutet es wird auf true geschaltet */
 		$command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */	
 
 		foreach ($Kommando as $befehl)
@@ -6877,6 +6492,7 @@ function Ventilator2($params,$status,$variableID,$simulate=false,$wertOpt="")
 
 function Alexa($params,$status,$request,$simulate=false,$wertOpt="")
 	{
+    $debug=false;
 	$auto=new Autosteuerung(); 						/* um Auto Klasse auch in der Funktion verwenden zu können */
 	$parges=$auto->ParseCommand($params,$status,$simulate);
 	$command=array(); $entry=1;	

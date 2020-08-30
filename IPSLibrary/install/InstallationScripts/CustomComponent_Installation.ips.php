@@ -825,7 +825,7 @@ if ($noinstall==false)
 	echo "Homematic Humidity Sensoren werden registriert.\n";
 	if (function_exists('HomematicList'))
 		{
-		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField);
+		$componentHandling->installComponentFull(HomematicList(),"HUMIDITY",'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,true);          // true mit Debug
 		} 			
 		
 	/****************************************************************************************************************

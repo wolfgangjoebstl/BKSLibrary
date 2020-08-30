@@ -49,7 +49,7 @@ class Gartensteuerung
 	private 	$archiveHandlerID;
 	private		$debug;
 	private		$tempwerte, $tempwerteLog, $werteLog, $werte;
-	private		$variableTempID, $variableID;
+	private		$variableTempID, $variableID;                       // Aussentemperatur und Regensensor
 	private 	$GartensteuerungConfiguration;
 	
 	public 		$regenStatistik;
@@ -275,58 +275,73 @@ class Gartensteuerung
 	 *
 	 ***************************************************************************/
 
-	private function getConfig_aussentempID()
+	function getConfig_aussentempID()
 		{
-		if ( isset($GartensteuerungConfiguration["AUSSENTEMP"])==true)
+		if ( isset($this->GartensteuerungConfiguration["AUSSENTEMP"])==true)
 			{
-			$this->variableTempID=$GartensteuerungConfiguration["AUSSENTEMP"];
+			$this->variableTempID=$this->GartensteuerungConfiguration["AUSSENTEMP"];
 			}
 		else 
 			{
-			$this->variableTempID=get_aussentempID();
+            if (function_exists("get_aussentempID")) $this->variableTempID=get_aussentempID();
+            else 
+                {
+                echo "Fehler, keine Configuration für AUSSENTEMP und function get_aussentempID ist auch nicht vorhanden.\n";
+                print_r($this_>GartensteuerungConfiguration);
+                }
 			}
 		return($this->variableTempID); 		
 		}
 
-	private function getConfig_raincounterID()
+	function getConfig_raincounterID()
 		{
         $this->RainRegisterIncrementID=0;
-		if ( isset($GartensteuerungConfiguration["RAINCOUNTER"])==true)
+		if ( isset($this->GartensteuerungConfiguration["RAINCOUNTER"])==true)
 			{
             /* wenn die Variable in der Config angegeben ist diese nehmen, sonst die eigene Funktion aufrufen */
-    		if ((integer)$GartensteuerungConfiguration["RAINCOUNTER"]==0) 
+    		if ((integer)$this->GartensteuerungConfiguration["RAINCOUNTER"]==0) 
 	    		{
                 /* wenn sich der String als integer Zahl auflösen lässt, auch diese Zahl nehmen, Achtung bei Zahlen im String !!! */
-    			echo "Alternative Erkennung des Regensensors, String als OID Wert für den RAINCOUNTER angegeben: \"".$GartensteuerungConfiguration["RAINCOUNTER"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
+    			echo "Alternative Erkennung des Regensensors, String als OID Wert für den RAINCOUNTER angegeben: \"".$this->GartensteuerungConfiguration["RAINCOUNTER"]."\". Jetzt in CustomComponents schauen ob vorhanden.\n";
 	    		$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 		    	$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			    $CounterAuswertungID=@IPS_GetObjectIDByName("Counter-Auswertung",$CategoryIdData);
-    			$this->RainRegisterIncrementID=@IPS_GetObjectIDByName($GartensteuerungConfiguration["RAINCOUNTER"],$CounterAuswertungID);
-	    		echo "Check : Kategorie Data ".$CategoryIdData."  Counter Kategorie   ".$CounterAuswertungID."  Incremental Counter Register  ".$RegisterIncrementID."\n";
-		    	if ( ($CounterAuswertungID==false) || ($RegisterIncrementID==false) ) $fatalerror=true;
-           		$RegisterCounterID=@IPS_GetObjectIDByName($GartensteuerungConfiguration["RAINCOUNTER"]."_Counter",$CounterAuswertungID);
+    			$this->RainRegisterIncrementID=@IPS_GetObjectIDByName($this->GartensteuerungConfiguration["RAINCOUNTER"],$CounterAuswertungID);
+	    		echo "Check : Kategorie Data ".$CategoryIdData."  Counter Kategorie   ".$CounterAuswertungID."  Incremental Counter Register  ".$this->RainRegisterIncrementID."\n";
+		    	if ( ($CounterAuswertungID==false) || ($this->RainRegisterIncrementID==false) ) $fatalerror=true;
+           		$RegisterCounterID=@IPS_GetObjectIDByName($this->GartensteuerungConfiguration["RAINCOUNTER"]."_Counter",$CounterAuswertungID);
 	        	echo "Check : Kategorie Data ".$CategoryIdData."  Counter Kategorie   ".$CounterAuswertungID."  Counter Register  ".$RegisterCounterID."\n";
     			if ( ($CounterAuswertungID==false) || ($RegisterCounterID==false) ) $fatalerror=true;
                 $this->variableID=$RegisterCounterID;
                 }    
-			else $this->variableID=(integer)$GartensteuerungConfiguration["RAINCOUNTER"];
+			else $this->variableID=(integer)$this->GartensteuerungConfiguration["RAINCOUNTER"];
 			}
 		else 
-			{		
-			$this->variableID=get_raincounterID();
+			{	
+            if (function_exists("get_raincounterID")) $this->variableID=get_raincounterID();
+            else 
+                {
+                echo "Fehler, keine Configuration für RAINCOUNTER und function get_raincounterID ist auch nicht vorhanden.\n";
+                print_r($this->GartensteuerungConfiguration);
+                }
 			}
 		return($this->variableID); 		
 		}
 
-	private function getConfig_RemoteAccess_Address()
+	function getConfig_RemoteAccess_Address()
 		{
-		if ( isset($GartensteuerungConfiguration["REMOTEACCESSADR"])==true)
+		if ( isset($this->GartensteuerungConfiguration["REMOTEACCESSADR"])==true)
 			{
-			$Server=$GartensteuerungConfiguration["REMOTEACCESSADR"];
+			$Server=$this->GartensteuerungConfiguration["REMOTEACCESSADR"];
 			}
 		else 
 			{			
-			$Server=RemoteAccess_Address();
+            if (function_exists("get_RemoteAccess_Address")) $this->variableID=get_RemoteAccess_Address();
+            else 
+                {
+                echo "Fehler, keine Configuration für REMOTEACCESSADR und function get_RemoteAccess_Address ist auch nicht vorhanden.\n";
+                print_r($this->GartensteuerungConfiguration);
+                }
 			}
 		return ($Server);
 		}
