@@ -42,7 +42,7 @@
  *    getBridgeID
  *    getSocketID
  *    getDeviceID
- *    getHardwareType
+ *    getHardwareType           liefert einen Clas identifier anhand einer modulID
  *    getDeviceCheck
  *    getDeviceParameter
  *    getDeviceChannels
@@ -81,11 +81,13 @@ class Hardware
 	
     protected $socketID, $bridgeID, $deviceID;           // eingeschränkte Sichtbarkeit. Private nicht möglich, da auf selbe Klasse beschränkt
     protected $installedModules;
+    protected $modulhandling;         // andere classes die genutzt werden, einmal instanzieren
 
     public function __construct()
         {
         //echo "parent class Hardware construct.\n";
         $this->setInstalledModules();
+        $this->modulhandling = new ModuleHandling(); 
         }
 
     protected function setInstalledModules()
@@ -112,6 +114,13 @@ class Hardware
     public function getDeviceID()
         {
         return ($this->deviceID);
+        }
+
+    /* etwas variablere Verarbeitung und Nutzung von ModulIDs, es müssen keine instanzen sein, kann auch was anderes zurückgegeben werden */
+    
+    public function getDeviceIDInstances()
+        {
+        return ($this->modulhandling->getInstances($this->getDeviceID()));
         }
 
     public function getHardwareType($moduleID)
@@ -145,8 +154,11 @@ class Hardware
             case "{56800073-A809-4513-9618-1C593EE1240C}":            // FS20EX Instanzen
                 $hardwareType="FS20EXFamily";  
                 break;
-            case "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}":            // FS20EX Instanzen
+            case "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}":            // FS20 Instanzen
                 $hardwareType="FS20Family";  
+                break;
+            case "{D26101C0-BE49-7655-87D3-D721064D4E40}":            // OpCentCam Instanzen, ModuleID erfunden
+                $hardwareType="OpCentCam";  
                 break;
             default:
                 echo "getHardwareType, hardwareType unknown for ModuleID $moduleID.";
@@ -429,7 +441,7 @@ class Hardware
      *       Channels    TYPECHAN
      */
 
-    public function getDeviceStatistics($deviceList)
+    public function getDeviceStatistics($deviceList,$warning=true)
         {
         $statistic=array();
         foreach ($deviceList as $name => $entry)
@@ -462,7 +474,10 @@ class Hardware
                         }
                     else 
                         {
-                        if (isset($entry["Type"])) echo "TYPEDEV in den ".$entry["Type"]." Instances für $name nicht definiert.\n";
+                        if (isset($entry["Type"])) 
+                            {
+                            if ($warning) echo "TYPEDEV in den ".$entry["Type"]." Instances für $name nicht definiert.\n";
+                            }
                         else echo "TYPEDEV in den Instances für $name nicht definiert.\n";
                         }
                     }
@@ -510,6 +525,61 @@ class Hardware
                             }
                         }
                     else echo "TYPECHAN in den Channels für $name nicht definiert.\n";
+                    }
+                }            
+            }    
+        return ($statistic);
+        }
+
+    /* Statistische Register Auswertung der devicelist.
+     * für jedes einzelne Register im Channel werden Counter angelegt
+     *
+     * jedes Gerät hat mehrere Instances aber nur einen Type
+     *       Type
+     *       Instances   [...] TYPEDEV
+     *       Channels    [...] TYPECHAN
+     */
+
+    public function getRegisterStatistics($deviceList,$warning=true)
+        {
+        $statistic=array();
+        foreach ($deviceList as $name => $entry)
+            {
+            if (isset($entry["Channels"]))
+                {
+                /* Ein Channel hat mehrere Subchannels */
+                foreach ($entry["Channels"] as $channel)
+                    {
+                    if (isset($channel["TYPECHAN"]))
+                        {
+                        /* es gibt Untergruppen im Typechan, also vorher aufteilen */
+                        $typechans = explode(",",$channel["TYPECHAN"]);
+                        foreach ($typechans as $typechan)
+                            {                    
+                            if (isset($statistic[$typechan])) 
+                                {
+                                $statistic[$typechan]["Count"]++;
+                                }
+                            else 
+                                {
+                                $statistic[$typechan]["Count"]=1; 
+                                }
+                            if (isset($channel[$typechan]))
+                                {
+                                foreach ($channel[$typechan] as $register=>$name) 
+                                    {
+                                    if (isset($statistic[$typechan][$register])) 
+                                        {
+                                        $statistic[$typechan][$register]["Count"]++;
+                                        }
+                                    else 
+                                        {
+                                        $statistic[$typechan][$register]["Count"]=1; 
+                                        }
+                                    }   // ende foreach
+                                }   
+                            }
+                        }
                     }
                 }            
             }    
@@ -1331,6 +1401,14 @@ class HardwareFHTFamily extends Hardware
 
     }
 
+/*********************************
+ * 
+ * FS20Family, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
+
 class HardwareFS20Family extends Hardware
 	{
 	
@@ -1482,6 +1560,15 @@ class HardwareFS20Family extends Hardware
 
     }
 
+
+/*********************************
+ * 
+ * FS20ExFamily, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
+
 class HardwareFS20ExFamily extends Hardware
 	{
 	
@@ -1498,7 +1585,37 @@ class HardwareFS20ExFamily extends Hardware
     }
 
 
+/*********************************
+ * 
+ * OpCentCam, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
 
+class HardwareOpCentCam extends Hardware
+	{
+	
+    protected $socketID, $bridgeID, $deviceID;
+	
+	public function __construct($debug=false)
+		{
+        echo "construct HardwareOpCentCam aufgerufen.\n";    
+        $this->socketID = "";               // empty string means, there are no sockets
+        $this->bridgeID = "";
+        $this->deviceID = "{28E40EBC-F9E3-52B7-E1F9-8F845E79956C}";         // Wir brauchen zumindest eine DeviceID, auch wenn es eine erfundene ist
+        parent::__construct($debug);        
+        }
+
+    }
+
+/*********************************
+ * 
+ * EchoControl, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ *
+ *
+ *
+ ****************************************/
 
 class HardwareEchoControl extends Hardware
 	{

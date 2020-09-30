@@ -38,6 +38,7 @@
      *
      * _construct
      * getStartpageConfiguration
+     * getOWDs
      * configWeather
      * readPicturedir
      * StartPageWrite
@@ -54,7 +55,8 @@
 	 *
      * controlMonitor
      * Startpage_SetPage
-     * Startpage_Refresh*
+     * Startpage_Refresh
+     *
      */
 
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -239,15 +241,88 @@
                         }
                     else        // Anzeige der Wetterdaten
                         {
-                        $weather=$this->getWeatherData();                                
-                        $wert.='<table <table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10"><tr><td>';
-                        $wert.='<table border="0" bgcolor="#f1f1f1"><tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
+                        $modulname="Astronomy";
+                        //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
+                        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+                        $Astronomy=$modulhandling->getInstances($modulname);
+                        if (count($Astronomy)>0)
+                            {
+                            $instanzID=$Astronomy[0];    
+                            $instanzname=IPS_GetName($instanzID);
+                            //echo " ModuleName:".$modulname." hat Instanz:".$instanzname." (".$instanzID.")\n";
+                            //echo " Konfiguration :".IPS_GetConfiguration($instanzID)."\n";
+                            $childs=IPS_GetChildrenIDs($instanzID);
+                            //Print_R($childs);
+
+                            $foundHtmlBox=false; $htmlAstro="";
+                            $foundPicMoon=false; $htmlpicMoon="";
+                            foreach ($childs as $child) 
+                                {
+                                $childName=IPS_GetName($child);
+                                //echo "  $child ($childName)   \n";
+                                //echo GetValue($child)."\n";
+                                if ($childName=="Position Sonne und Mond") $foundHtmlBox=$child;
+                                }
+                            if ($foundHtmlBox !== false) $htmlAstro=GetValue($foundHtmlBox);              // das ist ein iframe mit 
+                            //echo $html;
+                            //SetValue($AstroLinkID,$html);
+                            }
+                        else $htmlAstro="";
+
+                        $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
+                        if ($moonPicId !== false) 
+                            {
+                            $htmlpicMoon=IPS_GetMedia($moonPicId)["MediaFile"]; 
+                            $pos1=strpos($htmlpicMoon,"Astronomy");
+                            if ($pos1) $htmlpicMoon = 'user/Startpage/user'.substr($htmlpicMoon,$pos1+9);
+                            else $htmlpicMoon=false;   
+                            }
+                        $sunriseID=@IPS_GetObjectIDByName("Sonnenaufgang Uhrzeit",$instanzID);
+                        if ($sunriseID !== false) $sunrise = GetValueIfFormatted($sunriseID);
+                        else $sunrise="";
+                        $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
+                        if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
+                        else $sunset="";
+
+                        $weather=$this->getWeatherData();
+                                
+                        //echo "$htmlAstro  $htmlpicMoon  ".$weather["today"];
+
+                        $wert.='<table id="startpage"><tr>';
+                        //$wert.='<tr><td>Hier könnte jetzt Ihre Werbung stehen</td><td>';
+                        /* zelle 1 */
+                        $wert.='<td width="100%"><table width="100%">';
+                        $wert.='<tr><td colspan="2" >'.$htmlAstro.'</td></tr>';
+                        //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
+                        $wert.='<tr><td align="center">';
+                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+                        $wert.='</td><td><table>';
+                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                        $wert.='</table></td></tr>';
+                        $wert.='</table></td>';
+                        $wert.='<td><table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">';
+                        $wert.='<tr>';
+                        /* zelle 2.1 */
+                        $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                        $wert.='<tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
                         $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
                         $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow1"].'" alt="Heute" > </td></tr>';
-                        $wert.='</table></td><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td>';
-                        $wert.='<td> <table border="0" bgcolor="#ffffff" cellspacing="5" > <tablestyle><tr> <td> <img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur">  </td> </tr>';
-                        $wert.='<tr> <td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td> </tr></tablestyle> </table> </td></tr>';
-                        $wert.='</table>';
+                        $wert.='</table></td>';
+                        /* zelle 2.2 */
+                        $wert.='<td><table>';
+                        $wert.='<tr><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td></tr>';
+                        $wert.='<tr><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td></tr>';
+                        $wert.='</table></td>';
+                        /* zelle 2.3 */
+                        $wert.='<td><table border="0" bgcolor="#ffffff" cellspacing="5">';
+                        $wert.='<tr><td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+                        $wert.='<tr><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen></td></tr>';
+                        $wert.='</table></td>';
+                        
+                        $wert.='</tr></table>';
+                        $wert.='</td></tr></table>';
+                        //echo "Anzeige Startpage Typ 2";
                         }
                     break;
                 case 1:

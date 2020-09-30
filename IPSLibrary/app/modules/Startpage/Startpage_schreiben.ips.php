@@ -21,7 +21,7 @@
  *
  * schreiben des Startpage html Strings in der htmlbox der Startpage
  *
- *
+ * es gibt verschiedene darstellungsarten
  *
  *
  **************************************/
@@ -30,28 +30,41 @@ $debug=false;
 
 /********************************************* CONFIG *******************************************************/
 
-ini_set('memory_limit', '-1');
-Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    ini_set('memory_limit', '-1');          // memory unbeschränkt um die Bildbearbeitung zu ermöglichen
 
-IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
-IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
-IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
-$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
-//IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+    IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+    IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+    IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+
+	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+	if (!isset($moduleManager)) 
+		{
+		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+		$moduleManager = new IPSModuleManager('Startpage',$repository);
+		}
+ 	$installedModules = $moduleManager->GetInstalledModules();
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    //$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
+
+    //IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
 
 $startpage = new StartpageHandler();
 $configuration=$startpage->getStartpageConfiguration();
 
 $bilderverzeichnis=$configuration["Directories"]["Pictures"];
 
-//$StartPageTypeID = CreateVariableByName($parentid, "Startpagetype", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 $StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
-if ($debug) echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
+if ($debug) 
+    {
+    echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
+    echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
+    }
+$variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
+$AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
 
-$variableIdHTML  = CreateVariable("Uebersicht", 3 /*String*/,  $parentid, 40, '~HTMLBox', null,null,"");
-
-$vid = @IPS_GetVariableIDByName("SwitchScreen",$parentid);
+$vid = @IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
 $showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
 
 /**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
@@ -186,7 +199,9 @@ SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$
     $file=$startpage->readPicturedir();
     $maxcount=count($file);
 	echo "Bildanzeige, es gibt insgesamt ".$maxcount." Bilder auf dem angegebenen Laufwerk.\n";
-	echo $startpage->StartPageWrite(1);
+    echo "Startpage wird mit folgenden Parametern aufgerufen : Modus:".GetValue($StartPageTypeID)." ShowFile:".($showfile?"true":"false").".\n";
+    echo "Darstellung Startpage, Darstellung der links zu Bildern ist nicht möglich.\n";
+	echo $startpage->StartPageWrite(2);
 	}
 
 

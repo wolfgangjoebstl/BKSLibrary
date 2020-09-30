@@ -207,6 +207,9 @@ IPS_SetEventActive($tim1ID,true);
     $input["ModuleID"] =    "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";           // FHT devices Instanzen, kein Konfigurator, kein Discovery, haendische Installation
     $input["ModuleName"] = "FHT Instanzen";
     $discovery[]=$input;     
+    $input["ModuleID"] =    "{D26101C0-BE49-7655-87D3-D721064D4E40}";           // OperationCenter Cam Instanzen, kein Konfigurator, kein Discovery, haendische Installation
+    $input["ModuleName"] = "CAM Instanzen";
+    $discovery[]=$input;     
 
     echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $socket=array();

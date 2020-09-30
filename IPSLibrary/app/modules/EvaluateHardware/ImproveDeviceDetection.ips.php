@@ -40,6 +40,13 @@
 
     $startexec=microtime(true);
 
+    /***************************************************************************
+     * 
+     * INIT
+     *
+     *
+     ****************************/
+
     $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
     if (!isset($moduleManager))
         {
@@ -58,6 +65,37 @@
         //print_r($HomematicAddressesList);
         //echo "    --done---\n";
         }  
+
+    if (isset($installedModules["DetectMovement"])) 
+        {
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        
+        IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+        IPSUtils_Include ('IPSMessageHandler_Configuration.inc.php', 'IPSLibrary::config::core::IPSMessageHandler');
+
+        IPSUtils_Include ("IPSComponentSensor_Motion.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+        IPSUtils_Include ("IPSComponentSensor_Feuchtigkeit.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
+
+    	$debug=false;
+		$testMovement = new TestMovement($debug);
+        $eventListforDeletion = $testMovement->getEventListforDeletion();
+        if (count($eventListforDeletion)>0) 
+            {
+            echo "Es müssen Events gelöscht werden, da keine Konfiguration mehr dazu angelegt ist.\n";
+            }
+        else 
+            {
+            echo "Events von IPS_MessageHandler mit Konfiguration abgeglichen. TestMovement sagt alles ist in Ordnung.\n";
+            echo "\n";
+            }
+        $filter="IPSMessageHandler_Event";
+        $resultEventList = $testMovement->getEventListfromIPS($filter,true);
+        $html=$testMovement->getComponentEventListTable($resultEventList,$filter,true,true);
+        echo $html;
+
+        }
 
 	$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 
@@ -88,78 +126,80 @@
 	$eventlist = $eventConf + $eventCust;
 	echo "Overview of registered Events ".sizeof($eventConf)." + ".sizeof($eventCust)." = ".sizeof($eventlist)." Eintraege : \n";
 
-	$resultEventList=array();
-    $filter = "";
-    echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
-    $filter="IPSMessageHandler_Event";
-
-    /* Alle Events einsammeln und strukturieren */
-    $alleEreignisse = IPS_GetEventList();
-    $index=0;
-    foreach ($alleEreignisse as $ereignis)
+    if (false)
         {
-        if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
+        $resultEventList=array();
+        $filter = "";
+        echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+        $filter="IPSMessageHandler_Event";
+
+        /* Alle Events einsammeln und strukturieren */
+        $alleEreignisse = IPS_GetEventList();
+        $index=0;
+        foreach ($alleEreignisse as $ereignis)
             {
-            $resultEventList[$index]["OID"]=$ereignis;
-            $resultEventList[$index]["Name"]=IPS_GetName($ereignis);
-            $resultEventList[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
-            $details=IPS_GetEvent($ereignis);
-            //print_r($details);
-            switch ($details["EventType"])
+            if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
                 {
-                case 0:
-                    $resultEventList[$index]["Type"]="Auslöser";
-                    break;
-                case 1:
-                    $resultEventList[$index]["Type"]="Zyklisch";
-                    break;
-                case 2:
-                    $resultEventList[$index]["Type"]="Wochenplan";
-                    break;
+                $resultEventList[$index]["OID"]=$ereignis;
+                $resultEventList[$index]["Name"]=IPS_GetName($ereignis);
+                $resultEventList[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
+                $details=IPS_GetEvent($ereignis);
+                //print_r($details);
+                switch ($details["EventType"])
+                    {
+                    case 0:
+                        $resultEventList[$index]["Type"]="Auslöser";
+                        break;
+                    case 1:
+                        $resultEventList[$index]["Type"]="Zyklisch";
+                        break;
+                    case 2:
+                        $resultEventList[$index]["Type"]="Wochenplan";
+                        break;
+                    }
+                $resultEventList[$index]["LastRun"]=$details["LastRun"];
+                //$resultEventList[$index]["EventConditions"]=$details["EventConditions"];
+                $resultEventList[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
+                $script=str_replace("\n","",$details["EventScript"]);
+                $resultEventList[$index]["Script"]=$script;
+                $index++;
                 }
-            $resultEventList[$index]["LastRun"]=$details["LastRun"];
-            //$resultEventList[$index]["EventConditions"]=$details["EventConditions"];
-            $resultEventList[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
-            $script=str_replace("\n","",$details["EventScript"]);
-            $resultEventList[$index]["Script"]=$script;
-            $index++;
             }
-        }
 
-    /* das Ergebnis der Events in resultEventList auswerten */
-    $delete=array();
-    foreach ($resultEventList as $index => $entry)
-        {
-        echo str_pad($index,3)." ".str_pad($entry["OID"],6);
-        if ($filter == "IPSMessageHandler_Event")
+        /* das Ergebnis der Events in resultEventList auswerten */
+        $delete=array();
+        foreach ($resultEventList as $index => $entry)
             {
-            $trigger=$entry["TriggerVariableID"];
-            echo str_pad($entry["Name"],15)." ";
-            $info=@IPS_GetVariable($trigger);
-            if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
+            echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+            if ($filter == "IPSMessageHandler_Event")
+                {
+                $trigger=$entry["TriggerVariableID"];
+                echo str_pad($entry["Name"],15)." ";
+                $info=@IPS_GetVariable($trigger);
+                if ($info !== false) echo str_pad(IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger)),40)."  ";
+                else 
+                    {
+                    echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
+                    $delete[$entry["OID"]]=true;
+                    }
+                if (isset($eventlist[$trigger])) 
+                    {
+                    echo str_pad($eventlist[$trigger][1],50);
+                    }
+                else echo str_pad("-----",50);
+                }
+            else echo str_pad($entry["Name"],40)." ";
+            if ($entry["LastRun"]==0) echo str_pad("nie",20);
             else 
                 {
-                echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
-                $delete[$entry["OID"]]=true;
+                $timePassed=time()-$entry["LastRun"];
+                echo str_pad("vor ".nf($timePassed,"s"),20);
+                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
                 }
-            if (isset($eventlist[$trigger])) 
-                {
-                echo str_pad($eventlist[$trigger][1],50);
-                }
-            else echo str_pad("-----",50);
+            echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
             }
-        else echo str_pad($entry["Name"],40)." ";
-        if ($entry["LastRun"]==0) echo str_pad("nie",20);
-        else 
-            {
-            $timePassed=time()-$entry["LastRun"];
-            echo str_pad("vor ".nf($timePassed,"s"),20);
-            //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
-            }
-        echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
-        }
 
-    /* eventuell veraltete unbenutzte Events loeschen */
+        /* eventuell veraltete unbenutzte Events loeschen */
         if (sizeof($delete)>0)
             {
             echo "Folgende Events loeschen:\n";
@@ -174,7 +214,8 @@
                 IPS_DeleteEvent($oid);
                 }
             }
-            
+        }           // ende false
+                
     /**********************************************************************************
      *
      * Topology Mapping, check Libraries
@@ -221,7 +262,9 @@
 
         /* die Konfiguration herauslesen und eventuell hinsichtlich Topologie ergänzen */
         $topology       = $DetectDeviceHandler->Get_Topology();
+        echo "   Die Channel EventList aus dem DetectDeviceHandler einlesen.\n";
         $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
+        echo "   Die Device EventList aus dem DetectDeviceListHandler einlesen.\n";
         $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto(); 
 
         /* aus der devicelist von Configuration::EvaluateHardware_Include die Devices registrieren, es fehlt die device OID aus der Topologie
@@ -356,7 +399,7 @@
 
         echo "========================================================================\n";    
         echo "Statistik der Devicelist nach Typen, Aufruf der getDeviceStatistics in HardwareLibrary:\n";
-        $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList);
+        $statistic = $hardwareTypeDetect->getDeviceStatistics($deviceList,false);                // false keine Warnings ausgeben
         print_r($statistic);
 
 

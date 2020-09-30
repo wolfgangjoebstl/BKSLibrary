@@ -63,17 +63,20 @@ class AutosteuerungAlexaHandler
     public function getAlexaConfig($debug=false)
         {
         $alexaConfig=array(); 
-        $configAlexa=array();             
+        //$configAlexa=array();                         // configAlexa 
 	    if ($this->countAlexa != 0) 
             {
-            if ($debug) echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
-        	$configStruct=json_decode($this->configAlexa);
+            if ($debug) 
+                {
+                echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
+                echo $this->configAlexa."\n";
+                }
+        	$configStruct=json_decode($this->configAlexa);          // liest die Konfiguration der Alexa Instanz aus
 	        //print_r($configStruct);
             foreach ($configStruct as $typ=>$conf)
                 {
                 if ($conf=="") 
                     {
-                    if ($debug) echo "Fehler, kein Parameter für $typ.\n";
                     $conf="[]";
                     }
         	    $confStruct=json_decode($conf);
@@ -84,7 +87,13 @@ class AutosteuerungAlexaHandler
 					case "DeviceSpeaker":
                         /* Setze die Laustärke von Denon auf 10 */
 				        $id="SpeakerID";
-                        break;					
+                        break;	
+                    case "DeviceSpeakerMuteable":
+                        // $id="SpeakerID";
+                        break;
+                    case "DeviceTelevision":				
+                        // $id="SpeakerID";
+                        break;
 	    	        case "DeviceGenericSwitch":
 		            case "DeviceLightSwitch":
 				        $id="PowerControllerID";
@@ -111,6 +120,9 @@ class AutosteuerungAlexaHandler
             		case "DeviceLightDimmer":
 	            		$id="BrightnessControllerID";
 		    	        break;	
+            		case "DeviceShutter":
+	            		//$id="BrightnessControllerID";
+		    	        break;	
                     case "DeviceLock":
 	            		$id="LockControllerID";
 		    	        break;
@@ -122,31 +134,40 @@ class AutosteuerungAlexaHandler
 	            		$id="ThermostatControllerID";
     	    	        break;	
             		case "EmulateStatus":
-                        /* neue Funktion ??? */
+                    case "ShowExpertDevices":
+                        /* neue Statusvariablen ohne ID Parameter */
+                        echo "Status $typ ist $conf. Will not be used in script.\n";
+                        $conf="[]";
+                	    $confStruct=json_decode($conf);
                         break;										
             		default:
                         if ($debug) 
                             {
                             echo "Fehler: kenne den Identifier $typ in der Alexa Config noch nicht.\n";
                             echo "    ".$typ."    ".$conf."\n";
+                            if ($conf=="") echo "Fehler, kein Parameter für $typ.\n";
                             }
 		    	        break;
                     } 
             	foreach ($confStruct as $struct) 
 	            	{
-                    if ($debug) print_r($struct);                       
+                    if ($debug) 
+                        {
+                        //print_r($struct);                       
+                        echo json_encode($struct)."\n";
+                        }
                     if ($this->countAlexa > 0)
                         {   // lokal Alexa
-                        $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server
-                        $parent=IPS_GetParent($struct->$id);
-                        $parent2=IPS_GetParent($parent);
-                        $parent3=IPS_GetParent($parent2);
-                        $NameParent=IPS_GetName($parent);
-                        $NameParent2=IPS_GetName($parent2);
-                        $NameParent3=IPS_GetName($parent3);
-		    	        //print_r($struct);
         				if ( IPS_ObjectExists($struct->$id)==true )
 		        			{
+                            $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server
+                            $parent=IPS_GetParent($struct->$id);
+                            $parent2=IPS_GetParent($parent);
+                            $parent3=IPS_GetParent($parent2);
+                            $NameParent=IPS_GetName($parent);
+                            $NameParent2=IPS_GetName($parent2);
+                            $NameParent3=IPS_GetName($parent3);
+                            //print_r($struct);
     			            $alexaConfig[$struct->$id]["OID"]=$struct->$id;
                 			$alexaConfig[$struct->$id]["OID_Name"]=$Name;
 	                		$alexaConfig[$struct->$id]["Pfad"]=$Name."/".$NameParent."/".$NameParent2."/".$NameParent3;
@@ -175,7 +196,7 @@ class AutosteuerungAlexaHandler
 	            		    $alexaConfig[$struct->$id]["Name"]=$struct->Name;
     		            	if ($id=="SceneControllerDeactivatableActivateID") $alexaConfig[$struct->$id]["Script"]=$struct->SceneControllerDeactivatableDeactivateID;						
                             }
-		        		elseif ($debug) echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Config loeschen.\n";							
+		        		elseif ($debug) echo "Fehler, ".$struct->$id." nicht vorhanden. aus Alexa Configuration der Kern Instanz loeschen.\n";							
 				        }   // ende else
                     }       // ende foreach 
                 }   // ende foreach

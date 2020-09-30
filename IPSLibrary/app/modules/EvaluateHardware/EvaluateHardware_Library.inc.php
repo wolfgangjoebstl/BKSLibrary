@@ -194,7 +194,8 @@ class TopologyLibraryManagement
                 $object = new $objectClassName(); 
                 $deviceID = $object->getDeviceID();
                 if ($debug) echo "      DeviceID :    $deviceID \n";
-                $devices=$this->modulhandling->getInstances($deviceID);
+                //$devices=$this->modulhandling->getInstances($deviceID);
+                $devices=$object->getDeviceIDInstances();
                 foreach ($devices as $device)
                     {
                     if ($debug) echo "           ".IPS_GetName($device)."\n";

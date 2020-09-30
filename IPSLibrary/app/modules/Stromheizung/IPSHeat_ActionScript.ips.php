@@ -93,6 +93,8 @@ $register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
 	// ----------------------------------------------------------------------------------------------------------------------------
 	elseif ($_IPS['SENDER']=='VoiceControl')
 		{
+ 		IPSLogger_Inf(__file__,"Heat_ActionScript empfaengt von Alexa für $categoryName: ".IPS_GetName($variableId)." (".$variableId.")  den Wert $value.");
+
 		switch ($categoryName) 
 			{
 			case 'Switches':

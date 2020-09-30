@@ -2154,9 +2154,44 @@ function ReadAktuatorWerte()
 
 /******************************************************************/
 
-function exectime($startexec)
+function startexec($mode="ms")
 	{
-	return (number_format((microtime(true)-$startexec),2));
+    $time=hrtime(true);
+    switch ($mode)
+        {
+        case "ms":
+            $time=$time/1000000;
+            break;
+        case "us":
+            $time=$time/1000;
+            break;
+        case "s":
+            $time=$time/1000000000;
+            break;
+        default:
+            break;
+        }
+	return ($time);
+	}
+
+function exectime($startexec,$mode=false)
+	{
+    $time=hrtime(true);
+    switch ($mode)
+        {
+        case "ms":
+            return (round($time/1000000-$startexec,0));
+            break;
+        case "us":
+            return (round($time/1000-$startexec,0));
+            break;
+        case "s":
+            return (round($time/1000000000-$startexec,3));
+            break;
+        default:
+        	return (number_format((microtime(true)-$startexec),2));
+            break;
+        }        
 	}
 
 /******************************************************************/
@@ -3987,12 +4022,16 @@ class errorAusgabe
  * Die Komplette Installation von Compnents in einer Klasse zusammenfassen
  *
  * __construct
+ * getArchiveSDQL_HandlerID
  * listOfRemoteServer
  * getStructureofROID
  * registerEvent
  * getComponent
+ * workOnDeviceList
+ * addOnKeyName
  * getKeyword
- *
+ * installComponent  (DEPRICIATED)
+ * installComponentFull
  *
  *
  *********************************************************************************************/
@@ -4144,10 +4183,13 @@ class ComponentHandling
                 if (is_array($Elements))                    
                     {
                     echo "     getComponent: Passende Geraeteregister in Elements suchen für ";
-                    foreach ($keywords as $index => $entry) echo "$index => $entry ";
-                    echo ":\n";
                     }
-                else echo "     getComponent: Passende Geraeteregister in MySQL Database suchen für TYPE_KEYWORD $keywords :\n";
+                else 
+                    {
+                    echo "     getComponent: Passende Geraeteregister in MySQL Database suchen für ";
+                    }
+                foreach ($keywords as $index => $entry) echo "$index => $entry ";
+                echo ":\n";
                 }
             else 
                 {
@@ -4516,20 +4558,35 @@ class ComponentHandling
         return $keyName;
         }
 
-    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
-    * ["COID"]=(integer)$oid;               das Register
-    * ["OID"]=(integer)$Key["OID"];         die Instanz
-    * ["KEY"]=$keyword;
-    * ["TYP"]=$variabletyp;
-    * ["INDEX"]=$index;
-    * ["PROFILE"]=$profile;					 
-    * ["DETECTMOVEMENT"]=$detectmovement;
-    * ["INDEXNAMEEXT"]=$indexNameExt;
-    *
-    *
-    * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-    * index="Bewegung"
-    */
+    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen. addOnKeyName wird von folgenden Routinen aufgerufen:   getComponent
+     *
+     *   Index          DetectMovement
+     *  HeatSet 
+     *  Temperatur      Temperatur
+     *  Humidity        Feuchtigkeit
+     *  HeatControl     HeatControl
+     *  Schalter
+     *  Bewegung        Motion
+     *  Helligkeit      Helligkeit
+     *  Bewegung        Contact
+     *  Klima
+     *
+     * Index wird für die Struktur der RemoteServer Speicherung verwendet.
+     * DetectMovement für die lokale Speicherung
+     * 
+     * ["COID"]=(integer)$oid;               das Register
+     * ["OID"]=(integer)$Key["OID"];         die Instanz
+     * ["KEY"]=$keyword;
+     * ["TYP"]=$variabletyp;
+     * ["INDEX"]=$index;
+     * ["PROFILE"]=$profile;					 
+     * ["DETECTMOVEMENT"]=$detectmovement;
+     * ["INDEXNAMEEXT"]=$indexNameExt;
+     *
+     *
+     * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
+     * index="Bewegung"
+     */
 
     function addOnKeyName(&$keyName)
         {

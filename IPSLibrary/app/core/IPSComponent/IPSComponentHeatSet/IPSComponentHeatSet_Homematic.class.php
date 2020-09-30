@@ -52,7 +52,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-			echo "IPSComponentHeatSet_Homematic:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+			//echo "IPSComponentHeatSet_Homematic:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -109,7 +109,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HandleEvent: HeatSet Homematic Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
+			//echo "HandleEvent: HeatSet Homematic Message Handler für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Dbg(__file__, 'HandleEvent: HeatSet Homemeatic Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 
 			if ( (IPS_GetName($variable))=="CONTROL_MODE")
@@ -166,7 +166,7 @@
 			//$setlevel=$level;
 			if ($this->rpcADR==Null)
 				{
-				echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+				//echo "   IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
                 IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
 				HM_WriteValueFloat($this->instanceId, "SET_TEMPERATURE", $setlevel);
 				}
@@ -211,7 +211,7 @@
 				$setMode=$mode;
 				if ($this->rpcADR==Null)
 					{
-					echo "   IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')." \n";
+					//echo "   IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')." \n";
             	    IPSLogger_Inf(__file__, "IPSComponent HeatSet_Homematic SetMode von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Mode ".$setMode." Power ".($power?'On':'Off')); 
 					HM_WriteValueInteger($this->instanceId, "CONTROL_MODE", $setMode);
 					}

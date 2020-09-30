@@ -196,39 +196,39 @@
 		 * @param int $variableId ID der Variable
 		 * @param int $value Neuer Wert der Variable
 		 */
-		public function SetValue($variableId, $value) 
+		public function SetValue($variableId, $value, $debug=false, $exectime=false) 
 			{
 			$parentId = IPS_GetParent($variableId);
-			//echo "IPS class HeatManager SetValue von ".$parentId."/".$variableId." (".IPS_GetName($parentId)."/".IPS_GetName($variableId).") mit Wert ".$value."\n";
+			if ($debug) echo "IPS class HeatManager SetValue von ".$parentId."/".$variableId." (".IPS_GetName($parentId)."/".IPS_GetName($variableId).") mit Wert ".$value."\n";
 			//IPSLogger_Inf(__file__, "IPS class HeatManager SetValue von ".$parentId."/".$variableId." (".IPS_GetName($parentId)."/".IPS_GetName($variableId).") mit Wert ".$value." Alter Wert ".GetValue($variableId));
 			switch($parentId) {
 				case $this->switchCategoryId:
 					$configName = $this->GetConfigNameById($variableId);
 					$configLights = IPSHeat_GetHeatConfiguration();
-					//echo "IPS class HeatManager SetValue : ".$parentId."  (".IPS_GetName($parentId).")    $configName \n";					
+					if ($debug) echo "IPS class HeatManager SetValue : ".$parentId."  (".IPS_GetName($parentId).")    $configName \n";					
 					$lightType    = $configLights[$configName][IPSHEAT_TYPE];
 					switch ($lightType)
 						{
 						case IPSHEAT_TYPE_SWITCH:
-							//echo "IPS_HeatManager SetValue Type Switch SetValue.\n";
+							if ($debug) echo "IPS_HeatManager SetValue Type Switch SetValue; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							$this->SetSwitch($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_DIMMER:
-							//echo "IPS_HeatManager SetValue Type Dimmer SetDimmer.\n";
+							if ($debug) echo "IPS_HeatManager SetValue Type Dimmer SetDimmer; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							$this->SetDimmer($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_RGB:
-							//echo "IPS_HeatManager SetValue Type RGB SetRGB.\n";
-							$this->SetRGB($variableId, $value);
+							if ($debug) echo "IPS_HeatManager SetValue Type RGB SetRGB; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
+							$this->SetRGB($variableId, $value, true, true, $debug);
 							break;
 						case IPSHEAT_TYPE_AMBIENT:
-							//echo "IPS_HeatManager SetValue Type RGB SetRGB.\n";
+							if ($debug) echo "IPS_HeatManager SetValue Type Ambient SetAmbient; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							$this->SetAmbient($variableId, $value);
 							break;
 						case IPSHEAT_TYPE_SET:
-							//echo "IPS_HeatManager SetValue Type Heat SetHeat ; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
+							if ($debug) echo "IPS_HeatManager SetValue Type Heat SetHeat; ".$variableId."  (".IPS_GetName($variableId).") ".$value."\n";
 							//echo "     ".$configName."\n";
-							$this->SetHeat($variableId, $value);
+							$this->SetHeat($variableId, $value,true, true, $debug,$exectime);
 							break;
 						default:
 							trigger_error('Unknown HeatType '.$lightType.' for Heat/Light '.$configName);
@@ -342,11 +342,11 @@
 		 * @param int $variableId ID der Variable
 		 * @param bool $value Neuer Wert der Variable
 		 */
-		public function SetRGB($variableId, $value, $syncGroups=true, $syncPrograms=true) {
+		public function SetRGB($variableId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) {
 			if (GetValue($variableId)==$value) {
 				return;
 			}
-			//echo "SetRGB ".$variableId." (".IPS_GetName($variableId).") ".$value." ".dechex($value)."\n";
+			if ($debug) echo "SetRGB ".$variableId." (".IPS_GetName($variableId).") ".$value." ".dechex($value)."\n";
 			$configName   = $this->GetConfigNameById($variableId);
 			$configLights = IPSHeat_GetHeatConfiguration();
 			$switchId     = IPS_GetVariableIDByName($configName, $this->switchCategoryId);
@@ -366,9 +366,11 @@
 			$switchValue  = GetValue($switchId);
 			IPSLogger_Inf(__file__, 'Turn Heat/Light SetRGB '.$configName.' '.($switchValue?'On, Level='.GetValue($levelId).', Color='.GetValue($colorId):'Off')."  RGB Wert : ".dechex(GetValue($colorId))."   ".$componentParams);
 
-			if (IPSHeat_BeforeSwitch($switchId, $switchValue)) {
+			if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 
+                {
+                if ($debug) echo "    SetState(".GetValue($switchId).",".dechex(GetValue($colorId)).",".GetValue($levelId).")\n";  
 				$component->SetState(GetValue($switchId), GetValue($colorId), GetValue($levelId));
-			}
+			    }
 			IPSHeat_AfterSwitch($switchId, $switchValue);
 
 			//IPSLogger_Inf(__file__, "Turn Heat/Light SetRGB Synchronize Groups for $switchId if ".($syncGroups?"Ein":"Aus"));
@@ -438,7 +440,7 @@
 		 * @param int $variableId ID der Variable
 		 * @param bool $value Neuer Wert der Variable
 		 */
-		public function SetHeat($variableId, $value, $syncGroups=true, $syncPrograms=true) 
+		public function SetHeat($variableId, $value, $syncGroups=true, $syncPrograms=true, $debug=false, $exectime=false) 
 			{
 			if (GetValue($variableId)==$value) 
 				{
@@ -458,8 +460,12 @@
 			
 			
 			$componentParams = $configLights[$configName][IPSHEAT_COMPONENT];
-			//echo "IPSclass IPSHeat_Manager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams."\n";
-
+			if ($debug) 
+                {
+                echo "   IPSclass IPSHeat_Manager SetHeat : ".$variableId."  (".IPS_GetName($variableId).")  ".$componentParams." ";
+                if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor _construct'.$duration.' Millisekunden.'."\n"; }
+                else echo "\n";                
+                }
 			$component       = IPSComponent::CreateObjectByParams($componentParams);
 
 			switch ($variableId)
@@ -482,9 +488,13 @@
 					if (GetValue($tempId) < 6)   { $value = 6; }
 					//SetValue($tempId, $value);		// nicht den Stromheizung data Wert hier setzen, er wird erst mühsam vom wirklichen Gerät synchronisiert
 
-					//echo "   Set Heat/Light $configName ".(GetValue($switchId)?'On, Level='.GetValue($tempId):'Off').". Mode=".GetValue($modeId)."\n";
-					//print_r($component);
-			
+                    if ($debug) 
+                        {					
+                        echo "   IPS class IPSHeat_Manager SetHeat $configName ".($switchValue?'On, Temp='.$tempValue:'Off').". Mode=".GetValue($modeId)." to new Temp=$value with $componentParams.";
+                        //print_r($component);
+                        if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit vor SetLevel'.$duration.' Millisekunden.'."\n"; }
+                        else echo "\n";                
+                        }
 					IPSLogger_Inf(__file__, 'IPS class IPSHeat_Manager SetHeat '.$configName.' '.($switchValue?'On, Temp='.$tempValue:'Off').' to new Temp='.$value.' with '.$componentParams);
 
 					if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
@@ -526,6 +536,7 @@
 				{
 				$this->SynchronizeProgramsBySwitch ($switchId);
 				}
+            if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit SetHeat '.$duration.' Millisekunden.'."\n"; }
 			}		// ende function
 
 		/**
@@ -536,14 +547,16 @@
 		 * @param int $variableId ID der Gruppe
 		 * @param bool $value Neuer Wert der Gruppe
 		 */
-		public function SetGroup($groupId, $value, $syncGroups=true, $syncPrograms=true, $debug=false) 
+		public function SetGroup($groupId, $value, $syncGroups=true, $syncPrograms=true, $debug=false, $exectime=false) 
             {
 			$groupConfig = IPSHeat_GetGroupConfiguration();
 			$groupName   = $this->GetConfigNameById($groupId);			
 			$groupNameLong   = IPS_GetName($groupId);
             if ($debug) 
                 {
-                echo "   IPSHeat:SetGroup für $groupId $groupName mit Wert ".nf($value)." aufgerufen.\n";
+                echo "   IPSHeat:SetGroup für $groupId $groupName mit Wert ".nf($value)." aufgerufen.";
+                if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit '.$duration.' Millisekunden.'."\n"; }
+                else echo "\n";                
                 //echo "Check for Index ".IPSHEAT_ACTIVATABLE."\n"; print_r($groupConfig[$groupName]); 
                 }
 			if ($value and !$groupConfig[$groupName][IPSHEAT_ACTIVATABLE]) 
@@ -556,12 +569,20 @@
                 if (GetValue($groupId) != $value)
                     {
                     /* nur aktiv den Wert setzen wenn er unterschiedlich ist, reduziert die Anzahl der LogMeldungen und es wird übersichtlicher */
-                    if ($debug) echo "   IPSHeat:SetGroup, Aufruf mit $groupName und $groupNameLong. Gruppe aktiviert. ".IPS_GetName($groupId)." : ".(GetValue($groupId)?'On':'Off')." ist der alte Wert und Wert neu ist ".($value?'On':'Off').".\n";
     				SetValue($groupId, $value);
-				    if ($groupName == $groupNameLong) IPSLogger_Inf(__file__, "Turn HeatGroup '$groupName' ".($value?'On':'Off'));
-                    else IPSLogger_Inf(__file__, "Set HeatGroup '$groupNameLong' to $value");
+				    if ($groupName == $groupNameLong) 
+                        {
+                        if ($debug) echo "   IPSHeat:SetGroup, Aufruf mit $groupName. Gruppe aktiviert. ".IPS_GetName($groupId)." : ".(GetValue($groupId)?'On':'Off')." ist der alte Wert und Wert neu ist ".($value?'On':'Off').".\n";
+                        IPSLogger_Inf(__file__, "Turn HeatGroup '$groupName' ".($value?'On':'Off'));
+                        }
+                    else 
+                        {
+                        if ($debug) echo "   IPSHeat:SetGroup, Aufruf mit $groupNameLong. Gruppe aktiviert. ".IPS_GetName($groupId)." : ".GetValue($groupId)." ist der alte Wert und Wert neu ist $value.\n";
+                        IPSLogger_Inf(__file__, "Set HeatGroup '$groupNameLong' to $value");
+                        }
                     }
-				$this->SetAllSwitchesByGroup($groupId, $debug);
+				$this->SetAllSwitchesByGroup($groupId, $debug,$exectime);
+                if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit aktuell: '.$duration.' Millisekunden.'."\n"; }
                 
                 /* check ob andere Gruppen auch dieser Gruppe angehören, wie bei SetHeat */
                 if ($syncGroups) {
@@ -695,9 +716,9 @@
 		}
 
 		// ----------------------------------------------------------------------------------------------------------------------------
-		private function SynchronizeGroupsBySwitch ($switchId) 
+		private function SynchronizeGroupsBySwitch ($switchId, $debug=false, $exectime=false) 
 			{
-            //echo "            SynchronizeGroupsBySwitch $switchId (".IPS_GetName($switchId).")\n";
+            if ($debug) echo "            SynchronizeGroupsBySwitch $switchId (".IPS_GetName($switchId).")\n";
 			$switchName    	= $this->GetConfigNameById($switchId);
 			$switchNameLong	= IPS_GetName($switchId);
 			$lightConfig  = IPSHeat_GetHeatConfiguration();		
@@ -707,14 +728,14 @@
 				$pos1=strpos($switchNameLong,"#");
 				if ( ($pos==0) and !($pos1===false) )
 					{
-					//echo "SynchronizeGroupsBySwitch für #Level da $switchName ungleich $switchNameLong \n";
+					if ($debug) echo "SynchronizeGroupsBySwitch für #Level da $switchName ungleich $switchNameLong \n";
 					$NameExt=substr($switchNameLong,$pos1);
 					$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
 					//echo "         SynchronizeGroupsBySwitch \n";					
 					//print_r($groups);
 					foreach ($groups as $groupName) 
 						{
-						//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
+						if ($debug) echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
 						$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
 						$this->SynchronizeGroup($groupId);
 						}				
@@ -722,13 +743,13 @@
 				}
 			else
 				{	
-				//echo "         SynchronizeGroupsBySwitch ".$switchId."   \"".$lightConfig[$switchName][IPSHEAT_GROUPS]."\"\n";
+				if ($debug) echo "         SynchronizeGroupsBySwitch ".$switchId."   \"".$lightConfig[$switchName][IPSHEAT_GROUPS]."\"\n";
 				$groups      = explode(',', $lightConfig[$switchName][IPSHEAT_GROUPS]);
 				foreach ($groups as $groupName) 
 					{
 					if ($groupName != "")
 						{
-						//echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
+						if ($debug) echo "         SynchronizeGroupsBySwitch ".$switchId."   ".$groupName."\n";
 						$groupId  = IPS_GetVariableIDByName($groupName, $this->groupCategoryId);
 						$this->SynchronizeGroup($groupId);
 						}
@@ -885,7 +906,7 @@
          *
          */
 
-		private function SetAllSwitchesByGroup ($groupId, $debug=false) 
+		private function SetAllSwitchesByGroup ($groupId, $debug=false,$exectime=false) 
 			{
 			$groupName    	= $this->GetConfigNameById($groupId);
 			$groupNameLong	= IPS_GetName($groupId);
@@ -914,9 +935,15 @@
 							if ($switchInGroup and GetValue($switchId)<>$groupState) 
 								{
 								IPSLogger_Trc(__file__, "SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'");
-								if ($debug) echo "       SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'\n";
-								$this->SetValue($switchId, $groupState);
-								$this->SynchronizeGroupsBySwitch ($switchId);
+								if ($debug) 
+                                    {
+                                    echo "       SetAllSwitchesByGroup: Set Heat ".$switchName.$NameExt."=".$groupState." for Group '".$groupName."'\n";
+                                    echo "       SetAllSwitchesByGroup: Set Heat $switchName=".($groupState?'On':'Off')." for Group $groupName .";
+                                    if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit aktuell: '.$duration.' Millisekunden.'."\n"; }
+                                    else echo "\n";
+                                    }
+								$this->SetValue($switchId, $groupState,$debug,$exectime);
+								$this->SynchronizeGroupsBySwitch ($switchId,$debug,$exectime);
 								}
 							}
 						}					
@@ -932,10 +959,15 @@
 					//if ($switchInGroup) echo "   ".$switchName."\n";
 					if ($switchInGroup and GetValue($switchId)<>$groupState) 
 						{
-    					if ($debug) echo "       SetAllSwitchesByGroup: Set heat $switchName=".($groupState?'On':'Off')." for Group $groupName .\n";
+    					if ($debug) 
+                            {
+                            echo "       SetAllSwitchesByGroup: Set Heat $switchName=".($groupState?'On':'Off')." for Group $groupName .";
+                            if ($exectime) { $duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit aktuell: '.$duration.' Millisekunden.'."\n"; }
+                            else echo "\n";
+                            }
 						IPSLogger_Trc(__file__, "Set Light $switchName=".($groupState?'On':'Off')." for Group '$groupName'");
-						$this->SetValue($switchId, $groupState);
-						$this->SynchronizeGroupsBySwitch ($switchId);
+						$this->SetValue($switchId, $groupState,$debug,$exectime);
+						$this->SynchronizeGroupsBySwitch ($switchId,$debug,$exectime);
 						}
 					}
 				}	

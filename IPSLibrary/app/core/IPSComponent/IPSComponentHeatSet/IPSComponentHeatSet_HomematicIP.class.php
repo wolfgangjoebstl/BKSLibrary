@@ -52,7 +52,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
+            //echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -88,8 +88,8 @@
             //print_r($instances);    
             if (isset($instances[$this->instanceId]) ) 
 				{
-				echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
-				echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
+				//echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
+				//echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
 				$this->deviceHM = $instances[$this->instanceId];		
 				}
 			$this->remoteServerSet();
@@ -107,7 +107,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
+			//echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Inf(__file__, 'IPSComponentHeatSet_HomematicIP HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
             $log=new HeatSet_Logging($variable);			
@@ -182,19 +182,22 @@
 			{
 			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
 			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States
+
 			$setlevel=$level;				
 			if ($this->rpcADR==Null)
 				{
 				//echo "   IPSComponent HeatSet_HomematicIP SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
                 IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP SetTemp von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+                //$exectime=round(hrtime(true)/1000000,0);       // Status emulieren einschalten dann geht es schneller              
 				HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
+                //$duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit SetLevel HM_WriteValueFloat(".$this->instanceId.", \"SET_POINT_TEMPERATURE\", $setlevel) : '.$duration.' Millisekunden.'."\n";	
 				}
 			else
 				{
                 IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP rpc->SetTemp von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
 				$rpc = new JSONRPC($this->rpcADR);
 				$rpc->HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
-				}	
+				}
 			}
 
 		public function SetMode($power, $mode)

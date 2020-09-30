@@ -4,6 +4,12 @@
 *
 * Modul Autosteuerung,Script Autosteuerung_AlexaControl Funktion Spezialroutinen für Alexa Control
 *
+* Ansteuerung von Switches, Groups und Programmen. Alexa ändert die angegebene Variable mit dem Sender VoiceControl
+* Eine Variable kann bei einer Änderung ein Script aufrufen. Für alle Stromheizungsvariablen ist das IPSHeat_ActionScript.
+* das heisst es wird weder das Script Autosteuerung oder Autosteuerung_AlexaControl aufgerufen.
+*
+* Für Variablen ausserhalb von Stromheizung und für die Proxyfunktion ist es möglich als VoiceControl das Script Autosteuerung oder Autosteuerung_AlexaControl zu definieren.
+*
 * Befehle die Alexa aktuell unterstützt:
 *
 * PowerController			Alexa, schalte Smart Home-Gerät ein/aus
@@ -59,10 +65,11 @@ $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 $configurationAutosteuerung = Autosteuerung_Setup();
 
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+$scriptIdAlexaControl    = IPS_GetScriptIDByName('Autosteuerung_AlexaControl', $CategoryIdApp);
 
 $nachrichten=new AutosteuerungAlexa();
 $Alexa = new AutosteuerungAlexaHandler();
-$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
+$register=new AutosteuerungConfigurationAlexa($scriptIdAlexaControl);
 
 /******************************************************
  *
@@ -86,6 +93,7 @@ Switch ($_IPS['SENDER'])
 		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 		break;
 	Case "VoiceControl":
+ 		IPSLogger_Inf(__file__,"Alexa empfaengt VoiceControl");
 		//$nachrichten->LogNachrichten("Alexa empfaengt von VoiceControl : ".$_IPS['VARIABLE']." ".$_IPS['SENDER']."  ".$_IPS['VALUE']." .");
 		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
     	$variableID=$_IPS['VARIABLE'];
@@ -96,6 +104,8 @@ Switch ($_IPS['SENDER'])
 			$request["REQUEST"]= $alexaConfig[$variableID]["Type"];
 			if ( isset($configurationAutosteuerung["AlexaProxyAdr"])==true)
 				{
+		 		IPSLogger_Inf(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+
 				/************** Daten zur Verarbeitung weiterleiten an einen anderen Server */
 				switch ($alexaConfig[$variableID]['Type'])
 					{
@@ -141,7 +151,7 @@ Switch ($_IPS['SENDER'])
 				{	
 				/************* Daten direkt hier verarbeiten */
 				//$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']);
-		 		IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+		 		IPSLogger_Inf(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
 				$request=array();
 				$request["VARIABLE"]=	$_IPS['VARIABLE'];
 				$request["VALUE"]=		$_IPS['VALUE'];
@@ -190,11 +200,14 @@ Switch ($_IPS['SENDER'])
 		break;
 	Case "Execute":
 		$nachrichten->LogNachrichten("AlexaControl Execute aufgerufen.");
-    	echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." (negativer Wert für remote Geräte): ";
+        $count=$Alexa->getCountInstances();
+        if ($count>0) echo "Alexa lokale Instanzen, StatusCount = ".$Alexa->getCountInstances().": ";
+        elseif ($count<0) echo "Alexa remote Instanzen, StatusCount = ".$Alexa->getCountInstances().": ";
+    	//echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." (negativer Wert für remote Geräte): ";
 	    foreach ($Alexa->getInstances() as $oid) echo $oid."   ";
 		echo "\n";
     	echo "Alexa Configuration:\n";
-    	$alexaConfiguration=$Alexa->getAlexaConfig();
+    	$alexaConfiguration=$Alexa->getAlexaConfig(true);
     	print_r($alexaConfiguration);			
 		$request=array();
 		//$request["VARIABLE"]=	"649f57f3-0e76-4d0c-83d2-63b0cc03965e";
@@ -212,7 +225,7 @@ Switch ($_IPS['SENDER'])
 		if ( isset($configurationAutosteuerung["AlexaProxyAdr"])==true)
 			{
 			/* Daten zur Verarbeitung weiterleiten an einen anderen Server */
-		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."    ".$_IPS['REQUEST']."   ".$_IPS['VALUE']." und leitet weiter an ".$configurationAutosteuerung["AlexaProxyAdr"]);			
+		 	IPSLogger_Inf(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."    ".$_IPS['REQUEST']."   ".$_IPS['VALUE']." und leitet weiter an ".$configurationAutosteuerung["AlexaProxyAdr"]);			
 			$request=array();
 			$request["VARIABLE"]=	$_IPS['VARIABLE'];
 			$request["VALUE"]=		$_IPS['VALUE'];
@@ -222,7 +235,7 @@ Switch ($_IPS['SENDER'])
 		else
 			{	
 			//$nachrichten->LogNachrichten(" ".$_IPS['VARIABLE']." ".$_IPS['REQUEST']."  ".$_IPS['VALUE']);
-		 	IPSLogger_Dbg(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
+		 	IPSLogger_Inf(__file__,"Alexa empfaengt : ".$_IPS['VARIABLE']."   ".$_IPS['VALUE']);
 			$request=array();
 			$request["VARIABLE"]=	$_IPS['VARIABLE'];
 			$request["VALUE"]=		$_IPS['VALUE'];
@@ -283,8 +296,10 @@ function test_execute($request)
 		}
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 	$scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
+
 	$register=new AutosteuerungConfigurationAlexa($scriptIdAutosteuerung);
-	$alexaHandler = new AutosteuerungAlexaHandler(); 
+	
+    $alexaHandler = new AutosteuerungAlexaHandler(); 
 	$nachrichten=new AutosteuerungAlexa();
 	
 	$params=$register->getAutoEvent($request['VARIABLE']);

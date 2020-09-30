@@ -28,6 +28,7 @@
      * DetectMovementHandler extends DetectHandler
      * DetectTemperatureHandler extends DetectHandler
      * DetectHeatControlHandler extends DetectHandler
+     *
      * DetectDeviceHandler extends DetectHandler, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
      * DetectDeviceListHandler extends DetectHandler, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
      *
@@ -65,7 +66,13 @@
      * abstract class DetectHandler als Abbild für unter anderem die folgenden classes  
 	 *
      * DetectDeviceHandler, DetectDeviceListHandler
-     * DetectHumidityHandler,DetectMovementHandler,DetectTemperatureHandler,DetectHeatControlHandler
+     *
+     * DetectSensorHandler          $eventSensorConfiguration       Sensor-Auswertung
+     * DetectHumidityHandler        $eventHumidityConfiguration     Feuchtigkeit-Auswertung
+     * DetectMovementHandler        $eventMoveConfiguration         Bewegung-Auswertung
+     * DetectTemperatureHandler     $eventTempConfiguration         Temperatur-Auswertung
+     * DetectHeatControlHandler     $eventHeatConfiguration         HeatControl-Auswertung
+     * 
      *
      *
      **********************************************/
@@ -1015,7 +1022,11 @@
 			
 		}
 
-/******************************************************************************************************************/
+/*****************************************************************************************************************
+ *
+ *
+ *
+ */
 
 	class DetectMovementHandler extends DetectHandler
 		{
@@ -1999,8 +2010,12 @@
  *      Config, ist die Config aus dem MessageHandler
  *      Homematic, ist das Object eine Homematic Instanz und wenn ja welche
  *
+ * getEventListforDeletion
+ * getAutoEventListTable
  * writeEventListTable
  * findMotionDetection
+ * findSwitches
+ * findButtons
  * sortEventList
  *
  **************************************/
@@ -2032,8 +2047,13 @@ class TestMovement
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
 		$autosteuerung_config=Autosteuerung_GetEventConfiguration();
 	
-		/* IPSComponent mit CustomComponent */ 	
- 		$eventlistConfig = IPSMessageHandler_GetEventConfiguration();
+		/* IPSComponent mit CustomComponent */
+        if (function_exists("IPSMessageHandler_GetEventConfiguration")) $eventlistConfig = IPSMessageHandler_GetEventConfiguration();
+        else $eventlistConfig = array(); 
+        if (function_exists("IPSMessageHandler_GetEventConfigurationCust")) $eventlistConfigCust = IPSMessageHandler_GetEventConfigurationCust();
+        else $eventlistConfigCust = array();
+        $eventlistMerged = $eventlistConfig + $eventlistConfigCust;
+        echo "Overview of registered Events ".sizeof($eventlistConfig)." + ".sizeof($eventlistConfigCust)." = ".sizeof($eventlistMerged)." Eintraege : \n";
 
 		$this->motionDevice=$this->findMotionDetection();							
 		$this->switchDevice=$this->findSwitches();
@@ -2045,7 +2065,7 @@ class TestMovement
 		
 		if ($debug) 
 			{
-			if (false)
+			//if (false)
 				{
 				echo "Liste Motion Devices, Bewegungsmelder Geräte:\n";
 				//print_r($this->motionDevice);
@@ -2070,13 +2090,13 @@ class TestMovement
 		//print_r($movement_config);
 		if (function_exists('IPSDetectTemperatureHandler_GetEventConfiguration'))	
             {
-            if ($debug) echo "    Movement Configuration auslesen.\n";    
+            if ($debug) echo "    Temperature Configuration auslesen.\n";    
             $temperature_config=IPSDetectTemperatureHandler_GetEventConfiguration();
             }
 		else $temperature_config=array();
 		if (function_exists('IPSDetectHumidityHandler_GetEventConfiguration'))		
             {
-            if ($debug) echo "    Temperature Configuration auslesen.\n";    
+            if ($debug) echo "    Humidity Configuration auslesen.\n";    
             $humidity_config=IPSDetectHumidityHandler_GetEventConfiguration();
             }
 		else $humidity_config=array();
@@ -2106,6 +2126,9 @@ class TestMovement
 		$eventlist=array();
 		$this->eventlistDelete=array();		// Sammlung der Events für die es kein Objekt mehr dazu gibt
 		$scriptId  = IPS_GetObjectIDByIdent('IPSMessageHandler_Event', IPSUtil_ObjectIDByPath('Program.IPSLibrary.app.core.IPSMessageHandler'));
+
+		if ($debug) echo " EventID  ".str_pad("Name",75)." Type Parent Instanz   \n";
+
 		$children=IPS_GetChildrenIDs($scriptId);		// alle Events des IPSMessageHandler erfassen
 		foreach ($children as $childrenID)
 			{
@@ -2129,44 +2152,44 @@ class TestMovement
 				else
 					{ /* Objekt für das Event existiert, den Pfad dazu ausgeben */
 					$instanzID=IPS_GetParent($eventID);
-					if ($debug) echo "   ".$eventID."  ".IPS_GetName($instanzID)." Type : ";
+					if ($debug) echo "   ".$eventID."  ".str_pad(IPS_GetName($instanzID)."/".IPS_GetName($eventID),75)." ";
 					$instanz="";
 					switch (IPS_GetObject($instanzID)["ObjectType"])
 						{
 						/* 0: Kategorie, 1: Instanz, 2: Variable, 3: Skript, 4: Ereignis, 5: Media, 6: Link */
 						case 0:
-							if ($debug) echo "Kategorie";
+							if ($debug) echo "Kategorie  ";
 							break;
 						case 1:
 							$instanz=IPS_GetInstance($instanzID)["ModuleInfo"]["ModuleName"];
-							if ($debug) echo "Instanz ";
+							if ($debug) echo "Instanz    ";
 							break;
 						case 2:
-							if ($debug) echo "Variable";
+							if ($debug) echo "Variable   ";
 							break;
 						case 3:	
-							if ($debug) echo "Skript";
+							if ($debug) echo "Skript     ";
 							break;
 						case 4:
-							if ($debug) echo "Ereignis";
+							if ($debug) echo "Ereignis   ";
 							break;
 						case 5:
-							if ($debug) echo "Media";
+							if ($debug) echo "Media      ";
 							break;
 						case 6:
-							if ($debug) echo "Link";
+							if ($debug) echo "Link       ";
 							break;
 						default:
-							echo "unknown";
+							echo "**** Fehler unknown Type";
 							break;
 						}
-					if (IPS_GetObject($eventID)["ObjectType"]==2) 	
+					if (IPS_GetObject($eventID)["ObjectType"]==2)    // Wenn Event vom Typ Variable auch Wert Instanz ID ausgeben 	
 						{
-						if ($debug) echo $instanz."\n";
+						if ($debug) echo $instanzID;
 						}
 					else 	
 						{
-						echo "Fehler, Objekt ist vom Typ keine Variable.   ";
+						echo "**** Fehler, referenzierte EventID ist vom Typ keine Variable.   ";
 						echo "Objekt : ".$eventID." Instanz : ".IPS_GetName($instanzID)." \n ";
 						}
 					$eventlist[$i]["Pfad"]=IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($eventID))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($eventID)))."/".IPS_GetName(IPS_GetParent($eventID));
@@ -2198,9 +2221,15 @@ class TestMovement
 						$eventlist[$i]["Config"]=$eventlistConfig[$eventID_str][1];
 						//print_r($eventlistConfig[$eventID_str]);
 						}
-					else
+					elseif (isset($eventlistConfigCust[$eventID_str]))
 						{
-						if ($debug) echo "Objekt : ".$eventID." Konfiguration nicht vorhanden.\n";
+                        if ($debug) echo "Custom";
+						$eventlist[$i]["Config"]=$eventlistConfigCust[$eventID_str][1];
+						//print_r($eventlistConfig[$eventID_str]);
+						}
+					else {
+						if ($debug) echo "  --> Objekt : ".$eventID." Konfiguration nicht vorhanden.";
+    					$delete++;
 						$eventlist[$i]["Config"]='Error no Configuration available **************.';
 						$this->eventlistDelete[$eventID_str]["Fehler"]=2;
 						$this->eventlistDelete[$eventID_str]["OID"]=$childrenID;						
@@ -2218,8 +2247,14 @@ class TestMovement
 						$switchDevice[$eventID]=false;
 						if ($debug) echo " Homematic Switch";						
                         }     
-					else $eventlist[$i]["Homematic"]="";	
-					
+                    elseif (isset($buttonDevice[$eventID])==true)
+                        {
+						$eventlist[$i]["Homematic"]="Button";
+						$buttonDevice[$eventID]=false;
+						if ($debug) echo " Homematic Button";						
+                        }  					else $eventlist[$i]["Homematic"]="";	
+                    if ($debug) echo "\n";
+
 					if (isset($movement_config[$eventID])==true)
 						{ 
 						$eventlist[$i]["DetectMovement"]=$movement_config[$eventID][1];
@@ -2239,9 +2274,172 @@ class TestMovement
 			IPS_SetPosition($childrenID,$eventID);				
 			}
 		$this->eventlist=$eventlist;
-		if ($delete>0) echo "****Es muessen insgesamt ".$delete." Events geloescht werden, das Objekt auf das sie verweisen gibt es nicht mehr.\n";
+		if ($delete>0) 
+            {
+            echo "****Es muessen insgesamt ".$delete." Events geloescht werden, das Objekt auf das sie verweisen gibt es nicht mehr.\n";
+            print_r($this->eventlistDelete);
+            }
+        // return ($this->eventlistDelete);      // kein return von einem construct
 		}	
+
+	/**********************************
+	 *
+	 * es gibt Events in der IPS_MessageHandler Konfigurationsdatei/function denen keine eigene Konfiguration zugeordnet ist
+	 * berücksichtigt sowohl Configuration als auch ConfigurationCust
+	 *
+	 *******************************/
 	
+	public function getEventListforDeletion() 
+		{	
+        return ($this->eventlistDelete);
+        }
+
+	/**********************************
+	 *
+	 * erst einmal alle Events von IP Symcon auslesen und in einem
+     * wieder neuen Format ausgeben
+	 *
+	 *******************************/
+
+	public function getEventListfromIPS($filter="",$debug=false) 
+		{	
+        $resultEventList=array();
+
+        /* Alle Events einsammeln und strukturieren */
+        $alleEreignisse = IPS_GetEventList();
+        $index=0;
+        foreach ($alleEreignisse as $ereignis)
+            {
+            if ( ($filter == "") || ($filter == IPS_GetName(IPS_GetParent($ereignis))) )
+                {
+                $resultEventList[$index]["OID"]=$ereignis;
+                $resultEventList[$index]["Name"]=IPS_GetName($ereignis);
+                $resultEventList[$index]["Pfad"]=IPS_GetName(IPS_GetParent($ereignis))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($ereignis)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis))))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent(IPS_GetParent($ereignis)))));
+                $details=IPS_GetEvent($ereignis);
+                //print_r($details);
+                switch ($details["EventType"])
+                    {
+                    case 0:
+                        $resultEventList[$index]["Type"]="Auslöser";
+                        break;
+                    case 1:
+                        $resultEventList[$index]["Type"]="Zyklisch";
+                        break;
+                    case 2:
+                        $resultEventList[$index]["Type"]="Wochenplan";
+                        break;
+                    }
+                $resultEventList[$index]["LastRun"]=$details["LastRun"];
+                //$resultEventList[$index]["EventConditions"]=$details["EventConditions"];
+                $resultEventList[$index]["TriggerVariableID"]=$details["TriggerVariableID"];
+                $script=str_replace("\n","",$details["EventScript"]);
+                $resultEventList[$index]["Script"]=$script;
+                $index++;
+                }
+            }
+        if ($debug) echo "testMovement::getEventListfromIPS mit Filter \"$filter\" wurden aus ".count($alleEreignisse)." insgesamt ".count($resultEventList)." Eintraege.\n";
+        return ($resultEventList);
+        }
+
+    public function getComponentEventListTable($resultEventList,$filter="",$htmlOutput=false,$debug=false)
+        {
+        /* das Ergebnis der Events in resultEventList auswerten */
+		$html="";
+		$html.="<style>";
+		$html.='#customers { font-family: "Trebuchet MS", Arial, Helvetica, sans-serif; font-size: 12px; color:black; border-collapse: collapse; width: 100%; }';
+		$html.='#customers td, #customers th { border: 1px solid #ddd; padding: 8px; }';
+		$html.='#customers tr:nth-child(even){background-color: #f2f2f2;}';
+		$html.='#customers tr:nth-child(odd){background-color: #e2e2e2;}';
+		$html.='#customers tr:hover {background-color: #ddd;}';
+		$html.='#customers th { padding-top: 10px; padding-bottom: 10px; text-align: left; background-color: #4CAF50; color: white; }';
+		$html.="</style>";
+	
+		$html.='<table id="customers" >';
+		$html.="<tr><th>#</th><th>OID</th><th>Name</th><th>ObjektID</th><th>Objektpfad/Fehler</th><th>Objektname</th><th>Module</th><th>Funktion</th><th>Konfiguration</th><th>Homematic</th><th>Detect Movement</th><th>Autosteuerung</th></tr>";
+
+        $result=array();
+        if ($htmlOutput) $echo=false;
+        else $echo=true;
+
+        if ($echo) echo str_pad(" #",3)." ".str_pad("OID",6).str_pad("Name",40)."\n";
+        $delete=array();
+        foreach ($resultEventList as $index => $entry)
+            {
+            if ($echo) echo str_pad($index,3)." ".str_pad($entry["OID"],6);
+			$html.="<tr><td>".$index."</td><td>".$entry["OID"]."</td>";
+            $result[$index]["OID"]=$entry["OID"];
+            if ($filter == "IPSMessageHandler_Event")
+                {
+                $trigger=$entry["TriggerVariableID"];
+                if ($echo) echo str_pad($entry["Name"],15)." ";
+                $html.="<td>".$entry["Name"]."</td>";
+                $result[$index]["Name"]=$entry["Name"];
+                $info=@IPS_GetVariable($trigger);
+                if ($info !== false) 
+                    {
+                    $path=IPS_GetName($trigger)."/".IPS_GetName(IPS_GetParent($trigger));
+                    if ($echo) echo str_pad($path,40)."  ";
+                    $html.="<td>$path</td>";
+                    $result[$index]["Pfad"]=$path;
+                    }
+                else 
+                    {
+                    if ($echo) echo str_pad("==> Variable nicht mehr vorhanden.",40)."  ";
+                    $html.="<td>==> Variable nicht mehr vorhanden.</td>";
+                    $delete[$entry["OID"]]=true;
+                    }
+                if (isset($eventlist[$trigger])) 
+                    {
+                    if ($echo) echo str_pad($eventlist[$trigger][1],50);
+                    $html.="<td>".$eventlist[$trigger][1]."</td>";
+                    }
+                else 
+                    {
+                    if ($echo) echo str_pad("-----",50);
+                    $html.="<td>------</td>";
+                    }
+                }
+            else 
+                {
+                if ($echo) echo str_pad($entry["Name"],40)." ";
+                $html.="<td>".$entry["Name"]."</td>";
+                }
+            if ($entry["LastRun"]==0) 
+                {
+                if ($echo) echo str_pad("nie",20);
+                $html.="<td>nie</td>";
+                }
+            else 
+                {
+                $timePassed=time()-$entry["LastRun"];
+                if ($echo) echo str_pad("vor ".nf($timePassed,"s"),20);
+                $html.="<td>vor ".nf($timePassed,"s")."</td>";
+                //echo str_pad(date("Y.m.d H:i:s",$entry["LastRun"]),20);
+                }
+            if ($echo) echo "  ".str_pad($entry["Pfad"],80)."  ".str_pad($entry["Type"],14)."   ".str_pad($entry["Script"],44)."   "."\n";;
+            $html.="<td>".$entry["Pfad"]."</td><td>".$entry["Type"]."</td><td>".$entry["Script"]."</td></tr>";
+            }
+
+        /* eventuell veraltete unbenutzte Events loeschen */
+        if (sizeof($delete)>0)
+            {
+            echo "Folgende Events loeschen:\n";
+            //print_r($delete);
+            foreach ($delete as $oid => $state)
+                {
+                $eventName=IPS_GetName($oid);
+                $event=explode("_",$eventName)[1];
+                //echo "   $oid $eventName $event ".IPS_GetName($event)."\n";
+                echo "   $oid $eventName $event \n";
+                $messageHandler->UnRegisterEvent($event);
+                IPS_DeleteEvent($oid);
+                }
+            }
+		$html.="</table>";
+		if ($htmlOutput) return($html);
+        else return($result);
+        }
+
 	/**************************************************
 	 *
 	 * nicht nur die CustomComponents Events bearbeiten, sondern auch Autosteuerungs Events anschauen, hier die Liste erstellen
@@ -2465,6 +2663,7 @@ class TestMovement
     /*******************************
      *
      * Geräte mit Bewegungserkennung finden
+     * nutzt dazu die in EvaluateHardware_Include Datei gespeicherten HomematicList und FS20List
      *
      **************************************************************/
 

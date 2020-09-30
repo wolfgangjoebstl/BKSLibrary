@@ -194,6 +194,7 @@
 	 * in Visualization werden nur Links angelegt
 	 */
 
+	$AstroLinkID=CreateVariable("htmlAstroTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	$TestLinkID=CreateVariable("htmlTestTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	$FrameLinkID=CreateVariable("htmlFrameTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 		
@@ -386,6 +387,7 @@
 		CreateLinkByDestination("Weblinks", $WebLinkID, $categoryId_WebFrontAdministrator,  10,"");
 		CreateLinkByDestination("FrameTest", $FrameLinkID, $categoryId_WebFrontAdministrator,  100,"");		
 		CreateLinkByDestination("JavaTest", $TestLinkID, $categoryId_WebFrontAdministrator,  1000,"");
+		CreateLinkByDestination("AstroTest", $AstroLinkID, $categoryId_WebFrontAdministrator,  1000,"");
 		}
 
 /********************************************************************/

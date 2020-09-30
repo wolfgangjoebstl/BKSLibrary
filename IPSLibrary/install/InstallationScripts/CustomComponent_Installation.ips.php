@@ -28,8 +28,10 @@
 	 *  Version 2.50.1, 07.12.2014<br/>
 	 **/
 
-    $noinstall=false;        /* keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
-    $startexec=microtime(true);     /* Laufzeitmessung */
+    $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
+    $evaluateHardware=false;                /* false, keine EvaluateHardware aufgerufen für die Aktualisierung */
+    //$startexec=microtime(true);             /* Laufzeitmessung */
+    $startexec=startexec("s");              /* Laufzeitmessung */
 
     /*******************************
     *
@@ -102,15 +104,18 @@
 	 * dauert halt auch etwas.
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	$moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
-	$CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
-	echo "\n";
-	echo "Die EvaluateHardware Scripts sind auf               ".$CategoryIdAppEH."\n";
-	$scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
-	echo "Evaluate Hardware hat die ScriptID                  ".$scriptIdEvaluateHardware." \n";
-	IPS_RunScriptWait($scriptIdEvaluateHardware);
-	echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	
+    if ($evaluateHardware)
+        {
+        $moduleManagerEH = new IPSModuleManager('EvaluateHardware',$repository);
+        $CategoryIdAppEH      = $moduleManagerEH->GetModuleCategoryID('app');	
+        echo "\n";
+        echo "Die EvaluateHardware Scripts sind auf               ".$CategoryIdAppEH."\n";
+        $scriptIdEvaluateHardware   = IPS_GetScriptIDByName('EvaluateHardware', $CategoryIdAppEH);
+        echo "Evaluate Hardware hat die ScriptID                  ".$scriptIdEvaluateHardware." \n";
+        IPS_RunScriptWait($scriptIdEvaluateHardware);
+        echo "Script Evaluate Hardware wurde gestartet und bereits abgearbeitet. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
+        }
+
     /*******************************
     *
     * Webfront Vorbereitung
@@ -894,7 +899,8 @@ if ($noinstall==false)
 	 ****************************************************************************************************************/
 
     
-
+echo "CustomCompenent Installation abgeschlossen. Optionen : ".($noinstall?"Kiene Installation der Components":"Installatione der Componenets")."  \n";
+echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";
 
 
 ?>

@@ -96,9 +96,9 @@
 	 * @param int $groupId ID des Gruppen Schalters
 	 * @param bool $value Neuer Wert der Gruppe
 	 */
-	function IPSHeat_SetGroup($groupId, $value, $debug=false) {
+	function IPSHeat_SetGroup($groupId, $value, $debug=false, $exectime=false) {
 		$lightManager = new IPSHeat_Manager();
-		$lightManager->SetGroup($groupId, $value, true, true, $debug);
+		$lightManager->SetGroup($groupId, $value, true, true, $debug,$exectime);
 	}
 
 	/**
