@@ -16,7 +16,14 @@
  *
  * class ipsobject
  *
- * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten.
+ * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten. Wird nicht mehr oft verwendet.
+ *
+ * nicht für neue Verwendung geeignet
+ *
+ *  __construct
+ *  oprint
+ *  oparent
+ *  osearch
  *
  **************************************************************/
 
@@ -133,28 +140,85 @@ class ipsobject
  *
  *      html        wenn ID ungleich false wird dort eine html tabelle mit den selben Nachrichten geschrieben.
  *
+ * Folgende Funktionen stehen zur Verfügung:
+ *
+ *  __construct
+ *  GetComponentParams
+ *  GetComponent
+ *  GetEreignisID
+ *  CreateCategoryAuswertung
+ *  CreateCategoryNachrichten
+ *  getVariableName
+ *  setVariableLogId
+ *  setVariableId
+ *  RemoteLogValue
+ *  LogMessage
+ *  LogNachrichten
+ *  PrintNachrichten
+ *  CreateZeilen
+ *  shiftZeile
+ *  shiftZeileDebug
+ *  IPSpathinfo
+ *  status
+ *
+ *
  ****************************************************************/
 
 class Logging
 	{
-	private $log_File="Default";
-	private $script_Id="Default";
-	private $nachrichteninput_Id="Default";
-    private $storeTableID = false;              /* ermöglicht längere Speichertiefen für Nachrichten */
 
-	private $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
-    private $zeile=array();                     /* Nachrichteninput Objekte OIDs */
-    private $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
-    private $config=array();                    /* interne Konfiguration */
+    /* init at construct */
+    protected       $installedmodules;
+	private         $prefix;							/* Zuordnung File Log Data am Anfang nach Zeitstempel */
+	private         $log_File="Default";
+	private         $nachrichteninput_Id="Default";
+    private         $config=array();                    /* interne Konfiguration */
+    private         $zeile=array();                     /* Nachrichteninput Objekte OIDs */
+    private         $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
+    private         $storeTableID = false;              /* ermöglicht längere Speichertiefen für Nachrichten */
+
+    /* init at do_init_xxxx */
+    protected       $configuration;
+    // $variable                                        // definiert in children class
+    protected       $variablename;
+    protected       $CategoryIdData;
+	protected       $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+
+
+	private $script_Id="Default";
+
 
     /* wird bereits in den children classes verwendet und dort initialisiert */
 
-    protected $installedmodules;
     protected $DetectHandler;               /* DetectMovement/Humidity ... ist auch ein Teil der Aktivitäten */
     protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
-	
+
+    private     $variableProfile, $variableType, $Type;        // Eigenschaften der input Variable auf die anderen Register clonen        
+    protected   $AuswertungID;              /* wird bei der Gesamtauswertung benötigt */
+    private     $NachrichtenID;             /* Auswertung für Custom Component, wird al sprivate Variable als ergebnis übergeben */
+    
+    /* von do_init_xxx initialisiert */
+    protected $filename; 
+
+    /* zusaetzliche Variablen für DetectMovement Funktionen, Detect Movement ergründet Bewegungen im Nachhinein */
+    protected $GesamtID, $GesamtCountID, $EreignisID;
+    protected $variableLogID, $variableDelayLogID;
+
+    /* wichtige interne Variablen werden angelegt
+     *
+     * installedmodules     wird auch in den childrens verwendet, daher parallele Initialisierung auch in den Childrens
+     * prefix               nur lokal
+     * log_file             nur lokal
+     * nachrichteninput_Id  nur lokal
+     * config               nur lokal
+     *
+     *
+     */
+
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
+        $this->installedmodules=$moduleManager->GetInstalledModules();			
 		//echo "Logfile Construct\n";
 		$this->prefix=$prefix;
 		//$this->log_File=$logfile;
@@ -219,8 +283,6 @@ class Logging
 			}
 		else
 			{
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-			$this->installedmodules=$moduleManager->GetInstalledModules();			
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
 			echo "  Kategorien im Datenverzeichnis Custom Components: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
@@ -329,24 +391,423 @@ class Logging
         }
 
 
+    /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
+        * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+        */
+
+    public function do_init_motion($variable, $variablename, $value,$debug=false)
+        {
+        if ($debug) echo "IPSComponentSensor_Motion, HandleEvent für Motion VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert : ".($value?"Bewegung":"Still")." \n";
+        IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Motion VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Bewegung":"Still"));
+        if ($debug) echo "      Aufruf do_init_motion:\n";
+        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt 
+        $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        /* Konfiguration einlesen, ob zusätzliche Spiegelregister mit Delay notwendig sind */ 
+        $this->configuration=get_IPSComponentLoggerConfig();
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $name="MotionMirror_".$this->variablename;
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->Type,$this->variableProfile);       /* 2 float ~Temperature*/
+
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Bewegung",$this->CategoryIdData);;
+
+        echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
+        $this->do_setVariableLogID($variable,$debug);
+        $this->variableDelayLogID = $this->variableLogID;                                                                                       // sicherheitshalber, kann später noch überschrieben werden.
+        
+        /* DetectMovement Spiegelregister und statische Anwesenheitsauswertung, nachtraeglich */
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* nur wenn Detect Movement installiert ist ein Motion Log fuehren */
+            $this->DetectHandler->Set_MoveAuswertungID($this->AuswertungID);
+            $CategoryIdData     = $this->DetectHandler->Get_CategoryData();
+            /* DetectMovement Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
+            //echo "  Datenverzeichnis Category Data :".$CategoryIdData."\n";
+            $name="Motion-Nachrichten";
+            $vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
+            if ($vid==false)
+                {
+                $vid = IPS_CreateCategory();
+                IPS_SetParent($vid, $CategoryIdData);
+                IPS_SetName($vid, $name);
+                IPS_SetInfo($vid, "this category was created by script. ");
+                }
+            $this->motionDetect_NachrichtenID=$vid;
+
+            $name="Motion-Detect";
+            $mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+            if ($mdID==false)
+                {
+                echo "Create Motion-Detect Kategorie in $CategoryIdData.\n";
+                $mdID = IPS_CreateCategory();
+                IPS_SetParent($mdID, $CategoryIdData);
+                IPS_SetName($mdID, $name);
+                IPS_SetInfo($mdID, "this category was created by script. ");
+                }
+            $this->motionDetect_DataID=$mdID;
+
+            if ($variable<>null)
+                {
+                //echo "Construct Motion Logging for DetectMovement, Uebergeordnete Variable : ".$this->variablename."\n";
+                $directory=$this->configuration["LogDirectories"]["MotionLog"];
+                $dosOps= new dosOps();
+                $dosOps->mkdirtree($directory);
+                $filename=$directory.$this->variablename."_Motion.csv";
+
+                $variablenameEreignis=str_replace(" ","_",$this->variablename)."_Ereignisspeicher";
+                $this->EreignisID=CreateVariableByName($this->motionDetect_DataID,$variablenameEreignis,3,'', null, 100, null );
+                echo "       Ereignisspeicher aufsetzen        : ".$this->EreignisID." \"$variablenameEreignis\"\n";
+
+                /* Spiegelregister für Bewegung mit Delay, wenn DetectMovement installiert ist */
+                echo '       Spiegelregister (Delay) erstellen : Basis ist '.$variable.' Name "'.$this->variablename.'" in '.$this->motionDetect_DataID." (".IPS_GetName($this->motionDetect_DataID).")\n";
+                $variableDelayLogID=@IPS_GetObjectIDByName($this->variablename,$this->motionDetect_DataID);
+                if ( ($variableDelayLogID===false) || (AC_GetLoggingStatus($this->archiveHandlerID,$variableDelayLogID)==false) || (AC_GetAggregationType($this->archiveHandlerID,$variableDelayLogID) != 0) )
+                    {
+                    echo "        --> noch nicht vorhanden. Variable Name ".$this->variablename." muss erstellt oder adaptiert werden.\n"; 
+                    /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
+                    $this->variableDelayLogID=CreateVariableByName($this->motionDetect_DataID, $this->variablename,0,'~Motion',null,10,null );
+                    AC_SetLoggingStatus($this->archiveHandlerID,$this->variableDelayLogID,true);
+                    AC_SetAggregationType($this->archiveHandlerID,$this->variableDelayLogID,0);      /* normaler Wwert */
+                    IPS_ApplyChanges($this->archiveHandlerID);
+                    }
+                else $this->variableDelayLogID=$variableDelayLogID;    					
+                }
+            /* CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0) */
+            $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereignisspeicher",3, '', null,10000,null );
+            $this->GesamtID=$erID;
+            //echo "  Gesamt Ereignisspeicher aufsetzen : ".$erID." \n";
+            $erID=CreateVariableByName($this->motionDetect_DataID,"Gesamt_Ereigniszaehler",1, '', null,10000,null );
+            $this->GesamtCountID=$erID;
+            //echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
+            }
+
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+        else $directory="C:/Scripts/Switch/";
+        $dosOps= new dosOps();
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Bewegung.csv";                
+        return("Ohne");
+        }
+
+    /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
+        * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+        */
+
+    public function do_init_brightness($variable, $variablename,$value, $debug=false)
+        {
+        if ($debug) echo "IPSComponentSensor_Motion, HandleEvent für Brightness VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert $value : ".GetValueIfFormatted($variable)." \n";
+        IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Brightness VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert $value : '.GetValueIfFormatted($variable));
+        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectBrightnessHandler();  // für getVariableName benötigt 
+        $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        if ($debug) echo "   Aufruf do_init_brightness Variablenname abgeändert von $variablename auf ".$this->variablename.":\n";
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $name="HelligkeitMirror_".$this->variablename;
+        if ($debug) echo "      CreateVariableByName at ".$this->mirrorCatID." (".IPS_GetName($this->mirrorCatID).") mit Name \"$name\" Type ".$this->Type." Profile ".$this->variableProfile." Variable available : ".(@IPS_GetVariableIDByName($name, $this->mirrorCatID)?"Yes":"No")." \n";
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->Type,$this->variableProfile);       /* 2 float ~Temperature*/
+
+        if ($debug) echo "      Create Category to store the Move-LogNachrichten und Spiegelregister in ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData)."):\n";	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
+        if ($debug) echo "         done ".$this->NachrichtenID. "(".IPS_GetName($this->NachrichtenID).") und ".$this->AuswertungID." (".IPS_GetName($this->AuswertungID).").\n";
+        
+        echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
+        $this->do_setVariableLogID($variable,$debug);
+
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+        else $directory="C:/Scripts/Switch/";
+        $dosOps= new dosOps();
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Helligkeit.csv";    
+        return($this->NachrichtenID);  
+        }
+
+    /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
+        * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+        */
+
+    public function do_init_contact($variable, $variablename, $value,$debug=false)
+        {
+        if ($debug) echo "IPSComponentSensor_Motion, HandleEvent für Contact VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert $value: ".GetValueIfFormatted($variable)." \n";
+        IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für Contact VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert $value: '.GetValueIfFormatted($variable));
+        if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectContactHandler();  // für getVariableName benötigt   <--- change here 
+        $this->variablename = $this->getVariableName($variable, $variablename, $debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+        if ($debug) echo "   Aufruf do_init_contact Variablenname abgeändert von $variablename auf ".$this->variablename.":\n";
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        //echo "  Kategorien im Datenverzeichnis : ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData).").\n";
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $name="KontaktMirror_".$this->variablename;
+        if ($debug) echo "      CreateVariableByName at ".$this->mirrorCatID." (".IPS_GetName($this->mirrorCatID).") mit Name \"$name\" Type ".$this->Type." Profile ".$this->variableProfile." Variable available : ".(@IPS_GetVariableIDByName($name, $this->mirrorCatID)?"Yes":"No")." \n";
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->Type,$this->variableProfile);       /* 2 float ~Temperature*/
+
+        if ($debug) echo "      Create Category to store the Move-LogNachrichten und Spiegelregister in ".$this->CategoryIdData." (".IPS_GetName($this->CategoryIdData)."):\n";	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Kontakt",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Kontakt",$this->CategoryIdData);;
+        if ($debug) echo "         done ".$this->NachrichtenID. "(".IPS_GetName($this->NachrichtenID).") und ".$this->AuswertungID." (".IPS_GetName($this->AuswertungID).").\n";
+        
+        echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
+        $this->do_setVariableLogID($variable,$debug);
+
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+        else $directory="C:/Scripts/Switch/";
+        $dosOps= new dosOps();
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Kontakt.csv";    
+        return($this->NachrichtenID);  
+        }
+
+    /* Initialisierung für Temperature */
+
+    public function do_init_temperature($variable, $variablename)
+        {
+        /**************** installierte Module und verfügbare Konfigurationen herausfinden */
+        if ($this->debug) echo "   Aufruf  do_init_temperature($variable, $variablename).\n";
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedmodules=$moduleManager->GetInstalledModules();
+
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Temperaturen agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectTemperatureHandler();
+            }
+
+        $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovemet Config oder selber bestimmen
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+
+        $name="TemperatureMirror_".$this->variablename;
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
+        if ($this->debug) echo "    Temperatur_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
+        
+        /* Create Category to store the LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Temperatur",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Temperatur",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        if ($this->debug) echo "   Uebergeordnete Variable : ".$this->variablename."\n";
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["TemperatureLog"]))
+                { $directory=$directories["LogDirectories"]["TemperatureLog"]; }
+        else {$directory="C:/Scripts/Temperature/"; }	
+        $dosOps= new dosOps();              
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Temperature.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }    
+
+
+    /* Initialisierung für Feuchtigkeit */
+
+    public function do_init_humidity($variable, $variablename)
+        {
+        /**************** installierte Module und verfügbare Konfigurationen herausfinden */
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedmodules=$moduleManager->GetInstalledModules();
+
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Feuchtigkeiten agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectHumidityHandler();
+            }
+
+        $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);                
+        $name="HumidityMirror_".$this->variablename;
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
+
+        /* Create Category to store the LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Feuchtigkeit",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Feuchtigkeit",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$variablename."\n";
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["HumidityLog"]))
+                { $directory=$directories["LogDirectories"]["HumidityLog"]; }
+        else {$directory="C:/Scripts/Sensor/"; }	
+        $dosOps= new dosOps();              
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Feuchtigkeit.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
+    /* Initialisierung für Sensor */
+
+    public function do_init_sensor($variable, $variablename)
+        {
+        /**************** installierte Module und verfügbare Konfigurationen herausfinden */
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedmodules=$moduleManager->GetInstalledModules();
+
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Sensorwerte agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
+            }
+
+        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $name="SensorMirror_".$this->variablename;
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
+        echo "    Sensor_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
+        
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["SensorLog"]))
+                { $directory=$directories["LogDirectories"]["SensorLog"]; }
+        else {$directory="C:/Scripts/Sensor/"; }	
+        $dosOps= new dosOps(); 
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Sensor.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
+    /* Initialisierung für besonderen Climate Sensor */
+
+    public function do_init_climate($variable, $variablename)
+        {
+        /**************** installierte Module und verfügbare Konfigurationen herausfinden */
+        $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
+        $this->installedmodules=$moduleManager->GetInstalledModules();
+
+        if (isset ($this->installedmodules["DetectMovement"]))
+            {
+            /* Detect Movement kann auch Sensorwerte agreggieren */
+            IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+            IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+            $this->DetectHandler = new DetectClimateHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
+            }
+
+        $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
+
+        /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $name="ClimateMirror_".$this->variablename;
+        $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
+        echo "    Climate_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
+        
+        /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Climate",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Climate",$this->CategoryIdData);
+        $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
+
+        /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
+        //echo "Uebergeordnete Variable : ".$this->variablename."\n";
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["ClimateLog"]))
+                { $directory=$directories["LogDirectories"]["ClimateLog"]; }
+        else {$directory="C:/Scripts/Sensor/"; }	
+        $dosOps= new dosOps(); 
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory.$this->variablename."_Sensor.csv";
+        return($this->NachrichtenID);               // nur als Private deklariert
+        }
+
+    /* wird beim construct aufgerufen, wenn keine Variable übergeben wurde.
+        * Klasse wird für Statistische Auswertungen verwendet.
+        */
+
+    public function do_init_statistics()
+        {
+        echo "      Aufruf do_init_statistics:\n";
+        /**************** Speicherort für Nachrichten und Spiegelregister definieren */		
+        $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+        $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
+        $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
+        $this->NachrichtenID=$this->CreateCategoryNachrichten("Helligkeit",$this->CategoryIdData);
+        $this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
+        $directories=get_IPSComponentLoggerConfig();
+        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
+        else $directory="C:/Scripts/Switch/";
+        $dosOps= new dosOps();
+        $dosOps->mkdirtree($directory);
+        $this->filename=$directory."Statistik.csv";      
+        }
+
+    /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
+    * kann nicht diesselbe class sein, da this verwendet wird
+    */
+
+    private function do_setVariableLogID($variable,$debug=false)
+        {
+        if ($variable<>Null)
+            {
+            $this->variable=$variable;
+            $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->Type,$this->variableProfile,$debug);                   // $this->variableLogID schreiben
+            if ($debug) echo "Aufruf setVariableLogId(".$this->variable.",".$this->variablename.",".$this->AuswertungID.") mit Ergebnis ".$this->variableLogID."\n";
+            IPS_SetHidden($this->variableLogID,false);
+            }
+        else echo "do_setVariableLogID failed.\n";
+        return ($this->variableLogID);
+        }
+
     /*
         * wird in construct und Set_LogValue verwendet
         */
 
     public function getVariableName($variable,$variablename=Null,$debug=false)    
         {
-        //echo "Logging:getVariableName aufgerufen.\n"; print_r($this->installedmodules); print_r($this->DetectHandler);
+        if ($debug) 
+            {
+            echo "Logging:getVariableName aufgerufen.\n"; 
+            //print_r($this->installedmodules); 
+            //print_r($this->DetectHandler);
+            }
         /****************** Variablennamen für Spiegelregister von DetectMovement übernehmen oder selbst berechnen */
         if ( (isset ($this->installedmodules["DetectMovement"])) && ($this->DetectHandler !== Null) )
             {
-            $moid=$this->DetectHandler->getMirrorRegister($variable);
+            if ($debug) echo "Aufruf DetectHandler->getMirrorRegister($variable).\n";
+            $moid=$this->DetectHandler->getMirrorRegister($variable,$debug);
             if ( ($variablename==Null) && ($moid !== false) ) 
                 {
                 $variablename=IPS_GetName($moid);
-                if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (from config)\n";
+                if ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename/".IPS_GetName(IPS_GetParent($moid))."\" $moid   (from config)\n";
                 }
             elseif ($debug) echo "      getVariableName: DetectMovement installiert. Spiegelregister Name : \"$variablename\" $moid  (default)\n";
             }
+        elseif (isset ($this->installedmodules["DetectMovement"]) ) echo "Unknown DetectHandler.\n";
         if ($variablename==Null)
             {
             $result=IPS_GetObject($variable);
@@ -418,33 +879,33 @@ class Logging
         return($variableLogID);                    
         }
 
-        /*
-         * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
-         */
+    /*
+        * Wert auf die konfigurierten remoteServer laden, gemeinsame Funktion im Component
+        */
 
-        public function RemoteLogValue($value, $remServer, $RemoteOID )
+    public function RemoteLogValue($value, $remServer, $RemoteOID )
+        {
+        if ($RemoteOID != Null)
             {
-			if ($RemoteOID != Null)
-				{
-				$params= explode(';', $RemoteOID);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					//echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$remServer[$para[0]]["Url"];
-						if ($remServer[$para[0]]["Status"]==true)
-							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}
+            $params= explode(';', $RemoteOID);
+            foreach ($params as $val)
+                {
+                $para= explode(':', $val);
+                //echo "Wert :".$val." Anzahl ",count($para)." \n";
+                if (count($para)==2)
+                    {
+                    $Server=$remServer[$para[0]]["Url"];
+                    if ($remServer[$para[0]]["Status"]==true)
+                        {
+                        $rpc = new JSONRPC($Server);
+                        $roid=(integer)$para[1];
+                        //echo "Server : ".$Server." Name ".$para[0]." Remote OID: ".$roid."\n";
+                        $rpc->SetValue($roid, $value);
+                        }
+                    }
+                }
             }
+        }
 
 
 
@@ -460,12 +921,11 @@ class Logging
 			}
 		}
 
-	function LogNachrichten($message)
+	function LogNachrichten($message, $debug=false)
 		{
-        //echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." den Wert $message speichern. \n"; 
+        if ($debug) echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern. \n"; 
 		if ($this->nachrichteninput_Id != "Ohne")
 		    {
-			//echo "Nachrichtenverlauf auf  ".$this->nachrichteninput_Id."   \n";
 			SetValue($this->zeile16,GetValue($this->zeile15));
 			SetValue($this->zeile15,GetValue($this->zeile14));
 			SetValue($this->zeile14,GetValue($this->zeile13));

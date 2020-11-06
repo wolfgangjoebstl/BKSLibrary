@@ -160,15 +160,12 @@
 
 	class Switch_Logging extends Logging
 		{
-		private $variable;
-		private $variablename;
-		private $variableLogID;
+		//private $variable, $variableLogID;
 
-		private $SwitchAuswertungID;
-		private $SwitchNachrichtenID;
+		//private $SwitchAuswertungID;
+		//private $SwitchNachrichtenID;
 
-		private $configuration;
-        private $CategoryIdData;
+		// $configuration, $variablename, $CategoryIdData
 
 		protected $installedmodules;              /* installierte Module */
         protected $DetectHandler;		        /* Unterklasse */        

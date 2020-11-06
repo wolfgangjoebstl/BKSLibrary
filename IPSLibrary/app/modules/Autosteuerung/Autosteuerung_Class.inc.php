@@ -821,9 +821,12 @@ class AutosteuerungConfigurationHandler extends AutosteuerungConfiguration
  *
  * Routinen für den Betrieb
  *      getConfig
+ *      MonitorStatus
+ *      getLogicMonitorConf
  *      Anwesend
  *      setLogicAnwesend
  *      getLogicAnwesend
+ *      colorCodeAnwesenheit
  *      writeTopologyTable
  *      getGeofencyInformation
  *
@@ -863,9 +866,151 @@ class AutosteuerungOperator
 		return($this->logicAnwesend);
 		}
 
+
+    /*
+     * Im Configfile gibt es eine Möglichkeit den gewünschten Status des Monitors (Ein/Aus) aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
+     * Das ist die schnellste Art Monitor Ein/Aus zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
+     *
+     *
+     */
+
+	public function MonitorStatus($debug=false)
+        {
+		$result=false;
+		$config=$this->getLogicMonitorConf($debug);           // angepasste, standardisierte Konfiguration
+		$operator="";
+        if ($debug) echo "AutosteuerungOperator::MonitorStatus Berechnung nach Formel: ".json_encode($config)."\n";
+		foreach($config as $type => $operation)
+			{
+            if ($debug) echo "   Operator $type :".json_encode($operation)."\n";
+			if (strtoupper($type) == "OR")
+				{
+				$operator.="OR";
+				foreach ($operation as $oid=>$formula)
+					{
+                    $name=IPS_GetName($oid);
+                    if (is_array($formula)) 
+                        {
+                        foreach ($formula as $operator => $value)
+                            {
+                            $valueStored=GetValue($oid);
+                            switch (strtoupper($operator))
+                                {
+                                case "EQ":
+                                    if ($valueStored==$value)
+                                        {
+                                        //echo "Equal result true for $name with value ".($valueStored?"true":"false")."\n";
+                                        if ($debug) echo "      Equal result true for $name with value ".GetValueIfFormatted($oid)."\n";
+                                        $result=true;
+                                        }
+                                    else 
+                                        {
+                                        if ($debug) echo "      Equal result false for $name with value ".GetValueIfFormatted($oid)."\n";
+                                        }
+                                    break;
+                                default:
+                                    echo "AutosteuerungOperator::MonitorStatus kenne Befehl $operator nicht.\n";
+                                    break;    
+                                }
+                            }
+                        }
+                    else
+                        {   
+                        $result = $result || GetValueBoolean($oid);
+                        $operator.=" $name ($formula)";
+					    //echo "Operation OR for OID : ".$oid." ".GetValue($oid)." Result : ".$result."\n";
+                        }
+					}
+				}
+			elseif (strtoupper($type) == "AND")
+				{
+				$operator.=" AND";				
+				foreach ($operation as $oid=>$formula)
+					{
+                    $name=IPS_GetName($oid);
+                    if (is_array($formula)) 
+                        {
+
+                        }
+                    else
+                        {
+                        $result = $result && GetValue($oid);
+                        $operator.=" $name ($formula)";
+					    //echo "Operation AND for OID : ".$oid." ".GetValue($oid)." ".$result."\n";
+                        }
+					}
+				}
+			}
+        if ($debug) echo "   AutosteuerungOperator: Sollstatus Monitor Auswertung: $operator = ".($result?"Ein":"Aus")."   ($result)\n";
+		IPSLogger_Dbg(__file__, 'AutosteuerungOperator: Sollstatus Monitor Auswertung: '.$operator.'.= '.($result?"Ein":"Aus"));
+		return ($result);				
+        }
+
+    /* get Logic Monitor Configuration
+     * Analyse der entsprechenden Konfiguration und abspeichern in einem class object
+     * Switchname und Condition müssen mindestens vorhanden sein 
+     * dient zur Entkopplung der Konfiguration von den internen Prozessen
+     * keine automatische Delayed Funktion, Objekt muss dezidiert angegeben werden
+     *
+     */ 
+
+	public function getLogicMonitorConf($debug=false)
+		{
+		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
+        $config=array();
+        if (function_exists("Autosteuerung_MonitorMode"))
+            {
+            $configMonitor=Autosteuerung_MonitorMode();
+            /* Vervollständigung der Konfiguration */            
+            if ($debug) echo "MonitorMode Konfiguration analysieren:\n";
+            if (isset($configMonitor["Condition"]) )
+                {
+                $configCondition=$configMonitor["Condition"];
+                foreach($configCondition as $type => $operation)
+                    {
+                    switch (strtoupper($type))
+                        {
+                        case "OR":
+                        case "AND":
+                            if ($debug) echo "  Type $type erkannt, analysiere : ".json_encode($operation)."\n";
+                            foreach ($operation as $index => $oid)
+                                {
+                                if (is_array($oid))             // array("x" => 1,"y" => 1,"ShortName" => "AZ")
+                                    {
+                                    //$name=IPS_GetName($index);
+                                    if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index))).").\n";
+                                    //$config[$type][$index] = $oid;
+                                    foreach ($oid as $pos => $entry) 
+                                        {
+                                        $config[$type][$index][$pos] = $entry;
+                                        }
+                                    }
+                                else
+                                    {               // wenn kein array definiert nix übernehmen
+                                    if ($debug) 
+                                        {
+                                        echo " --> kein Array, Topology hinzufuegen.\n";
+                                        echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid))).").\n";	
+                                        }
+                                    }
+                                }
+                            unset($operation);
+                            break;
+                        default:
+                            echo "  !! class AutosteuerungOperator construct, Index unbekannt, $type erkannt.\n";
+                            $config[$type]=$operation;
+                            break;
+                        }
+                    }
+                }           // if condition exists
+            }       //if function exists
+        return ($config);
+        }
+
+
     /*
      * Im Configfile gibt es eine Möglichkeit die Anwesenheit aus einer OR und AND Verknüpfung von Statuswerten zu ermitteln.
-     * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 5 Minuten aufgerufen.
+     * Das ist die schnellste Art Anwesend oder Abwesend zu ermitteln. Wird im Autosteuerungs Handler alle 60 Sekunden aufgerufen.
      *
      *
      */
@@ -926,86 +1071,89 @@ class AutosteuerungOperator
 	public function setLogicAnwesend($debug=false)
 		{
 		IPSUtils_Include ("Autosteuerung_Configuration.inc.php","IPSLibrary::config::modules::Autosteuerung");
-		$configAnwesend=Autosteuerung_Anwesend();
-		$config=array();
-		if (isset($configAnwesend["Config"])==false) $configAnwesend["Config"]["Delayed"]=false;
-		if (isset($configAnwesend["Config"]["Delayed"])==false) $configAnwesend["Config"]["Delayed"]=false;
-		
-        if ($debug) echo "Anwesend Konfiguration analysieren:\n";
-		//print_r($configAnwesend);
-		foreach($configAnwesend as $type => $operation)
-			{
-			switch (strtoupper($type))
-				{
-				case "OR":
-				case "AND":
-					if ($debug) echo "  Type $type erkannt:\n";
-					foreach ($operation as $index => $oid)
-						{
-						if (is_array($oid)) 
-							{
-							$name=IPS_GetName($index);
-							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
-							if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
-							//$config[$type][$index] = $oid;
-							$newPos="x";
-							foreach ($oid as $pos => $entry) 
-								{
-								//echo "     $pos => $entry\n";
-								
-								/* Achtung mit Typecast, ein Vergleich eines Strings mit einer Zahl führt dazu das der String in eine Zahl umgerechnet wird 
-								$position=(string)$pos;
-								if ($position == "x") 
-									{
-									echo "STRANGE == Funktion : x erkannt.\n";
-									if ($pos == "y") echo "STRANGE == Funktion : y erkannt.\n";			// DAS IST STRANGE !!!!! es wird sowohl x und y erkannt beim selben Wert
-									} */
-								if ($pos === "x") 
-									{
-									//echo "x erkannt : $pos mit $entry\n";
-									$config[$type][$index][$pos] = $entry;
-									}
-								elseif ($pos === "y") 
-									{
-									//echo "y erkannt : $pos mit $entry\n";
-									$config[$type][$index][$pos] = $entry;
-									}
-								elseif ( ($pos === 0) || ($pos === 1) )
-									{
-									if ($debug) echo "   0/1 erkannt : $pos wird zu $newPos mit $entry\n";
-									$config[$type][$index][$newPos] = $entry;
-									if ($newPos =="x") $newPos="y";
-									}
-								else 
-									{
-									if ($debug) echo "   alle anderen uebernehmen : $pos mit $entry\n";
-									$config[$type][$index][$pos] = $entry;
-									}	
-								}
-							if ($DataID>0) $config[$type][$index]["Delayed"]=$DataID;     
-							}
-						else
-							{  /* add default entry and remove old one */
-							//unset($configAnwesend[$type][$index]);
-							if ($debug) echo " --> kein Array, Topology hinzufuegen.\n";
-							$name=IPS_GetName($oid);
-							$DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
-							if ($debug) echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
-							$config[$type][$oid]=["x" => 0,"y" => 0];
-							}
-						}
-					unset($operation);
-					break;
-				case "CONFIG":                    
-					$config[$type]=$operation;
-					break;
-				default:
-					echo "  !! class AutosteuerungOperator construct, Index unbekannt, $type erkannt.\n";
-					$config[$type]=$operation;
-					break;
-				}
-				
-			}
+        $config=array();
+        if (function_exists("Autosteuerung_Anwesend"))
+            {
+            $configAnwesend=Autosteuerung_Anwesend();
+            if (isset($configAnwesend["Config"])==false) $configAnwesend["Config"]["Delayed"]=false;
+            if (isset($configAnwesend["Config"]["Delayed"])==false) $configAnwesend["Config"]["Delayed"]=false;
+            
+            if ($debug) echo "Anwesend Konfiguration analysieren:\n";
+            //print_r($configAnwesend);
+            foreach($configAnwesend as $type => $operation)
+                {
+                switch (strtoupper($type))
+                    {
+                    case "OR":
+                    case "AND":
+                        if ($debug) echo "  Type $type erkannt:\n";
+                        foreach ($operation as $index => $oid)
+                            {
+                            if (is_array($oid)) 
+                                {
+                                $name=IPS_GetName($index);
+                                $DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);
+                                if ($debug) echo " --> Index $index (".IPS_GetName($index)."/".IPS_GetName(IPS_GetParent($index))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($index)))."). Verzoegert : $DataID\n";
+                                //$config[$type][$index] = $oid;
+                                $newPos="x";
+                                foreach ($oid as $pos => $entry) 
+                                    {
+                                    //echo "     $pos => $entry\n";
+                                    
+                                    /* Achtung mit Typecast, ein Vergleich eines Strings mit einer Zahl führt dazu das der String in eine Zahl umgerechnet wird 
+                                    $position=(string)$pos;
+                                    if ($position == "x") 
+                                        {
+                                        echo "STRANGE == Funktion : x erkannt.\n";
+                                        if ($pos == "y") echo "STRANGE == Funktion : y erkannt.\n";			// DAS IST STRANGE !!!!! es wird sowohl x und y erkannt beim selben Wert
+                                        } */
+                                    if ($pos === "x") 
+                                        {
+                                        //echo "x erkannt : $pos mit $entry\n";
+                                        $config[$type][$index][$pos] = $entry;
+                                        }
+                                    elseif ($pos === "y") 
+                                        {
+                                        //echo "y erkannt : $pos mit $entry\n";
+                                        $config[$type][$index][$pos] = $entry;
+                                        }
+                                    elseif ( ($pos === 0) || ($pos === 1) )
+                                        {
+                                        if ($debug) echo "   0/1 erkannt : $pos wird zu $newPos mit $entry\n";
+                                        $config[$type][$index][$newPos] = $entry;
+                                        if ($newPos =="x") $newPos="y";
+                                        }
+                                    else 
+                                        {
+                                        if ($debug) echo "   alle anderen uebernehmen : $pos mit $entry\n";
+                                        $config[$type][$index][$pos] = $entry;
+                                        }	
+                                    }
+                                if ($DataID>0) $config[$type][$index]["Delayed"]=$DataID;     
+                                }
+                            else
+                                {  /* add default entry and remove old one */
+                                //unset($configAnwesend[$type][$index]);
+                                if ($debug) echo " --> kein Array, Topology hinzufuegen.\n";
+                                $name=IPS_GetName($oid);
+                                $DataID=@IPS_GetObjectIDByName($name,$this->motionDetect_DataID);							
+                                if ($debug) echo " --> Index $oid (".IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))."). Verzoegert : $DataID\n";							//$config[$type][$index] = $oid;
+                                $config[$type][$oid]=["x" => 0,"y" => 0];
+                                }
+                            }
+                        unset($operation);
+                        break;
+                    case "CONFIG":                    
+                        $config[$type]=$operation;
+                        break;
+                    default:
+                        echo "  !! class AutosteuerungOperator construct, Index unbekannt, $type erkannt.\n";
+                        $config[$type]=$operation;
+                        break;
+                    }
+                    
+                }
+            }
 		$this->logicAnwesend=$config;
         return ($config);
         }
@@ -1234,7 +1382,9 @@ class AutosteuerungOperator
  *
  *      getFunctions			welche AutosteuerungsFunktionen sind aktiviert
  *      isitdark, isitlight, isitsleep, isitwakeup, isitawake, isithome, isitmove, isitalarm, isitheatday	aktuellen Zustand feststellen und ausgeben
+ *
  *      isitheatday             schaut nach ob ein Heiztag ist, das ist die Tabelle in Autosteuerung
+ *
  *      getDaylight             gibt die Sonnenauf- und -untergangszeiten aus 
  *      switichingTimes         Auswertung der Angaben in den Szenen, Berechnung der Werte für sunrise und sunset 
  *      timeright               Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll
@@ -1244,14 +1394,21 @@ class AutosteuerungOperator
  *      getScenesbyId
  *      getChancesById
  *
- *      setNewValue, setNewValueIfDif               Vorwert und Änderung erfassen in data::modules::Autosteuerung::Ansteuerung
+ *      setNewValue
+ *      getOldValue
+ *      setNewValueDim
+ *      setNewValueIfDif               Vorwert und Änderung erfassen in data::modules::Autosteuerung::Ansteuerung
  *      setNewStatus, setNewStatusBounce            trigger status (boolean) erfassen in data::modules::Autosteuerung::Status 
  *
  *      trimCommand
  *
  *      ParseCommand
  *      parseName, parseParameter, parseValue
+ *
+ *      findSimilar
+ *
  *      getIdByName
+ *      switchByTypeModule
  *
  *      EvaluateCommand
  *      evalCondition
@@ -1870,7 +2027,7 @@ class Autosteuerung
         return($result);
         }    
 
-    function getChancesById($Id)
+    public function getChancesById($Id)
         {
         $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	    $moduleManager = new IPSModuleManager('OperationCenter',$repository);
@@ -2888,10 +3045,49 @@ class Autosteuerung
 			{
 			echo "Fehler getIdByName, Name of ID $lightName not found.\n"; 
 			}
-		
+		$result["NAME"]=$lightName;
 		return($result);	
 
 		}
+
+    /* Schnelle Funktion um auf Basis des Ergebnis Typs einen Schalter oder eine Gruppe zu schalten
+     */
+
+    function switchByTypeModule($ergebnisTyp, $state, $debug=false)
+        {
+        switch ($ergebnisTyp["TYP"])
+            {
+            case "Switch":
+                if ($ergebnisTyp["MODULE"]=="IPSLight")
+                    {
+                    IPSLight_SetSwitchByName($ergebnisTyp["NAME"],$state);
+                    }
+                elseif ($ergebnisTyp["MODULE"]=="IPSHeat")
+                    {
+                    if ($debug) echo 'Aufruf IPSHeat_SetSwitchByName("'.$ergebnisTyp["NAME"].'",'.($state?"true":"false").").\n";								
+                    IPSHeat_SetSwitchByName($ergebnisTyp["NAME"],$state); 
+                    }
+                else echo "Dont know Modul type ".$ergebnisTyp["MODULE"]."\n";
+                break;
+            case "Group":
+                if ($ergebnisTyp["MODULE"]=="IPSLight")
+                    {
+                    IPSLight_SetGroupByName($ergebnisTyp["NAME"],$state);
+                    }
+                elseif ($ergebnisTyp["MODULE"]=="IPSHeat")
+                    {
+                    if ($debug) echo 'Aufruf IPSHeat_SetGroupByName("'.$ergebnisTyp["NAME"].'",'.($state?"true":"false").").\n";								
+                    IPSHeat_SetGroupByName($ergebnisTyp["NAME"],$state); 
+                    }
+                else echo "Dont know Modul type ".$ergebnisTyp["MODULE"]."\n";            
+                break;
+            case "Program":
+                break;
+            default:
+                break;
+            }
+        }
+
 
 	/*********************************************************************************************************
 	 *
@@ -3065,6 +3261,7 @@ class Autosteuerung
 							$result["ON"]=$value_on;
 							break;
 						case "TOGGLE":
+                            if ((isset($result["VALUE"]))==false) IPSLogger_Not(__file__, 'Autosteuerung, ON:TOGGLE erkannt ohne VALUE.'.json_encode($result));					
 							if ($result["VALUE"] == false)
 								{
 								$result["ON"]="TRUE";
@@ -3258,18 +3455,17 @@ class Autosteuerung
 				$this->evalCom_LEVEL($befehl,$result);
 				break;
 			case "MONITOR":
-				$monitor=$befehl[1];
+                $result["MODULE"]="Internal";
+				$monitor=strtoupper($befehl[1]);
 				if ($monitor=="STATUS")
 					{
-					if ($status==true)
+					if ($result["STATUS"]==true)
 						{
-						$result="ON";
-						$result["MONITOR"]=$monitor;
+						$result["MONITOR"]="ON";
 						}
 					else
 						{
-						$result="OFF";
-						$result["MONITOR"]=$monitor;
+						$result["MONITOR"]="OFF";
 						}
 					}
 				else
@@ -3278,18 +3474,19 @@ class Autosteuerung
 					}
 				break;
 			case "MUTE":
-				$mute=$befehl[1];
+                $result["MODULE"]="Internal";
+				$mute=strtoupper($befehl[1]);
 				if ($mute=="STATUS")
 					{
-					if ($status==true)
+					if ($result["STATUS"]==true)
 						{
 						$mute="ON";
-						$result["MONITOR"]=$mute;
+						$result["MUTE"]=$mute;
 						}
 					else
 						{
 						$mute="OFF";
-						$result["MONITOR"]=$mute;
+						$result["MUTE"]=$mute;
 						}
 					}
 				else
@@ -3941,6 +4138,87 @@ class Autosteuerung
 		 */
 		switch ($result["MODULE"])
 			{
+            case "Internal":
+                /* Bearbeitung erfolgt nur wenn
+                 *     es einen MonitorMode Tab mit einem Namen und der dazugehörigen Statusvariable gibt
+                 *     es eine Konfiguration in der Function Autosteuerung_MonitorMode gibt
+                 *     dort der Switchname für den Monitor definiert ist und es diesen auch gibt
+                 *     wenn die Konfiguration auf Aus oder Ein steht wird der Input aus der Autosteuerung ignoriert
+                 *     wenn wir auf Auto stehen und es gibt eine Condition Config, dann leider auch
+                 *     sonst natürlich
+                 */
+   				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, Internal Module vorhanden. Hier evaluieren.');
+            	$AutoSetSwitches = Autosteuerung_SetSwitches();
+                if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
+                    {
+                    $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$this->CategoryId_Ansteuerung);
+                    if ($monitorId) 
+                        {
+                        $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $monitorId);
+                        $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$monitorId);                            
+                        $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
+                        echo "modul Internal abarbeiten, Werte in ".$this->CategoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+                        $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
+                        if (function_exists("Autosteuerung_MonitorMode")) 
+                            {
+                            $MonitorModeConfig=Autosteuerung_MonitorMode();
+                            if (isset($MonitorModeConfig["SwitchName"]))
+                                {
+                   				//IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, Internal Module vorhanden. function Autosteuerung_MonitorMode existiert: '.json_encode($MonitorModeConfig));
+                                echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
+                                $result["NAME"]=$MonitorModeConfig["SwitchName"];
+                                $ergebnisTyp=$this->getIdByName($result["NAME"]);                                
+                                $state=GetValue($monitorId);
+                                if ($ergebnisTyp !== false)             // Switch Variable vorhanden
+                                    {
+                                    if ($state<2)            // nicht Auto Mode 
+                                        {
+                                        if ($state) $result["ON"]="TRUE";
+                                        else $result["OFF"]="FALSE";
+                                        }
+                                    else 
+                                        {
+                                        //echo "MonitorMode auf AUTO.\n";
+                                        if (isset($MonitorModeConfig["Condition"]))
+                                            {
+                                            echo "Autosteuerung::ExecuteCommand, function Autosteuerung_MonitorMode existiert, aber auch Condition, nichts tun.\n";
+                            				IPSLogger_Not(__file__, 'Autosteuerung::ExecuteCommand, function Autosteuerung_MonitorMode existiert, aber auch Condition, nichts tun.');
+                                            }
+                                        else
+                                            {
+                                            if ($result["MONITOR"]=="ON") 
+                                                {
+                                                $result["ON"]="TRUE";                                                
+                                                $state=true;
+                                                }
+                                            elseif ($result["MONITOR"]=="OFF") 
+                                                {
+                                                $result["OFF"]="FALSE";;                                                
+                                                $state=false;
+                                                }
+                                            }
+                                        }
+                                    SetValue($SchalterMonitorID,$state);
+                                    SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen                                    
+                                    IPSLogger_Inf(__file__, "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]." State : ".($state?"Ein":"Aus")."  ".json_encode($ergebnisTyp));    
+                                    }
+                                //print_r($ergebnisTyp);
+                                }
+                            }
+                        }
+                    }
+
+                //IPS_getCategoryIdByName('Wochenplan-Stromheizung',   $CategoryIdData);
+
+                //$configurationAutosteuerung = Autosteuerung_Setup(); print_r($configurationAutosteuerung);
+                //print_r($AutoSetSwitches["MonitorMode"]);
+
+                if (isset($result["NAME"]))
+                    {
+                    /* kein Break sondern einfach weiterlaufen lassen, Name Monitor gefunden */
+                    }
+                else break;
+
 			/******
 			 *
 			 *  hier wird zuerst geschaltet
@@ -4111,7 +4389,13 @@ class Autosteuerung
                         {
 						/* Name nicht bekannt */
 						$result["IPSLIGHT"]="None";
-                        }    
+                        }
+                    if (isset($result["MONITOR"]))          // übernimmt auch den STATUS Wert, aber benötigt werden für switchObject result["ON"] und ["OFF"]
+                        {
+                        $ergebnisFormatted=str_replace("\n","",$ergebnis);
+    					IPSLogger_Inf(__file__, "Autosteuerung Befehl MONITOR : Ergebnis $ergebnisFormatted Result: ".json_encode($result));
+                        echo "Monitor geschaltet: Ergebnis $ergebnisFormatted Result: ".json_encode($result).".\n";    
+                        }
 					} 
 				else        // weder result OID oder NAME ist gesetzt, nichts tun
 					{

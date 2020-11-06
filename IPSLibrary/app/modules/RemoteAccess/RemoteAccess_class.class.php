@@ -79,30 +79,31 @@ class RemoteAccess
 	 * zum Include File werden die Variablen der Guthabensteuerung hinzugefügt
 	 *
 	 */
-	public function add_Guthabensteuerung()
+	public function add_Guthabensteuerung($debug=false)
 		{
 		$this->includefile.='function GuthabensteuerungList() { return array('."\n";
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-		echo "\nGuthabensteuerung Data auf :".$parentid."\n";
+		if ($debug) echo "\nGuthabensteuerung Data auf :".$parentid."\n";
 		$result=IPS_GetChildrenIDs($parentid);
 		$count_phone=100;
 		$count_var=500;
 		foreach ($result as $variableID)
 			{
 			$children=IPS_HasChildren($variableID);
-			echo "  Variable ".IPS_GetName($variableID)."  ".$children;
+			if ($debug) echo "  Variable ".IPS_GetName($variableID)."  ".($children?"hat  Children":"keine Children");
 			if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
 				{
 				if ($children)
 					{
 					$this->add_variable($variableID,$this->includefile,$count_phone);
 					$volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
-					$this->add_variable($volumeID,$his->includefile,$count_phone);
-					echo"  VolumeID :".$volumeID;
+                    if ($volumeID==false) echo "Kenne Variable nicht.\n";
+					if ($debug) echo "  VolumeID : $volumeID,".$this->includefile.",$count_phone\n";
+					$this->add_variable($volumeID,$this->includefile,$count_phone);
 			    	}
 		   		else
 					{
-					$this->add_variable($variableID,$includefile,$count_var);
+					$this->add_variable($variableID,$this->includefile,$count_var);
 					}
 				echo "\n";
 				}
@@ -1130,7 +1131,7 @@ class RemoteAccess
 		$includefile.='"'.IPS_GetName($variableID).'" => array('."\n         ".'"OID" => '.$variableID.', ';
 		$includefile.="\n         ".'"Name" => "'.IPS_GetName($variableID).'", ';
 		$variabletyp=IPS_GetVariable($variableID);
-		print_r($variabletyp);
+		//print_r($variabletyp);
 		//echo "Typ:".$variabletyp["VariableType"]."\n";
 		$includefile.="\n         ".'"Typ" => '.$variabletyp["VariableType"].', ';
 		$includefile.="\n         ".'"Order" => "'.$count++.'", ';

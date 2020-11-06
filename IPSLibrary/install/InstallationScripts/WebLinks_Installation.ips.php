@@ -265,15 +265,21 @@
                     print_R($camConfig);
 					foreach ($camConfig as $name=>$data) 
 						{
-                        $type="CameraTypeUnknown";                    
+                        $type="Cam";                    
                         $ipAdresse="";
                         $domainName="";
                         //if ( (isset($data["FTP"])) && ((strtoupper($data["FTP"]))=="ENABLED") )             // alle oder nur die lokalen Kameras anzeigen
+                        if ( ! ( (isset($data["STATUS"])) && ((strtoupper($data["STATUS"]))=="DISABLED") ) )   // alle anzeigen oder es ist ausdruecklich nicht gewollt
                             {
+                            if (isset($data["COMPONENT"])) $componentDef=explode(",",$data["COMPONENT"]);
+                            if (isset($componentDef[1])) $domainName=$componentDef[1];
+                            //if (isset($componentDef[2])) $userName=$componentDef[1];
+                            //if (isset($componentDef[3])) $passwordName=$componentDef[1];
                             if (isset($data["IPADRESSE"])) $ipAdresse=$data["IPADRESSE"];
                             if (isset($data["DOMAINNAME"])) $domainName=$data["DOMAINNAME"];
                             if (isset($data["TYPE"])) $type=$data["TYPE"];
-    					    $html.='<tr> <td>'.$type.' '.$name.'</td> <td> <a href="'.'http://'.$ipAdresse.'" target="_blank">'.$type.'</a> </td> <td> <a href="'.'http://'.$domainName.'" target="_blank">'.$type.'</a> </td> </tr>';
+                            if ($ipAdresse != "") $html.='<tr> <td>'.$type.' '.$name.'</td> <td> <a href="'.'http://'.$ipAdresse.'" target="_blank">'.$type.'</a> </td> <td> <a href="'.'http://'.$domainName.'" target="_blank">'.$type.'</a> </td> </tr>';
+                            else $html.='<tr> <td>'.$type.' '.$name.'</td> <td></td> <td> <a href="'.'http://'.$domainName.'" target="_blank">'.$type.'</a> </td> </tr>';
                             }
                         }
 					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	

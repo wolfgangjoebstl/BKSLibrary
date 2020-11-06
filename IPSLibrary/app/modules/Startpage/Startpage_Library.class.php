@@ -189,7 +189,7 @@
          *       Showfile
          *
          * Bei PageType Picture erfolgt eine zweispaltige Tabelle, mit links einem Bild aus der Library, es gibt auch eine Bottomline
-         *    Aufruf der folgenden Module:   showPicture($showfile), showWeatherTable(), bottomTableLines() 
+         *    Aufruf der folgenden Module:   showPicture($showfile), showWeatherTemperatureWidget(), showWeatherTable(), bottomTableLines() 
          *
          *
          */
@@ -224,6 +224,8 @@
                     $wert.='</tr></table>';
                     break;
                 case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
+                    $wert.='<table id="startpage">';
+                    $wert.='<tr>';
                     if ( $noweather==true )
                         {
                         $file=$this->readPicturedir();
@@ -231,8 +233,7 @@
                         if ($showfile===false) $showfile=rand(1,$maxcount-1);
 
                         //echo "NOWEATHER true.\n";
-                        $wert.='<table id="startpage">';
-                        $wert.='<tr><td>';
+                        $wert.='<td>';
                         if ($maxcount >0)
                             {
                             $wert.='<img src="user/Startpage/user/pictures/'.$file[$showfile].'" width="67%" height="67%" alt="Heute" align="center">';
@@ -241,7 +242,7 @@
                         }
                     else        // Anzeige der Wetterdaten
                         {
-                        $modulname="Astronomy";
+                        /* $modulname="Astronomy";
                         //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
                         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
                         $Astronomy=$modulhandling->getInstances($modulname);
@@ -267,7 +268,7 @@
                             //echo $html;
                             //SetValue($AstroLinkID,$html);
                             }
-                        else $htmlAstro="";
+                        else $htmlAstro=""; 
 
                         $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
                         if ($moonPicId !== false) 
@@ -282,64 +283,89 @@
                         else $sunrise="";
                         $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
                         if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
-                        else $sunset="";
+                        else $sunset="";    */
 
-                        $weather=$this->getWeatherData();
                                 
                         //echo "$htmlAstro  $htmlpicMoon  ".$weather["today"];
 
-                        $wert.='<table id="startpage"><tr>';
+                        //$wert.='<table id="startpage"><tr>';
                         //$wert.='<tr><td>Hier könnte jetzt Ihre Werbung stehen</td><td>';
                         /* zelle 1 */
-                        $wert.='<td width="100%"><table width="100%">';
-                        $wert.='<tr><td colspan="2" >'.$htmlAstro.'</td></tr>';
-                        //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
-                        $wert.='<tr><td align="center">';
-                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
-                        $wert.='</td><td><table>';
-                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
-                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
-                        $wert.='</table></td></tr>';
-                        $wert.='</table></td>';
-                        $wert.='<td><table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">';
-                        $wert.='<tr>';
-                        /* zelle 2.1 */
-                        $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                        $wert.='<tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
-                        $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
-                        $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow1"].'" alt="Heute" > </td></tr>';
-                        $wert.='</table></td>';
-                        /* zelle 2.2 */
-                        $wert.='<td><table>';
-                        $wert.='<tr><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td></tr>';
-                        $wert.='<tr><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td></tr>';
-                        $wert.='</table></td>';
-                        /* zelle 2.3 */
-                        $wert.='<td><table border="0" bgcolor="#ffffff" cellspacing="5">';
-                        $wert.='<tr><td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-                        $wert.='<tr><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen></td></tr>';
-                        $wert.='</table></td>';
+                        $wert.='<td width="100%">';
+                        $wert.=$this->showAstronomyWidget();
+                        $wert.='</td>';
+
+                        if (false)
+                            {
+                            $wert.='<td>';
+                            $weather=$this->getWeatherData();
+                            //$wert.='<table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">';
+                            //$wert.='<tr><td>';
+
+                            /* zelle 2.1 */
+                            $wert.='<table border="0" bgcolor="#f1f1f1">';
+                            $wert.='<tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
+                            $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
+                            $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow1"].'" alt="Heute" > </td></tr>';
+                            $wert.='</table>';
+                            $wert.='</td>';
+
+                            /* zelle 2.2 */
+                            $wert.='<td><table>';
+                            $wert.='<tr><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td></tr>';
+                            $wert.='<tr><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td></tr>';
+                            $wert.='</table></td>';
+
+                            /* zelle 2.3 */
+                            $wert.='<td><table border="0" bgcolor="#ffffff" cellspacing="5">';
+                            $wert.='<tr><td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+                            $wert.='<tr><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen></td></tr>';
+                            $wert.='</table></td>';
+                            }
+                        else 
+                            {
+                            $wert.='<td>';
+                            $wert.='<table border="0" bgcolor="#f1f1f1">';
+                            $wert .= $this->showWeatherTable();
+                            $wert.='</table>';
+                            $wert.='</td>';
+
+
+                            }
+
                         
+                        //$wert.='</tr></table>';           // Wetter und Aussen/Innen Temperatur in einer eigenen Tabelle
+                        $wert .= '</td></tr>';
+                        $wert .= '<tr>';
+                        //$wert .= '<td colspan="3">ExtraZeile</td>';             // Extrazeile, 2*3 Widget
+                        $wert .= '<td>';
+                        //$wert .= 'ExtraZeile';
+                        $wert .= $this->showTempGroupTable();
+                        $wert .= '</td>';             // Extrazeile, 2*3 Widget
+
+                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                            $wert .= $this->showTemperatureTable();
+                            $wert .= '</td></table>';
+
                         $wert.='</tr></table>';
-                        $wert.='</td></tr></table>';
                         //echo "Anzeige Startpage Typ 2";
                         }
                     break;
                 case 1:
                     /*******************************************
                      *
-                     * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt 
+                     * PageType==1,Diese Art der Darstellung der Startpage wird Bildschirmschoner genannt , Standard und bewährte Darstellung
                      * Bild und Wetterstation als zweispaltige Tabelle gestalten
                      *
                      *************************/
                     $wert.='<table id="startpage">';
                     //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
-                    $wert.='<tr>';
-                    $wert.= $this->showPicture($showfile);
-                    if ( $noweather==false ) $wert.= $this->showWeatherTable();
+                    $wert.='<tr>';                                                     // komplette Zeile, diese fällt richtig dick aus
+                    $wert.= $this->showPicture($showfile);                          // erste Zelle, 
+                    if ( $noweather==false ) $wert.= $this->showWeatherTemperatureWidget();     // zweite Zelle, eine dritte gibt es nicht
                     $wert.='</tr>';
-                    $wert.=$this->bottomTableLines();
+                    $wert.='<tr>'.$this->bottomTableLines().'</tr>';                // komplette zweite Zeile, ist wesentlich dünner
                     $wert.='</table>';
                     break;
                 default:
@@ -347,6 +373,94 @@
                 }
 			return $wert;
 			}
+
+
+        /* Astronomy Widget
+         * 
+         * Definition ist eine eigenständige Zelle, typischerweise eine Zelle von 6 : 2 Reihen a 3 Zellen
+         * angenommen wird dass diese htmlBox innerhalb einer Zelle von <td>   und   </td> ist,#.
+         *
+         */
+
+		function showAstronomyWidget($debug=false)
+			{
+            $wert="";
+            $modulname="Astronomy";
+            //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
+            $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+            $Astronomy=$modulhandling->getInstances($modulname);
+            if (count($Astronomy)>0)
+                {
+                $instanzID=$Astronomy[0];    
+                //$instanzname=IPS_GetName($instanzID);
+                $wert.='<table width="100%">';
+                $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
+                if ($moonPicId !== false) 
+                    {
+                    $htmlpicMoon=IPS_GetMedia($moonPicId)["MediaFile"]; 
+                    $pos1=strpos($htmlpicMoon,"Astronomy");
+                    if ($pos1) $htmlpicMoon = 'user/Startpage/user'.substr($htmlpicMoon,$pos1+9);
+                    else $htmlpicMoon=false;   
+                    }
+                $sunriseID=@IPS_GetObjectIDByName("Sonnenaufgang Uhrzeit",$instanzID);
+                if ($sunriseID !== false) $sunrise = GetValueIfFormatted($sunriseID);
+                else $sunrise="";
+                $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
+                if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
+                else $sunset="";
+
+                $wert.='<tr><td colspan="2" >'.$this->showAstronomy().'</td></tr>';
+                //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
+                $wert.='<tr><td align="center">';
+                if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+                $wert.='</td><td><table>';
+                $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                $wert.='</table></td></tr>';
+                $wert.='</table>';
+                }
+            else $wert.="Astronomy not available";
+            return ($wert);
+            }
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Darstellung von astronomischen Informationen 
+         *
+         **************************************/
+
+		function showAstronomy($debug=false)
+			{
+            $htmlAstro="";
+
+            //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
+            $modulname="Astronomy";
+            $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
+            $Astronomy=$modulhandling->getInstances($modulname);
+            if (count($Astronomy)>0)
+                {
+                $instanzID=$Astronomy[0];    
+                $instanzname=IPS_GetName($instanzID);
+                //echo " ModuleName:".$modulname." hat Instanz:".$instanzname." (".$instanzID.")\n";
+                //echo " Konfiguration :".IPS_GetConfiguration($instanzID)."\n";
+                $childs=IPS_GetChildrenIDs($instanzID);
+                //Print_R($childs);
+
+                $foundHtmlBox=false; 
+                $foundPicMoon=false; $htmlpicMoon="";
+                foreach ($childs as $child) 
+                    {
+                    $childName=IPS_GetName($child);
+                    //echo "  $child ($childName)   \n";
+                    //echo GetValue($child)."\n";
+                    if ($childName=="Position Sonne und Mond") $foundHtmlBox=$child;
+                    }
+                if ($foundHtmlBox !== false) $htmlAstro=GetValue($foundHtmlBox);              // das ist ein iframe mit 
+                //echo $html;
+                //SetValue($AstroLinkID,$html);
+                }
+            return ($htmlAstro);
+            }
 
         /********************
          *
@@ -1185,95 +1299,18 @@
             return ($wert);
             }
 
+
         /********************
          *
          * Zelle Tabelleneintrag für die Wettertabelle
+         * macht 4 Zeilen mit jeweils 2 oder 3 Zellen
          *
          **************************************/
 
-		function showWeatherTable()
-			{
+		function showWeatherTable($weather=false)
+            {
             $wert="";
-            $weather=$this->getWeatherData();
-
-            if (false)
-                {
-                /* Wenn Configuration verfügbar und nicht Active dann die rechte Tabelle nicht anzeigen */	
-                $Config=$this->configWeather();
-                //print_r($Config);
-                $noweather=!$Config["Active"];
-                if ( $noweather==false )
-                    {
-                    if ($Config["Source"]=="WU")
-                        {
-                        $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Weather.IPSWeatherForcastAT");
-                        if ($todayID == false)
-                            {
-                            //echo "weatherforecast nicht installiert.\n";
-                            $noweather=true;
-                            }
-                        else
-                            {
-                            $today = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-                            $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-                            $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-                            $tomorrow = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-                            $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-                            $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-                            $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-                            $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-                            $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-                            $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-                            $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-                            $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
-
-                            $todayDate="";		/* keine Openweather Darstellung, verwendet als Unterscheidung */
-                            }
-                        }
-                    else			/* nicht Weather Wunderground, daher Openwewather */
-                        {
-                        $todayID=get_ObjectIDByPath("Program.IPSLibrary.data.modules.Startpage.OpenWeather");		
-                        if ($todayID == false)
-                            {
-                            //echo "weatherforecast nicht installiert.\n";
-                            $noweather=true;
-                            }
-                        else
-                            {
-                            //echo "OpenWeatherData mit Daten von $todayID wird verwendet.\n";
-                            $todayDate    = GetValue(@IPS_GetObjectIDByName("TodayDay",$todayID));
-                            $today        = GetValue(@IPS_GetObjectIDByName("TodayIcon",$todayID));
-                            $todayTempMin = GetValue(@IPS_GetObjectIDByName("TodayTempMin",$todayID));
-                            $todayTempMax = GetValue(@IPS_GetObjectIDByName("TodayTempMax",$todayID));
-                            $tomorrowDate = GetValue(@IPS_GetObjectIDByName("TomorrowDay",$todayID));
-                            $tomorrow     = GetValue(@IPS_GetObjectIDByName("TomorrowIcon",$todayID));
-                            $tomorrowTempMin = GetValue(@IPS_GetObjectIDByName("TomorrowTempMin",$todayID));
-                            $tomorrowTempMax = GetValue(@IPS_GetObjectIDByName("TomorrowTempMax",$todayID));
-                            $tomorrow1Date = GetValue(@IPS_GetObjectIDByName("Tomorrow1Day",$todayID));
-                            $tomorrow1 = GetValue(@IPS_GetObjectIDByName("Tomorrow1Icon",$todayID));
-                            $tomorrow1TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMin",$todayID));
-                            $tomorrow1TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow1TempMax",$todayID));
-                            $tomorrow2Date = GetValue(@IPS_GetObjectIDByName("Tomorrow2Day",$todayID));
-                            $tomorrow2 = GetValue(@IPS_GetObjectIDByName("Tomorrow2Icon",$todayID));
-                            $tomorrow2TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMin",$todayID));
-                            $tomorrow2TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow2TempMax",$todayID));
-                            $tomorrow3Date = GetValue(@IPS_GetObjectIDByName("Tomorrow3Day",$todayID));
-                            $tomorrow3 = GetValue(@IPS_GetObjectIDByName("Tomorrow3Icon",$todayID));
-                            $tomorrow3TempMin = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMin",$todayID));
-                            $tomorrow3TempMax = GetValue(@IPS_GetObjectIDByName("Tomorrow3TempMax",$todayID));
-                            }		
-                        }
-                    }    // ende weather aktiviert
-                }
-            
-            if ($weather["todayDate"] != "") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
-            else { $tableSpare=''; $colspan=""; }
-
-            $wert.='<td><table id="nested">';
-            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
-            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
-            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
+            if ($weather==false) $weather=$this->getWeatherData();
             if ($weather["todayDate"]=="")
                 {
                 $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
@@ -1288,6 +1325,147 @@
                 $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
                 $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
                 }
+            return ($wert);
+            }
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Tabelle für Gruppen Temperaturwerte
+         * macht 2 Zeilen mit jeweils 2 Zellen
+         *
+         **************************************/
+
+		function showTempGroupTable($colspan="")
+            {
+            $wert="";
+            if (class_exists("DetectTemperatureHandler"))
+                {    
+                $wert .= '<table>';
+                $DetectTemperatureHandler = new DetectTemperatureHandler();
+                $group="Innen";
+                $config=$DetectTemperatureHandler->ListEvents($group);
+                $status=(float)0;
+                $count=0;
+                $roomList=array();
+                foreach ($config as $oid=>$params)
+                    {
+                    $variableProps=IPS_GetVariable($oid);
+                    $lastChanged=date("d.m.Y H:i:s",$variableProps["VariableChanged"]);
+                    $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
+                    $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
+                    if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
+                        {
+                        foreach ($roomRay as $room) $roomList[$room][]=$oid;
+                        }
+                    else $roomList["none"][]=$oid;
+                    $status+=GetValue($oid);
+                    $count++;
+                    }
+                $roomCount=array();
+                foreach ($roomList as $room => $oid)
+                    {
+                    $roomCount[$room]["Count"]=count($roomList[$room]);
+                    $roomCount[$room]["Value"]=0;
+                    }
+                $status=(float)0;
+                $count=0;
+                foreach ($config as $oid=>$params)
+                    {
+                    $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
+                    $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
+                    if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
+                        {
+                        $status+=GetValue($oid);
+                        $count++;
+                        $roomAll="";
+                        foreach ($roomRay as $room) 
+                            {
+                            if (isset($roomCount[$room]["Count"])) $div=$roomCount[$room]["Count"];
+                            else $div=1;
+                            $value=GetValue($oid)/$div;
+                            $roomCount[$room]["Value"]+=$value;
+                            $roomAll.=" $room";
+                            }
+                        }
+                    }
+                foreach ($roomCount as $room => $entry) 
+                    {
+                    //echo "   ".str_pad($room,35)."   ".$entry["Value"]."\n"; 
+                    $wert .= '<tr><td>'.$room.'</td><td>'.$entry["Value"].'</td></tr>';
+                    }
+
+                $wert .= '</table>';
+                //$wert="showTempGroupTable ".json_encode($config);
+                }
+            else $wert="not available";
+            return ($wert);
+            }
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Tabelle für Innen und Aussentemperatur
+         * macht 2 Zeilen mit jeweils 2 Zellen
+         *
+         **************************************/
+
+		function showTemperatureTable($colspan="")
+            {
+            $wert="";
+            $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+            $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+            return ($wert);
+            }
+
+
+        /********************
+         *
+         * Zelle Tabelleneintrag für die Wettertabelle als Widget gemeinsam mit Innen/Aussentemperarur und einer ZusatzZeile
+         *
+         **************************************/
+
+		function showWeatherTemperatureWidget()
+			{
+            $wert="";
+            $weather=$this->getWeatherData();
+
+            if ($weather["todayDate"] != "") { $tableSpare='<td bgcolor="#c1c1c1"></td>'; $colspan='colspan="2" '; }
+            else { $tableSpare=''; $colspan=""; }
+
+            $wert.='<td><table id="nested">';
+
+            if (false)
+                {
+                $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+                $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+                $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+                }
+            else $wert .= $this->showTemperatureTable($colspan);
+
+            $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
+
+            if (false)
+                {
+                if ($weather["todayDate"]=="")
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
+                    }
+                else
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+                    }
+                }
+            else 
+                {
+                $wert .= $this->showWeatherTable($weather);
+                }
+
             $wert.='</table></td>';
             return ($wert);
             }
@@ -1369,7 +1547,7 @@
 
         /********************
          *
-         * macht eine Zeile in der Wettertabelle
+         * macht eine html Zeile mit zwei oder drei Zellen in der Wettertabelle
          *
          **************************************/
 
@@ -1905,7 +2083,7 @@
 	        $wert="";
 	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
 	            {
-	            $wert.='<tr><td colspan="2">';
+	            $wert.='<td colspan="2">';
                 $wert.='<table><tr>';
 	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)
 	                {
@@ -1917,7 +2095,7 @@
                     $wert.='</td>';
 	                }
                 $wert.='</tr></table>';
-	            $wert.='</td></tr>';
+	            $wert.='</td>';
 	            //print_r($this->configuration["AddLine"]);
 				//$wert.='<tr><td>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
 	            //echo $wert;

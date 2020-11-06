@@ -60,8 +60,9 @@
 			
 	class IPSComponentSensor_Remote extends IPSComponentSensor {
 
-		private $tempObject;
+
 		private $RemoteOID;
+		private $tempObject;
 		private $tempValue;
 		private $installedmodules;
 
@@ -78,12 +79,12 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($var1=null, $lightObject=null, $lightValue=null)
+		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Remote: Construct Remote Sensor with ".$var1.".\n";				
-			$this->tempObject   = $lightObject;
-			$this->RemoteOID    = $var1;                // par1 manchmal auch par2
-			$this->tempValue    = $lightValue;
+			echo "IPSComponentSensor_Remote: Construct Sensor with ($instanceId,$remoteOID,$tempValue).\n";	
+            //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
+			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
+			$this->tempValue    = $tempValue;           // par3
 
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
@@ -120,38 +121,16 @@
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
 			echo "Genereller Sensor Remote Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
-			IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
-
-            $log=new Sensor_Logging($variable);        // es wird kein Variablenname übergeben
+            //$startexec=microtime(true);    
+            $log=new Sensor_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt
             $mirrorValue=$log->updateMirorVariableValue($value);
-			$result=$log->Sensor_LogValue($value);      // hier könnte man gleiche Werte noch unterdrücken
-
-            $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
-            /*
-			if ($this->RemoteOID != Null)
-			   {
-				//print_r($this);
-				//print_r($module);
-				//echo "-----Hier jetzt alles programmieren was bei Veränderung passieren soll:\n";
-				$params= explode(';', $this->RemoteOID);
-				print_r($params);
-				foreach ($params as $val)
-					{
-					$para= explode(':', $val);
-					echo "Wert :".$val." Anzahl ",count($para)." \n";
-					if (count($para)==2)
-						{
-						$Server=$this->remServer[$para[0]]["Url"];
-						if ($this->remServer[$para[0]]["Status"]==true)
-							{
-							$rpc = new JSONRPC($Server);
-							$roid=(integer)$para[1];
-							//echo "Server : ".$Server." Remote OID: ".$roid."\n";
-							$rpc->SetValue($roid, $value);
-							}
-						}
-					}
-				}  */
+            if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
+                {
+    			IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			    echo "IPSComponentSensor_Remote:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
+    			$result=$log->Sensor_LogValue($value);      
+                $log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );
+                }
 
 			}
 
@@ -193,24 +172,22 @@
 
 	class Sensor_Logging extends Logging
 		{
-		private $variable, $variablename, $variableTypeReg;              /* variableType für Untergruppen */
-        private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen        
-		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+        private $startexecute;                  /* private, interne Zeitmessung */
+        protected $debug;
 
-		private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
+		protected $installedmodules;              /* installierte Module */
 
-		private $configuration;
-		private $CategoryIdData;          
+		protected $variable, $variableTypeReg;              /* variableType für Untergruppen */
+        protected $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen        
 
 		public $variableLogID;			/* ID der entsprechenden lokalen Spiegelvariable */
 
-        private $startexecute;                  /* interne Zeitmessung */
+		//protected $configuration, $variablename,$CategoryIdData;           // in der parent class definiert
+		//protected $mirrorCatID, $mirrorNameID;                            // in der parent class definiert, Spiegelregister in CustomComponent um eine Änderung zu erkennen
+		//protected $AuswertungID, $NachrichtenID, $filename;             // in der parent class definiert, Auswertung für Custom Component 
+        //protected $DetectHandler,$archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
 
-		/* Unter Klassen */
-		
-		protected $installedmodules;              /* installierte Module */
-        protected $DetectHandler;		        /* Unterklasse */
-        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
+
 
         /* construct wird bereit mit der zu loggenden Variable ID aufgerufen, 
          * optional kann ein Variablennamen mitgegeben werden, sonst wird er nach einem einfachen Algorithmus berechnet (Instanz oder Variablenname der ID)
@@ -218,12 +195,13 @@
          *
          */
 
-		function __construct($variable,$variablename=Null)
+		function __construct($variable,$variablename=null,$variableTypeReg="unknown",$debug=false)
 			{
             $this->startexecute=microtime(true);   
-			echo "   Construct IPSComponentSensor Remote Logging for Variable ID : ".$variable."\n";
-
+            $this->debug=$debug;              
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+
+			echo "   Construct IPSComponentSensor Remote Logging for Variable ID : ($variable,$variablename,$variableTypeReg).\n";
 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
@@ -232,58 +210,20 @@
             $rows=getfromDatabase("COID",$variable);
             if ( ($rows === false) || (sizeof($rows) != 1) )
                 {
-                $this->variableTypeReg = "unknown";            // 
+                $this->variableTypeReg = $variableTypeReg;            // nicht aus der Datenbank, vielleicht in der Config als dritter Parameter
+                echo "Variable Type from Script is : ".$this->variableTypeReg."\n";
                 }
             else    // getfromDatabase
                 {
                 //print_r($rows);   
                 $this->variableTypeReg = $rows[0]["TypeRegKey"];    
+                echo "Variable Type from mySQL Database is : ".$this->variableTypeReg."\n";
                 }
+			if ($this->debug) echo "Construct IPSComponentSensor:Sensor_Logging for Variable ID : ".$variable." \"".$this->variableProfile."\" ".$this->variableType." ".$this->variableTypeReg."\n";
 
-			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* Detect Movement kann auch Sensorwerte agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$this->DetectHandler = new DetectSensorHandler();                            // zum Beispiel für die Evaluierung der Mirror Register
-                }
-
-            $this->variablename = $this->getVariableName($variable, $variablename);           // function von IPSComponent_Logger, $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
-
-			/**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
-            $name="SensorMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float */
-			echo "    Sensor_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData)."/".IPS_GetName(IPS_GetParent($this->CategoryIdData))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($this->CategoryIdData))).")\n";
-			
-			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
-			$this->NachrichtenID=$this->CreateCategoryNachrichten("Sensor",$this->CategoryIdData);
-			$this->AuswertungID=$this->CreateCategoryAuswertung("Sensor",$this->CategoryIdData);
-
-    		/* lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen */
-			if ($variable<>null)
-				{
-                $this->variable=$variable;                     
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile);                   // $this->variableLogID schreiben
-				//echo "      Lokales Spiegelregister \"".$this->variablename."\" (".$this->variableLogID.") mit Typ Float unter Kategorie ".$this->AuswertungID." ".IPS_GetName($this->AuswertungID)." anlegen.\n";
-				}
-
-			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
-			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
-			$directories=get_IPSComponentLoggerConfig();
-			if (isset($directories["LogDirectories"]["SensorLog"]))
-		   		 { $directory=$directories["LogDirectories"]["SensorLog"]; }
-			else {$directory="C:/Scripts/Sensor/"; }	
-            $dosOps= new dosOps(); 
-			$dosOps->mkdirtree($directory);
-			$this->filename=$directory.$this->variablename."_Sensor.csv";
-			parent::__construct($this->filename,$this->NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
+            if ($this->variableTypeReg == "CO2") $NachrichtenID = $this->do_init_climate($variable, $variablename);
+            else $NachrichtenID = $this->do_init_sensor($variable, $variablename);
+			parent::__construct($this->filename,$NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
 			}
 
 
@@ -316,11 +256,12 @@
 
         /* wird von HandleEvent aus obigem CustomComponent aufgerufen.
          * Speichert den Wert von ID $this->variable im Spiegelregister mit ID $this->variableLogID
-         *
+         * die Type des Sensorwertes ist egal
          */
 
-		function Sensor_LogValue()
+		function Sensor_LogValue($value,$debug=false)
 			{
+            echo "Sensor_LogValue mit $value aufgerufen. ".$this->variableLogID."   ".IPS_GetName($this->variableLogID)."/".IPS_GetName(IPS_GetParent($this->variableLogID))."\n";    
 			// result formatieren für Ausgabe in den LogNachrichten, dieser Component wird für verschiedene Datenobjekte verwendet, keine extra Formattierungen hier
 			$variabletyp=IPS_GetVariable($this->variable);
     		$result=GetValueIfFormatted($this->variable);
@@ -365,7 +306,7 @@
 			
 			parent::LogMessage($result);
 			parent::LogNachrichten($this->variablename." mit Wert ".$result);
-			echo "Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";
+			echo "   Aktuelle Laufzeit nach File Logging in ".$this->variablename." mit Wert ".$result." : ".exectime($this->startexecute)." Sekunden.\n";
 			}
 
 		public function GetComponent() {

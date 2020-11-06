@@ -32,12 +32,17 @@
 
 /**********************************************************************************************
  *
- * class TopologyLibraryManagement
+ * class TopologyLibraryManagement mit folgenden Funktionen:
+ *
+ *      __construct
  *      updateInstanceLists
  *      get_SocketList
  *      get_GatewayList
  *      get_HardwareList
  *      get_DeviceList
+ *      createTopologyInstances
+ *      createTopologyInstance
+ *      sortTopologyInstances
  *
  *
  */
@@ -218,10 +223,13 @@ class TopologyLibraryManagement
      *    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
      *
      *  basierend auf den Ergebnissen der Discovery module zuerst eine Hardwareliste und dann eine Deviceliste erstellen
-     *  array deviceList erstellen, sortieren und um weitere Informationen anreichern    
+     *  array deviceList erstellen, sortieren und um weitere Informationen anreichern 
+     *   
      *  erstellen funktioniert mit getDeviceCheck, getDeviceParameter, getDeviceChannels, getDeviceActuators
-     *  alle obigen functions Teil der class Hardware$hadwaretype, hardwaretype kommt aus der getHardwarelist
+     *  alle obigen functions sind Teil der class Hardware$hadwaretype, hardwaretype kommt aus der getHardwarelist
      *  diese Klassen findet man unter HardwareLibrary
+     *
+     * Beispiel class HardwareHomematic extends Hardware
      *
      */
 

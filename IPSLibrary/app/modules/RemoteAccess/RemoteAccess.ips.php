@@ -90,7 +90,7 @@ $startexec=microtime(true);
 	$remote=new RemoteAccess();
 	if (isset ($installedModules["Guthabensteuerung"])) 
 		{ 
-		$remote->add_Guthabensteuerung(); 
+		$remote->add_Guthabensteuerung();           // true debug 
 		echo "Ende Guthabensteuerung Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
 		}
 	if (isset ($installedModules["Amis"]))	

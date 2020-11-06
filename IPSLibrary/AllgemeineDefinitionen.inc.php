@@ -4116,12 +4116,13 @@ class ComponentHandling
 
     public function registerEvent($oid,$update,$component,$module,$commentField)
         {
+        if ($this->debug) echo "ComponentHandling::registerEvent($oid,'$update','$component','$module','$commentField'); aufgerufen.\n";    
 		//$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
 		//$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
         $change=false;
         if (isset($this->configMessage[$oid])) 
             {
-            //echo "   -> gefunden:\n";
+            if ($this->debug) echo "  $oid -> in Config gefunden:\n";
             $compare=$this->configMessage[$oid];
             if ( ($compare[0] != $update) || ($compare[1] != $component) || ($compare[2] != $module) ) 
 				{
@@ -4178,22 +4179,22 @@ class ComponentHandling
         if ($debug)
             {
             $once=true;
-            if ( is_array($keywords) )
+            if ( is_array($keywords) )          // Keywords ist ein Array
                 {
-                if (is_array($Elements))                    
+                if (is_array($Elements))                    // Elements ist ein Array
                     {
-                    echo "     getComponent: Passende Geraeteregister in Elements suchen für ";
+                    echo "   getComponent: Passende Geraeteregister in Elements suchen für ";
                     }
                 else 
                     {
-                    echo "     getComponent: Passende Geraeteregister in MySQL Database suchen für ";
+                    echo "   getComponent: Passende Geraeteregister in MySQL Database suchen für ";
                     }
                 foreach ($keywords as $index => $entry) echo "$index => $entry ";
                 echo ":\n";
                 }
             else 
                 {
-                echo "     getComponent: Passende Geraeteregister in ELements suchen für \"$keywords\" :\n";
+                echo "   getComponent: Passende Geraeteregister in ELements suchen für \"$keywords\" :\n";
                 if (is_array($Elements)===false) echo "MySQL Database oder Fehler ?\n";                    
                 }
             }
@@ -4210,10 +4211,10 @@ class ComponentHandling
                 /******* devicelist als Formattierung */              
                 if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
-                    if ($debug && $once) echo "      ****** devicelist als Formattierung\n";
+                    if ($debug && $once) echo "     ****** devicelist als Formattierung\n";
                     $count++; 
-                    if ($debug) echo "       Aufruf workOnDeviceList(".json_encode($Key).", ".json_encode($keywords).",$debug).\n";                       
                     $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
+                    //if ($debug) echo "       Aufruf workOnDeviceList(".json_encode($Key).", ".json_encode($keywords).",$debug).\n";                       
                     }               // ende deviceList durchsuchen
                 else    
                     {
@@ -4299,7 +4300,6 @@ class ComponentHandling
                         
                         $keyName["Name"]=$Key["Name"];
                         $keyName["KEY"]=$keyword;
-                        
                         $keyName["OID"]=(integer)$Key["OID"];                                                     
                         }
                     }           // Ende Hardware Liste durchsuchen
@@ -4307,117 +4307,9 @@ class ComponentHandling
                 if (isset($keyName["Name"]))
                     {
                     $totalfound=true;
-                    $this->addOnKeyName($keyName);
-
-                    /* Zuweisung von Orientierungshilfen für das Anlegen der Variablen 
-                    * ["COID"]=(integer)$oid;               das Register
-                    * ["OID"]=(integer)$Key["OID"];         die Instanz
-                    * ["KEY"]=$keyword;
-                    * ["TYP"]=$variabletyp;
-                    * ["INDEX"]=$index;
-                    * ["PROFILE"]=$profile;					 
-                    * ["DETECTMOVEMENT"]=$detectmovement;
-                    * ["INDEXNAMEEXT"]=$indexNameExt;
-                    *
-                    *
-                    * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
-                    * index="Bewegung"
-
-                    $indexNameExt="";
-                    switch (strtoupper($keyName["KEY"]))
-                        {
-                        case "TARGETTEMPVAR":			// Thermostat Temperatur Setzen 
-                        case "SET_POINT_TEMPERATURE":
-                        case "SET_TEMPERATURE":
-                            $variabletyp=2; 		// Float 
-                            $index="HeatSet";
-                            //$profile="TemperaturSet";		// Umstellung auf vorgefertigte Profile, da besser in der Darstellung 
-                            $profile="~Temperature";
-                            break;	
-                        case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
-                        case "SET_POINT_MODE":
-                        case "TARGETMODEVAR":				// Thermostat FHT
-                            $variabletyp=1; 		// Integer 
-                            $index="HeatSet";
-                            $indexNameExt="_Mode";								// gemeinsam mit den Soll Temperaturwerten abspeichern 
-                            $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
-                            break;                    			
-                        case "TEMERATUREVAR";			// Temperatur auslesen 
-                        case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
-                        case "ACTUAL_TEMPERATURE":
-                            $detectmovement="Temperatur";				
-                            $variabletyp=2; 		// Float 
-                            $index="Temperatur";
-                            //$profile="Temperatur";		// Umstellung auf vorgefertigte Profile, da besser in der Darstellung 
-                            $profile="~Temperature";
-                            break;
-                        case "HUMIDITY":
-                            $detectmovement="Feuchtigkeit";
-                            $variabletyp=1; 		// Integer 						
-                            $index="Humidity";
-                            $profile="Humidity";
-                            break;
-                        case "POSITIONVAR":
-                        case "VALVE_STATE": 
-                            $detectmovement="HeatControl";
-                            $variabletyp=2; 		// Float 
-                            $index="HeatControl";
-                            $profile="~Valve.F";
-                            break;					
-                        case "LEVEL":
-                            $detectmovement="HeatControl";
-                            $variabletyp=1; 		// Integer 
-                            $index="HeatControl";
-                            $profile="~Intensity.100";
-                            break;
-                        case "STATE":
-                        case "STATUSVARIABLE":
-                            $variabletyp=0; 		// Boolean 
-                            $index="Schalter";
-                            $profile="Switch";
-                            break;
-                        case "TYPE_THERMOSTAT":		// known keywords, do nothing, all has been done above 
-                        case "TYPE_ACTUATOR":
-                            break;
-                        case "MOTION":
-                            $detectmovement="Motion";
-                            $variabletyp=0; 		// Boolean 					
-                            $index="Bewegung";
-                            $profile="Motion";
-                            break;	
-                        case "CONTACT":
-                            $detectmovement="Contact";
-                            $keyName["Key"]="STATE";
-                            $variabletyp=0; 		// Boolean 				
-                            $index="Bewegung";
-                            $profile="Motion";
-                            break;
-                        case "CO2":
-                            $variabletyp=1; 		// Integer 	
-                            $index="Klima";
-                            $profile="Netatmo.CO2";
-                            break;
-                        default:	
-                            $variabletyp=0; 		// Boolean 
-                            echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
-                            break;
-                        }
-
-                    if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
-                    //echo "********** ".$Key["Name"]."\n"; print_r($Key);
-                    //$install[$keyName["Name"]]["COID"]=(integer)$coid;
-                    //$install[$keyName["Name"]]["OID"]=$oid;
-                    //$install[$keyName["Name"]]["KEY"]=$keyword;
-                    $install[$keyName["Name"]]["TYP"]=$variabletyp;
-                    $install[$keyName["Name"]]["INDEX"]=$index;
-                    $install[$keyName["Name"]]["PROFILE"]=$profile;					 
-                    $install[$keyName["Name"]]["DETECTMOVEMENT"]=$detectmovement;
-                    $install[$keyName["Name"]]["INDEXNAMEEXT"]=$indexNameExt;	 
-                    */
-
+                    $this->addOnKeyName($keyName);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
                     $component[]=(integer)$keyName["COID"];
                     $install[$keyName["Name"]]=$keyName;
-
                     if ($this->debug) $result .= "  ".str_pad($keyName["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
                     }   // ende Found
                 $once=false;                // nur einmal manches ausgeben    
@@ -4454,12 +4346,12 @@ class ComponentHandling
                 $keyName["KEY"]=$oid["TypeRegKey"];
                 $keyName["COMPONENT"]=$oid["componentName"];
                 $keyName["MODULE"]=$oid["moduleName"];
-                $this->addOnKeyName($keyName);                          // hier alle Zusatzinformationen dazupacken
+                $this->addOnKeyName($keyName,$debug);                          // hier alle Zusatzinformationen dazupacken
                 
                 $component[]=(integer)$keyName["COID"];
                 $install[$keyName["Name"]]=$keyName;
                 }
-            }
+            }               // ende MySQL Analyse
 
 		if ( (!$totalfound) && (sizeof($Elements)>0) ) echo "************getComponent, Fehler kenne ".json_encode($keywords)." nicht.\n";
         switch ($write)
@@ -4535,7 +4427,11 @@ class ComponentHandling
                                 //if ($debug) echo "   $IDkey gefunden,suche $varName in $oid !\n";
                                 $keyName["COID"]=@IPS_GetObjectIDByName($varName,$oid);
                                 $keyName["KEY"]=$typeRegKey;
-                                if ($debug) echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
+                                if ( ($debug) && false) 
+                                    {
+                                    if (isset($keyName["Name"])) echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
+                                    else  echo "        DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["OID"]."  $channelTypes \n";
+                                    }
                                 }
                             elseif ($typeRegKey=="?") 
                                 {
@@ -4547,7 +4443,7 @@ class ComponentHandling
                         }
                     //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
                     //print_r($Key["Channels"][$index]);
-
+                    if ($keyName["COID"]==false) echo "COID nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
                     $keyName["Name"]=$instance["Name"];
                     if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                     } 
@@ -4586,109 +4482,126 @@ class ComponentHandling
      *
      * RPC_CreateVariableByName($rpc, (integer)$Server["Bewegung"], $Key["Name"], 0);
      * index="Bewegung"
+     *
+     * Anhand keyname["KEY"] wird entschieden wie es weitergeht:
+     *
+     *
      */
 
-    function addOnKeyName(&$keyName)
+    function addOnKeyName(&$keyName,$debug=false)
         {
-	    $detectmovement=false; $profile="";
-                    $indexNameExt="";
-                    switch (strtoupper($keyName["KEY"]))
-                        {
-                        case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
-                        case "SET_POINT_TEMPERATURE":
-                        case "SET_TEMPERATURE":
-                            $variabletyp=2; 		/* Float */
-                            $index="HeatSet";
-                            //$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-                            $profile="~Temperature";
-                            break;	
-                        case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
-                        case "SET_POINT_MODE":
-                        case "TARGETMODEVAR":				// Thermostat FHT
-                            $variabletyp=1; 		/* Integer */
-                            $index="HeatSet";
-                            $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
-                            $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
-                            break;                    			
-                        case "TEMERATUREVAR";			/* Temperatur auslesen */
-                        case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
-                        case "ACTUAL_TEMPERATURE":
-                            $detectmovement="Temperatur";				
-                            $variabletyp=2; 		/* Float */
-                            $index="Temperatur";
-                            //$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
-                            $profile="~Temperature";
-                            break;
-                        case "HUMIDITY":
-                            $detectmovement="Feuchtigkeit";
-                            $variabletyp=1; 		/* Integer */							
-                            $index="Humidity";
-                            $profile="Humidity";
-                            break;
-                        case "POSITIONVAR":
-                        case "VALVE_STATE": 
-                            $detectmovement="HeatControl";
-                            $variabletyp=2; 		/* Float */
-                            $index="HeatControl";
-                            $profile="~Valve.F";
-                            break;					
-                        case "LEVEL":
-                            $detectmovement="HeatControl";
-                            $variabletyp=1; 		/* Integer */	
-                            $index="HeatControl";
-                            $profile="~Intensity.100";
-                            break;
-                        case "STATE":
-                        case "STATUSVARIABLE":
-                            $variabletyp=0; 		/* Boolean */	
-                            $index="Schalter";
-                            $profile="Switch";
-                            break;
-                        case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
-                        case "TYPE_ACTUATOR":
-                            break;
-                        case "MOTION":
-                            $detectmovement="Motion";
-                            $variabletyp=0; 		/* Boolean */					
-                            $index="Bewegung";
-                            $profile="Motion";
-                            break;	
-                        case "BRIGHTNESS":                              // selber Component wie Motion
-                            $detectmovement="Helligkeit";
-                            $variabletyp=1; 		/* Integer */					
-                            $index="Helligkeit";
-                            $profile="~Brightness.HM";                  // Variablen Profil
-                            break;
-                        case "CONTACT":
-                            $detectmovement="Contact";
-                            $keyName["Key"]="STATE";
-                            $variabletyp=0; 		/* Boolean */					
-                            $index="Bewegung";
-                            $profile="Motion";
-                            break;
-                        case "CO2":
-                            $variabletyp=1; 		/* Integer */	
-                            $index="Klima";
-                            $profile="Netatmo.CO2";
-                            break;
-                        default:	
-                            $variabletyp=0; 		/* Boolean */	
-                            echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
-                            break;
-                        }
+        if ($debug) echo "addOnKeyName  based on ".$keyName["KEY"]."  \n";
+	    $detectmovement=false; 
+        $profile=""; 
+        $indexNameExt="";
+        
+        switch (strtoupper($keyName["KEY"]))
+            {
+            case "TARGETTEMPVAR":			/* Thermostat Temperatur Setzen */
+            case "SET_POINT_TEMPERATURE":
+            case "SET_TEMPERATURE":
+                $variabletyp=2; 		/* Float */
+                $index="HeatSet";
+                //$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+                $profile="~Temperature";
+                break;	
+            case "CONTROL_MODE":                // Thermostat Homematic und HomematicIP
+            case "SET_POINT_MODE":
+            case "TARGETMODEVAR":				// Thermostat FHT
+                $variabletyp=1; 		/* Integer */
+                $index="HeatSet";
+                $indexNameExt="_Mode";								/* gemeinsam mit den Soll Temperaturwerten abspeichern */
+                $profile="mode.HM";             // privates Profil für Formattierung RemoteAccess Variable verwenden, da nicht sichergestellt ist das das jeweilige Format der Harwdare auf der Zielmaschine installliert ist
+                break;                    			
+            case "TEMERATUREVAR";			/* Temperatur auslesen */
+            case "TEMPERATURE":             // auch von devicelist normaler Temperatursensor
+            case "ACTUAL_TEMPERATURE":
+                $detectmovement="Temperatur";				
+                $variabletyp=2; 		/* Float */
+                $index="Temperatur";
+                //$profile="Temperatur";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
+                $profile="~Temperature";
+                break;
+            case "HUMIDITY":
+                $detectmovement="Feuchtigkeit";
+                $variabletyp=1; 		/* Integer */							
+                $index="Humidity";
+                $profile="Humidity";
+                break;
+            case "POSITIONVAR":
+            case "VALVE_STATE": 
+                $detectmovement="HeatControl";
+                $variabletyp=2; 		/* Float */
+                $index="HeatControl";
+                $profile="~Valve.F";
+                break;					
+            case "LEVEL":
+                $detectmovement="HeatControl";
+                $variabletyp=1; 		/* Integer */	
+                $index="HeatControl";
+                $profile="~Intensity.100";
+                break;
+            case "STATE":
+            case "STATUSVARIABLE":
+                $variabletyp=0; 		/* Boolean */	
+                $index="Schalter";
+                $profile="Switch";
+                break;
+            case "TYPE_THERMOSTAT":		/* known keywords, do nothing, all has been done above */	
+            case "TYPE_ACTUATOR":
+                break;
+            case "MOTION":
+                $detectmovement="Motion";
+                $variabletyp=0; 		/* Boolean */					
+                $index="Bewegung";
+                $profile="Motion";
+                break;	
+            case "BRIGHTNESS":                              // selber Component wie Motion
+                $detectmovement="Helligkeit";
+                $variabletyp=1; 		/* Integer */					
+                $index="Helligkeit";
+                $profile="~Brightness.HM";                  // Variablen Profil
+                break;
+            case "CONTACT":
+                $detectmovement="Contact";
+                $keyName["Key"]="STATE";                        // Eigenen Index Key definieren
+                $variabletyp=0; 		                        // Integer, Kontakte können mehrer Zustände haben , gibt manchmal auch gekippt , war früher Boolean 					
+                $index="Bewegung";
+                $profile="Motion";
+                break;
+            case "CO2":
+                $detectmovement="Climate";
+                $variabletyp=1; 		/* Integer */	
+                $index="Klima";
+                $profile="Netatmo.CO2";
+                break;
+            default:	
+                $variabletyp=0; 		/* Boolean */	
+                echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
+                break;
+            }
 
-                    if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
-                    //echo "********** ".$Key["Name"]."\n"; print_r($Key);
-                    //$keyName["COID"]=(integer)$coid;
-                    //$keyName["OID"]=$oid;
-                    //$keyName["KEY"]=$keyword;
-                    $keyName["TYP"]=$variabletyp;
-                    $keyName["INDEX"]=$index;
-                    $keyName["PROFILE"]=$profile;					 
-                    $keyName["DETECTMOVEMENT"]=$detectmovement;
-                    $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
-
+        if (isset($this->installedModules["DetectMovement"])===false) $detectmovement = false;    // wenn Modul nicht installiert auch nicht bearbeiten		
+        //echo "********** ".$Key["Name"]."\n"; print_r($Key);
+        //$keyName["COID"]=(integer)$coid;
+        //$keyName["OID"]=$oid;
+        //$keyName["KEY"]=$keyword;
+        $keyName["TYP"]=$variabletyp;
+        $keyName["INDEX"]=$index;
+        $keyName["PROFILE"]=$profile;					 
+        $keyName["DETECTMOVEMENT"]=$detectmovement;
+        $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
+        if (isset($keyName["COID"])) 
+            {
+            $variableType=IPS_GetVariable($keyName["COID"]);
+            if (isset($variableType["VariableProfile"])) $keyName["VarProfile"]=$variableType["VariableProfile"];
+            elseif (isset($variableType["VariableCustomProfile"])) $keyName["CustProfile"]=$variableType["VariableCustomProfile"];
+            if (isset($variableType["VariableType"])) $keyName["VarType"]=$variableType["VariableType"];
+            //print_r($variableType);
+            //print_R($keyName);   
+            }
         }
+
 /***********************************************************************************
  *
  * getKeyword
@@ -4852,15 +4765,21 @@ class ComponentHandling
     		$archiveID=$this->getArchiveSDQL_HandlerID();
             if ($debug)
                 {
-                echo "Keyword für Component wird aus dem Resultat ermittelt : $keyword\n"; 
+                echo "Keyword für Component wird aus dem Resultat ermittelt : $keyword\n";
+                //print_r($result);         // Ausgabe von getComponent 
                 echo "Remote Server herausfinden und Struktur auslesen:\n";
                 print_r($remServer); print_r($struktur);
       			echo "installComponentFull: Resultat für gefundene Geraeteregister verarbeiten:\n";
                 if ($archiveID) echo "MySQL Archiver installed and available. Archive Variables there as well:\n";
                 }
-        	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen
+        	foreach ($result as $IndexName => $entry)       // nur die passenden Geraete durchgehen, Steuergroessen alle in getComponent
       	    	{
-	            if ($debug) { echo "----> $IndexName:\n"; print_r($entry); }
+	            if ($debug) 
+                    { 
+                    echo "----> $IndexName:\n"; print_r($entry); 
+                    echo "DetectMovement Type (HeatControl,Feuchtigkeit,Temperatur,Movement,Contact):".$entry["DETECTMOVEMENT"].".\n";
+                    echo "Component Typ in der Konfiguration :".$entry["KEY"]."\n";
+                    }
 				$oid=$entry["COID"];
                 if ( ($this->debug) || ($debug) ) echo "  ".str_pad($IndexName."/".$entry["KEY"],50)." = ".GetValueIfFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       \n";
                 if ( $archiveID && (ACmySQL_GetLoggingStatus($archiveID,$oid)==false) )
@@ -4886,8 +4805,23 @@ class ComponentHandling
 	    				{
 		    			IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
 			    		IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                        /*  unterstützt werden aktuell DetectSensorHandler, DetectClimateHandler, DetectHumidityHandler, DetectMovementHandler
+                         *                        DetectContactHandler, DetectBrightnessHandler, DetectTemperatureHandler, DetectHeatControlHandler 
+                         */
 				    	switch ($detectmovement)
 					    	{
+						    case "Sensor":      //neu
+							    $DetectSensorHandler = new DetectSensorHandler();						
+    							$DetectSensorHandler->RegisterEvent($oid,"Sensor",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						break;
+						    case "Climate":      //neu
+							    $DetectClimateHandler = new DetectClimateHandler();						
+    							$DetectClimateHandler->RegisterEvent($oid,"Climate",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						break;
+						    case "Brightness":
+    							$DetectBrightnessHandler = new DetectBrightnessHandler();						
+	    						$DetectBrightnessHandler->RegisterEvent($oid,"Brightness",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+		    					break;															
 						    case "HeatControl":					
 							    $DetectHeatControlHandler = new DetectHeatControlHandler();						
     							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
@@ -4905,16 +4839,16 @@ class ComponentHandling
 	    						$DetectMovementHandler->RegisterEvent($oid,"Motion",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;		
 						    case "Contact":
-    							$DetectMovementHandler = new DetectMovementHandler();						
-	    						$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+    							$DetectContactHandler = new DetectContactHandler();						
+	    						$DetectContactHandler->RegisterEvent($oid,"Contact",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 		    					break;															
 			    			default:
 				    			break;
 					    	}		
 					    }
-    				$variabletyp=$entry["TYP"];
-	    			$index= $entry["INDEX"];
-		    		$profile=$entry["PROFILE"];
+    				$variabletyp=$entry["TYP"];         // für RPC calls um Variable am remote Server in einer vernünftigen Struktur zu speichern
+	    			$index= $entry["INDEX"];            // vorgegebene Struktur die einmal angelegt wird
+		    		$profile=$entry["PROFILE"];         // Profil dafür
                     $IndexNameExt=$entry["INDEXNAMEEXT"];
 
                     /* beim registrieren als Event den richtigen Componen/Module Name dazugeben, MySQL kennt das */
@@ -4941,13 +4875,13 @@ class ComponentHandling
 							//$struktur[$Name][$result]["newName"]=$Key["Name"];	// könnte nun der IndexName sein, wenn weiterhin benötigt						
 							}	
 						/* wenn keine Parameter nach IPSComponentSensor_Temperatur angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-    		            $this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter,$InitModule,$commentField);
+    		            $this->RegisterEvent($oid,"OnChange",$InitComponent.','.$entry["OID"].','.$parameter.','.$entry["KEY"],$InitModule,$commentField);
 						}
 					else
 						{
 						/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
 						echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",",$InitModule,$commentField);
+						$this->RegisterEvent($oid,"OnChange",$InitComponent.",".$entry["OID"].",".$entry["KEY"],$InitModule,$commentField);
 						}			
 					}           /* ende donotregister */
 				} /* Ende foreach */

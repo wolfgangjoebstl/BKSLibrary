@@ -62,6 +62,13 @@
 
     $status=RemoteAccessServerTable();
 
+    $componentHandling=new ComponentHandling();
+    
+    echo "\n\n==CLIMATE based on MySQL ===============================================================================\n";
+    $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],"","","",true);      // true ist Debug
+
+
+    echo "\n\n=================================================================================\n";
 	$Homematic = HomematicList();
 	//print_r($Homematic);
 	foreach ($Homematic as $Key)

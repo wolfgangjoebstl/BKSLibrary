@@ -30,8 +30,6 @@
 
     $noinstall=true;                        /* true, keine Installation der lokalen Variablen um die Laufzeit der Routine zu verkuerzen */
     $evaluateHardware=false;                /* false, keine EvaluateHardware aufgerufen für die Aktualisierung */
-    //$startexec=microtime(true);             /* Laufzeitmessung */
-    $startexec=startexec("s");              /* Laufzeitmessung */
 
     /*******************************
     *
@@ -40,6 +38,10 @@
     ********************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    //$startexec=microtime(true);             /* Laufzeitmessung */
+    $startexec=startexec("s");              /* Laufzeitmessung, benötigt AllgemeineDefinitionen */
+
+
 	IPSUtils_Include('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');	
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -70,6 +72,38 @@
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
+
+	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
+	if (isset ($installedModules["EvaluateHardware"])) 
+        { 
+        echo "Modul EvaluateHardware ist installiert.\n"; 
+        IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
+        IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
+        IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+
+        echo "========================================================================\n";    
+        echo "Statistik der Register nach Typen:\n";
+        $hardwareTypeDetect = new Hardware();
+        $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+        $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
+        print_r($statistic);        
+        } 
+    else 
+        { 
+        echo "Modul EvaluateHardware ist NICHT installiert. Routinen werden uebersprungen.\n"; 
+        }
+	if (isset ($installedModules["RemoteReadWrite"])) { echo "Modul RemoteReadWrite ist installiert.\n"; } else { echo "Modul RemoteReadWrite ist NICHT installiert.\n"; }
+	if (isset ($installedModules["RemoteAccess"]))
+		{
+		echo "Modul RemoteAccess ist installiert.\n";
+		IPSUtils_Include ('RemoteAccess_Configuration.inc.php', 'IPSLibrary::config::modules::RemoteAccess');
+		}
+	else
+		{
+		echo "Modul RemoteAccess ist NICHT installiert.\n";
+		}
+	if (isset ($installedModules["IPSCam"])) { 				echo "Modul IPSCam ist installiert.\n"; } else { echo "Modul IPSCam ist NICHT installiert.\n"; }
+	if (isset ($installedModules["OperationCenter"])) { 	echo "Modul OperationCenter ist installiert.\n"; } else { echo "Modul OperationCenter ist NICHT installiert.\n"; }
 
     /*******************************
     *
@@ -577,123 +611,139 @@ if ($noinstall==false)
 	echo "\n";
 	
 	/* nur die CustomComponent Funktion registrieren */
-	/* Wenn Eder intrag in Datenbank bereits besteht wird er nicht mehr geaendert */
+	/* Wenn der Eintrag in Datenbank bereits besteht wird er nicht mehr geaendert */
 
-
-
-	if (function_exists('HomematicList'))
+	echo "***********************************************************************************************\n";
+	echo "Bewegungsmelder und Contact Handler wird ausgeführt.\n";
+    if (function_exists('deviceList'))
+        {
+        echo "Bewegungsmelder von verschiedenen Geräten werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */
+        //print_r($result);
+        echo "Kontakte von verschiedenen Geräten werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */
+        //print_r($result);
+        }
+    elseif (function_exists('HomematicList'))
 		{
-		echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
-		$Homematic = HomematicList();
-		$keyword="MOTION";
-		foreach ($Homematic as $Key)
-			{
-			$found=false;
-			if ( (isset($Key["COID"][$keyword])==true) )
-				{
-				/* alle Bewegungsmelder */
+		echo "\n";
+		echo "    Homematic Bewegungsmelder werden registriert.\n";
+		$componentHandling->installComponentFull(HomematicList(),"MOTION",'IPSComponentSensor_Motion','IPSModuleSensor_Motion',$commentField);
 
-				$oid=(integer)$Key["COID"][$keyword]["OID"];
-				$found=true;
-				}
+        if (false)  // alte Routine, ersetzt durch installComponent
+            {
+            echo "Homematic Bewegungsmelder und Kontakte werden registriert.\n";
+            $Homematic = HomematicList();
+            $keyword="MOTION";
+            foreach ($Homematic as $Key)
+                {
+                $found=false;
+                if ( (isset($Key["COID"][$keyword])==true) )
+                    {
+                    /* alle Bewegungsmelder */
 
-			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-				{
-				/* alle Kontakte */
+                    $oid=(integer)$Key["COID"][$keyword]["OID"];
+                    $found=true;
+                    }
 
-				$oid=(integer)$Key["COID"]["STATE"]["OID"];
-				$found=true;
-				}
-			if ($found)
-				{
- 				$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-					{
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				else
-					{
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
+                if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+                    {
+                    /* alle Kontakte */
 
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-					{
-					/* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
-					$messageHandler = new IPSMessageHandler();
-					$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-					$messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                    $oid=(integer)$Key["COID"]["STATE"]["OID"];
+                    $found=true;
+                    }
+                if ($found)
+                    {
+                    $variabletyp=IPS_GetVariable($oid);
+                    if ($variabletyp["VariableProfile"]!="")
+                        {
+                        echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                        }
+                    else
+                        {
+                        echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                        }
 
-					/* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
-					}
-				}
-			}
-		}
+                    if (isset ($installedModules["RemoteAccess"]))
+                        {
+                        //echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+                        }
+                    else
+                        {
+                        /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+                        echo "Remote Access nicht installiert, Variable ".IPS_GetName($oid)." selbst registrieren.\n";
+                        $messageHandler = new IPSMessageHandler();
+                        $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                        $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
 
-	if (function_exists('FS20List'))
-	   {
-		echo "FS20 Bewegungsmelder und Kontakte werden registriert.\n";
-		$TypeFS20=RemoteAccess_TypeFS20();
-		$FS20= FS20List();
-		foreach ($FS20 as $Key)
-			{
-			/* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
-			$found=false;
-			if ( (isset($Key["COID"]["MOTION"])==true) )
-   			{
-	   		/* alle Bewegungsmelder */
-		      $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-	   	   $found=true;
-				}
-			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
-			if ((isset($Key["COID"]["StatusVariable"])==true))
-	   		{
-   			foreach ($TypeFS20 as $Type)
-   		   	{
-	   	   	if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
-		   	      {
-     					$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
-				      $found=true;
-   		   	   }
-	   	   	}
-				}
+                        /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+                        $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
+                        }
+                    }
+                }
+            }       // ende if false
 
-			if ($found)
-			   {
-      		$variabletyp=IPS_GetVariable($oid);
-				if ($variabletyp["VariableProfile"]!="")
-			   	{
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
-				else
-				   {
-					echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-					}
+        if (function_exists('FS20List'))
+        {
+            echo "FS20 Bewegungsmelder und Kontakte werden registriert.\n";
+            $TypeFS20=RemoteAccess_TypeFS20();
+            $FS20= FS20List();
+            foreach ($FS20 as $Key)
+                {
+                /* Alle FS20 Bewegungsmelder ausgeben, Statusvariable muss schon umbenannt worden sein */
+                $found=false;
+                if ( (isset($Key["COID"]["MOTION"])==true) )
+                {
+                /* alle Bewegungsmelder */
+                $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+            $found=true;
+                    }
+                /* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
+                if ((isset($Key["COID"]["StatusVariable"])==true))
+                {
+                foreach ($TypeFS20 as $Type)
+                {
+                if (($Type["OID"]==$Key["OID"]) and ($Type["Type"]=="Motion"))
+                    {
+                            $oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
+                        $found=true;
+                }
+                }
+                    }
 
-				if (isset ($installedModules["RemoteAccess"]))
-					{
-					//echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
-					}
-				else
-				   {
-				   /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
-					echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
-				   $messageHandler = new IPSMessageHandler();
-				   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-				   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                if ($found)
+                {
+                $variabletyp=IPS_GetVariable($oid);
+                    if ($variabletyp["VariableProfile"]!="")
+                    {
+                        echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                        }
+                    else
+                    {
+                        echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                        }
 
-				   /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
-					$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
-				   }
-				}
-			}
-		}
-		
+                    if (isset ($installedModules["RemoteAccess"]))
+                        {
+                        //echo "Rufen sie dazu eine entsprechende remote Access Routine auf .... \n";
+                        }
+                    else
+                    {
+                    /* Nachdem keine Remote Access Variablen geschrieben werden müssen die Eventhandler selbst aufgesetzt werden */
+                        echo "Remote Access nicht installiert, Variablen selbst registrieren.\n";
+                    $messageHandler = new IPSMessageHandler();
+                    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+
+                    /* wenn keine Parameter nach IPSComponentSensor_Motion angegeben werden entfällt das Remote Logging. Andernfalls brauchen wir oben auskommentierte Routine */
+                        $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion','IPSModuleSensor_Motion,1,2,3');
+                    }
+                    }
+                }
+            }
+        }
+        
 	if (isset ($installedModules["IPSCam"]))
 		{
 		IPSUtils_Include ("IPSCam.inc.php",     "IPSLibrary::app::modules::IPSCam");

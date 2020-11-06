@@ -46,9 +46,17 @@ $debug=false;
 		}
  	$installedModules = $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-    //$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 
+    //$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
     //IPS_SetScriptTimer($_IPS['SELF'], 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+
+    if (isset($installedModules["DetectMovement"]))
+        {
+        /* Detect Movement kann auch Temperaturen agreggieren */
+        IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+        IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+        }
+
 
 $startpage = new StartpageHandler();
 $configuration=$startpage->getStartpageConfiguration();

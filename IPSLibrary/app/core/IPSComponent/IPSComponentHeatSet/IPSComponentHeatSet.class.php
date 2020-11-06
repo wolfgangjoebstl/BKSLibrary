@@ -174,8 +174,10 @@
 
 	class HeatSet_Logging extends Logging
 		{
+        private $startexecute;                  /* interne Zeitmessung */
+		protected $installedmodules;                    /* installierte Module */
+
 		private $variable;
-		private $variablename;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
 		
 		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
@@ -186,16 +188,8 @@
 
 		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
 
-		private $configuration;
-		private $CategoryIdData;          
-
-        private $startexecute;                  /* interne Zeitmessung */
-
-		/* Unter Klassen */
-		
-		protected $installedmodules;                    /* installierte Module */
-        protected $DetectHandler;		                /* Unterklasse */
-        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
+		//protected $configuration $variablename,$CategoryIdData;           // in der parent class definiert
+        // protected $DetectHandler,$archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */           
 
 
         /* HeatSet_Logging construct

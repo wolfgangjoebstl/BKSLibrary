@@ -201,13 +201,12 @@
 
 	class Feuchtigkeit_Logging extends Logging
 		{
-		private $variable,  $variablename;
+		private $variable;
         private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen
 
 		private $HumidityAuswertungID, $HumidityNachrichtenID;
 
-		private $configuration;
-		private $CategoryIdData;        
+		// $configuration, $variablename, $CategoryIdData       wird in parent class als protected geführt
 
 		public $variableLogID;		/* ID der entsprechenden lokalen Spiegelvariable */
 

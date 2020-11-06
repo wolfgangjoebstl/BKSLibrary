@@ -74,9 +74,10 @@
 		 * @param integer $RemoteOID OID die gesetzt werden soll
 		 * @param string $tempValue Wert für Beleuchtungs Änderung
 		 */
-		public function __construct($instanceId=Null, $remoteOID=null, $tempValue=null)
+		public function __construct($instanceId=null, $remoteOID=null, $tempValue=null)
 			{
-			//echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ".$instanceId.".\n";			
+			echo "IPSComponentSensor_Temperatur: Construct Temperature Sensor with ($instanceId,$remoteOID,$tempValue).\n";		
+            //$this->RemoteOID    = instanceID;                // par1 manchmal auch par2		
 			$this->RemoteOID    = $remoteOID;           // par2 manchmal auch par1
 			$this->tempValue    = $tempValue;           // par3
 			
@@ -127,6 +128,7 @@
                 //echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Temperature_LogValue();
                 //echo "Aktuelle Laufzeit nach Logging ".exectime($startexec)." Sekunden.\n"; 
+                //$log->RemoteLogValue($value, $this->remServer, $this->RemoteOID );            // neue Variante noch anschauen
    			    $this->SetValueROID($value);
                 //echo "Aktuelle Laufzeit nach Remote Server Update ".exectime($startexec)." Sekunden.\n"; 
                 }
@@ -203,22 +205,30 @@
 	 *
 	 * xxx_Auswertung und xxxx_Nachrichten
 	 *
+     * erweiterte Implementierung, abhängig vom Variablentyp, das ist für einen Temperatursensor, der kann auch noch andere Werte
+     * zur Auswahl stehen temperature und humidity, do inits Übersiedlung nach Logging notwendig, für die Synergien
+     *
+     *  __construct
+     *  do_init_temperature, do_init_humidity 
+     *  do_setVariableLogID
+     *  GetComponent
+     *
 	 **************************/
 
 	class Temperature_Logging extends Logging
 		{
-		private $variable, $variablename, $variableTypeReg;
-        private $variableProfile, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen
-		private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
+        protected  $variable, $variableProfile, $variableTypeReg, $variableType;        // Eigenschaften der input Variable auf die anderen Register clonen
+		//private $mirrorCatID, $mirrorNameID;            // Spiegelregister in CustomComponent um eine Änderung zu erkennen
 
-		private $AuswertungID, $NachrichtenID, $filename;
+		//private $AuswertungID, $NachrichtenID, $filename;
 
-		private $configuration;
-		private $CategoryIdData;          
+		// $configuration, $variablename, $CategoryIdData
 
 		public $variableLogID;			/* ID der entsprechenden lokalen Spiegelvariable */
 
+
         private $startexecute;                  /* interne Zeitmessung */
+        protected $debug;
 
 		/* Unter Klassen */
 		
@@ -232,11 +242,13 @@
          *
          */
 
-		function __construct($variable,$variablename=Null)
+		function __construct($variable,$variablename=Null,$variableTypeReg="unkown",$debug=false)
 			{
-            $this->startexecute=microtime(true);   
-			//echo "Construct IPSComponentSensor Temperature Logging for Variable ID : ".$variable."\n";
+            $this->startexecute=microtime(true);
+            $this->debug=$debug;   
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+
+			echo "   Construct IPSComponentSensor Temperatur Logging for Variable ID : ($variable,$variablename,$variableTypeReg).\n";
 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
@@ -247,103 +259,24 @@
                 {
                 if (IPS_GetVariable($variable)["VariableType"]==2) $this->variableTypeReg = "TEMPERATURE";            // kann STATE auch sein, tut aber nichts zur Sache
                 else $this->variableTypeReg = "HUMIDITY";
+                echo "Variable Type from Script is : ".$this->variableTypeReg." from Config is $variableTypeReg.\n";
+
                 }
             else    // getfromDatabase
                 {
                 //print_r($rows);   
                 $this->variableTypeReg = $rows[0]["TypeRegKey"];    
                 }
+			if ($this->debug) echo "Construct IPSComponentSensor:Temperature_Logging for Variable ID : ".$variable." \"".$this->variableProfile."\" ".$this->variableType." ".$this->variableTypeReg."\n";
 
-            if ($this->variableTypeReg == "TEMPERATURE")  $this->do_init_temperature($variable, $this->variablename);
-            elseif ($this->variableTypeReg == "HUMIDITY") $this->do_init_humidity($variable, $this->variablename);
-            else IPSLogger_Err(__file__, 'IPSComponentSensor_Temperatur:Logging mit VariableID '.$variable.' Variablename '.$this->variablename.' kennt folgenden TypeReg nicht '.$this->variableTypeReg); 
+            if ($this->variableTypeReg == "TEMPERATURE")  $NachrichtenID = $this->do_init_temperature($variable, $variablename);
+            elseif ($this->variableTypeReg == "HUMIDITY") $NachrichtenID = $this->do_init_humidity($variable, $variablename);
+            else IPSLogger_Err(__file__, 'IPSComponentSensor_Temperatur:Logging mit VariableID '.$variable.' Variablename '.$variablename.' kennt folgenden TypeReg nicht '.$this->variableTypeReg); 
 
+            if ($this->debug) echo "    ermittelt wurden  Variablename \"".$this->variablename."\" MirrorNameID ".$this->mirrorNameID." (".IPS_GetName($this->mirrorNameID).") und Log Filename \"".$this->filename."\" mit NachrichtenID  ".$NachrichtenID." (".IPS_GetName($NachrichtenID)."/".IPS_GetName(IPS_GetParent($NachrichtenID)).")\n";
 		    //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:Construct Logging mit VariableID '.$variable.' Variablename "'.$this->variablename.'" MirrorNameID "'.$this->mirrorNameID.' "und TypeReg "'.$this->variableTypeReg.'"');			
-			parent::__construct($this->filename,$this->NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
+			parent::__construct($this->filename,$NachrichtenID);                                 // Adresse Nachrichten Kategorie wird selbst ermittelt
 			}
-
-        /* Initialisierung für Temperature */
-
-        private function do_init_temperature($variable, $variablename)
-            {
-			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* Detect Movement kann auch Temperaturen agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$this->DetectHandler = new DetectTemperatureHandler();
-                }
-
-            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovemet Config oder selber bestimmen
-
-			/**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);
-
-            $name="TemperatureMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
-			//echo "    Temperatur_Logging:construct Kategorien im Datenverzeichnis:".$this->CategoryIdData."   (".IPS_GetName($this->CategoryIdData).")\n";
-			
-			/* Create Category to store the LogNachrichten und Spiegelregister*/	
-			$this->NachrichtenID=$this->CreateCategoryNachrichten("Temperatur",$this->CategoryIdData);
-			$this->AuswertungID=$this->CreateCategoryAuswertung("Temperatur",$this->CategoryIdData);
-            $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
-
-			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
-			//echo "Uebergeordnete Variable : ".$variablename."\n";
-			$directories=get_IPSComponentLoggerConfig();
-			if (isset($directories["LogDirectories"]["TemperatureLog"]))
-		   		 { $directory=$directories["LogDirectories"]["TemperatureLog"]; }
-			else {$directory="C:/Scripts/Temperature/"; }	
-            $dosOps= new dosOps();              
-			$dosOps->mkdirtree($directory);
-			$this->filename=$directory.$variablename."_Temperature.csv";
-            }    
-
-
-        /* Initialisierung für Feuchtigkeit */
-
-        private function do_init_humidity($variable, $variablename)
-            {
-			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
-			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
-			$this->installedmodules=$moduleManager->GetInstalledModules();
-
-			if (isset ($this->installedmodules["DetectMovement"]))
-				{
-				/* Detect Movement kann auch Feuchtigkeiten agreggieren */
-				IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
-				IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
-				$this->DetectHandler = new DetectHumidityHandler();
-                }
-
-            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
-
-			/**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
-			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
-			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-            $this->mirrorCatID  = CreateCategoryByName($this->CategoryIdData,"Mirror",10000);                
-            $name="HumidityMirror_".$this->variablename;
-            $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 2 float ~Temperature*/
-
-			/* Create Category to store the LogNachrichten und Spiegelregister*/	
-			$this->NachrichtenID=$this->CreateCategoryNachrichten("Feuchtigkeit",$this->CategoryIdData);
-			$this->AuswertungID=$this->CreateCategoryAuswertung("Feuchtigkeit",$this->CategoryIdData);
-            $this->do_setVariableLogID($variable);            // lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen 
-
-			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
-			//echo "Uebergeordnete Variable : ".$variablename."\n";
-		    $directories=get_IPSComponentLoggerConfig();
-		    $directory=$directories["LogDirectories"]["HumidityLog"];
-            $dosOps= new dosOps();              
-		    $dosOps->mkdirtree($directory);
-		    $this->filename=$directory.$variablename."_Feuchtigkeit.csv";
-            }
 
         /* do_setVariableLogID, nutzt setVariableLogId aus der Logging class 
         * kannnicht diesselbe class sein, da this verwendet wird
@@ -489,7 +422,7 @@
 			}
 
 
-        /* Gesamtauswertung verallgemeinern */
+        /* Gesamtauswertung verallgemeinern, interne Routine */
 
         private function do_gesamtauswertung($aggType)
             {
@@ -502,14 +435,29 @@
                         {
                         echo "      --> Gruppe ".$group." behandeln.\n";
                         $config=$this->DetectHandler->ListEvents($group);
+                        
                         $status=(float)0;
                         $count=0;
+                        $roomList=array();
+
                         foreach ($config as $oid=>$params)
                             {
+                            $variableProps=IPS_GetVariable($oid);
+                            $lastChanged=date("d.m.Y H:i:s",$variableProps["VariableChanged"]);
+                            $roomStr=$this->DetectHandler->getRoomNamefromConfig($oid,$group);
+                            $roomRay=explode(",",$roomStr);
+                            if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
+                                {
+                                //print_r($roomRay);
+                                foreach ($roomRay as $room) $roomList[$room][]=$oid;
+                                //$roomList[$roomRay[0]][]=$oid;
+                                }
+                            else $roomList["none"][]=$oid;
+
                             $status+=GetValue($oid);
                             $count++;
                             //echo "OID: ".$oid." Name: ".str_pad(IPS_GetName(IPS_GetParent($oid)),30)."Status: ".GetValue($oid)." ".$status."\n";
-                            echo "OID: ".$oid." Name: ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),50)."Status: ".GetValue($oid)." ".$status."\n";
+                            echo "                OID: ".$oid." Name: ".str_pad(IPS_GetName($oid).".".IPS_GetName(IPS_GetParent($oid)),60).str_pad($roomStr,24)."Status: ".GetValue($oid)." ".$status."\n";
                             }
                         switch ($this->variableType)
                             {
@@ -523,7 +471,7 @@
                                 $statusResult=(integer)$status;                            
                                 break;
                             }
-                        //echo "Gruppe ".$group." hat neuen Status : ".$status."\n";
+                        echo "     Gruppe $group hat neuen Status : $statusResult=$status/$count \n";
                         /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
                         $statusID=CreateVariableByName($this->AuswertungID,"Gesamtauswertung_".$group,$this->variableType, $this->variableProfile, null, 1000, null);
                         $oldstatus=GetValue($statusID);

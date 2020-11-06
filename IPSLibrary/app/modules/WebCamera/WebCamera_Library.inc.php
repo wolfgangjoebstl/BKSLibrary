@@ -23,6 +23,18 @@
  * im OperationCenter gibt es die Livestreamdarstellung und eine Capturebilder Darstellung
  * WebCamera ist dazu ein eigenständiges Modul das aktuell noch Funktionen aus den beiden anderen Programmen übernimmt
  *
+ * __construct
+ * getConfiguration
+ * getStillPicsConfiguration
+ * getComponentIntern
+ * getComponentExtern
+ * IPAdrQuickCheck
+ * getCategoryIdData
+ * zielVerzeichnis
+ * DownloadImageFromCams
+ * DownloadImageFromCam
+ * GetLoggingTextFromURL
+ *
  */
 
 

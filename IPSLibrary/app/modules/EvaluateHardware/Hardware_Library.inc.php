@@ -822,6 +822,15 @@ class HardwareNetatmoWeather extends Hardware
  * Hier gibt es Hardware spezifische Routinen die die class hardware erweitern.
  * Homematic hat ein eigenes Naming scheme mit : da ein Gerät mehrere Instanzen haben kann. name Gerät:Instanz
  *
+ *
+ *      __construct
+ *      getDeviceCheck
+ *      getDeviceParameter
+ *      getDeviceChannels
+ *      checkConfig
+ *
+ *
+ *
  */
 
 class HardwareHomematic extends Hardware
@@ -936,7 +945,8 @@ class HardwareHomematic extends Hardware
             if ( ($typedev=="") || ($typedev===false) )
                 {
                 echo "       >>getDeviceCheck:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)." \n";
-                echo "                Info : ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."   \n";
+                echo "                Info : ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  Fehleranalyse typedev=this->DeviceManager->getHomematicDeviceType($instanz... erfolgt hier: \n";
+                $this->DeviceManager->getHomematicDeviceType($instanz,0,true);          // gleich mit Debug starten
                 return(false);
                 }
             
@@ -1129,6 +1139,10 @@ class HardwareHomematic extends Hardware
                         print_r($typedev);
                         }
                     */
+                    if ($debug) 
+                        {
+                        if (isset($typedev["TYPE_MOTION"])) print_r($typedev);
+                        }
                     if (isset($typedev["RegisterAll"])) 
                         {
                         $deviceList[$nameSelect[0]]["Channels"][$port]["RegisterAll"]=$typedev["RegisterAll"];

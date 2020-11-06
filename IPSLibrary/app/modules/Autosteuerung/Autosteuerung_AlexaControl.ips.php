@@ -50,17 +50,53 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 *************************************************************/
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-if (!isset($moduleManager)) 
-	{
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-	}
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    if (!isset($moduleManager)) 
+        {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+        }
 
-$installedModules = $moduleManager->GetInstalledModules();
+    $installedModules = $moduleManager->GetInstalledModules();
 
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+	$categoryId_Ansteuerung       = IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
+    $MonitorModeID                = IPS_GetObjectIDByName("MonitorMode", $categoryId_Ansteuerung);
+    $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
+	$StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
+
+    //echo "gefunden: $MonitorModeID $SchalterMonitorID\n";
+    $debug=true;
+    $operate=new AutosteuerungOperator($debug);    
+    $auto=new Autosteuerung();
+    $ergebnisTyp=false;
+
+    $AutoSetSwitches = Autosteuerung_SetSwitches();
+    if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
+        {
+        $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Ansteuerung);
+        if ($monitorId) 
+            {
+            $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
+            //echo "modul Internal abarbeiten, Werte in ".$categoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+            $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
+            if (function_exists("Autosteuerung_MonitorMode")) 
+                {
+                $MonitorModeConfig=Autosteuerung_MonitorMode();
+                if (isset($MonitorModeConfig["SwitchName"]))
+                    {
+                    //echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
+                    $result["NAME"]=$MonitorModeConfig["SwitchName"];
+                    $ergebnisTyp=$auto->getIdByName($result["NAME"]);                                
+                    //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                    
+                    }
+                }
+            }
+        }
+
 
 $configurationAutosteuerung = Autosteuerung_Setup();
 
@@ -245,6 +281,21 @@ Switch ($_IPS['SENDER'])
 		break;
 	Case "WebFront":        // Zum schalten im Webfront
 		SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);	
+        switch ($_IPS['VARIABLE'])
+            {
+            case $SchalterMonitorID:            // nur hier wenn Alexa nicht installiert ist
+                //echo "monitor control ".GetValueIfFormatted($MonitorModeID);
+                $state=GetValue($MonitorModeID);
+                if ( ($state<2) && ($ergebnisTyp !== false) ) 
+                    {
+                    $auto->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug
+                    SetValue($SchalterMonitorID,$state);
+                    SetValue($StatusMonitorID,$state);              // sollte auch den Änderungsdienst zum Zuletzt Wert machen
+                    }
+                break;
+            default:
+                break;
+            }
 		break;
     } 
 

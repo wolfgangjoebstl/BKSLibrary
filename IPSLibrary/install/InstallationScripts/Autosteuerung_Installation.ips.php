@@ -361,7 +361,7 @@
 				IPS_ApplyChanges($archiveHandlerID);
 
 				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
-				else $StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");			
+				else $StatusSchalterAnwesendID=CreateVariable("SchalterAnwesend",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -402,7 +402,7 @@
 				IPS_ApplyChanges($archiveHandlerID);
 				
 				if ($countAlexa>0) 	$StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
-				else $StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");			
+				else $StatusSchalterAnwesendID=CreateVariable("SchalterAlarmanlage",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");			
 				$register->registerAutoEvent($StatusSchalterAnwesendID, $eventType, "", "");
 				AC_SetLoggingStatus($archiveHandlerID,$StatusSchalterAnwesendID,true);
 				AC_SetAggregationType($archiveHandlerID,$StatusSchalterAnwesendID,0);      /* normaler Wwert */
@@ -594,6 +594,31 @@
                 break;
 			case "CONTROL":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Control'));             
+                if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
+                    {  				
+			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputControl;											/* Darstellung rechts im Webfront */				
+                    }
+				break;
+			case "MONITORMODE":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'MonitorMode'));             
+
+                /* Setup Standard Variables */
+                echo "   Variablen für MonitorStatus Steuerung in ".$AutosteuerungID."  ".IPS_GetName($AutosteuerungID)."\n";			
+				$StatusMonitorID=CreateVariable("StatusMonitor",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");
+				$StatusMonitorZuletztID=CreateVariable("StatusMonitorZuletzt",0, $AutosteuerungID,0,"AusEin-Boolean",null,null,"");
+				IPS_SetHidden($StatusMonitorZuletztID,true);
+				$register->registerAutoEvent($StatusMonitorID, $eventType, "", "");
+				AC_SetLoggingStatus($archiveHandlerID,$StatusMonitorID,true);
+				AC_SetAggregationType($archiveHandlerID,$StatusMonitorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+
+				if ($countAlexa>0) 	$MonitorSchalterID=CreateVariable("SchalterMonitor",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdAlexaControl,null,"");	
+				else $MonitorSchalterID=CreateVariable("SchalterMonitor",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");			
+				$register->registerAutoEvent($MonitorSchalterID, $eventType, "", "");
+				AC_SetLoggingStatus($archiveHandlerID,$MonitorSchalterID,true);
+				AC_SetAggregationType($archiveHandlerID,$MonitorSchalterID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);				
+
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */
                     {  				
 			    	$webfront_links[$AutosteuerungID]["OID_R"]=$inputControl;											/* Darstellung rechts im Webfront */				

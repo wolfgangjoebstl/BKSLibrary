@@ -6816,7 +6816,7 @@ class DeviceManagement
 
 	function getHomematicAddressList($callCreateReport=false, $debug=false)
 		{
-        echo "DeviceManagement::getHomematicAddressList aufgerufen.\n";
+        //if ($debug) echo "DeviceManagement::getHomematicAddressList aufgerufen.\n";
 		$countHMI = sizeof($this->HMIs);
 		$addresses=array();
 		if ($countHMI>0)
@@ -7495,7 +7495,7 @@ class DeviceManagement
             if (array_search("PRESS_LONG",$registerNew) !== false) $resultReg[0]["PRESS_LONG"]="PRESS_LONG";
             if ($debug) echo "-----> Taster : ".$resultType[0]." ".json_encode($registerNew).json_encode($resultReg[0])."\n";
             }
-        /*-------------------------------------*/
+        /*-------Schaltaktor oder Kontakt------------------------------*/
         elseif ( array_search("STATE",$registerNew) !== false) /* Schaltaktor oder Kontakt */
             {
             //print_r($registerNew);
@@ -7528,7 +7528,7 @@ class DeviceManagement
                 $resultReg[0]["CONTACT"]="STATE";                
                 }
             }
-        /*-------------------------------------*/
+        /*-----Dimmer--------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) && ( array_search("ERROR_OVERLOAD",$registerNew) !== false) )/* Dimmer */
             {
             //print_r($registerNew);                
@@ -7546,7 +7546,7 @@ class DeviceManagement
             $resultType[0] = "TYPE_DIMMER"; 
             $resultReg[0]["LEVEL"]="LEVEL";                       
             }         
-        /*-------------------------------------*/
+        /*------Rolladensteuerung-------------------------------*/
         elseif ( ( array_search("LEVEL",$registerNew) !== false) && ( array_search("DIRECTION",$registerNew) !== false) )                   /* Rollladensteuerung/SHUTTER */
             {
             //print_r($registerNew);                
@@ -7555,7 +7555,7 @@ class DeviceManagement
             $resultType[0] = "TYPE_SHUTTER";    
             $resultReg[0]["HEIGHT"]="LEVEL";              // DIRECTION INHIBIT LEVEL WORKING
             }                    
-        /*-------------------------------------*/
+        /*-------Bewegung------------------------------*/
         elseif ( array_search("MOTION",$registerNew) !== false) /* Bewegungsmelder */
             {
             //print_r($registerNew);    
@@ -7563,8 +7563,10 @@ class DeviceManagement
             $result[1] = "Funk-Bewegungsmelder";
             $resultType[0] = "TYPE_MOTION";            
             $resultReg[0]["MOTION"]="MOTION";
-            $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
+            if ( array_search("BRIGHTNESS",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="BRIGHTNESS";
+            if ( array_search("ILLUMINATION",$registerNew) !== false) $resultReg[0]["BRIGHTNESS"]="ILLUMINATION";
             }
+        /*-------RSSI------------------------------*/
         elseif ( array_search("RSSI_DEVICE",$registerNew) !== false) /* nur der Empfangswert */
             {
             $result[0] = "RSSI Wert";
@@ -7573,6 +7575,7 @@ class DeviceManagement
             $resultType[0] = "TYPE_RSSI";             
             $resultReg[0]["RSSI"] = "";
             }            
+        /*-------Energiemessgerät------------------------------*/
         elseif ( array_search("CURRENT",$registerNew) !== false) /* Messgerät */
             {
             $result[0] = "Energiemessgeraet";
@@ -7580,6 +7583,14 @@ class DeviceManagement
             else $result[1] = "IP Funk Energiemessgeraet";
             $resultType[0] = "TYPE_METER_POWER";             
             $resultReg[0]["ENERGY"]="ENERGY_COUNTER";          
+            }          
+        /*-------Helligkeitssensor------------------------------*/
+        elseif ( array_search("CURRENT_ILLUMINATION",$registerNew) !== false)     /* Helligkeitssensor */
+            {
+            $result[0] = "Helligkeitssensor";
+            $result[1] = "IP Funk Helligkeitssensor";
+            $resultType[0] = "TYPE_METER_CLIMATE";             
+            $resultReg[0]["BRIGHTNESS"]="CURRENT_ILLUMINATION";          
             }          
         else 
             {
@@ -7720,6 +7731,9 @@ class DeviceManagement
                     
                     case "HM-Sec-SC":
                     case "HM-Sec-SC-2":
+                    case "HMIP-SWDO":
+                    case "HmIP-SWDM":                   // magnetischer Sensor
+
                         $result="Tuerkontakt";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -7747,6 +7761,7 @@ class DeviceManagement
                         break;
                     case "HMIP-WTH":
                     case "HmIP-WTH-2":
+                    case "HmIP-WTH-B":
                         $result="Wandthermostat";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -7821,6 +7836,11 @@ class DeviceManagement
                         $matrix=[0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2];                        
                         break;
 
+                    case "HMIP-SLO":
+                    case "HmIP-SLO":
+                        $result="Helligkeitssensor";
+                        $matrix=$matrix=[0,2,1,1,1,1,1,1];      // Standard Matrix, Infos in Kanal 1
+                        break;                        
                     case "-":
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
                     default:

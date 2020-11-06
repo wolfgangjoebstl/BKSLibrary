@@ -69,7 +69,8 @@ class AutosteuerungAlexaHandler
             if ($debug) 
                 {
                 echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
-                echo $this->configAlexa."\n";
+                echo "   ".$this->configAlexa."\n";
+                echo "Es geht weiter mit der Analyse der Alexa Konfiguration:\n";
                 }
         	$configStruct=json_decode($this->configAlexa);          // liest die Konfiguration der Alexa Instanz aus
 	        //print_r($configStruct);
@@ -80,6 +81,7 @@ class AutosteuerungAlexaHandler
                     $conf="[]";
                     }
         	    $confStruct=json_decode($conf);
+                if ($debug) echo "Bearbeite    ".$typ." :\n";
                 //echo "Bearbeite    ".$typ."    ".$conf."\n";
 		        //foreach ($confStruct as $struct) print_r($struct);            
                 switch ($typ)
@@ -89,10 +91,13 @@ class AutosteuerungAlexaHandler
 				        $id="SpeakerID";
                         break;	
                     case "DeviceSpeakerMuteable":
-                        // $id="SpeakerID";
+                        $id="unknown";
                         break;
+                    case "DeviceMediaPlayer":
+                        $id="unknown";
+                        break;                        
                     case "DeviceTelevision":				
-                        // $id="SpeakerID";
+				        $id="PowerControllerID";
                         break;
 	    	        case "DeviceGenericSwitch":
 		            case "DeviceLightSwitch":
@@ -121,7 +126,7 @@ class AutosteuerungAlexaHandler
 	            		$id="BrightnessControllerID";
 		    	        break;	
             		case "DeviceShutter":
-	            		//$id="BrightnessControllerID";
+                        $id="unknown";
 		    	        break;	
                     case "DeviceLock":
 	            		$id="LockControllerID";
@@ -153,11 +158,12 @@ class AutosteuerungAlexaHandler
 	            	{
                     if ($debug) 
                         {
+                        echo "   Analysiere für \"$id\" :".json_encode($struct)."\n";
                         //print_r($struct);                       
-                        echo json_encode($struct)."\n";
                         }
                     if ($this->countAlexa > 0)
                         {   // lokal Alexa
+                        if ( (isset($struct->$id)) === false) echo "Kenn ich nicht.\n";
         				if ( IPS_ObjectExists($struct->$id)==true )
 		        			{
                             $Name=IPS_GetName($struct->$id);        // same structure as for remote, idea ist to reduce the number of accesses to remote server

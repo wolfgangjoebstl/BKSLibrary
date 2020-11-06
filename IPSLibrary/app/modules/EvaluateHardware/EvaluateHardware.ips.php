@@ -33,6 +33,9 @@
  *      function gatewayInstanzen()
  *      function deviceList()  mit Input von function hardwareList()
  *
+ * Die DeviceList wird von MySQL abgelöst. Bleibt aber als Fixpunkt bestehen. Devicelist wird von $topologyLibrary->get_DeviceList($hardware) erstellt.
+ * die TopologyLibrary ist in EvaluateHardware_Library angelegt.
+ *
  * Die alte Geräte abhängige Devicelist ist jetzt in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Include.inc.php
  *      mit functions pro gerätetyp
  *	

@@ -146,7 +146,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
                 $deviceList[$name]["serverGatewayID"] = $serverGatewayID;  
                 }
             }
-        $sql_deviceList->syncTableValues($deviceList);                                      // deviceList Table
+        $sql_deviceList->syncTableValues($deviceList,true);                                      // deviceList Table, true ist Debug
 
         echo "syncTableProductType Spalte ProductType erweitern\n";
         $sql_deviceList->syncTableProductType(homematicList());                             // Homematic Table
@@ -157,8 +157,8 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "\n";
         $componentModules=$sql_componentModules->get_componentModules(IPSDeviceHandler_GetComponentModules());
         echo "Die aktuelle Component Liste aus der Konfiguration IPSDeviceHandler_GetComponentModules in einer eigenen Tabelle speichern und indezieren.\n";
-        print_r(IPSDeviceHandler_GetComponentModules());
-        print_r($componentModules);
+        //print_r(IPSDeviceHandler_GetComponentModules());
+        //print_r($componentModules);
         $sql_componentModules->syncTableValues($componentModules,false); 
 
         /* den inner join mit den componentModules weglassen um die NUL für componentModuleID zu finden */
@@ -188,7 +188,7 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
             {
             $componentID[$singleRow["componentName"]]=$singleRow["componentModuleID"];    
             }
-        print_r($componentID);
+        //print_r($componentID);
         $columnData=array();
         foreach ($columnComponentModule as $registerID => $entry)
             {
@@ -217,11 +217,12 @@ $startexec=microtime(true);     // Zeitmessung, um lange Routinen zu erkennen
         echo "\nErmittlung der Werte für Tabelle valuesOnRegs:\n";
         foreach ($fetchRegisters as $singleRow)
             {
-            $result=getCOIDforRegisterID($singleRow);         // singleRow wird von der function erweitert
+            $result=getCOIDforRegisterID($singleRow,false,false);         // singleRow wird von der function erweitert, register=false, debug=true
             //print_r($result);
             if ($result !== false) $singleRows=$singleRows + $result;
             }
-        print_r($singleRows);
+        //print_r($singleRows);
+        echo "\nvaluesOnRegs::syncTableValues aufrufen.\n";
         $sql_valuesOnRegs->syncTableValues($singleRows);
 
         }

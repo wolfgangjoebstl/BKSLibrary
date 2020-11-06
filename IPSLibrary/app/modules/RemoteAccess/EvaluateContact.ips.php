@@ -74,67 +74,83 @@ echo "\n";
 	echo "Update Konfiguration und register Events:\n\n";
 
     IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-	//IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::app::modules::EvaluateHardware");       // neues Include File jetzt in config
     IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 
-	$Homematic = HomematicList();
-	$FHT = FHTList();
-	$FS20= FS20List();
-	$FS20EX= FS20EXList();
+    $componentHandling=new ComponentHandling();
+    $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateMotion um ".date("h:i am d.m.Y ").".";
 
-	/******************************************* Kontakte ***********************************************/
-
-	$remServer=ROID_List();
-	$status=RemoteAccessServerTable();
-
-	echo "******* Alle Homematic Kontakte ausgeben.\n";
-	$keyword="MOTION";
-	foreach ($Homematic as $Key)
+	echo "\n";
+	echo "***********************************************************************************************\n";
+	echo "EvaluateMotion, Bewegungsmelder, Helligkeitssesor und Contact Handler wird ausgeführt:\n";
+    echo "--------------------------------------------------------------------------------------\n";
+    if ( (function_exists('deviceList')) )
+        {
+        echo "Kontakte von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */
+        //print_r($result);
+        }
+    elseif (function_exists('HomematicList'))
 		{
-		if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
-			{
-			/* alle Kontakte */
+        $Homematic = HomematicList();
+        $FHT = FHTList();
+        $FS20= FS20List();
+        $FS20EX= FS20EXList();
 
-			$oid=(integer)$Key["COID"]["STATE"]["OID"];
-			$variabletyp=IPS_GetVariable($oid);
-			if ($variabletyp["VariableProfile"]!="")
-			   {
-				echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			else
-			   {
-				echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
-				}
-			$parameter="";
-			foreach ($remServer as $Name => $Server)
-				{
-				echo "      Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
-				if ( $status[$Name]["Status"] == true )
-					{
-					$rpc = new JSONRPC($Server["Adresse"]);
-					$result=RPC_CreateVariableByName($rpc, (integer)$Server["Kontakte"], $Key["Name"], 0);
-	   			    $rpc->IPS_SetVariableCustomProfile($result,"Contact");
-					$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-					$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
-					$parameter.=$Name.":".$result.";";
-					}
-				}	
-		    $messageHandler = new IPSMessageHandler();
-		    $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-		    //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
-		    $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-			$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
-			if (isset ($installedModules["DetectMovement"]))
-				{
-				//echo "Detect Movement anlegen.\n";			
-				$DetectMovementHandler = new DetectMovementHandler();
-				$DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
-				}
-			}
-		}
+        /******************************************* Kontakte ***********************************************/
+
+        $remServer=ROID_List();
+        $status=RemoteAccessServerTable();
+
+        echo "******* Alle Homematic Kontakte ausgeben.\n";
+        $keyword="MOTION";
+        foreach ($Homematic as $Key)
+            {
+            if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
+                {
+                /* alle Kontakte */
+
+                $oid=(integer)$Key["COID"]["STATE"]["OID"];
+                $variabletyp=IPS_GetVariable($oid);
+                if ($variabletyp["VariableProfile"]!="")
+                {
+                    echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                else
+                {
+                    echo "   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."  ".$oid."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")\n";
+                    }
+                $parameter="";
+                foreach ($remServer as $Name => $Server)
+                    {
+                    echo "      Server : ".$Name." mit Adresse ".$Server["Adresse"]."  Erreichbar : ".($status[$Name]["Status"] ? 'Ja' : 'Nein')."\n";
+                    if ( $status[$Name]["Status"] == true )
+                        {
+                        $rpc = new JSONRPC($Server["Adresse"]);
+                        $result=RPC_CreateVariableByName($rpc, (integer)$Server["Kontakte"], $Key["Name"], 0);
+                        $rpc->IPS_SetVariableCustomProfile($result,"Contact");
+                        $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                        $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+                        $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);				//print_r($result);
+                        $parameter.=$Name.":".$result.";";
+                        }
+                    }	
+                $messageHandler = new IPSMessageHandler();
+                $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+                //echo "Message Handler hat Event mit ".$oid." angelegt.\n";
+                $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Motion,'.$parameter,'IPSModuleSensor_Motion');
+                if (isset ($installedModules["DetectMovement"]))
+                    {
+                    //echo "Detect Movement anlegen.\n";			
+                    $DetectMovementHandler = new DetectMovementHandler();
+                    $DetectMovementHandler->RegisterEvent($oid,"Contact",'','');
+                    }
+                }
+            }
+        }
 
 if (false)
 	{	

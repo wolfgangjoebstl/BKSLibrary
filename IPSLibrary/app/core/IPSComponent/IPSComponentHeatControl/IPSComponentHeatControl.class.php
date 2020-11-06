@@ -123,8 +123,9 @@
 
 	class HeatControl_Logging extends Logging
 		{
+        private $startexecute;                  /* interne Zeitmessung */        
+
 		private $variable;
-		private $variablename;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
 		
 		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert */
@@ -136,16 +137,15 @@
 
 		private $powerConfig;					/* Powerwerte der einzelnen Heizkoerper, Null wenn Configfile nicht vorhanden */
 
-		private $configuration;
-		private $CategoryIdData;          
+		//protected $configuration, $variablename,$CategoryIdData;           // in der parent class definiert
+		//protected $mirrorCatID, $mirrorNameID;                            // in der parent class definiert, Spiegelregister in CustomComponent um eine Änderung zu erkennen
+		//protected $AuswertungID, $NachrichtenID, $filename;             // in der parent class definiert, Auswertung für Custom Component 
 
-        private $startexecute;                  /* interne Zeitmessung */        
 
 		/* Unter Klassen */
 		
 		protected $installedmodules;                    /* installierte Module */
-        protected $DetectHandler;		                /* Unterklasse */
-        protected $archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
+        //protected $DetectHandler,$archiveHandlerID;                    /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */          
 				
         /* HeatControl_Logging construct
          * die wichtigsten Variablen initialisieren und anlegen
