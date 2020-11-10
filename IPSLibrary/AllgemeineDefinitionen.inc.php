@@ -1410,27 +1410,57 @@ function GetValueIfFormatted($oid)
  *
  */
 
-function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
     {
     //echo "Position steht auf $position.\n";
     //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
-    //global $IPS_SELF;
-    $vid = @IPS_GetVariableIDByName($name, $parentID);
-    if($vid === false)
+    $VariableId = @IPS_GetVariableIDByName($name, $parentID);
+    if ($VariableId === false)
         {
         echo "Create Variable Name $name Type $type in $parentID:\n";
-        $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $parentID);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
+        $VariableId = @IPS_CreateVariable($type);
+        if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
+        IPS_SetParent($VariableId, $parentID);
+        IPS_SetName($VariableId, $name);
+        if ( ($profile) && ($profile !== "") ) { IPS_SetVariableCustomProfile($VariableId, $profile); }
+  	    if ( ($ident) && ($ident !=="") ) {IPS_SetIdent ($VariableId , $ident );}
+        if ( $action && ($action!=0) ) { IPS_SetVariableCustomAction($VariableId,$action); }        
+        if ($default !== false) SetValue($VariableId, $default);
+        IPS_SetInfo($VariableId, "this variable was created by script #".$_IPS['SELF']." ");
         }
-	IPS_SetPosition($vid, $position);
-    if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
-  	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
-    if($action!=0) { IPS_SetVariableCustomAction($vid,$action); }
-    return $vid;
+    else 
+        {
+        $VariableData = IPS_GetVariable ($VariableId);
+        if ($VariableData['VariableType'] <> $type)
+            {
+            IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> $type. Delete and create new.");
+            IPS_DeleteVariable($VariableId); 
+            $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
+            $VariableData = IPS_GetVariable ($VariableId);            
+            }
+		if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
+			{
+			//Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
+			echo "Set VariableProfile='$profile' for Variable='$name' \n";
+			$result=@IPS_SetVariableCustomProfile($VariableId, $profile);
+            if ($result==false) 
+                {
+                echo "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.\n";
+                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.");
+                }
+			}	
+		if ($action && ($VariableData['VariableCustomAction'] <> $action) )
+			{
+			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+			echo "Set VariableCustomAction='$action' for Variable='$name' \n";
+			IPS_SetVariableCustomAction($VariableId, $action);
+			}
+   
+        }
+	IPS_SetPosition($VariableId, $position);
+    return $VariableId;
     }
 
 function CreateCategoryByName($parentID, $name, $position=0)
@@ -1447,8 +1477,7 @@ function CreateCategoryByName($parentID, $name, $position=0)
     return $vid;
     }
 
-/******************************************************************/
-
+/*****************************************************************
 function CreateVariableByName2($name, $type, $profile, $action, $visible)
     {
     $id=IPS_GetParent($_IPS['SELF']);
@@ -1470,7 +1499,7 @@ function CreateVariableByName2($name, $type, $profile, $action, $visible)
         IPS_SetHidden($vid,!$visible);
         }
     return $vid;
-    }
+    }       */
 
 /************************************
  *
@@ -1536,7 +1565,7 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 		return $VariableId;
 	}
 
-/******************************************************************/
+/*****************************************************************
 
 function CreateVariableByNameFull($id, $name, $type, $profile = "")
 {
@@ -1553,7 +1582,7 @@ function CreateVariableByNameFull($id, $name, $type, $profile = "")
         }
     }
     return $vid;
-}
+}           */
 
 /******************************************************************/
 

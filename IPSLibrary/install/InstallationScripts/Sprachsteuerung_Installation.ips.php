@@ -84,69 +84,10 @@
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf-Sprachsteuerung',   $CategoryIdData, 20);
-	$Nachricht_inputID = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
+	$Nachricht_inputID = CreateVariableByName($categoryId_Nachrichten,"Nachricht_Input",3);
 
 	$scriptIdSprachsteuerung   = IPS_GetScriptIDByName('Sprachsteuerung', $CategoryIdApp);
     $scriptIdAction            = IPS_GetScriptIDByName('Sprachsteuerung_Actionscript', $CategoryIdApp);
-
-    echo "ScriptId Spachsteuerung ".$scriptIdSprachsteuerung." Action ".$scriptIdAction." und Nachrichten Input ".$Nachricht_inputID."\n";
-
-    $html="";
-    $html .= '<style>';
-    $html .= 'table.ovw { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
-    $html .= ' font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; font-weight:400; text-decoration:none; color:white; white-space:pre-wrap; }';
-    $html .= 'table.ovw th { padding: 2px; background-color:#98dcff; border:solid 2px #006CFF; }';
-    $html .= 'table.ovw td { padding: 2px; border:solid 1px grey; }';
-    $html .= 'table.head tr { margin:0; padding:4px; }';
-    $html .= '.quick.green {border:solid green; color:green;}';
-    $html .= '';
-    $html .= '</style>';
-    $html .= '<table class="ovw">';
-
-	if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
-        {
-        echo "Modul Sprachsteuerung richtig installiert. Wird von tts_play des OperationCenter verwendet.\n";
-		$config=Sprachsteuerung_Configuration();
-		if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) )  
-            { 
-            $url=$config["RemoteAddress"]; 
-            $oid=$config["ScriptID"];
-			$rpc = new JSONRPC($url);
-			//$monitor=array("Text" => $ansagetext);
-			//$rpc->IPS_RunScriptEx($oid,$monitor);            
-            $scriptName=$rpc->IPS_GetName($oid);
-            echo "    Verwendet die Sprachsteuerung des Servers $url und ruft dort dieses Script $oid auf.\n";
-            $html .= '<tr><td colspan="2">Verwendet eine remote Sprachsteuerung:</td></tr>';            
-            $html .= '<tr><td style="text-align:right">Server</td><td>'.$url.'</td></tr>';
-            $html .= '<tr><td style="text-align:right">Script</td><td>'.$oid.'</td></tr>';
-            if ( ($scriptName=="Sprachsteuerung_Actionscript") || ($scriptName=="Sprachsteuerung") ) 
-                {
-                $html .= '<tr><td style="text-align:right">Scriptname</td><td>'.$scriptName.'</td></tr>';
-                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' ok</td></tr>';
-                }
-            else 
-                {
-                echo " Scriptname unknown $scriptName.\n";
-                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' NOK !!!!!!</td></tr>';
-                }
-            }
-        }
-    else
-        {       // lokale Sprachsteuerung, Statusausgabe, Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist.
-        echo "Sprache lokal ausgeben.\n";
-        $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-        $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-        $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-        $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
-        $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
-        $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-        $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-        $html .= '<tr><td colspan="2">Verwendet die lokale Sprachsteuerung:</td></tr>';            
-        $html .= '<tr><td style="text-align:right">MP-Musik</td><td>'.$id_sk1_musik.'</td></tr>';
-        $html .= '<tr><td style="text-align:right">MP-Ton</td><td>'.$id_sk1_ton.'</td></tr>';
-        $html .= '<tr><td style="text-align:right">Text-To-Speach</td><td>'.$id_sk1_tts.'</td></tr>';
-        }
-	//echo $inst_modules;
 
     $ipsOps = new ipsOps();
     $dosOps = new dosOps();
@@ -163,7 +104,7 @@
 		$results=$OperationCenter->SystemInfo();
 		$result=trim(substr($results["Betriebssystemversion"],0,strpos($results["Betriebssystemversion"]," ")));
 		$Version=explode(".",$result)[2];
-		echo "Win10 Betriebssystemversion : ".$Version."\n";
+		echo "Win10 Betriebssystemversion : ".$Version."\n\n";
 		}
 	
 	// ----------------------------------------------------------------------------------------------------------------------------
@@ -182,7 +123,7 @@
 	// ----------------------------------------------------------------------------------------------------------------------------
 
     /* mögliche Actions hier aufsetzen */
-    $pname="Test";
+    $pname="TestOptionen";
 	if (IPS_VariableProfileExists($pname) == true)
         {
         IPS_DeleteVariableProfile($pname);
@@ -256,7 +197,8 @@
         echo "Alle in der Alexa programmierten TuneIN Radiostationen:\n";
         $Configurations = json_decode(IPS_GetConfiguration($echos[0]),true);
         $TuneInstations = json_decode($Configurations["TuneInStations"],true);
-        print_r($TuneInstations);
+        //print_r($TuneInstations);
+        foreach ($TuneInstations as $TuneInstation) echo "   ".$TuneInstation["station"]."\n";
         }
     else
         {
@@ -291,26 +233,22 @@
     //print_r($profile);
 
 	$categoryId_Auswertungen    = CreateCategory('Auswertungen',   $CategoryIdData, 20);
-    //CreateVariable($Name,$type,$parentid, $position,$profile,$Action,$default,$icon );
-	$TestnachrichtID        = CreateVariable("Testnachricht",3,$categoryId_Auswertungen, 0, "",$scriptIdAction,null,""  );
-    $ButtonID               = CreateVariable("Button",1,$categoryId_Auswertungen, 10, "Test",$scriptIdAction,null,""  );
-    $SelectID               = CreateVariable("SelectSpeaker",1,$categoryId_Auswertungen, 20, "Echo-Speaker",$scriptIdAction,null,""  );
-    $TuneInStationConfig    = CreateVariable("TuneInStationConfig",3,$categoryId_Auswertungen, 2000, "",null,null,""  );
-    $TuneInStation          = CreateVariable("TuneInStation",1,$categoryId_Auswertungen, 30, "TuneInStations",$scriptIdAction,null,""  );
-    $SelectedStationId      = CreateVariable("SelectedStationId",3,$categoryId_Auswertungen, 2010, "",null,null,""  );    
-    $InfoBoxID              = CreateVariable("InfoBox",3,$categoryId_Auswertungen, 40, "~HTMLBox",null,null,""  );                              //InfoBox über Konfiguration
+	$TestnachrichtID        = CreateVariableByName($categoryId_Auswertungen,"Testnachricht",      3,"",            null, 0, $scriptIdAction  );
+    $ButtonID               = CreateVariableByName($categoryId_Auswertungen,"Button",             1,"TestOptionen",null, 10, $scriptIdAction);
+    $SelectID               = CreateVariableByName($categoryId_Auswertungen,"SelectSpeaker",      1,"Echo-Speaker",null, 20, $scriptIdAction);
+    $TuneInStationConfig    = CreateVariableByName($categoryId_Auswertungen,"TuneInStationConfig",3,"",            null, 2000);
+    $TuneInStation          = CreateVariableByName($categoryId_Auswertungen,"TuneInStation",      1,"TuneInStations",null,30,$scriptIdAction);
+    $SelectedStationId      = CreateVariableByName($categoryId_Auswertungen,"SelectedStationId",  3,"",             null,2010);    
+    $InfoBoxID              = CreateVariableByName($categoryId_Auswertungen,"InfoBox",            3,"~HTMLBox",     null, 40);                              //InfoBox über Konfiguration
 
     SetValue($TuneInStationConfig,$Configurations["TuneInStations"]);
-
-    $html .= '</table>';
-    SetValue($InfoBoxID,$html);
 
 	//$listinstalledmodules=IPS_GetModuleList();
 	//print_r($listinstalledmodules);
 	//$moduleProp=IPS_GetModule("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
 	//print_r($moduleProp);
 
-	/* Verzeichnis für die wav Files von der Sprahausgabe erstellen */
+	/* Verzeichnis für die wav Files von der Sprachausgabe erstellen */
 
 	$FilePath = IPS_GetKernelDir()."media/wav/";
 	if (!file_exists($FilePath)) 
@@ -320,6 +258,12 @@
 			throw new Exception('Create Directory '.$destinationFilePath.' failed!');
 			}
 		}	
+    else    
+        {
+		echo "Verzeichnis wav in media vorhanden.\n"; 
+        $dir=$dosOps->readDirtoArray($FilePath);
+        print_R($dir);
+        }
 
 	// ----------------------------------------------------------------------------------------------------------------------------
 	// Configuration
@@ -357,19 +301,14 @@
 	$MediaPlayerModule=IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
 	foreach ($MediaPlayerModule as $oid)
 		{
-		echo "    ".$oid."  (".IPS_GetName($oid).")\n";
-		}
-	echo "\n".IPS_GetName($oid)." Konfiguration : \n";	
-	$result=IPS_GetConfigurationForm($oid);		
-	print_r($result);
-	echo "--------------------\n";
-	$ergebnis=IPS_GetProperty($oid,"DeviceName");
-	print_r($ergebnis);
-	echo "--------------------\n";	
-	$json = json_decode($result,true);
-	echo "\n";
-	var_dump($json);
-	
+        $result=IPS_GetConfigurationForm($oid);
+        $ergebnis=IPS_GetProperty($oid,"DeviceName");
+		echo "    ".$oid."  (".IPS_GetName($oid)." Konfiguration : $result\n";	
+        echo "            PC Lautsprecher ausgewählt: \"$ergebnis\" \n";
+        $json = json_decode($result,true);
+        // echo "\n"; var_dump($json);
+        //print_r($json);
+		}	
 	echo "\nAlle Text-to-Speech Module:\n";
 	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
 
@@ -381,78 +320,175 @@
 		echo $config;
 		echo "\n\n";
 		}
-	
-	$MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
 
-   if(!IPS_InstanceExists($MediaPlayerMusikID))
-      {
-      $MediaPlayerMusikID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
-	   IPS_SetName($MediaPlayerMusikID, "MP Musik");
-		IPS_SetParent($MediaPlayerMusikID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceNum",1);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
-		IPS_SetProperty($MediaPlayerMusikID,"UpdateInterval",0);
-		IPS_SetProperty($MediaPlayerMusikID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
-		IPS_ApplyChanges($MediaPlayerMusikID);
-		/*
-		DeviceNum integer 0
-		DeviceName string
-		UpdateInterval integer 0
-		DeviceDriver string
-		*/
-		}
-	$MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+	if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
+        {
+        echo "Modul Sprachsteuerung ist richtig installiert. Wird von tts_play des OperationCenter verwendet.\n";
+		$config=Sprachsteuerung_Configuration();
+		if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) )  
+            { 
+            echo "Wenn Remote Ausgabe der Sprache, lokale Mediaplayer loeschen, damit Soundkarten nicht doppelt belegt werden.\n";
+            $MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+            if(IPS_InstanceExists($MediaPlayerMusikID)) 
+                {
+                $ipsOps->emptyCategory($MediaPlayerMusikID);
+                IPS_DeleteInstance($MediaPlayerMusikID);
+                }
+            $MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+            if(IPS_InstanceExists($MediaPlayerTonID)) 
+                {
+                $ipsOps->emptyCategory($MediaPlayerTonID);
+                IPS_DeleteInstance($MediaPlayerTonID);
+                }
+            $TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+            if(IPS_InstanceExists($TextToSpeachID)) 
+                {
+                $ipsOps->emptyCategory($TextToSpeachID);                    
+                IPS_DeleteInstance($TextToSpeachID);
+                }
+            }
+        else
+            {
+            echo "Wenn keine Remote Ausgabe der Sprache, die entsprechenden Mediaplayer installieren:\n";
+            $MediaPlayerMusikID = @IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+            if(!IPS_InstanceExists($MediaPlayerMusikID))
+                {
+                $MediaPlayerMusikID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
+                IPS_SetName($MediaPlayerMusikID, "MP Musik");
+                IPS_SetParent($MediaPlayerMusikID,$scriptIdSprachsteuerung);
+                IPS_SetProperty($MediaPlayerMusikID,"DeviceNum",1);
+                IPS_SetProperty($MediaPlayerMusikID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
+                IPS_SetProperty($MediaPlayerMusikID,"UpdateInterval",0);
+                IPS_SetProperty($MediaPlayerMusikID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
+                IPS_ApplyChanges($MediaPlayerMusikID);
+                /*
+                DeviceNum integer 0
+                DeviceName string
+                UpdateInterval integer 0
+                DeviceDriver string
+                */
+                }
 
-	if(!IPS_InstanceExists($MediaPlayerTonID))
-    	{
-      	$MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
-	   	IPS_SetName($MediaPlayerTonID, "MP Ton");
-		IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
-		IPS_SetProperty($MediaPlayerTonID,"UpdateInterval",0);
-		IPS_SetProperty($MediaPlayerTonID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
-		IPS_ApplyChanges($MediaPlayerTonID);
-		/*
-		DeviceNum integer 0
-		DeviceName string
-		UpdateInterval integer 0
-		DeviceDriver string
-		*/
-		}
-	$TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+            $MediaPlayerTonID = @IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+            if(!IPS_InstanceExists($MediaPlayerTonID))
+                {
+                $MediaPlayerTonID = IPS_CreateInstance("{2999EBBB-5D36-407E-A52B-E9142A45F19C}"); // Mediaplayer anlegen
+                IPS_SetName($MediaPlayerTonID, "MP Ton");
+                IPS_SetParent($MediaPlayerTonID,$scriptIdSprachsteuerung);
+                IPS_SetProperty($MediaPlayerTonID,"DeviceNum",1);
+                IPS_SetProperty($MediaPlayerTonID,"DeviceName","Lautsprecher (Realtek High Definition Audio)");
+                IPS_SetProperty($MediaPlayerTonID,"UpdateInterval",0);
+                IPS_SetProperty($MediaPlayerTonID,"DeviceDriver","{0.0.0.00000000}.{eb1c82a1-4bdf-4072-b886-7e0ca86e26e3}");
+                IPS_ApplyChanges($MediaPlayerTonID);
+                /*
+                DeviceNum integer 0
+                DeviceName string
+                UpdateInterval integer 0
+                DeviceDriver string
+                */
+                }
+            $TextToSpeachID = @IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+            if(!IPS_InstanceExists($TextToSpeachID))
+                {
+                $TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
+                IPS_SetName($TextToSpeachID, "Text to Speach");
+                IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
+                IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
+                //IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
+                //IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Anna - English (United States)");
+                //IPS_SetProperty($TextToSpeachID,"TTSEngine","ScanSoft Steffi_Dri40_16kHz");
 
-	if(!IPS_InstanceExists($TextToSpeachID))
-    	{
-    	$TextToSpeachID = IPS_CreateInstance("{684CC410-6777-46DD-A33F-C18AC615BB94}"); // Mediaplayer anlegen
-		IPS_SetName($TextToSpeachID, "Text to Speach");
-		IPS_SetParent($TextToSpeachID,$scriptIdSprachsteuerung);
-		IPS_SetProperty($TextToSpeachID,"TTSAudioOutput","Lautsprecher (Realtek High Definition Audio)");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Hedda Desktop - German");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","Microsoft Anna - English (United States)");
-		//IPS_SetProperty($TextToSpeachID,"TTSEngine","ScanSoft Steffi_Dri40_16kHz");
-		$SprachConfig=Sprachsteuerung_Configuration();
-		IPS_SetProperty($TextToSpeachID,"TTSEngine",$SprachConfig["Engine".$SprachConfig["Language"]]);
-		IPS_ApplyChanges($TextToSpeachID);
-		/*
-		TTSAudioOutput string
-		TTSEngine string
-		*/
-		}
-	$SprachCounterID = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+                //$configSprachSteuerung=Sprachsteuerung_Configuration();           // schon eingelesen
+                echo "Sprachausgabe konfigurieren: Mediaplayer ID $TextToSpeachID, Engine: ".$configSprachSteuerung["Engine".$configSprachSteuerung["Language"]].".\n";
+                IPS_SetProperty($TextToSpeachID,"TTSEngine",$configSprachSteuerung["Engine".$configSprachSteuerung["Language"]]);
+                IPS_ApplyChanges($TextToSpeachID);
+                /*
+                TTSAudioOutput string
+                TTSEngine string
+                */
+                }
+            $SprachCounterID = CreateVariableByName($scriptIdSprachsteuerung,"Counter",1);  /* 0 Boolean 1 Integer 2 Float 3 String */
 
-	//print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
+            //print_r(IPS_GetStatusVariableIdents($MediaPlayerID));
 
-	echo "TTSAudioOutput :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
-	echo "TTSEngine :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
-	echo "DeviceName :".IPS_GetProperty($MediaPlayerTonID,"DeviceName")."\n";
-	echo "DeviceNum :".IPS_GetProperty($MediaPlayerTonID,"DeviceNum")."\n";
-	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerTonID,"UpdateInterval")."\n";
-	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerTonID,"DeviceDriver")."\n";
-	echo "DeviceName :".IPS_GetProperty($MediaPlayerMusikID,"DeviceName")."\n";
-	echo "DeviceNum :".IPS_GetProperty($MediaPlayerMusikID,"DeviceNum")."\n";
-	echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
-	echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
+            echo "TTSAudioOutput :".IPS_GetProperty($TextToSpeachID,"TTSAudioOutput")."\n";
+            echo "TTSEngine :".IPS_GetProperty($TextToSpeachID,"TTSEngine")."\n";
+            echo "DeviceName :".IPS_GetProperty($MediaPlayerTonID,"DeviceName")."\n";
+            echo "DeviceNum :".IPS_GetProperty($MediaPlayerTonID,"DeviceNum")."\n";
+            echo "UpdateInterval :".IPS_GetProperty($MediaPlayerTonID,"UpdateInterval")."\n";
+            echo "DeviceDriver :".IPS_GetProperty($MediaPlayerTonID,"DeviceDriver")."\n";
+            echo "DeviceName :".IPS_GetProperty($MediaPlayerMusikID,"DeviceName")."\n";
+            echo "DeviceNum :".IPS_GetProperty($MediaPlayerMusikID,"DeviceNum")."\n";
+            echo "UpdateInterval :".IPS_GetProperty($MediaPlayerMusikID,"UpdateInterval")."\n";
+            echo "DeviceDriver :".IPS_GetProperty($MediaPlayerMusikID,"DeviceDriver")."\n";
+            }
+        }       // Sprachsteuerung vorhanden und installiert, no na net ?
+
+	/*******************************
+	 *
+	 * Statusinformation für Webfront vorbereiten
+	 *
+	 *
+	 *
+	 ********************************/
+
+    $html="";
+    $html .= '<style>';
+    $html .= 'table.ovw { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
+    $html .= ' font-family:Arial, Verdana, Tahoma, Helvetica, sans-serif; font-weight:400; text-decoration:none; color:white; white-space:pre-wrap; }';
+    $html .= 'table.ovw th { padding: 2px; background-color:#98dcff; border:solid 2px #006CFF; }';
+    $html .= 'table.ovw td { padding: 2px; border:solid 1px grey; }';
+    $html .= 'table.head tr { margin:0; padding:4px; }';
+    $html .= '.quick.green {border:solid green; color:green;}';
+    $html .= '';
+    $html .= '</style>';
+    $html .= '<table class="ovw">';
+
+	if ( (isset($installedModules["Sprachsteuerung"]) )  && ($installedModules["Sprachsteuerung"] <>  "") ) 
+        {
+		$config=Sprachsteuerung_Configuration();
+		if ( (isset($config["RemoteAddress"])) && (isset($config["ScriptID"])) )  
+            { 
+            $url=$config["RemoteAddress"]; 
+            $oid=$config["ScriptID"];
+			$rpc = new JSONRPC($url);
+			//$monitor=array("Text" => $ansagetext);
+			//$rpc->IPS_RunScriptEx($oid,$monitor);            
+            $scriptName=$rpc->IPS_GetName($oid);
+            echo "    Verwendet die Sprachsteuerung des Servers $url und ruft dort dieses Script $oid auf.\n";
+            $html .= '<tr><td colspan="2">Verwendet eine remote Sprachsteuerung:</td></tr>';            
+            $html .= '<tr><td style="text-align:right">Server</td><td>'.$url.'</td></tr>';
+            $html .= '<tr><td style="text-align:right">Script</td><td>'.$oid.'</td></tr>';
+            if ( ($scriptName=="Sprachsteuerung_Actionscript") || ($scriptName=="Sprachsteuerung") ) 
+                {
+                $html .= '<tr><td style="text-align:right">Scriptname</td><td>'.$scriptName.'</td></tr>';
+                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' ok</td></tr>';
+                }
+            else 
+                {
+                echo " Scriptname unknown $scriptName.\n";
+                $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' NOK !!!!!!</td></tr>';
+                }
+            }
+        }
+    else
+        {       // lokale Sprachsteuerung, Statusausgabe, Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist.
+        echo "Sprache lokal ausgeben.\n";
+        $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+        $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+        $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+        $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+        $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+        $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+        $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+        $html .= '<tr><td colspan="2">Verwendet die lokale Sprachsteuerung:</td></tr>';            
+        $html .= '<tr><td style="text-align:right">MP-Musik</td><td>'.$id_sk1_musik.'</td></tr>';
+        $html .= '<tr><td style="text-align:right">MP-Ton</td><td>'.$id_sk1_ton.'</td></tr>';
+        $html .= '<tr><td style="text-align:right">Text-To-Speach</td><td>'.$id_sk1_tts.'</td></tr>';
+        }
+	//echo $inst_modules;
+    $html .= '</table>';
+    SetValue($InfoBoxID,$html);
 	
 	/*******************************
 	 *

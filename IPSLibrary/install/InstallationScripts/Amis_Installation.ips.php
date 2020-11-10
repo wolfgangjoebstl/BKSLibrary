@@ -101,7 +101,7 @@ $cutter=true;
 	 * 
 	 **************************/
 	
-	echo "\n\n";
+	//echo "\n\n";
 	$WebfrontConfigID=array();
 	$alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
 	foreach ($alleInstanzen as $instanz)
@@ -155,9 +155,7 @@ $cutter=true;
 		$UserID = $WebfrontConfigID["User"];
 		}	
 
-	echo "\n";
-	echo "Administrator ID : ".$AdministratorID." User ID : ".$UserID."\n";
-	echo "\n";
+	//echo "\nAdministrator ID : ".$AdministratorID." User ID : ".$UserID."\n\n";
 	
 	/***********************
 	 *
@@ -166,7 +164,7 @@ $cutter=true;
 	 **************************/
 
     $configWFront=$ipsOps->configWebfront($moduleManager);
-    print_r($configWFront);
+    //print_r($configWFront);
 
 	echo "\nWebuser activated : ";
 	$WFC10_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'WFC10',false);
@@ -253,6 +251,7 @@ $cutter=true;
 	 * 
 	 **************************/	
 
+    echo "Profile Definition für AMIS Modul:\n";
 	$pname="AusEin-Boolean";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
@@ -262,80 +261,90 @@ $cutter=true;
 		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 		IPS_SetVariableProfileAssociation($pname, false, "Aus", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
 		IPS_SetVariableProfileAssociation($pname, true, "Ein", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-		echo "Profil ".$pname." erstellt;\n";
+		echo "Profil ".$pname." erstellt.\n";
 		}
+    else echo "   Profil ".$pname." vorhanden.\n";
 		
 	$pname="Zaehlt";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-		echo "Profile existiert nicht \n";
+		//echo "Profile existiert nicht \n";
  		IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
 
 		IPS_SetVariableProfileValues($pname, 0, 1, 1); //PName, Minimal, Maximal, Schrittweite
 		IPS_SetVariableProfileAssociation($pname, false, "Idle", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
   		IPS_SetVariableProfileAssociation($pname, true, "Active", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-
-		print_r(IPS_GetVariableProfile($pname));
+		echo "Profil ".$pname." erstellt.\n";
+		//print_r(IPS_GetVariableProfile($pname));
 		}
 	else
 	   {
+       echo "   Profil ".$pname." vorhanden.\n";           
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 	   
 	$pname="kWh";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-		echo "Profile existiert nicht \n";
+		//echo "Profile existiert nicht \n";
  		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','kWh');
+		echo "Profil ".$pname." erstellt.\n";          
 		print_r(IPS_GetVariableProfile($pname));
 		}
 	else
 	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 
 	$pname="Wh";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-		echo "Profile existiert nicht \n";
+		//echo "Profile existiert nicht \n";
  		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','Wh');
-		print_r(IPS_GetVariableProfile($pname));
+		echo "Profil ".$pname." erstellt.\n";          
+        //print_r(IPS_GetVariableProfile($pname));
 		}
 	else
 	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 
 	$pname="kW";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-		echo "Profile existiert nicht \n";
+		//echo "Profile existiert nicht \n";
  		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','kW');
-		print_r(IPS_GetVariableProfile($pname));
+		echo "Profil ".$pname." erstellt.\n";          
+		//print_r(IPS_GetVariableProfile($pname));
 		}
 	else
 	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 
 	$pname="Euro";
 	if (IPS_VariableProfileExists($pname) == false)
 		{
-		echo "Profile existiert nicht \n";
+		//echo "Profile existiert nicht \n";
  		IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
   		IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
   		IPS_SetVariableProfileText($pname,'','Euro');
-		print_r(IPS_GetVariableProfile($pname));
+		echo "Profil ".$pname." erstellt.\n";          
+		//print_r(IPS_GetVariableProfile($pname));
 		}
 	else
 	   {
+       echo "   Profil ".$pname." vorhanden.\n";             
 	   //print_r(IPS_GetVariableProfile($pname));
 	   }
 		
@@ -375,8 +384,10 @@ $cutter=true;
 	//print_r($MeterConfig);
 	
 	//$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0);   /* 0 Boolean 1 Integer 2 Float 3 String */
-	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') */
-	$MeterReadID = CreateVariable("ReadMeter", 0, $CategoryIdData, 0, "Zaehlt",$scriptIdAmis,$MeterReadDefault,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */		
+	/* 	function CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 
+        function CreateVariableByName($parentID, $name, $type, $profile=false, $ident="", $position=0, $action=0, $default=false)                           */
+    echo "\nVariable Definition für AMIS Module:\n";
+	$MeterReadID = CreateVariableByName($CategoryIdData, "ReadMeter", 0, "Zaehlt","",0,$scriptIdAmis,$MeterReadDefault);  /* 0 Boolean 1 Integer 2 Float 3 String */		
 	SetValue($MeterReadID,$MeterReadDefault);
 	
 	/* Links für Webfront identifizieren 
@@ -412,20 +423,20 @@ $cutter=true;
 		if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 			{
 			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($variableID,'~Electricity');
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2, '~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
 			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
 			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
 			IPS_ApplyChanges($archiveHandlerID);
 			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
 			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
 			
-			$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
+			$HM_EnergieID = CreateVariableByName($ID, 'Homematic_Wirkenergie', 2,'kWh');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($HM_EnergieID,'kWh');
 	      
 			SetValue($MeterReadID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			
@@ -438,14 +449,14 @@ $cutter=true;
 		if (strtoupper($meter["TYPE"])=="REGISTER")
 			{
 			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($variableID,'~Electricity');
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
 			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
 			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
 			IPS_ApplyChanges($archiveHandlerID);
 			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2,'~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
 			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
@@ -464,14 +475,14 @@ $cutter=true;
 		if (strtoupper($meter["TYPE"])=="SUMME")
 			{
 			/* Variable ID selbst bestimmen */
-			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($variableID,'~Electricity');
+			$variableID = CreateVariableByName($ID, 'Wirkenergie', 2,'~Electricity');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($variableID,'~Electricity');
 			AC_SetLoggingStatus($archiveHandlerID,$variableID,true);
 			AC_SetAggregationType($archiveHandlerID,$variableID,1);      /* Zählerwert */
 			IPS_ApplyChanges($archiveHandlerID);
 			
-			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($LeistungID,'~Power');
+			$LeistungID = CreateVariableByName($ID, 'Wirkleistung', 2, '~Power');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($LeistungID,'~Power');
 			AC_SetLoggingStatus($archiveHandlerID,$LeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$LeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
@@ -589,31 +600,31 @@ $cutter=true;
 			//$TimeSlotReadID = CreateVariableByName($AmisID, "TimeSlotRead", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
 			$AMISReceiveID = CreateVariableByName($AmisID, "AMIS Receive", 3);
 
-			$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */
-			IPS_SetVariableCustomProfile($ReceiveTimeID,'~UnixTimestamp');
-			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1);   /* 0 Boolean 1 Integer 2 Float 3 String */	
-			IPS_SetVariableCustomProfile($SendTimeID,'~UnixTimestamp');					
+			$ReceiveTimeID = CreateVariableByName($AmisID, "ReceiveTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */
+			//IPS_SetVariableCustomProfile($ReceiveTimeID,'~UnixTimestamp');
+			$SendTimeID = CreateVariableByName($AmisID, "SendTime", 1,'~UnixTimestamp');   /* 0 Boolean 1 Integer 2 Float 3 String */	
+			//IPS_SetVariableCustomProfile($SendTimeID,'~UnixTimestamp');					
 
 			// Wert in der die aktuell gerade empfangenen Einzelzeichen hineingeschrieben werden
 			$AMISReceiveCharID = CreateVariableByName($AmisID, "AMIS ReceiveChar", 3);
 			$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);
 			
-			$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2);
-			IPS_SetVariableCustomProfile($wirkenergie1_ID,'~Electricity');
+			$wirkenergie1_ID = CreateVariableByName($AmisID,'Wirkenergie', 2,'~Electricity');
+			//IPS_SetVariableCustomProfile($wirkenergie1_ID,'~Electricity');
 			AC_SetLoggingStatus($archiveHandlerID,$wirkenergie1_ID,true);
 			AC_SetAggregationType($archiveHandlerID,$wirkenergie1_ID,1);
 			IPS_ApplyChanges($archiveHandlerID);
 
-			$aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2);
-			IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
+			$aktuelleLeistungID = CreateVariableByName($AmisID, "Wirkleistung", 2,'~Power');
+			//IPS_SetVariableCustomProfile($aktuelleLeistungID,'~Power');
 			AC_SetLoggingStatus($archiveHandlerID,$aktuelleLeistungID,true);
 			AC_SetAggregationType($archiveHandlerID,$aktuelleLeistungID,0);
 			IPS_ApplyChanges($archiveHandlerID);
 
 			// Uebergeordnete Variable unter der alle ausgewerteten register eingespeichert werden
 			$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
-			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2);
-			IPS_SetVariableCustomProfile($variableID,'~Electricity');			
+			$variableID = CreateVariableByName($zaehlerid,'Wirkenergie', 2,'~Electricity');
+			//IPS_SetVariableCustomProfile($variableID,'~Electricity');			
 
 			SetValue($AmisReadMeterID,true);  /* wenn Werte parametriert, dann auch regelmaessig auslesen */
 			if ( isset($meter["STATUS"]) )
@@ -636,31 +647,31 @@ $cutter=true;
 		$PeriodenwerteID = CreateVariableByName($ID, "Periodenwerte", 3);
 		$KostenID = CreateVariableByName($ID, "Kosten kWh", 2);
 
-		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
-		IPS_SetVariableCustomProfile($letzterTagID,'kWh');
-		IPS_SetPosition($letzterTagID, 100);
-		$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
-		IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
-		IPS_SetPosition($letzte7TageID, 110);
-		$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
-		IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
-		IPS_SetPosition($letzte30TageID, 120);
-		$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
-		IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
-		IPS_SetPosition($letzte360TageID, 130);
+		$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2,'kWh',false,100);
+		//IPS_SetVariableCustomProfile($letzterTagID,'kWh');
+		//IPS_SetPosition($letzterTagID, 100);
+		$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2,'kWh',false,110);
+		//IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
+		//IPS_SetPosition($letzte7TageID, 110);
+		$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2,'kWh',false,120);
+		//IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
+		//IPS_SetPosition($letzte30TageID, 120);
+		$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2,'kWh',false,130);
+		//IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
+		//IPS_SetPosition($letzte360TageID, 130);
 
-		$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
-		IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
-		IPS_SetPosition($letzterTagEurID, 200);
-		$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
-		IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
-		IPS_SetPosition($letzte7TageEurID, 210);
-		$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
-		IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');	
-		IPS_SetPosition($letzte30TageEurID, 220);
-		$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
-		IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
-		IPS_SetPosition($letzte360TageEurID, 230);
+		$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2,'Euro',false,200);
+		//IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
+		//IPS_SetPosition($letzterTagEurID, 200);
+		$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2,'Euro',false,210);
+		//IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
+		//IPS_SetPosition($letzte7TageEurID, 210);
+		$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2,'Euro',false,220);
+		//IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');	
+		//IPS_SetPosition($letzte30TageEurID, 220);
+		$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2,'Euro',false,230);
+		//IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
+		//IPS_SetPosition($letzte360TageEurID, 230);
 	  	
    	}  // ende foreach
 	

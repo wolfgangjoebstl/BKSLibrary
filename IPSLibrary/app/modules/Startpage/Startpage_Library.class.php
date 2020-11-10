@@ -292,9 +292,11 @@
                         //$wert.='<tr><td>Hier könnte jetzt Ihre Werbung stehen</td><td>';
                         /* zelle 1 */
                         $wert.='<td width="100%">';
-                        $wert.=$this->showAstronomyWidget();
+                        $wert.=$this->showAstronomyWidget("CHART");
                         $wert.='</td>';
-
+                        $wert.='<td width="100%">';
+                        $wert.=$this->showAstronomyWidget("MOON");
+                        $wert.='</td>';
                         if (false)
                             {
                             $wert.='<td>';
@@ -376,13 +378,15 @@
 
 
         /* Astronomy Widget
+         *
+         * depending on Display Option different ways of display 
          * 
          * Definition ist eine eigenständige Zelle, typischerweise eine Zelle von 6 : 2 Reihen a 3 Zellen
          * angenommen wird dass diese htmlBox innerhalb einer Zelle von <td>   und   </td> ist,#.
          *
          */
 
-		function showAstronomyWidget($debug=false)
+		function showAstronomyWidget($displayType=false,$debug=false)
 			{
             $wert="";
             $modulname="Astronomy";
@@ -394,6 +398,7 @@
                 $instanzID=$Astronomy[0];    
                 //$instanzname=IPS_GetName($instanzID);
                 $wert.='<table width="100%">';
+
                 $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
                 if ($moonPicId !== false) 
                     {
@@ -409,14 +414,33 @@
                 if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
                 else $sunset="";
 
-                $wert.='<tr><td colspan="2" >'.$this->showAstronomy().'</td></tr>';
-                //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
-                $wert.='<tr><td align="center">';
-                if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
-                $wert.='</td><td><table>';
-                $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
-                $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
-                $wert.='</table></td></tr>';
+                switch (strtoupper($displayType))
+                    {
+                    case "CHART":
+                        $wert.='<tr><td>'.$this->showAstronomy().'</td></tr>';
+                        break;
+                    case "MOON":
+                        $wert.='<tr><td align="center">';
+                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+                        $wert.='</td></tr>';
+                        $wert.='<tr><td><table>';
+                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                        $wert.='</table></td></tr>';
+                        break;
+                    case "ALL":
+                    default:
+                        $wert.='<tr><td colspan="2" >'.$this->showAstronomy().'</td></tr>';
+                        //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
+                        $wert.='<tr><td align="center">';
+                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+                        $wert.='</td><td><table>';
+                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                        $wert.='</table></td></tr>';
+                        break;
+                    }
+
                 $wert.='</table>';
                 }
             else $wert.="Astronomy not available";

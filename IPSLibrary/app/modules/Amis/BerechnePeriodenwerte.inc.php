@@ -85,32 +85,17 @@ foreach ($MeterConfig as $meter)
 		{
 		SetValue($KostenID,$meter["costKWh"]);
 		}
-	$letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2);
-	IPS_SetVariableCustomProfile($letzterTagID,'kWh');
-	IPS_SetPosition($letzterTagID, 100);
-	$letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2);
-	IPS_SetVariableCustomProfile($letzte7TageID,'kWh');
-	IPS_SetPosition($letzte7TageID, 110);
-	$letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2);
-	IPS_SetVariableCustomProfile($letzte30TageID,'kWh');
-	IPS_SetPosition($letzte30TageID, 120);
-	$letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2);
-	IPS_SetVariableCustomProfile($letzte360TageID,'kWh');
-	IPS_SetPosition($letzte360TageID, 130);
-  	
-	$letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2);
-	IPS_SetVariableCustomProfile($letzterTagEurID,'Euro');
-	IPS_SetPosition($letzterTagEurID, 200);
-	$letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2);
-	IPS_SetVariableCustomProfile($letzte7TageEurID,'Euro');
-	IPS_SetPosition($letzte7TageEurID, 210);
-	$letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2);
-	IPS_SetVariableCustomProfile($letzte30TageEurID,'Euro');
-	IPS_SetPosition($letzte30TageEurID, 220);
-	$letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2);
-	IPS_SetVariableCustomProfile($letzte360TageEurID,'Euro');
-	IPS_SetPosition($letzte360TageEurID, 230);
-  	
+
+    $letzterTagID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzterTag", 2,'kWh',false,100);
+    $letzte7TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte7Tage", 2,'kWh',false,110);
+    $letzte30TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte30Tage", 2,'kWh',false,120);
+    $letzte360TageID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_letzte360Tage", 2,'kWh',false,130);
+
+    $letzterTagEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzterTag", 2,'Euro',false,200);
+    $letzte7TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte7Tage", 2,'Euro',false,210);
+    $letzte30TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte30Tage", 2,'Euro',false,220);
+    $letzte360TageEurID = CreateVariableByName($PeriodenwerteID, "Wirkenergie_Euro_letzte360Tage", 2,'Euro',false,230);        
+
 	$vorwert=0;
 	$zaehler=0;
 	$jetzt=time();
@@ -145,7 +130,7 @@ foreach ($MeterConfig as $meter)
 
 	$starttime=$endtime-60*60*24*360;
 	//$ergebnis=summestartende2($starttime, $endtime, true, false,$archiveHandlerID,$variableID,$display);
-	//echo "Ergebnis (alt) Wert letzte 360 Tage : ".$ergebnis."kWh \n";
+	//echo "Ergebnis letzte 360 Tage von $starttime zu $endtime berechnen:\n";
 	$ergebnis=$Amis->summestartende($starttime, $endtime, true, false, $variableID,$display);
 	echo "Ergebnis Wert letzte 360 Tage : ".number_format($ergebnis,3,",",".")."kWh \n";
 	SetValue($letzte360TageID,$ergebnis);

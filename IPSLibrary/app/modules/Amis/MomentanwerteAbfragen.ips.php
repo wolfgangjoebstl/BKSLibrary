@@ -177,7 +177,7 @@ if ($_IPS['SENDER']=="Execute")
 	{
 	echo "********************************************CONFIG**************************************************************\n\n";
 
-	echo  "Genereller Meter Read eingeschaltet : ".GetvalueFormatted($MeterReadID)."\n";
+	echo  "Genereller Meter Read eingeschaltet : ".GetvalueIfFormatted($MeterReadID)."\n";
 	echo  "Aktueller Timeslot der 15x 1 Minuten Intervalle : ".GetValue($TimeSlotReadID)."\n\n"; 
 		
 	echo "Konfiguration für Zaehlerauslesung: \n\n";	
@@ -236,7 +236,7 @@ if ($_IPS['SENDER']=="Execute")
 
 	echo "\n********************************************VALUES**************************************************************\n\n";
 	//$homematic=$amis->writeEnergyHomematics($MeterConfig);  // alle Homematic Register schreiben, verwirrt die 15 minütige Erfassung, daher nicht mehr verwendet
-    echo $amis->writeEnergyRegistertoString($MeterConfig,true);
+    echo $amis->writeEnergyRegistertoString($MeterConfig,true,true);            // output asl html (true) und mit debug (true)
 	}
 
 

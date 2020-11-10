@@ -34,7 +34,7 @@
 	 * in der RemoteAccessServerTable sind alle erreichbaren Log Remote Server aufgelistet, abgeleitet aus der Server Config und dem Status der Erreichbarkeit
 	 * für alle erreichbaren Server wird auch die remote OID mit dem Wert beschrieben 
 	 *
-	 * Authomatische Registrierung für:
+	 * Automatische Registrierung für:
 	 *   Energiewerte
 	 *   Mobilfunkguthaben
 	 *   Taster und Schalter wenn Geber nicht Actuator
@@ -124,6 +124,7 @@
             //$startexec=microtime(true);    
             $log=new Sensor_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben, aber der Typ wenn er mitkommt
             $mirrorValue=$log->updateMirorVariableValue($value);
+    	    IPSLogger_Not(__file__,"IPSComponentSensor_Remote:HandleEvent mit VariableID $variable (".IPS_GetName($variable)."/".IPS_GetName(IPS_GetParent($variable)).") mit neuem Wert $value und altem Wert $mirrorValue (".$log->getMirorNameID().") bzw. ".GetValue($variable).".");
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // gleiche Werte unterdrücken, dazu Spiegelvariable verwenden.
                 {
     			IPSLogger_Inf(__file__, 'IPSComponentSensor_Remote HandleEvent: Sensor Remote Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
@@ -244,6 +245,10 @@
             return $result;
             }
 
+        public function getMirorNameID()
+            {
+            return ($this->mirrorNameID);
+            }
 
         /* Spiegelregister updaten */
 
