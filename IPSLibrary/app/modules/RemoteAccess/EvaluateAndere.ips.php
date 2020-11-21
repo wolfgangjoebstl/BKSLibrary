@@ -56,17 +56,35 @@
     IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
     IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
     IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
-        
+
+    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+
     IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
     $remServer=ROID_List();
 
     $status=RemoteAccessServerTable();
 
     $componentHandling=new ComponentHandling();
-    
-    echo "\n\n==CLIMATE based on MySQL ===============================================================================\n";
-    $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],"","","",true);      // true ist Debug
-
+    $commentField="zuletzt Konfiguriert von RemoteAccess EvaluateAndere um ".date("h:i am d.m.Y ").".";   
+        
+    if (getfromDataBase())
+        {
+        echo "\n\n==CLIMATE based on MySQL ===============================================================================\n";
+        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],"","","",false);                   // true ist Debug
+        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BAROPRESSURE"],"","","",false);          // true ist Debug
+        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN"],"","","",false);                  // true ist Debug
+        }
+    elseif ( (function_exists('deviceList')) )
+        {
+        echo "Climate von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "CO2"],'IPSComponentSensor_Remote','IPSModuleSensor_Remote,',$commentField, false);				/* true ist Debug,  */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BAROPRESSURE"],'IPSComponentSensor_Remote','IPSModuleSensor_Remote,',$commentField, false);		/* true ist Debug,  */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "RAIN_COUNTER"],'IPSComponentSensor_Counter','IPSModuleSensor_Counter,',$commentField, false);				/* true ist Debug,  */
+        }
+    elseif (function_exists('HomematicList'))
+		{
+        echo "Climate not available in Homematic Devices.\n";
+        }
 
     echo "\n\n=================================================================================\n";
 	$Homematic = HomematicList();

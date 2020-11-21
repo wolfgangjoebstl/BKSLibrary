@@ -499,7 +499,7 @@
 
 					if (IPSHeat_BeforeSwitch($switchId, $switchValue)) 			// keine andere Funktion als die Switch Hauptfunktion definiert, anders wäre keine Unterscheidung möglich
 						{
-						$component->SetLevel(GetValue($switchId), $value);
+						$component->SetLevel(GetValue($switchId), $value, $debug);
 						}
 					IPSHeat_AfterSwitch($switchId, $switchValue);
 					break;

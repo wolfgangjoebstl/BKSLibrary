@@ -75,47 +75,61 @@ if (isset ($modules["Amis"]))
   	
   	/* EvaluateVariables.inc wird automatisch nach Aufruf von RemoteAccess erstellt , enthält Routine AmisStromverbrauchlist */
 	$stromverbrauch=AmisStromverbrauchList();
-	print_r($stromverbrauch);
+    echo "Darstellung Konfiguration/Zusammenfassung Stromverbrauch:\n";
+	//print_r($stromverbrauch);
 
 	foreach ($stromverbrauch as $Key)
 		{
-        $oid=(integer)$Key["OID"];
-     	$variabletyp=IPS_GetVariable($oid);
-		//print_r($variabletyp);
-		if ($variabletyp["VariableProfile"]!="")
-		   {
-			echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-			}
-		else
-		   {
-			echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
-			}
-		$parameter="";
-		foreach ($remServer as $Name => $Server)
-			{
-			if ( $status[$Name]["Status"] == true )
-				{				
-				$rpc = new JSONRPC($Server["Adresse"]);
-				$result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
-				$rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
-				$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
-				if ($Key["Profile"]=="~Electricity")
-			   		{
-					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
-					}
-				else
-				   {
-					$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
-					}
-				$rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
-				$parameter.=$Name.":".$result.";";
-				}
-			}				
-	   $messageHandler = new IPSMessageHandler();
-	   $messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
-	   $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
-		$messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$parameter,'IPSModuleSensor_Remote');
-		echo "Stromverbrauch mit Parameter :".$parameter." erzeugt.\n\n";
+        print_r($Key);
+        $oid=(integer)$Key["OID"];        
+     	$variabletyp=@IPS_GetVariable($oid);
+        if ($variabletyp)
+            {
+            //print_r($variabletyp);
+            if ($variabletyp["VariableProfile"]!="")
+                {
+                echo str_pad($Key["Name"],30)." = ".GetValueFormatted($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                }
+            else
+                {
+                echo str_pad($Key["Name"],30)." = ".GetValue($oid)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")       ".(microtime(true)-$startexec)." Sekunden\n";
+                }
+            $parameter="";
+            foreach ($remServer as $Name => $Server)
+                {
+                if ( $status[$Name]["Status"] == true )
+                    {				
+                    $rpc = new JSONRPC($Server["Adresse"]);
+                    $result=RPC_CreateVariableByName($rpc, $stromID[$Name], $Key["Name"], $Key["Typ"]);
+                    $rpc->IPS_SetVariableCustomProfile($result,$Key["Profile"]);
+                    $rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
+                    if ($Key["Profile"]=="~Electricity")
+                        {
+                        $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,1);
+                        }
+                    else
+                        {
+                        $rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
+                        }
+                    $rpc->IPS_ApplyChanges((integer)$Server["ArchiveHandler"]);
+                    $parameter.=$Name.":".$result.";";
+                    }
+                }				
+            $messageHandler = new IPSMessageHandler();
+            //$messageHandler->CreateEvents(); /* * Erzeugt anhand der Konfiguration alle Events */
+            $messageHandler->CreateEvent($oid,"OnChange");  /* reicht nicht aus, wird für HandleEvent nicht angelegt */
+            if ($Key["Profile"]=="~Electricity") 
+                {
+                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY','IPSModuleSensor_Remote');
+                echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',ENERGY'."\" erzeugt.\n\n";
+                }
+            else 
+                {
+                $messageHandler->RegisterEvent($oid,"OnChange",'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER','IPSModuleSensor_Remote');
+                echo "Register Stromverbrauch mit Parameter :\"".'IPSComponentSensor_Remote,'.$Key["OID"].','.$parameter.',POWER'."\" erzeugt.\n\n";
+                }
+            }
+        else echo "Fehler, ".$Key["Name"]." nicht vorhanden.\n"; 
 		}
 	}
 

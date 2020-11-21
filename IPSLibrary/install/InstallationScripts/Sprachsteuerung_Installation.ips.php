@@ -299,18 +299,18 @@
 
 	echo "Alle Mediaplayermodule:\n";
 	$MediaPlayerModule=IPS_GetInstanceListByModuleID("{2999EBBB-5D36-407E-A52B-E9142A45F19C}");
+    $soundcard=array();
 	foreach ($MediaPlayerModule as $oid)
 		{
-        $result=IPS_GetConfigurationForm($oid);
-        $ergebnis=IPS_GetProperty($oid,"DeviceName");
-		echo "    ".$oid."  (".IPS_GetName($oid)." Konfiguration : $result\n";	
-        echo "            PC Lautsprecher ausgewählt: \"$ergebnis\" \n";
-        $json = json_decode($result,true);
-        // echo "\n"; var_dump($json);
-        //print_r($json);
+        $soundDevices[]=analyseMediaConfig($soundcard,$oid,"DeviceName");
 		}	
 	echo "\nAlle Text-to-Speech Module:\n";
-	print_r(IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}"));
+	$textToSpeechModule=IPS_GetInstanceListByModuleID("{684CC410-6777-46DD-A33F-C18AC615BB94}");
+	foreach ($textToSpeechModule as $oid)
+		{
+        $speechDevices[]=analyseMediaConfig($soundcard,$oid,"TTSAudioOutput");
+		}	
+    //print_R($soundDevices);
 
 	$SmartHomeID = @IPS_GetInstanceIDByName("IQL4SmartHome", 0);
 	if ($SmartHomeID >0 )
@@ -432,6 +432,8 @@
 	 *
 	 ********************************/
 
+    echo "\n---------------------------------------------------\n";
+
     $html="";
     $html .= '<style>';
     $html .= 'table.ovw { border:solid 5px #006CFF; margin:0px; padding:0px; border-spacing:0px; border-collapse:collapse; line-height:22px; font-size:13px;'; 
@@ -470,33 +472,54 @@
                 $html .= '<tr><td style="text-align:right">Status</td><td>Test vom '.date("d.m.Y H:i:s").' NOK !!!!!!</td></tr>';
                 }
             }
+        else
+            {       // lokale Sprachsteuerung, Statusausgabe, Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist.
+            echo "Sprache lokal ausgeben.\n";
+            $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
+            $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
+            $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
+            $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
+            $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
+            $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
+            $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+
+            if (isset($soundcard[$id_sk1_musik])===false) $soundcard[$id_sk1_musik]="unknown";
+            if (isset($soundcard[$id_sk1_ton])===false) $soundcard[$id_sk1_ton]="unknown";
+            if (isset($soundcard[$id_sk1_tts])===false) $soundcard[$id_sk1_tts]="unknown";
+
+            $html .= '<tr><td colspan="3">Verwendet die lokale Sprachsteuerung:</td></tr>';            
+            $html .= '<tr><td style="text-align:right">MP-Musik</td><td>'.$id_sk1_musik.'</td><td>'.$soundcard[$id_sk1_musik].'</td></tr>';
+            $html .= '<tr><td style="text-align:right">MP-Ton</td><td>'.$id_sk1_ton.'</td><td>'.$soundcard[$id_sk1_ton].'</td></tr>';
+            $html .= '<tr><td style="text-align:right">Text-To-Speach</td><td>'.$id_sk1_tts.'</td><td>'.$soundcard[$id_sk1_tts].'</td></tr>';
+            $html .= '<tr><td colspan="3">Verfügbare Soundkarten:</td></tr>';
+            foreach ($soundDevices[0] as $soundDevice) 
+                {
+                $html .= '<tr><td>-</td><td colspan="2">'.$soundDevice.'</td></tr>';
+                }
+            $html .= '<tr><td colspan="3">Verfügbare Sprachen:</td></tr>';
+            foreach ($speechDevices[0] as $speechDevice) 
+                {
+                $html .= '<tr><td>-</td><td colspan="2">'.$speechDevice.'</td></tr>';
+                }
+
+            }
         }
-    else
-        {       // lokale Sprachsteuerung, Statusausgabe, Sprachausgabe nur dann durchführen wenn IPS Modul Sprachsteuerung installiert ist und das Script Sprachsteuerung vorhanden ist.
-        echo "Sprache lokal ausgeben.\n";
-        $id_sk1_musik = IPS_GetInstanceIDByName("MP Musik", $scriptIdSprachsteuerung);
-        $id_sk1_ton = IPS_GetInstanceIDByName("MP Ton", $scriptIdSprachsteuerung);
-        $id_sk1_tts = IPS_GetInstanceIDByName("Text to Speach", $scriptIdSprachsteuerung);
-        $id_sk1_musik_status = IPS_GetVariableIDByName("Status", $id_sk1_musik);
-        $id_sk1_musik_vol = IPS_GetVariableIDByName("Lautstärke", $id_sk1_musik);
-        $id_sk1_ton_status = IPS_GetVariableIDByName("Status", $id_sk1_ton);
-        $id_sk1_counter = CreateVariable("Counter", 1, $scriptIdSprachsteuerung , 0, "",0,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
-        $html .= '<tr><td colspan="2">Verwendet die lokale Sprachsteuerung:</td></tr>';            
-        $html .= '<tr><td style="text-align:right">MP-Musik</td><td>'.$id_sk1_musik.'</td></tr>';
-        $html .= '<tr><td style="text-align:right">MP-Ton</td><td>'.$id_sk1_ton.'</td></tr>';
-        $html .= '<tr><td style="text-align:right">Text-To-Speach</td><td>'.$id_sk1_tts.'</td></tr>';
-        }
+    else echo "Seltsam Sprachsteuerung wurde das letzte Mal nicht richtig installiert.\n";
+
 	//echo $inst_modules;
     $html .= '</table>';
     SetValue($InfoBoxID,$html);
+
+    echo $html;
+    echo "\n---------------------------------------------------\n";
 	
-	/*******************************
+	/***************************************************************************
 	 *
-	 * Links für Webfront identifizieren
+	 * Links für Webfront Konfiguration identifizieren
 	 *
+	 * Tabname AmazonEcho ist aktuell nicht änderbar
 	 *
-	 *
-	 ********************************/
+	 **************************************************************************************/
 
 	$webfront_links=array(
 		"AmazonEcho" => array(
@@ -550,7 +573,7 @@
 				); 
 					
 	// ----------------------------------------------------------------------------------------------------------------------------
-	// WebFront Installation
+	// WebFront Installation von Administrtor und User wenn im ini gewünscht
 	// ----------------------------------------------------------------------------------------------------------------------------
 
     if (isset($configWFront["Administrator"]))
@@ -566,7 +589,9 @@
         }
 
 
-    /* test, Sprachausgabe
+    /****************************************************************************************
+     *
+     * test, Sprachausgabe
      *
      ***************************************************************************************/
     if ($testAusgabe)     
@@ -581,11 +606,14 @@
             }
         }
 
+	// ----------------------------------------------------------------------------------------------------------------------------
+	// Funktionen
+	// ----------------------------------------------------------------------------------------------------------------------------
 
     function installWebfrontSprach($configWF,$webfront_links, $scope)
         {
 	    $wfcHandling = new WfcHandling();            
-        echo "installWebfrontSprach aufgerufen.\n";
+        echo "installWebfrontSprach für Scope \"$scope\" aufgerufen.\n";
         if ( !((isset($configWF["Enabled"])) && ($configWF["Enabled"]==false)) )   
             {
             if ( (isset($configWF["Path"])) )
@@ -604,5 +632,62 @@
 
         }
 
+    /*******
+     *
+     * analyse Media and TexttoSpeech config, find out driver options and actual soundcard setting
+     *
+     */
+
+    function analyseMediaConfig(&$soundcard,$oid,$audio="TTSAudioOutput",$debug=false)
+        {
+        $soundDevices=array();            
+        $result=IPS_GetConfigurationForm($oid);
+        $resultNew=iconv("ISO-8859-1","UTF-8//TRANSLIT", $result);
+        $soundcard[$oid]=IPS_GetProperty($oid,$audio);
+        $json = json_decode($resultNew,true);
+		if ($debug)
+            {
+            echo "    ".$oid."  (".IPS_GetName($oid)." Konfiguration : $result\n";	
+            echo "            PC Lautsprecher ausgewählt: \"".$soundcard[$oid]."\" \n";
+            // echo "\n"; var_dump($json);
+            echo "*************************************************\n";
+            echo "JSON Encode of Mediaplayer Configuration: ";
+            switch(json_last_error()) 
+                {
+                case JSON_ERROR_NONE:
+                    echo ' - Keine Fehler';
+                break;
+                case JSON_ERROR_DEPTH:
+                    echo ' - Maximale Stacktiefe überschritten';
+                break;
+                case JSON_ERROR_STATE_MISMATCH:
+                    echo ' - Unterlauf oder Nichtübereinstimmung der Modi';
+                break;
+                case JSON_ERROR_CTRL_CHAR:
+                    echo ' - Unerwartetes Steuerzeichen gefunden';
+                break;
+                case JSON_ERROR_SYNTAX:
+                    echo ' - Syntaxfehler, ungültiges JSON';
+                break;
+                case JSON_ERROR_UTF8:
+                    echo ' - Missgestaltete UTF-8 Zeichen, möglicherweise fehlerhaft kodiert';
+                break;
+                default:
+                    echo ' - Unbekannter Fehler';
+                break;
+                }
+            echo "\n";
+            }
+        //var_dump($json);
+        $options=$json["elements"][0]["options"];
+        //print_r($options);
+        foreach ($options as $option)
+            {
+            $soundDevices[]=$option["label"];                
+            if ($debug) echo "           ".$option["label"]."\n";
+            }
+        echo "*************************************************\n";
+        return($soundDevices);
+        }
 
 ?>

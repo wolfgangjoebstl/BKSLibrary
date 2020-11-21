@@ -871,14 +871,14 @@ class HardwareHomematic extends Hardware
             {
             if (count($nameSelect)<2) 
                 {
-                echo "        >>getDeviceCheck:Homematic Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
+                echo "        >>HardwareHomematic::getDeviceCheck Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
                 return (false);
                 }
             else 
                 {
                 if ($debug) 
                     {
-                    echo "        getDeviceCheck:Homematic Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
+                    echo "        HardwareHomematic::getDeviceCheck Name \"".$nameSelect[0]."\" bereits definiert, Eintrag wird ergänzt. Port ";
                     foreach ($deviceList[$nameSelect[0]]["Instances"] as $portInfo => $entryInfo) echo $portInfo." ";
                     echo " bereits definiert.\n";
                     }
@@ -909,13 +909,13 @@ class HardwareHomematic extends Hardware
                 }
             else 
                 {
-                echo "       >>getDeviceCheck:Homematic Fehler, Seriennummer ohne Port.\n";
+                echo "       >>HardwareHomematic::getDeviceCheck Fehler, Seriennummer ohne Port.\n";
                 return (false);
                 }
             }
         else 
             {
-            echo "       >>getDeviceCheck:Homematic Fehler, keine Seriennummer.\n";
+            echo "       >>HardwareHomematic::getDeviceCheckc Fehler, keine Seriennummer.\n";
             return (false);
             }
 
@@ -939,12 +939,13 @@ class HardwareHomematic extends Hardware
                     }
                 //print_r($matrix);
                 }
-            else echo "   >>getDeviceCheck:Fehler \"$name\" (".$entry["OID"]."/".$result["Address"].") keine Bewertung der Matrix. Gerät ".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"]))." nicht hinterlegt. Infofeld aus HMInventory: \"".$this->DeviceManager->getHomematicHMDevice($instanz,0)."\"  \"".$this->DeviceManager->getHomematicHMDevice($instanz,1)."\"\n";
+            elseif ($matrix !== false) echo "   >>HardwareHomematic::getDeviceCheck,Fehler \"$name\" (".$entry["OID"]."/".$result["Address"].") keine Bewertung der Matrix. Gerät ".IPS_GetName($entry["OID"])."/".IPS_GetName(IPS_GetParent($entry["OID"]))." nicht hinterlegt. Infofeld aus HMInventory: \"".$this->DeviceManager->getHomematicHMDevice($instanz,0)."\"  \"".$this->DeviceManager->getHomematicHMDevice($instanz,1)."\"\n";
+            else return (false);            // Gerät nicht mehr vorhanden
 
             $typedev    = $this->DeviceManager->getHomematicDeviceType($instanz,0);     /* wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus */
             if ( ($typedev=="") || ($typedev===false) )
                 {
-                echo "       >>getDeviceCheck:Homematic Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)." \n";
+                echo "       >>HardwareHomematic::getDeviceCheck, Fehler : ".IPS_GetName($instanz)." ($instanz): kein TYPEDEV ermittelt für [".$this->DeviceManager->getHomematicDeviceType($instanz,4)."]. Infofeld aus HMInventory: ".$this->DeviceManager->getHomematicHMDevice($instanz,0)." \n";
                 echo "                Info : ".$this->DeviceManager->getHomematicHMDevice($instanz,1)."  Fehleranalyse typedev=this->DeviceManager->getHomematicDeviceType($instanz... erfolgt hier: \n";
                 $this->DeviceManager->getHomematicDeviceType($instanz,0,true);          // gleich mit Debug starten
                 return(false);
@@ -975,7 +976,7 @@ class HardwareHomematic extends Hardware
 
         /* Durchführung */            
 
-        if ($debug) echo "          getDeviceParameter:Homematic Name \"".$nameSelect[0]."\" neuer Eintrag.".str_pad(" In deviceList unter ".$nameSelect[0]." Port $port.",50);
+        if ($debug) echo "           HardwareHomematic::getDeviceParameter Name \"".$nameSelect[0]."\" neuer Eintrag.".str_pad(" In deviceList unter ".$nameSelect[0]." Port $port.",50)."\n";
         if (isset($result["Protocol"])) 
             {
             switch ($result["Protocol"])

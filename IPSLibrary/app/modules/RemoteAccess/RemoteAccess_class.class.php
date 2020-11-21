@@ -411,6 +411,9 @@ class RemoteAccess
 				$this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
 				$this->includefile.="\n         ".'"SysInfo" => "'.$this->listofOIDs["SysInfo"][$Name].'", ';
 				
+				$this->listofOIDs["Klima"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Klima");
+				$this->includefile.="\n         ".'"Klima" => "'.$this->listofOIDs["Klima"][$Name].'", ';
+				
 				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
 				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
 
@@ -688,6 +691,13 @@ class RemoteAccess
 				{ echo str_pad($this->listofOIDs["SysInfo"][$Name],10); } }
 			}
 			
+		echo "\nKlima     :";
+		foreach ($this->remServer as $Name => $Server)
+			{
+			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
+				{ echo str_pad($this->listofOIDs["Klima"][$Name],10); } }
+			}
+
 		echo "\nAndere       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
