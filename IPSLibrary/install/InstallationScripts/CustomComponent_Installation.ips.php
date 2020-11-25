@@ -73,18 +73,30 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 
+    $dosOps = new dosOps();
+
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
         echo "Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
-        IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
-
-        echo "========================================================================\n";    
-        echo "Statistik der Register nach Typen:\n";
-        $hardwareTypeDetect = new Hardware();
-        $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+        $dir = IPS_GetKernelDir()."scripts\\IPSLibrary\\config\\modules\\EvaluateHardware\\";
+        $file = "EvaluateHardware_Devicelist.inc.php";
+        if ($dosOps->fileAvailable($file,$dir))
+            {
+            echo "========================================================================\n";    
+            echo "Statistik der Register nach Typen:\n";
+            IPSUtils_Include ($file,"IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+            $hardwareTypeDetect = new Hardware();
+            if (function_exists("deviceList")) $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
+            else $deviceList = array();
+            }
+        else 
+            {
+            echo "Modul EvaluateHardware ist zwar installiert, aber EvaluateHarwdare wurde noch nicht aufgerufen.\n"; 
+            $deviceList = array();    
+            }
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
         print_r($statistic);        
         } 
@@ -167,11 +179,11 @@
     $wfcHandling =  new WfcHandling();
     $WebfrontConfigID = $wfcHandling->installWebfront();
 
-/*******************************
- *
- * Webfront Konfiguration einlesen
- *
- ********************************/
+    /*******************************
+    *
+    * Webfront Konfiguration einlesen
+    *
+    ********************************/
 			
 	$RemoteVis_Enabled    = $moduleManager->GetConfigValueDef('Enabled', 'RemoteVis',false);
 
@@ -253,83 +265,38 @@
 	 *
 	 * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
 	 *
+     * Vorteil ist das ein vorhandenes Profil nicht mühsam über Remote angelegt werden muss also gleich hier richtig anlegen
+     *
+     *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
 
-	echo "Darstellung der Variablenprofile, wenn fehlt anlegen:\n";
+	echo "Darstellung der Variablenprofile im lokalem Bereich, wenn fehlt anlegen:\n";
 	$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
 	foreach ($profilname as $pname => $masterName)
 		{
 		if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
 			{
-			echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
-			switch ($pname)
-				{
-				case "Temperatur":
-					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
-					IPS_SetVariableProfileText($pname,'',' °C');
-					break;
-				case "TemperaturSet":
-					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
-					IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
-					IPS_SetVariableProfileText($pname,'',' °C');
-					break;
-				case "Humidity";
-					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-					IPS_SetVariableProfileText($pname,'',' %');
-					break;
-				case "Switch";
-					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
-					IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
-					break;
-				case "Contact";
-					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
-					IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
-					break;
-				case "Button";
-					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
-					IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
-					break;
-				case "Motion";
-					IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
-					IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
-					break;
-				case "Pressure";
-					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-					IPS_SetVariableProfileText($pname,'',' mbar');
-                    IPS_SetVariableProfileIcon($pname,"Gauge");
-					break;      
-				case "CO2";
-					IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileText($pname,'',' ppm');
-                    IPS_SetVariableProfileIcon($pname,"Gauge");
-                    IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
-					break;                                    
-				case "mode.HM";
-					IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-					IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
-					IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
-					IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
-					IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-					IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-					IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
-					IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
-					//echo "Profil ".$pname." erstellt;\n";
-					break;					
-				default:
-					break;
-				}
+            echo "Profile existiert nicht oder neu anlegen/update,\n";
+            createProfiles("local",$pname);
 			}
 		elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
-		else
+		elseif (IPS_VariableProfileExists($masterName) == false)
+            {
+            if (IPS_VariableProfileExists($pname)) 
+                {
+                $target=IPS_GetVariableProfile ($pname);
+                $master=array();
+                $masterName="new";                              // nicht vorhanden braucht auch einen Namen
+                $targetName=$target["ProfileName"];
+                compareProfiles("local",$master, $target,$masterName,$targetName);      // nur die lokalen Profile anpassem, geht auch Remote
+                }
+            else 
+                {
+                echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
+                createProfiles("local",$pname);
+                }
+            }
+        else    
         	{
             echo "  Profil ".$pname." erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
             $master=IPS_GetVariableProfile ($masterName);

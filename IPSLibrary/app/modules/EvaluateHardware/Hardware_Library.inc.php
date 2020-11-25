@@ -586,7 +586,38 @@ class Hardware
         return ($statistic);
         }
 
-    }
+    /* Ausgeben der statistische Register Auswertung der devicelist.
+     * für jedes einzelne Register im Channel wurden von getRegisterStatisticsCounter angelegt
+     *
+     * jedes Gerät hat mehrere Instances aber nur einen Type
+     *       Type
+     *       Instances   [...] TYPEDEV
+     *       Channels    [...] TYPECHAN
+     *
+     * Ausgabe der Zusammenfassung in komprimierter Form
+     */
+
+    public function writeRegisterStatistics($statistics)
+        {
+        foreach ($statistics as $name => $device)
+            {
+            echo "   $name    ".$device["Count"]." \n";
+            //print_R($device);
+            foreach ($device as $type => $register)
+                {
+                switch ($type)
+                    {
+                    case "Count":
+                        break;
+                    default:    
+                        echo "      $type  ".$register["Count"]."   \n";
+                        break;
+                    }    
+                }
+            }
+        }
+
+    }       // ende class
 
 
 /* Objektorientiertes class Management für Geräte (Hardware)

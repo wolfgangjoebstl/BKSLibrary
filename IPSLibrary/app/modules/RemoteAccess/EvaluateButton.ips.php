@@ -148,6 +148,7 @@ echo "\n";
 					if ( $status[$Name]["Status"] == true )
 						{						
 						$rpc = new JSONRPC($Server["Adresse"]);
+                        echo "   Register am Remote Server $name anlegen:\n";
 						$result=$remote->RPC_CreateVariableByName($rpc, (integer)$Server["Taster"], $Key["Name"], 0, $struktur[$Name]);
 						$rpc->IPS_SetVariableCustomProfile($result,"Button");
 						$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);

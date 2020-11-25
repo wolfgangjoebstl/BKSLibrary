@@ -7609,7 +7609,8 @@ class DeviceManagement
                 $i++;
                 $resultType[$i]= "TYPE_METER_TEMPERATURE";
                 $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
-                $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY";                 
+                if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY";           //Homematic
+                elseif (array_search("HUMIDITY",$registerNew) !== false) $resultReg[$i]["HUMIDITY"]="HUMIDITY";                     //HomematicIP 
                 }
             if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) 
                 {
@@ -7617,6 +7618,13 @@ class DeviceManagement
                 $resultType[$i] = "TYPE_METER_HUMIDITY";
                 $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY"; 
                 }
+            elseif (array_search("HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="HUMIDITY"; 
+                }
+
             }                      
         else 
             {
