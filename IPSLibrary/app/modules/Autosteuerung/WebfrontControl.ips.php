@@ -15,18 +15,10 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $installedModules 	= $moduleManager->GetInstalledModules();
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 
-	$categoryId_Ansteuerung       = @IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
-    $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Ansteuerung);
-    if ($MonitorModeID)
-        {
-        $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
-	    $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
-        }
-    $SilentModeID                = @IPS_GetObjectIDByName("SilentMode", $categoryId_Ansteuerung);
-    if ($SilentModeID)
-        {
-        $PushSoundID            = IPS_GetObjectIDByName("PushSound", $SilentModeID);
-        }
+	$categoryId_Ansteuerung       = IPS_GetObjectIDByIdent("Ansteuerung", $CategoryIdData);            // Unterfunktionen wie Stromheizung, Anwesenheitsberechnung sind hier
+    $MonitorModeID                = IPS_GetObjectIDByName("MonitorMode", $categoryId_Ansteuerung);
+    $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
+	$StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
 
     //echo "gefunden: $MonitorModeID $SchalterMonitorID\n";
     $debug=true;
@@ -34,29 +26,32 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $auto=new Autosteuerung();
     $ergebnisTyp=false;
 
-    $AutoSetSwitches = Autosteuerung_SetSwitches();
-    if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
-        {
-        $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Ansteuerung);
-        if ($monitorId) 
-            {
-            $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
-            //echo "modul Internal abarbeiten, Werte in ".$categoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
-            $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
-            if (function_exists("Autosteuerung_MonitorMode")) 
-                {
-                $MonitorModeConfig=Autosteuerung_MonitorMode();
-                if (isset($MonitorModeConfig["SwitchName"]))
+            	$AutoSetSwitches = Autosteuerung_SetSwitches();
+                if (isset($AutoSetSwitches["MonitorMode"]["NAME"])) 
                     {
-                    //echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
-                    $result["NAME"]=$MonitorModeConfig["SwitchName"];
-                    $ergebnisTyp=$auto->getIdByName($result["NAME"]);                                
-                    //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
-                    
+                    $monitorId = @IPS_GetObjectIDByName($AutoSetSwitches["MonitorMode"]["NAME"],$categoryId_Ansteuerung);
+                    if ($monitorId) 
+                        {
+                        $MonConfig=GetValue($monitorId);        // Status MonitorMode in Zahlen
+                        //echo "modul Internal abarbeiten, Werte in ".$categoryId_Ansteuerung." Name : ".$AutoSetSwitches["MonitorMode"]["NAME"].":  $monitorId hat ".GetValueIfFormatted($monitorId)."  \n";
+                        $monConfigFomat=GetValueIfFormatted($monitorId);            // Status MonitorMode formattiert
+                        if (function_exists("Autosteuerung_MonitorMode")) 
+                            {
+                            $MonitorModeConfig=Autosteuerung_MonitorMode();
+                            if (isset($MonitorModeConfig["SwitchName"]))
+                                {
+                                //echo "function Autosteuerung_MonitorMode existiert, es geht weiter: ".json_encode($MonitorModeConfig)."\n";
+                                $result["NAME"]=$MonitorModeConfig["SwitchName"];
+                                $ergebnisTyp=$auto->getIdByName($result["NAME"]);                                
+                                //echo "Autosteuerung Befehl MONITOR: Switch Befehl gesetzt auf ".$result["NAME"]."   ".json_encode($ergebnisTyp)."\n";    
+                                
+                                }
+                            }
+                        }
                     }
-                }
-            }
-        }
+
+
+
 
     if (isset($installedModules["OperationCenter"]))
         {
@@ -177,16 +172,6 @@ if ($_IPS['SENDER']=="WebFront")
             $state=GetValue($SchalterMonitorID);
             $auto->switchByTypeModule($ergebnisTyp,$state, false);         // true für Debug
             SetValue($StatusMonitorID,$state);                  // sollte auch den Änderungsdienst zum Zuletzt Wert machen
-            break;
-        case $PushSoundID:
-            //echo "Push Default Sound Module\n";
-			if (isset($installedModules["OperationCenter"])==true)
-				{  /* nur wenn OperationCenter vorhanden auch die lokale Soundausgabe starten*/
-				IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
-                if (GetValue($PushSoundID)) tts_play(1,'Wir testen das Soundmodul und es steht auf ein','',2);
-                else tts_play(1,'Wir testen das Soundmodul und es steht auf ein','',2);
-				}
-
             break;
         case $SchalterSortDevMan_ID:
 		case $SchalterSortDM_ID:

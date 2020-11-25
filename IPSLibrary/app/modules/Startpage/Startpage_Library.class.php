@@ -36,8 +36,6 @@
      * sammelt alle Routinen für die Erstellung und Verwaltung der Startpage/Dashboard
      * mit der Absage des IPSWeather Moduls wurden die Wetter Aktivitäten hier her verlagert.
      *
-     * Hauptroutine ist StartPageWrite mit den 4 unterschiedlichen Darstellungen
-     *
      * _construct
      * getStartpageConfiguration
      * getOWDs
@@ -68,7 +66,6 @@
 
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $aussentemperatur, $innentemperatur;
-        private $contentID;                             // für Highcharts als Dummy
 		
 		public $picturedir;			// hier sind alle Bilder für die Startpage abgelegt
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
@@ -97,8 +94,7 @@
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
 			
 			$this->picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
-			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
-
+			
 			/* get Variables */
 			
 			$this->aussentemperatur=temperatur();
@@ -189,16 +185,11 @@
         /* StartPageWrite, die Startpage vollständig schreiben, erstellt eine html Tabelle
          *
          * Parameter:
-         *       PageType    4 Hierarchie, 3 Topologie, 2 Station, 1 Picture
+         *       PageType    4 Hierarchie, 3 Topologie, 2 Status, 1 Picture
          *       Showfile
          *
          * Bei PageType Picture erfolgt eine zweispaltige Tabelle, mit links einem Bild aus der Library, es gibt auch eine Bottomline
-         *    Aufruf der folgenden Module:   showPictureWidget($showfile), showWeatherTemperatureWidget(), showWeatherTable(), bottomTableLines() 
-         *
-         * Bei PageType Station erfolgt eine vorerst fixe 3 spaltige und 2 zeilige Tabelle auf der einzelnen Widgets platziert werden
-         * die Platzierung ist vorerst statisch kann aber konfiguriert werden
-         *
-         * noch abhängig vom Noweather Parameter
+         *    Aufruf der folgenden Module:   showPicture($showfile), showWeatherTemperatureWidget(), showWeatherTable(), bottomTableLines() 
          *
          *
          */
@@ -206,55 +197,42 @@
 		function StartPageWrite($PageType,$showfile=false,$debug=false)
 			{
 			$Config=$this->configWeather();
-			$noweather=!$Config["Active"];
-            if ($debug)
-                {
-                echo "StartPageWrite aufgerufen. Weather Konfiguration:\n";
-                print_r($Config);
-                }                
+			$noweather=!$Config["Active"];                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
 		    $wert.= $this->writeStartpageStyle();
             switch ($PageType)
                 {
                 case 4:        // Hierarchie
-                    if ($debug) echo "Page Type Style is Hierarchy.\n";
-                    //echo "Hierarchiedarstellung erster Entwurf, verwendet showPictureWidget und showTopology.\n";
+                    //echo "Hierarchiedarstellung erster Entwurf, verwendet showPicture und showTopology.\n";
                     //$wert.='<div style="width: 400px; height: 200px; overflow: scroll;">';
                     //$wert.='<div style="overflow-x:auto;">';        // funktioniert nur wenn y nicht zu gross
                     $wert.='<div style="overflow:scroll; height:900px;">';
                     $wert.='<table id="startpage">';
                     $wert.='<tr>';
-                    //$wert.= $this->showPictureWidget($showfile);
+                    //$wert.= $this->showPicture($showfile);
                     $wert.= $this->showHierarchy();
                     $wert.='</tr></table>';
                     $wert.='</div>';
                     break;
                 case 3:        // Topologie
-                    if ($debug) echo "Page Type Style is Topology.\n";
-                    //echo "Topologiedarstellung erster Entwurf, verwendet showPictureWidget und showTopology.\n";
+                    //echo "Topologiedarstellung erster Entwurf, verwendet showPicture und showTopology.\n";
                     $wert.='<table id="startpage">';
                     $wert.='<tr>';
-                    $wert.='<td>';
-                    $wert.= $this->showPictureWidget($showfile);
-                    $wert.='</td>';
-
+                    $wert.= $this->showPicture($showfile);
                     $wert.= $this->showTopology();
                     $wert.='</tr></table>';
                     break;
                 case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
-                    if ($debug) echo "Page Type Style is Station.\n";
                     $wert.='<table id="startpage">';
-
+                    $wert.='<tr>';
                     if ( $noweather==true )
                         {
-                        if ($debug) echo "   ** No Weather No Station just Picture.\n";                            
                         $file=$this->readPicturedir();
                         $maxcount=count($file);
                         if ($showfile===false) $showfile=rand(1,$maxcount-1);
 
                         //echo "NOWEATHER true.\n";
-                        $wert.='<tr>';                        
                         $wert.='<td>';
                         if ($maxcount >0)
                             {
@@ -264,7 +242,6 @@
                         }
                     else        // Anzeige der Wetterdaten
                         {
-                        $wert .= $this->showDisplayStation($debug);
                         /* $modulname="Astronomy";
                         //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
                         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
@@ -306,20 +283,18 @@
                         else $sunrise="";
                         $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
                         if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
-                        else $sunset="";    
+                        else $sunset="";    */
 
                                 
                         //echo "$htmlAstro  $htmlpicMoon  ".$weather["today"];
 
                         //$wert.='<table id="startpage"><tr>';
                         //$wert.='<tr><td>Hier könnte jetzt Ihre Werbung stehen</td><td>';
-                        // zelle 1 
+                        /* zelle 1 */
                         $wert.='<td width="100%">';
-                        $wert.=$this->showAstronomyWidget("CHART");
+                        $wert.=$this->showAstronomyWidget();
                         $wert.='</td>';
-                        $wert.='<td width="100%">';
-                        $wert.=$this->showAstronomyWidget("MOON");
-                        $wert.='</td>';
+
                         if (false)
                             {
                             $wert.='<td>';
@@ -327,7 +302,7 @@
                             //$wert.='<table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">';
                             //$wert.='<tr><td>';
 
-                            // zelle 2.1 
+                            /* zelle 2.1 */
                             $wert.='<table border="0" bgcolor="#f1f1f1">';
                             $wert.='<tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
                             $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
@@ -335,13 +310,13 @@
                             $wert.='</table>';
                             $wert.='</td>';
 
-                            // zelle 2.2 
+                            /* zelle 2.2 */
                             $wert.='<td><table>';
                             $wert.='<tr><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td></tr>';
                             $wert.='<tr><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td></tr>';
                             $wert.='</table></td>';
 
-                            // zelle 2.3 
+                            /* zelle 2.3 */
                             $wert.='<td><table border="0" bgcolor="#ffffff" cellspacing="5">';
                             $wert.='<tr><td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
                             $wert.='<tr><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen></td></tr>';
@@ -371,15 +346,9 @@
                             $wert.='<td><table border="0" bgcolor="#f1f1f1">';
                             $wert .= $this->showTemperatureTable();
                             $wert .= '</td></table>';
-                        */
-                        $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-                        $wert.='<td colspan="3">';                    
-                        $wert.=$this->bottomTableLines($debug);                // komplette zweite Zeile, ist wesentlich dünner
-                        $wert.='</td>';
-                        $wert.='</tr>';
 
-                        $wert.='</table>';  
-                        //echo "Anzeige Startpage Typ 2";   */
+                        $wert.='</tr></table>';
+                        //echo "Anzeige Startpage Typ 2";
                         }
                     break;
                 case 1:
@@ -389,21 +358,14 @@
                      * Bild und Wetterstation als zweispaltige Tabelle gestalten
                      *
                      *************************/
-                    if ($debug) echo "Page Type Style is Picture.\n";
                     $wert.='<table id="startpage">';
                     //$wert.='<tr><th>Bild</th><th>Temperatur und Wetter</th></tr>';  /* Header für Tabelle */
                     //$wert.='<td><img id="imgdisp" src="'.$filename.'" alt="'.$filename.'"></td>';
-                    $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-                    $wert.='<td height="40%">';     // sonst zu gross
-                    $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
+                    $wert.='<tr>';                                                     // komplette Zeile, diese fällt richtig dick aus
+                    $wert.= $this->showPicture($showfile);                          // erste Zelle, 
                     if ( $noweather==false ) $wert.= $this->showWeatherTemperatureWidget();     // zweite Zelle, eine dritte gibt es nicht
-                    $wert.='</td>';
                     $wert.='</tr>';
-                    $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-	                $wert.='<td colspan="2">';                    
-                    $wert.=$this->bottomTableLines();                // komplette zweite Zeile, ist wesentlich dünner
-                    $wert.='</td>';
-                    $wert.='</tr>';
+                    $wert.='<tr>'.$this->bottomTableLines().'</tr>';                // komplette zweite Zeile, ist wesentlich dünner
                     $wert.='</table>';
                     break;
                 default:
@@ -413,87 +375,14 @@
 			}
 
 
-        /* Station Display
-         *
-         *
-         */
-
-		function showDisplayStation($debug=false)
-			{
-	        if (isset($this->configuration["Widgets"]) ) $widgetsConf=$this->configuration["Widgets"];
-            else $widgetsConf=array();
-            $config = $this->transformConfigWidget($widgetsConf);
-            //if ($debug) print_R($config);
-            $wert = "";
-            foreach ($config as $row => $config2)
-                {
-                if ($debug) echo "Row $row\n";
-                $wert.='<tr>';                        
-                foreach ($config2 as $column => $entry)
-                    {
-                    //if ($debug) print_R($entry);
-                    switch (strtoupper($entry["Name"]))
-                        {
-                        case "ASTRONOMY":
-                            //$wert.='<td width="100%">';
-                            $wert.='<td width="500px">';
-                            $wert.=$this->showAstronomyWidget("CHART");
-                            $wert.='</td>';
-                            break;
-                        case "MOON":
-                            $wert.='<td>';
-                            $wert.=$this->showAstronomyWidget("MOON");
-                            $wert.='</td>';
-                            break;
-                        case "WEATHER":
-                            $wert.='<td>';
-                            $wert.='<table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showWeatherTable();
-                            $wert.='</table>';
-                            $wert.='</td>';
-                            break;
-                        case "GROUPTEMP":
-                            $wert .= '<td>';
-                            $wert .= $this->showTempGroupWidget($debug);
-                            $wert .= '</td>';             
-                            break;
-                        case "PICTURE":
-                            $wert .= '<td>';
-                            $wert.= $this->showPictureWidget();
-                            $wert .= '</td>';             
-                            break;
-                        case "SPECIALREGS":
-                            $wert .= '<td>';
-                            $wert.= $this->showSpecialRegsWidget($debug);
-                            $wert .= '</td>';             
-                            break;
-                        case "TEMPERATURE":
-                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showTemperatureTable();
-                            $wert .= '</table></td>';
-                            break;
-                        default:
-                            if ($debug) echo "   Col $column ".$entry["Name"]."\n";                        
-                            break;
-                        }
-                    }
-                $wert .= '</tr>';    
-                }
-
-            return ($wert);
-            }
-
-
         /* Astronomy Widget
-         *
-         * depending on Display Option different ways of display 
          * 
          * Definition ist eine eigenständige Zelle, typischerweise eine Zelle von 6 : 2 Reihen a 3 Zellen
          * angenommen wird dass diese htmlBox innerhalb einer Zelle von <td>   und   </td> ist,#.
          *
          */
 
-		function showAstronomyWidget($displayType=false,$debug=false)
+		function showAstronomyWidget($debug=false)
 			{
             $wert="";
             $modulname="Astronomy";
@@ -505,7 +394,6 @@
                 $instanzID=$Astronomy[0];    
                 //$instanzname=IPS_GetName($instanzID);
                 $wert.='<table width="100%">';
-
                 $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
                 if ($moonPicId !== false) 
                     {
@@ -521,33 +409,14 @@
                 if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
                 else $sunset="";
 
-                switch (strtoupper($displayType))
-                    {
-                    case "CHART":
-                        $wert.='<tr><td>'.$this->showAstronomy().'</td></tr>';
-                        break;
-                    case "MOON":
-                        $wert.='<tr><td align="center">';
-                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
-                        $wert.='</td></tr>';
-                        $wert.='<tr><td><table>';
-                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
-                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
-                        $wert.='</table></td></tr>';
-                        break;
-                    case "ALL":
-                    default:
-                        $wert.='<tr><td colspan="2" >'.$this->showAstronomy().'</td></tr>';
-                        //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
-                        $wert.='<tr><td align="center">';
-                        if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
-                        $wert.='</td><td><table>';
-                        $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
-                        $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
-                        $wert.='</table></td></tr>';
-                        break;
-                    }
-
+                $wert.='<tr><td colspan="2" >'.$this->showAstronomy().'</td></tr>';
+                //$wert.='<tr><td align="center"><iframe><img src="'.$htmlpicMoon.'" alt="Bild der Mondphase"></iframe></td></tr>';
+                $wert.='<tr><td align="center">';
+                if ($htmlpicMoon) $wert.='<img src="'.$htmlpicMoon.'" alt="Bild der Mondphase">';
+                $wert.='</td><td><table>';
+                $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
+                $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                $wert.='</table></td></tr>';
                 $wert.='</table>';
                 }
             else $wert.="Astronomy not available";
@@ -771,35 +640,8 @@
             return ($topologyPlusLinks);
             }
 
-       /******************************************************************
-        *
-        * umwandeln in eine Pos orientierte Tabelle
-        */
 
-        function transformConfigWidget($widgetsConf)
-            {
-            $config=array();
-            //print_r($widgetsConf);
-            $maxX=3;
-            $x=0; $y=0;
-            foreach ($widgetsConf as $name => $widget)
-                {
-                if (isset($widget["Name"])) $wName = $widget["Name"];
-                else $wName = $name;
-                if (isset($widget["Pos"])) { $wX=["Pos"][0]; $wY=["Pos"][1]; }
-                else 
-                    {
-                    $wX=$x; $wY=$y;
-                    $x++;
-                    if ($x==$maxX) {$x=0; $y++; }    
-                    }
-                $configWidget["Name"]=$wName;
-                $configWidget["Pos"]["X"]=$wX;
-                $configWidget["Pos"]["Y"]=$wY;
-                $config[$wY][$wX]=$configWidget;
-                }
-            return ($config);
-            }
+
 
        /******************************************************************
         *
@@ -1437,7 +1279,7 @@
          *
          **************************************/
 
-		function showPictureWidget($showfile=false, $debug=false)
+		function showPicture($showfile=false)
 			{
             $wert="";
             $file=$this->readPicturedir();
@@ -1448,12 +1290,12 @@
             $info=getimagesize(IPS_GetKernelDir()."webfront/".$filename);
             if (file_exists(IPS_GetKernelDir()."webfront/".$filename)) 
                 {
-                if ($debug) echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
+                //echo "Filename vorhanden - Groesse ".$filegroesse." MB.\n";
                 }
             //echo "NOWEATHER false. PageType 1. Picture. ".$filename."\n\n";   
-            $wert.='<div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
+            $wert.='<td><div class="container"><img src="'.$filename.'" alt="'.$filename.'" class="image">';
             $wert.='<div class="middle"><div class="text">'.$filename.'<br>'.$filegroesse.' MB '.$info[3].'</div>';
-            $wert.='</div>';
+            $wert.='</div></td>';
             return ($wert);
             }
 
@@ -1493,160 +1335,69 @@
          *
          **************************************/
 
-		function showTempGroupWidget($debug=false)
+		function showTempGroupTable($colspan="")
             {
             $wert="";
             if (class_exists("DetectTemperatureHandler"))
                 {    
                 $wert .= '<table>';
                 $DetectTemperatureHandler = new DetectTemperatureHandler();
-                if (isset($this->configuration["GroupTemp"]) ) 
+                $group="Innen";
+                $config=$DetectTemperatureHandler->ListEvents($group);
+                $status=(float)0;
+                $count=0;
+                $roomList=array();
+                foreach ($config as $oid=>$params)
                     {
-                    $groupsConf=$this->configuration["GroupTemp"];
-                    $groups=array();
-                    foreach ($groupsConf as $index => $groupConf)
+                    $variableProps=IPS_GetVariable($oid);
+                    $lastChanged=date("d.m.Y H:i:s",$variableProps["VariableChanged"]);
+                    $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
+                    $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
+                    if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
                         {
-                        if (isset($groupConf["GROUP"])) 
-                            {
-                            $groups[$index]["Group"]=$groupConf["GROUP"];
-                            if (isset($groupConf["UNIT"])) $groups[$index]["Unit"]=$groupConf["UNIT"];
-                            else $groups[$index]["Unit"]="";
-                            }
+                        foreach ($roomRay as $room) $roomList[$room][]=$oid;
                         }
+                    else $roomList["none"][]=$oid;
+                    $status+=GetValue($oid);
+                    $count++;
                     }
-                else $groups=array();
-                if ($debug) 
+                $roomCount=array();
+                foreach ($roomList as $room => $oid)
                     {
-                    echo "DetectTemperatureHandler exists. Konfig is for Group: ".json_encode($groups)."\n";
-                    //print_R($groups);
-                    //print_r($groupConf);
-                    //print_r($this->configuration);
+                    $roomCount[$room]["Count"]=count($roomList[$room]);
+                    $roomCount[$room]["Value"]=0;
                     }
-                foreach ($groups as $index => $groupConf)
+                $status=(float)0;
+                $count=0;
+                foreach ($config as $oid=>$params)
                     {
-                    $group=$groupConf["Group"];
-                    $unit=$groupConf["Unit"];
-                    $config=$DetectTemperatureHandler->ListEvents($group);
-                    if ($debug) echo "    Gruppe $group: ".json_encode($config)."\n";
-                    $status=(float)0;
-                    $count=0;
-                    $roomList=array();
-                    foreach ($config as $oid=>$params)
+                    $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
+                    $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
+                    if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
                         {
-                        $variableProps=IPS_GetVariable($oid);
-                        $lastChanged=date("d.m.Y H:i:s",$variableProps["VariableChanged"]);
-                        $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
-                        $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
-                        if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
-                            {
-                            foreach ($roomRay as $room) $roomList[$room][]=$oid;
-                            }
-                        else $roomList["none"][]=$oid;
                         $status+=GetValue($oid);
                         $count++;
-                        }
-                    $roomCount=array();
-                    foreach ($roomList as $room => $oid)
-                        {
-                        $roomCount[$room]["Count"]=count($roomList[$room]);
-                        $roomCount[$room]["Value"]=0;
-                        }
-                    $status=(float)0;
-                    $count=0;
-                    foreach ($config as $oid=>$params)
-                        {
-                        $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
-                        $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
-                        if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
+                        $roomAll="";
+                        foreach ($roomRay as $room) 
                             {
-                            $status+=GetValue($oid);
-                            $count++;
-                            $roomAll="";
-                            foreach ($roomRay as $room) 
-                                {
-                                if (isset($roomCount[$room]["Count"])) $div=$roomCount[$room]["Count"];
-                                else $div=1;
-                                $value=GetValue($oid)/$div;
-                                $roomCount[$room]["Value"]+=$value;
-                                $roomAll.=" $room";
-                                }
+                            if (isset($roomCount[$room]["Count"])) $div=$roomCount[$room]["Count"];
+                            else $div=1;
+                            $value=GetValue($oid)/$div;
+                            $roomCount[$room]["Value"]+=$value;
+                            $roomAll.=" $room";
                             }
                         }
-                    if ($debug) print_r($roomCount);
-                    foreach ($roomCount as $room => $entry) 
-                        {
-                        //echo "   ".str_pad($room,35)."   ".$entry["Value"]."\n";
-                        $wert .= '<tr><td>'.$room.'</td><td>'.$this->formatEntry((float)$entry["Value"],$unit).'</td></tr>';
-                        }
-
-                    $wert .= '</table>';
-                    //$wert="showTempGroupTable ".json_encode($config);
                     }
+                foreach ($roomCount as $room => $entry) 
+                    {
+                    //echo "   ".str_pad($room,35)."   ".$entry["Value"]."\n"; 
+                    $wert .= '<tr><td>'.$room.'</td><td>'.$entry["Value"].'</td></tr>';
+                    }
+
+                $wert .= '</table>';
+                //$wert="showTempGroupTable ".json_encode($config);
                 }
             else $wert="not available";
-            return ($wert);
-            }
-
-        /********************
-         *
-         * Zelle Tabelleneintrag für die Tabelle für Gruppen Temperaturwerte
-         * macht 2 Zeilen mit jeweils 2 Zellen
-         *
-         **************************************/
-
-		function showSpecialRegsWidget()
-            {
-            $wert="";
-
-            $endTime=time();
-            $startTime=$endTime-3*60*60*24;     /* drei Tage sieht nett aus */
-            $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
-
-            // Create Chart with Config File
-            IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
-            $CfgDaten=array();
-            //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
-            $CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
-
-            $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	        $CfgDaten['ContentVarableId']   = $this->contentID;
-            $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
-            $CfgDaten['StartTime']          = $startTime;
-            $CfgDaten['EndTime']            = $endTime;
-
-            $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
-            $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
-            $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
-
-            // Abmessungen des erzeugten Charts
-            $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
-            $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
-            
-            $CfgDaten['title']['text']      = "";
-            $CfgDaten['subtitle']['text']   = "";
-            $CfgDaten["PlotType"]= "Gauge";
-            $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
-
-            $serie = array();
-            $serie['type']                  = $chart_style;
-
-            /* wenn Werte für die Serie aus der geloggten Variable kommen : */
-            $serie['name'] = 'Baro Pressure';
-            $serie['Unit'] = "mbar";
-            $serie['Id'] = 28664 ;
-            $CfgDaten['series'][] = $serie;
-
-            $CfgDaten    = CheckCfgDaten($CfgDaten);
-            $sConfig     = CreateConfigString($CfgDaten);
-            $tmpFilename = CreateConfigFile($sConfig, 'WidgetGraph');
-            if ($tmpFilename != "")
-                {
-                $chartType = $CfgDaten['Ips']['ChartType'];
-                $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
-                $callBy="CfgFile";
-                $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " .
-                        "width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
-                }
             return ($wert);
             }
 
@@ -1683,9 +1434,37 @@
 
             $wert.='<td><table id="nested">';
 
-            $wert .= $this->showTemperatureTable($colspan);
+            if (false)
+                {
+                $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
+                $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
+                $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+                }
+            else $wert .= $this->showTemperatureTable($colspan);
+
             $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
-            $wert .= $this->showWeatherTable($weather);
+
+            if (false)
+                {
+                if ($weather["todayDate"]=="")
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"]);
+                    }
+                else
+                    {
+                    $wert.= $this->tempTableLine($weather["todayTempMin"], $weather["todayTempMax"], $weather["today"],$weather["todayDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrowTempMin"], $weather["tomorrowTempMax"], $weather["tomorrow"], $weather["tomorrowDate"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow1TempMin"], $weather["tomorrow1TempMax"], $weather["tomorrow1"], $weather["tomorrow1Date"]);
+                    $wert.= $this->tempTableLine($weather["tomorrow2TempMin"], $weather["tomorrow2TempMax"], $weather["tomorrow2"], $weather["tomorrow2Date"]);
+                    }
+                }
+            else 
+                {
+                $wert .= $this->showWeatherTable($weather);
+                }
 
             $wert.='</table></td>';
             return ($wert);
@@ -2295,69 +2074,34 @@
         /* bottomTableLines()
          * die Bottom Table Line ist am unteren Ende des Bild und Wetter Bildschirms angesiedelt
          *
-         * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle in einer Zeile aufgebaut
+         * es wird eine eigene Tabellenzeile aufgebaut, die Zellen von darüber werden zusammengefasst und eine neue Tabelle aufgebaut
          *
          */
 			
-	    function bottomTableLines($debug=false)
+	    function bottomTableLines()
 	        {
 	        $wert="";
 	        if ( (isset($this->configuration["Display"]["BottomLine"])) && (sizeof($this->configuration["Display"]["BottomLine"])>0) )
 	            {
+	            $wert.='<td colspan="2">';
                 $wert.='<table><tr>';
 	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)
 	                {
-                    $oid=(integer)$tableEntry["OID"];
+	                //echo "   Eintrag : ".$tablerow["Name"]."  ".$tablerow["OID"]."  ".$tablerow["Icon"]."\n";
 	    			$wert.='<td>';
-                    if ($oid !== false)
-                        {
-                        if ($debug) echo "   Eintrag : Name ".$tableEntry["Name"]." OID ".$tableEntry["OID"]." Icon ".$tableEntry["Icon"]." Value ".GetValue($oid)."\n";
-                        $wert .='<addText>'.$tableEntry["Name"].'</addText></td><td><addText>';
-                        if (isset($tableEntry["UNIT"])) $format = $tableEntry["UNIT"];
-                        else $format="";
-                        $wert .= $this->formatEntry($oid, $format).'</addtext>';
-                        }
+                    $wert.='<addText>'.$tableEntry["Name"].'</addText></td><td><addText>';
+                    if (isset($tableEntry["UNIT"])) $wert.=number_format(GetValue($tableEntry["OID"]), 3, ",", "" ).$tableEntry["UNIT"].'</addtext>';
+                    else $wert.=number_format(GetValue($tableEntry["OID"]), 1, ",", "" ).'°C</addtext>';
                     $wert.='</td>';
 	                }
                 $wert.='</tr></table>';
+	            $wert.='</td>';
 	            //print_r($this->configuration["AddLine"]);
 				//$wert.='<tr><td>'.number_format($temperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
 	            //echo $wert;
 	            }
 	        return ($wert);            
 	        }
-
-        /* formatting with hints 
-         *
-         * array  Name 
-         */
-
-        function formatEntry($oid, $format)
-            {
-            $wert="";
-            switch (strtoupper($format))
-                {
-                case "PPM":
-                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 0, ",", "" ).$format;
-                    else $wert.=number_format($oid, 0, ",", "" ).$format;
-                    break;
-                case "AUTO":
-                    if (is_integer($oid))$wert.=GetValueIfFormatted($oid);
-                    else $wert.=number_format($oid, 0, ",", "" );
-                    break;
-                case "":
-                case "TEMP":
-                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 1, ",", "" ).'°C';                    
-                    else $wert.=number_format($oid, 1, ",", "" ).'°C';
-                    break;
-                default:   
-                    if (is_integer($oid)) $wert.=number_format(GetValue($oid), 3, ",", "" ).$format;
-                    else $wert.=number_format($oid, 3, ",", "" ).$format;
-                    break;
-                }
-            return($wert);
-            }
-
 
 		/*
 		 * OpenWeatherTable generiert ein html file

@@ -136,9 +136,8 @@
 
 	$remote->rpc_deleteProfiles($status);
 	$remote->rpc_showProfiles($status);
-    echo "Create Profiles on the Servers again:\n";
 	$remote->rpc_createProfiles($status);
-    echo "----------------------------\n";
+
 	$remote->write_classresult($status);
 
 	echo "Ende Profilerstellung : ".(microtime(true)-$startexec)." Sekunden \n";

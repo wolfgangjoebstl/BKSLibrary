@@ -59,8 +59,7 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 
 	IPSUtils_Include ("IPSComponentSensor_Temperatur.class.php","IPSLibrary::app::core::IPSComponent::IPSComponentSensor");
 	IPSUtils_Include ('IPSMessageHandler.class.php', 'IPSLibrary::app::core::IPSMessageHandler');
-
-    IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt
+	//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
 	IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
 	IPSUtils_Include ("EvaluateVariables_ROID.inc.php","IPSLibrary::app::modules::RemoteAccess");
 	
@@ -76,21 +75,11 @@ IPSUtils_Include ('IPSModuleHeatControl_All.class.php', 'IPSLibrary::app::core::
 	echo "\n";
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Actuator Handler wird ausgeführt.\n";
-
-    if ( (getfromDataBase()) && false)
-        {
-        echo "\n\n==ACTUATOR based on MySQL ===============================================================================\n";
-        $componentHandling->installComponentFull("MySQL",["TYPECHAN" => "TYPE_ACTUATOR"],"","","",true);                   // true ist Debug
-        }
-   elseif ( (function_exists('deviceList')) && false)
-        {
-        echo "Aktuatoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR"],'','',$commentField, true);				/* true ist Debug,  */
-        }
-	elseif (function_exists('HomematicList'))
+	
+	if (function_exists('HomematicList'))
 		{
 		echo "\n";
-		echo "Homematic Heat Control Actuator werden auf Basis HomematicList registriert.\n";
+		echo "Homematic Heat Control Actuator werden registriert.\n";
 		$componentHandling->installComponentFull(selectProtocol("Funk",HomematicList()),"TYPE_ACTUATOR",'IPSComponentHeatControl_Homematic','IPSModuleHeatControl_All',$commentField);
 
 		echo "\n";

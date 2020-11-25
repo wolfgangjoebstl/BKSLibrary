@@ -242,7 +242,7 @@ class TopologyLibraryManagement
             {
             foreach ($deviceEntries as $name => $entry)         // die devices durchgehen, Homematic Devices müssen gruppiert werden 
                 {
-                if ($debug) echo "      Bearbeite Gerät \"$name\" vom Typ \$hardwareType\", new class is \"Hardware$hardwareType\":\n";
+                if ($debug) echo "      Bearbeite Gerät $name vom Typ $hardwareType:\n";
                 $objectClassName = "Hardware".$hardwareType;
                 $object = new $objectClassName(); 
                 if ($object->getDeviceCheck($deviceList, $name, $hardwareType, $entry, $debug))

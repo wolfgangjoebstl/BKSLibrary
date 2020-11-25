@@ -119,7 +119,7 @@
 			//echo "Temperatur Message Handler für VariableID : ".$variable." mit Wert : ".$value." \n";
 			/* aussuchen ob IPSLogger_Dbg oder IPSLogger_Inf der richtige Level für die Analyse, produziert viele Daten ! */
             $startexec=microtime(true);            
-            $log=new Temperature_Logging($variable,null,$this->tempValue);        // es wird kein Variablenname übergeben
+            $log=new Temperature_Logging($variable);        // es wird kein Variablenname übergeben
             $mirrorValue=$log->updateMirorVariableValue($value);
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // kann so nicht festgetsellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden.
                 {
@@ -163,18 +163,18 @@
          * Wert auf die konfigurierten remoteServer laden
          */
 
-        public function SetValueROID($value, $debug=false)
+        public function SetValueROID($value)
             {
 			//print_r($this->RemoteOID);
 			//print_r($this->remServer);
-			echo "SetValueROID($value) und Server ".$this->RemoteOID."\n";
+			
 			if ($this->RemoteOID != Null)
 				{
 				$params= explode(';', $this->RemoteOID);
 				foreach ($params as $val)
 					{
 					$para= explode(':', $val);
-					echo "Wert :".$val." Anzahl ",count($para)." \n";
+					//echo "Wert :".$val." Anzahl ",count($para)." \n";
 					if (count($para)==2)
 						{
 						$Server=$this->remServer[$para[0]]["Url"];
@@ -242,13 +242,13 @@
          *
          */
 
-		function __construct($variable,$variablename=Null,$variableTypeReg="unknown",$debug=false)
+		function __construct($variable,$variablename=Null,$variableTypeReg="unkown",$debug=false)
 			{
             $this->startexecute=microtime(true);
             $this->debug=$debug;   
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 
-			echo "   Temperatur_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+			echo "   Construct IPSComponentSensor Temperatur Logging for Variable ID : ($variable,$variablename,$variableTypeReg).\n";
 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];

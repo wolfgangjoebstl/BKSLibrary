@@ -47,11 +47,9 @@ class RemoteAccess
 
 	public $includefile;
 	private $remServer=array();
-	private $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion","Pressure","CO2","Rainfall","Helligkeit");      // diese Profile werden installiert
+	private $profilname=array("Temperatur","TemperaturSet","Humidity","HumidityInt","Switch","Button","Contact","Motion");
 	private $listofOIDs=array();
 	private $listofROIDs=array();
-
-    public $profileConfig;                  // eine Art Mapping zwischen neuen Allgemeinen Profilen und vorhandenen
 	
 	/**
 	 * @public
@@ -68,9 +66,6 @@ class RemoteAccess
 		 *		"LBG-VIS"        		=> 	'http://wolfgangjoebstl@yahoo.com:cloudg06##@hupo35.ddns-instar.de:86/api/',
 		 */
 		$this->remServer=RemoteAccess_GetConfigurationNew();	/* es werden nur die Server in die Liste aufgenommen die "STATUS"=="Active" und "LOGGING"=="Enabled" haben */
-
-       	//$this->profileConfig=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new","Rainfall"=>"~Rainfall","Helligkeit"=>"~Brightness.HM");
-
 		}
 
 	public function getRemoteServer()
@@ -416,12 +411,6 @@ class RemoteAccess
 				$this->listofOIDs["SysInfo"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "SysInfo");
 				$this->includefile.="\n         ".'"SysInfo" => "'.$this->listofOIDs["SysInfo"][$Name].'", ';
 				
-				$this->listofOIDs["Klima"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Klima");
-				$this->includefile.="\n         ".'"Klima" => "'.$this->listofOIDs["Klima"][$Name].'", ';
-				
-				$this->listofOIDs["Helligkeit"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Helligkeit");
-				$this->includefile.="\n         ".'"Helligkeit" => "'.$this->listofOIDs["Helligkeit"][$Name].'", ';
-
 				$this->listofOIDs["Other"][$Name]=RPC_CreateCategoryByName($rpc, $servID, "Andere");
 				$this->includefile.="\n         ".'"Andere" => "'.$this->listofOIDs["Other"][$Name].'", ';
 
@@ -577,7 +566,7 @@ class RemoteAccess
 					{
 					if ($rpc->IPS_VariableProfileExists($pname) == false)
 						{
-						echo "  Profil ".$pname." existiert nicht auf Server $Name ($Server).\n";
+						echo "  Profil ".$pname." existiert nicht \n";
 						switch ($pname)
 							{
 							case "Temperatur":
@@ -621,33 +610,6 @@ class RemoteAccess
 					 			$rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
 						 		$rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
 						  		break;
-                            case "Pressure";
-                                $rpc->IPS_CreateVariableProfile($pname, 2);
-                                $rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-                                $rpc->IPS_SetVariableProfileText($pname,'',' mbar');
-                                $rpc->IPS_SetVariableProfileIcon($pname,"Gauge");
-                                break;      
-                            case "CO2";
-                                $rpc->IPS_CreateVariableProfile($pname, 1);
-                                $rpc->IPS_SetVariableProfileText($pname,'',' ppm');
-                                $rpc->IPS_SetVariableProfileIcon($pname,"Gauge");
-                                $rpc->IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
-                                break;                                    
-                            case "Rainfall":
-                                $rpc->IPS_CreateVariableProfile ($pname, 2);
-                                $rpc->IPS_SetVariableProfileIcon ($pname, "Rainfall");
-                                $rpc->IPS_SetVariableProfileText ($pname, ""," mm");
-                                $rpc->IPS_SetVariableProfileValues ($pname, 0,0,0);
-                                $rpc->IPS_SetVariableProfileDigits ($pname, 1);                				
-                                break;
-                            case "Helligkeit":
-                                $rpc->IPS_CreateVariableProfile ($pname, 1);
-                                $rpc->IPS_SetVariableProfileIcon ($pname, "Sun");
-                                $rpc->IPS_SetVariableProfileText ($pname, "","");
-                                $rpc->IPS_SetVariableProfileValues ($pname, 0,255,0);
-                                $rpc->IPS_SetVariableProfileDigits ($pname, 0);                                    
-                                break;
-
 							default:
 						      break;
 							}
@@ -655,17 +617,6 @@ class RemoteAccess
 					else
 						{
 						echo "  Profil ".$pname." existiert. \n";
-                        /*
-                        $target=$rpc->IPS_GetVariableProfile ($pname);
-                        echo "  Profil ".$pname." erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
-                        $master=IPS_GetVariableProfile ($masterName);
-
-                        $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
-                        $targetName=$target["ProfileName"];
-                        compareProfiles("local",$master, $target,$masterName,$targetName);      // nur die lokalen Profile anpassem, geht auch Remote
-                        */
-
-
 						}
 					}
 				}
@@ -737,13 +688,6 @@ class RemoteAccess
 				{ echo str_pad($this->listofOIDs["SysInfo"][$Name],10); } }
 			}
 			
-		echo "\nKlima     :";
-		foreach ($this->remServer as $Name => $Server)
-			{
-			if ( isset($available[$Name]["Status"]) ) {	if ($available[$Name]["Status"] == true ) 
-				{ echo str_pad($this->listofOIDs["Klima"][$Name],10); } }
-			}
-
 		echo "\nAndere       :";
 		foreach ($this->remServer as $Name => $Server)
 			{
@@ -886,7 +830,6 @@ class RemoteAccess
 			}
 		if ($result=="")
 			{
-            echo "  --> Variable $name mit Typ $type auf Server neu anlegen:\n";
 			$vid = $rpc->IPS_CreateVariable($type);
 			$rpc->IPS_SetParent($vid, $id);
 			$rpc->IPS_SetName($vid, $name);

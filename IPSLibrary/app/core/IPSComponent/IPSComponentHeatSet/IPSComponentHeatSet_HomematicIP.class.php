@@ -12,8 +12,7 @@
    /**
     * @class IPSComponentHeatSet_HomematicIP
     *
-    * Definiert ein IPSComponentHeatSet_HomematicIP Object, das ein IPSComponentHeatSet Object für HomematicIP implementiert.
-    * Ziel ist es nur die HomematicIP Spezifika hier unterbringen. IPSComponentHeatSet ist aber eine abstrakte Klasse - gibt nur Bauform vor
+    * Definiert ein IPSComponentHeatSet_HomematicIP Object, das ein IIPSComponentHeatSet Object für HomematicIP implementiert.
     *
     * __construct   übergibt als Parameter die Instanz für das Register, zB IPSComponentHeatSet_HomematicIP,20699,
     *               ermittelt zusaetzlich den Homematic Gerätetyp wie zum beispiel HMIP-WTH aus der Homematic Liste
@@ -33,14 +32,12 @@
 
 		protected 	$tempValue;
 		protected 	$installedmodules;
-		protected 	$instanceId;		    /* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
-		protected  	$deviceHM;			    /* Typoe des Gerätes, funktioniert nur wenn HM Inventory installiert ist */
+		protected 	$instanceId;		/* Instanz des Homematic Gerätes, wird mitgeliefert vom Event Handler */
+		protected  	$deviceHM;			/* Typoe des Gerätes, funktioniert nur wenn HM Inventory installiert ist */
 
-		protected 	$RemoteOID;		        /* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
-		protected 	$remServer;		        /* Liste der Urls und der Kurznamen */
-		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch */
-
-        private $debug;                     /* Debug Ausgaben, stören bei Webfront Betätigung */
+		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
+		protected 	$remServer;		/* Liste der Urls und der Kurznamen */
+		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ;
 
 		/**
 		 * @public
@@ -55,8 +52,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            $this->debug=true;
-            // Parameter neu anordnen, es können unterschiedliche Formate bei der Übergabe auftreten betreffend par1 und par2, der par3 ist immer tempValue udn gibt Details zur Art des Parameters an den Component
+            //echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */
 				$this->rpcADR 			= $rpcADR;				
@@ -78,10 +74,8 @@
 					}				
 				}
 			$this->tempValue  	= $lightValue;
-            //if ($this->debug) echo "IPSComponentHeatSet_HomematicIP:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr \"$this->rpcADR\" Add Parameter $this->tempValue \n";
 			//$this->instanceId  	= IPSUtil_ObjectIDByPath($instanceId);
 			
-            /* alle Homematic Instanzen suchen, verfügen über Index OID und HMDevice, benötigen abhängig vom Typ unterschiedliche Variablen zum Setzen */
 			$instances=array();
 			foreach (HomematicList() as $instanceHM)
 				{
@@ -91,18 +85,14 @@
 				    $instances[$instanceHM["OID"]]=$instanceHM["HMDevice"];
                     }
 				}
-            //if ($this->debug) print_r($instances);    
+            //print_r($instances);    
             if (isset($instances[$this->instanceId]) ) 
 				{
-                if ($this->debug)
-                    {
-                    echo "    IPSComponentHeatSet_HomematicIP:construct with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." (".IPS_GetName($this->instanceId).") ROIDs:  \"".$this->RemoteOID."\" Remote Server : \"".$this->rpcADR."\" Zusatzparameter :  ".$this->tempValue."  ";
-                    echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
-                    }
+				//echo "    construct IPSComponentHeatSet_Homematic with Parameter : Instanz (Remote oder Lokal): ".$this->instanceId." ROIDs:  ".$this->RemoteOID." Remote Server : ".$this->rpcADR." Zusatzparameter :  ".$this->tempValue."  ";
+				//echo "---> gefunden, Typ ist ".$instances[$this->instanceId]."\n"; 	
 				$this->deviceHM = $instances[$this->instanceId];		
 				}
-            else echo "nichts gefunden, Fehler\n";
-			$this->remoteServerSet();           // definiert im gemeinsamen IPSComponentHeatSet
+			$this->remoteServerSet();
 			}
 
 		/**
@@ -117,18 +107,18 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleHeatSet $module)
 			{
-			if ($this->debug) echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
+			//echo "HeatSet HomematicIP HandleEvent für VariableID : ".$variable.' ('.IPS_GetName($variable).") mit Wert : ".$value." \n";
 			IPSLogger_Inf(__file__, 'IPSComponentHeatSet_HomematicIP HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			
-            $log=new HeatSet_Logging($variable,null,$this->tempValue,$this->debug);			                            // Variable Type wird für Logging übergeben
+            $log=new HeatSet_Logging($variable);			
 			if ( ((IPS_GetName($variable))=="CONTROL_MODE") || ((IPS_GetName($variable))=="SET_POINT_MODE") )
 				{
-				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetMode($value, $this, $this->debug);
+				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetMode($value, $this);
 				$result=$log->HeatSet_LogValue($value,IPS_GetName($variable));
 				}
 			else
 				{	
-				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this, $this->debug);
+				if (isset ($this->installedmodules["Stromheizung"])) $module->SyncSetTemp($value, $this);
 				$result=$log->HeatSet_LogValue($value);
 				}
 			
@@ -147,7 +137,7 @@
 		 */
 		public function GetComponentParams() 
 			{
-			return (get_class($this).','.$this->instanceId);
+			return get_class($this);
 			}
 
         /* return Logging class, shall be stored */
@@ -188,16 +178,16 @@
 				}	
 			}
 
-		public function SetLevel($power, $level, $debug=false)				// gleich wie bei Level, verwendet für Temperatur
+		public function SetLevel($power, $level)				// gleich wie bei Level, verwendet für Temperatur
 			{
-			if ($debug) echo "IPSComponentHeatSet_HomematicIP::SetLevel RPC Adresse:".$this->rpcADR."und Parameter Level ".$level." Power ".$power." \n";
+			//echo "Adresse:".$this->rpcADR."und Level ".$level." Power ".$power." \n";
 			//if (!$power) $setlevel=6; else $setlevel=$level;		// keine Beeinflussung von Level anhand des States
 
 			$setlevel=$level;				
 			if ($this->rpcADR==Null)
 				{
-				if ($debug) echo "   IPSComponent HeatSet_HomematicIP SetLevel von  $this->instanceId (".IPS_GetName($this->instanceId).") mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
-                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP SetTemp von $this->instanceId (".IPS_GetName($this->instanceId).") mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
+				//echo "   IPSComponent HeatSet_HomematicIP SetState von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')." \n";
+                IPSLogger_Inf(__file__, "IPSComponent HeatSet_HomematicIP SetTemp von ".IPS_GetName($this->instanceId)." mit folgenden Parametern Level ".$setlevel." Power ".($power?'On':'Off')); 
                 //$exectime=round(hrtime(true)/1000000,0);       // Status emulieren einschalten dann geht es schneller              
 				HM_WriteValueFloat($this->instanceId, "SET_POINT_TEMPERATURE", $setlevel);
                 //$duration=round(hrtime(true)/1000000-$exectime,0); echo 'Ausführungszeit SetLevel HM_WriteValueFloat(".$this->instanceId.", \"SET_POINT_TEMPERATURE\", $setlevel) : '.$duration.' Millisekunden.'."\n";	

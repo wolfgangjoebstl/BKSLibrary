@@ -139,7 +139,7 @@
 		 */
 		public function GetComponentParams() 
 			{
-			return (get_class($this).','.$this->instanceId);
+			return get_class($this);
 			}
 
         /* return Logging class, shall be stored */

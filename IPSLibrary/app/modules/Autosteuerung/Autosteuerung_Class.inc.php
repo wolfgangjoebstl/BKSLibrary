@@ -1620,7 +1620,7 @@ class Autosteuerung
 			{
 			$children[IPS_GetName($ID)]["OID"]=$ID;
 			$children[IPS_GetName($ID)]["VALUE"]=GetValue($ID);
-			$children[IPS_GetName($ID)]["VALUE_F"]=GetValueIfFormatted($ID);
+			$children[IPS_GetName($ID)]["VALUE_F"]=GetValueFormatted($ID);
 			//echo "getFunctions : ".$ID." (".IPS_GetName($ID).")\n";
 			switch (IPS_GetName($ID))
 				{

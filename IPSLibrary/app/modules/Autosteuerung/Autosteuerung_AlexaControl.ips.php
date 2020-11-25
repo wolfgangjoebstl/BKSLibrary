@@ -235,17 +235,12 @@ Switch ($_IPS['SENDER'])
 		executeAlexa($request);
 		break;
 	Case "Execute":
-        echo "--------------------------------------------------------\n";
-        echo "AlexaControl Execute aufgerufen:\n";
 		$nachrichten->LogNachrichten("AlexaControl Execute aufgerufen.");
         $count=$Alexa->getCountInstances();
         if ($count>0) echo "Alexa lokale Instanzen, StatusCount = ".$Alexa->getCountInstances().": ";
-        elseif ($count<0) 
-            {
-            echo "Alexa Remote Instanzen, StatusCount = ".$Alexa->getCountInstances().": \n";
-    	    echo "   Alexa Konfiguration: ".$Alexa->getConfigAlexa()."\n";
-            }
-	    foreach ($Alexa->getInstances() as $oid) echo "   $oid   ";
+        elseif ($count<0) echo "Alexa remote Instanzen, StatusCount = ".$Alexa->getCountInstances().": ";
+    	//echo "Alexa Instanzen, StatusCount = ".$Alexa->getCountInstances()." (negativer Wert für remote Geräte): ";
+	    foreach ($Alexa->getInstances() as $oid) echo $oid."   ";
 		echo "\n";
     	echo "Alexa Configuration:\n";
     	$alexaConfiguration=$Alexa->getAlexaConfig(true);

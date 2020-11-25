@@ -170,16 +170,14 @@
 		{
         /* init at construct */
         private     $startexecute;                              /* interne Zeitmessung */
-        protected   $archiveHandlerID;                          /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
-        protected   $debug;       
+        protected   $archiveHandlerID;                          /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */        
 
         /* init at do_init */
 		protected   $installedmodules;                          /* installierte Module */
 		protected   $variable, $variableProfile, $variableType;
-        protected   $variableTypeReg;                               // Untergruppen, hier MOTION oder BRIGHTNESS 
         protected   $Type;                                      // Eigenschaften der input Variable auf die anderen Register clonen        
 
-        
+        //private  $variableTypeReg;              // Untergruppen, hier MOTION oder BRIGHTNESS 
 		//private $mirrorCatID, $mirrorNameID;                    // Spiegelregister in CustomComponent um eine Änderung zu erkennen
 
 		//private $AuswertungID, $NachrichtenID, $filename;             /* Auswertung für Custom Component */
@@ -212,9 +210,9 @@
 		 *
 		 *************************************************************************/
 		 	
-		function __construct($variable,$variablename=Null, $value, $typedev="unkown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
+		function __construct($variable,$variablename=Null, $value, $typedev, $debug=false)          // construct ohne variable nicht mehr akzeptieren
 			{
-            if ($debug) echo "Motion_Logging::construct do_init mit \"$typedev\" aufrufen:\n";
+            if ($debug) echo "Motion_Logging::construct do_init mit $typedev aufrufen:\n";
             $this->startexecute=microtime(true); 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
             $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $debug);              // $variable kann auch false sein
@@ -235,7 +233,6 @@
                 }             
             if ($variable!==false)
                 {
-                if ($debug) echo "Motion_Logging::do_init für Variable $variable mit Type $typedev aufgerufen.\n";                    
                 $this->$variable=$variable;
                 $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
@@ -247,8 +244,8 @@
                     if ($typedev==Null)
                         {
                         if ($debug) echo "\ndo_init,getfromDatabase ohne Ergebnis, selber bestimmen aufgrund des Typs.\n";    
-                        if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableTypeReg = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
-                        else $this->variableTypeReg = "BRIGHTNESS";
+                        if (IPS_GetVariable($variable)["VariableType"]==0) $this->variableType = "MOTION";            // kann STATE auch sein, tut aber nichts zur Sache
+                        else $this->variableType = "BRIGHTNESS";
                         }
                     else
                         {
@@ -256,13 +253,13 @@
                         switch (strtoupper($typedev))
                             {
                             case "MOTION":
-                                $this->variableTypeReg = "MOTION";
+                                $this->variableType = "MOTION";
                                 break;    
                             case "BRIGHTNESS":
-                                $this->variableTypeReg = "BRIGHTNESS";
+                                $this->variableType = "BRIGHTNESS";
                                 break;    
                             case "CONTACT":
-                                $this->variableTypeReg = "CONTACT";
+                                $this->variableType = "CONTACT";
                                 break;   
                             default: 
                                 echo "\ndo_init,getfromDatabase ohne Ergebnis und dann noch typedev mit einem unbekannten Typ übergeben -> Fehler.\n";    
@@ -272,20 +269,20 @@
                 else    // getfromDatabase
                     {
                     //print_r($rows);   
-                    $this->variableTypeReg = $rows[0]["TypeRegKey"];
-                    if ($debug) echo "\nAus der Datenbank ausgelesen: Register Typ ist \"".$this->variableTypeReg."\". Variable Typ unverändert \"".$this->variableType."\". Jetzt unterschiedliche Initialisierungen machen.\n";    
+                    $this->variableType = $rows[0]["TypeRegKey"];
+                    if ($debug) echo "\nAus der Datenbank ausgelesen: Register Typ ist ".$this->variableType.". Jetzt unterschiedliche Initialisierungen machen.\n";    
                     }
                 $this->Type=0;      // Motion und Contact ist boolean
-                if ($this->variableTypeReg =="MOTION") $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
-                elseif ($this->variableTypeReg =="CONTACT") $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
-                elseif ($this->variableTypeReg =="BRIGHTNESS") 
+                if ($this->variableType =="MOTION") $NachrichtenID=$this->do_init_motion($variable, $variablename, $value, $debug);
+                elseif ($this->variableType =="CONTACT") $NachrichtenID=$this->do_init_contact($variable, $variablename,$value,$debug);
+                elseif ($this->variableType =="BRIGHTNESS") 
                     {
                     $this->Type=1;  // Brightness ist Integer
                     $NachrichtenID=$this->do_init_brightness($variable, $variablename,$value,$debug);
                     }
                 else echo "Fehler, kenne den Variable Typ nicht.\n";
                 }
-            else $NachrichtenID=$this->do_init_statistics($debug);                
+            else $this->do_init_statistics();                
             return ($NachrichtenID);    // damit die Nachrichtenanzeige richtig aufgesetzt wird 
             }
 
@@ -345,7 +342,7 @@
 			if ( ($variable<>null) && ($variable<>false) )
 				{
 				echo "Set_LogValue, Add Variable ID : ".$variable." (".IPS_GetName($variable).") für IPSComponentSensor Motion Logging.\n";
-                $this->do_init($variable,Null,false,"",$this->debug);                                                                                                  // initialisiserung gleich wie in construct
+                $this->do_init($variable);                                                                                                  // initialisiserung gleich wie in construct
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->Type,$this->variableProfile);                   // $this->variableLogID schreiben aus do_setVariableLogId
 				}
 			else echo "Set_LogValue aufgerufen mit variable mit Null oder False.\n"; 
@@ -377,7 +374,7 @@
 		function Motion_LogValue($value,$debug=false)
 			{
 			$result=GetValue($this->variable);
-            switch ($this->variableTypeReg)
+            switch ($this->variableType)
                 {            
                 case "MOTION":
                     $resultLog=$this->doLogMotion($result);
@@ -970,12 +967,12 @@
 	class Motion_LoggingStatistics extends Motion_Logging
 		{
 
-		function __construct($debug=false)          // construct ohne variable nur für übergeordnete Aufrufe erlauben
+		function __construct()          // construct ohne variable nur für übergeordnete Aufrufe erlauben
 			{
             $this->startexecute=microtime(true); 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 
-    		parent::__construct(false,Null,false,"",$debug);           // 4 Parameter mittlerweile erforderlich
+    		parent::__construct(false);
 			}
 
 
