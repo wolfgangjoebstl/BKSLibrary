@@ -76,8 +76,17 @@
 	echo "\n\n";
 	echo "Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";
 	echo "   Schreibe Batchfile zum automatischen Start und Stopp von VLC.\n";
-
+    $dosOps = new dosOps();
 	$verzeichnis="C:/scripts/";
+    $ls=$dosOps->readdirToArray($verzeichnis);
+    if ($ls===false) 
+        {
+        echo "    UNIX System. Anderes privates Verzeichnis.\n";
+        $verzeichnis="/var/script/symcon/";
+        $ls=$dosOps->readdirToArray($verzeichnis);
+        if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
+        }
+
 	$unterverzeichnis="process/";
 	if (is_dir($verzeichnis.$unterverzeichnis))
 		{

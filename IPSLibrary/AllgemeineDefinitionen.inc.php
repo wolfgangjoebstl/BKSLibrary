@@ -222,6 +222,330 @@ function nf($value,$unit="")
     return($result);    
     }
 
+/* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
+ * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
+ * $rpc ist entweder eine class oder false
+ *
+ */
+
+ function rpc_CreateVariableProfile($rpc, $pname, $type, $demo=false)
+    {
+    if ($demo) echo '    IPS_CreateVariableProfile ($pname, '.$type.');'."\n";
+    else
+        {
+        if ($rpc) $rpc->IPS_CreateVariableProfile ($pname, $type);
+        else IPS_CreateVariableProfile ($pname, $type);
+        }        
+    }
+
+ function rpc_SetVariableProfileIcon($rpc, $pname, $icon, $demo=false)
+    {
+    if ($demo) echo '    IPS_SetVariableProfileIcon ($pname, "'.$icon.'");'."\n";
+    else
+        {
+        if ($rpc) $rpc->IPS_SetVariableProfileIcon ($pname, $icon);
+        else IPS_SetVariableProfileIcon ($pname, $icon);
+        }        
+    }
+
+ function rpc_SetVariableProfileDigits($rpc, $pname, $digits, $demo=false)
+    {
+    if ($demo) echo '    IPS_SetVariableProfileDigits ($pname, '.$digits.");\n";                // ähnliche Formatierung, damit das Kopieren leicheter fällt
+    else
+        {
+        if ($rpc) $rpc->IPS_SetVariableProfileDigits ($pname, $digits);
+        else IPS_SetVariableProfileDigits ($pame, $digits);
+        }
+    }
+
+ function rpc_SetVariableProfileText($rpc, $pname, $prefix, $suffix, $demo=false)
+    {
+    if ($demo) echo '    IPS_SetVariableProfileText ($pname, "'.$master["Prefix"].'","'.$master["Suffix"]."\");\n";
+    else
+        {
+        if ($rpc) $rpc->IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+        else IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+        }
+    }
+
+ function rpc_SetVariableProfileValues($rpc, $pname, $minValue, $maxValue, $stepSize, $demo=false)
+    {
+    if ($demo) echo '    IPS_SetVariableProfileValues ($pname, '.$minValue.",".$maxValue.",".$stepSize.");\n";
+    else
+        {
+        if ($rpc) $rpc->IPS_SetVariableProfileValues ($targetName, $minValue,$maxValue,$stepSize);
+        else IPS_SetVariableProfileValues ($targetName, $minValue,$maxValue,$stepSize);
+        }
+    }
+
+/* Anlegen und Synchronisieren von Profilen
+ * soll auch gleich Remote gehen
+ *
+ */
+
+function compareProfiles($server, $master,$target,$masterName,$targetName, $demo=false)
+    {
+    $prefix=true; $minvalue=true;
+
+    if ($demo)
+        {
+        $target=array();
+        $target["ProfileName"]=$targetName;            
+        }
+
+    if (strtoupper($server) != "LOCAL") 
+        {
+        $rpc = new JSONRPC($server);
+        $remote=true;
+        }
+    else $rpc=false;
+
+    // Profile name needs to be set
+    echo "compareProfiles($masterName,$targetName)\n";
+    foreach ($master as $index => $entry)
+        {
+        if (is_array($master[$index])) 
+            {
+            switch ($index)
+                {
+                case "Associations":
+                    if ( (isset($target[$index])) === false) 
+                        {
+                        $target[$index]=array();
+                        echo "$index ist ein Array. Im Target neu anlegen. ".sizeof($master[$index])." != ".sizeof($target[$index])."\n";
+                        }
+                    if ( (sizeof($master[$index])) != (sizeof($target[$index])) ) 
+                        {
+                        if (sizeof($target[$index])==0)
+                            {
+                            //echo "Associations im Target neu anlegen.\n";
+                            //print_r($master[$index]);
+                            foreach ($master[$index] as $entry)
+                                {
+                                if ($demo) echo '    IPS_SetVariableProfileAssociation($pname, '.$entry["Value"].', "'.$entry["Name"].'", "'.$entry["Icon"].'", '.$entry["Color"].");\n";
+                                else 
+                                    {
+                                    if ($remote) $rpc->IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                    else IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                    }
+                                }
+                            }
+                        else echo "Associations nicht gleich gross\n";
+                        }
+                    break;
+                default:
+                    echo "sub array $index\n";
+                    if (isset($target[$index])) compareProfiles($server, $master[$index], $target[$index],$masterName,$targetName,$demo);
+                    else echo "Target Index not available\n";
+                    break;
+                }
+            }
+        elseif ( ((isset($target[$index])) === false) || ( (isset($target[$index])) && ($master[$index] != $target[$index]) ))      //entweder gibts den target Index gar nicht oder er ist nicht gleich dem master
+            {
+            if ( (isset($target["ProfileType"])) === false)
+                {
+                //echo "$index: Profil noch nicht vorhanden. Als ersten Befehl CreateVariableProfil durchführen.\n";
+                rpc_CreateVariableProfile($rpc, $targetName, $master["ProfileType"], $demo);
+                $target["ProfileName"]=$targetName;
+                $target["ProfileType"]=$master["ProfileType"];   
+                }
+            switch ($index)
+                {
+                case "ProfileName":
+                case "ProfileType":
+                    //echo "Variable bereits mit $targetName und Typ ".$master["ProfileType"]." erstellt.\n";
+                    break;
+                case "MinValue":
+                case "MaxValue":
+                case "StepSize":
+                    if ($minvalue)
+                        {
+                        rpc_SetVariableProfileValues($rpc, $minValue, $maxValue, $stepSize, $demo);
+                        $minvalue=false;
+                        }
+                    break;
+                case "Digits":
+                    rpc_SetVariableProfileDigits($rpc, $targetName, $master["Digits"],$demo);
+                    break;
+                case "Icon":
+                    rpc_SetVariableProfileIcon($rpc, $targetName, $master["Icon"], $demo);
+                    break;
+                case "Prefix":
+                case "Suffix":
+                    if ($prefix)
+                        {
+                        rpc_SetVariableProfileText ($rpc, $targetName, $prefix, $suffix);
+                        $prefix=false;
+                        }
+                    break;
+                default:
+                    if (isset($target[$index])) echo "    ".str_pad($index,20)."  $master[$index]  $target[$index] \n";
+                    else echo "    ".str_pad($index,20)."  $master[$index]  $targetName Index $index unknown \n";
+                    break;
+                }
+            }
+        }
+    }
+
+    /* alle Profile manuell erzeugen, geht auch lokal oder remote
+     *
+     */
+
+	function createProfiles($server,$pname)
+        {
+        if (strtoupper($server) != "LOCAL") 
+            {
+            $rpc = new JSONRPC($eerver);
+            $remote=true;
+            }
+        else $rpc=false;
+        echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
+        switch ($pname)
+            {
+            case "Temperatur":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
+                    }
+                else 
+                    {
+                    IPS_SetVariableProfileDigits($pname, 2); // PName, Nachkommastellen
+                    IPS_SetVariableProfileText($pname,'',' °C');
+                    }
+                break;
+            case "TemperaturSet":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileIcon ($pname, "Temperature");
+                    $rpc->IPS_SetVariableProfileText($pname,'',' °C');
+                    $rpc->IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileIcon ($pname, "Temperature");
+                    IPS_SetVariableProfileText($pname,'',' °C');
+                    IPS_SetVariableProfileDigits($pname, 1); // PName, Nachkommastellen
+                    IPS_SetVariableProfileValues ($pname, 6, 30, 0.5 );	// eingeschraenkte Werte von 6 bis 30 mit Abstand 0,5					
+                    }
+                break;
+            case "Humidity";
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                    $rpc->IPS_SetVariableProfileText($pname,'',' %');
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                    IPS_SetVariableProfileText($pname,'',' %');                
+                    }
+                break;
+            case "Switch";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Aus","",0xff0000);   /*  Rot */
+                    IPS_SetVariableProfileAssociation($pname, 1, "Ein","",0x00ff00);     /* Grün */
+                    }
+                break;
+            case "Contact";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileIcon ($pname, "Window");
+                    $rpc->IPS_SetVariableProfileText ($pname, "","");
+                    $rpc->IPS_SetVariableProfileValues ($pname, 0,2,0);
+                    $rpc->IPS_SetVariableProfileDigits ($tpname, 0);                    
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileIcon ($pname, "Window");
+                    IPS_SetVariableProfileText ($pname, "","");
+                    IPS_SetVariableProfileValues ($pname, 0,2,0);
+                    IPS_SetVariableProfileDigits ($tpname, 0);                    
+                    IPS_SetVariableProfileAssociation($pname, 0, "Geschlossen","" , -1);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Gekippt", "", 255);
+                    IPS_SetVariableProfileAssociation($pname, 2, "Geöffnet", "", 65280);                    
+
+                    //IPS_CreateVariableProfile($pname, 0); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+                    //IPS_SetVariableProfileAssociation($pname, 0, "Zu","",0xffffff);
+                    //IPS_SetVariableProfileAssociation($pname, 1, "Offen","",0xffffff);
+                    }
+                break;
+            case "Button";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Ja","",0xffffff);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Nein","",0xffffff);                
+                    }
+                break;
+            case "Motion";
+                rpc_CreateVariableProfile($rpc, $pname, 0);
+                if ($remote) 
+                    {
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+                    $rpc->IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
+                    }
+                else
+                    {
+                    IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
+                    IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);                
+                    }
+                break;
+            case "Pressure";
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                IPS_SetVariableProfileText($pname,'',' mbar');
+                IPS_SetVariableProfileIcon($pname,"Gauge");
+                break;      
+            case "CO2";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                IPS_SetVariableProfileText($pname,'',' ppm');
+                IPS_SetVariableProfileIcon($pname,"Gauge");
+                IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
+                break;                                    
+            case "mode.HM";
+                rpc_CreateVariableProfile($rpc, $pname, 1);
+                IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+                IPS_SetVariableProfileValues($pname, 0, 5, 1); //PName, Minimal, Maximal, Schrittweite
+                IPS_SetVariableProfileAssociation($pname, 0, "Automatisch", "", 0x481ef1); //P-Name, Value, Assotiation, Icon, Color=grau
+                IPS_SetVariableProfileAssociation($pname, 1, "Manuell", "", 0xf13c1e); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 2, "Profil1", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 3, "Profil2", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 4, "Profil3", "", 0x1ef127); //P-Name, Value, Assotiation, Icon, Color
+                IPS_SetVariableProfileAssociation($pname, 5, "Urlaub", "", 0x5e2187); //P-Name, Value, Assotiation, Icon, Color
+                //echo "Profil ".$pname." erstellt;\n";
+                break;		
+            case "Rainfall":
+                rpc_CreateVariableProfile($rpc, $pname, 2);
+                IPS_SetVariableProfileIcon ($pname, "Rainfall");
+                IPS_SetVariableProfileText ($pname, ""," mm");
+                //IPS_SetVariableProfileValues ($pname, 0,0,0);
+                IPS_SetVariableProfileDigits ($tpname, 1);			
+                break;
+            default:
+                break;
+            }
+    }
 
 /****************************************************************************************************
  * immer wenn eine Statusmeldung per email angefragt wird 
@@ -571,7 +895,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 				   {
 				   $alleStromWerte.="\nHomematic Zähler im ".$meter["NAME"].":\n\n";
 					$HM_meterID = CreateVariableByName($amisdataID, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
-					$HM_Wirkenergie_meterID = CreateVariableByName($HM_meterID, "Wirkenergie", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$HM_Wirkenergie_meterID = CreateVariableByName($HM_meterID, "Wirkenergie", 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					if (IPS_GetVariable($HM_Wirkenergie_meterID)["VariableCustomProfile"]!="")
 					   {
 						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
@@ -580,7 +904,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 					   {
 						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkenergie_meterID),30)." = ".str_pad(GetValue($HM_Wirkenergie_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkenergie_meterID)["VariableChanged"]).")\n";
 						}
-					$HM_Wirkleistung_meterID = CreateVariableByName($HM_meterID, "Wirkleistung", 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
+					$HM_Wirkleistung_meterID = CreateVariableByName($HM_meterID, "Wirkleistung", 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
 					if (IPS_GetVariable($HM_Wirkleistung_meterID)["VariableCustomProfile"]!="")
 				   	{
 						$alleStromWerte.=str_pad(IPS_GetName($HM_Wirkleistung_meterID),30)." = ".str_pad(GetValueFormatted($HM_Wirkleistung_meterID),30)."   (".date("d.m H:i",IPS_GetVariable($HM_Wirkleistung_meterID)["VariableChanged"]).")\n";
@@ -1136,7 +1460,7 @@ function send_status($aktuell, $startexec=0, $debug=false)
 
 			$Homematic = HomematicList();
 			$FS20= FS20List();
-			$log=new Motion_LoggingStatistics();                  // construct ohne Variable wird nicht mehr akzeptiert
+			$log=new Motion_LoggingStatistics(true);                  // construct ohne Variable wird nicht mehr akzeptiert, class macht default Werte dazu, true für Debug
 		   
 			$cuscompid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.core.IPSComponent');
 		   
@@ -1410,27 +1734,57 @@ function GetValueIfFormatted($oid)
  *
  */
 
-function CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
+function CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
     {
     //echo "Position steht auf $position.\n";
     //echo "CreateVariableByName: $id $name $type $profile $ident $position $action\n";
 	/* type steht für 0 Boolean 1 Integer 2 Float 3 String */
 	
-    //global $IPS_SELF;
-    $vid = @IPS_GetVariableIDByName($name, $parentID);
-    if($vid === false)
+    $VariableId = @IPS_GetVariableIDByName($name, $parentID);
+    if ($VariableId === false)
         {
         echo "Create Variable Name $name Type $type in $parentID:\n";
-        $vid = IPS_CreateVariable($type);
-        IPS_SetParent($vid, $parentID);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$_IPS['SELF']." ");
+        $VariableId = @IPS_CreateVariable($type);
+        if ($VariableId === false ) throw new Exception("Cannot CreateVariable with Type $type");
+        IPS_SetParent($VariableId, $parentID);
+        IPS_SetName($VariableId, $name);
+        if ( ($profile) && ($profile !== "") ) { IPS_SetVariableCustomProfile($VariableId, $profile); }
+  	    if ( ($ident) && ($ident !=="") ) {IPS_SetIdent ($VariableId , $ident );}
+        if ( $action && ($action!=0) ) { IPS_SetVariableCustomAction($VariableId,$action); }        
+        if ($default !== false) SetValue($VariableId, $default);
+        IPS_SetInfo($VariableId, "this variable was created by script #".$_IPS['SELF']." ");
         }
-	IPS_SetPosition($vid, $position);
-    if($profile !== "") { IPS_SetVariableCustomProfile($vid, $profile); }
-  	if($ident !=="") {IPS_SetIdent ($vid , $ident );}
-    if($action!=0) { IPS_SetVariableCustomAction($vid,$action); }
-    return $vid;
+    else 
+        {
+        $VariableData = IPS_GetVariable ($VariableId);
+        if ($VariableData['VariableType'] <> $type)
+            {
+            IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." <> $type. Delete and create new.");
+            IPS_DeleteVariable($VariableId); 
+            $VariableId=CreateVariableByName($parentID, $name, $type, $profile, $ident, $position, $action);  
+            $VariableData = IPS_GetVariable ($VariableId);            
+            }
+		if ($profile && ($VariableData['VariableCustomProfile'] <> $profile) )
+			{
+			//Debug ("Set VariableProfile='$Profile' for Variable='$name' ");
+			echo "Set VariableProfile='$profile' for Variable='$name' \n";
+			$result=@IPS_SetVariableCustomProfile($VariableId, $profile);
+            if ($result==false) 
+                {
+                echo "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.\n";
+                IPSLogger_Err(__file__, "CreateVariableByName, $VariableId ($name) Type ".$VariableData['VariableType']." and new Profile $profile produce error, do not match.");
+                }
+			}	
+		if ($action && ($VariableData['VariableCustomAction'] <> $action) )
+			{
+			//Debug ("Set VariableCustomAction='$Action' for Variable='$Name' ");
+			echo "Set VariableCustomAction='$action' for Variable='$name' \n";
+			IPS_SetVariableCustomAction($VariableId, $action);
+			}
+   
+        }
+	IPS_SetPosition($VariableId, $position);
+    return $VariableId;
     }
 
 function CreateCategoryByName($parentID, $name, $position=0)
@@ -1447,8 +1801,7 @@ function CreateCategoryByName($parentID, $name, $position=0)
     return $vid;
     }
 
-/******************************************************************/
-
+/*****************************************************************
 function CreateVariableByName2($name, $type, $profile, $action, $visible)
     {
     $id=IPS_GetParent($_IPS['SELF']);
@@ -1470,7 +1823,7 @@ function CreateVariableByName2($name, $type, $profile, $action, $visible)
         IPS_SetHidden($vid,!$visible);
         }
     return $vid;
-    }
+    }       */
 
 /************************************
  *
@@ -1536,7 +1889,7 @@ function CreateVariable2($Name, $Type, $ParentId, $Position=0, $Profile="", $Act
 		return $VariableId;
 	}
 
-/******************************************************************/
+/*****************************************************************
 
 function CreateVariableByNameFull($id, $name, $type, $profile = "")
 {
@@ -1553,7 +1906,7 @@ function CreateVariableByNameFull($id, $name, $type, $profile = "")
         }
     }
     return $vid;
-}
+}           */
 
 /******************************************************************/
 
@@ -1825,27 +2178,27 @@ function RPC_CreateVariableByName($rpc, $id, $name, $type, $struktur=array())
 		{
 		$children=$rpc->IPS_GetChildrenIDs($id);
 		foreach ($children as $oid)
-	   	{
-	   	$struktur[$oid]=$rpc->IPS_GetName($oid);
-	   	}		
-		echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
+            {
+            $struktur[$oid]=$rpc->IPS_GetName($oid);
+            }		
+		//echo "RPC_CreateVariableByName, nur wenn Struktur nicht übergeben wird neu ermitteln.\n";
 		//echo "Struktur :\n";
 		//print_r($struktur);
 		}
 	foreach ($struktur as $oid => $oname)
-	   {
-	   if ($name==$oname) {$result=$name;$vid=$oid;}
+	    {
+	    if ($name==$oname) {$result=$name;$vid=$oid;}
 		//echo "Variable ".$name." bereits angelegt, keine weiteren Aktivitäten.\n";		
-	   }
+	    }
 	if ($result=="")
-	   {
-	   echo "Variable ".$name." auf Server neu erzeugen.\n";
-      $vid = $rpc->IPS_CreateVariable($type);
-      $rpc->IPS_SetParent($vid, $id);
-      $rpc->IPS_SetName($vid, $name);
-      $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
-      }
-     //echo "Fertig mit ".$vid."\n";
+	    {
+	    echo "Variable ".$name." auf Server neu erzeugen.\n";
+        $vid = $rpc->IPS_CreateVariable($type);
+        $rpc->IPS_SetParent($vid, $id);
+        $rpc->IPS_SetName($vid, $name);
+        $rpc->IPS_SetInfo($vid, "this variable was created by script. ");
+        }
+    //echo "Fertig mit ".$vid."\n";
     return $vid;
 	}
 
@@ -4075,7 +4428,7 @@ class ComponentHandling
 
     /* Liste der remote Server ausgeben */
 
-    public function listOfRemoteServer()
+    public function listOfRemoteServer($debug=false)
         {
 		$remServer=array();
 		if (isset ($this->installedModules["RemoteAccess"]))
@@ -4083,7 +4436,7 @@ class ComponentHandling
 			$status=$this->remote->RemoteAccessServerTable();
 			$text=$this->remote->writeRemoteAccessServerTable($status);
         	$remServer=$this->remote->get_listofROIDs();
-	        if ($text!="")
+	        if ( ($text!="") && $debug)
     	        {
 		       	echo "Liste der Remote Logging Server (mit Status Active und für Logging freigegeben):        \n";
             	echo $text;
@@ -4094,20 +4447,22 @@ class ComponentHandling
         return($remServer);
         } 
 
-    public function getStructureofROID($keyword)
+    /* die Remote Struktur für das Keyword auslesen */
+
+    public function getStructureofROID($keyword,$debug=false)
         {
         $struktur=array();
 		if (isset ($this->installedModules["RemoteAccess"]))
 			{        
 			$struktur=$this->remote->get_StructureofROID($keyword);
-            if ((sizeof($struktur))>0)
+            if ( ((sizeof($struktur))>0) && $debug)
                 {
-    			echo "Struktur Server ausgeben:             \n";
+    			echo "      Struktur Server für $keyword ausgeben:             \n";
 	    		foreach ($struktur as $Name => $Eintraege)
 		    		{
-			    	echo "   ".$Name." für Schalter hat ".sizeof($Eintraege)." Eintraege \n";
+			    	echo "        ".$Name." für $keyword  hat ".sizeof($Eintraege)." Eintraege \n";
 				    //print_r($Eintraege);
-    				foreach ($Eintraege as $Eintrag) echo "      ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
+    				foreach ($Eintraege as $Eintrag) echo "           ".$Eintrag["Name"]."   ".$Eintrag["OID"]."\n";
                     }
 				}           
             }
@@ -4153,7 +4508,7 @@ class ComponentHandling
 
     /***********************************************************************************
     *
-    * getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
+    * ComponentHandling::getComponent, nach Keywords aus den Geräten in einer Liste die richtigen finden und entsprechend behandeln
     * Die Liste kann entweder die HardwareListe oder die DeviceListe aus EvaluateHardware sein, wird automatisch erkannt.
     * Zusätzlich funktioniert jetzt auch eine MySQL Anbindung
     *
@@ -4208,9 +4563,9 @@ class ComponentHandling
                 {
                 $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;
 
-                /******* devicelist als Formattierung */              
                 if ( (isset($Key["Type"])) && (isset($Key["Instances"])) )
                     {
+                    /******* devicelist als Formattierung */  
                     if ($debug && $once) echo "     ****** devicelist als Formattierung\n";
                     $count++; 
                     $keyName=$this->workOnDeviceList($Key, $keywords,$debug);
@@ -4221,93 +4576,16 @@ class ComponentHandling
                     /********** hardwareList als Formattierung 
                     * Übergabe entweder mit einem Keyword oder einem array
                     * Hardwareliste ist nach COIDs organisiert
-                    */                    //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
+                    */                    
+                    //echo " getComponent HardwareList Entry: \n"; print_r($Key); 
                     if ($debug && $once) echo "     ****** hardwarelist als Formattierung\n";
-                    if ( is_array($keywords) == true )      // Übergabe Array mit Keywords für die Hardware Liste, kann auch NOT
-                        {
-                        foreach ($keywords as $entry)
-                            {
-                            /* solange das Keyword uebereinstimmt ist alles gut */
-                            if (strpos($entry,"!")===false)
-                                {
-                                $max++;
-                                if (isset($Key["COID"][$entry])==true) $count++; 
-                                //echo "    Ueberpruefe  ".$entry."    ".$count."/".$max."\n";
-                                }
-                            elseif  (strpos($entry,"!")==0)
-                                {
-                                $maxNo++;
-                                $entry1=substr($entry,1);
-                                if (isset($Key["COID"][$entry1])==true) $countNo++;
-                                //echo "    Ueberpruefe  NICHT ".$entry1."    ".$countNo."/".$maxNo." \n";
-                                }
-                            }
-                        if ( ($max == $count) && ($countNo == 0) ) 
-                            { 
-                            $found=true; $totalfound=true;
-                            //echo "**gefunden\n";
-                            }
-                        $keyword=$keywords[0];	
-                        }	
-                    else                                    // Übergabe Keyword
-                        {
-                        if (isset($Key["COID"][$keywords])==true) 
-                            { 
-                            $found=true; $totalfound=true; 
-                            }
-                        $keyword=$keywords; 
-                        }	
-                    
-                    $typeKeyword=$keyword;
-                    if ( (isset($Key["Device"])==true) && ($found==false) )
-                        {
-                        /* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
-                        if ($Key["Device"] == $typeKeyword)
-                            {
-                            //echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
-                            $found=true; $totalfound=true;
-                            switch ($keyword)
-                                {
-                                case "TYPE_ACTUATOR":
-                                    if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
-                                    elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
-                                    $detectmovement="HeatControl";
-                                    break;
-                                case "TYPE_THERMOSTAT":
-                                    if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
-                                    if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
-                                    if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
-                                    break;
-                                case "TYPE_CONTACT":
-                                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) { $keyword="CONTACT"; $registerName="STATE"; }        // nicht STATE verwenden, später umdrehen
-                                    //if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="STATE";
-                                    if ($debug) echo "            TYPE_CONTACT gefunden. Keyword ist jetzt $keyword.\n";
-                                    $detectmovement="Contact";
-                                    break;							
-                                default:	
-                                    echo "FEHLER: unknown keyword.\n";
-                                }
-                            }
-                        }
-                    if ($found)
-                        {
-                        if ( ($typeKeyword!=$keyword) && ($typeKeyword=="TYPE_CONTACT") && ($keyword=="CONTACT") ) 
-                            {
-                            // Sonderbehandlung weil keyName["KEY"]=CONTACT sein muss, aber das Register anders heisst 
-                            $keyName["COID"]=(integer)$Key["COID"][$registerName]["OID"];
-                            }
-                        else $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
-                        
-                        $keyName["Name"]=$Key["Name"];
-                        $keyName["KEY"]=$keyword;
-                        $keyName["OID"]=(integer)$Key["OID"];                                                     
-                        }
+                    $keyName=$this->workOnHomematicList($Key, $keywords,$debug);
                     }           // Ende Hardware Liste durchsuchen
 
                 if (isset($keyName["Name"]))
                     {
                     $totalfound=true;
-                    $this->addOnKeyName($keyName);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
+                    $this->addOnKeyName($keyName,$debug);                      // Array keyname wird ausgehend von OID,COID,KEY,Name erweitert um 
                     $component[]=(integer)$keyName["COID"];
                     $install[$keyName["Name"]]=$keyName;
                     if ($this->debug) $result .= "  ".str_pad($keyName["Name"]."/".$keyword,50)." = ".GetValueIfFormatted($coid)."   (".date("d.m H:i",IPS_GetVariable($coid)["VariableChanged"]).")       \n";
@@ -4320,6 +4598,7 @@ class ComponentHandling
             if ($debug) echo "         Aufruf der MySQL Datenbank ";
             IPSUtils_Include ('MySQL_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');
             IPSUtils_Include ("EvaluateHardware_Configuration.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            $Elements=array();          // umdefinieren, damit wenn nichtsgefunden wird die Fehlerausgabe nicht scheitert
             $typeChanKey="?"; $typeRegKey="?";             
             if ( is_array($keywords) )
                 {
@@ -4337,19 +4616,22 @@ class ComponentHandling
             $oids=getfromDatabase($typeChanKey,$typeRegKey);           // dritter Parameter ist alternative, keine Debuginfos ausgeben
             //if ($debug) print_r($oids);
             $install=array();
-            foreach ($oids as $oid)
-                {
-                $totalfound=true;
-                $keyName["Name"]=$oid["Name"];
-                $keyName["OID"]=$oid["OID"];
-                $keyName["COID"]=$oid["COID"];
-                $keyName["KEY"]=$oid["TypeRegKey"];
-                $keyName["COMPONENT"]=$oid["componentName"];
-                $keyName["MODULE"]=$oid["moduleName"];
-                $this->addOnKeyName($keyName,$debug);                          // hier alle Zusatzinformationen dazupacken
-                
-                $component[]=(integer)$keyName["COID"];
-                $install[$keyName["Name"]]=$keyName;
+            if ($oids!==false)          // Fehlerausgabe wenn keine datenbank installiert ist auch hier noch einmal abfangen
+                {            
+                foreach ($oids as $oid)
+                    {
+                    $totalfound=true;
+                    $keyName["Name"]=$oid["Name"];
+                    $keyName["OID"]=$oid["OID"];
+                    $keyName["COID"]=$oid["COID"];
+                    $keyName["KEY"]=$oid["TypeRegKey"];
+                    $keyName["COMPONENT"]=$oid["componentName"];
+                    $keyName["MODULE"]=$oid["moduleName"];
+                    $this->addOnKeyName($keyName,$debug);                          // hier alle Zusatzinformationen dazupacken
+                    
+                    $component[]=(integer)$keyName["COID"];
+                    $install[$keyName["Name"]]=$keyName;
+                    }
                 }
             }               // ende MySQL Analyse
 
@@ -4388,7 +4670,8 @@ class ComponentHandling
 
     function workOnDeviceList($Key, $keywords, $debug=false)
         {
-        //if ($debug) echo "workOnDeviceList(...\n";
+        $debug=false;     
+        //if ($debug) echo "workOnDeviceList(...\n";  
         $keyName=array();
         $once=false;
         $typeChanKey="?"; $typeRegKey="?"; 
@@ -4402,7 +4685,7 @@ class ComponentHandling
                 }
             }
         else $typeChanKey=$keywords;
-        //echo " Umsetzung der Eingabe auf $typeChanKey und $typeRegKey \n";
+        //if ($debug) echo "   workOnDeviceList, Umsetzung der Eingabe auf $typeChanKey und $typeRegKey. Wir suchen in der Devicelist einen Channel mit einer Instanz mit Namen $typeChanKey \n";
 
         if (isset($Key["Channels"]))
             {
@@ -4411,7 +4694,7 @@ class ComponentHandling
                 //print_r($instance);
                 if (isset($instance[$typeChanKey]))         /* gibt es denn eine TYPECHAN Eintrag im Array */
                     {
-                    //if ($debug) echo "         First success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
+                    if ($debug) echo "    workOnDeviceList, first success \"$typeChanKey\" found ".json_encode($instance[$typeChanKey]).". Check now register \"$typeRegKey\" as well.\n";         // Register may still be wrong, then return empty array 
                     $keyName["OID"] = $Key["Instances"][$index]["OID"];
                     $oid = $keyName["OID"];
                     $channelTypes   = $Key["Channels"][$index]["TYPECHAN"];
@@ -4443,14 +4726,109 @@ class ComponentHandling
                         }
                     //echo "       TYPECHAN: Eintrag $oid gefunden. ".IPS_GetName($oid)."\n";                                            
                     //print_r($Key["Channels"][$index]);
-                    if ($keyName["COID"]==false) echo "COID nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
+                    if ($keyName["COID"]==false) echo "COID in $oid (".IPS_GetName($oid).") nicht gefunden, IPS_GetObjectIDByName($varName,$oid)\n";
                     $keyName["Name"]=$instance["Name"];
-                    if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
+                    //if ($debug) echo " getComponent: DeviceList für TYPECHAN => $typeChanKey und REGISTER => $typeRegKey gefunden : ".$keyName["Name"]."  ".$keyName["OID"]."  $channelTypes \n";
                     } 
                 }                                
             }
         if (isset($keyName["KEY"]) === false) $keyName=array();              // ohne gesetztem Key auch nichts gefunden, nachtraeglich korrigieren
-        if ( (isset($keyName["Name"])) && $debug ) print_r($keyName);
+        if ($debug)
+            {
+            if (isset($keyName["Name"])) print_r($keyName);
+            else echo "   workOnDeviceList, Eingabe auf $typeChanKey und $typeRegKey in ".sizeof($Key)." Cheannels nicht gefunden.\n";
+            }
+        return $keyName;
+        }
+
+    /* Handle Keys and Keywords on homematicList 
+     * von getComponent aufgerufen, zur Vereinfachung der Darstellung
+     *
+     */
+
+    function workOnHomematicList($Key, $keywords, $debug=false)
+        {
+        $keyName=array();       // wenn nix gefunden wurde istz das Array leer            
+        $count=0; $countNo=0; $max=0; $maxNo=0; $found=false;             
+        if ( is_array($keywords) == true )      // Übergabe Array mit Keywords für die Hardware Liste, kann auch NOT
+            {
+            foreach ($keywords as $entry)
+                {
+                /* solange das Keyword uebereinstimmt ist alles gut */
+                if (strpos($entry,"!")===false)
+                    {
+                    $max++;
+                    if (isset($Key["COID"][$entry])==true) $count++; 
+                    //echo "    Ueberpruefe  ".$entry."    ".$count."/".$max."\n";
+                    }
+                elseif  (strpos($entry,"!")==0)
+                    {
+                    $maxNo++;
+                    $entry1=substr($entry,1);
+                    if (isset($Key["COID"][$entry1])==true) $countNo++;
+                    //echo "    Ueberpruefe  NICHT ".$entry1."    ".$countNo."/".$maxNo." \n";
+                    }
+                }
+            if ( ($max == $count) && ($countNo == 0) ) 
+                { 
+                $found=true; 
+                //echo "**gefunden\n";
+                }
+            $keyword=$keywords[0];	
+            }	
+        else                                    // Übergabe Keyword
+            {
+            if (isset($Key["COID"][$keywords])==true) 
+                { 
+                $found=true;  
+                }
+            $keyword=$keywords; 
+            }	
+        
+        $typeKeyword=$keyword;
+        if ( (isset($Key["Device"])==true) && ($found==false) )
+            {
+            /* Vielleicht ist ein Device Type als Keyword angegeben worden.\n" */
+            if ($Key["Device"] == $typeKeyword)
+                {
+                //echo "      Ein Gerät mit der Device Bezeichnung $keyword gefunden.\n";
+                $found=true; 
+                switch ($keyword)
+                    {
+                    case "TYPE_ACTUATOR":
+                        if (isset($Key["COID"]["LEVEL"]["OID"]) == true) $keyword="LEVEL";
+                        elseif (isset($Key["COID"]["VALVE_STATE"]["OID"]) == true) $keyword="VALVE_STATE";
+                        $detectmovement="HeatControl";
+                        break;
+                    case "TYPE_THERMOSTAT":
+                        if (isset($Key["COID"]["SET_TEMPERATURE"]["OID"]) == true) $keyword="SET_TEMPERATURE";
+                        if (isset($Key["COID"]["SET_POINT_TEMPERATURE"]["OID"]) == true) $keyword="SET_POINT_TEMPERATURE";
+                        if (isset($Key["COID"]["TargetTempVar"]["OID"]) == true) $keyword="TargetTempVar";
+                        break;
+                    case "TYPE_CONTACT":
+                        if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) { $keyword="CONTACT"; $registerName="STATE"; }        // nicht STATE verwenden, später umdrehen
+                        //if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) ) $keyword="STATE";
+                        if ($debug) echo "            TYPE_CONTACT gefunden. Keyword ist jetzt $keyword.\n";
+                        $detectmovement="Contact";
+                        break;							
+                    default:	
+                        echo "FEHLER: unknown keyword.\n";
+                    }
+                }
+            }
+        if ($found)
+            {
+            if ( ($typeKeyword!=$keyword) && ($typeKeyword=="TYPE_CONTACT") && ($keyword=="CONTACT") ) 
+                {
+                // Sonderbehandlung weil keyName["KEY"]=CONTACT sein muss, aber das Register anders heisst 
+                $keyName["COID"]=(integer)$Key["COID"][$registerName]["OID"];
+                }
+            else $keyName["COID"]=(integer)$Key["COID"][$keyword]["OID"];
+            
+            $keyName["Name"]=$Key["Name"];
+            $keyName["KEY"]=$keyword;
+            $keyName["OID"]=(integer)$Key["OID"];                                                     
+            }            
         return $keyName;
         }
 
@@ -4490,7 +4868,7 @@ class ComponentHandling
 
     function addOnKeyName(&$keyName,$debug=false)
         {
-        if ($debug) echo "addOnKeyName  based on ".$keyName["KEY"]."  \n";
+        //if ($debug) echo "addOnKeyName  based on ".$keyName["KEY"]."  \n";
 	    $detectmovement=false; 
         $profile=""; 
         $indexNameExt="";
@@ -4523,9 +4901,11 @@ class ComponentHandling
                 $profile="~Temperature";
                 break;
             case "HUMIDITY":
+            case "ACTUAL_HUMIDITY":
                 $detectmovement="Feuchtigkeit";
-                $variabletyp=1; 		/* Integer */							
+                $variabletyp=2; 		/* Float */							
                 $index="Humidity";
+                $indexNameExt="_Humi";								/* gemeinsam mit den CO2 Werten abspeichern */                
                 $profile="Humidity";
                 break;
             case "POSITIONVAR":
@@ -4560,7 +4940,7 @@ class ComponentHandling
                 $detectmovement="Helligkeit";
                 $variabletyp=1; 		/* Integer */					
                 $index="Helligkeit";
-                $profile="~Brightness.HM";                  // Variablen Profil
+                $profile="Helligkeit";                  // Variablen Profil
                 break;
             case "CONTACT":
                 $detectmovement="Contact";
@@ -4573,8 +4953,23 @@ class ComponentHandling
                 $detectmovement="Climate";
                 $variabletyp=1; 		/* Integer */	
                 $index="Klima";
-                $profile="Netatmo.CO2";
+                $indexNameExt="_CO2";								/* gemeinsam mit den Baro Werten auf den remote Servern abspeichern */                
+                $profile="CO2";
                 break;
+            case "BAROPRESSURE":
+                $detectmovement="Climate";
+                $variabletyp=2; 		/* Float */	
+                $index="Klima";
+                $indexNameExt="_Baro";								/* gemeinsam mit den CO2 Werten abspeichern */                
+                $profile="Pressure";
+                break;   
+            case "RAIN_COUNTER":
+                $detectmovement="Weather";
+                $variabletyp=2; 		/* Float, Typ Variable am remote Server */	
+                $index="Klima";         /* Struktur am Remote Server, muss schon vorher angelegt sein */
+                $indexNameExt="_Rain";								/* gemeinsam mit den CO2 Werten abspeichern */                
+                $profile="Rainfall";        /* profile am Remote Server, ähnlich wie für Mirror Register, umgestellt auf gemeinsames Custom Profile */
+                break;                              
             default:	
                 $variabletyp=0; 		/* Boolean */	
                 echo "************Kenne ".strtoupper($keyName["KEY"])." nicht.\n";
@@ -4593,6 +4988,7 @@ class ComponentHandling
         $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
         if (isset($keyName["COID"])) 
             {
+            if ($debug) echo "addonkeyname, wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
             $variableType=IPS_GetVariable($keyName["COID"]);
             if (isset($variableType["VariableProfile"])) $keyName["VarProfile"]=$variableType["VariableProfile"];
             elseif (isset($variableType["VariableCustomProfile"])) $keyName["CustProfile"]=$variableType["VariableCustomProfile"];
@@ -4755,13 +5151,14 @@ class ComponentHandling
 		//echo "Passende Geraeteregister suchen:\n"; 
 		$result=$this->getComponent($Elements,$keywords,"Install",$debug);        /* passende Geräte aus Elements anhand keywords suchen*/
         $count=(sizeof($result));				
-        if ($debug) echo "Insgesamt $count Register für die Component Installation gefunden.\n";
+        if ($debug) echo "installComponentfull , insgesamt $count Register für die Component Installation gefunden.\n";
 		if  ($count>0) 											/* gibts ueberhaupt etwas zu tun */
 			{		
 			$keyword=$this->getKeyword($result);            // holt sich den ersten Wert von ["Index"] und kontrolliert die anderen
 			/* Erreichbarkeit Remote Server nur einmal pro Aufruf ermitteln */
 			$remServer=$this->listOfRemoteServer();
-            $struktur=$this->getStructureofROID($keyword);
+            $struktur=$this->getStructureofROID($keyword,$debug);
+            echo "-------------\n";
     		$archiveID=$this->getArchiveSDQL_HandlerID();
             if ($debug)
                 {
@@ -4864,7 +5261,7 @@ class ComponentHandling
 							$rpc = new JSONRPC($Server["Adresse"]);
 							/* variabletyp steht für 0 Boolean 1 Integer 2 Float 3 String */
 							$result=$this->remote->RPC_CreateVariableByName($rpc, (integer)$Server[$index], $IndexName.$IndexNameExt, $variabletyp,$struktur[$Name]);
-							//echo "     Setze Profil direkt noch einmal auf $profile da es hier immer Probleme gibt ...\n";							
+							if ($debug) echo "     Setze Profil für $IndexName$IndexNameExt auf ".$Server["Adresse"]." direkt noch einmal auf $profile da es hier immer Probleme gibt ...\n";							
 							$rpc->IPS_SetVariableCustomProfile($result,$profile);
 							$rpc->AC_SetLoggingStatus((integer)$Server["ArchiveHandler"],$result,true);
 							$rpc->AC_SetAggregationType((integer)$Server["ArchiveHandler"],$result,0);
@@ -4888,7 +5285,7 @@ class ComponentHandling
 			}
 		else 
 			{
-			echo "    -> keine gefunden.\n";
+			echo "    Für Keyword ".json_encode($keywords)."  -> keine gefunden.\n";
 			}				
         return ($struktur);
 		}	
@@ -5271,7 +5668,7 @@ class WfcHandling
 		    		    	{
                             if ($root=="") 
                                 {
-			    		        echo "WFC Root Eintrag (nicht mehr als einer pro Configurator):    ".$entry["ID"]." (Eintrag)\n";
+			    		        if ($debug) echo "WFC Root Eintrag (nicht mehr als einer pro Configurator):    ".$entry["ID"]." (Eintrag)\n";
                                 $root=$entry["ID"];
                                 }
                             elseif ($root != $entry["ID"]) echo "******* mehrere Root Eintraege !!\n"; 
@@ -5281,14 +5678,17 @@ class WfcHandling
                     //echo "*************".$count."\n";
                     } //ende for 2x
                 $webfront=IPS_GetName($instanz);   
-		    	echo "\n================ WFC Tree ".$webfront."=====\n";	
-			    //print_r($wfc_tree);
                 $resultWebfront[$webfront]=$wfc_tree;
-    			$this->write_wfc($wfc_tree,"",$level);	
-	    		//echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
-		    	/* alle Instanzen dargestellt */
-			    //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
-    			//print_r($result);
+		    	if ($debug)
+                    {
+                    echo "\n================ WFC Tree ".$webfront."=====\n";	
+			        //print_r($wfc_tree);
+    			    $this->write_wfc($wfc_tree,"",$level);	
+	    		    //echo "  ".$instanz." ".IPS_GetProperty($instanz,'Address')." ".IPS_GetProperty($instanz,'Protocol')." ".IPS_GetProperty($instanz,'EmulateStatus')."\n";
+		    	    /* alle Instanzen dargestellt */
+			        //echo "**     ".IPS_GetName($instanz)." ".$instanz." ".$result['ModuleInfo']['ModuleName']." ".$result['ModuleInfo']['ModuleID']."\n";
+    			    //print_r($result);
+                    }
 	    		}   // ende debug
 		    }       // ende foreach
         return ($resultWebfront);    
@@ -5301,14 +5701,13 @@ class WfcHandling
      *
      */
 
-    public function installWebfront()
+    public function installWebfront($debug=false)
         {
 
-        echo "installWebfront, Webfront GUID herausfinden:\n";
-        $wfcTree=$this->read_wfc();
+        if ($debug) echo "installWebfront, Webfront GUID herausfinden:\n";
+        $wfcTree=$this->read_wfc(10,$debug);
         //print_r($wfcTree);	
-
-        echo "\n";
+        if ($debug) echo "--------------\n";
         $WebfrontConfigID=array();
         $alleInstanzen = IPS_GetInstanceListByModuleID('{3565B1F2-8F7B-4311-A4B6-1BF1D868F39E}');
         foreach ($alleInstanzen as $instanz)

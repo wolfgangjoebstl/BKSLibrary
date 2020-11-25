@@ -79,7 +79,7 @@ $startexec=microtime(true);
     if (function_exists('deviceList'))
         {
         echo "Luftfeuchtigkeit Sensoren von verschiedenen Geräten werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,false);				/* true ist Debug, Feuchtigkeitssensoren und Homematic Thermostat */
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],'IPSComponentSensor_Feuchtigkeit','IPSModuleSensor_Feuchtigkeit,',$commentField,true);				/* true ist Debug, Feuchtigkeitssensoren und Homematic Thermostat */
         //print_r($result);
         }
    

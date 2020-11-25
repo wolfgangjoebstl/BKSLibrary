@@ -128,7 +128,7 @@ echo "\n";
         //print_r($result);
         echo "---------------------------------------------------------------\n";
         echo "Helligkeitssensoren von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
-        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField,false);               // true mit Debug
+        $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField,true);               // true mit Debug
         echo "---------------------------------------------------------------\n";
         echo "Kontakte von verschiedenen Geräten auf Basis devicelist() werden registriert.\n";
         $result = $componentHandling->installComponentFull(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],'IPSComponentSensor_Motion','IPSModuleSensor_Motion,',$commentField, false);				/* true ist Debug, Bewegungsensoren */

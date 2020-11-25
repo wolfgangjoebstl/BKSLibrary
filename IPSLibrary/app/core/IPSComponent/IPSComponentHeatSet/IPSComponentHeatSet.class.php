@@ -176,10 +176,12 @@
 		{
         private $startexecute;                  /* interne Zeitmessung */
 		protected $installedmodules;                    /* installierte Module */
+        protected $debug;                           /* zusaetzliche Echo Ausgaben */
 
 		private $variable;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
-		
+        protected $DetectHandler;               /* DetectMovement/HeatSet ... ist auch ein Teil der Aktivitäten */
+
 		public $variableEnergyLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
 		public $variablePowerLogID;			/* ID der entsprechenden lokalen Spiegelvariable für den Energiewert*/
 				
@@ -196,26 +198,32 @@
          * die wichtigsten Variablen initialisieren und anlegen
          */
 				
-		function __construct($variable,$variablename=Null)
+		function __construct($variable,$variablename=Null,$variableTypeReg="unknown", $debug=false)
 			{
             $this->startexecute=microtime(true);                 
-			echo "HeatSet_Logging:construct for Variable ID : ".$variable."\n";
+			$this->debug = $debug;
 
             /************** INIT */
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-
+            if ( (isset ($this->installedmodules["DetectMovement"])) && false)   // DetectHeatSetHandler gibt es keinen   
+                {
+                /* Detect Movement kann auch Leistungswerte agreggieren */
+                IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
+                IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                $this->DetectHandler = new DetectHeatSetHandler();
+                }
             $dosOps= new dosOps();                
 
-            $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
-			echo "Spiegelregister Variablename : ".$this->variablename."\n";
+            $this->variablename = $this->getVariableName($variable, $variablename, $this->debug);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config (noch nicht implementiert) oder selber bestimmen
+            if ($this->debug) echo "HeatSet_Logging:construct for Variable ID : ".$variable." und Spiegelregister Variablename : ".$this->variablename."\n";
 
 			/* Find Data category of IPSComponent Module to store the Data */				
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
 			$this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im CustomComponents Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)."\n";
+			if ($this->debug) echo "  Kategorien im CustomComponents Datenverzeichnis:".$this->CategoryIdData."   ".IPS_GetName($this->CategoryIdData)."\n";
 
 			/* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
 			$this->HeatSetNachrichtenID=$this->CreateCategoryNachrichten("HeatSet",$this->CategoryIdData);
@@ -225,7 +233,7 @@
 			if ($variable<>null)
 				{
                 $this->variable = $variable;
-				echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->HeatSetAuswertungID." ".IPS_GetName($this->HeatSetAuswertungID)." anlegen.\n";
+				if ($this->debug) echo "Lokales Spiegelregister als Float auf ".$this->variablename." unter Kategorie ".$this->HeatSetAuswertungID." ".IPS_GetName($this->HeatSetAuswertungID)." anlegen.\n";
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatSetAuswertungID,2,'TemperaturSet');                   // $this->variableLogID schreiben
                 IPS_SetHidden($this->variableLogID,false);
                 }
@@ -237,12 +245,14 @@
 			$dosOps->mkdirtree($directory);
 			$filename=$directory.$this->variablename."_HeatSet.csv";
 			parent::__construct($filename,$this->HeatSetNachrichtenID);
+            echo "~~~~~~~~~~~~~~~~~~~\n";
 			}
 
 		/* hier wird der Wert gelogged, Wert immer direkt aus der Variable nehmen, der übergebene Wert hat nur für Remote Write aber nicht für das Logging einen EInfluss */
 
 		function HeatSet_LogValue($value=Null, $subregister=false)
 			{
+            if ($this->debug) echo "HeatSet_LogValue($value, $subregister) aufgerufen.\n";
 			// result formatieren
 			$variabletyp=IPS_GetVariable($this->variable);
 			if ( ($variabletyp["VariableProfile"]!="" && ($value == Null) ))
