@@ -861,13 +861,14 @@
                         $category=IPS_GetObjectIdByName($result["Name"],$this->CategoryIdData);
                         if ($category !== false)
                             {
-                            $wirkEnergie=IPS_GetObjectIdByName("Wirkenergie",$category);
-                            $wirkLeistung=IPS_GetObjectIdByName("Wirkleistung",$category);
-                            if ( ($wirkEnergie !== false) && ($wirkLeistung !== false) )
+                            $wirkEnergieId=IPS_GetObjectIdByName("Wirkenergie",$category);
+                            $wirkLeistungId=IPS_GetObjectIdByName("Wirkleistung",$category);
+                            if ( ($wirkEnergieId !== false) && ($wirkLeistungId !== false) )
                                 {
-        						$energie+=GetValue($wirkEnergie);
-		        				$leistung+=GetValue($wirkLeistung);
-        						echo "   $e $wirkEnergie : ".nf(GetValue($wirkEnergie),"kWh")." $wirkLeistung : ".nf(GetValue($wirkLeistung),"kW")." ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
+                                echo "   $e $wirkEnergieId : ".nf(GetValue($wirkEnergieId),"kWh")." $wirkLeistungId : ".nf(GetValue($wirkLeistungId),"kW");
+        						$energie+=GetValue($wirkEnergieId);
+		        				$leistung+=GetValue($wirkLeistungId);
+        						echo " ergibt Summe Energie ($EnergieID): ".nf($energie,"kWh")." Summe Leistung ($LeistungID): ".nf($leistung,"kW")."\n"; 
                                 }
                             }
 						}
@@ -964,7 +965,7 @@
 		 *
 		 *****************************************************************************************************************************/
 
-		function writeEnergyRegistertoString($MConfig,$html=true)			/* alle Werte aus der Config ausgeben */
+		function writeEnergyRegistertoString($MConfig,$html=true,$debug=false)			/* alle Werte aus der Config ausgeben */
 			{
 			if ($html==true) 
 				{
@@ -1010,8 +1011,11 @@
 				{
 				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 					{
-					echo "-----------------------------".$newline;
-					echo "Werte von : ".$meter["NAME"].$newline;
+                    if ($debug)
+                        {
+					    echo "-----------------------------".$newline;
+					    echo "Werte von : ".$meter["NAME"].$newline;
+                        }
 					$ID = CreateVariableByName($this->CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 
 					$EnergieID = CreateVariableByName($ID, 'Wirkenergie', 2);   /* 0 Boolean 1 Integer 2 Float 3 String */
@@ -1048,71 +1052,78 @@
 						
 					$energievorschub=GetValue($LeistungID);
 					$energie=GetValue($Homematic_WirkergieID);
-	      			echo "  Werte aus der Homematic : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
-	      			echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
-	      			echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
-						
+                    if ($debug)
+                        {
+                        echo "  Werte aus der Homematic : aktuelle Energie : ".number_format($energie, 2, ",", "" )." kWh  aktuelle Leistung : ".number_format(GetValue($HMleistungID), 2, ",", "" )." W".$newline;
+                        echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
+                        echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
+                        }
 					/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
 					$jetzt=time();
 					$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
 					$starttime=$endtime-60*60*24*10;
 					$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
-					echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
+                    $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
+                    if ($logAvailable)
+                        {
+                        echo "Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime).":".$newline;
 
-					$werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
-					$zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
-					$laufend=1; $alterWert=0; 
-					foreach($werte as $wert)
-						{
-						$zeit=$wert['TimeStamp']-60;
-						//echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
-						if (date("d.m.Y", $zeit)!=$vorigertag)
-							{
-							$zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
-							$zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
-							echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
-							$zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
-							if ($laufend>1) 
-								{
-								$zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
-								}
-							
-							$laufend+=1;
-							$alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
-							//echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
-							}
-						$vorigertag=date("d.m.Y",$zeit);
-						}
-					$anzahl2=$laufend-1;
-					$ergebnis_datum=""; $ergebnis_wochentag=""; $ergebnis_tabelle="";
-					$zeile[$metercount]["Wochentag"][0]=$meter["NAME"];
-					$laufend=0;
-					while ($laufend<=$anzahl2)
-						{
-						if ($laufend==0) 
-							{
-							$tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
-							echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
-							$ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
-							$ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
-							$ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
-							}
-						else
-							{
-							$tabwidth=12;
-							$ergebnis_wochentag.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                            "),0,$tabwidth).$endcell;
-							$ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
-							$ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Energie"][$laufend]."                          "),0,$tabwidth).$endcell;
-							}	
-						$laufend+=1;
-						//echo $ergebnis_tabelle."\n";
-						}
-					$output.=$starttable.$startparagraph.$startcell."Stromverbrauch der letzten Tage von ".$meter["NAME"]." :".$newline.$newline;
-					$output.="Energiewert aktuell ".$zeile[$metercount]["Energie"][1].$newline.$newline.$endcell.$endparagraph.$endtable;
-					$output.=$starttable.$startparagraph.$ergebnis_wochentag.$newline.$endparagraph.$startparagraph.$ergebnis_datum.$newline.$endparagraph.$startparagraph.$ergebnis_tabelle.$newline.$newline.$endparagraph.$endtable;						
+                        $werte = AC_GetLoggedValues($this->archiveHandlerID, $EnergieID, $starttime, $endtime, 0);
+                        $zeile[$metercount] = array("Wochentag" => array("Wochentag",0,1,2), "Datum" => array("Datum",0,1,2), "Energie" => array("Energie",0,1,2) );
+                        $laufend=1; $alterWert=0; 
+                        foreach($werte as $wert)
+                            {
+                            $zeit=$wert['TimeStamp']-60;
+                            //echo "    ".date("D d.m H:i", $wert['TimeStamp'])."   ".$wert['Value']."    ".$wert['Duration']."\n";
+                            if (date("d.m.Y", $zeit)!=$vorigertag)
+                                {
+                                $zeile[$metercount]["Datum"][$laufend] = date("d.m", $zeit);
+                                $zeile[$metercount]["Wochentag"][$laufend] = date("D  ", $zeit);
+                                echo "  Werte : ".date("D d.m H:i", $zeit)." ".number_format($wert['Value'], 2, ",", "" ) ." kWh".$newline;
+                                $zeile[$metercount]["Energie"][$laufend] = number_format($wert['Value'], 3, ",", "" );
+                                if ($laufend>1) 
+                                    {
+                                    $zeile[$metercount]["EnergieVS"][$altesDatum] = number_format(($alterWert-$wert['Value']), 2, ",", "" );
+                                    }
+                                
+                                $laufend+=1;
+                                $alterWert=$wert['Value']; $altesDatum=date("d.m", $zeit);
+                                //echo "Voriger Tag :".date("d.m.Y",$zeit)."\n";
+                                }
+                            $vorigertag=date("d.m.Y",$zeit);
+                            }
+                        $anzahl2=$laufend-1;
+                        $ergebnis_datum=""; $ergebnis_wochentag=""; $ergebnis_tabelle="";
+                        $zeile[$metercount]["Wochentag"][0]=$meter["NAME"];
+                        $laufend=0;
+                        while ($laufend<=$anzahl2)
+                            {
+                            if ($laufend==0) 
+                                {
+                                $tabwidth=strlen($zeile[$metercount]["Wochentag"][0])+8;
+                                echo "Es sind ".($anzahl2+1)." Eintraege vorhanden. Breite erster Spalte ist : ".$tabwidth.$newline;
+                                $ergebnis_wochentag.=$startcell.substr(("Energie in kWh                            "),0,$tabwidth).$endcell;
+                                $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+                                $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                          "),0,$tabwidth).$endcell;
+                                }
+                            else
+                                {
+                                $tabwidth=12;
+                                $ergebnis_wochentag.=$startcell.substr(($zeile[$metercount]["Wochentag"][$laufend]."                            "),0,$tabwidth).$endcell;
+                                $ergebnis_datum.=$startcell.substr(($zeile[$metercount]["Datum"][$laufend]."                             "),0,$tabwidth).$endcell;
+                                $ergebnis_tabelle.=$startcell.substr(($zeile[$metercount]["Energie"][$laufend]."                          "),0,$tabwidth).$endcell;
+                                }	
+                            $laufend+=1;
+                            //echo $ergebnis_tabelle."\n";
+                            }
+                        $output.=$starttable.$startparagraph.$startcell."Stromverbrauch der letzten Tage von ".$meter["NAME"]." :".$newline.$newline;
+                        $output.="Energiewert aktuell ".$zeile[$metercount]["Energie"][1].$newline.$newline.$endcell.$endparagraph.$endtable;
+                        $output.=$starttable.$startparagraph.$ergebnis_wochentag.$newline.$endparagraph.$startparagraph.$ergebnis_datum.$newline.$endparagraph.$startparagraph.$ergebnis_tabelle.$newline.$newline.$endparagraph.$endtable;						
 
-					$outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
-					$metercount+=1;
+                        $outputEnergiewerte.=$startparagraph.$startcell.substr($meter["NAME"]."                           ",0,$tabwidth0).$endcell.$startcell.$zeile[$metercount]["Energie"][1].$endcell.$endparagraph;
+                        $metercount+=1;
+                        }
+                    else echo "****Fehler, Zeitreihe von ".date("D d.m H:i",$starttime)." bis ".date("D d.m H:i",$endtime)." nicht verfügbar\n";
 					}
 				} /* ende foreach Meter Entry */
 
@@ -1993,7 +2004,14 @@
                 */
                 
                 // Eintraege für GetAggregated integer $InstanzID, integer $VariablenID, integer $Aggregationsstufe, integer $Startzeit, integer $Endzeit, integer $Limit
-                $aggWerte = AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+                $aggWerte = @AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+                if ($aggWerte === false) 
+                    {
+                    echo "Variable $variableID ".IPS_GetName($variableID)." neu aggregieren. Dauert etwas.\n";
+                    AC_ReAggregateVariable ($this->archiveHandlerID, $variableID);              // Reperaturversuch                 
+                    $aggWerte = AC_GetAggregatedValues ( $this->archiveHandlerID, $variableID, 1, $starttime, $endtime, 0 );
+                    throw new Exception("AC_GetAggregatedValues, Fehler beim Aggregieren - wird automatisch repariert.");
+                    }
                 $aggAnzahl=count($aggWerte);
                 //print_r($aggWerte);
                 foreach ($aggWerte as $entry)

@@ -58,6 +58,11 @@ class AutosteuerungAlexaHandler
         return($this->countAlexa);
         }
 
+    public function getConfigAlexa()
+        {
+        return($this->configAlexa);
+        }        
+
     /* Alexa Konfiguration aus der Instanz laden und analysieren */
 
     public function getAlexaConfig($debug=false)
@@ -68,7 +73,8 @@ class AutosteuerungAlexaHandler
             {
             if ($debug) 
                 {
-                echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
+                if ($this->countAlexa > 0) echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (".IPS_getName($this->instances[0])."::".IPS_getName(IPS_GetParent($this->instances[0])).") auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
+                else echo "Konfiguration von Alexa Kerninstanz ".$this->instances[0]." (auf remote Server) auslesen. Es gibt ".$this->countAlexa." Instanzen.\n";
                 echo "   ".$this->configAlexa."\n";
                 echo "Es geht weiter mit der Analyse der Alexa Konfiguration:\n";
                 }

@@ -336,8 +336,13 @@
 	$webfront_links=array();
 	foreach ($AutoSetSwitches as $AutoSetSwitch)
 		{
-		// CreateVariable($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
-		$AutosteuerungID = CreateVariable($AutoSetSwitch["NAME"], 1, $categoryId_Autosteuerung, 0, $AutoSetSwitch["PROFIL"],$scriptIdWebfrontControl,null,""  );  /* 0 Boolean 1 Integer 2 Float 3 String */
+        // CreateVariableByName($parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false)
+        if (strtoupper($AutoSetSwitch["PROFIL"])=="NULL")       // leere Optionen als String anlegen, damit sie nicht eine falsche 0 anzeigen
+            { 
+		    $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung,$AutoSetSwitch["NAME"], 3, "", false,  0, $scriptIdWebfrontControl);   /* 0 Boolean 1 Integer 2 Float 3 String */
+            SetValue($AutosteuerungID,"");
+            }
+		else $AutosteuerungID = CreateVariableByName($categoryId_Autosteuerung, $AutoSetSwitch["NAME"], 1, $AutoSetSwitch["PROFIL"], false, 0, $scriptIdWebfrontControl );  /* 0 Boolean 1 Integer 2 Float 3 String */        
 		echo "-------------------------------------------------------\n";
 		echo "Bearbeite Autosetswitch : ".$AutoSetSwitch["NAME"]."  Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden.\n";
 		$webfront_links[$AutosteuerungID]["TAB"]="Autosteuerung";
@@ -592,6 +597,16 @@
                     $webfront_links[$AutosteuerungID]["OID_R"]=$inputAlexa;											/* Darstellung rechts im Webfront */				
                     }
                 break;
+			case "PRIVATE":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Private'));             
+                // OWNTAB nicht unterstützt
+				//$StatusPrivateID=CreateVariable("StatusPrivate",1, $AutosteuerungID,0,"",null,null,"");
+				break;
+			case "SILENTMODE":
+                $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'SilentMode'));             
+                // OWNTAB nicht unterstützt
+				$PushSoundID=CreateVariable("PushSound",0, $AutosteuerungID,0,"AusEin-Boolean",$scriptIdWebfrontControl,null,"");
+				break;
 			case "CONTROL":
                 $webfront_links[$AutosteuerungID]=array_merge($webfront_links[$AutosteuerungID],defineWebfrontLink($AutoSetSwitch,'Control'));             
                 if (isset ($webfront_links[$AutosteuerungID]["TABNAME"]) )      /* eigener Tab, eigene Nachrichtenleiste */

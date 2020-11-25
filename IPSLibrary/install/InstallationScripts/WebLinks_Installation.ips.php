@@ -194,10 +194,109 @@
 	 * in Visualization werden nur Links angelegt
 	 */
 
+	$ChartLinkID=CreateVariable("htmlChartTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"Graph");
+	$ChartSmallLinkID=CreateVariable("htmlChartSmallTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"Graph");
+	$ClockLinkID=CreateVariable("htmlClockTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	$AstroLinkID=CreateVariable("htmlAstroTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
-	$TestLinkID=CreateVariable("htmlTestTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
-	$FrameLinkID=CreateVariable("htmlFrameTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
+	$TestLinkID =CreateVariable("htmlTestTable" ,3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
+	$FrameLinkID=CreateVariable("htmlFrameTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");           // $scriptIdActionScript,Defaultwert,Icon
 		
+    /* damit ein Defaultwert drinnen ist, muss nicht unbedingt sein, wird von der Routine überschrieben */
+	$html = '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>';
+    SetValue($ChartLinkID,$html);
+    
+    $startTime=time()-3*60*60*24;     /* drei Tage sieht nett aus */
+    $endTime=time();
+    $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
+
+    // Create Chart with Config File
+  	IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+	$CfgDaten=array();
+    $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+    $CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
+	$CfgDaten['ContentVarableId']   = $ChartLinkID;
+    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+	$CfgDaten['StartTime']          = $startTime;
+	$CfgDaten['EndTime']            = $endTime;
+
+    $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
+	$CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+    $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
+
+    // Abmessungen des erzeugten Charts
+    $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+    $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
+
+	//$CfgDaten['title']['text']      = "Liniendiagramme Darstellung komplett";                       // muss definiert sein
+	//$CfgDaten['subtitle']['text']   = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";              // wenn nicht definiert wird es duch Defaultwert ersetzt
+	//$CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
+    
+    $CfgDaten['title']['text']      = "";
+    $CfgDaten['subtitle']['text']   = "";
+    $CfgDaten["PlotType"]= "Gauge";
+	$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+
+    $serie = array();
+    $serie['type']                  = $chart_style;
+
+	 /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+	 $serie['name'] = 'Baro Pressure';
+	 $serie['Unit'] = "mbar";
+     $serie['Id'] = 28664 ;
+     //$serie['Id'] = 55128;
+
+    /* oder wenn Daten selbst eingegeben werden : */
+    	//$serie['data'][] = array('name'=>'Wohnzimmer-Temperatur', 'Id' => 43217, 'Unit'=>"°C");
+    	//$serie['data'][] = array('name'=>'Wintergarten-Temperatur', 'Id' => 52093, 'Unit'=>"°C");
+    	//$serie['data'][] = array('name'=>'Luftfeuchte', 'Id' => 17593, 'Unit'=>"%");
+
+    //$serie['allowPointSelect'] = true;
+    //$serie['cursor'] = 'pointer';
+    //$serie['center'] = array(300,100);
+    //$serie['size'] = 100;
+/*    $serie['marker']['enabled'] = false;
+    //$serie['dataLabels']['enabled'] = true;   /* zeigt jeden einzelnen Wert an */
+   $CfgDaten['series'][] = $serie;
+
+
+  	$CfgDaten    = CheckCfgDaten($CfgDaten);
+	$sConfig     = CreateConfigString($CfgDaten);
+  	$tmpFilename = CreateConfigFile($sConfig, 'WidgetGraph');
+  	//WriteContentWithFilename($CfgDaten, $tmpFilename);      // macht nur SetValue($CfgDaten['ContentVarableId'], GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename));
+
+	if ($tmpFilename != "")
+		{
+        $chartType = $CfgDaten['Ips']['ChartType'];
+        $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
+        $callBy="CfgFile";
+        $html = "";    
+        $html .= '<tabel><tr><td>here</td><td>';
+        //$html .= GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename);
+        /* String zur Darstellung aus den Routinen herausgenommen, ein paar Details zur besten Darstellung
+         *    height kann keine Prozent sein, wird auch in higcharts verwendet
+         */
+        $html .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " .
+				"width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+
+        $html .= '</td><td>also here</td></tr></tabel>';
+        SetValue($CfgDaten['ContentVarableId'],$html);
+        }
+
+    echo "-----------------------------------------------------\n";
+    echo "Debug Highchart Config-Daten:\n";
+    print_r($CfgDaten);
+    echo "\n";
+    echo "-----------------------------------------------------\n";
+
+    echo " \"".htmlentities(GetValue($ChartLinkID))."\"\n";
+    echo "-----------------------------------------------------\n";
+
+/*******************************
+ *
+ * Webfront Tabelle mit Links local und internet aufbauen
+ *
+ ********************************/
+
 		// definition: CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') {
 	$WebLinkID=CreateVariable("FavouriteWebLinks",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	echo $WFC10_Path."\n";
@@ -393,7 +492,11 @@
 		CreateLinkByDestination("Weblinks", $WebLinkID, $categoryId_WebFrontAdministrator,  10,"");
 		CreateLinkByDestination("FrameTest", $FrameLinkID, $categoryId_WebFrontAdministrator,  100,"");		
 		CreateLinkByDestination("JavaTest", $TestLinkID, $categoryId_WebFrontAdministrator,  1000,"");
-		CreateLinkByDestination("AstroTest", $AstroLinkID, $categoryId_WebFrontAdministrator,  1000,"");
+		CreateLinkByDestination("AstroTest", $AstroLinkID, $categoryId_WebFrontAdministrator,  100,"");
+		CreateLinkByDestination("ClockTest", $ClockLinkID, $categoryId_WebFrontAdministrator,  100,"");
+		CreateLinkByDestination("ChartTest", $ChartLinkID, $categoryId_WebFrontAdministrator,  100,"");
+		CreateLinkByDestination("WidgetGraph", $ChartSmallLinkID, $categoryId_WebFrontAdministrator,  100,"");
+
 		}
 
 /********************************************************************/

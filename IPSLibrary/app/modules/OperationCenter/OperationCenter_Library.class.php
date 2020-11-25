@@ -3804,6 +3804,7 @@ class OperationCenter
     	  	  	throw new Exception('Create File '.$filename.' failed!');
     			}
 			}
+        return($event1.$event2);
 		}	
 
 	/*
@@ -7591,7 +7592,32 @@ class DeviceManagement
             $result[1] = "IP Funk Helligkeitssensor";
             $resultType[0] = "TYPE_METER_CLIMATE";             
             $resultReg[0]["BRIGHTNESS"]="CURRENT_ILLUMINATION";          
-            }          
+            }
+        /*-----Wetterstation--------------------------------*/
+        elseif  (array_search("RAIN_COUNTER",$registerNew) !== false)    /* neue HomematicIP Wetterstation  */
+            {
+            $result[0] = "Wetterstation";
+            $result[1]="Funk Wetterstation";
+
+            $i=0;
+            $resultType[$i]="TYPE_METER_CLIMATE";
+            $resultReg[$i]["RAIN_COUNTER"]="RAIN_COUNTER";
+            $resultReg[$i]["RAINING"]="RAINING";
+            $resultReg[$i]["WIND_SPEED"]="WIND_SPEED";
+            if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i]= "TYPE_METER_TEMPERATURE";
+                $resultReg[$i]["TEMPERATURE"]="ACTUAL_TEMPERATURE"; 
+                $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY";                 
+                }
+            if (array_search("ACTUAL_HUMIDITY",$registerNew) !== false) 
+                {
+                $i++;
+                $resultType[$i] = "TYPE_METER_HUMIDITY";
+                $resultReg[$i]["HUMIDITY"]="ACTUAL_HUMIDITY"; 
+                }
+            }                      
         else 
             {
             $found=false;
@@ -7821,6 +7847,7 @@ class DeviceManagement
                         break;
 
                     case "HM-WDS100-C6-O":
+                    case "HmIP-SWO-PR":                    
                         $result="Wetterstation";
                         $matrix=[0,2,1,1,1,1,1,1];                        
                         break;
@@ -7843,6 +7870,7 @@ class DeviceManagement
                         break;                        
                     case "-":
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz))." Gerät wurde gelöscht. Bitte auch manuell in IP Symcon loeschen.\n";
+                        return(false);          // nicht hier weiter machen
                     default:
                         echo "getHomematicHMDevice: $instanz ".IPS_GetName($instanz)."/".IPS_GetName(IPS_GetParent($instanz)).", result is default, not known case key of \"".$this->HomematicAddressesList[$key]."\" for key $key.\n";
                         return ($this->HomematicAddressesList[$key]);

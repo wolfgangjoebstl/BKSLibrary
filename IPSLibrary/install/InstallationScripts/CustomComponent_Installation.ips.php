@@ -254,13 +254,14 @@
 	 * Variablen Profile für lokale Darstellung anlegen, sind die selben wie bei Remote Access
 	 *
 	 * ----------------------------------------------------------------------------------------------------------------------------*/
+
 	echo "Darstellung der Variablenprofile, wenn fehlt anlegen:\n";
-	$profilname=array("Temperatur","TemperaturSet","Humidity","Switch","Button","Contact","Motion","mode.HM");
-	foreach ($profilname as $pname)
+	$profilname=array("Temperatur"=>"new","TemperaturSet"=>"new","Humidity"=>"new","Switch"=>"new","Button"=>"new","Contact"=>"new","Motion"=>"new","Pressure"=>"Netatmo.Pressure","CO2"=>"Netatmo.CO2","mode.HM"=>"new");
+	foreach ($profilname as $pname => $masterName)
 		{
-		if (IPS_VariableProfileExists($pname) == false)
+		if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
 			{
-			echo "  Profil ".$pname." existiert nicht \n";
+			echo "  Profil ".$pname." existiert nicht, oder Aufforderung zum update.\n";
 			switch ($pname)
 				{
 				case "Temperatur":
@@ -299,6 +300,18 @@
 					IPS_SetVariableProfileAssociation($pname, 0, "Ruhe","",0xffffff);
 					IPS_SetVariableProfileAssociation($pname, 1, "Bewegung","",0xffffff);
 					break;
+				case "Pressure";
+					IPS_CreateVariableProfile($pname, 2); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+					IPS_SetVariableProfileText($pname,'',' mbar');
+                    IPS_SetVariableProfileIcon($pname,"Gauge");
+					break;      
+				case "CO2";
+					IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+					IPS_SetVariableProfileText($pname,'',' ppm');
+                    IPS_SetVariableProfileIcon($pname,"Gauge");
+                    IPS_SetVariableProfileValues ($pname, 250, 2000, 0);
+					break;                                    
 				case "mode.HM";
 					IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
 					IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
@@ -315,12 +328,18 @@
 					break;
 				}
 			}
+		elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
 		else
-			{
-			echo "  Profil ".$pname." existiert. \n";
+        	{
+            echo "  Profil ".$pname." erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+            $master=IPS_GetVariableProfile ($masterName);
+            $target=IPS_GetVariableProfile ($pname);
+            $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
+            $targetName=$target["ProfileName"];
+            compareProfiles("local",$master, $target,$masterName,$targetName);      // nur die lokalen Profile anpassem, geht auch Remote
 			}
-		}
-
+		}     
+	
 	/*----------------------------------------------------------------------------------------------------------------------------
 	 *
 	 * WebFront Variablen für Darstellung evaluieren
@@ -353,7 +372,8 @@
                 }
             }
 		}
-	/* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
+	
+    /* Das erste Arrayfeld bestimmt die Tabs in denen jeweils ein linkes und rechtes Feld erstellt werden: Bewegung, Feuchtigkeit etc.	
 	 *
 	 */
 	
@@ -581,6 +601,8 @@
 	   {
 	   /* Retro not enabled, alles loeschen */
 	   }
+
+    echo "\nNach Webfront Installation, aktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 
 
 	/****************************************************************************************************************
@@ -816,6 +838,7 @@ if ($noinstall==false)
     $componentHandling=new ComponentHandling();
 
 	echo "\n";
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Switch Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -844,6 +867,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Temperatur Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -874,6 +898,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Humidity Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -889,6 +914,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Actuator Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";
@@ -914,6 +940,7 @@ if ($noinstall==false)
 	 *
 	 ****************************************************************************************************************/
 	echo "\n";
+    echo "\nAktuell vergangene Zeit : ".exectime($startexec,"s")." Sekunden\n";    
 	echo "***********************************************************************************************\n";
 	echo "Heat Control Set Handler wird ausgeführt. Macht bereits RemoteAccess mit !\n";
 	echo "\n";

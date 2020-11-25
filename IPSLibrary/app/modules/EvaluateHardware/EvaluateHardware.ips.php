@@ -226,7 +226,7 @@ IPS_SetEventActive($tim1ID,true);
         echo "   Anordnung nach Gerätetypen, Zusammenfassung:\n";
         foreach ($hardware as $type => $entries) echo str_pad("     $type : ",28).count($entries)."\n";
     echo "Erstellen der DeciveList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
-    $deviceList = $topologyLibrary->get_DeviceList($hardware, true);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
+    $deviceList = $topologyLibrary->get_DeviceList($hardware, false);        // class is in EvaluateHardwareLibrary, true ist Debug, einschalten wenn >> Fehler ausgegeben werden
     echo "\n";
 
     $includefileDevices     = '<?'."\n";             // für die php Devices and Gateways, neu
