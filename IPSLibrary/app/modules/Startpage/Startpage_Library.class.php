@@ -68,9 +68,13 @@
 
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $aussentemperatur, $innentemperatur;
-        private $contentID;                             // für Highcharts als Dummy
 		
 		public $picturedir;			// hier sind alle Bilder für die Startpage abgelegt
+        public $workdir;            // Arbeitsverzeichnis, zB VLC Start Scripts
+
+        protected $scriptHighchartsID;                      // für Higcharts, die IPSHighcharts script ID
+        private $contentID;                             // für Highcharts als Dummy
+
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
 		
 		private $OWDs;				// alle Openweather Instanzen
@@ -85,19 +89,38 @@
 			{
 			/* standardize configuration */
 			
-			$this->configuration=startpage_configuration();
-	        if (!isset($this->configuration["Display"])) $this->configuration["Display"]["Weathertable"]="Inactive";	
+			$this->configuration=$this->setStartpageConfiguration();
 			
 			/* get Directories */
 
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			$moduleManager = new IPSModuleManager('Startpage',$repository);
 
+			$moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
+            $categoryHighchartsID = $moduleManagerHC->GetModuleCategoryID('app');	
+            $this->scriptHighchartsID = IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
+            //echo "StartpageHandler, construct, Highcharts App Category : $categoryHighchartsID and ScriptID : $this->scriptHighchartsID\n";
+
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
 			
 			$this->picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
 			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
+
+            $dosOps = new dosOps();
+            $verzeichnis=$dosOps->getWorkDirectory();
+            if ($verzeichnis===false) echo "Fehler, Work directory nicht verfügbar. bitte erstellen.\n";
+            else
+                {
+                $this->workdir = $verzeichnis."process/";
+                if (is_dir($this->workdir))
+                    {
+                    }
+                else
+                    {
+                    mkdir($this->workdir);	
+                    }
+                }
 
 			/* get Variables */
 			
@@ -107,15 +130,44 @@
 			$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 			$this->OWDs=$modulhandling->getInstances('OpenWeatherData');
 			}
-		
+
+
 		/*
 		 * Abstrahierung der Startpage Konfiguration
 		 *
 		 */
-		 		
+
+        function getWorkDirectory()
+            {
+            return($this->workdir);
+            }
+
+		/*
+		 * Abstrahierung der Startpage Konfiguration
+		 *
+		 */
+
+		function setStartpageConfiguration()
+	        {
+            $configuration=array();
+            if ((function_exists("startpage_configuration"))===false) IPSUtils_Include ("Startpage_Configuration.inc.php","IPSLibrary::config::modules::Startpage");				
+            if (function_exists("startpage_configuration"))
+                {
+
+                $configuration = startpage_configuration();
+                if (!isset($configuration["Display"])) $configuration["Display"]["Weathertable"]="Inactive";	
+
+                if (isset($configuration["Directories"]["Pictures"]))
+                    {
+                        
+                    }
+                }
+	        return ($configuration);
+	        }
+
 		function getStartpageConfiguration()
 	        {
-	        return ($this->configuration);
+ 	        return ($this->configuration);
 	        }
 
 		/*
@@ -191,6 +243,8 @@
          * Parameter:
          *       PageType    4 Hierarchie, 3 Topologie, 2 Station, 1 Picture
          *       Showfile
+         *
+         * aufgerufen werden dazu analog die folgenden Funktionen:   showHierarchy, [showPictureWidget,showTopology], [showDisplayStation, bottomTableLines], [showPictureWidget,showWeatherTemperatureWidget,bottomTableLines]
          *
          * Bei PageType Picture erfolgt eine zweispaltige Tabelle, mit links einem Bild aus der Library, es gibt auch eine Bottomline
          *    Aufruf der folgenden Module:   showPictureWidget($showfile), showWeatherTemperatureWidget(), showWeatherTable(), bottomTableLines() 
@@ -415,6 +469,8 @@
 
         /* Station Display
          *
+         * Darstelllung als x mal y Widgets am Bildschirm.Möglichst vielfältige Auswahl ist geplant.
+         * Die darstellung sollte soweit möglich responsive sein und konfigurierbar
          *
          */
 
@@ -452,7 +508,7 @@
                             $wert.='</table>';
                             $wert.='</td>';
                             break;
-                        case "GROUPTEMP":
+                        case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
                             $wert .= '<td>';
                             $wert .= $this->showTempGroupWidget($debug);
                             $wert .= '</td>';             
@@ -1491,6 +1547,8 @@
          * Zelle Tabelleneintrag für die Tabelle für Gruppen Temperaturwerte
          * macht 2 Zeilen mit jeweils 2 Zellen
          *
+         * class DetectTemperatureHandler muss existieren, also DetectMovement Modul installiert sein
+         *
          **************************************/
 
 		function showTempGroupWidget($debug=false)
@@ -1500,37 +1558,26 @@
                 {    
                 $wert .= '<table>';
                 $DetectTemperatureHandler = new DetectTemperatureHandler();
-                if (isset($this->configuration["GroupTemp"]) ) 
-                    {
-                    $groupsConf=$this->configuration["GroupTemp"];
-                    $groups=array();
-                    foreach ($groupsConf as $index => $groupConf)
-                        {
-                        if (isset($groupConf["GROUP"])) 
-                            {
-                            $groups[$index]["Group"]=$groupConf["GROUP"];
-                            if (isset($groupConf["UNIT"])) $groups[$index]["Unit"]=$groupConf["UNIT"];
-                            else $groups[$index]["Unit"]="";
-                            }
-                        }
-                    }
-                else $groups=array();
+                $groups = $this->getConfigTempGroupWidget();
                 if ($debug) 
                     {
-                    echo "DetectTemperatureHandler exists. Konfig is for Group: ".json_encode($groups)."\n";
+                    echo "showTempGroupWidget, DetectTemperatureHandler exists. Konfig is for Group: ".json_encode($groups)."\n";
                     //print_R($groups);
                     //print_r($groupConf);
                     //print_r($this->configuration);
                     }
+                $wert .= '<tr>';    
                 foreach ($groups as $index => $groupConf)
                     {
+                    $wert .= '<td><table>';
                     $group=$groupConf["Group"];
                     $unit=$groupConf["Unit"];
                     $config=$DetectTemperatureHandler->ListEvents($group);
-                    if ($debug) echo "    Gruppe $group: ".json_encode($config)."\n";
+                    if ($debug) echo "    Gruppe \"$group\": ".json_encode($config)."\n";
                     $status=(float)0;
                     $count=0;
                     $roomList=array();
+                    /* Untergruppen ermiotteln und zuordnen, wenn es keine gibt der Gruppe none zuordnen */
                     foreach ($config as $oid=>$params)
                         {
                         $variableProps=IPS_GetVariable($oid);
@@ -1541,7 +1588,7 @@
                             {
                             foreach ($roomRay as $room) $roomList[$room][]=$oid;
                             }
-                        else $roomList["none"][]=$oid;
+                        else $roomList[$group][]=$oid;
                         $status+=GetValue($oid);
                         $count++;
                         }
@@ -1553,10 +1600,12 @@
                         }
                     $status=(float)0;
                     $count=0;
+                    /* config id oid => Gruppe, der Reihe die Werte durchgehen und Mittelwert ausrechnen */
                     foreach ($config as $oid=>$params)
                         {
                         $roomStr=$DetectTemperatureHandler->getRoomNamefromConfig($oid,$group);
                         $roomRay=explode(",",$roomStr);            // Liste der Gruppen die noch zusätzlich zugeordnet wurden
+                        //echo "behandle für $oid $roomStr :\n"; 
                         if ( ((count($roomRay))>0) && ($roomRay[0] != "") )
                             {
                             $status+=GetValue($oid);
@@ -1571,84 +1620,166 @@
                                 $roomAll.=" $room";
                                 }
                             }
+                        else 
+                            {
+                            $status+=GetValue($oid);
+                            $count++;
+                            if (isset($roomCount[$room]["Count"])) $div=$roomCount[$room]["Count"];
+                            else $div=1;
+                            $value=GetValue($oid)/$div;
+                            $roomCount[$group]["Value"]+=$value;
+                            }
                         }
-                    if ($debug) print_r($roomCount);
+                    $ipsOps = new ipsOps();
+                    if ($groupConf["Sort"] != "No") $ipsOps->intelliSort($roomCount,"Value");    
+                    if ($debug) 
+                        {
+                        echo "Sortierung angefordert mit :".json_encode($groupConf)." \n";    
+                        echo "Folgende Werte werden so angezeigt. Es kann nach dem Temperaturwert sortiert werden. Index => Count,Value \n";    
+                        print_r($roomCount);
+                        }
                     foreach ($roomCount as $room => $entry) 
                         {
                         //echo "   ".str_pad($room,35)."   ".$entry["Value"]."\n";
                         $wert .= '<tr><td>'.$room.'</td><td>'.$this->formatEntry((float)$entry["Value"],$unit).'</td></tr>';
                         }
 
-                    $wert .= '</table>';
+                    $wert .= '</table></td>';
                     //$wert="showTempGroupTable ".json_encode($config);
                     }
+                $wert .= '</tr></table>';
                 }
-            else $wert="not available";
+            else $wert .= "not available,DetectTemperatureHandler not installed.";
             return ($wert);
+            }
+
+        /* read configuration for showTempGroupWidget */
+
+        function getConfigTempGroupWidget()
+            { 
+            if (isset($this->configuration["GroupTemp"]) ) 
+                {
+                $groupsConf=$this->configuration["GroupTemp"];
+                $groups=array();
+                foreach ($groupsConf as $index => $groupConf)
+                    {
+                    if (isset($groupConf["GROUP"])) 
+                        {
+                        $groups[$index]["Group"]=$groupConf["GROUP"];
+                        if (isset($groupConf["UNIT"])) $groups[$index]["Unit"]=$groupConf["UNIT"];
+                        else $groups[$index]["Unit"]="";
+                        if (isset($groupConf["SORT"])) $groups[$index]["Sort"]=$groupConf["SORT"];
+                        else $groups[$index]["Sort"]="No";
+                        }
+                    }
+                }
+            else $groups=array();
+            return ($groups);
             }
 
         /********************
          *
-         * Zelle Tabelleneintrag für die Tabelle für Gruppen Temperaturwerte
-         * macht 2 Zeilen mit jeweils 2 Zellen
+         * Zelle Tabelleneintrag für die Tabelle für die Anzeige von speziellen Registern
+         * Register werden mit Highcharts angezteigt
          *
          **************************************/
 
-		function showSpecialRegsWidget()
+		function showSpecialRegsWidget($debug=false)
             {
-            $wert="";
-
-            $endTime=time();
-            $startTime=$endTime-3*60*60*24;     /* drei Tage sieht nett aus */
-            $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
-
-            // Create Chart with Config File
-            IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
-            $CfgDaten=array();
-            //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
-            $CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
-
-            $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-	        $CfgDaten['ContentVarableId']   = $this->contentID;
-            $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
-            $CfgDaten['StartTime']          = $startTime;
-            $CfgDaten['EndTime']            = $endTime;
-
-            $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
-            $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
-            $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
-
-            // Abmessungen des erzeugten Charts
-            $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
-            $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
-            
-            $CfgDaten['title']['text']      = "";
-            $CfgDaten['subtitle']['text']   = "";
-            $CfgDaten["PlotType"]= "Gauge";
-            $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
-
-            $serie = array();
-            $serie['type']                  = $chart_style;
-
-            /* wenn Werte für die Serie aus der geloggten Variable kommen : */
-            $serie['name'] = 'Baro Pressure';
-            $serie['Unit'] = "mbar";
-            $serie['Id'] = 28664 ;
-            $CfgDaten['series'][] = $serie;
-
-            $CfgDaten    = CheckCfgDaten($CfgDaten);
-            $sConfig     = CreateConfigString($CfgDaten);
-            $tmpFilename = CreateConfigFile($sConfig, 'WidgetGraph');
-            if ($tmpFilename != "")
+            $wert = "";
+            $wert .= "<table><tr>";
+            $specialRegsConf = $this->getConfigSpecialRegsWidget($debug);
+            foreach ($specialRegsConf as $index => $config)
                 {
-                $chartType = $CfgDaten['Ips']['ChartType'];
-                $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
-                $callBy="CfgFile";
-                $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " .
-                        "width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+                if ($debug) echo "Highcharts Ausgabe von $index (".json_encode($config).") : \n"; 
+                $wert .= "<td>";
+                $endTime=time();
+                $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
+                $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
+
+                // Create Chart with Config File
+                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+                $CfgDaten=array();
+                //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
+                //$CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
+                $CfgDaten["HighChartScriptId"]  = $this->scriptHighchartsID;                  // ID des Highcharts Scripts
+
+                $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                $CfgDaten['ContentVarableId']   = $this->contentID;
+                $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+                $CfgDaten['StartTime']          = $startTime;
+                $CfgDaten['EndTime']            = $endTime;
+
+                $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
+                $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+                $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
+
+                // Abmessungen des erzeugten Charts
+                $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+                $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
+                
+                $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
+                //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
+                $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
+                $CfgDaten["PlotType"]= "Gauge";
+                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+
+                $serie = array();
+                $serie['type']                  = $chart_style;
+
+                /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+                $serie['name'] = $config["Name"];
+                $serie['Unit'] = "mbar";                            // sehe ich nicht
+                $serie['Id'] = $config["OID"];
+                //$serie['Id'] = 28664 ;
+                $CfgDaten['series'][] = $serie;
+
+                $CfgDaten    = CheckCfgDaten($CfgDaten);
+                $sConfig     = CreateConfigString($CfgDaten);
+                $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$index");
+                if ($tmpFilename != "")
+                    {
+                    $chartType = $CfgDaten['Ips']['ChartType'];
+                    $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
+                    $callBy="CfgFile";
+                    $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+                    //$wert .= $tmpFilename;
+                    }
+                $wert .= "</td>";
                 }
+            $wert .= "</tr></table>";
             return ($wert);
             }
+
+
+        /* read configuration for showTempGroupWidget */
+
+        function getConfigSpecialRegsWidget($debug=false)
+            { 
+            if (isset($this->configuration["SpecialRegs"]) ) 
+                {
+                $specialRegsConf=$this->configuration["SpecialRegs"];
+                if ($debug) echo "getConfigSpecialRegsWidget Configuration analysieren: ".json_encode($specialRegsConf)."\n";
+                $specialRegs=array();
+                foreach ($specialRegsConf as $index => $regsConf)
+                    {
+                    if (isset($regsConf["OID"])) 
+                        {
+                        $specialRegs[$index]["OID"]=$regsConf["OID"];
+                        if (isset($regsConf["Dauer"])) $specialRegs[$index]["Duration"]=$regsConf["Dauer"];
+                        else $specialRegs[$index]["Duration"]=259200;           //3 Tage ist Default
+                        if (isset($regsConf["Name"])) $specialRegs[$index]["Name"]=$regsConf["Name"];
+                        else $specialRegs[$index]["Name"]=$index;
+                        if (isset($regsConf["Unit"])) $specialRegs[$index]["Unit"]=$regsConf["Unit"];
+                        else $specialRegs[$index]["Unit"]="values";
+                        }
+                    }
+                }
+            else $specialRegs=array();
+            return ($specialRegs);
+            }
+
+
 
         /********************
          *

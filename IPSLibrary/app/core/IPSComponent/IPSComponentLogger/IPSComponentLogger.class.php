@@ -177,8 +177,8 @@ class Logging
     private         $zeileDM=array();                   /* Nachrichteninput Objekte OIDs, eigenes für Device Management */
     private         $storeTableID = false;              /* ermöglicht längere Speichertiefen für Nachrichten */
 
-    /* init at do_init_xxxx */
-    protected       $configuration;
+    protected       $configuration;                      /* verwaltet gesamte Konfiguration, für die do_init_xxxx */
+
     // $variable                                        // definiert in children class
     protected       $variablename;
     protected       $CategoryIdData;
@@ -218,7 +218,10 @@ class Logging
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
-        $this->installedmodules=$moduleManager->GetInstalledModules();			
+        $this->installedmodules=$moduleManager->GetInstalledModules();	
+
+        $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen */
+
 		//echo "Logfile Construct\n";
 		$this->prefix=$prefix;
 		//$this->log_File=$logfile;
@@ -285,7 +288,7 @@ class Logging
 			{
 			$moduleManager_CC = new IPSModuleManager('CustomComponent');
 			$CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
-			echo "  Kategorien im Datenverzeichnis Custom Components: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
+			//echo "  Kategorien im Datenverzeichnis Custom Components: ".$CategoryIdData."   (".IPS_GetName($CategoryIdData).")\n";
 			$name="Bewegung-Nachrichten";
 			$vid=@IPS_GetObjectIDByName($name,$CategoryIdData);
 			if ($vid==0) $vid = CreateCategory($name,$CategoryIdData, 10);
@@ -357,6 +360,65 @@ class Logging
         return ($this->EreignisID);
         }
 
+    /*  Kapselung vertschiedener Informationen */
+
+    public function get_IPSComponentLoggerConfig()
+        {
+        return ($this->configuration);
+        }
+
+    private function set_IPSComponentLoggerConfig()
+        {
+        $config=array();
+        if ((function_exists("get_IPSComponentLoggerConfig"))===false) IPSUtils_Include ("IPSComponentLogger_Configuration.inc.php","IPSLibrary::config::core::IPSComponent");				
+        if (function_exists("get_IPSComponentLoggerConfig"))
+            {
+            $configInput=get_IPSComponentLoggerConfig();
+            configfileParser($configInput, $config, ["BasicConfigs"],"BasicConfigs",null);    
+            configfileParser($configInput, $config, ["LogDirectories" ],"LogDirectories" ,null);    
+            configfileParser($configInput, $config, ["LogConfigs"],"LogConfigs",null); 
+            $configInput=$config;
+            /* check BasicConfigs and fill them automatically */
+            $dosOps = new dosOps();
+            $operatingSystem = $dosOps->getOperatingSystem();
+            //echo "Operating System $operatingSystem\n";
+            if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
+            else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
+            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
+            /* check logDirectories, replace c:/Scripts/ with systemdir */
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Temperature/");    
+            $this->createFullDir($config["LogDirectories"]["TemperatureLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HumidityLog"],"HumidityLog","/Humidity/");    
+            $this->createFullDir($config["LogDirectories"]["HumidityLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MotionLog"],"MotionLog","/Motion/");    
+            $this->createFullDir($config["LogDirectories"]["MotionLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["CounterLog"],"CounterLog","/Counter/");    
+            $this->createFullDir($config["LogDirectories"]["CounterLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HeatControlLog"],"HeatControlLog","/HeatControl/");    
+            $this->createFullDir($config["LogDirectories"]["HeatControlLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["AnwesenheitssimulationLog"],"AnwesenheitssimulationLog","/Anwesenheitssimulation/");    
+            $this->createFullDir($config["LogDirectories"]["AnwesenheitssimulationLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SensorLog"],"SensorLog","/Sensor/");    
+            $this->createFullDir($config["LogDirectories"]["SensorLog"],$config["BasicConfigs"]["SystemDir"]);
+            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
+            $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
+
+
+            }
+        else echo "*************Fehler, Logging Konfig File nicht included oder Funktion get_IPSComponentLoggerConfig() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
+        //print_r($config);
+        return ($config);
+        }
+
+    private function createFullDir(&$input,$systemDir)
+        {
+        $dosOps = new dosOps();            
+        if (strpos($input,"C:/Scripts/")===0) $input=substr($input,10);
+        //echo "Verzeichnis derangiert: $input\n";
+        $input = $dosOps->correctDirName($systemDir.$input);
+        //echo "Verzeichnis korrigiert: $input\n";
+        }
+
     /* in CustomComponent Data werden immer zwei paare an Kategorien erstellet. Auswertung und Nachrichten. Der erste Teil ist variable.
      *
      */
@@ -403,9 +465,6 @@ class Logging
         if (isset ($this->installedmodules["DetectMovement"])) $this->DetectHandler = new DetectMovementHandler();  // für getVariableName benötigt 
         $this->variablename = $this->getVariableName($variable, $variablename);           // $this->variablename schreiben, entweder Wert aus DetectMovement Config oder selber bestimmen
 
-        /* Konfiguration einlesen, ob zusätzliche Spiegelregister mit Delay notwendig sind */ 
-        $this->configuration=get_IPSComponentLoggerConfig();
-
         /**************** Speicherort für Nachrichten und Spiegelregister herausfinden */		
         $moduleManager_CC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
         $this->CategoryIdData     = $moduleManager_CC->GetModuleCategoryID('data');
@@ -420,7 +479,6 @@ class Logging
                 $this->mirrorNameID=CreateVariableByName($this->mirrorCatID,$name,$this->variableType,$this->variableProfile);       /* 0 boolean */
                 break;
             }
-
 
         /* Create Category to store the Move-LogNachrichten und Spiegelregister*/	
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Bewegung",$this->CategoryIdData);
@@ -496,9 +554,7 @@ class Logging
             //echo "  Gesamt Ereigniszähler aufsetzen   : ".$erID." \n";
             }
 
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-        else $directory="C:/Scripts/Switch/";
+        $directory=$this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Bewegung.csv";                
@@ -541,9 +597,7 @@ class Logging
         echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
         $this->do_setVariableLogID($variable,$debug);
 
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-        else $directory="C:/Scripts/Switch/";
+        $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Helligkeit.csv";    
@@ -593,9 +647,7 @@ class Logging
         echo "lokale Spiegelregister mit Archivierung aufsetzen, als Variablenname wird, wenn nicht übergeben wird, der Name des Parent genommen:\n";
         $this->do_setVariableLogID($variable,$debug);
 
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-        else $directory="C:/Scripts/Switch/";
+        $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Kontakt.csv";    
@@ -652,10 +704,7 @@ class Logging
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         if ($this->debug) echo "   Uebergeordnete Variable : ".$this->variablename."\n";
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["TemperatureLog"]))
-                { $directory=$directories["LogDirectories"]["TemperatureLog"]; }
-        else {$directory="C:/Scripts/Temperature/"; }	
+        $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();              
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Temperature.csv";
@@ -709,10 +758,7 @@ class Logging
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$variablename."\n";
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["HumidityLog"]))
-                { $directory=$directories["LogDirectories"]["HumidityLog"]; }
-        else {$directory="C:/Scripts/Sensor/"; }	
+        $directory = $this->configuration["LogDirectories"]["HumidityLog"];
         $dosOps= new dosOps();              
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Feuchtigkeit.csv";
@@ -769,10 +815,7 @@ class Logging
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["SensorLog"]))
-                { $directory=$directories["LogDirectories"]["SensorLog"]; }
-        else {$directory="C:/Scripts/Sensor/"; }	
+        $directory = $this->configuration["LogDirectories"]["SensorLog"];
         $dosOps= new dosOps(); 
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Sensor.csv";
@@ -846,10 +889,7 @@ class Logging
 
         /* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
         //echo "Uebergeordnete Variable : ".$this->variablename."\n";
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["ClimateLog"]))
-                { $directory=$directories["LogDirectories"]["ClimateLog"]; }
-        else {$directory="C:/Scripts/Sensor/"; }	
+        $directory = $this->configuration["LogDirectories"]["ClimateLog"];        
         $dosOps= new dosOps(); 
         $dosOps->mkdirtree($directory);
         $this->filename=$directory.$this->variablename."_Sensor.csv";
@@ -871,9 +911,7 @@ class Logging
         $this->NachrichtenID=$this->CreateCategoryNachrichten("Statistik",$this->CategoryIdData);
         //$this->AuswertungID=$this->CreateCategoryAuswertung("Helligkeit",$this->CategoryIdData);;
         
-        $directories=get_IPSComponentLoggerConfig();
-        if (isset($directories["LogDirectories"]["MotionLog"]))	$directory=$directories["LogDirectories"]["MotionLog"];
-        else $directory="C:/Scripts/Switch/";
+        $directory = $this->configuration["LogDirectories"]["MotionLog"];
         $dosOps= new dosOps();
         $dosOps->mkdirtree($directory);
         $this->filename=$directory."Statistik.csv";   

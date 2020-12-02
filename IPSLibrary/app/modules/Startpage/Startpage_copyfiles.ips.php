@@ -21,7 +21,11 @@
  */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
-	IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+
+	
+    IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+    IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+    IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
@@ -41,7 +45,8 @@
  
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 
-	$configuration=startpage_configuration();
+    $startpage = new StartpageHandler();         
+   	$configuration = $startpage->getStartpageConfiguration();
 	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
 
     $dosOps= new dosOps();

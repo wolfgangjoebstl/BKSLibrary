@@ -31,6 +31,7 @@
      * DetectBrightnessHandler extends DetectHandler
      * DetectTemperatureHandler extends DetectHandler
      * DetectHeatControlHandler extends DetectHandler
+     * DetectHeatSetHandler extends DetectHandler
      *
      * DetectDeviceHandler extends DetectHandler, writes function IPSDetectDeviceHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php	 
      * DetectDeviceListHandler extends DetectHandler, writes function IPSDetectDeviceListHandler_GetEventConfiguration in EvaluateHardware_Configuration.inc.php
@@ -72,6 +73,7 @@
      * DetectContactHandler         $eventContactConfiguration      Kontakt-Auswertung
      * DetectTemperatureHandler     $eventTempConfiguration         Temperatur-Auswertung
      * DetectHeatControlHandler     $eventHeatConfiguration         HeatControl-Auswertung
+     * DetectHeatSetHandler
      * 
      * gemeinsame Routinen, di enatürlich auch überschrieben werden können
      *
@@ -1942,7 +1944,6 @@
 		}	/* ende class */
 		
 
-
 /******************************************************************************************************************/
 
 	class DetectHeatControlHandler extends DetectHandler
@@ -1993,7 +1994,7 @@
 			return self::$configFileName;
 			}				
 
-		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+		/* DetectHeatControlHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
 		function Get_EventConfigurationAuto()
 			{
@@ -2086,6 +2087,163 @@
 			IPS_ApplyChanges($archiveHandlerID);
 			return ($statusID);			
 			}			
+			
+			
+			
+		}
+
+
+/******************************************************************************************************************/
+
+	class DetectHeatSetHandler extends DetectHandler
+		{
+
+		private static $eventConfigurationAuto = array();         /* diese Variable sollte Static sein, damit sie für alle Instanzen gleich ist */
+		private static $configtype;
+		private static $configFileName;				
+
+		protected $Detect_DataID;												/* Speicherort der Miorrorregister */ 
+
+		/**
+		 * @public
+		 *
+		 * Initialisierung des DetectHeatSetHandler Objektes
+		 *
+		 */
+		public function __construct()
+			{
+			/* Customization of Classes */
+			self::$configtype = '$eventHeatSetConfiguration';                                          /* <-------- change here */
+			self::$configFileName = IPS_GetKernelDir().'scripts/IPSLibrary/config/modules/DetectMovement/DetectMovement_Configuration.inc.php';
+			
+			$moduleManagerCC = new IPSModuleManager('CustomComponent');     /*   <--- change here */
+			$CategoryIdData     = $moduleManagerCC->GetModuleCategoryID('data');
+			$name="HeatSet-Auswertung";
+			$mdID=@IPS_GetObjectIDByName($name,$CategoryIdData);
+			if ($mdID==false)
+				{
+				$mdID = IPS_CreateCategory();
+				IPS_SetParent($mdID, $CategoryIdData);
+				IPS_SetName($mdID, $name);
+	 			IPS_SetInfo($mdID, "this category was created by script. ");
+				}			
+			$this->Detect_DataID=$mdID;
+			
+			parent::__construct();			
+			}
+
+		/* Customization Part */
+		
+		function Get_Configtype()
+			{
+			return self::$configtype;
+			}
+		function Get_ConfigFileName()
+			{
+			return self::$configFileName;
+			}				
+
+		/* DetectHeatSetHandler, obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
+
+		function Get_EventConfigurationAuto()
+			{
+			if (self::$eventConfigurationAuto == null)
+				{
+				if ( function_exists('IPSDetectHeatSetHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatSetHandler_GetEventConfiguration();       /* <-------- change here */
+				else self::$eventConfigurationAuto = array();					
+				}
+			return self::$eventConfigurationAuto;
+			}
+
+		/**
+		 *
+		 * Setzen der aktuellen Event Konfiguration
+		 *
+		 */
+		function Set_EventConfigurationAuto($configuration)
+			{
+			self::$eventConfigurationAuto = $configuration;
+			}
+			
+
+		/** getMirrorRegister für HetSet
+		 * 
+         *  sucht den Namen des Spiegelregister für eine Variable oder eine Variable eines Gerätes
+		 *  wenn der Name Bestandteil der Config, dann diesen nehmen
+         *  sonst schauen ob der Parent eine Instanz ist, dann den Namen der Instanz nehmen, oder
+         *  wenn der Name der Variablen CAM_Motion ist, dann auch den Name des Parent nehmen, oder
+         *  wenn beides nicht den Namen der Variablen nehmen
+         *  
+         * am Ende wird der Name der Variable im entsprechenden Datenbereich gesucht. Wenn nicht vorhanden wird die OID des aktuellen Registers zurückgegeben
+         *      $this->MoveAuswertungID         Spiegelregister, schnell, Standard
+         *      $this->motionDetect_DataID      Spiegelregister, zusätzliches Register geglättet mit Delay
+         *
+         */
+
+		public function getMirrorRegister($variableId,$debug=false)
+			{
+            if ($debug) echo "DetectHeatSetHandler::getMirrorRegister($variableId) aufgerufen.\n";
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($mirrorID === false) echo "Fehler, getMirrorRegister for HeatSet $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            //else echo "getMirrorRegister for Temperature $variablename\n";
+            return ($mirrorID);
+            }
+
+		/**
+		 * Das DetectbrightnessHandler Spiegelregister anlegen
+		 * 
+		 */
+			
+		public function CreateMirrorRegister($variableId,$debug=false)
+			{
+            if ($debug) echo "   DetectHeatSetHandler::CreateMirrorRegister in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).").\n";    
+
+            $variablename=$this->getMirrorRegisterName($variableId);
+            $result=IPS_GetObject($variableId);             
+			$mirrorID=@IPS_GetObjectIDByName($variablename,$this->Detect_DataID);		/* das sind die geglätteten Register mit Delay */
+			if ($mirrorID===false)			
+				{	// Spiegelregister noch nicht erzeugt
+				$mirrorID=CreateVariable($variablename,2,$this->Detect_DataID,10, '~Temperature', null,false);
+				$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+				AC_SetLoggingStatus($archiveHandlerID,$mirrorID,true);
+				AC_SetAggregationType($archiveHandlerID,$mirrorID,0);      /* normaler Wwert */
+				IPS_ApplyChanges($archiveHandlerID);
+				}
+			return ($mirrorID);			
+			}
+
+		/**
+		 *
+		 * Die HeatSetGesamtauswertung_ Variablen erstellen 
+		 *
+		 */
+		function InitGroup($group,$debug=false)
+			{
+			echo "\nDetect HeatSet Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			$config=$this->ListEvents($group);
+			$status=(float)0; $status1=(float)0; $i=0;
+			foreach ($config as $oid=>$params)
+				{
+				$status=$status + GetValue($oid);
+				if ($debug) echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),70)."Status: ".GetValue($oid)." ".$status."\n";
+				$moid=$this->getMirrorRegister($oid);
+				if ($moid !== false) $status1=$status1 + GetValue($moid);
+                $i++;
+				}
+            $status=$status/$i;
+            $status1=$status1/$i;
+			echo "  Gruppe ".$group." hat neuen Status, Wert: ".(integer)$status."  im Mirror register:  ".(integer)$status1."\n";
+			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Temperature', null,false);
+			SetValue($statusID,$status);
+			
+  			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+     		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+			AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+			IPS_ApplyChanges($archiveHandlerID);
+			return ($statusID);			
+			}
+	
 			
 			
 			

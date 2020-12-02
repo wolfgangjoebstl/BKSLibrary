@@ -75,7 +75,10 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
  ********************************************************************************************/
  
     $setup = Autosteuerung_Setup();
-    if ( isset($setup["LogDirectory"]) == false ) $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+    if ( isset($setup["LogDirectory"]) == false )
+        {
+        $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
+        }
 
 	$NachrichtenIDAuto=IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
     $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
@@ -141,7 +144,7 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
  *****************************/
 
     $configuration = Autosteuerung_GetEventConfiguration();
-    $scenes=Autosteuerung_GetScenes();
+
     //print_r($configuration);
 
     $speak_config=Autosteuerung_Speak();
@@ -410,6 +413,7 @@ if ($_IPS['SENDER']=="TimerEvent")
             break;
 		case $timerAufrufID:
 			/* alle 5 Minuten aufrufen */
+            $scenes=Autosteuerung_GetScenes();
 			$StatusAnwesend=$operate->Anwesend();            
             $Anwesenheitssimulation=GetValue($AnwesenheitssimulationID);            
 			$AWSFunktionStatus=( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) ));
@@ -600,106 +604,106 @@ if ($_IPS['SENDER']=="Execute")
 	// testweise Sprache ausgeben */
 	//tts_play(1,"Claudia, ich hab dich so lieb.",'',2);
 
-if (false)             // ende Autosteuerungs Funktionen simulieren
-    {
-	echo "\nEingestellte Programme:\n\n";
-	$i=0;	// testwert um zu sehen wir die Programm reagieren
-	foreach ($configuration as $key=>$entry)
-		{
-		echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-		echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."       ";
-		echo "(".memory_get_usage()." Byte).";
-		echo "\n";
+    if (false)             // ende Autosteuerungs Funktionen simulieren
+        {
+        echo "\nEingestellte Programme:\n\n";
+        $i=0;	// testwert um zu sehen wir die Programm reagieren
+        foreach ($configuration as $key=>$entry)
+            {
+            echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
+            echo "Eintrag fuer : ".$key." (".IPS_GetName(IPS_GetParent($key)).".".IPS_GetName($key).") ".$entry[0].",".$entry[1]."       ";
+            echo "(".memory_get_usage()." Byte).";
+            echo "\n";
 
-		$wert=$entry[1];
-        if (strpos($wert,"+"))
-            {   // es gibt einen Zusatzparameter beim Modul
-            $wertparam=explode("+",$wert);
-            $wert = $wertparam[0];
-            $wertOpt=$wertparam[1];
+            $wert=$entry[1];
+            if (strpos($wert,"+"))
+                {   // es gibt einen Zusatzparameter beim Modul
+                $wertparam=explode("+",$wert);
+                $wert = $wertparam[0];
+                $wertOpt=$wertparam[1];
+                }
+            else $wertOpt="";
+            
+            //print_r($entry);
+            //print_r($auto->ParseCommand($entry));
+            switch ($wert)
+                {
+                case "Anwesenheit":
+                    $status=Anwesenheit($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist +1
+                    echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
+                    break;
+                case "iTunes":
+                case "Media":
+                    $status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
+                    break;				
+                case "Status":
+                    //$status=Status($entry,GetValue($key),$key,true);
+                    $status=Status($entry,!GetValue($key),$key,true,$wertOpt);
+                    break;
+                case "StatusParallel":                       
+                    /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
+                    /* array($params[0], $params[1], $params[2],),                     													*/
+                    /* array('OnChange',	'Status',	'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
+                    /* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
+                    /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
+                    /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
+                    //$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
+                    $status=StatusParallel($entry,GetValue($key),$key,true,$wertOpt);
+                    break;
+                case "Ventilator":
+                case "HeatControl":
+                case "Heizung":
+                    //print_r($entry);
+                    $status=Ventilator2($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist 32
+                    break;	
+                case "iTunes":
+                    $status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
+                    break;
+                /*********************************************************************************************/
+                case "GutenMorgenWecker":
+                    $status=GutenMorgenWecker($entry,$i++,12345,true,$wertOpt);
+                    break;
+                /*********************************************************************************************/
+                case "Ventilator1":
+                    $status=Ventilator1($entry,$i++,12345,true,$wertOpt);
+                    //$status=Ventilator($entry,$i++,true);				
+                    break;
+                /*********************************************************************************************/
+                case "Parameter":
+                    $status=Parameter($entry,$i++,12345,true,$wertOpt);
+                    break;
+                /*********************************************************************************************/
+                case "StatusRGB":
+                    echo "Fehler, Funktion nicht mehr unterstützt.\n";
+                    $status=array();
+                    break;
+                /*********************************************************************************************/
+                case "Switch":
+                    $status=SwitchFunction($entry,$i++,12345,true,$wertOpt);
+                    break;
+                /*********************************************************************************************/
+                case "Custom":
+                    /* Aufrufen von kundenspezifischen Funktionen */
+                    $status=array();
+                    break;
+                /*********************************************************************************************/
+                case "par1":
+                case "dummy":
+                case "Dummy":
+                case "DUMMY":
+                    $status=array();			
+                    break;
+                default:
+                    $status=array();			
+                    echo "Aufruf Funktion eval(".json_encode($entry[1]).")\n";
+                    break;
+                }
+            echo "Zusammengefasst :".json_encode($status)." \n";
+                
             }
-        else $wertOpt="";
-        
-		//print_r($entry);
-		//print_r($auto->ParseCommand($entry));
-		switch ($wert)
-			{
-			case "Anwesenheit":
-				$status=Anwesenheit($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist +1
-				echo "Resultat von Evaluierung Anwesenheit Funktion ausgeben.\n"; 
-				break;
-			case "iTunes":
-			case "Media":
-				$status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
-				break;				
-			case "Status":
-				//$status=Status($entry,GetValue($key),$key,true);
-                $status=Status($entry,!GetValue($key),$key,true,$wertOpt);
-				break;
-		   case "StatusParallel":                       
-			   /* bei einer Statusaenderung oder Aktualisierung einer Variable 														*/
-			   /* array($params[0], $params[1], $params[2],),                     													*/
-			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe',),      bei Change Lightswitch mit Wert schreiben   */
-				/* array('OnUpdate',	'Status',	'ArbeitszimmerLampe,	true',),    bei Update Taster LightSwitch einschalten   */
-			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,timer#dawn-23:45',),       			*/
-			   /* array('OnChange',	'Status',	'ArbeitszimmerLampe,	on#true,	off#false,cond#xxxxxx',),       					*/
-				//$status=Status($entry,$i++,12345,true);  // Simulation aktiv, Testwert ist +1
-				$status=StatusParallel($entry,GetValue($key),$key,true,$wertOpt);
-				break;
-			case "Ventilator":
-			case "HeatControl":
-			case "Heizung":
-				//print_r($entry);
-				$status=Ventilator2($entry,GetValue($key),$key,true,$wertOpt);  // Simulation aktiv, Testwert ist 32
-				break;	
-			case "iTunes":
-				$status=iTunesSteuerung($entry,$i++,12345,true,$wertOpt);
-				break;
-			/*********************************************************************************************/
-			case "GutenMorgenWecker":
-				$status=GutenMorgenWecker($entry,$i++,12345,true,$wertOpt);
-		      break;
-			/*********************************************************************************************/
-		   case "Ventilator1":
-				$status=Ventilator1($entry,$i++,12345,true,$wertOpt);
-				//$status=Ventilator($entry,$i++,true);				
-		      break;
-			/*********************************************************************************************/
-		   case "Parameter":
-				$status=Parameter($entry,$i++,12345,true,$wertOpt);
-		      break;
-			/*********************************************************************************************/
-		   case "StatusRGB":
-		      echo "Fehler, Funktion nicht mehr unterstützt.\n";
-				$status=array();
-				break;
-			/*********************************************************************************************/
-		   case "Switch":
-				$status=SwitchFunction($entry,$i++,12345,true,$wertOpt);
-		      break;
-			/*********************************************************************************************/
-		   case "Custom":
-		      /* Aufrufen von kundenspezifischen Funktionen */
-				$status=array();
-		      break;
-			/*********************************************************************************************/
-		   case "par1":
-		   case "dummy":
-		   case "Dummy":
-		   case "DUMMY":
-				$status=array();			
-		      break;
-		   default:
-				$status=array();			
-				echo "Aufruf Funktion eval(".json_encode($entry[1]).")\n";
-				break;
-			}
-		echo "Zusammengefasst :".json_encode($status)." \n";
-			
-		}
-	echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n";
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n";
 
-    }       // ende Autosteuerungs Funktionen simulieren
+        }       // ende Autosteuerungs Funktionen simulieren
 
 	/*********************************************************************************************/
 	
@@ -715,6 +719,7 @@ if (false)             // ende Autosteuerungs Funktionen simulieren
 	echo "Status Anwesenheitssimulation : ".(GetValue($AnwesenheitssimulationID))." (0 aus 1 ein 2 auto)\n";
 	echo "Festellung der Anwesenheit : ".($operate->Anwesend()?"Anwesend":"Abwesend")."\n"; 	
 	echo "\nEingestellte Anwesenheitssimulation:\n\n";
+    $scenes=Autosteuerung_GetScenes();    
 	foreach($scenes as $scene)
 		{
 		if (isset($scene["TYPE"]))
@@ -728,8 +733,9 @@ if (false)             // ende Autosteuerungs Funktionen simulieren
 				echo "  Timer Szene : ".$scene["NAME"]."\n";
 				}
 			}
-		$switch = $auto->timeright($scene);	
-		echo "      Schaltet jetzt : ".($switch ? "Ja":"Nein")."\n";
+		$switch = $auto->timeright($scene,true);	            // true für Debug
+        $text=$auto->switchAWS(true,$scene,true);               // einschalten scene , true für Debug
+		echo "      Schaltet jetzt : ".($switch ? "Ja":"Nein")."   Info: $text\n";
 		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
 		$actualTimes = $auto->switchingTimes($scene);
 		//echo "Evaluierte Schaltzeiten:\n";	

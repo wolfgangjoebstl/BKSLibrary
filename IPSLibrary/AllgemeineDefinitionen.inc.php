@@ -175,9 +175,17 @@ define("ADR_SoapServer","10.0.0.20:8085");
 //define("ADR_Programs","C:/Program Files/");
 define("ADR_Programs",'C:/Program Files (x86)/');
 
+
+/*************************************************************************************************************************************
+ *
+ *      POWER FUNCTIONS
+ *
+ *************************************************************************/
+
 /* useful functions
  *
  * number format with extended functionality
+ * shifts automatically the unit , i.e. from seconds to minutes and hours etc.
  *
  */
 
@@ -222,170 +230,202 @@ function nf($value,$unit="")
     return($result);    
     }
 
-/* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
- * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
- * $rpc ist entweder eine class oder false
- *
- */
+    /*
+    *
+    *   Configfile Parser   Unit, UNIT Einheit etc  wenn in der Config eines der Synonyme vorhanden ist wird es gemappt (&$inputArray, &$outputArray, [Synonym,2,3,4],$tag,$defaultValue)
+    */
 
- function rpc_CreateVariableProfile($rpc, $pname, $type, $demo=false)
-    {
-    if ($demo) echo '    IPS_CreateVariableProfile ($pname, '.$type.');'."\n";
-    else
+    function configfileParser(&$inputArray, &$outputArray, $synonymArray,$tag,$defaultValue,$debug=false)
         {
-        if ($rpc) $rpc->IPS_CreateVariableProfile ($pname, $type);
-        else IPS_CreateVariableProfile ($pname, $type);
-        }        
-    }
-
- function rpc_SetVariableProfileIcon($rpc, $pname, $icon, $demo=false)
-    {
-    if ($demo) echo '    IPS_SetVariableProfileIcon ($pname, "'.$icon.'");'."\n";
-    else
-        {
-        if ($rpc) $rpc->IPS_SetVariableProfileIcon ($pname, $icon);
-        else IPS_SetVariableProfileIcon ($pname, $icon);
-        }        
-    }
-
- function rpc_SetVariableProfileDigits($rpc, $pname, $digits, $demo=false)
-    {
-    if ($demo) echo '    IPS_SetVariableProfileDigits ($pname, '.$digits.");\n";                // ähnliche Formatierung, damit das Kopieren leicheter fällt
-    else
-        {
-        if ($rpc) $rpc->IPS_SetVariableProfileDigits ($pname, $digits);
-        else IPS_SetVariableProfileDigits ($pame, $digits);
-        }
-    }
-
- function rpc_SetVariableProfileText($rpc, $pname, $prefix, $suffix, $demo=false)
-    {
-    if ($demo) echo '    IPS_SetVariableProfileText ($pname, "'.$master["Prefix"].'","'.$master["Suffix"]."\");\n";
-    else
-        {
-        if ($rpc) $rpc->IPS_SetVariableProfileText ($pname, $prefix,$suffix);
-        else IPS_SetVariableProfileText ($pname, $prefix,$suffix);
-        }
-    }
-
- function rpc_SetVariableProfileValues($rpc, $pname, $minValue, $maxValue, $stepSize, $demo=false)
-    {
-    if ($demo) echo '    IPS_SetVariableProfileValues ($pname, '.$minValue.",".$maxValue.",".$stepSize.");\n";
-    else
-        {
-        if ($rpc) $rpc->IPS_SetVariableProfileValues ($targetName, $minValue,$maxValue,$stepSize);
-        else IPS_SetVariableProfileValues ($targetName, $minValue,$maxValue,$stepSize);
-        }
-    }
-
-/* Anlegen und Synchronisieren von Profilen
- * soll auch gleich Remote gehen
- *
- */
-
-function compareProfiles($server, $master,$target,$masterName,$targetName, $demo=false)
-    {
-    $prefix=true; $minvalue=true;
-
-    if ($demo)
-        {
-        $target=array();
-        $target["ProfileName"]=$targetName;            
-        }
-
-    if (strtoupper($server) != "LOCAL") 
-        {
-        $rpc = new JSONRPC($server);
-        $remote=true;
-        }
-    else $rpc=false;
-
-    // Profile name needs to be set
-    echo "compareProfiles($masterName,$targetName)\n";
-    foreach ($master as $index => $entry)
-        {
-        if (is_array($master[$index])) 
+        $found=false;
+        if ($debug)  
             {
-            switch ($index)
+            echo "Aufruf configfileParser for $tag mit default $defaultValue.\n";
+            print_R($inputArray);
+            }
+        foreach ($synonymArray as $synonym)
+            {
+            if (isset($inputArray[$synonym])) 
                 {
-                case "Associations":
-                    if ( (isset($target[$index])) === false) 
-                        {
-                        $target[$index]=array();
-                        echo "$index ist ein Array. Im Target neu anlegen. ".sizeof($master[$index])." != ".sizeof($target[$index])."\n";
-                        }
-                    if ( (sizeof($master[$index])) != (sizeof($target[$index])) ) 
-                        {
-                        if (sizeof($target[$index])==0)
+                $outputArray[$tag] = $inputArray[$synonym];
+                if ($found === false) $found=true;
+                else echo "*****configfileParser, Configuration Fehler, Synonym mehrmals vorhanden.\n";
+                }
+            }
+        if ($found===false)
+            {
+            $outputArray[$tag] = json_decode($defaultValue,true);
+            if ($debug) echo "not found, use default ".$outputArray[$tag]."\n";
+            if ($outputArray[$tag]===null) $outputArray[$tag]=$defaultValue;
+            } 
+        }
+
+
+    /* Profil Befehle die gleich sind für Lokal und Remote Server, werden weiter unten und in Remote Access class gebraucht.
+    * Ziel ist einheitliche eigene Profile zu schaffen, die immer vorhanden sind
+    * $rpc ist entweder eine class oder false
+    *
+    */
+
+    function rpc_CreateVariableProfile($rpc, $pname, $type, $demo=false)
+        {
+        if ($demo) echo '    IPS_CreateVariableProfile ($pname, '.$type.');'."\n";
+        else
+            {
+            if ($rpc) $rpc->IPS_CreateVariableProfile ($pname, $type);
+            else IPS_CreateVariableProfile ($pname, $type);
+            }        
+        }
+
+    function rpc_SetVariableProfileIcon($rpc, $pname, $icon, $demo=false)
+        {
+        if ($demo) echo '    IPS_SetVariableProfileIcon ($pname, "'.$icon.'");'."\n";
+        else
+            {
+            if ($rpc) $rpc->IPS_SetVariableProfileIcon ($pname, $icon);
+            else IPS_SetVariableProfileIcon ($pname, $icon);
+            }        
+        }
+
+    function rpc_SetVariableProfileDigits($rpc, $pname, $digits, $demo=false)
+        {
+        if ($demo) echo '    IPS_SetVariableProfileDigits ($pname, '.$digits.");\n";                // ähnliche Formatierung, damit das Kopieren leicheter fällt
+        else
+            {
+            if ($rpc) $rpc->IPS_SetVariableProfileDigits ($pname, $digits);
+            else IPS_SetVariableProfileDigits ($pname, $digits);
+            }
+        }
+
+    function rpc_SetVariableProfileText($rpc, $pname, $prefix, $suffix, $demo=false)
+        {
+        if ($demo) echo '    IPS_SetVariableProfileText ($pname, "'.$master["Prefix"].'","'.$master["Suffix"]."\");\n";
+        else
+            {
+            if ($rpc) $rpc->IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+            else IPS_SetVariableProfileText ($pname, $prefix,$suffix);
+            }
+        }
+
+    function rpc_SetVariableProfileValues($rpc, $pname, $minValue, $maxValue, $stepSize, $demo=false)
+        {
+        if ($demo) echo '    IPS_SetVariableProfileValues ($pname, '.$minValue.",".$maxValue.",".$stepSize.");\n";
+        else
+            {
+            if ($rpc) $rpc->IPS_SetVariableProfileValues ($pname, $minValue,$maxValue,$stepSize);
+            else IPS_SetVariableProfileValues ($pname, $minValue,$maxValue,$stepSize);
+            }
+        }
+
+    /* Anlegen und Synchronisieren von Profilen
+    * soll auch gleich Remote gehen
+    *
+    */
+
+    function compareProfiles($server, $master,$target,$masterName,$targetName, $demo=false)
+        {
+        $prefix=true; $minvalue=true;
+
+        if ($demo)
+            {
+            $target=array();
+            $target["ProfileName"]=$targetName;            
+            }
+
+        if (strtoupper($server) != "LOCAL") 
+            {
+            $rpc = new JSONRPC($server);
+            $remote=true;
+            }
+        else $rpc=false;
+
+        // Profile name needs to be set
+        echo "compareProfiles($masterName,$targetName)\n";
+        //print_r($master); print_r($target);
+        foreach ($master as $index => $entry)
+            {
+            if (is_array($master[$index])) 
+                {
+                switch ($index)
+                    {
+                    case "Associations":
+                        if ( (isset($target[$index])) === false) 
                             {
-                            //echo "Associations im Target neu anlegen.\n";
-                            //print_r($master[$index]);
-                            foreach ($master[$index] as $entry)
+                            $target[$index]=array();
+                            echo "$index ist ein Array. Im Target neu anlegen. ".sizeof($master[$index])." != ".sizeof($target[$index])."\n";
+                            }
+                        if ( (sizeof($master[$index])) != (sizeof($target[$index])) ) 
+                            {
+                            if (sizeof($target[$index])==0)
                                 {
-                                if ($demo) echo '    IPS_SetVariableProfileAssociation($pname, '.$entry["Value"].', "'.$entry["Name"].'", "'.$entry["Icon"].'", '.$entry["Color"].");\n";
-                                else 
+                                //echo "Associations im Target neu anlegen.\n";
+                                //print_r($master[$index]);
+                                foreach ($master[$index] as $entry)
                                     {
-                                    if ($remote) $rpc->IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
-                                    else IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                    if ($demo) echo '    IPS_SetVariableProfileAssociation($pname, '.$entry["Value"].', "'.$entry["Name"].'", "'.$entry["Icon"].'", '.$entry["Color"].");\n";
+                                    else 
+                                        {
+                                        if ($rpc) $rpc->IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                        else IPS_SetVariableProfileAssociation($targetName, $entry["Value"], $entry["Name"], $entry["Icon"], $entry["Color"]);
+                                        }
                                     }
                                 }
+                            else echo "Associations nicht gleich gross\n";
                             }
-                        else echo "Associations nicht gleich gross\n";
-                        }
-                    break;
-                default:
-                    echo "sub array $index\n";
-                    if (isset($target[$index])) compareProfiles($server, $master[$index], $target[$index],$masterName,$targetName,$demo);
-                    else echo "Target Index not available\n";
-                    break;
+                        break;
+                    default:
+                        echo "sub array $index\n";
+                        if (isset($target[$index])) compareProfiles($server, $master[$index], $target[$index],$masterName,$targetName,$demo);
+                        else echo "Target Index not available\n";
+                        break;
+                    }
                 }
-            }
-        elseif ( ((isset($target[$index])) === false) || ( (isset($target[$index])) && ($master[$index] != $target[$index]) ))      //entweder gibts den target Index gar nicht oder er ist nicht gleich dem master
-            {
-            if ( (isset($target["ProfileType"])) === false)
+            elseif ( ((isset($target[$index])) === false) || ( (isset($target[$index])) && ($master[$index] != $target[$index]) ))      //entweder gibts den target Index gar nicht oder er ist nicht gleich dem master
                 {
-                //echo "$index: Profil noch nicht vorhanden. Als ersten Befehl CreateVariableProfil durchführen.\n";
-                rpc_CreateVariableProfile($rpc, $targetName, $master["ProfileType"], $demo);
-                $target["ProfileName"]=$targetName;
-                $target["ProfileType"]=$master["ProfileType"];   
-                }
-            switch ($index)
-                {
-                case "ProfileName":
-                case "ProfileType":
-                    //echo "Variable bereits mit $targetName und Typ ".$master["ProfileType"]." erstellt.\n";
-                    break;
-                case "MinValue":
-                case "MaxValue":
-                case "StepSize":
-                    if ($minvalue)
-                        {
-                        rpc_SetVariableProfileValues($rpc, $minValue, $maxValue, $stepSize, $demo);
-                        $minvalue=false;
-                        }
-                    break;
-                case "Digits":
-                    rpc_SetVariableProfileDigits($rpc, $targetName, $master["Digits"],$demo);
-                    break;
-                case "Icon":
-                    rpc_SetVariableProfileIcon($rpc, $targetName, $master["Icon"], $demo);
-                    break;
-                case "Prefix":
-                case "Suffix":
-                    if ($prefix)
-                        {
-                        rpc_SetVariableProfileText ($rpc, $targetName, $prefix, $suffix);
-                        $prefix=false;
-                        }
-                    break;
-                default:
-                    if (isset($target[$index])) echo "    ".str_pad($index,20)."  $master[$index]  $target[$index] \n";
-                    else echo "    ".str_pad($index,20)."  $master[$index]  $targetName Index $index unknown \n";
-                    break;
+                if ( (isset($target["ProfileType"])) === false)
+                    {
+                    //echo "$index: Profil noch nicht vorhanden. Als ersten Befehl CreateVariableProfil durchführen.\n";
+                    rpc_CreateVariableProfile($rpc, $targetName, $master["ProfileType"], $demo);
+                    $target["ProfileName"]=$targetName;
+                    $target["ProfileType"]=$master["ProfileType"];   
+                    }
+                switch ($index)
+                    {
+                    case "ProfileName":
+                    case "ProfileType":
+                        //echo "Variable bereits mit $targetName und Typ ".$master["ProfileType"]." erstellt.\n";
+                        break;
+                    case "MinValue":
+                    case "MaxValue":
+                    case "StepSize":
+                        if ($minvalue)
+                            {
+                            rpc_SetVariableProfileValues($rpc, $targetName, $master["MinValue"], $master["MaxValue"], $master["StepSize"], $demo);
+                            $minvalue=false;
+                            }
+                        break;
+                    case "Digits":
+                        rpc_SetVariableProfileDigits($rpc, $targetName, $master["Digits"],$demo);
+                        break;
+                    case "Icon":
+                        rpc_SetVariableProfileIcon($rpc, $targetName, $master["Icon"], $demo);
+                        break;
+                    case "Prefix":
+                    case "Suffix":
+                        if ($prefix)
+                            {
+                            rpc_SetVariableProfileText ($rpc, $targetName, $master["Prefix"], $master["Suffix"]);
+                            $prefix=false;
+                            }
+                        break;
+                    default:
+                        if (isset($target[$index])) echo "    ".str_pad($index,20)."  $master[$index]  $target[$index] \n";
+                        else echo "    ".str_pad($index,20)."  $master[$index]  $targetName Index $index unknown \n";
+                        break;
+                    }
                 }
             }
         }
-    }
 
     /* alle Profile manuell erzeugen, geht auch lokal oder remote
      *
@@ -3143,7 +3183,9 @@ class ipsOps
 class sysOps
     { 
 
-    /* IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist */
+    /* IPS_ExecuteEX funktioniert nicht wenn der IP Symcon Dienst statt mit dem SystemUser bereits als Administrator angemeldet ist 
+     *
+     */
 
     public function ExecuteUserCommand($command,$path,$show=false,$wait=false,$session=-1)
         {
@@ -3162,6 +3204,12 @@ class sysOps
                     echo "Catch Exception, Fehler bei $e.\n";
                     }
         }
+
+    /*****************************************************************
+     * von checkProcess verwendet
+     * die aktuell gestarteten Dienste werden erfasst
+     *
+     */
 
     private function getProcessList()
         {
@@ -3240,7 +3288,11 @@ class sysOps
         return ($processList);
         }
 
-    /******************************************************************/
+    /*****************************************************************
+     * von checkProcess verwendet
+     * die aktuell gestarteten Programme werden erfasst
+     *
+     */
 
     private function getTaskList()
         {
@@ -3601,6 +3653,93 @@ class sysOps
 class dosOps
     {
 
+
+    /*  C: scripts kann nicht auf allen Rechnern verwendet werden. 
+     *  parametrierbar machen. Unterschiede Unix und Windows rausarbeiten
+     * Auf einer Unix Maschine (Docker)
+     *      Kernel Dir seit IPS 5.3. getrennt abgelegt : /var/lib/symcon/
+     *      Kernel Install Dir ist auf : /usr/share/symcon/
+     *      Kernel Working Directory ist auf :  /var/script/symcon/
+     *
+     */
+
+    public function getWorkDirectory()
+        {
+        IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
+        $logging=new Logging();
+        $config=$logging->get_IPSComponentLoggerConfig();
+        //echo json_encode($config["BasicConfigs"]);
+        //print_r($config);
+        $verzeichnis=$config["BasicConfigs"]["SystemDir"];
+        $ls=$this->readdirToArray($verzeichnis);
+        if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
+/*        $verzeichnis="C:/scripts/";
+        $ls=$this->readdirToArray($verzeichnis);
+        if ($ls===false) 
+            {
+            echo "    UNIX System. Anderes privates Verzeichnis.\n";
+            $verzeichnis="/var/script/symcon/";
+            $ls=$this->readdirToArray($verzeichnis);
+            if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
+            }       */
+        return($verzeichnis);
+        }
+
+    public function replaceWorkDirectory()
+        {
+
+        }
+
+    /*  Anhand von einer Configuration oder
+     *  durch Test von C:/Scripts herausfinden ob Unix oder Windows system
+     echo IPS_GetKernelDir();
+        // Beispielausgabe:
+        // Windows
+        // ab Version 5.3
+        C:\ProgramData\Symcon\
+        // bis Version 5.2
+        C:\Programme\IP-Symcon\
+
+        // Linux, RaspberryPi
+        /var/lib/symcon/
+        
+        // MacOS
+        /Library/Application Support/Symcon/
+     */
+
+    public function getOperatingSystem()
+        {
+        if (function_exists("get_IPSComponentLoggerConfig"))
+            {
+            $config=get_IPSComponentLoggerConfig();
+            if (isset($config["BasicConfigs"])) 
+                {
+                $basicConfigs=$config["BasicConfigs"];
+                if (isset($basicConfigs["OperatingSystem"]))
+                    {
+                    switch (strtoupper($basicConfigs["OperatingSystem"]))
+                        {
+                        case "WINDOWS":
+                            return("WINDOWS");
+                            break;           
+                        case "UNIX":
+                            return("UNIX");
+                            break;           
+                        default:
+                            echo "dosOps::getOperatingSystem, Error, do not know ".$basicConfigs["OperatingSystem"].".\n";
+                            return (false);
+                            break;
+                        }
+                    }
+                }  
+            }
+        $verzeichnis="C:/scripts/";
+        $ls=$this->readdirToArray($verzeichnis);
+        if ($ls===false) return("UNIX"); 
+        else return("WINDOWS");
+        }
+
+
     /* fileAvailable
      *
      * einen Filenamen , auch mit Wildcards, in einem Verzeichnis suchen
@@ -3908,10 +4047,14 @@ class dosOps
 
 	function correctDirName($verzeichnis)
 		{
-		$len=strlen($verzeichnis); $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");
+		$len=strlen($verzeichnis); 
+        $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");          // letzte Position bekommen
 		//echo "Auswertungen: $len $pos1 $pos2 \n";			// am Schluss muss ein Backslash oder Slash sein !
-		if ( ($pos1) && ($pos1<($len-1)) ) $verzeichnis .= "\\";
+		if ( ($pos1) && ($pos1<($len-1)) )   $verzeichnis .= "\\";
+        if ($pos1) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);
+        
 		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
+        if ($pos2) $verzeichnis = str_replace("//","/",$verzeichnis);
 		return ($verzeichnis);
 		}
 

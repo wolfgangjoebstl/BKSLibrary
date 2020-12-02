@@ -1855,12 +1855,15 @@ class Autosteuerung
 		return($actualTimes);
 		}
 		
-	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll */		
+	/* Auswertung der Angaben in den Szenen. Schauen ob auf ein oder aus geschaltet werden soll 
+     * this->timeStop wird in switchAWS verwendet
+     * 
+     */		
 		
-	public function timeright($scene)
+	public function timeright($scene, $debug=false)
 		{
-		//echo "Szene ".$scene["NAME"]."\n";
 		$actualTimes = self::switchingTimes($scene);
+		if ($debug) echo "        timeright, Szene ".$scene["NAME"]."  Chance: ".$scene["EVENT_CHANCE"]."% ".json_encode($actualTimes)."\n";
 		//print_r($actualTimes);
 		$timeright=false;
 		for ($sindex=0;($sindex <sizeof($actualTimes));$sindex++)
@@ -1871,16 +1874,17 @@ class Autosteuerung
 			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
 			$actualTimeStopHour = $actualTimeStop[0];
 			$actualTimeStopMinute = $actualTimeStop[1];
-			//echo "Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
+			if ($debug) echo "             >>Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
 			$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
-			$this->timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
+			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
 			$this->now = time();
 
 			if ($this->timeStart > $this->timeStop)
 				{
-				echo "        stop is considered to be on the next day.\n";
-				if (($this->now > $this->timeStart) || ($this->now < $this->timeStop))
+				if ($debug) echo "        stop is considered to be on the next day.\n";
+				if (($this->now > $this->timeStart) || ($this->now < $timeStop))
 					{				
+                    if ($debug) echo "        *** aktuell im Schaltinterval.\n";
 					$minutesRange = ($this->timeStop-$this->timeStart)/60+24*60;
 					$actionTriggerMinutes = 5;
 					$rndVal = rand(1,100);
@@ -1889,13 +1893,20 @@ class Autosteuerung
 					}
 				}
 
-			if (($this->now > $this->timeStart) && ($this->now < $this->timeStop))
+			if (($this->now > $this->timeStart) && ($this->now < $timeStop))
 				{
+                if ($debug) echo "        *** aktuell im Schaltinterval.    ";
 				$minutesRange = ($this->timeStop-$this->timeStart)/60;
 				$actionTriggerMinutes = 5;
 				$rndVal = rand(1,100);
 				//echo "Zufallszahl:".$rndVal."\n";
-				if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) { $timeright=true; }
+				if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) 
+                    { 
+                    $timeright=true;
+                    $this->timeStop = $timeStop; 
+                    if ($debug) echo "SWITCH in ".nf($timeStop-time(),"s")."\n";
+                    }
+                elseif ($debug) echo "\n"; 
 				}
 			}	
 		return ($timeright);	
@@ -5042,7 +5053,7 @@ class Autosteuerung
      *
      *************************************/    
 
-    public function switchAWS($switch, $scene)
+    public function switchAWS($switch, $scene, $debug=false)
         {
         $status=false;
         // CreateVariable ($Name, $Type ( 0 Boolean, 1 Integer 2 Float, 3 String) , $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='') 

@@ -98,7 +98,8 @@
             $deviceList = array();    
             }
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
-        print_r($statistic);        
+        $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+        //print_r($statistic);        
         } 
     else 
         { 

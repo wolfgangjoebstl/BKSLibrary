@@ -17,14 +17,14 @@
      * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
      */
 	 
-	/**@defgroup ipstwilight IPSTwilight
-	 * @ingroup modules_weather
+	/**@defgroup 
+	 * @ingroup 
 	 * @{
 	 *
-	 * Script zur Ansteuerung der Giessanlage in BKS
+	 * Script zur Ansteuerung der Startpage
 	 *
 	 *
-	 * @file          Gartensteuerung_Installation.ips.php
+	 * @file          Startpage_Installation.ips.php
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.44, 07.08.2014<br/>
@@ -64,52 +64,63 @@
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	IPSUtils_Include ("IPSModuleManagerGUI_Constants.inc.php",      "IPSLibrary::app::modules::IPSModuleManagerGUI");
 	
-	IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
-	IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
-	
+    IPSUtils_Include ('Startpage_Configuration.inc.php', 'IPSLibrary::config::modules::Startpage');
+    IPSUtils_Include ('Startpage_Include.inc.php', 'IPSLibrary::app::modules::Startpage');
+    IPSUtils_Include ('Startpage_Library.class.php', 'IPSLibrary::app::modules::Startpage');
+
+
 /*******************************
  *
  * Initialisierung für Monitor On/Off Befehle und Bedienung VLC zum Fernsehen. Scripts verwenden wenn im Pfad ein Blank vorkommt.
  *
  ********************************/
 
-	echo "\n\n";
-	echo "Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";
-	echo "   Schreibe Batchfile zum automatischen Start und Stopp von VLC.\n";
+    echo "\n\n";
+    echo "Kernel Version (Revision) ist : ".IPS_GetKernelVersion()." (".IPS_GetKernelRevision().")\n";
+    echo "Kernel Datum ist : ".date("D d.m.Y H:i:s",IPS_GetKernelDate())."\n";
+    echo "Kernel Startzeit ist : ".date("D d.m.Y H:i:s",IPS_GetKernelStartTime())."\n";
+    echo "Kernel Dir seit IPS 5.3. getrennt abgelegt : ".IPS_GetKernelDir()."\n";
+    echo "Kernel Install Dir ist auf : ".IPS_GetKernelDirEx()."\n";
     $dosOps = new dosOps();
-	$verzeichnis="C:/scripts/";
-    $ls=$dosOps->readdirToArray($verzeichnis);
-    if ($ls===false) 
+    $operatingSystem = $dosOps->getOperatingSystem();
+    echo "OperatingSystem ist : $operatingSystem\n";
+	$verzeichnis     = $dosOps->getWorkDirectory();
+    if ($verzeichnis===false) 
         {
-        echo "    UNIX System. Anderes privates Verzeichnis.\n";
-        $verzeichnis="/var/script/symcon/";
-        $ls=$dosOps->readdirToArray($verzeichnis);
-        if ($ls===false) echo "   Fehler, Docker Container Pfad nicht richtig konfiguriert.\n";
+        echo "Fehler, Work directory nicht verfügbar. bitte erstellen.\n";
         }
+    else
+        {
+        echo "Kernel Working Directory ist auf :  $verzeichnis\n";
+        echo "\n";
+        }
+    $startpage = new StartpageHandler();         
+    $unterverzeichnis=$startpage->getWorkDirectory();
+   	$configuration = $startpage->getStartpageConfiguration();
+    print_r($configuration);
+    
+    if (($dosOps->getOperatingSystem()) == "WINDOWS")
+        {
+        echo "Schreibe Batchfile zum automatischen Start und Stopp von VLC in Verzeichnis $unterverzeichnis:\n";
+        if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
+        else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
+        if ( isset($configuration["Directories"]["Playlist"]) == true ) $playlist=$configuration["Directories"]["Playlist"];	
+        else $playlist = $verzeichnis."Fernsehprogramme\Technisat.m3u";
 
-	$unterverzeichnis="process/";
-	if (is_dir($verzeichnis.$unterverzeichnis))
-		{
-		}
-	else
-		{
-		mkdir($verzeichnis.$unterverzeichnis);	
-		}
-	if ( isset($configuration["Directories"]["VideoLan"]) == true ) $command=$configuration["Directories"]["VideoLan"];
-	else $command='C:/Program Files/VideoLAN/VLC/VLC.exe';
-	if ( isset($configuration["Directories"]["Playlist"]) == true ) $playlist=$configuration["Directories"]["Playlist"];	
-	else $playlist=" C:\Scripts\Fernsehprogramme\Technisat.m3u";
-	$handle2=fopen($verzeichnis.$unterverzeichnis."start_vlc.bat","w");
-	fwrite($handle2,'"'.$command.'"  "'.$playlist.'"'."\r\n");
-	fwrite($handle2,'pause'."\r\n");
-	fclose($handle2);
+        $handle2=fopen($unterverzeichnis."start_vlc.bat","w");
+        fwrite($handle2,'"'.$command.'"  "'.$playlist.'"'."\r\n");
+        fwrite($handle2,'pause'."\r\n");
+        fclose($handle2);
 
-	echo "  Schreibe Batchfile zum automatischen Stopp von VLC.\n";
-	$handle2=fopen($verzeichnis.$unterverzeichnis."kill_vlc.bat","w");
-	fwrite($handle2,'c:/Windows/System32/taskkill.exe /im vlc.exe');
-	fwrite($handle2,"\r\n");
-	fclose($handle2);
+        //echo "  Schreibe Batchfile zum automatischen Stopp von VLC.\n";
+        $handle2=fopen($unterverzeichnis."kill_vlc.bat","w");
+        fwrite($handle2,'c:/Windows/System32/taskkill.exe /im vlc.exe');
+        fwrite($handle2,"\r\n");
+        fclose($handle2);
+        }
+    else echo "Unix System. Kein Handling von externen Programmen. \n";
 
+    echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen
@@ -371,8 +382,8 @@
 
         /* create Highcharts Meteogram for better Weather Overview */
 
-       	$variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=C:\IP-Symcon\webfront\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');
-        CreateLinkByDestination('Meteogram', $variableIdMeteoChartHtml,    $categoryId_OW_WebFront,  10);
+       	//$variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=C:\IP-Symcon\webfront\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');
+        $variableIdMeteoChartHtml   = CreateVariable("OpenWeatherMeteoHTML",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe src="./user/IPSHighcharts/IPSTemplates/Highcharts.php?CfgFile=.\user\IPSHighcharts\Highcharts\HighchartsCfgOpenweather.tmp" width="100%" height="616" frameborder="0" scrolling="no" ></iframe>', 'Graph');        CreateLinkByDestination('Meteogram', $variableIdMeteoChartHtml,    $categoryId_OW_WebFront,  10);
        	$variableIdZusammenfassungHtml   = CreateVariable("OpenWeatherZusammenfassung",   3 /*String*/,  $categoryId_OpenWeather, 1010, '~HTMLBox',$scriptIdStartpageWrite, '<iframe frameborder="0" width="100%" height="530px" scrolling="yes" src="../user/Startpage/Startpage_Openweather.php" </iframe>', 'Graph');
         CreateLinkByDestination('Zusammenfassung', $variableIdZusammenfassungHtml,    $categoryId_OW_WebFront,  20);
 
