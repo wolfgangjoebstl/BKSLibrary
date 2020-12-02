@@ -191,6 +191,8 @@
 		function __construct($variable,$variablename=Null)
 			{
             $dosOps= new dosOps();
+            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+
 			//echo "Construct IPSComponentSensor Counter Logging for Variable ID : ".$variable."\n";
 			
 			/****************** Variablennamen herausfinden und/oder berechnen */

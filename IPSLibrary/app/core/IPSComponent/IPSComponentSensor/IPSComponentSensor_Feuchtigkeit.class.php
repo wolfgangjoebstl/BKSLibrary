@@ -231,6 +231,7 @@
 			//echo "Construct IPSComponentSensor Feuchtigkeit Logging for Variable ID : ".$variable."\n";
 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];

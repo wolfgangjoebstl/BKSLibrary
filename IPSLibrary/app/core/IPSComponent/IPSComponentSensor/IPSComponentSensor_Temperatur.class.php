@@ -247,6 +247,7 @@
             $this->startexecute=microtime(true);
             $this->debug=$debug;   
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
 
 			echo "   Temperatur_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
 

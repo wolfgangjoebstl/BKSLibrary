@@ -217,6 +217,8 @@
             if ($debug) echo "Motion_Logging::construct do_init mit \"$typedev\" aufrufen:\n";
             $this->startexecute=microtime(true); 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+
             $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $debug);              // $variable kann auch false sein
 			parent::__construct($this->filename,$NachrichtenID);                                       // this->filename wird von do_init_xxx geschrieben
 			}
