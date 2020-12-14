@@ -157,7 +157,9 @@
 			echo "HeatControl_Logging:construct for Variable ID : ".$variable."\n";
 
             /************** INIT */
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
+            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+            $this->powerConfig=array();             // vom DetectHandler beschrieben
+
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
@@ -169,6 +171,7 @@
                 IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
                 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
                 $this->DetectHandler = new DetectHeatControlHandler();
+				$this->powerConfig=$this->DetectHandler->get_PowerConfig();                
                 } 
 
             $dosOps= new dosOps();
@@ -193,29 +196,24 @@
                 $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->HeatControlAuswertungID,1,'~Intensity.100');                   // $this->variableLogID schreiben
                 IPS_SetHidden($this->variableLogID,false);
 				
-				$this->powerConfig=Null;
-				if (function_exists('get_IPSComponentHeatConfig'))
-					{
-					$this->powerConfig=get_IPSComponentHeatConfig()["HeatingPower"];
-					if ( isset($this->powerConfig[$variable]) )
-						{
-						$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-						echo "   Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
-						/* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
-						//$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
-						//$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-						//$this->variableTimeLogID=CreateVariable($this->variablename."_Changetime",1,$this->variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
-                        $this->variableEnergyLogID = $this->setVariableId($this->variablename."_Energy",$this->variableLogID,2,'~Electricity');
-                        $this->variablePowerLogID = $this->setVariableId($this->variablename."_Power",$this->variableLogID,2,'~Power');
-                        $this->variableTimeLogID = $this->setVariableId($this->variablename."_ChangeTime",$this->variableLogID,1,'~UnixTimestamp');
-						if (GetValue($this->variableTimeLogID) == 0) SetValue($this->variableTimeLogID,time());
-						}
-					else 
-						{
-						echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in Configuration not available !\n";
-						$this->powerConfig=Null;
-						}	
-					}					
+                if ( isset($this->powerConfig[$variable]) )
+                    {
+                    $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                    echo "   Lokales Spiegelregister für Energie- und Leistungswert unterhalb Variable ID ".$this->variableLogID." und Parent Kategorie ".IPS_GetName($this->HeatControlAuswertungID)." anlegen.\n";
+                    /* Parameter : $Name, $Type, $Parent, $Position, $Profile, $Action=null */
+                    //$this->variableEnergyLogID=CreateVariable($this->variablename."_Energy",2,$this->variableLogID, 10, "~Electricity", null, null );  /* 1 steht für Integer, 2 für Float, alle benötigten Angaben machen, sonst Fehler */
+                    //$this->variablePowerLogID=CreateVariable($this->variablename."_Power",2,$this->variableLogID, 10, "~Power", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+                    //$this->variableTimeLogID=CreateVariable($this->variablename."_Changetime",1,$this->variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+                    $this->variableEnergyLogID = $this->setVariableId($this->variablename."_Energy",$this->variableLogID,2,'~Electricity');
+                    $this->variablePowerLogID = $this->setVariableId($this->variablename."_Power",$this->variableLogID,2,'~Power');
+                    $this->variableTimeLogID = $this->setVariableId($this->variablename."_ChangeTime",$this->variableLogID,1,'~UnixTimestamp');
+                    if (GetValue($this->variableTimeLogID) == 0) SetValue($this->variableTimeLogID,time());
+                    }
+                else 
+                    {
+                    echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in Configuration not available !\n";
+                    //$this->powerConfig=Null;
+                    }	
 				}
 
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";

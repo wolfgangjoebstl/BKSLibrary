@@ -10,22 +10,12 @@
 *******************************************************************************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
+	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 	
-	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-	if (!isset($moduleManager)) 
-		{
-		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-		$moduleManager = new IPSModuleManager('Autosteuerung',$repository);
-		}
-	$Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
-	if ($Mobile_Enabled==true)
-		{	
-		$Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
-		}
-	$categoryIdTab         = CreateCategoryPath($Mobile_Path.".Stromheizung");
-
 	$kalender=new AutosteuerungStromheizung();
 
 /********************************************************************************************
@@ -57,14 +47,34 @@ Switch ($_IPS['SENDER'])
 		break;
 	Case "TimerEvent":
 	Case "Execute":
-		$oid=IPS_GetVariableIDByName("AutoFill",$kalender->getWochenplanID());		// OID von Profilvariable für Autofill
+        $auto = new Autosteuerung();
+        $oid=$kalender->getAutoFillID();
+        $configuration = $kalender->get_Configuration();
+
+        /*  $kalender->InitLogMessage(true);            // noch einmal Interesse halber anschauen
+        $kalender->getStatus();
+        print_r($configuration);  
+		$zeile1=$kalender->getZeile1ID();		// OID von Zeile1, aktueller Status
+        echo "Execute vom script aufgerufen (AutoFill:$oid  Zeile1:$zeile1):\n";   */
+
 		$value=$kalender->getStatusfromProfile(GetValue($oid));
 		$kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
 		$kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
-		$kalender->UpdateLinks($categoryIdTab);		                            /* Upodate Links for Mobility Webfront */
+		$kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
+
+        if ($configuration["HeatControl"]["SwitchName"] != Null)
+            {
+            $result = $auto->isitheatday(true);             // true für Debug
+            $conf=array();
+            $conf["TYP"]=$configuration["HeatControl"]["Type"];
+            $conf["MODULE"]=$configuration["HeatControl"]["Module"];
+            $conf["NAME"]=$configuration["HeatControl"]["SwitchName"];
+            $auto->switchByTypeModule($conf,$result,true);              // true für Debug
+            //print_r($auto->getFunctions());
+            }
 		break;	
 	default:
-		$kalender=new AutosteuerungStromheizung();	
+        break;
 	}																																																																
 
 /*********************************************************************************************/

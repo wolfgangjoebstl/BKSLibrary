@@ -10,7 +10,8 @@
     *   Version 2.50.1, 09.06.2012<br/>
     */
 
-	IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
+    Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ('IPSComponentSensor.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentSensor');
 
 /**********************************************************
  *
@@ -217,12 +218,15 @@ class Logging
 
 	function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne",$prefix="", $html=false, $count=false)
 		{
+        $debug=false;
+		if ($debug) echo "Logging Construct\n";
+        //IPSLogger_Dbg(__file__, 'CustomComponent Motion_Logging Construct '.$logfile.'    '.$nachrichteninput_Id.'   '.$prefix);	
+
         $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);			
         $this->installedmodules=$moduleManager->GetInstalledModules();	
 
         $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen */
 
-		//echo "Logfile Construct\n";
 		$this->prefix=$prefix;
 		//$this->log_File=$logfile;
 		$this->log_File=str_replace(array('<', '>', ':', '"', '/', '\\', '|', '?', '*'), '', $logfile);             // ales wegloeschen das einem korrekten Filenamen widerspricht
@@ -367,45 +371,42 @@ class Logging
         return ($this->configuration);
         }
 
-    private function set_IPSComponentLoggerConfig()
+    protected function set_IPSComponentLoggerConfig()
         {
         $config=array();
         if ((function_exists("get_IPSComponentLoggerConfig"))===false) IPSUtils_Include ("IPSComponentLogger_Configuration.inc.php","IPSLibrary::config::core::IPSComponent");				
-        if (function_exists("get_IPSComponentLoggerConfig"))
-            {
-            $configInput=get_IPSComponentLoggerConfig();
-            configfileParser($configInput, $config, ["BasicConfigs"],"BasicConfigs",null);    
-            configfileParser($configInput, $config, ["LogDirectories" ],"LogDirectories" ,null);    
-            configfileParser($configInput, $config, ["LogConfigs"],"LogConfigs",null); 
-            $configInput=$config;
-            /* check BasicConfigs and fill them automatically */
-            $dosOps = new dosOps();
-            $operatingSystem = $dosOps->getOperatingSystem();
-            //echo "Operating System $operatingSystem\n";
-            if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
-            else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
-            configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
-            /* check logDirectories, replace c:/Scripts/ with systemdir */
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Temperature/");    
-            $this->createFullDir($config["LogDirectories"]["TemperatureLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HumidityLog"],"HumidityLog","/Humidity/");    
-            $this->createFullDir($config["LogDirectories"]["HumidityLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MotionLog"],"MotionLog","/Motion/");    
-            $this->createFullDir($config["LogDirectories"]["MotionLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["CounterLog"],"CounterLog","/Counter/");    
-            $this->createFullDir($config["LogDirectories"]["CounterLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HeatControlLog"],"HeatControlLog","/HeatControl/");    
-            $this->createFullDir($config["LogDirectories"]["HeatControlLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["AnwesenheitssimulationLog"],"AnwesenheitssimulationLog","/Anwesenheitssimulation/");    
-            $this->createFullDir($config["LogDirectories"]["AnwesenheitssimulationLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SensorLog"],"SensorLog","/Sensor/");    
-            $this->createFullDir($config["LogDirectories"]["SensorLog"],$config["BasicConfigs"]["SystemDir"]);
-            configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
-            $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
-
-
-            }
+        if (function_exists("get_IPSComponentLoggerConfig")) $configInput=get_IPSComponentLoggerConfig();
         else echo "*************Fehler, Logging Konfig File nicht included oder Funktion get_IPSComponentLoggerConfig() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
+
+        configfileParser($configInput, $config, ["BasicConfigs"],"BasicConfigs",null);    
+        configfileParser($configInput, $config, ["LogDirectories" ],"LogDirectories" ,null);    
+        configfileParser($configInput, $config, ["LogConfigs"],"LogConfigs",null); 
+        $configInput=$config;
+        /* check BasicConfigs and fill them automatically */
+        $dosOps = new dosOps();
+        $operatingSystem = $dosOps->evaluateOperatingSystem();
+        //echo "Operating System $operatingSystem\n";
+        if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
+        else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
+        configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
+        /* check logDirectories, replace c:/Scripts/ with systemdir */
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["TemperatureLog"],"TemperatureLog","/Temperature/");    
+        $this->createFullDir($config["LogDirectories"]["TemperatureLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HumidityLog"],"HumidityLog","/Humidity/");    
+        $this->createFullDir($config["LogDirectories"]["HumidityLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["MotionLog"],"MotionLog","/Motion/");    
+        $this->createFullDir($config["LogDirectories"]["MotionLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["CounterLog"],"CounterLog","/Counter/");    
+        $this->createFullDir($config["LogDirectories"]["CounterLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["HeatControlLog"],"HeatControlLog","/HeatControl/");    
+        $this->createFullDir($config["LogDirectories"]["HeatControlLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["AnwesenheitssimulationLog"],"AnwesenheitssimulationLog","/Anwesenheitssimulation/");    
+        $this->createFullDir($config["LogDirectories"]["AnwesenheitssimulationLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["SensorLog"],"SensorLog","/Sensor/");    
+        $this->createFullDir($config["LogDirectories"]["SensorLog"],$config["BasicConfigs"]["SystemDir"]);
+        configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
+        $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
+
         //print_r($config);
         return ($config);
         }
@@ -1082,6 +1083,7 @@ class Logging
 	function LogNachrichten($message, $debug=false)
 		{
         if ($debug) echo "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern. \n"; 
+        //IPSLogger_Dbg(__file__, "LogNachrichten ".$this->nachrichteninput_Id." in die erste Zeile ".$this->zeile1." (".IPS_GetName($this->zeile1)."/".IPS_GetName(IPS_GetParent($this->zeile1)).") den Wert $message speichern");	
 		if ($this->nachrichteninput_Id != "Ohne")
 		    {
 			SetValue($this->zeile16,GetValue($this->zeile15));

@@ -3707,38 +3707,34 @@ class dosOps
         /Library/Application Support/Symcon/
      */
 
-    public function getOperatingSystem()
+    public function evaluateOperatingSystem()           // eigene Routine, sonst gibt es einen Kreisläufer bei Logging
         {
-        if (function_exists("get_IPSComponentLoggerConfig"))
-            {
-            $config=get_IPSComponentLoggerConfig();
-            if (isset($config["BasicConfigs"])) 
-                {
-                $basicConfigs=$config["BasicConfigs"];
-                if (isset($basicConfigs["OperatingSystem"]))
-                    {
-                    switch (strtoupper($basicConfigs["OperatingSystem"]))
-                        {
-                        case "WINDOWS":
-                            return("WINDOWS");
-                            break;           
-                        case "UNIX":
-                            return("UNIX");
-                            break;           
-                        default:
-                            echo "dosOps::getOperatingSystem, Error, do not know ".$basicConfigs["OperatingSystem"].".\n";
-                            return (false);
-                            break;
-                        }
-                    }
-                }  
-            }
-        $verzeichnis="C:/scripts/";
-        $ls=$this->readdirToArray($verzeichnis);
-        if ($ls===false) return("UNIX"); 
-        else return("WINDOWS");
+        $directory=IPS_GetKernelDir();
+        //echo "getOperatingSystem from this directory $directory:\n";                
+        $pos1=strpos($directory,"/");
+        if ($pos1==0) return("WINDOWS");
+        else return("UNIX");
         }
 
+    public function getOperatingSystem()
+        {
+        IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
+        $logging=new Logging();
+        $config=$logging->get_IPSComponentLoggerConfig();
+        switch (strtoupper($config["BasicConfigs"]["OperatingSystem"]))
+            {
+            case "WINDOWS":
+                return("WINDOWS");
+                break;           
+            case "UNIX":
+                return("UNIX");
+                break;           
+            default:
+                echo "dosOps::getOperatingSystem, Error, do not know ".$basicConfigs["OperatingSystem"].".\n";
+                return (false);
+                break;
+            }
+        }
 
     /* fileAvailable
      *

@@ -84,7 +84,8 @@ echo "RA Category App ID    : ".$CategoryIdApp."\n";
         $hardwareTypeDetect = new Hardware();
         $deviceList = deviceList();            // Configuratoren sind als Function deklariert, ist in EvaluateHardware_Devicelist.inc.php
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
-        print_r($statistic);        
+        $hardwareTypeDetect->writeRegisterStatistics($statistic);        
+        //print_r($statistic);        
         } 
     else 
         { 

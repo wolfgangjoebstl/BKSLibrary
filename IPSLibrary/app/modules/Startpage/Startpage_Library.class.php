@@ -39,6 +39,8 @@
      * Hauptroutine ist StartPageWrite mit den 4 unterschiedlichen Darstellungen
      *
      * _construct
+     * getWorkDirectory
+     * setStartpageConfiguration
      * getStartpageConfiguration
      * getOWDs
      * configWeather
@@ -69,7 +71,7 @@
 		private $configuration = array();				// die angepasste, standardisierte Konfiguration
 		private $aussentemperatur, $innentemperatur;
 		
-		public $picturedir;			// hier sind alle Bilder für die Startpage abgelegt
+		public $picturedir, $imagedir, $icondir;			// hier sind alle Bilder für die Startpage abgelegt
         public $workdir;            // Arbeitsverzeichnis, zB VLC Start Scripts
 
         protected $scriptHighchartsID;                      // für Higcharts, die IPSHighcharts script ID
@@ -85,11 +87,11 @@
 		 * Initialisierung des IPSMessageHandlers
 		 *
 		 */
-		public function __construct()
+		public function __construct($debug=false)
 			{
 			/* standardize configuration */
 			
-			$this->configuration=$this->setStartpageConfiguration();
+			$this->configuration=$this->setStartpageConfiguration($debug);
 			
 			/* get Directories */
 
@@ -104,7 +106,10 @@
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
 			
-			$this->picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
+			$this->picturedir = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
+            $this->imagedir   = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\images\\";                   // Astronomy Path to Moon Pic: user/Startpage/user/images/mond/mond357.gif
+            $this->icondir    = IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\icons\\";
+
 			$this->contentID=CreateVariable("htmlChartTable",3, $this->CategoryIdData,0,"~HTMLBox",null,null,"Graph");
 
             $dosOps = new dosOps();
@@ -121,11 +126,6 @@
                     mkdir($this->workdir);	
                     }
                 }
-
-			/* get Variables */
-			
-			$this->aussentemperatur=temperatur();
-			$this->innentemperatur=innentemperatur();				
 											
 			$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 			$this->OWDs=$modulhandling->getInstances('OpenWeatherData');
@@ -144,26 +144,57 @@
 
 		/*
 		 * Abstrahierung der Startpage Konfiguration
-		 *
+		 * Einlesen aus der Datei und Abspeichern in der Class
 		 */
 
-		function setStartpageConfiguration()
+		function setStartpageConfiguration($debug=false)
 	        {
-            $configuration=array();
+            $config=array(); $configInput=array();
+            $dosOps = new dosOps();
+            $systemDir     = $dosOps->getWorkDirectory(); 
+
             if ((function_exists("startpage_configuration"))===false) IPSUtils_Include ("Startpage_Configuration.inc.php","IPSLibrary::config::modules::Startpage");				
-            if (function_exists("startpage_configuration"))
+            if (function_exists("startpage_configuration"))  $configInput = startpage_configuration();
+            else echo "*************Fehler, Startpage Konfig File nicht included oder Funktion startpage_configuration() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
+
+            /* Root der Konfig durchgehen, es wird das ganze Unterverzeichnis übernommen */
+            configfileParser($configInput, $config, ["Directories"],"Directories",null);                // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput, $config, ["Display"],"Display",null);    
+            configfileParser($configInput, $configWidget, ["Widgets"],"Widgets",null);    
+            configfileParser($configInput, $config, ["Monitor"],"Monitor",null); 
+
+            configfileParser($configInput["Directories"], $config["Directories"], ["Pictures"],"Pictures",null);                // null es wird als Default zumindest ein Indexknoten angelegt
+            if (strpos($config["Directories"]["Pictures"],"C:/Scripts/")===0) 
                 {
-
-                $configuration = startpage_configuration();
-                if (!isset($configuration["Display"])) $configuration["Display"]["Weathertable"]="Inactive";	
-
-                if (isset($configuration["Directories"]["Pictures"]))
-                    {
-                        
-                    }
+                $config["Directories"]["Pictures"]=substr($config["Directories"]["Pictures"],10);      // Workaround für C:/Scripts"
+                $config["Directories"]["Pictures"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Pictures"]);
                 }
-	        return ($configuration);
+            configfileParser($configInput["Directories"], $config["Directories"], ["Images"],"Images",null);                // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput["Directories"], $config["Directories"], ["Icons"],"Icons",null);                      // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput["Directories"], $config["Directories"], ["Scripts"],"Scripts",null);                // null es wird als Default zumindest ein Indexknoten angelegt
+            if (strpos($config["Directories"]["Scripts"],"C:/Scripts/")===0) $config["Directories"]["Scripts"]=substr($config["Directories"]["Scripts"],10);      // Workaround für C:/Scripts"
+            $config["Directories"]["Scripts"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Scripts"]);
+
+            configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather",null); 
+            configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
+
+            $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$debug);       // mit oder ohne Debug
+
+            /* 
+            configfileParser($configInput, $config, ["Test"],"Test",null); 
+            configfileParser($configInput["Test"], $config["Test"], ["Subtest"],"Subtest","Active"); 
+            */
+                
+            if ($debug) 
+                {
+                echo "==============================\n";
+                print_R($config);
+                echo "==============================\n";
+                }
+	        return ($config);
 	        }
+
+        /* Konfiguration gekapselt */
 
 		function getStartpageConfiguration()
 	        {
@@ -263,8 +294,8 @@
 			$noweather=!$Config["Active"];
             if ($debug)
                 {
-                echo "StartPageWrite aufgerufen. Weather Konfiguration:\n";
-                print_r($Config);
+                echo "StartPageWrite aufgerufen :\n";
+                //echo "Weather Konfiguration: ".json_encode($Config)."\n";
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
@@ -450,7 +481,11 @@
                     $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
                     $wert.='<td height="40%">';     // sonst zu gross
                     $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
-                    if ( $noweather==false ) $wert.= $this->showWeatherTemperatureWidget();     // zweite Zelle, eine dritte gibt es nicht
+                    if ( $noweather==false ) 
+                        {
+                        $wert.= $this->showWeatherTemperatureWidget();     // zweite Zelle, eine dritte gibt es nicht
+                        }
+                    elseif ($debug) echo "no weather Display configured.\n";
                     $wert.='</td>';
                     $wert.='</tr>';
                     $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
@@ -469,17 +504,21 @@
 
         /* Station Display
          *
-         * Darstelllung als x mal y Widgets am Bildschirm.Möglichst vielfältige Auswahl ist geplant.
-         * Die darstellung sollte soweit möglich responsive sein und konfigurierbar
+         * Darstelllung als x mal y Widgets am Bildschirm. Möglichst vielfältige Auswahl ist geplant.
+         * Die Darstellung sollte soweit möglich responsive sein und konfigurierbar.
+         * WidgetsConfig wird transformiert
          *
          */
 
 		function showDisplayStation($debug=false)
 			{
-	        if (isset($this->configuration["Widgets"]) ) $widgetsConf=$this->configuration["Widgets"];
-            else $widgetsConf=array();
-            $config = $this->transformConfigWidget($widgetsConf);
-            //if ($debug) print_R($config);
+	        if (isset($this->configuration["Widgets"]) ) $config=$this->configuration["Widgets"];
+            else $config=array();
+            if ($debug) 
+                {
+                echo "showDisplayStation:\n";
+                //print_R($config);
+                }
             $wert = "";
             foreach ($config as $row => $config2)
                 {
@@ -487,49 +526,53 @@
                 $wert.='<tr>';                        
                 foreach ($config2 as $column => $entry)
                     {
-                    //if ($debug) print_R($entry);
-                    switch (strtoupper($entry["Name"]))
+                    if ($debug) 
+                        {
+                        echo "  Col $column Show ".$entry["Type"]."\n";
+                        //print_R($entry);
+                        }
+                    switch (strtoupper($entry["Type"]))
                         {
                         case "ASTRONOMY":
                             //$wert.='<td width="100%">';
                             $wert.='<td width="500px">';
-                            $wert.=$this->showAstronomyWidget("CHART");
+                            $wert.=$this->showAstronomyWidget("CHART",$entry,$debug);
                             $wert.='</td>';
                             break;
                         case "MOON":
                             $wert.='<td>';
-                            $wert.=$this->showAstronomyWidget("MOON");
+                            $wert.=$this->showAstronomyWidget("MOON",$entry,$debug);
                             $wert.='</td>';
                             break;
                         case "WEATHER":
                             $wert.='<td>';
                             $wert.='<table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showWeatherTable();
+                            $wert .= $this->showWeatherTable(false,$debug);     // statt false können die Wetterdaten übergeben werden
                             $wert.='</table>';
                             $wert.='</td>';
                             break;
                         case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
                             $wert .= '<td>';
-                            $wert .= $this->showTempGroupWidget($debug);
+                            $wert .= $this->showTempGroupWidget($entry,$debug);
                             $wert .= '</td>';             
                             break;
                         case "PICTURE":
                             $wert .= '<td>';
-                            $wert.= $this->showPictureWidget();
+                            $wert.= $this->showPictureWidget(false,$debug);     // statt false könnte das Bild übergeben werden
                             $wert .= '</td>';             
                             break;
                         case "SPECIALREGS":
                             $wert .= '<td>';
-                            $wert.= $this->showSpecialRegsWidget($debug);
+                            $wert.= $this->showSpecialRegsWidget($entry,$debug);
                             $wert .= '</td>';             
                             break;
                         case "TEMPERATURE":
                             $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showTemperatureTable();
+                            $wert .= $this->showTemperatureTable("",$entry,$debug);         // erster Parameter ist colspan als config für table
                             $wert .= '</table></td>';
                             break;
                         default:
-                            if ($debug) echo "   Col $column ".$entry["Name"]."\n";                        
+                            if ($debug) echo "   Col $column ".$entry["Type"]."\n";                        
                             break;
                         }
                     }
@@ -549,7 +592,7 @@
          *
          */
 
-		function showAstronomyWidget($displayType=false,$debug=false)
+		function showAstronomyWidget($displayType=false,$config=false,$debug=false)
 			{
             $wert="";
             $modulname="Astronomy";
@@ -830,18 +873,31 @@
        /******************************************************************
         *
         * umwandeln in eine Pos orientierte Tabelle
+        * Starting point is indexname and widget
+        * return is [posY][posX]=>Widget 
+        *
         */
 
-        function transformConfigWidget($widgetsConf)
+        function transformConfigWidget($widgetsConf,$debug=false)
             {
             $config=array();
-            //print_r($widgetsConf);
+            if ($debug) 
+                {
+                echo "transformConfigWidget:\n";
+                //print_r($widgetsConf);
+                }
             $maxX=3;
             $x=0; $y=0;
             foreach ($widgetsConf as $name => $widget)
                 {
+                $configWidget=array();   
+                configfileParser($widget, $configWidget, ["TYPE","Type"],"Type" ,$name);  
+                configfileParser($widget, $configWidget, ["NAME","Name"],"Name" ,$name);  
+                configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,null); 
+                /*if ($debug) print_r($configWidget);
+                if (isset($widget["Type"])) $wType = $widget["Type"]; else $wType = $name;
                 if (isset($widget["Name"])) $wName = $widget["Name"];
-                else $wName = $name;
+                else $wName = $name;*/
                 if (isset($widget["Pos"])) { $wX=["Pos"][0]; $wY=["Pos"][1]; }
                 else 
                     {
@@ -849,7 +905,8 @@
                     $x++;
                     if ($x==$maxX) {$x=0; $y++; }    
                     }
-                $configWidget["Name"]=$wName;
+                //$configWidget["Type"]=$wType;       // Widget Type    
+                //$configWidget["Name"]=$wName;       // referenziert auf die Config des Widgets
                 $configWidget["Pos"]["X"]=$wX;
                 $configWidget["Pos"]["Y"]=$wY;
                 $config[$wY][$wX]=$configWidget;
@@ -1521,7 +1578,7 @@
          *
          **************************************/
 
-		function showWeatherTable($weather=false)
+		function showWeatherTable($weather=false, $debug=false)
             {
             $wert="";
             if ($weather==false) $weather=$this->getWeatherData();
@@ -1551,18 +1608,19 @@
          *
          **************************************/
 
-		function showTempGroupWidget($debug=false)
+		function showTempGroupWidget($config=false,$debug=false)
             {
             $wert="";
             if (class_exists("DetectTemperatureHandler"))
                 {    
                 $wert .= '<table>';
                 $DetectTemperatureHandler = new DetectTemperatureHandler();
-                $groups = $this->getConfigTempGroupWidget();
+                if ($config===false) $groups = $this->getConfigTempGroupWidget();
+                else $groups=$this->getConfigTempGroupWidget($config["Config"]);
                 if ($debug) 
                     {
                     echo "showTempGroupWidget, DetectTemperatureHandler exists. Konfig is for Group: ".json_encode($groups)."\n";
-                    //print_R($groups);
+                    print_R($groups);
                     //print_r($groupConf);
                     //print_r($this->configuration);
                     }
@@ -1655,12 +1713,19 @@
 
         /* read configuration for showTempGroupWidget */
 
-        function getConfigTempGroupWidget()
+        function getConfigTempGroupWidget($groupsInput=false,$debug=false)
             { 
-            if (isset($this->configuration["GroupTemp"]) ) 
+            if ( ($groupsInput===false) || ($groupsInput===null) )
                 {
-                $groupsConf=$this->configuration["GroupTemp"];
-                $groups=array();
+                if (isset($this->configuration["GroupTemp"]) ) $groupsConf=$this->configuration["GroupTemp"];
+                else $groupsConf=array();
+                }
+            else $groupsConf = $groupsInput;
+
+            $groups=array();
+            //print_r($groupsConf);
+            //if ( (is_array($groupsConf)) && (count($groupsConf)>0) )
+                {
                 foreach ($groupsConf as $index => $groupConf)
                     {
                     if (isset($groupConf["GROUP"])) 
@@ -1673,7 +1738,6 @@
                         }
                     }
                 }
-            else $groups=array();
             return ($groups);
             }
 
@@ -1684,11 +1748,13 @@
          *
          **************************************/
 
-		function showSpecialRegsWidget($debug=false)
+		function showSpecialRegsWidget($config=false,$debug=false)
             {
             $wert = "";
             $wert .= "<table><tr>";
-            $specialRegsConf = $this->getConfigSpecialRegsWidget($debug);
+            if ($config===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
+            else $specialRegsConf=$this->getConfigSpecialRegsWidget($config["Config"],$debug);
+            
             foreach ($specialRegsConf as $index => $config)
                 {
                 if ($debug) echo "Highcharts Ausgabe von $index (".json_encode($config).") : \n"; 
@@ -1729,7 +1795,7 @@
 
                 /* wenn Werte für die Serie aus der geloggten Variable kommen : */
                 $serie['name'] = $config["Name"];
-                $serie['Unit'] = "mbar";                            // sehe ich nicht
+                $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
                 $serie['Id'] = $config["OID"];
                 //$serie['Id'] = 28664 ;
                 $CfgDaten['series'][] = $serie;
@@ -1754,28 +1820,28 @@
 
         /* read configuration for showTempGroupWidget */
 
-        function getConfigSpecialRegsWidget($debug=false)
+        function getConfigSpecialRegsWidget($groupsInput=false,$debug=false)
             { 
-            if (isset($this->configuration["SpecialRegs"]) ) 
+            if ($groupsInput===false)
                 {
-                $specialRegsConf=$this->configuration["SpecialRegs"];
-                if ($debug) echo "getConfigSpecialRegsWidget Configuration analysieren: ".json_encode($specialRegsConf)."\n";
-                $specialRegs=array();
-                foreach ($specialRegsConf as $index => $regsConf)
+                if (isset($this->configuration["SpecialRegs"]) ) $specialRegsConf=$this->configuration["SpecialRegs"];
+                else $specialRegsConf=array();
+                }
+            else $specialRegsConf = $groupsInput;                
+
+            if ($debug) echo "getConfigSpecialRegsWidget Configuration analysieren: ".json_encode($specialRegsConf)."\n";
+            $specialRegs=array();
+            foreach ($specialRegsConf as $index => $regsConf)
+                {
+                configfileParser($specialRegsConf[$index], $specialRegs[$index], ["OID"],"OID",null); 
+                if ($regsConf["OID"] != null) 
                     {
-                    if (isset($regsConf["OID"])) 
-                        {
-                        $specialRegs[$index]["OID"]=$regsConf["OID"];
-                        if (isset($regsConf["Dauer"])) $specialRegs[$index]["Duration"]=$regsConf["Dauer"];
-                        else $specialRegs[$index]["Duration"]=259200;           //3 Tage ist Default
-                        if (isset($regsConf["Name"])) $specialRegs[$index]["Name"]=$regsConf["Name"];
-                        else $specialRegs[$index]["Name"]=$index;
-                        if (isset($regsConf["Unit"])) $specialRegs[$index]["Unit"]=$regsConf["Unit"];
-                        else $specialRegs[$index]["Unit"]="values";
-                        }
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Dauer","Duration"],"Duration",259200);         //3 Tage ist Default
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME"]     ,"Name",$index);        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Unit","UNIT"]     ,"Unit","values");        
                     }
                 }
-            else $specialRegs=array();
+            if ($debug) print_r($specialRegs);
             return ($specialRegs);
             }
 
@@ -1784,17 +1850,93 @@
         /********************
          *
          * Zelle Tabelleneintrag für die Tabelle für Innen und Aussentemperatur
-         * macht 2 Zeilen mit jeweils 2 Zellen
+         * macht zumindest 2 Zeilen mit jeweils 2 Zellen
+         * ausgelegt als Aufruf als Widget
+         *
+         * es gibt auch eine Konfiguration
          *
          **************************************/
 
-		function showTemperatureTable($colspan="")
+		function showTemperatureTable($colspan="",$config=false,$debug=false)
             {
+            if ($config===false) $tempTableConf = $this->getTempTableConf(false,$debug);
+            else $tempTableConf=$this->getTempTableConf($config["Config"],$debug);
+
             $wert="";
             $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
             $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-            $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+
+            if ( ($tempTableConf===null) || (count($tempTableConf)==0) )
+                {
+                if ($debug) echo "Keine Konfiguration angegeben. So wie früher die beiden functions einlesen.\n";    
+                /* get Variables */
+                $innen="innentemperatur";
+                if (function_exists($innen)) $this->innentemperatur=$innen();				
+                $aussen="aussentemperatur";
+                if (function_exists($aussen)) $this->aussentemperatur=$aussen();
+                $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+                }
+            else
+                {    
+                //print_R($tempTableConf);
+                foreach ($tempTableConf as $entry) 
+                    {
+                    //print_r($entry);
+                    $aussen="unknown";$innen="unknown";
+                    if (isset($entry["Aussen"]["FUNCTION"])) $aussen=$entry["Aussen"]["FUNCTION"]();
+                    if (isset($entry["Aussen"]["OID"])) $aussen=GetValue($entry["Aussen"]["OID"]);
+                    if (isset($entry["Innen"]["FUNCTION"])) $innen=$entry["Innen"]["FUNCTION"]();
+                    if (isset($entry["Innen"]["OID"])) $innen=GetValue($entry["Innen"]["OID"]);
+                    if (isset($entry["Unit"])) $unit=$entry["Unit"];
+                    $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.$aussen.$unit.'</aussen></td><td align="center"> <innen>'.$innen.$unit.'</innen> </td></tr>';
+
+                    }
+                }
             return ($wert);
+            }
+
+        /* read configuration for showTempGroupWidget */
+
+        function getTempTableConf($groupsInput=false,$debug=false)
+            { 
+            if ($groupsInput===false)
+                {
+                if (isset($this->configuration["Temperature"]) ) $tempConf=$this->configuration["Temperature"];
+                else $tempConf=array();
+                }
+            else $tempConf = $groupsInput;                
+
+            if ($debug) echo "getTempTableConf Configuration analysieren: ".json_encode($tempConf)."\n";
+            $config=array();
+            $indexNum = 0;
+
+            if ($groupsInput===null) return ($config);
+
+            foreach ($tempConf as $index => $regsConf)
+                {
+                $config[$indexNum]["name"] = $index;
+                configfileParser($tempConf[$index], $config[$indexNum], ["Innen"],"Innen",null);
+                configfileParser($tempConf[$index], $config[$indexNum], ["Aussen"],"Aussen",null);
+                configfileParser($tempConf[$index], $config[$indexNum], ["Unit"],"Unit","");
+                $config[$indexNum]["Innen"] = $this->analyseEntry($config[$indexNum]["Innen"]);
+                $config[$indexNum]["Aussen"] = $this->analyseEntry($config[$indexNum]["Aussen"]);
+                $indexNum++; 
+                }
+            if ($debug) print_r($config);
+            return ($config);
+            }
+
+        function analyseEntry($value)
+            {
+            $analyze=array();
+            if (is_numeric($value)) 
+                {
+                if (IPS_ObjectExists ($value)) $analyze["OID"]=$value;
+                //echo "Wert ist Numerisch : \n";
+                }
+            elseif (function_exists($value)) $analyze["FUNCTION"]=$value;
+            else echo "Nicht bekannter Wert, vielleicht IPSHeat ?\n";
+            return ($analyze); 
             }
 
 

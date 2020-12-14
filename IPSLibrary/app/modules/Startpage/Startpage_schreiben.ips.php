@@ -186,8 +186,7 @@ SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$
 	{
     echo "\n================================================================\n"; 
 	echo "Execute aufgerufen:\n";
-	echo "\nKonfigurationseinstellungen:\n";
-	print_r($configuration);
+	//echo "\nKonfigurationseinstellungen:\n"; print_r($configuration);
 
 	$pname="StartpageControl";
     echo "Variable SwitchScreen mit Profil \"$pname\" hat OID: $vid \n";

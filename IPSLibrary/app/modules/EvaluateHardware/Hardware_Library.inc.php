@@ -601,7 +601,7 @@ class Hardware
         {
         foreach ($statistics as $name => $device)
             {
-            echo "   $name    ".$device["Count"]." \n";
+            echo "   ".str_pad($name,26).$device["Count"]." \n";
             //print_R($device);
             foreach ($device as $type => $register)
                 {
@@ -610,7 +610,7 @@ class Hardware
                     case "Count":
                         break;
                     default:    
-                        echo "      $type  ".$register["Count"]."   \n";
+                        echo "      ".str_pad($type,32).$register["Count"]."   \n";
                         break;
                     }    
                 }

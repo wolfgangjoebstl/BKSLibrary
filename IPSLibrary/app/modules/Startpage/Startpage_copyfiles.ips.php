@@ -48,11 +48,24 @@
     $startpage = new StartpageHandler();         
    	$configuration = $startpage->getStartpageConfiguration();
 	$bilderverzeichnis=$configuration["Directories"]["Pictures"];
+	$imageverzeichnis=$configuration["Directories"]["Images"];
+	$iconverzeichnis=$configuration["Directories"]["Icons"];
 
     $dosOps= new dosOps();
 
-	$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
+    /* Zielverzeichnis für die Startpage Bilder erstellen */
+   	$picturedir = $startpage->picturedir;
 	$dosOps->mkdirtree($picturedir);
+   	$imagedirM = $startpage->imagedir."/mond/";
+	$dosOps->mkdirtree($imagedirM);
+   	$imagedirMT = $startpage->imagedir."/mondtransparent/";
+	$dosOps->mkdirtree($imagedirMT);
+    $icondir = $startpage->icondir."/start/";
+	$dosOps->mkdirtree($icondir);
+
+
+	//$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
+    //echo "Zum Vergleich $picturedir   und $check \n";
 
 
 /***************************************************************************************************
@@ -62,87 +75,16 @@
  *
  *******************************/
 
-echo "Bilderverzeichnis auslesen und kopieren : ".$bilderverzeichnis."\n";
-$bilderverzeichnis = str_replace('\\','/',$bilderverzeichnis);
+$iconverzeichnis = $iconverzeichnis."/start/";
+copyIfNeeded($iconverzeichnis,$icondir);           // true debug
 
-$file=array();
-if ( is_dir ( $bilderverzeichnis ) )
-	{
-	$handle=opendir ($bilderverzeichnis);
-	$i=0;
-	while ( false !== ($datei = readdir ($handle)) )
-		{
-		if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
-			{
-			$i++;
-	 		$file[$i]=$datei;
-			}
-		}
-	closedir($handle);
-	//print_r($file);
-	}/* ende if isdir */
-else
-	{
-	echo "Kein Verzeichnis mit dem Namen \"".$bilderverzeichnis."\" vorhanden.\n";
-	$dirstruct=explode("/",$bilderverzeichnis);
-	//print_r($dirstruct);
-	$directoryPath="";
-	foreach ($dirstruct as $directory)
-		{
-		$directoryOK=$directoryPath;
-		$directoryPath.=$directory."/";
-		if ( is_dir ( $directoryPath ) ) {;}
-		else
-			{
-			if ($directory !=="") echo "Error : ".$directory." is not in ".$directoryOK."\n";
-			}
-		//echo $directoryPath."\n";
-		} 
-	$dosOps->mkdirtree($bilderverzeichnis);	
-	}
+$imageverzeichnisMond = $imageverzeichnis."/mond/";                       // mond und mondtransparent
+copyIfNeeded($imageverzeichnisMond,$imagedirM);           // true debug
 
-$check=array();
-$handle=opendir ($picturedir);
-while ( false !== ($datei = readdir ($handle)) )
-	{
-	if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($picturedir.$datei) == false)) 
-		{
-		$check[$datei]=true;
-		}
-	}
-closedir($handle);
+$imageverzeichnisMondTransparent = $imageverzeichnis."/mondtransparent/";                       // mond und mondtransparent
+copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
 
-
-foreach ($file as $filename)
-	{
-	if ( isset($check[$filename]) == true )
-		{
-		$check[$filename]=false;
-		//echo "Datei ".$filename." in beiden Verzeichnissen.\n";
-		}
-	if ( is_file($bilderverzeichnis.$filename)==true )
-		{	
-		//echo "copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
-		copy($bilderverzeichnis.$filename,$picturedir.$filename);
-		}
-	}
-
-echo "Verzeichnis für Anzeige auf Startpage:\n";	
-$i=0;
-foreach ($check as $filename => $delete)
-	{
-	if ($delete == true)
-		{
-		echo "Datei ".$filename." wird gelöscht.\n";
-		}
-	else
-		{
-		echo "   ".$filename."\n";
-		$i++;		
-		}	
-	}	
-echo "insgesamt ".$i." Dateien.\n";
-
+copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
 
 
 if (false)
@@ -182,5 +124,116 @@ if (false)
 	echo "Es spielt jetzt ".$radioName." von ".$radioUrl."\n";
 	}
 //NetPlayer_Power(false);
+
+	/**************************************************************************************************************************
+	 *
+	 *   praktische Functions, so ähnlich auch in AllgemeineDefinitionen
+	 *
+	 */
+
+    /* Verzeichnis erstellen oder Dateien aus dem Verzeichnis einlesen */
+
+    function readSourceDir($bilderverzeichnis,$debug=false)
+        {
+        $dosOps= new dosOps();
+        $file=array();
+        if ( is_dir ( $bilderverzeichnis ) )
+            {
+            $handle=opendir ($bilderverzeichnis);
+            $i=0;
+            while ( false !== ($datei = readdir ($handle)) )
+                {
+                if ($debug)
+                    {
+                    if (is_dir($bilderverzeichnis.$datei)) echo "Dir  | $datei\n";
+                    else echo "File | $datei\n";
+                    }
+                if ( ($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($bilderverzeichnis.$datei) == false) )  
+                    {
+                    $i++;
+                    $file[$i]=$datei;
+                    }
+                }
+            closedir($handle);
+            //print_r($file);
+            }/* ende if isdir */
+        else
+            {
+            echo "Kein Verzeichnis mit dem Namen \"".$bilderverzeichnis."\" vorhanden.\n";
+            $dirstruct=explode("/",$bilderverzeichnis);
+            //print_r($dirstruct);
+            $directoryPath="";
+            foreach ($dirstruct as $directory)
+                {
+                $directoryOK=$directoryPath;
+                $directoryPath.=$directory."/";
+                if ( is_dir ( $directoryPath ) ) {;}
+                else
+                    {
+                    if ($directory !=="") echo "Error : ".$directory." is not in ".$directoryOK."\n";
+                    }
+                //echo $directoryPath."\n";
+                } 
+            $dosOps->mkdirtree($bilderverzeichnis);	
+            }
+        return ($file);
+        }
+
+    /* read dir to check */
+    function readDirtoCheck($picturedir)
+        {
+        $check=array();
+        $handle=opendir ($picturedir);
+        while ( false !== ($datei = readdir ($handle)) )
+            {
+            if (($datei != ".") && ($datei != "..") && ($datei != "Thumbs.db") && (is_dir($picturedir.$datei) == false)) 
+                {
+                $check[$datei]=true;
+                }
+            }
+        closedir($handle);
+        return ($check);
+        }
+
+    function copyIfNeeded($bilderverzeichnis,$picturedir,$debug=false)
+        {
+        $bilderverzeichnis = str_replace(['\\','//','\\\\','\/'],'/',$bilderverzeichnis);
+        $picturedir = str_replace(['\\','//','\\\\','\/'],'/',$picturedir);
+
+        $file = readSourceDir($bilderverzeichnis);
+        echo "Insgesamt ".count($file)." Files aus dem Bilderverzeichnis $bilderverzeichnis eingelesen, wenn notwendig nach $picturedir synchronisieren:\n";
+        //print_R($file);
+        $check = readDirtoCheck($picturedir);
+
+        foreach ($file as $filename)
+            {
+            if (isset($check[$filename]))
+                {
+                $check[$filename]=false;
+                if ($debug) echo "Datei ".$filename." in beiden Verzeichnissen. nichts tun\n";
+                }
+            elseif ( is_file($bilderverzeichnis.$filename)==true )
+                {	
+                echo "   copy ".$bilderverzeichnis.$filename." nach ".$picturedir.$filename." \n";	
+                copy($bilderverzeichnis.$filename,$picturedir.$filename);
+                }
+            }
+
+        //if ($debug) echo "Verzeichnis für Anzeige auf Startpage synchronisieren:\n";	
+        $i=0;
+        foreach ($check as $filename => $delete)
+            {
+            if ($delete == true)
+                {
+                echo "     delete Datei ".$filename." \n";
+                }
+            else
+                {
+                //if ($debug) echo "   ".$filename."\n";
+                $i++;		
+                }	
+            }	
+        //if ($debug) echo "insgesamt ".$i." Dateien.\n";
+        }
 
 ?>

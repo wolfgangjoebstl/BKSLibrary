@@ -6840,9 +6840,9 @@ class DeviceManagement
                         {
                         $lastUpdate=IPS_GetVariable($childrens[0])["VariableChanged"];
                         $noUpdate=time()-$lastUpdate;
-                        if ( $noUpdate > (24*60*60) ) 
+                        if ( $noUpdate > (48*60*60) )           // Abfragen für Fehlermeldungen etwas entschärft
                             {
-                            if ( $noUpdate > (50*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
+                            if ( $noUpdate > (100*60*60) )           // schwerer Fehler, wenn das Update mehrere Tage lang nicht durchgeht
                                 {
                                 IPSLogger_Err(__file__, "HMI_CreateReport needs update. Last update was ".date("d.m.y H:i:s",$lastUpdate).". CCU might had crashed. Please check.");
                                 }

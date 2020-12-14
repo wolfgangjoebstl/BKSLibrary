@@ -64,6 +64,10 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 
     $archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
+    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
+    $operate=new AutosteuerungOperator($debug);
+    $auto=new Autosteuerung();
+
 /********************************************************************************************
  *
  * es gibt 4 verschiedene Logging Registersets
@@ -73,12 +77,8 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
  * wird mit dem construct automatisch aufgebaut.
  *
  ********************************************************************************************/
- 
-    $setup = Autosteuerung_Setup();
-    if ( isset($setup["LogDirectory"]) == false )
-        {
-        $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
-        }
+
+ 	$setup = $register->get_Configuration();
 
 	$NachrichtenIDAuto=IPS_GetCategoryIDByName("Nachrichtenverlauf-Autosteuerung",$CategoryIdData);
     $NachrichtenInputID=IPS_GetVariableIDByName("Nachricht_Input",$NachrichtenIDAuto);
@@ -150,9 +150,6 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
     $speak_config=Autosteuerung_Speak();
 
     $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);
-    $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-    $operate=new AutosteuerungOperator($debug);
-    $auto=new Autosteuerung();
 
     $simulation=new AutosteuerungAnwesenheitssimulation("Anwesenheitssimulation.csv");  // automatisch eigenen File und Nachrichtenspeicher anlegen
     // Regler ist auch eine Autosteuerungsfunktion
@@ -419,9 +416,10 @@ if ($_IPS['SENDER']=="TimerEvent")
 			$AWSFunktionStatus=( ($Anwesenheitssimulation==1) || ( ($Anwesenheitssimulation==2) && ($StatusAnwesend==false) ));
 			if ( $AWSFunktionStatus ) 
 				{
+				//IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
+
 				//Anwesenheitssimulation aktiv, bedeutet ein (1) oder auto (2), bei auto wird bei Anwesenheit nicht simuliert
 				//echo "\nAnwesenheitssimulation eingeschaltet. \n";
-				IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
 				//$log_Anwesenheit->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
 				//$log_Anwesenheit->LogNachrichten('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');		
 				//$simulation->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion aktiviert.');
@@ -430,7 +428,8 @@ if ($_IPS['SENDER']=="TimerEvent")
 				}
 			else
 				{
-				IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion nicht aktiv.');
+				//IPSLogger_Dbg(__file__, 'Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion nicht aktiv.');
+
 				//$log_Anwesenheit->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion NICHT aktiviert.');
 				//$log_Anwesenheit->LogNachrichten('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion NICHT aktiviert.');		
 				//$simulation->LogMessage('Aufruf Autosteuerung Timer von '.$_IPS['EVENT']."(".IPS_GetName($_IPS['EVENT']).') , AWS Funktion NICHT aktiviert.');
@@ -447,95 +446,95 @@ if ($_IPS['SENDER']=="TimerEvent")
                         }
                     else
                         {                        
-					$statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
-					$counterID = CreateVariable($scene["NAME"]."_Counter", 1, $AnwesenheitssimulationID, 0, "",null,null,""  );
-                    AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
-					AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
-					IPS_ApplyChanges($archiveHandlerID);
-					if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
-						{
-						/*****************************************************
-						 *
-						 * Typ Anwesenheitssimulation
-						 *
-						 * wird alle 5 Minuten aufgerufen. Egal ob Register bereits vorher eingeschaltet wurde.
-						 *
-						 */
-						if ( $AWSFunktionStatus ) 
- 							{
-							SetValue($StatusAnwesendZuletztID,true);
-							$switch = $auto->timeright($scene);
-							$now = time();
-							if ($switch)
-					 			{
-								$counter=GetValue($counterID);
-								if ($counter == 0)
-									{
-                                    $text=$auto->switchAWS(true,$scene);
+                        $statusID  = CreateVariable($scene["NAME"]."_Status",  1, $AnwesenheitssimulationID, 0, "AusEin",null,null,""  );
+                        $counterID = CreateVariable($scene["NAME"]."_Counter", 1, $AnwesenheitssimulationID, 0, "",null,null,""  );
+                        AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
+                        AC_SetAggregationType($archiveHandlerID,$statusID,0);      /* normaler Wwert */
+                        IPS_ApplyChanges($archiveHandlerID);
+                        if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
+                            {
+                            /*****************************************************
+                            *
+                            * Typ Anwesenheitssimulation
+                            *
+                            * wird alle 5 Minuten aufgerufen. Egal ob Register bereits vorher eingeschaltet wurde.
+                            *
+                            */
+                            if ( $AWSFunktionStatus ) 
+                                {
+                                SetValue($StatusAnwesendZuletztID,true);
+                                $switch = $auto->timeright($scene);
+                                $now = time();
+                                if ($switch)            // Aufforderung zum Schalten bekommen
+                                    {
+                                    $counter=GetValue($counterID);
+                                    if ($counter == 0)
+                                        {
+                                        $text=$auto->switchAWS(true,$scene);
+                                        if ($text != "")
+                                            {           /* intensives Logging nur wenn Timer nicht schon aktiv ist */                        
+                                            echo "    ".$text."\n";
+                                            $simulation->LogMessage($text.'. '.json_encode($scene));
+                                            $simulation->LogNachrichten($text);
+                                            }
+                                        } /* Ende Counter abgelaufen */	
+                                    else
+                                        {
+                                        /* counter um 5 Minuten reduzieren */
+                                        if ($counter>4)	{ $counter-=5; }
+                                        if ($counter<5) {$counter=0;}
+                                        SetValue($counterID,$counter);
+                                        }			
+                                    }  /* ende switch */
+                                }	/*ende AWS eingeschaltet */
+                            else
+                                {
+                                /* wenn die Anwesenheitssimulation ausgeschaltet wird, etwas unternehmen */
+                        
+                                /* nur bei Änderung des Status etwas unternehmen */
+                                if (GetValue($StatusAnwesendZuletztID)==true)
+                                    {	
+                                    $EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
+                                    if ($EreignisID != false)
+                                        {
+                                        IPS_SetEventActive($EreignisID,false);
+                                        }
+                                    /* aber auch die Lampen ausschalten, sonst bleiben sie eingeschaltet */
+                                    $text=$auto->switchAWS(false,$scene);       /* Status und aktuelle Szene übergeben */
                                     if ($text != "")
                                         {           /* intensives Logging nur wenn Timer nicht schon aktiv ist */                        
-    									echo "    ".$text."\n";
-	    								$simulation->LogMessage($text.'. '.json_encode($scene));
-		    							$simulation->LogNachrichten($text);
+                                        echo "    ".$text." ausschalten, es ist Ende AWS\n";
+                                        $simulation->LogMessage($text.' .'.json_encode($scene));
+                                        //$simulation->LogNachrichten($text.' .'.json_encode($scene));
+                                        $simulation->LogNachrichten($text);
                                         }
-									} /* Ende Counter abgelaufen */	
-								else
-									{
-									/* counter um 5 Minuten reduzieren */
-									if ($counter>4)	{ $counter-=5; }
-									if ($counter<5) {$counter=0;}
-									SetValue($counterID,$counter);
-									}			
-								}  /* ende switch */
-							}	/*ende AWS eingeschaltet */
-						else
-							{
-							/* wenn die Anwesenheitssimulation ausgeschaltet wird, etwas unternehmen */
-					
-							/* nur bei Änderung des Status etwas unternehmen */
-							if (GetValue($StatusAnwesendZuletztID)==true)
-								{	
-								$EreignisID = @IPS_GetEventIDByName($scene["NAME"]."_EVENT", IPS_GetParent($_IPS['SELF']));
-								if ($EreignisID != false)
-									{
-									IPS_SetEventActive($EreignisID,false);
-									}
-								/* aber auch die Lampen ausschalten, sonst bleiben sie eingeschaltet */
-                                $text=$auto->switchAWS(false,$scene);       /* Status und aktuelle Szene übergeben */
+                                    SetValue($StatusAnwesendZuletztID,false);	
+                                    }
+                                } /*ende AWS ausgeschaltet */
+                            } /* Ende AWS Szene */
+                        else
+                            {
+                            /*****************************************************
+                            *
+                            * Typ normale Timersteuerung
+                            *
+                            * Auch wenn das Event eigentlich nur am Anfang und am Ende durchlaufen werden muesste, wird alle 5 Minuten geprüft und gesetzt !
+                            * Die Variable wird nur gesetzt, das ausschalten erfolgt mit einem eigenen Timer
+                            *
+                            */
+                            $switch = $auto->timeright($scene);
+                            if ($switch)
+                                {
+                                $text=$auto->switchAWS(true,$scene); 
                                 if ($text != "")
                                     {           /* intensives Logging nur wenn Timer nicht schon aktiv ist */                        
-    								echo "    ".$text." ausschalten, es ist Ende AWS\n";
-	    							$simulation->LogMessage($text.' .'.json_encode($scene));
-		    						//$simulation->LogNachrichten($text.' .'.json_encode($scene));
+                                    echo "    ".$text."\n";
+                                    //$simulation->LogMessage($text.json_encode($scene));
+                                    $simulation->LogMessage($text);								
                                     $simulation->LogNachrichten($text);
-                                    }
-								SetValue($StatusAnwesendZuletztID,false);	
-								}
-							} /*ende AWS ausgeschaltet */
-						} /* Ende AWS Szene */
-					else
-						{
-						/*****************************************************
-						 *
-						 * Typ normale Timersteuerung
-						 *
-						 * Auch wenn das Event eigentlich nur am Anfang und am Ende durchlaufen werden muesste, wird alle 5 Minuten geprüft und gesetzt !
-                         * Die Variable wird nur gesetzt, das ausschalten erfolgt mit einem eigenen Timer
-						 *
-						 */
-						$switch = $auto->timeright($scene);
-						if ($switch)
-				 			{
-                            $text=$auto->switchAWS(true,$scene); 
-                            if ($text != "")
-                                {           /* intensives Logging nur wenn Timer nicht schon aktiv ist */                        
-    							echo "    ".$text."\n";
-	    						//$simulation->LogMessage($text.json_encode($scene));
-					    		$simulation->LogMessage($text);								
-		    					$simulation->LogNachrichten($text);
-                                }    
-							}  /* ende switch */
-						}	/* ende ifelse AWS */	
+                                    }    
+                                }  /* ende switch */
+                            }	/* ende ifelse AWS */	
                         }   /* ende Status aktiv */	
 					}   /* ende isset Type */		
 				} /* end of foreach */

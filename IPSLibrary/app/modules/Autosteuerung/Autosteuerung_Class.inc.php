@@ -129,15 +129,58 @@ class AutosteuerungHandler
 		private static $eventConfigurationAuto = array();
 		private static $scriptID;
 
+        protected $configuration;       // die Konfiguration
+
 		/**
 		 * @public
 		 *
 		 * Initialisierung des IPSMessageHandlers
 		 *
 		 */
-		public function __construct($scriptID) {
+		public function __construct($scriptID=false) 
+            {
+            if ($scriptID===false)
+                {
+                $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+                if (!isset($moduleManager)) 
+                    {
+                    IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+                    $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+                    }
+                $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+                $scriptID  = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);                    
+                }    
+            $this->configuration = $this->set_Configuration();
 			self::$scriptID=$scriptID;
-		}
+		    }
+
+        /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
+
+        private function set_Configuration()
+            {
+            $config=array();
+            if ((function_exists("Autosteuerung_Setup"))===false) IPSUtils_Include ('Autosteuerung_Configuration.inc.php', 'IPSLibrary::config::modules::Autosteuerung');				
+            if (function_exists("Autosteuerung_Setup"))
+                {
+            	$configInput = Autosteuerung_Setup();
+                configfileParser($configInput, $config, ["LogDirectory" ],"LogDirectory" ,"/Autosteuerung/");  
+                configfileParser($configInput, $config, ["HeatControl" ],"HeatControl" ,null);  
+                $dosOps = new dosOps();
+               	$systemDir     = $dosOps->getWorkDirectory(); 
+                if (strpos($config["LogDirectory"],"C:/Scripts/")===0) $config["LogDirectory"]=substr($config["LogDirectory"],10);      // Workaround für C:/Scripts"
+                $config["LogDirectory"] = $dosOps->correctDirName($systemDir.$config["LogDirectory"]);
+                $configInput=$config;
+                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
+                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
+                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
+                }
+            return ($config);
+            }
+
+        public function get_Configuration()
+            {
+            return ($this->configuration);
+            }
 
 		/**
 		 * @private
@@ -1435,7 +1478,8 @@ class Autosteuerung
 	var $CategoryIdData, $CategoryIdApp;
 	var $CategoryId_Ansteuerung, $CategoryId_Status;        // werden immer in Install generiert
 	var $availableModules;							// eigentlich Liste aller GUIDs der Module, für check ob Parameter ein gültige Modul GID hat
-	
+    var $configuration;                     // die Konfiguration
+
 	var $log;										// logging class, called with this class
 	
 	var $CategoryId_Anwesenheit, $CategoryId_Alarm;	
@@ -1507,24 +1551,20 @@ class Autosteuerung
 		$NachrichtenID = $object_data->osearch("Nachricht");
 		$NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
+        $this->configuration = $this->set_Configuration();
 		if (isset($NachrichtenScriptID))
 			{
-			$setup = Autosteuerung_Setup();
-			if ( isset($setup["LogDirectory"]) == false )
-				{
-				$setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
-				}	
 			$object3= new ipsobject($NachrichtenID);
 			$NachrichtenInputID=$object3->osearch("Input");
 			/* logging in einem File und in einem String am Webfront */
-			$this->log=new Logging($setup["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");			
+			$this->log=new Logging($this->configuration["LogDirectory"]."Autosteuerung.csv",$NachrichtenInputID,IPS_GetName(0).";Autosteuerung;");			
 			}
 		else echo "!!!!!FEHLER: Logging Funktion nicht gefunden.\n";
 		
 		/* speziell fuer Anwesenheitserkennung */
 		$this->CategoryId_Anwesenheit			= @IPS_GetObjectIDByName("Anwesenheitserkennung",$this->CategoryId_Ansteuerung);
 		if ($this->CategoryId_Anwesenheit === false)
-			{
+			{ 
 			$this->CategoryId_SchalterAnwesend	= false;
 			}
 		else
@@ -1602,6 +1642,21 @@ class Autosteuerung
 			}									
 		}
 
+
+    /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
+
+    private function set_Configuration()
+        {
+        $autosteuerungHandler = new AutosteuerungHandler();         // nur zum Configuration einlesen anlegen
+        $setup = $autosteuerungHandler->get_Configuration();
+        return ($setup);
+        }
+
+    public function get_Configuration()
+        {
+        return ($this->configuration);
+        }
+
 	/* welche AutosteuerungsFunktionen sind aktiviert:
      * unter data.modules.Autosteuerung.Ansteuerung alle bekannten Variablen auswerten und den Status zurückmelden
      * Bekannt sind derzeit
@@ -1643,9 +1698,9 @@ class Autosteuerung
 					$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($alarmID);					
 					break;					
 				case "Stromheizung":
-					/* es gibt keinen Schalter der unter dem Hauptschalter noch zusaetzlich verwendet wird */
+					/* es gibt keinen Schalter der unter dem Hauptschalter noch zusaetzlich verwendet wird, Hauptzschalter steht als VALUE und VALUE_F zur Verfügung */
 					//$heatID=IPS_GetVariableIDByName("Stromheizung",$ID);
-					//$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($heatID);					
+					//$children[IPS_GetName($ID)]["STATUS"]=(integer)GetValue($heatID);
 					break;					
 				case "Alexa":				
 					/* es gibt keinen Schalter der unter dem Hauptschalter noch zusaetzlich verwendet wird */
@@ -1800,30 +1855,40 @@ class Autosteuerung
 			}		
 		}
 		
-	/* laut Wochenplan wird heute geheizt ? */	
+	/* laut Wochenplan wird heute geheizt ? 
+     *
+     * entweder auf getFunctions vertrauen und Status auswerten oder
+     * selbst erfassen
+     *
+     */	
 		
-	public function isitheatday()
+	public function isitheatday($debug=false)
 		{
 		$status=false;
 		$functions=self::getFunctions();
-		if ( isset($functions["Stromheizung"]["STATUS"]) )
+		if ( isset($functions["Stromheizung"]["STATUS"]) )              // es gibt einen Untergeordneten Schalter zum Ein oder Ausschalten
 			{
+            if ($debug) echo "Autosteuerung::isitheatday, getFunctions stellt Status bereits zur Verfügung.\n";
 			if ($functions["Stromheizung"]["STATUS"] == 0) { $status=true; }
 			}
-		else
-			{
-			/* der Status wurde nicht zentral ermittelt, selbst erfassen */
-			$found=@IPS_GetObjectIDByName("Zeile1",IPS_GetParent($this->CategoryId_Wochenplan));			
-			if ($found!== false) 
-				{
-				//$property=IPS_GetObject($found);
-				//if ( $property["ObjectType"]==6 ) $status=(integer)GetValue(IPS_GetLink($found)["TargetID"]);
-				$status=(integer)GetValue($found);
-				//echo "    Status Heiztag : ".($status?"JA":"NEIN")."\n";
-				}				
-			//print_r($childrenIDs);
-			return ($status);		
-			}	
+		elseif ( isset($functions["Stromheizung"]["VALUE_F"]) )              // Stromheizung mode Ein/Aus/Auto
+            {
+            if ($functions["Stromheizung"]["VALUE_F"]=="Auto")
+                {
+                /* der Status wurde nicht zentral ermittelt, selbst erfassen */
+                $found=@IPS_GetObjectIDByName("Zeile1",IPS_GetParent($this->CategoryId_Wochenplan));			
+                if ($found!== false) 
+                    {
+                    //$property=IPS_GetObject($found);
+                    //if ( $property["ObjectType"]==6 ) $status=(integer)GetValue(IPS_GetLink($found)["TargetID"]);
+                    $status=(integer)GetValue($found);
+                    if ($debug) echo "Autosteuerung::isitheatday,Status Heiztag : ".($status?"JA":"NEIN")."  ($status)\n";
+                    }				
+                //print_r($childrenIDs);
+                }
+            elseif ($functions["Stromheizung"]["VALUE_F"]=="Ein") $status=true;
+            }
+		return ($status);		
 		}		
 
 	/* gibt die Sonnenauf- und -untergangszeiten aus */
@@ -5094,7 +5159,9 @@ class Autosteuerung
                 IPSHeat_SetGroupByName($scene["EVENT_IPSHEAT_GRP"], true);
                 $command='include(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php");'."\n".'SetValue('.$statusID.',false);'."\n".'IPSHeat_SetGroupByName("'.$scene["EVENT_IPSHEAT_GRP"].'", false);'."\n".'$log_Autosteuerung->LogMessage("Befehl Timer für IPSHeat Gruppe '.$scene["EVENT_IPSHEAT_GRP"].' wurde abgeschlossen.");';
                 }
-            $status=$this->getEventTimerStatus($scene["NAME"]);     // keine Textausgabe wenn Timer bereits gesetzt    
+
+            $status=$this->getEventTimerStatus($scene["NAME"]."_EVENT");     // keine Textausgabe wenn Timer bereits gesetzt    
+            echo "   getEventTimerStatus(".$scene["NAME"]."_EVENT) liefert Status : $status\n";
 			if ($scene["EVENT_CHANCE"]==100)
 				{
 				//echo "feste Ablaufzeit, keine anderen Parameter notwendig.\n";
@@ -5139,7 +5206,7 @@ class Autosteuerung
                 }
 			//SetValue($StatusAnwesendZuletztID,false);	
             }
-        if ($status) return("");
+        if ($status) return("");            // Logging reduzoeren, nicht alles aufzeichnen
         else return($text);
         }   
 
@@ -5383,6 +5450,22 @@ abstract class AutosteuerungFunktionen
      *
 	 ****************************************************************************/
 	
+
+    /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
+
+    protected function set_Configuration()
+        {
+        $autosteuerungHandler = new AutosteuerungHandler();         // nur zum Configuration einlesen anlegen
+        $setup = $autosteuerungHandler->get_Configuration();
+        //echo "Aufruf von ".get_class()."::set_Configuration().\n"; print_R($setup);
+        return ($setup);
+        }
+
+    public function get_Configuration()
+        {
+        return ($this->configuration);
+        }
+
 	function Init()
 		{
 		IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');		
@@ -5400,32 +5483,33 @@ abstract class AutosteuerungFunktionen
 		$categoryId_WebFront         = CreateCategoryPath($WFC10_Path);		
 		}	
 		
-	function InitLogMessage()
+	function InitLogMessage($debug=false)
 		{
-		//echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
+		if ($debug) echo "Initialisierung ".get_class($this)." mit Logfile: ".$this->log_File." mit Meldungsspeicher: ".$this->script_Id." \n";
+        $logging = new Logging();	
+        $log_ConfigFile = $logging -> get_IPSComponentLoggerConfig();	
 		//var_dump($this);
 		if ($this->log_File=="No-Output")
 			{
-			/* kein Logfile anlegen */
+			if ($debug) 
+                {
+                echo "   kein Logfile anlegen.\n";
+                print_R($log_ConfigFile);
+                }
 			}
 		else
-			{	
-			$log_ConfigFile=get_IPSComponentLoggerConfig();	
+			{
 			if (!file_exists($this->log_File))
 				{
 				/* Pfad aus dem Dateinamen herausrechnen. Wenn keiner definiert ist einen aus dem Configfile nehmen und sonst mit Default arbeiten */
 				//echo "construct class Anwesenheitssimulation, File ".$this->logfile." existiert nicht. Mit Verzeichnis gemeinsam anlegen.\n";
 				$FilePath = pathinfo($this->log_File, PATHINFO_DIRNAME);
-				//echo "Verzeichnis für Logfile : ".PATHINFO_DIRNAME.$FilePath."\n";				
+				if ($debug) echo "Verzeichnis für Logfile : ".PATHINFO_DIRNAME.$FilePath."\n";				
 				if ($FilePath==".") 
 					{
 					//echo "Es existiert kein Filepath, einen aus der config nehmen oder annehmen und hinzufügen\n";
 					//print_r($log_ConfigFile);
-					if (isset($log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"])==true)
-						{
-						$FilePath=$log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"];
-						}
-					else $FilePath="C:/Scripts/";	
+					$FilePath=$log_ConfigFile["LogDirectories"]["AnwesenheitssimulationLog"];
 					$this->log_File=$FilePath.$this->log_File;
 					}
 				if (!file_exists($FilePath)) 
@@ -5530,9 +5614,12 @@ class AutosteuerungRegler extends AutosteuerungFunktionen
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
+    protected $configuration;                   // Configuration from Config File
+
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
 		
 		/******************************* Init *********/
 		$this->log_File=$logfile;
@@ -5625,9 +5712,14 @@ class AutosteuerungAnwesenheitssimulation extends AutosteuerungFunktionen
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
+    protected $configuration;                   // Configuration from Config File
+
+    /**************************/
+
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
 		
 		/******************************* Init *********/
 		$this->log_File=$logfile;
@@ -5722,9 +5814,14 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
 	protected $zeile=array();
 	protected $scriptIdHeatControl;	
 
+    protected $configuration;                   // Configuration from Config File
+
+    /**************************/
+
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
 		
 		/******************************* Init *********/
 		$this->log_File=$logfile;
@@ -5809,6 +5906,16 @@ class AutosteuerungAlexa extends AutosteuerungFunktionen
  * dann InitLogMessage() dass bei Defaultwert kein Logfile anlegt
  * dann InitLogNachrichten das InitMesagePuffer($type,$profile) aufruft.
  *
+ *  __construct
+ *  getStatus
+ *  getCategoryIdTab
+ *  WriteLink, CreateLink, UpdateLinks
+ *
+ *
+ *
+ *
+ *  SetupKalender
+ *
  **************************************************************************************************************/
 
 
@@ -5821,10 +5928,16 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	protected $installedmodules;
 	protected $zeile=array();
 	protected $scriptIdHeatControl;
+    protected $categoryIdTab;
 	
+    protected $configuration;                   // Configuration from Config File
+
+    /**************************/
+
 	public function __construct($logfile="No-Output",$nachrichteninput_Id="Ohne")
 		{
 		//echo "Logfile Construct\n";
+        $this->configuration = $this->set_Configuration();
 		
 		/******************************* Init *********/
 		$this->log_File=$logfile;
@@ -5839,6 +5952,32 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		//$type=1;$profile="AusEin"; 		/* Umstellen auf Boolean und Standard Profil für bessere Darstellung Mobile Frontend*/
 		$type=0;$profile="~Switch";
 		$this->InitLogNachrichten($type,$profile);          	/*  ruft das Geraete spezifische InitMesagePuffer() auf */
+
+        $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+        if (!isset($moduleManager)) 
+            {
+            IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+            $moduleManager = new IPSModuleManager('Autosteuerung',$repository);
+            }
+        $Mobile_Enabled        = $moduleManager->GetConfigValueDef('Enabled', 'Mobile',false);
+        if ($Mobile_Enabled==true)
+            {	
+            $Mobile_Path        	 = $moduleManager->GetConfigValue('Path', 'Mobile');
+            }
+        $this->categoryIdTab         = CreateCategoryPath($Mobile_Path.".Stromheizung");
+
+		}
+
+    /* rausfinden wie AutosteuerungStromheizung konfiguriert wurde */
+
+    function getStatus()
+        {
+        echo "Logfile ist hier abgelegt : ".$this->log_File."\n";    
+        }
+
+	function getCategoryIdTab()
+		{	
+		return($this->categoryIdTab);
 		}
 
 	/*************
@@ -5886,6 +6025,11 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		return(@IPS_GetObjectIDByName("Wochenplan",$this->nachrichteninput_Id));
 		}
 	
+	function getZeile1ID()
+		{	
+		return(@IPS_GetObjectIDByName("Zeile1",$this->nachrichteninput_Id));
+		}
+
     function getAutoFillID()
 		{	
 		return(@IPS_GetObjectIDByName("AutoFill",$this->getWochenplanID()));
@@ -5973,9 +6117,14 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 			}		
 		}
 
+    /* für die Stromheizung den Autofill Defaultwert einstellen. Es gibt verschiedene Betriebsarten. Nach einem Restart sind die alle wieder auf aus ?
+     * unter der Einstell Liste gibt es eine kurze Erklärung was gerade passiert. In Autosteuerung HeatControl ist die Funktion für das Webfront und den TTiomer, jeden Tag um 00:10
+     *
+     */
+
     function setAutoFill($value)
         {
-        $oid=$this->getAutoFillID();		// OID von Profilvariable für Autofill
+        $oid=$this->getAutoFillID();		// OID von Profilvariable für Autofill        
         $descrID=IPS_GetVariableIDByName("Beschreibung",$this->getWochenplanID());		// OID von Profilvariable für Autofill
         $text="";
         //echo "Einstellung Werte $oid ".GetValue($oid)."  ".GetValueFormatted($oid)."  --> neuer Wert : ".$value."\n";
@@ -6005,6 +6154,15 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
             default:
                 $value=0;
             }    
+        if (GetValue($oid) == $value) 
+            {
+            //echo "Gleiche Funktion gedrueckt";   
+            $oidWP=IPS_GetVariableIDByName("AutoFill",$this->getWochenplanID());		// OID von Profilvariable für Autofill
+            $valueNext=$this->getStatusfromProfile(GetValue($oidWP));                   
+            $this->ShiftforNextDay($valueNext);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
+            $this->UpdateLinks($this->getWochenplanID());                   /* Update Links für Administrator Webfront */
+            $this->UpdateLinks($this->categoryIdTab);		                            /* Upodate Links for Mobility Webfront */
+            }
         SetValue($oid,$value);
         SetValue($descrID,$text);
         }
@@ -6064,15 +6222,15 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	/* Unterstützung für Shift for next day
 	 *
 	 */		
-	function EvaluateAutoStatus($time=0)
+	function EvaluateAutoStatus($time=0,$debug=false)
 		{
-		//echo "    EvaluateAutoStatus:\n";
+		if ($debug) echo "    EvaluateAutoStatus mit Time $time:\n";
 		$result=array();
-		if ($time==0) $time=(time()+16*24*60*60);
-		elseif ($time<15) $time=(time()+(16+$time)*24*60*60);
+		if ($time==0) $time=(time()+16*24*60*60);                               // 0 ist genau in 16 tage
+		elseif ($time<15) $time=(time()+(16+$time)*24*60*60);                   // 1,2,3 ist in 17,18,19 Tagen, 16 ist in 16 Tagen
 		$wochentag=date("D",$time);
 		$feiertag=$this->feiertag($time,"W");		// gibt zurück Arbeitstag, Wochenende oder Name des Feiertages 
-		echo "     ".date("D d.m.Y",$time)."    Wochentag: ".$wochentag."    Status: ".$feiertag."\n";
+		if ($debug) echo "     ".date("D d.m.Y",$time)."    Wochentag: ".$wochentag."    Status: ".$feiertag."\n";
 		switch ($wochentag)
 			{
 			case "Mon":
@@ -6085,7 +6243,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 				$result["Wochentag"]=$wochentag;
 			  	break;
 			default:
-				echo "FEHLER: Wochentag nicht bekannt ...\n";
+				if ($debug) echo "FEHLER: Wochentag nicht bekannt ...\n";
 				break;	
 			}
 		switch ($feiertag)

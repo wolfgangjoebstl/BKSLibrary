@@ -309,10 +309,9 @@
 	$AutoSetSwitches = Autosteuerung_SetSwitches();
     //print_r($AutoSetSwitches);
     $register=new AutosteuerungHandler($scriptIdAutosteuerung);
-	
-	$setup = Autosteuerung_Setup();
-    if ( isset($setup["LogDirectory"]) == false ) $setup["LogDirectory"]="C:/Scripts/Autosteuerung/";
-	
+	$setup = $register->get_Configuration();
+	print_r($setup);
+
     /* verschiedene Loggingspeicher initialisieren, damit kein Fehler wenn nicht installiert wegen Konfiguration aber referenziert da im Code */
     $categoryId_NachrichtenAuto    = CreateCategory('Nachrichtenverlauf-Autosteuerung',   $CategoryIdData, 20);
 	$inputAuto = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenAuto, 0, "",null,null,""  );   /* Nachrichtenzeilen werden automatisch von der Logging Klasse gebildet */

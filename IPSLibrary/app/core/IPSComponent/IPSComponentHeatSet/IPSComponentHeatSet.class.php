@@ -202,17 +202,19 @@
 			{
             $this->startexecute=microtime(true);                 
 			$this->debug = $debug;
+            //if ($this->debug) echo "Mit Debug !\n"; 
 
             /************** INIT */
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
 			/**************** installierte Module und verfügbare Konfigurationen herausfinden */
 			$moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
 			$this->installedmodules=$moduleManager->GetInstalledModules();
-            if ( (isset ($this->installedmodules["DetectMovement"])) && false)   // DetectHeatSetHandler gibt es keinen   
+            if ( (isset ($this->installedmodules["DetectMovement"])))   // DetectHeatSetHandler gibt es mittlerweile auch schon   
                 {
                 /* Detect Movement kann auch Leistungswerte agreggieren */
                 IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
                 IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
+                if ($this->debug) echo "new DetectHeatSetHandler.\n";
                 $this->DetectHandler = new DetectHeatSetHandler();
                 }
             $dosOps= new dosOps();                

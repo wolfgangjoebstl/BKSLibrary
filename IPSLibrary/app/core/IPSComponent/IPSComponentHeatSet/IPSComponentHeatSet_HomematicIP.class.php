@@ -55,7 +55,7 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
-            $this->debug=true;
+            $this->debug=0;         // 0 nix tun - Normalbetrieb, 1 debug Ausgabe, 2 auch nicht schalten */
             // Parameter neu anordnen, es können unterschiedliche Formate bei der Übergabe auftreten betreffend par1 und par2, der par3 ist immer tempValue udn gibt Details zur Art des Parameters an den Component
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */

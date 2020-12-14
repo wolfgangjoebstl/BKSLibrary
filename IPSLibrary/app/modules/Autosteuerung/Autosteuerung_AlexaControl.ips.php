@@ -97,7 +97,6 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
             }
         }
 
-
 $configurationAutosteuerung = Autosteuerung_Setup();
 
 $scriptIdAutosteuerung   = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);

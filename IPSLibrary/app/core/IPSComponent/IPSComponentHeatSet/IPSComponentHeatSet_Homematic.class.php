@@ -35,7 +35,9 @@
 		
 		protected 	$RemoteOID;		/* Liste der RemoteAccess server, Server Kurzname getrennt von OID durch : */
 		protected 	$remServer;		/* Liste der Urls und der Kurznamen */
-		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ;
+		private 		$rpcADR;			/* mit der Parametrierung übergegebene Server Shortnames und OIDs, getrennt durch : und für jeden Eintrag durch ; */
+
+        private $debug;                     /* Debug Ausgaben, stören bei Webfront Betätigung */
 
 		/**
 		 * @public
@@ -52,6 +54,8 @@
 		 */
 		public function __construct($instanceId=null, $rpcADR="", $lightValue=null) 
 			{
+            $this->debug=0;         // 0 nix tun - Normalbetrieb, 1 debug Ausgabe, 2 auch nicht schalten */
+
 			//echo "IPSComponentHeatSet_Homematic:construct aufgerufen mit $instanceId (".IPS_GetName($instanceId).") RPCAdr $rpcADR Add Parameter $lightValue \n";
 			if (strpos($instanceId,":") !== false ) 
 				{	/* ROID Angabe auf der ersten Position */

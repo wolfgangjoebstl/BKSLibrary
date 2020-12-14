@@ -425,15 +425,31 @@
             }  
 
 		/**
+		 * @public getMirrorRegister
+         *
+         * versucht das Mirror Register zu finden
+		 *
+		 */
+
+		public function getMirrorRegister($variableId,$debug=false)
+			{
+            $variablename=$this->getMirrorRegisterName($variableId,$debug);
+            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
+            if ($mirrorID === false) echo "Fehler, getMirrorRegister for ".get_class()." \"$variablename\" nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
+            return ($mirrorID);
+            }
+
+		/**
 		 * @public getMirrorRegisterNamefromConfig
          *
          * liest die configuration des Events aus. Wenn ein Mirror Index vorkommt, diesen ausgeben.
 		 *
 		 */
 
-        public function getMirrorRegisterNamefromConfig($oid)
+        public function getMirrorRegisterNamefromConfig($oid,$debug=false)
             {
             $config = $this->ListConfigurations($oid);
+            if ($debug) print_R($config);
             if (isset($config[$oid]["Config"]["Mirror"])) return ($config[$oid]["Config"]["Mirror"]);
             else return (false);
             }  
@@ -458,7 +474,7 @@
                 if ($this->Detect_DataID==0) echo "Fehler, Kategorien noch nicht vorhanden,\n";
 			    else echo "Kategorie der Custom Components Spiegelregister : ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).")\n";
                 }
-            $variablename = $this->getMirrorRegisterNamefromConfig($oid);       /* wenn ein Wert in der Config abgelegt ist und der Wert vorhanden ist, gleich diesen nehmen */
+            $variablename = $this->getMirrorRegisterNamefromConfig($oid,$debug);       /* wenn ein Wert in der Config abgelegt ist und der Wert vorhanden ist, gleich diesen nehmen */
             if ($variablename === false)
                 {
                 $result=@IPS_GetObject($oid);
@@ -865,7 +881,7 @@
 		 * 
 		 */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
@@ -1015,7 +1031,7 @@
 		 * 
 		 */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
@@ -1166,7 +1182,7 @@
 		 * 
 		 */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
@@ -1307,6 +1323,8 @@
 			return ($this->CategoryIdData);
 			}
             
+        /* wird beim construct (new) mitgegeben, oder selbst definiert, ist die Kategorie ID von "Bewegung-Auswertung" im CustomComponent  */
+
 		function Get_MoveAuswertungID()
 			{
 			return ($this->MoveAuswertungID);
@@ -1318,7 +1336,22 @@
 			return (true);
 			}	
             
-            			
+		/**
+		 *
+		 * private Variablen ausgeben 
+		 *
+		 */
+		function getCustomComponentsDataGroup()
+			{
+            echo "Use Get_MoveAuswertungID\n";
+			return($this->MoveAuswertungID);
+			}			
+
+		function getDetectMovementDataGroup()
+			{
+			return($this->Detect_DataID);
+			}			
+			
 
 		/* obige variable in dieser Class kapseln, dannn ist sie static für diese Class */
 
@@ -1351,12 +1384,12 @@
          *  wenn beides nicht den Namen der Variablen nehmen
          *  
          * am Ende wird der Name der Variable im entsprechenden Datenbereich gesucht. Wenn nicht vorhanden wird die OID des aktuellen Registers zurückgegeben
-         *      $this->MoveAuswertungID         Spiegelregister, schnell, Standard
-         *      $this->Detect_DataID      Spiegelregister, zusätzliches Register geglättet mit Delay
+         *      $this->MoveAuswertungID         Kategorie für Spiegelregister, schnell, Standard
+         *      $this->Detect_DataID            Kategorie für Spiegelregister, zusätzliches Register geglättet mit Delay
          *
          */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $result=IPS_GetObject($variableId);            
@@ -1437,21 +1470,6 @@
 			IPS_ApplyChanges($archiveHandlerID);
 			return ($statusID);			
 			}
-			
-		/**
-		 *
-		 * private Variablen ausgeben 
-		 *
-		 */
-		function getCustomComponentsDataGroup()
-			{
-			return($this->MoveAuswertungID);
-			}			
-
-		function getDetectMovementDataGroup()
-			{
-			return($this->Detect_DataID);
-			}			
 			
 			
 		} /* ende class */	
@@ -1706,7 +1724,7 @@
          *
          */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
@@ -1877,7 +1895,7 @@
 		 * 
 		 */
 
-		public function getMirrorRegister($variableId)
+		public function getMirrorRegister($variableId, $debug = false)
 			{
             $variablename=$this->getMirrorRegisterName($variableId);
             $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
@@ -1944,7 +1962,17 @@
 		}	/* ende class */
 		
 
-/******************************************************************************************************************/
+    /*****************************************************************************************************************
+    *
+    *  DetectHeatControl, das sind die Stellwerte des Ventils auf den Aktuatoren
+    *  wenn sie sich ändern auch ein Abbild in IP Symcon schaffen
+    *
+    *       _construct
+    *       Get_Configtype, Get_ConfigFileName
+    *       Get_EventConfigurationAuto,Set_EventConfigurationAuto
+    *       getMirrorRegister,CreateMirrorRegister
+    *       InitGroup
+    */
 
 	class DetectHeatControlHandler extends DetectHandler
 		{
@@ -2006,6 +2034,35 @@
 			return self::$eventConfigurationAuto;
 			}
 
+        /* die Power Konfiguration einheitlich auslesen. Für Logging relevant */
+
+        function get_PowerConfig()
+            {
+            $configs = $this->ListConfigurations();
+            //print_r($configs);
+            $powerConfig=array();
+            foreach ($configs as $oid => $config)
+                {
+                if (isset($config["Config"]["Power"]))$powerConfig[$oid] = $config["Config"]["Power"];
+                }
+            //print_R($powerConfig);
+            if (sizeof($powerConfig)==0)        // nix gespeichert, vielleicht auf einem anderen Platz
+                {
+                if (function_exists('get_IPSComponentHeatConfig'))
+                    {
+                    $config=get_IPSComponentHeatConfig();
+                    if (isset($config["HeatingPower"]))
+                        {
+                        foreach ($config["HeatingPower"] as $oid=>$power) 
+                            {
+                            $powerConfig[$oid]=$power;
+                            }
+                        } 
+                    }
+                }
+            return ($powerConfig);
+            }
+
 		/**
 		 *
 		 * Setzen der aktuellen Event Konfiguration
@@ -2016,18 +2073,6 @@
 			self::$eventConfigurationAuto = $configuration;
 			}
 			
-		/**
-		 * getMirrorRegister für HeatControl
-		 * 
-		 */
-            
-		public function getMirrorRegister($variableId)
-			{
-            $variablename=$this->getMirrorRegisterName($variableId);
-            $mirrorID = @IPS_GetObjectIDByName($variablename,$this->Detect_DataID);
-            if ($mirrorID === false) echo "Fehler, getMirrorRegister for HeatControl $variablename nicht in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gefunden.\n";
-            return ($mirrorID);
-            }
 
 		/**
 		 * Das DetectHeatControlHandler Spiegelregister anlegen

@@ -310,8 +310,8 @@
 
 			/* Filenamen für die Log Eintraege herausfinden und Verzeichnis bzw. File anlegen wenn nicht vorhanden */
 			//echo "Uebergeordnete Variable : ".$this->variablename."\n";
-		    $directories=get_IPSComponentLoggerConfig();
-		    $directory=$directories["LogDirectories"]["HumidityLog"];
+
+		    $directory = $this->configuration["LogDirectories"]["HumidityLog"];
 		    $dosOps->mkdirtree($directory);
 		    $filename=$directory.$this->variablename."_Feuchtigkeit.csv";
 		    parent::__construct($filename,$vid);
