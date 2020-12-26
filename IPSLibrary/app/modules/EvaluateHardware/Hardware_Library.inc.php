@@ -168,8 +168,10 @@ class Hardware
         return ($hardwareType);
         }
 
-    /* Allgemein, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+    /* Allgemeine Routine, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
+     * hier wird nichts erweitert, sondern nur geprüft
      * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     *
      */
 
     public function getDeviceCheck(&$deviceList, $name, $type, $entry, $debug=false)
@@ -185,10 +187,24 @@ class Hardware
         else return (true);
         }
 
+    /* getDeviceConfiguration für class Hardware
+     *
+     */
+
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $config = @IPS_GetConfiguration($device);
+        if ($config !== false) 
+            {                    
+            $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
+            $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=$config;
+            }
+        }
 
     /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist
      * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
+     * entry besteht aus OID und CONFIG
      * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
      */
 
@@ -892,6 +908,12 @@ class HardwareHomematic extends Hardware
 
     /* Homematic, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
      * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     *
+     * Ein Homematic Device kann aus mehreren Instances bestehen, zuerst prüfen ob aus einer Instanz heraus das Device bereits angelegt wurde
+     * der Name der Instanz muss immer einen Doppelpunkt haben, vor dem Doppelpunkt ist der Name des Gerätes
+     * In entry gibt es ["CONFIG"]["Address"] mit der Homematic Adresse
+     *
+     * DeviceList wird nicht abgeändert
      */
 
     public function getDeviceCheck(&$deviceList, $name, $type, $entry, $debug=false)
@@ -991,6 +1013,15 @@ class HardwareHomematic extends Hardware
      * Antwort ist true wenn alles in Ordnung verlaufen ist
      * Entry wird direkt in die Devicelist unter Instances integriert, Name ist der Key des Eintrags mit dem integriert wird, Subkategorie ist eben Instances, Entry ist der Wert der eingesetzt wird 
      * Das Gerät Name wird um den Typ Type erweitert, beim Eintrag entry wird der Name zusätzlich gespeichert
+     *
+     * SubType      Funk|Wired|IP
+     * Information  DeviceManager->getHomematicHMDevice($instanz,1)     zB 'Schaltaktor 1-fach Energiemessung'
+     * Serialnummer $entry["CONFIG"]["Address"][0]
+     * Type
+     * Instances
+     *
+     *
+     *
      */
 
     public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
@@ -1087,6 +1118,7 @@ class HardwareHomematic extends Hardware
 
             if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
             $deviceList[$nameSelect[0]]["Type"]=$type;
+            $deviceList[$nameSelect[0]]["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);;
             $entry["NAME"]=$name; 
             $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
             if ($debug) echo "\n";
@@ -1237,6 +1269,7 @@ class HardwareHomematic extends Hardware
 
     }
 
+/* Philips HUE */
 
 class HardwareHUE extends Hardware
 	{
@@ -1634,23 +1667,125 @@ class HardwareFS20ExFamily extends Hardware
 /*********************************
  * 
  * OpCentCam, genaue Auswertung nur mehr an einer, dieser Stelle machen 
+ * 
+ * __construct
+ * getDeviceID,getbridgeID,getsocketID von der übergeordneten class da private definiert,hier anlegen
+ * getDeviceIDInstances von der übergeordneten class : return ($this->modulhandling->getInstances($this->getDeviceID()));
  *
- *
+ * ModuleHandling ist in AllgemeineDefinitionen
  *
  ****************************************/
 
 class HardwareOpCentCam extends Hardware
 	{
-	
+	protected $operationCenter;                     // class
     protected $socketID, $bridgeID, $deviceID;
 	
 	public function __construct($debug=false)
 		{
-        echo "construct HardwareOpCentCam aufgerufen.\n";    
+        if ($debug) echo "construct HardwareOpCentCam aufgerufen.\n";    
         $this->socketID = "";               // empty string means, there are no sockets
         $this->bridgeID = "";
         $this->deviceID = "{28E40EBC-F9E3-52B7-E1F9-8F845E79956C}";         // Wir brauchen zumindest eine DeviceID, auch wenn es eine erfundene ist
+        $this->setInstalledModules();
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            IPSUtils_Include ('OperationCenter_Library.class.php', 'IPSLibrary::app::modules::OperationCenter');   
+            $this->operationCenter = new OperationCenter(); 
+            }
+
         parent::__construct($debug);        
+        }
+
+    /* getDeviceIDInstances eigene Routine, da keine Instanz
+     *
+     */
+
+    public function getDeviceIDInstances()
+        {
+        switch ($this->deviceID)
+            {
+            case "{28E40EBC-F9E3-52B7-E1F9-8F845E79956C}":
+                echo "Ausgabe Instanzen der Cameras.\n";
+                $IDs=$this->operationCenter->getPictureCategoryIDs();
+                return ($IDs);
+                break;
+            default:
+                return (false);
+            }
+        }
+
+    /* getDeviceConfiguration eigene Routine, da keine Instanz
+     *
+     */
+
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
+        $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=json_encode(array());
+        }
+
+    /* die Device Liste (Geräteliste) um die Channels erweitern, ein Gerät kann mehrere Instances und Channels haben, 
+     * es können mehr channels als instances sein, es können aber auch gar keine channels sein - eher unüblich
+     *
+
+                                    "TYPE_MOTION" => array(
+                                        'MOTION' => 'MOTION',
+                                        'BRIGHTNESS' => 'BRIGHTNESS',
+                                                  ),
+                                   "RegisterAll" => array(
+                                        '0' => 'CamStream_Kueche',
+                                        '1' => 'Cam_Motion',
+                                        '2' => 'Cam_PhotoCount',
+                                        '3' => 'Cam_letzteBewegung',
+                                                  ),                                                  
+                              'TYPECHAN' => 'TYPE_MOTION',
+     */
+
+    public function getDeviceChannels(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        if ($debug) echo "          HardwareOpCentCam::getDeviceChannels aufgerufen für ".$entry["OID"]." mit $name $type. TYPE_MOTION anlegen.\n";
+        //print_r($deviceList[$name]["Instances"]);
+        //print_r($entry);
+        $oids=array();
+        foreach ($deviceList[$name]["Instances"] as $port => $register) 
+            {
+            $oids[$register["OID"]]=$port;
+            }
+        if (isset($oids[$entry["OID"]])===false) echo "  >> irgendetwas ist falsch.\n";
+        foreach ($oids as $oid => $port)
+            {
+            $cids = IPS_GetChildrenIDs($oid);
+            $register=array();
+            foreach($cids as $cid)
+                {
+                $childName = IPS_GetName($cid);
+                switch ($childName)
+                    {
+                    case "Cam_Motion":
+                        $typeMotion=array("MOTION" => "Cam_Motion");
+                        break;
+                    }
+                $register[]= $childName;
+                }
+            sort($register);
+            $registerNew=array();
+            $oldvalue="";        
+            /* gleiche Einträge eliminieren */
+            foreach ($register as $index => $value)
+                {
+                if ($value!=$oldvalue) {$registerNew[]=$value;}
+                $oldvalue=$value;
+                } 
+            $deviceList[$name]["Channels"][$port]["RegisterAll"]=$registerNew;
+            $deviceList[$name]["Channels"][$port]["Name"]=$name;
+            if (isset($typeMotion["MOTION"])) 
+                {
+                $deviceList[$name]["Channels"][$port]["TYPE_MOTION"] = $typeMotion;
+                $deviceList[$name]["Channels"][$port]["TYPECHAN"] = "TYPE_MOTION";  
+                }
+            }
+        return (true);
         }
 
     }

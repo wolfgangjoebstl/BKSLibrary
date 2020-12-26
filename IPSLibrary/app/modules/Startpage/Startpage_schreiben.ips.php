@@ -72,7 +72,9 @@ if ($debug)
 $variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
 $AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
 
-$vid = @IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
+$switchScreenID    = IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
+$switchSubScreenID = IPS_GetVariableIDByName("SwitchSubScreen",$CategoryIdData);  
+
 $showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
 
 /**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
@@ -84,7 +86,7 @@ $showfile=false;            // dann wird auch wenn nicht übergeben es automatis
     $variableID=$_IPS['VARIABLE'];
     switch ($variableID)          // Value formatted : Explorer Fullscreen Station Picture Topologoe Off
         {
-        case ($vid):
+        case ($switchScreenID):
         	switch ($_IPS['VALUE'])
 		        {
         		case "6":	/* Monitor off/on, Off */
@@ -101,6 +103,7 @@ $showfile=false;            // dann wird auch wenn nicht übergeben es automatis
 		        	break;
         		case "2":  	/* Wetterstation, Station */
 		        	SetValue($StartPageTypeID,2);
+                    SetValue($switchSubScreenID,GetValue($switchSubScreenID)+1);
         			break;
         		case "1":  	/* Full Screen ein, Fullscreen */
 		        case "0":  	/* Full Screen aus, Explorer */
@@ -131,38 +134,41 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
 
     $file=$startpage->readPicturedir();
     $maxcount=count($file);
-    $showfile=rand(1,$maxcount-1);
-    if ($debug) echo "StartpageTypeID ist 1. Parameter : $maxcount   $showfile \n";;
-    //print_r($file);
+    if ($maxcount>0)
+        {
+        $showfile=rand(1,$maxcount-1);
+        if ($debug) echo "StartpageTypeID ist 1. Parameter : $maxcount   $showfile \n";;
+        //print_r($file);
 
-    if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
-    $datei=$file[$showfile];
+        if ( is_dir($startpage->picturedir."SmallPics") ==  false ) mkdir($startpage->picturedir."SmallPics");
+        $datei=$file[$showfile];
 
-    // Get new dimensions
-    list($width, $height) = getimagesize($startpage->picturedir.$datei);
-    if ($debug) echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
+        // Get new dimensions
+        list($width, $height) = getimagesize($startpage->picturedir.$datei);
+        if ($debug) echo "Resample Picture (".$width." x ".$height.") from ".$startpage->picturedir.$datei." to ".$startpage->picturedir."SmallPics/".$datei.".\n";
 
-    $new_width=1920;
-    $percent=$new_width/$width;
-    $new_height = $height * $percent;
-    if ($new_height > 1080) 
-        { 
-        //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
-        $new_height=1080;
-        $percent=$new_height/$height;
-        $new_width = $width * $percent;
+        $new_width=1920;
+        $percent=$new_width/$width;
+        $new_height = $height * $percent;
+        if ($new_height > 1080) 
+            { 
+            //echo "Status zu hoch : ".$new_width."  ".$new_height."   \n";
+            $new_height=1080;
+            $percent=$new_height/$height;
+            $new_width = $width * $percent;
+            }
+        if ($debug) echo "New Size : (".$new_width." x ".$new_height.").\n";
+
+        // Resample
+        $image_p = imagecreatetruecolor($new_width, $new_height);
+        $image = imagecreatefromjpeg($startpage->picturedir.$datei);
+        imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
+
+        // Output
+        imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
         }
-    if ($debug) echo "New Size : (".$new_width." x ".$new_height.").\n";
-
-    // Resample
-    $image_p = imagecreatetruecolor($new_width, $new_height);
-    $image = imagecreatefromjpeg($startpage->picturedir.$datei);
-    imagecopyresampled($image_p, $image, 0, 0, 0, 0, $new_width, $new_height, $width, $height);
-
-    // Output
-    imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
     }
-
+    
 /**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
 
 /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
@@ -189,7 +195,7 @@ SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$
 	//echo "\nKonfigurationseinstellungen:\n"; print_r($configuration);
 
 	$pname="StartpageControl";
-    echo "Variable SwitchScreen mit Profil \"$pname\" hat OID: $vid \n";
+    echo "Variable SwitchScreen mit Profil \"$pname\" hat OID: $switchScreenID \n";
 	if (IPS_VariableProfileExists($pname) == true)  //Var-Profil erstellen     
 		{
         $profile=IPS_GetVariableProfile($pname)["Associations"];

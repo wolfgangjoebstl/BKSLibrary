@@ -203,95 +203,100 @@
 	$TestLinkID =CreateVariable("htmlTestTable" ,3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");
 	$FrameLinkID=CreateVariable("htmlFrameTable",3, $CategoryIdDataWL,0,"~HTMLBox",null,null,"");           // $scriptIdActionScript,Defaultwert,Icon
 		
-    /* damit ein Defaultwert drinnen ist, muss nicht unbedingt sein, wird von der Routine überschrieben */
-	$html = '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>';
-    SetValue($ChartLinkID,$html);
-    
-    $startTime=time()-3*60*60*24;     /* drei Tage sieht nett aus */
-    $endTime=time();
-    $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
 
-    // Create Chart with Config File
-  	IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
-	$CfgDaten=array();
-    $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-    $CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
-	$CfgDaten['ContentVarableId']   = $ChartLinkID;
-    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
-	$CfgDaten['StartTime']          = $startTime;
-	$CfgDaten['EndTime']            = $endTime;
+    if (isset($installedModules["IPSHighCharts"])) 
+        {
 
-    $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
-	$CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
-    $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
+        /* damit ein Defaultwert drinnen ist, muss nicht unbedingt sein, wird von der Routine überschrieben */
+        $html = '<iframe frameborder="0" width="100%" height="530px"  src="../user/Highcharts/IPS_Template.php" </iframe>';
+        SetValue($ChartLinkID,$html);
+        
+        $startTime=time()-3*60*60*24;     /* drei Tage sieht nett aus */
+        $endTime=time();
+        $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
 
-    // Abmessungen des erzeugten Charts
-    $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
-    $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
+        // Create Chart with Config File
+        IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+        $CfgDaten=array();
+        $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+        $CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
+        $CfgDaten['ContentVarableId']   = $ChartLinkID;
+        $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+        $CfgDaten['StartTime']          = $startTime;
+        $CfgDaten['EndTime']            = $endTime;
 
-	//$CfgDaten['title']['text']      = "Liniendiagramme Darstellung komplett";                       // muss definiert sein
-	//$CfgDaten['subtitle']['text']   = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";              // wenn nicht definiert wird es duch Defaultwert ersetzt
-	//$CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
-    
-    $CfgDaten['title']['text']      = "";
-    $CfgDaten['subtitle']['text']   = "";
-    $CfgDaten["PlotType"]= "Gauge";
-	$CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+        $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
+        $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+        $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
 
-    $serie = array();
-    $serie['type']                  = $chart_style;
+        // Abmessungen des erzeugten Charts
+        $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+        $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
 
-	 /* wenn Werte für die Serie aus der geloggten Variable kommen : */
-	 $serie['name'] = 'Baro Pressure';
-	 $serie['Unit'] = "mbar";
-     $serie['Id'] = 28664 ;
-     //$serie['Id'] = 55128;
+        //$CfgDaten['title']['text']      = "Liniendiagramme Darstellung komplett";                       // muss definiert sein
+        //$CfgDaten['subtitle']['text']   = "Dargestellter Zeitraum: %STARTTIME% - %ENDTIME%";              // wenn nicht definiert wird es duch Defaultwert ersetzt
+        //$CfgDaten['subtitle']['Ips']['DateTimeFormat'] = "(D) d.m.Y H:i";	
+        
+        $CfgDaten['title']['text']      = "";
+        $CfgDaten['subtitle']['text']   = "";
+        $CfgDaten["PlotType"]= "Gauge";
+        $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
 
-    /* oder wenn Daten selbst eingegeben werden : */
-    	//$serie['data'][] = array('name'=>'Wohnzimmer-Temperatur', 'Id' => 43217, 'Unit'=>"°C");
-    	//$serie['data'][] = array('name'=>'Wintergarten-Temperatur', 'Id' => 52093, 'Unit'=>"°C");
-    	//$serie['data'][] = array('name'=>'Luftfeuchte', 'Id' => 17593, 'Unit'=>"%");
+        $serie = array();
+        $serie['type']                  = $chart_style;
 
-    //$serie['allowPointSelect'] = true;
-    //$serie['cursor'] = 'pointer';
-    //$serie['center'] = array(300,100);
-    //$serie['size'] = 100;
-/*    $serie['marker']['enabled'] = false;
-    //$serie['dataLabels']['enabled'] = true;   /* zeigt jeden einzelnen Wert an */
-   $CfgDaten['series'][] = $serie;
+        /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+        $serie['name'] = 'Baro Pressure';
+        $serie['Unit'] = "mbar";
+        $serie['Id'] = 28664 ;
+        //$serie['Id'] = 55128;
+
+        /* oder wenn Daten selbst eingegeben werden : */
+            //$serie['data'][] = array('name'=>'Wohnzimmer-Temperatur', 'Id' => 43217, 'Unit'=>"°C");
+            //$serie['data'][] = array('name'=>'Wintergarten-Temperatur', 'Id' => 52093, 'Unit'=>"°C");
+            //$serie['data'][] = array('name'=>'Luftfeuchte', 'Id' => 17593, 'Unit'=>"%");
+
+        //$serie['allowPointSelect'] = true;
+        //$serie['cursor'] = 'pointer';
+        //$serie['center'] = array(300,100);
+        //$serie['size'] = 100;
+        /*$serie['marker']['enabled'] = false;
+        //$serie['dataLabels']['enabled'] = true;   /* zeigt jeden einzelnen Wert an */
+        $CfgDaten['series'][] = $serie;
 
 
-  	$CfgDaten    = CheckCfgDaten($CfgDaten);
-	$sConfig     = CreateConfigString($CfgDaten);
-  	$tmpFilename = CreateConfigFile($sConfig, 'WidgetGraph');
-  	//WriteContentWithFilename($CfgDaten, $tmpFilename);      // macht nur SetValue($CfgDaten['ContentVarableId'], GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename));
+        $CfgDaten    = CheckCfgDaten($CfgDaten);
+        $sConfig     = CreateConfigString($CfgDaten);
+        $tmpFilename = CreateConfigFile($sConfig, 'WidgetGraph');
+        //WriteContentWithFilename($CfgDaten, $tmpFilename);      // macht nur SetValue($CfgDaten['ContentVarableId'], GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename));
 
-	if ($tmpFilename != "")
-		{
-        $chartType = $CfgDaten['Ips']['ChartType'];
-        $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
-        $callBy="CfgFile";
-        $html = "";    
-        $html .= '<tabel><tr><td>here</td><td>';
-        //$html .= GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename);
-        /* String zur Darstellung aus den Routinen herausgenommen, ein paar Details zur besten Darstellung
-         *    height kann keine Prozent sein, wird auch in higcharts verwendet
-         */
-        $html .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " .
-				"width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+        if ($tmpFilename != "")
+            {
+            $chartType = $CfgDaten['Ips']['ChartType'];
+            $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
+            $callBy="CfgFile";
+            $html = "";    
+            $html .= '<tabel><tr><td>here</td><td>';
+            //$html .= GetContentVariableString ($CfgDaten, "CfgFile", $tmpFilename);
+            /* String zur Darstellung aus den Routinen herausgenommen, ein paar Details zur besten Darstellung
+            *    height kann keine Prozent sein, wird auch in higcharts verwendet
+            */
+            $html .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " .
+                    "width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
 
-        $html .= '</td><td>also here</td></tr></tabel>';
-        SetValue($CfgDaten['ContentVarableId'],$html);
+            $html .= '</td><td>also here</td></tr></tabel>';
+            SetValue($CfgDaten['ContentVarableId'],$html);
+            }
+
+        echo "-----------------------------------------------------\n";
+        echo "Debug Highchart Config-Daten:\n";
+        print_r($CfgDaten);
+        echo "\n";
+        echo "-----------------------------------------------------\n";
+
+        echo " \"".htmlentities(GetValue($ChartLinkID))."\"\n";
+        echo "-----------------------------------------------------\n";
         }
-
-    echo "-----------------------------------------------------\n";
-    echo "Debug Highchart Config-Daten:\n";
-    print_r($CfgDaten);
-    echo "\n";
-    echo "-----------------------------------------------------\n";
-
-    echo " \"".htmlentities(GetValue($ChartLinkID))."\"\n";
-    echo "-----------------------------------------------------\n";
 
 /*******************************
  *
@@ -305,7 +310,7 @@
 	echo $WebLinkID."  ".IPS_GetName($WebLinkID)."/".IPS_GetName(IPS_GetParent($WebLinkID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($WebLinkID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($WebLinkID))))."\n";
 
 	echo "Weblink Table aufbauen aus Config Tabelle:\n";
-	$linkConfig=WebLinks_Configuration();
+	$linkConfig=WebLinks_Configuration();                                   // das config File mit einigen netten Abkürzern
 	$html="";
 	//$html.='<iFrame>';
 	$html="";
@@ -336,7 +341,7 @@
 		switch (strtoupper($index))
 			{
 			case "WEBLINKS":
-         	echo "      ---Modul WEBLINKS:\n";
+         	    echo "      ---Modul WEBLINKS:\n";
 				foreach ($config as $entry)
 					{
 					//print_r($entry);
@@ -401,7 +406,7 @@
 					}			
 				break;
 			case "CCUS":
-            echo "      ---Modul CCUS:\n";
+                echo "      ---Modul CCUS:\n";
 				$modulhandling = new ModuleHandling();		// true bedeutet mit Debug
 				$modulhandling->printInstances('HomeMatic Socket'); 
 				$CCUs=$modulhandling->getInstances('HomeMatic Socket');
@@ -421,7 +426,7 @@
 			case "DENONS":
 				if (isset ($installedModules["DENONsteuerung"]))
 					{
-               echo "      ---Modul DENONsteuerung:\n";
+                    echo "      ---Modul DENONsteuerung:\n";
 					IPSUtils_Include ("DENONsteuerung_Configuration.inc.php",  "IPSLibrary::config::modules::DENONsteuerung");
 					$denonConfig = Denon_Configuration();
 					foreach ($denonConfig as $idx=>$data) 
@@ -435,6 +440,25 @@
 					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
 					}			
 				break;
+			case "LEDS":
+				if (isset ($installedModules["OperationCenter"]))
+					{
+                    echo "      ---Modul LEDS von OperationCenter:\n";
+                	IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");     // das ist die Library, Config wird automatisch geholt
+                    $operationCenter = new OperationCenter();
+                    $ledConfig = $operationCenter->getLEDConfiguration();
+                    print_R($ledConfig);
+					foreach ($ledConfig as $idx=>$data) 
+						{
+						if  (isset($data["IPADR"])) 
+							{  
+							echo "            ".$idx." :    ".$data["IPADR"]."\n";
+							$html.='<tr> <td>'.$data["NAME"].'</td>  <td> <a href="'.'http://'.$data["IPADR"].'" target="_blank">'.$idx.'</a> </td> <td> </td></tr>';					// nur intern
+							}
+						}
+					$html.='<tr></tr><tr></tr>';	// Zwei Leerzeilen als Trennung, Leerzeile ist nicht höher als ein paar Pixel Rand	
+					}			
+				break;                
 			default:
 				break;
 			}

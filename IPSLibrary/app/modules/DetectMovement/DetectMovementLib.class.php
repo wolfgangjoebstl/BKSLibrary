@@ -2099,7 +2099,7 @@
 				AC_SetLoggingStatus($archiveHandlerID,$powerID,true);
 				AC_SetAggregationType($archiveHandlerID,$powerID,0);      /* normaler Wwert */
 				IPS_ApplyChanges($archiveHandlerID);
-				$timeID=CreateVariable($variablename."_Changetime",1,$variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
+				$timeID=CreateVariable($variablename."_ChangeTime",1,$variableLogID, 10, "~UnixTimestamp", null, null );  /* 1 steht für Integer, alle benötigten Angaben machen, sonst Fehler */
 				if (GetValue($timeID) == 0) SetValue($timeID,time());
 				}
 			return ($mirrorID);			

@@ -177,17 +177,16 @@
 	class Counter_Logging extends Logging
 		{
 		
-		private $variable;
-		private $variablename;
+		protected $variable,$variablename;
 
-		private $variableLogID;					// nur die Veränderungen werden gespeichert
-		private $counterLogID;					// Spiegelregister der eigentlichen Homematic Variable
-		private $counter2LogID;					// Spiegelregister erweitert um Offset
-		private $counterOffsetLogID;			// Offset für Spiegelregister
+		protected $variableLogID;					// nur die Veränderungen werden gespeichert
+		protected $counterLogID;					// Spiegelregister der eigentlichen Homematic Variable
+		protected $counter2LogID;					// Spiegelregister erweitert um Offset
+		protected $counterOffsetLogID;			// Offset für Spiegelregister
 		
-		private $CounterAuswertungID;			// Kategorie für Register
-		private $CounterNachrichtenID;			// Kategorie für Nachrichten
-		
+		protected $CounterAuswertungID;			// Kategorie für Register
+		protected $CounterNachrichtenID;			// Kategorie für Nachrichten
+        
 		function __construct($variable,$variablename=Null)
 			{
             $dosOps= new dosOps();

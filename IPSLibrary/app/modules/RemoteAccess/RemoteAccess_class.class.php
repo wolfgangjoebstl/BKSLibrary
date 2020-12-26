@@ -88,33 +88,42 @@ class RemoteAccess
 		{
 		$this->includefile.='function GuthabensteuerungList() { return array('."\n";
 		$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Guthabensteuerung');
-		if ($debug) echo "\nGuthabensteuerung Data auf :".$parentid."\n";
+		if ($debug) echo "\nadd_Guthabensteuerung aufgerufen, Data in Kategorie :".$parentid.". Alle Variablen dort kopieren.\n";
 		$result=IPS_GetChildrenIDs($parentid);
 		$count_phone=100;
 		$count_var=500;
 		foreach ($result as $variableID)
 			{
 			$children=IPS_HasChildren($variableID);
-			if ($debug) echo "  Variable ".IPS_GetName($variableID)."  ".($children?"hat  Children":"keine Children");
+			if ($debug) echo "  Variable ".IPS_GetName($variableID)."  ".($children?"hat  Children":"keine Children")."\n";
 			if (IPS_GetObject($variableID)["ObjectType"]==2) // Variable
 				{
 				if ($children)
 					{
 					$this->add_variable($variableID,$this->includefile,$count_phone);
-					$volumeID=IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
-                    if ($volumeID==false) echo "Kenne Variable nicht.\n";
-					if ($debug) echo "  VolumeID : $volumeID,".$this->includefile.",$count_phone\n";
-					$this->add_variable($volumeID,$this->includefile,$count_phone);
+					$volumeID=@IPS_GetVariableIDByName(IPS_GetName($variableID)."_Volume",$variableID);
+                    if ($volumeID==false) 
+                        {
+                        echo "   Kenne Variable nicht.\n";
+                        }
+                    else
+                        {
+                        if ($debug) 
+                            {
+                            echo "    VolumeID : $volumeID Count_Phone : $count_phone\n";
+                            //echo "  VolumeID : $volumeID,".$this->includefile.",$count_phone\n";
+                            }
+                        $this->add_variable($volumeID,$this->includefile,$count_phone);
+                        }
 			    	}
 		   		else
 					{
 					$this->add_variable($variableID,$this->includefile,$count_var);
 					}
-				echo "\n";
 				}
 			else
 				{
-				echo " keine Variable";
+				if ($debug) echo "   keine Variable";
 				}
 			}
 		$this->includefile.="\n      ".');}'."\n";

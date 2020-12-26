@@ -20,7 +20,7 @@
 /* EvaluateHardware Library
  *
  * class 	
- *  TopologyLibraryManagement
+ *  TopologyLibraryManagement           zum erstellen der DeviceList
  *  ImproveDeviceDetection
  *  EvaluateHardware
  *
@@ -183,6 +183,8 @@ class TopologyLibraryManagement
      * Format ist gleich, Key ist der Hardwaretyp dann der Name der Instanz mit den Einträgen OID und CONFIG
      * übergeben wird eine Liste von Discovery Instanzen
      * aus den Discovery Instanzen wird nur die ModulID übernommen
+     *
+     * der Ausgabewert ist Input für die Erstellung der DeviceList
      */
 
     public function get_HardwareList($discovery, $debug=false)
@@ -204,12 +206,13 @@ class TopologyLibraryManagement
                 foreach ($devices as $device)
                     {
                     if ($debug) echo "           ".IPS_GetName($device)."\n";
-                    $config = @IPS_GetConfiguration($device);
+                    $object->getDeviceConfiguration($hardware, $device, $hardwareType, $debug);         // hardware als vektor übergeben
+                    /*$config = @IPS_GetConfiguration($device);                                         // Routine Hardware spezifisch angelegt 
                     if ($config !== false) 
                         {                    
                         $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
                         $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=$config;
-                        }
+                        }*/
                     }
                 }
             }

@@ -15,7 +15,7 @@
 
 /**********************************************************
  *
- * class ipsobject
+ * class ipsobject (DEPRICIATED)
  *
  * erster Versuch einer Klasse zum Suchen und Ausgeben von Objekten. Wird nicht mehr oft verwendet.
  *

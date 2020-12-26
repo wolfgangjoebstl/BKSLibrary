@@ -209,6 +209,89 @@
 		return $as_setup;
 		}
 
+	/***********************************************************
+	 *
+	 * wie funktioniert die Konfiguration zur Erstellung einer komplexen Webfront Darstellung.
+	 *
+	 *  'Anwesenheit'  => array      das ist der Name der Kategorie die in Visualization.Administrator angelegt wird
+	 *    WFCSPLITPANEL,$WFCId, $ItemId, $ParentId, $Position, $Title, $Icon=““, $Alignment=  0=horizontal, 1=vertical, $Ratio=50, $RatioTarget=  0 or 1, $RatioType 0=Percentage, 1=Pixel, $ShowBorder=’true‘ or ‚false’)
+	 *            $WFCId   Webfront Konfigurator ID (Administrator oder User)
+	 *            $ItemId  der neu Name im Webfront Konfigurator
+	 *            $ParentId  der bestehende Namen auf dem ItemID aufsetzt
+	 *            $Title
+	 *            $Icon
+	 *
+	 ************************************************************************************/
+
+	function Autosteuerung_GetWebFrontConfiguration() {
+		return array(
+			'Administrator' => array(
+				'AnwesenheitSimulation' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails0',       'AutoTPA',        'AnwesenheitSimulation','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Left',  'AutoTPADetails0', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails0_Right',  'AutoTPADetails0', null,null),
+					),
+				'AnwesenheitErkennung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails1',       'AutoTPA',        'AnwesenheitErkennung','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Left',  'AutoTPADetails1', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails1_Right',  'AutoTPADetails1', null,null),
+					),
+				'Autosteuerung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails2',        'AutoTPA',        'Autosteuerung',null,1,40,0,0,'true'),  /*  vertical=1,   Ratio=65, RatioTarget=0,Percentage, ShowBorder */
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Left',  'AutoTPADetails2', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails2_Right',  'AutoTPADetails2', null,null),
+					),
+				'Stromheizung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails3',        'AutoTPA',        'Stromheizung','Radiator',1,40,0,0,'true'),
+					array(IPSHEAT_WFCSPLITPANEL,   'AutoTPADetails3_Links',   'AutoTPADetails3',   null,null,0,270,0,1,'true'),				
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Left',  'AutoTPADetails3_Links', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_LeftDown',  'AutoTPADetails3_Links', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails3_Right',  'AutoTPADetails3', null,null),
+					),
+				'Alexa' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails4',        'AutoTPA',        'Alexa','Eyes',1,40,0,0,'true'),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails4_Left',  'AutoTPADetails4', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails4_Right',  'AutoTPADetails4', null,null),
+					),
+				'Control' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPADetails5',        'AutoTPA',        'Control','Robot',1,40,0,0,'true'),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails5_Left',  'AutoTPADetails5', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPADetails5_Right', 'AutoTPADetails5', null,null),
+					),						
+				),
+			'User'		=> array(
+				'AnwesenheitErkennung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPUDetails0',       'AutoTPU',        'Anwesenheit','Bed',1,40,0,0,'true'),    /*  vertical=1, Ratio=33,RatioTarget=0,Percentage,ShowBorder */
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails0_Left',  'AutoTPUDetails0', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails0_Right',  'AutoTPUDetails0', null,null),
+					),
+				'Autosteuerung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPUDetails1',        'AutoTPU',        'Autosteuerung',null,1,40,0,0,'true'),  /*  vertical=1,   Ratio=65, RatioTarget=0,Percentage, ShowBorder */
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails1_Left',  'AutoTPUDetails1', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails1_Right',  'AutoTPUDetails1', null,null),
+					),
+				'Stromheizung' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPUDetails2',        'AutoTPU',        'Stromheizung','Radiator',1,40,0,0,'true'),
+					array(IPSHEAT_WFCSPLITPANEL,   'AutoTPUDetails2_Links',   'AutoTPUDetails2',   null,null,0,270,0,1,'true'),				
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails2_Left',  'AutoTPUDetails2_Links', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails2_LeftDown',  'AutoTPUDetails2_Links', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails2_Right',  'AutoTPUDetails2', null,null),
+					),
+				'Alexa' => array(
+					array(IPSHEAT_WFCSPLITPANEL, 'AutoTPUDetails3',        'AutoTPU',        'Alexa','Eyes',1,40,0,0,'true'),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails3_Left',  'AutoTPUDetails3', null,null),
+					array(IPSHEAT_WFCCATEGORY,       'AutoTPUDetails3_Right',  'AutoTPUDetails3', null,null),
+					),
+				),
+			'Mobile'		=> array(
+				'Stromheizung' => array(
+					array(IPSHEAT_WFCLINKS,       'Auto0',  'Schaltbefehle', null,null),
+					),					),
+								
+		);
+
+	}
+
 
 	function Autosteuerung_Speak() {
 		$speak = array(

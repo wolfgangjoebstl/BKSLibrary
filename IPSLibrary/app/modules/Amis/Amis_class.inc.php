@@ -29,14 +29,15 @@
      * getAmisAvailable
      * configurePort
      *
-     * sendReadCommandAmis
+     * sendReadCommandAmis          Lese Befehle an den AMIS Zähler schicken, regelmaessig in der Statemachine aufgerufen (11,8,6,1)
+     *                              Antwort kommt über Serial und Cutter Module wieder rein
      * writeEnergyHomematics
      *
-     * writeEnergyHomematic         abhängig vom Typ schreiben
+     * writeEnergyHomematic         abhängig vom Typ schreiben,regelmaessig in der Statemachine aufgerufen
      *    getHomematicRegistersfromOID
      *    getRegistersfromOID
-     * writeEnergyRegister
-     * writeEnergySumme
+     * writeEnergyRegister          regelmaessig in der Statemachine aufgerufen
+     * writeEnergySumme             regelmaessig in der Statemachine aufgerufen (15)
      * writeEnergyAmis
      *
      *
@@ -967,8 +968,10 @@
 
 		function writeEnergyRegistertoString($MConfig,$html=true,$debug=false)			/* alle Werte aus der Config ausgeben */
 			{
+            if ($debug) echo "writeEnergyRegistertoString aufgerufen mit Konfig ".json_encode($MConfig)."\n";
 			if ($html==true) 
 				{
+                if ($debug) echo "   Ausgabe des Strings als html.\n";
 				$style="<style> .zeile { font-family:Arial,'Courier New'; font-size: 0.8 em; white-space:pre-wrap;   }
 				                .rotetabelle 	{ 	font-family:'Courier New', Arial; font-size: 0.8 em; 
 													white-space: pre; border:1px solid red;  }
@@ -1007,8 +1010,15 @@
 
 			$metercount=0;
 			$tabwidth0=24;
+
+            /* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
+            $jetzt=time();
+            $endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
+            $starttime=$endtime-60*60*24*10;
+
 			foreach ($MConfig as $meter)
 				{
+                /* es werden nur die Homematic Zähler ausgelesen */
 				if (strtoupper($meter["TYPE"])=="HOMEMATIC")
 					{
                     if ($debug)
@@ -1058,10 +1068,6 @@
                         echo "  Energievorschub aktuell : ".number_format($energievorschub, 2, ",", "" )." kWh".$newline;
                         echo "  Energiezählerstand      : Energie ".number_format(GetValue($EnergieID), 2, ",", "" )." kWh Leistung : ".number_format(GetValue($LeistungID), 2, ",", "" )." kW".$newline;
                         }
-					/* Energiewerte der letzten 10 Tage als Zeitreihe beginnend um 1:00 Uhr */
-					$jetzt=time();
-					$endtime=mktime(0,1,0,date("m", $jetzt), date("d", $jetzt), date("Y", $jetzt));
-					$starttime=$endtime-60*60*24*10;
 					$vorigertag=date("d.m.Y",$jetzt);	/* einen Tag ausblenden */
                     $logAvailable=AC_GetLoggingStatus($this->archiveHandlerID, $EnergieID);
                     if ($logAvailable)
@@ -1147,7 +1153,7 @@
 
 			$outputTabelle.=$starttable.$startparagraph.$startcellheader."Stromverbrauch der letzten Tage als Änderung der Energiewerte pro Tag:".$endcellheader.$endparagraph;
 			$outputTabelle.=$startparagraph.$zeile0.$endparagraph.$startparagraph.$zeile1.$endparagraph;
-			echo "Gesamt Tabelle aufbauen\n";
+			echo "Gesamt Tabelle aufbauen. Anzahl Zähler ist $metercount. \n";
 			for ($line=0;$line<($metercount);$line++)
 				{
 				$outputTabelle.=$startparagraph.$startcell.substr($zeile[$line]["Wochentag"][0]."                               ",0,$tabwidth0).$endcell;	/* neue Zeile pro Zähler */ 
@@ -1168,7 +1174,7 @@
 				$outputTabelle.=$endparagraph; 					
 				}	
 
-			print_r($zeile);	
+			if ($metercount) print_r($zeile);	        // es gibt auch den Fall dass keine Homematic Messgeräte angeschlossen sind
 			if ($html==true) 
 				{
 				echo "</p>";

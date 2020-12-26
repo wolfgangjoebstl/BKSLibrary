@@ -74,7 +74,7 @@ echo "RA Category App ID    : ".$CategoryIdApp."\n";
     if (isset ($installedModules["DetectMovement"])) { 	echo "  Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n";}
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
-        echo "Modul EvaluateHardware ist installiert.\n"; 
+        echo "   Modul EvaluateHardware ist installiert.\n"; 
         IPSUtils_Include ('Hardware_Library.inc.php', 'IPSLibrary::app::modules::EvaluateHardware');      
         IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::modules::EvaluateHardware");                  // jetzt neu unter config
         IPSUtils_Include ("EvaluateHardware_DeviceList.inc.php","IPSLibrary::config::modules::EvaluateHardware");              // umgeleitet auf das config Verzeichnis, wurde immer irrtuemlich auf Github gestellt

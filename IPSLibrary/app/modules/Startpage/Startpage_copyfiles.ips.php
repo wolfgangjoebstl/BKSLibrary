@@ -60,7 +60,7 @@
 	$dosOps->mkdirtree($imagedirM);
    	$imagedirMT = $startpage->imagedir."/mondtransparent/";
 	$dosOps->mkdirtree($imagedirMT);
-    $icondir = $startpage->icondir."/start/";
+    $icondir = $startpage->icondir."/Start/";
 	$dosOps->mkdirtree($icondir);
 
 
@@ -201,7 +201,7 @@ if (false)
         $picturedir = str_replace(['\\','//','\\\\','\/'],'/',$picturedir);
 
         $file = readSourceDir($bilderverzeichnis);
-        echo "Insgesamt ".count($file)." Files aus dem Bilderverzeichnis $bilderverzeichnis eingelesen, wenn notwendig nach $picturedir synchronisieren:\n";
+        echo "Insgesamt ".count($file)." Files aus dem Verzeichnis $bilderverzeichnis eingelesen, wenn notwendig nach $picturedir synchronisieren:\n";
         //print_R($file);
         $check = readDirtoCheck($picturedir);
 

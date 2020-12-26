@@ -70,11 +70,11 @@ IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::confi
     $CategoryIdDataOverview=IPS_GetObjectIDByName("Cams",$CategoryIdDataOC);
     echo "IPS Path of OperationCenter Data Category : ".$CategoryIdDataOverview."  ".$ipsOps->path($CategoryIdDataOverview)."\n";
 
-    $OperationCenterConfig = OperationCenter_Configuration();
     //echo "(".memory_get_usage()." Byte).\n";	
 
     $subnet="10.255.255.255";
     $OperationCenter=new OperationCenter($subnet);
+    $OperationCenterConfig = $OperationCenter->getConfiguration();
 
 	/*******************************
      *

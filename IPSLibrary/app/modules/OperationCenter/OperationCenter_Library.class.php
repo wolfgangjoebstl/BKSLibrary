@@ -160,22 +160,10 @@ class OperationCenter
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
 		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input, "OperationCenter",true);       // File, Objekt und html Logging, und Prefix Classname
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		$this->oc_Configuration = OperationCenter_Configuration();
-		$this->oc_Setup = OperationCenter_SetUp();
-		
-		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt */
-		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
-		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
-		if (isset($this->oc_Setup['CONFIG'])===false) 
-			{
-			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
-			}		
-		else
-			{
-			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
-			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
-			}	
+
+		$this->oc_Configuration = $this->setConfiguration();
+		$this->oc_Setup = $this->setSetUp();
+
         if (isset($this->installedModules["IPSCam"]))
             {
             /* wird zB von copyCamSnapshot verwendet */
@@ -189,10 +177,63 @@ class OperationCenter
 		
     /****************************************************************************************************************/
 
+
+    public function setSetup()
+        {
+        $config=array();
+        if ((function_exists("OperationCenter_SetUp"))===false) IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");				
+        if (function_exists("OperationCenter_SetUp")) $configInput=OperationCenter_SetUp();
+        else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
+
+        configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
+        configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');    
+        configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10));    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
+        configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGESIZE"],"PURGESIZE",10);    
+
+		
+		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
+		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
+		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
+		if (isset($this->oc_Setup['CONFIG'])===false) 
+			{
+			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
+			}		
+		else
+			{
+			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
+			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
+			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
+			}	*/
+        $this->oc_Setup = $config;       
+        return ($config);
+        }
+
     public function getSetup()
         {
         return ($this->oc_Setup);
         }
+
+
+    public function setConfiguration()
+        {
+        $config=array();
+        if ((function_exists("OperationCenter_Configuration"))===false) IPSUtils_Include ('OperationCenter_Configuration.inc.php', 'IPSLibrary::config::modules::OperationCenter');				
+        if (function_exists("OperationCenter_Configuration"))
+            {
+            $configInput = OperationCenter_Configuration();            
+            configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,null);  
+            configfileParser($configInput, $config, ["ROUTER" ],"ROUTER" ,null);  
+            configfileParser($configInput, $config, ["CAM" ],"CAM" ,null);  
+            configfileParser($configInput, $config, ["LED" ],"LED" ,null);  
+            configfileParser($configInput, $config, ["DENON" ],"DENON" ,null);  
+
+            }
+        $this->oc_Configuration = $config;
+        return ($this->oc_Configuration);
+        }
+
 
     public function getConfiguration()
         {
@@ -201,53 +242,27 @@ class OperationCenter
 
     public function getCAMConfiguration()
         {
-        if (isset($this->oc_Configuration["CAM"])) return ($this->oc_Configuration["CAM"]);
-        else    
-            {
-            echo "OperationCenter, keine Kameras konfiguriert.\n";
-            return (array());
-            }
-        }
-
-    public function getINTERNETConfiguration()
-        {
-        if (isset($this->oc_Configuration["INTERNET"])) return ($this->oc_Configuration["INTERNET"]);
-        else    
-            {
-            echo "OperationCenter, keine INTERNET Überwachung konfiguriert.\n";
-            return (array());
-            }
-        }
-
-    public function getROUTERConfiguration()
-        {
-        if (isset($this->oc_Configuration["ROUTER"])) return ($this->oc_Configuration["ROUTER"]);
-        else    
-            {
-            echo "OperationCenter, keine ROUTER Auswertungen konfiguriert.\n";
-            return (array());
-            }
+        return ($this->oc_Configuration["CAM"]);
         }
 
     public function getLEDConfiguration()
         {
-        if (isset($this->oc_Configuration["LED"])) return ($this->oc_Configuration["LED"]);
-        else    
-            {
-            echo "OperationCenter, keine LED Auswertungen konfiguriert.\n";
-            return (array());
-            }
+        return ($this->oc_Configuration["LED"]);
         }
 
+    public function getINTERNETConfiguration()
+        {
+        return ($this->oc_Configuration["INTERNET"]);
+        }
+
+    public function getROUTERConfiguration()
+        {
+        return ($this->oc_Configuration["ROUTER"]);
+        }
 
     public function getDENONConfiguration()
         {
-        if (isset($this->oc_Configuration["DENON"])) return ($this->oc_Configuration["DENON"]);
-        else    
-            {
-            echo "OperationCenter, keine Audio Auswertungen (DENON) konfiguriert.\n";
-            return (array());
-            }
+        return ($this->oc_Configuration["DENON"]);
         }
 
     public function getCategoryIdData()
@@ -3275,6 +3290,37 @@ class OperationCenter
             }           // ende IPSCam
         return ($pictureFieldIDs);
         }        
+
+    /* get Category IDS like they are instances
+     *
+     *
+     */
+    
+    public function getPictureCategoryIDs($ocCamConfig=false, $debug=false)
+        {
+        if ($ocCamConfig===false) $ocCamConfig=$this->getCAMConfiguration();
+        $pictureIDs=array(); $index=0;
+        if ($this->moduleManagerCam)
+            {
+            foreach ($ocCamConfig as $indexName => $cam_config)
+                {
+                if (isset($cam_config['NAME'])) $cam_name=$cam_config['NAME'];
+                else $cam_name=$indexName;          //webcam (mit Index) oder operationcenter formatierung mit Name als index
+                if (isset ($cam_config['FTPFOLDER']))         
+                    { 
+                    if ( (isset ($cam_config['FTP'])) && (strtoupper($cam_config['FTP'])=="ENABLED") )
+                        {                                    
+                        $categoryIdCapture  = IPS_GetObjectIdByName("Cam_".$cam_name, $this->CategoryIdData);
+                        $pictureIDs[$index] = $categoryIdCapture;
+                        if ($debug) echo "   Camera $cam_name hat PictureCategoryID $categoryIdCapture  \n";
+                        $index++;
+                        }
+                    }           // ende isset ftpfolder
+                }           // ende foreach
+            }           // ende IPSCam
+        return ($pictureIDs);
+        }   
+
 
     /**************************
      *

@@ -198,6 +198,12 @@ function GuthabensteuerungList() { return array(
          "Typ" => 2, 
          "Order" => "125", 
              	),
+"Phone_06606980204" => array(
+         "OID" => 31870, 
+         "Name" => "Phone_06606980204", 
+         "Typ" => 3, 
+         "Order" => "126", 
+             	),
 
       );}
 

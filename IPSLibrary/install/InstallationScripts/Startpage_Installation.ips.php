@@ -38,7 +38,6 @@
 	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 	 
-	//$repository = 'https://10.0.1.6/user/repository/';
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) {
 		IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
@@ -50,7 +49,7 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion           : ".IPS_GetKernelVersion();
+	//echo "\nKernelversion           : ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
 	echo "\nIPS Version             : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
@@ -233,16 +232,6 @@
 	 *    SwitchScreen hat das Profil StartpageControl
 	 */
 
-	$name="SwitchScreen";
-	$vid = @IPS_GetVariableIDByName($name,$CategoryIdData);
-	if($vid === false)
-    	{
-        $vid = IPS_CreateVariable(1);  /* 0 Boolean 1 Integer 2 Float 3 String */
-        IPS_SetParent($vid, $CategoryIdData);
-        IPS_SetName($vid, $name);
-        IPS_SetInfo($vid, "this variable was created by script #".$CategoryIdData.".");
-        echo "Variable erstellt;\n";
-    	}
 	$pname="StartpageControl";
 	if (IPS_VariableProfileExists($pname) == false)  //Var-Profil erstellen     
 		{
@@ -261,7 +250,6 @@
 		IPS_SetVariableProfileAssociation($pname, 6, "Off", "", 0xf0f0f0); //P-Name, Value, Assotiation, Icon, Color        
 		echo "Profil $pname erstellt;\n";
 		}
-	IPS_SetVariableCustomProfile($vid, $pname); // Ziel-ID, P-Name
 
 	/* 
 	 * Add Scripts, they have auto install
@@ -271,13 +259,17 @@
 	
 	$scriptIdStartpage   = IPS_GetScriptIDByName('Startpage_copyfiles', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdStartpage, 8*60*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
-	IPS_RunScript($scriptIdStartpage);
 	
 	$scriptIdStartpageWrite   = IPS_GetScriptIDByName('Startpage_schreiben', $CategoryIdApp);
 	IPS_SetScriptTimer($scriptIdStartpageWrite, 8*60);  /* wenn keine Veränderung einer Variablen trotzdem updaten */
+
+    $switchScreenID=CreateVariableByName($CategoryIdData,"SwitchScreen",1,"StartpageControl",false,0,$scriptIdStartpageWrite);               // $parentID, $name, $type, $profile=false, $ident=false, $position=0, $action=false, $default=false
+    $switchSubScreenID=CreateVariableByName($CategoryIdData,"SwitchSubScreen",1);                                                              // Station Screen hat mehrere Sub Screens
+
+
+	IPS_RunScript($scriptIdStartpage);
 	IPS_RunScript($scriptIdStartpageWrite);
 
-	IPS_SetVariableCustomAction($vid, $scriptIdStartpageWrite);
 
 /*******************************
  *
@@ -425,7 +417,7 @@
 		CreateWFCItemCategory  ($WFC10_ConfigId, $tabItem,   $WFC10_TabPaneParent,   $WFC10_TabPaneOrder, '', $WFC10_TabPaneIcon, $categoryId_WebFront   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFront,  10);
-		CreateLinkByDestination('Ansicht', $vid,    $categoryId_WebFront,  20);
+		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFront,  20);
 		}
 
 	/*----------------------------------------------------------------------------------------------------------------------------
@@ -460,7 +452,7 @@
 		CreateWFCItemCategory  ($WFC10User_ConfigId, $tabItem,   $WFC10User_TabPaneParent,   $WFC10User_TabPaneOrder, '', $WFC10User_TabPaneIcon, $categoryId_WebFrontUser   /*BaseId*/, 'false' /*BarBottomVisible*/);
 	
 		CreateLinkByDestination('Uebersicht', $variableIdStartpageHTML,    $categoryId_WebFrontUser,  10);
-		CreateLinkByDestination('Ansicht', $vid,    $categoryId_WebFrontUser,  20);
+		CreateLinkByDestination('Ansicht', $switchScreenID,    $categoryId_WebFrontUser,  20);
 		}
 	else
 	   {

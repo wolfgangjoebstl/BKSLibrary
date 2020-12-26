@@ -1939,29 +1939,34 @@ class Autosteuerung
 			$actualTimeStop = explode(":",$actualTimes[$sindex][1]);
 			$actualTimeStopHour = $actualTimeStop[0];
 			$actualTimeStopMinute = $actualTimeStop[1];
-			if ($debug) echo "             >>Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute."\n";
-			$this->timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);
+			if ($debug) echo "             >>Schaltzeiten:".$actualTimeStartHour.":".$actualTimeStartMinute." bis ".$actualTimeStopHour.":".$actualTimeStopMinute." analysieren\n";
+			$timeStart = mktime($actualTimeStartHour,$actualTimeStartMinute);           // sind Zwischenwerte, nicht nach AUssen tragen
 			$timeStop = mktime($actualTimeStopHour,$actualTimeStopMinute);
 			$this->now = time();
 
-			if ($this->timeStart > $this->timeStop)
+			if ($timeStart > $timeStop)
 				{
 				if ($debug) echo "        stop is considered to be on the next day.\n";
-				if (($this->now > $this->timeStart) || ($this->now < $timeStop))
+				if (($this->now > $timeStart) || ($this->now < $timeStop))
 					{				
                     if ($debug) echo "        *** aktuell im Schaltinterval.\n";
-					$minutesRange = ($this->timeStop-$this->timeStart)/60+24*60;
+					$minutesRange = ($timeStop-$timeStart)/60+24*60;
 					$actionTriggerMinutes = 5;
 					$rndVal = rand(1,100);
 					//echo "Zufallszahl:".$rndVal."\n";
-					if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) { $timeright=true; }
+					if ( ($rndVal < $scene["EVENT_CHANCE"]) || ($scene["EVENT_CHANCE"]==100)) 
+                        { 
+                        $timeright=true; 
+                        $this->timeStop = $timeStop; 
+                        if ($debug) echo "SWITCH in ".nf($timeStop-time()+24*60*60,"s")."\n";           // Zeit länger da nächster Tag
+                        }
 					}
 				}
 
-			if (($this->now > $this->timeStart) && ($this->now < $timeStop))
+			if (($this->now > $timeStart) && ($this->now < $timeStop))
 				{
                 if ($debug) echo "        *** aktuell im Schaltinterval.    ";
-				$minutesRange = ($this->timeStop-$this->timeStart)/60;
+				$minutesRange = ($timeStop-$timeStart)/60;
 				$actionTriggerMinutes = 5;
 				$rndVal = rand(1,100);
 				//echo "Zufallszahl:".$rndVal."\n";
@@ -1974,6 +1979,7 @@ class Autosteuerung
                 elseif ($debug) echo "\n"; 
 				}
 			}	
+        $this->timeStart=$timeStart;            // warum eigentlich ???? wird nicht benötigt 
 		return ($timeright);	
 		}	
 
@@ -2326,12 +2332,12 @@ class Autosteuerung
 				}
 			else
 				{	 
-				echo "setNewStatus: Status Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
+				echo "   setNewStatus: Status Speicherort OID : ".$category." (".IPS_GetName(IPS_GetParent($category))."/".IPS_GetName($category).")  Variable OID : ".$variableID." (".IPS_GetName(IPS_GetParent($variableID))."/".IPS_GetName($variableID).")\n";
 				$typ=IPS_GetVariable($variableID)["VariableType"];
                 $profil=IPS_GetVariable($variableID)["VariableProfile"];
 				// CreateVariableByName($parentID, $name, $type, $profile="", $ident="", $position=0, $action=0)
                 $mirrorVariableID=CreateVariableByName($category,IPS_GetName($variableID)."_".IPS_GetName(IPS_GetParent($variableID)), $typ, $profil);
-				echo "Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
+				echo "  setNewStatus: Spiegelvariable ist auf OID : ".$mirrorVariableID."   ".IPS_GetName($mirrorVariableID)."/".IPS_GetName(IPS_GetParent($mirrorVariableID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($mirrorVariableID)))."   alter Wert ist : ".GetValue($mirrorVariableID)."\n";
 				$oldValue=GetValue($mirrorVariableID);
 				if ($value != $oldValue) SetValue($mirrorVariableID,$value);
 				return($oldValue);
@@ -3204,7 +3210,7 @@ class Autosteuerung
 	 *
 	 ************************************/
 
-	public function EvaluateCommand($befehl,array &$result,$simulate=false)
+	public function EvaluateCommand($befehl,array &$result,$simulate=false,$debug=false)
 		{
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug, für EchoControl Loadspeaker Ausgabe verwendet
 		//$this->log->LogMessage("EvaluateCommand : ".json_encode($befehl));		
@@ -3577,7 +3583,7 @@ class Autosteuerung
 			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
                 $state=true;            // Rückgabewert
                 $if=trim(strtoupper($befehl[0]));
-                if ($this->evalCondition($befehl,$result,$state,true)) ;                // gleich bekannte Befehle gemeinsam abarbeiten  dritter Parameter true normal, false invertiert, vierter Debug
+                if ($this->evalCondition($befehl,$result,$state,$debug)) ;                // gleich bekannte Befehle gemeinsam abarbeiten  dritter Parameter true normal, false invertiert, vierter Debug
                 else
                     {	                                                    // wenn Befehle in evalCondition noch nicht bekannt hier weitermachen
                     $result["COND"]=$Befehl1;                             // Befehl1 wäre mit trim und strtoupper
@@ -3656,7 +3662,7 @@ class Autosteuerung
                                 }
                             break;
                         default:
-                            if ($this->evalConditionExtended($befehl,$result,$state,true)) echo "erfolgreich\n";
+                            if ($this->evalConditionExtended($befehl,$result,$state,$debug)) echo "erfolgreich\n";
                             break;
                             }       // ende switch cond
                         }           // ende else
@@ -3687,7 +3693,7 @@ class Autosteuerung
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
                 $state=false;            // Rückgabewert
                 $if=trim(strtoupper($befehl[0]));
-                if ($this->evalCondition($befehl,$result,$state,true)) echo "erfolgreich\n";	            // Zusammenfassung der if Bearbeitung, verändert result, dritter Parameter true normal, false invertiert, vierter Debug ! 
+                if ($this->evalCondition($befehl,$result,$state,$debug)) echo "erfolgreich\n";	            // Zusammenfassung der if Bearbeitung, verändert result, dritter Parameter true normal, false invertiert, vierter Debug ! 
                 else
                     {
                     $result["COND"]=$Befehl1;                             // Befehl1 wäre mit trim und strtoupper
@@ -3696,7 +3702,7 @@ class Autosteuerung
 
 
                         default:
-                            if ($this->evalConditionExtended($befehl,$result,$state,true)) echo "erfolgreich\n";
+                            if ($this->evalConditionExtended($befehl,$result,$state,$debug)) echo "erfolgreich\n";
                             break;          // von default
                             }           // ende switch
                         }	        // ende else von eval condition
@@ -3860,14 +3866,16 @@ class Autosteuerung
         return ($found);     // andere evaluierung des IF Befehls findet auch statt
 		}
 
-
+    /* Zusatz Evaluierungen von Conditions, Rückgabe über die ersten drei Variablen.
+     * state auch updaten, wird für die IFAND etc Befehle verwendet
+     */
 
 	private function evalConditionExtended(&$befehl,&$result,&$state,$debug)
         {
         $found=true;
         $if=trim(strtoupper($befehl[0]));
 		$cond=trim(strtoupper($befehl[1]));
-        $remain="";
+        $remain="";         // wäre für Zusatzbefehle
         if ($debug)
             {
 		    echo "evalConditionExtended: allgemeine Funktion zur Evaluierung von besonderen Varianten des Befehls $if:$cond ";
@@ -3900,7 +3908,7 @@ class Autosteuerung
                         $checkId = $this->lightManager->GetProgramIdByName($compare[0]);		/* Light Manager ist context sensitive */
                         if ($checkId !== false)
                             {
-                            echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
+                            if ($debug) echo "Vielleicht ein Program, dann ist ein Wertvergleich dabei, eingestellt auf ".$compare[1].".Vergleich mit ".GetValue($checkId)."  ".GetValueFormatted($checkId)."\n";
                             $statusCheck = ($compare[1]==GetValueFormatted($checkId));
                             IPSLogger_Inf(__file__, 'Autosteuerung IPSLight Befehl IF: Program '.$compare[0]."   ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
                             }
@@ -3920,10 +3928,11 @@ class Autosteuerung
                     $statusCheck=$this->heatManager->GetValue($checkId);
                     break;
                 case "Program":
-                    echo "Es ist ein IPSHeat Program mit Wertvergleich, abgefragt auf ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."  (".GetValue($checkId).")  \n";
+                    if ($debug) echo "Es ist ein IPSHeat Program mit Wertvergleich, abgefragt auf ".$compare[1].". Vergleich mit ".GetValueFormatted($checkId)."  (".GetValue($checkId).")  \n";
                     if ($sizeBefehl>1)
                         {
                         $statusCheck = ($compare[1]==GetValueFormatted($checkId));
+                        if ($debug) echo "Ergebnis ".($statusCheck?"Gleich":"Ungleich")."\n";
                         IPSLogger_Inf(__file__, 'Autosteuerung IPSHeat Befehl IF: Program '.$compare[0]."   ".$compare[1].".vergleich mit ".GetValueFormatted($checkId)."   ergibt ".($statusCheck?"OK":"NOK"));
                         }
                     break;
@@ -3937,17 +3946,23 @@ class Autosteuerung
             if ( (strtoupper($befehl[0]) == "IFAND") || (strtoupper($befehl[0]) == "ANDIF") )
                 {
                 $result["SWITCH"]=$result["SWITCH"] && $statusCheck;
+                $state=$state && $statusCheck;
                 }
             else
                 {	
                 $result["SWITCH"]=$statusCheck;
+                $state=$statusCheck;
                 }
-            echo "Auswertung IF:".$befehl[1]." Wert ist ".($statusCheck?"gleich":"ungleich")." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";	
+            if ($debug) 
+                {
+                echo "Auswertung IF:".$befehl[1]." Wert ist ".($statusCheck?"gleich":"ungleich")." VariableID ist ".$checkId." (".IPS_GetName(IPS_GetParent($checkId))."/".IPS_GetName($checkId).")\n";
+                echo json_encode($result)."\n";	
+                }
             }
-        else 
+        else  
             {
-            echo "Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.  $checkId  \n";	
-            }
+            echo "*****Fehler, Auswertung IF:".$befehl[1]." nicht bekannt, wird ignoriert.  $checkId  \n";	
+            }            
         }       // ende function
 
     /******************
@@ -3975,6 +3990,70 @@ class Autosteuerung
 				break;
 			}
 		}
+
+    /******************
+     * 
+     * mit dem Befehl Status oder Anwesenheit kann mit + noch ein Zusatzparameter mitgegeben werden. Diese als Control auswerten.
+     *
+     **************************************/
+
+    function evalWertOpt(&$control, $wertOptInput)
+        {
+        echo "evalWertOpt wurde aufgerufen mit Eingabewert ".json_encode($wertOptInput).".\n";
+        $control["note"]=false;
+        $control["log"]=false;
+        $control["bounce"]=false; 
+        if ((is_array($wertOptInput))===false) 
+            {
+            if ($wertOptInput != "") $wertOptGo[]=$wertOptInput;
+            else $wertOptGo=array();
+            }
+        else $wertOptGo=$wertOptInput;
+        foreach ($wertOptGo as $wertOptEntry)
+            {
+            $wertOpt=trim(strtoupper($wertOptEntry));
+            $wertOptArray=explode(":",$wertOpt);
+            switch ($wertOptArray[0])
+                {
+                case "NOTE":
+                    $control["note"]=true;
+                    break;
+                case "LOG":
+                    $control["log"]=true;
+                    echo "evalWertOpt Log true\n";
+                    break;
+                case "NOLOG":
+                    $control["log"]=false;
+                    break;
+                case "BOUNCE":
+                case "BOUNCES":
+                    if ($wertOptArray[0]=="BOUNCES")                 {
+                        $update=false;
+                        $interval=0;
+                        }
+                    elseif (count($wertOptArray)>1)           // zweiten Parameter einlesen 
+                        {
+                        $update=true;
+                        $interval=$wertOptArray[1];
+                        //if ($debug) echo "Status+".$wertOptArray[0].":$interval erkannt.\n";
+                        if (isset($wertOptArray[2])) $token=$wertOptArray[2];
+                        }
+                    else        // Default Paramter ist 4
+                        {
+                        $update=true;
+                        $interval=4;
+                        } 
+                    //function setNewStatusBounce($variableID,$value,$dif,$update=false,$token=false,$category=0,$debug=false)    
+                    echo "*********Aufruf Routine Status mit Zusatzparameter $wertOpt.\n";
+                    $control["bounce"]=$this->setNewStatusBounce($variableID,$status,$interval,$update,$token,0,$debug);        // mit Update Bounce Status
+                    IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Zusatzparameter '.$wertOpt.' Bounce erkannt: '.($control["bounce"]?"Yes":"No"));
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
 
 	/***************************************
 	 *
@@ -5026,21 +5105,23 @@ class Autosteuerung
 		return ($undo);
 		}
 		
-	/* Zusammenfassung der Befehle die nach der execute Funktion kommen */
+	/* Zusammenfassung der Befehle die nach der execute Funktion kommen 
+     * echo "Aufruf timerCommand mit :".json_encode($result)."\n";
+     *
+	 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
+	 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
+	 * 
+	 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
+	 * "DELAY":720,"DELAY#CHECK":true
+     *
+     * DELAY#CHECK ist eine Sonderfunktion, nach Ablauf der Zeit prüfen ob Bedingung noch gültig, wenn nicht mehr gültig, Switch und Timer ausschalten. 
+     *
+	 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
+     *
+     */
 
 	public function timerCommand($result,$simulate=false)
 		{
-        //echo "Aufruf timerCommand mit :".json_encode($result)."\n";
-		/********************
-		 *
-		 * Timer wird einmal aufgerufen um nach Ablauf wieder den vorigen Zustand herzustellen.
-		 * Bei DIM Befehl anders, hier wird der unter DIM#LEVEL definierte Zustand während der Zeit DIM#DELAY versucht zu erreichen
-		 * 
-		 * Delay ist davon unabhängig und kann zusätzlich verwendet werden
-		 *
-		 * nur machen wenn if condition erfüllt ist, andernfalls wird der Timer ueberschrieben
-		 *
-		 ***************************************************************/					
 		if ($result["SWITCH"]===true)
 			{
 			if (isset($result["DIM"])==true)
@@ -5080,11 +5161,11 @@ class Autosteuerung
 				}
 			if (isset($result["DELAY"])==true)
 				{
-                echo "Aufruf timerCommand für DELAY mit :".json_encode($result)."\n";
 				if ($result["DELAY"]>0)
 					{
 					if (isset($result["DELAY#CHECK"])==true)
 						{
+                        echo "Aufruf timerCommand für DELAY#CHECK mit :".json_encode($result)."\n";
 						$EreignisID = $this->getEventTimerID($result["NAME"]."_EVENT");						
 						$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
 						$befehl.='if (GetValue('.$result["SOURCEID"].')==false) { IPS_SetEventActive('.$EreignisID.',false); '.$result["UNDO"].'   }';
@@ -5092,12 +5173,13 @@ class Autosteuerung
 						//print_r($result);
 						if ($simulate==false)
 							{
-							//$this->setDimTimer($result["NAME"],$result["DELAY"],$befehl);
-							$this->setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);
+							$this->setDimTimer($result["NAME"],$result["DELAY"],$befehl);           // richtige Implementierung, alle Delay Sekunden nachschauen obs noch passt
+							//$this->setEventTimer($result["NAME"],$result["DELAY"],$result["COMMAND"]);        // nur ein einmaliger Timer aufruf
 							}
 						}
 					else
 						{
+                        echo "Aufruf timerCommand für DELAY mit :".json_encode($result)."\n";
 						echo "Execute Command Delay, Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
 						//print_r($result);
 						if ($simulate==false)
@@ -5214,7 +5296,7 @@ class Autosteuerung
     
     function setEventTimer($name,$delay,$command)
 	    {
-    	echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT"."\n";
+    	echo "setEventTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT mit Zeitverzoegerung von $delay Sekunden. Befehl lautet : ".str_replace("\n","",$command)."\n";
 	    IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
     	$now = time();
     	$EreignisID = $this->getEventTimerID($name."_EVENT");
@@ -5230,7 +5312,7 @@ class Autosteuerung
 	/* einen zyklischen Timer anlegen und setzen, ist für ein einmaliges Event */
 	function setDimTimer($name,$delay,$command)
 		{
-		echo "Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
+		echo "setDimTimer: Jetzt wird der Timer gesetzt : ".$name."_EVENT_DIM"." und 10x alle ".$delay." Sekunden aufgerufen\n";
 		IPSLogger_Dbg(__file__, 'Autosteuerung, Timer setzen : '.$name.' mit Zeitverzoegerung von '.$delay.' Sekunden. Befehl lautet : '.str_replace("\n","",$command));	
   		$now = time();
 		$EreignisID = $this->getEventTimerID($name."_EVENT_DIM");
@@ -5242,7 +5324,7 @@ class Autosteuerung
    		IPS_SetEventScript($EreignisID,$command);
 		}
 
-	/* für einen Timer Namen die ID zurückgeben, wenn die ID noch niocht bekannt ist den timer zumindest dem Namen nach anlegen */
+	/* für einen Timer Namen die ID zurückgeben, wenn die ID noch nocht bekannt ist den timer zumindest dem Namen nach anlegen */
     function getEventTimerStatus($name)
 	    {
     	$EreignisID = $this->getEventTimerID($name);
@@ -5269,6 +5351,7 @@ class Autosteuerung
 		    }
 		return($EreignisID);
 		}
+
     /* Umsetzung von Farbennamen in den Hexcode */     
 
 	public function GetColor($Colorname) 
@@ -5276,7 +5359,7 @@ class Autosteuerung
 		$Colorname=strtolower($Colorname);
 		$Colors  =  ARRAY( 
  
-//  Colors  as  they  are  defined  in  HTML  3.2 
+    //  Colors  as  they  are  defined  in  HTML  3.2 
             "black"=>array( "red"=>0x00,  "green"=>0x00,  "blue"=>0x00), 
             "maroon"=>array( "red"=>0x80,  "green"=>0x00,  "blue"=>0x00), 
             "green"=>array( "red"=>0x00,  "green"=>0x80,  "blue"=>0x00), 
@@ -5294,7 +5377,7 @@ class Autosteuerung
             "aqua"=>array( "red"=>0x00,  "green"=>0xFF,  "blue"=>0xFF), 
             "white"=>array( "red"=>0xFF,  "green"=>0xFF,  "blue"=>0xFF), 
  
-//  Additional  colors  as  they  are  used  by  Netscape  and  IE 
+    //  Additional  colors  as  they  are  used  by  Netscape  and  IE 
             "aliceblue"=>array( "red"=>0xF0,  "green"=>0xF8,  "blue"=>0xFF), 
             "antiquewhite"=>array( "red"=>0xFA,  "green"=>0xEB,  "blue"=>0xD7), 
             "aquamarine"=>array( "red"=>0x7F,  "green"=>0xFF,  "blue"=>0xD4), 
@@ -6424,6 +6507,7 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 		//echo "\n";			
 		}
 
+
 	}
 
 
@@ -6500,7 +6584,7 @@ function Anwesenheit($params,$status,$variableID,$simulate=false,$wertOpt="")
 
 	IPSLogger_Inf(__file__, 'Aufruf Routine Anwesenheit mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
 	$auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
-	$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+	//$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
 	$parges=$auto->ParseCommand($params,$status,$simulate);
 	$command=array(); $entry=1;
 	//print_r($parges);
@@ -6682,49 +6766,71 @@ function GutenMorgenWecker($params,$status,$variableID,$simulate=false,$wertOpt=
  *
  ************************************************************************************************/
 
-function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=false)
+function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$debug=false)
 	{
 	global $speak_config;
 
     //if ($debug) echo "Aufruf status+$wertOpt\n";
-    $log=true; $bounce=false;
+    $control=array();
+
     $auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 
     $exectime=hrtime(true)/1000000;
     $token=false;
-    $wertOpt=trim(strtoupper($wertOpt));
-    $wertOptArray=explode(":",$wertOpt);
-	switch ($wertOptArray[0])
+
+    $auto->evalWertOpt($control, $wertOptInput);
+
+    /*$control["note"]=false;
+    $control["log"]=false;
+    $control["bounce"]=false; 
+    if ((is_array($wertOptInput))===false) 
         {
-        case "NOLOG":
-            $log=false;
-            break;
-        case "BOUNCE":
-        case "BOUNCES":
-            if ($wertOptArray[0]=="BOUNCES")                 {
-                $update=false;
-                $interval=0;
-                }
-            elseif (count($wertOptArray)>1)           // zweiten Parameter einlesen 
-                {
-                $update=true;
-                $interval=$wertOptArray[1];
-                //if ($debug) echo "Status+".$wertOptArray[0].":$interval erkannt.\n";
-                if (isset($wertOptArray[2])) $token=$wertOptArray[2];
-                }
-            else        // Default Paramter ist 4
-                {
-                $update=true;
-                $interval=4;
-                } 
-            //function setNewStatusBounce($variableID,$value,$dif,$update=false,$token=false,$category=0,$debug=false)    
-            echo "*********Aufruf Routine Status mit Zusatzparameter $wertOpt.\n";
-            $bounce=$auto->setNewStatusBounce($variableID,$status,$interval,$update,$token,0,$debug);        // mit Update Bounce Status
-            IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Zusatzparameter '.$wertOpt.' Bounce erkannt: '.($bounce?"Yes":"No"));
-            break;
-        default:
-            break;
+        if ($wertOptInput != "") $wertOptGo[]=$wertOptInput;
+        else $wertOptGo=array();
         }
+    else $wertOptGo=$wertOptInput;
+    foreach ($wertOptGo as $wertOptEntry)
+        {
+        $wertOpt=trim(strtoupper($wertOptEntry));
+        $wertOptArray=explode(":",$wertOpt);
+        switch ($wertOptArray[0])
+            {
+            case "LOG":
+                $control["note"]=true;
+                break;
+            case "LOG":
+                $control["log"]=true;
+                break;
+            case "NOLOG":
+                $control["log"]=false;
+                break;
+            case "BOUNCE":
+            case "BOUNCES":
+                if ($wertOptArray[0]=="BOUNCES")                 {
+                    $update=false;
+                    $interval=0;
+                    }
+                elseif (count($wertOptArray)>1)           // zweiten Parameter einlesen 
+                    {
+                    $update=true;
+                    $interval=$wertOptArray[1];
+                    //if ($debug) echo "Status+".$wertOptArray[0].":$interval erkannt.\n";
+                    if (isset($wertOptArray[2])) $token=$wertOptArray[2];
+                    }
+                else        // Default Paramter ist 4
+                    {
+                    $update=true;
+                    $interval=4;
+                    } 
+                //function setNewStatusBounce($variableID,$value,$dif,$update=false,$token=false,$category=0,$debug=false)    
+                echo "*********Aufruf Routine Status mit Zusatzparameter $wertOpt.\n";
+                $control["bounce"]=$auto->setNewStatusBounce($variableID,$status,$interval,$update,$token,0,$debug);        // mit Update Bounce Status
+                IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Zusatzparameter '.$wertOpt.' Bounce erkannt: '.($control["bounce"]?"Yes":"No"));
+                break;
+            default:
+                break;
+            }
+        } */
 
    /* bei einer Statusaenderung oder Aktualisierung einer Variable 																						*/
    /* array($params[0], $params[1],             $params[2],),                     										*/
@@ -6737,14 +6843,19 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
     /* alten Wert der Variable ermitteln um den Unterschied erkennen, gleich, groesser, kleiner 
     * neuen Wert gleichzeitig schreiben
     */
-    $oldValue=$auto->setNewStatus($variableID,$status);	
+    $oldValue=$auto->setNewStatus($variableID,$status,$debug);	
     $command=array(); 
     $entry=1;	
 
-    if ($bounce==false)   // bei einem Bounce die ganze Befehlsabarbeitung deaktivieren
+    if ($control["bounce"]==false)   // bei einem Bounce die ganze Befehlsabarbeitung deaktivieren
         {
-        if ($log) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
-        $lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
+        if ($control["log"]) 
+            {
+            IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+            //$auto->log->LogNachrichten('Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') mit Befehlsgruppe : '.$params[0]." ".$params[1]." ".$params[2].' und Status '.$status);
+            }
+        if ($control["note"]) $auto->log->LogNachrichten(IPS_GetName($variableID).'('.$variableID.') : '.$params[0].' und Status '.$status); 
+        //$lightManager = new IPSLight_Manager();  /* verwendet um OID von IPS Light Variablen herauszubekommen */
         
         $parges=$auto->ParseCommand($params,$status,$simulate);
         
@@ -6763,7 +6874,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
                 switch (strtoupper($befehl[0]))
                     {
                     default:
-                        $auto->EvaluateCommand($befehl,$command[$entry],$simulate);
+                        $auto->EvaluateCommand($befehl,$command[$entry],$simulate,$debug);
                         if ($debug) echo "       Evaluate Befehl Ergebnis : ".json_encode($command[$entry])."\n";
                         break;
                     }	
@@ -6776,7 +6887,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
             } /* Ende foreach Kommando */
         unset ($auto);							/* Platz machen im Speicher */
         $exectime=round(hrtime(true)/1000000-$exectime,0);
-        if ($log) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') fertig. Ausführungszeit '.$exectime.' Millisekunden.');
+        if ($control["log"]) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.IPS_GetName($variableID).'('.$variableID.') fertig. Ausführungszeit '.$exectime.' Millisekunden.');
         }
     else
         {           // bounce erkannt, Befehl ignorieren
@@ -6785,7 +6896,7 @@ function Status($params,$status,$variableID,$simulate=false,$wertOpt="",$debug=f
         $command[$entry]["OLDSTATUS"]=$oldValue;			/* alter Wert, vor der Änderung */        
         $command[$entry]["SOURCEID"]=$variableID;			/* Variable ID des Wertes */
         $exectime=round(hrtime(true)/1000000-$exectime,0);
-        if ($log) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.$variableID.' wgeen Bounce ignoriert. Ausführungszeit '.$exectime.' Millisekunden.');
+        if ($control["log"]) IPSLogger_Inf(__file__, 'Aufruf Routine Status von '.$variableID.' wegen Bounce ignoriert. Ausführungszeit '.$exectime.' Millisekunden.');
         }		
 	return($command);
 	}

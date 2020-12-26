@@ -5,7 +5,7 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Auslesung von Energiewerten. Diese Script ist verweist und wird zu Testzzecken weiterhin verwendet
+	 * Script zur Auslesung von Energiewerten. Diese Script ist verwaist und wird nur zu Testzwecken weiterhin verwendet
 	 * Aufgabe wird jetzt von MomentanwerteAbfragen uebernommen.
 	 *
 	 *
@@ -53,11 +53,11 @@ else
 	foreach ($MeterConfig as $identifier => $meter)
 		{
 		echo"-------------------------------------------------------------\n";
-		echo "Create Variableset for : ".$meter["NAME"]." \n";
+		echo "Create Variableset for : ".str_pad($meter["NAME"],35)." Konfig : ".json_encode($meter)."\n";
 		$ID = CreateVariableByName($CategoryIdData, $meter["NAME"], 3);   /* 0 Boolean 1 Integer 2 Float 3 String */
 		if ($meter["TYPE"]=="Amis")
-		   {
-		   $amismetername=$meter["NAME"];			
+		    {
+		    $amismetername=$meter["NAME"];			
 			echo "Amis Zähler, verfügbare Ports:\n";			
 		
 			$AmisID = CreateVariableByName($ID, "AMIS", 3);

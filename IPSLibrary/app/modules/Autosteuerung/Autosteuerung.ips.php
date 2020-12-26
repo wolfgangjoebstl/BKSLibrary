@@ -45,7 +45,10 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 
 	$installedModules = $moduleManager->GetInstalledModules();
 
-    include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+	if ( isset($installedModules["IPSLight"]) === true )
+		{
+        include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\IPSLight\IPSLight.inc.php");
+        }
 	if ( isset($installedModules["Stromheizung"]) === true )
 		{
 		include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Stromheizung\IPSHeat.inc.php");
@@ -281,6 +284,8 @@ if ($_IPS['SENDER']=="Variable")
 				break;
 			/*********************************************************************************************/
 		   case "Status":
+                //echo "Status erkannt mit $wertOpt.\n";
+				$log_Autosteuerung->LogNachrichten("Wert :".$value." von ".$variableID.' ('.IPS_GetName($variableID).'/'.IPS_GetName(IPS_GetParent($variableID)).').');
 				$status=Status($params,$value,$variableID,false,$wertOpt);
 				$log_Autosteuerung->LogMessage('Befehl Status wurde ausgeführt : '.json_encode($status));
 				break;		   
@@ -724,16 +729,18 @@ if ($_IPS['SENDER']=="Execute")
 		if (isset($scene["TYPE"]))
 			{
 			if ( strtoupper($scene["TYPE"]) == "AWS" )   /* nur die Events bearbeiten, die der Anwesenheitssimulation zugeordnet sind */
-				{		
+				{
+                echo "--------------------------------------------------------------\n";		
 				echo "  Anwesenheitssimulation Szene : ".$scene["NAME"]."\n";
 				}
 			else
 				{		
+                echo "--------------------------------------------------------------\n";		
 				echo "  Timer Szene : ".$scene["NAME"]."\n";
 				}
 			}
 		$switch = $auto->timeright($scene,true);	            // true für Debug
-        $text=$auto->switchAWS(true,$scene,true);               // einschalten scene , true für Debug
+        $text=$auto->switchAWS($switch,$scene,true);               // einschalten scene , true für Debug
 		echo "      Schaltet jetzt : ".($switch ? "Ja":"Nein")."   Info: $text\n";
 		/* Kennt nur zwei Zeiten, sollte auch für mehrere Zeiten getrennt durch , funktionieren, gerade from, ungerader Index to */	
 		$actualTimes = $auto->switchingTimes($scene);

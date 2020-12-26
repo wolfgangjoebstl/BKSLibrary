@@ -163,6 +163,7 @@
             configfileParser($configInput, $configWidget, ["Widgets"],"Widgets",null);    
             configfileParser($configInput, $config, ["Monitor"],"Monitor",null); 
 
+            /* Sub Directories */
             configfileParser($configInput["Directories"], $config["Directories"], ["Pictures"],"Pictures",null);                // null es wird als Default zumindest ein Indexknoten angelegt
             if (strpos($config["Directories"]["Pictures"],"C:/Scripts/")===0) 
                 {
@@ -175,10 +176,17 @@
             if (strpos($config["Directories"]["Scripts"],"C:/Scripts/")===0) $config["Directories"]["Scripts"]=substr($config["Directories"]["Scripts"],10);      // Workaround für C:/Scripts"
             $config["Directories"]["Scripts"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Scripts"]);
 
+            /* Sub Display */
             configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather",null); 
             configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
+            configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine",null); 
+            configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",["RowMax"=> 2,"ColMax" => 3,"Screens" => 1]); 
+            configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["RowMax"],"RowMax",2); 
+            configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["ColMax"],"ColMax",3); 
+            configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["Screens"],"Screens",1); 
 
-            $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$debug);       // mit oder ohne Debug
+            /* Sub Widgets */
+            $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$config["Display"]["WidgetStyle"], $debug);       // mit oder ohne Debug
 
             /* 
             configfileParser($configInput, $config, ["Test"],"Test",null); 
@@ -327,8 +335,13 @@
                     $wert.= $this->showTopology();
                     $wert.='</tr></table>';
                     break;
-                case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";            	
-                    if ($debug) echo "Page Type Style is Station.\n";
+                case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";  
+                    $switchSubScreenID = IPS_GetVariableIDByName("SwitchSubScreen",$this->CategoryIdData);  
+                    $subscreen=GetValue($switchSubScreenID);
+                    if ( ($subscreen>2) || ($subscreen<1) ) $subscreen=1;                     // Wert geht von 1 weg
+                    SetValue($switchSubScreenID,$subscreen);
+
+                    if ($debug) echo "Page Type Style is Station. Subscreen Nummer ist $subscreen.\n";
                     $wert.='<table id="startpage">';
 
                     if ( $noweather==true )
@@ -349,7 +362,7 @@
                         }
                     else        // Anzeige der Wetterdaten
                         {
-                        $wert .= $this->showDisplayStation($debug);
+                        $wert .= $this->showDisplayStation($subscreen, $debug);
                         /* $modulname="Astronomy";
                         //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
                         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
@@ -510,13 +523,13 @@
          *
          */
 
-		function showDisplayStation($debug=false)
+		function showDisplayStation($subscreen=1, $debug=false)
 			{
 	        if (isset($this->configuration["Widgets"]) ) $config=$this->configuration["Widgets"];
             else $config=array();
             if ($debug) 
                 {
-                echo "showDisplayStation:\n";
+                echo "showDisplayStation: ".json_encode($config)."\n";
                 //print_R($config);
                 }
             $wert = "";
@@ -569,6 +582,11 @@
                         case "TEMPERATURE":
                             $wert.='<td><table border="0" bgcolor="#f1f1f1">';
                             $wert .= $this->showTemperatureTable("",$entry,$debug);         // erster Parameter ist colspan als config für table
+                            $wert .= '</table></td>';
+                            break;
+                        case "EMPTY":
+                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                            $wert .= "<td>intentionally left empty</td>";         // erster Parameter ist colspan als config für table
                             $wert .= '</table></td>';
                             break;
                         default:
@@ -878,27 +896,28 @@
         *
         */
 
-        function transformConfigWidget($widgetsConf,$debug=false)
+        function transformConfigWidget($widgetsConf,$widgetsStyle, $debug=false)
             {
             $config=array();
-            if ($debug) 
-                {
-                echo "transformConfigWidget:\n";
-                //print_r($widgetsConf);
-                }
-            $maxX=3;
-            $x=0; $y=0;
+            if ($debug)  echo "transformConfigWidget aufgerufen: ".json_encode($widgetsStyle)."  ".json_encode($widgetsConf)."\n";
+            $maxX=3; $x=0; $y=0;        // automatische Aufteilung ohne Pos
             foreach ($widgetsConf as $name => $widget)
                 {
                 $configWidget=array();   
                 configfileParser($widget, $configWidget, ["TYPE","Type"],"Type" ,$name);  
                 configfileParser($widget, $configWidget, ["NAME","Name"],"Name" ,$name);  
-                configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,null); 
+                configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,"[]"); 
+                configfileParser($widget, $configWidget, ["POS","Pos"],"Pos" ,null);                            // default keien ANgabe, d.h. der Reihe nach
                 /*if ($debug) print_r($configWidget);
                 if (isset($widget["Type"])) $wType = $widget["Type"]; else $wType = $name;
                 if (isset($widget["Name"])) $wName = $widget["Name"];
                 else $wName = $name;*/
-                if (isset($widget["Pos"])) { $wX=["Pos"][0]; $wY=["Pos"][1]; }
+                if (isset($configWidget["Pos"])) 
+                    { 
+                    $wX=$configWidget["Pos"][0]; 
+                    $wY=$configWidget["Pos"][1]; 
+                    if ($debug) echo "   ".str_pad($configWidget["Type"]."::".$configWidget["Name"],32)." ist auf Pos $wX | $wY.\n";
+                    }
                 else 
                     {
                     $wX=$x; $wY=$y;
@@ -911,7 +930,18 @@
                 $configWidget["Pos"]["Y"]=$wY;
                 $config[$wY][$wX]=$configWidget;
                 }
-            return ($config);
+            //print_R($config);
+            $showDisplayConfig=array(); 
+            $rowmax=$widgetsStyle["RowMax"]; $colmax=$widgetsStyle["ColMax"];
+            for ($row=0;$row<$rowmax;$row++)
+                {
+                for ($col=0;$col<$colmax;$col++)
+                    {
+                    if (isset($config[$row+1][$col+1])) $showDisplayConfig[$row][$col] = $config[$row+1][$col+1];
+                    else $showDisplayConfig[$row][$col] = ["Type" => "Empty"];
+                    }
+                }            
+            return ($showDisplayConfig);
             }
 
        /******************************************************************
@@ -1883,13 +1913,16 @@
                     {
                     //print_r($entry);
                     $aussen="unknown";$innen="unknown";
-                    if (isset($entry["Aussen"]["FUNCTION"])) $aussen=$entry["Aussen"]["FUNCTION"]();
-                    if (isset($entry["Aussen"]["OID"])) $aussen=GetValue($entry["Aussen"]["OID"]);
-                    if (isset($entry["Innen"]["FUNCTION"])) $innen=$entry["Innen"]["FUNCTION"]();
-                    if (isset($entry["Innen"]["OID"])) $innen=GetValue($entry["Innen"]["OID"]);
-                    if (isset($entry["Unit"])) $unit=$entry["Unit"];
-                    $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.$aussen.$unit.'</aussen></td><td align="center"> <innen>'.$innen.$unit.'</innen> </td></tr>';
-
+                    if (isset($entry["Aussen"]["FUNCTION"])) $aussenWert=$entry["Aussen"]["FUNCTION"]();
+                    if (isset($entry["Aussen"]["OID"])) $aussenWert=GetValue($entry["Aussen"]["OID"]);
+                    if (isset($entry["Innen"]["FUNCTION"])) $innenWert=$entry["Innen"]["FUNCTION"]();
+                    if (isset($entry["Innen"]["OID"])) $innenWert=GetValue($entry["Innen"]["OID"]);
+                    $unit=$entry["Unit"];
+                    $size=strtoupper($entry["Size"]);
+                    if ($size == "LARGE") { $aussen="aussen"; $innen="innen"; }
+                    elseif ($size == "MED")  { $aussen="aussenMed"; $innen="innenMed"; }
+                    else { $aussen="aussenSmall"; $innen="innenSmall"; }
+                    $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><'.$aussen.'>'.$aussenWert.$unit.'</'.$aussen.'></td><td align="center"> <'.$innen.'>'.$innenWert.$unit.'</'.$innen.'> </td></tr>';
                     }
                 }
             return ($wert);
@@ -1917,7 +1950,8 @@
                 $config[$indexNum]["name"] = $index;
                 configfileParser($tempConf[$index], $config[$indexNum], ["Innen"],"Innen",null);
                 configfileParser($tempConf[$index], $config[$indexNum], ["Aussen"],"Aussen",null);
-                configfileParser($tempConf[$index], $config[$indexNum], ["Unit"],"Unit","");
+                configfileParser($tempConf[$index], $config[$indexNum], ["Unit","UNIT"],"Unit","");
+                configfileParser($tempConf[$index], $config[$indexNum], ["Size","SIZE"],"Size","Large");
                 $config[$indexNum]["Innen"] = $this->analyseEntry($config[$indexNum]["Innen"]);
                 $config[$indexNum]["Aussen"] = $this->analyseEntry($config[$indexNum]["Aussen"]);
                 $indexNum++; 
@@ -2075,6 +2109,10 @@
 	        $wert.='strg { height:280px; color:black; background-color: #c1c1c1; font-size: 12em; }';
 	        $wert.='innen { color:black; background-color: #ffffff; height:100px; font-size: 80px; }';
 	        $wert.='aussen { color:black; background-color: #c1c1c1; bgcolor: #c1c1c1; height:100px; font-size: 80px; }';
+	        $wert.='innenMed { color:black; background-color: #ffffff; height:100px; font-size: 50px; }';
+	        $wert.='aussenMed { color:black; background-color: #c1c1c1; bgcolor: #c1c1c1; height:100px; font-size: 50px; }';
+	        $wert.='innenSmall { color:black; background-color: #ffffff; height:100px; font-size: 30px; }';
+	        $wert.='aussenSmall { color:black; background-color: #c1c1c1; bgcolor: #c1c1c1; height:100px; font-size: 30px; }';
 	        $wert.='addText { color:black; background-color: #c1c1c1; height:100px; font-size: 24px; align:center; }';
 	        $wert.='temperatur { color:black; height:100px; font-size: 28px; align:center; }';
 	        $wert.='datum { color:black; height:100px; font-size: 28px; align:center; }';

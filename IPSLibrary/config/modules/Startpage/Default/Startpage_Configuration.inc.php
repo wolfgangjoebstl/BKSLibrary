@@ -39,7 +39,10 @@
 									),
 			"Display"    => array (
 				"Weathertable"	=> 'Active', 
-									),		
+									),	
+			"Widgets"    => array (                                         // das Station Display ist Widget orientiert
+									),	
+
 						);
 		}			
 

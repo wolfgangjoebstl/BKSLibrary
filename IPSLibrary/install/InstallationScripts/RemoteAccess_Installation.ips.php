@@ -106,10 +106,12 @@
 	 *
 	 ************************************************************************************************/
 
+    echo "RemoteAccess include Files anlegen:\n";
 	$remote=new RemoteAccess();
+    echo "------\n";
 	if (isset ($installedModules["Guthabensteuerung"])) 
 		{ 
-		$remote->add_Guthabensteuerung(); 
+		$remote->add_Guthabensteuerung(true);           // true für Debug
 		echo "Ende Guthabensteuerung Variablen zum include file hinzufügen : ".(microtime(true)-$startexec)." Sekunden \n";
 		}
 	if (isset ($installedModules["Amis"]))	
@@ -226,7 +228,7 @@ function CreateTimerRA($name,$minute)
 	$app_oid=$moduleManager->GetModuleCategoryID()."\n";
 	$oid_children=IPS_GetChildrenIDs($app_oid);
 	$result=array();
-	echo "  Alle Skript Files :\n";
+	//echo "  Alle Skript Files :\n";
 	foreach($oid_children as $oid)
 		{
 		$result[IPS_GetName($oid)]=$oid;
