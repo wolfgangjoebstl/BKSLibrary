@@ -49,28 +49,34 @@ Switch ($_IPS['SENDER'])
 	Case "Execute":
         $auto = new Autosteuerung();
         $oid=$kalender->getAutoFillID();
-        $configuration = $kalender->get_Configuration();
-
-        /*  $kalender->InitLogMessage(true);            // noch einmal Interesse halber anschauen
-        $kalender->getStatus();
-        print_r($configuration);  
-		$zeile1=$kalender->getZeile1ID();		// OID von Zeile1, aktueller Status
-        echo "Execute vom script aufgerufen (AutoFill:$oid  Zeile1:$zeile1):\n";   */
-
-		$value=$kalender->getStatusfromProfile(GetValue($oid));
-		$kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
-		$kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
-		$kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
-
-        if ($configuration["HeatControl"]["SwitchName"] != Null)
+        if ($oid)
             {
-            $result = $auto->isitheatday(true);             // true für Debug
-            $conf=array();
-            $conf["TYP"]=$configuration["HeatControl"]["Type"];
-            $conf["MODULE"]=$configuration["HeatControl"]["Module"];
-            $conf["NAME"]=$configuration["HeatControl"]["SwitchName"];
-            $auto->switchByTypeModule($conf,$result,true);              // true für Debug
-            //print_r($auto->getFunctions());
+            $configuration = $kalender->get_Configuration();
+
+            /*  $kalender->InitLogMessage(true);            // noch einmal Interesse halber anschauen
+            $kalender->getStatus();
+            print_r($configuration);  
+            $zeile1=$kalender->getZeile1ID();		// OID von Zeile1, aktueller Status
+            echo "Execute vom script aufgerufen (AutoFill:$oid  Zeile1:$zeile1):\n";   */
+
+            $value=$kalender->getStatusfromProfile(GetValue($oid));                 // value kann auch false sein
+            if ($value)
+                {
+                $kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
+                $kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
+                $kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
+
+                if ($configuration["HeatControl"]["SwitchName"] != Null)
+                    {
+                    $result = $auto->isitheatday(true);             // true für Debug
+                    $conf=array();
+                    $conf["TYP"]=$configuration["HeatControl"]["Type"];
+                    $conf["MODULE"]=$configuration["HeatControl"]["Module"];
+                    $conf["NAME"]=$configuration["HeatControl"]["SwitchName"];
+                    $auto->switchByTypeModule($conf,$result,true);              // true für Debug
+                    //print_r($auto->getFunctions());
+                    }
+                }
             }
 		break;	
 	default:

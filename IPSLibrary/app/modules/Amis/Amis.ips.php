@@ -5,8 +5,9 @@
 	 * @ingroup
 	 * @{
 	 *
-	 * Script zur Auslesung von Energiewerten. Diese Script ist verwaist und wird nur zu Testzwecken weiterhin verwendet
-	 * Aufgabe wird jetzt von MomentanwerteAbfragen uebernommen.
+	 * Script zur Auslesung von Energiewerten. Diese Script übernimmt die Webfrontvariablen Bearbeitung und wirdzusaetzlich zu Testzwecken weiterhin verwendet
+	 * Regelmaessiger Aufruf wird jetzt von MomentanwerteAbfragen uebernommen. Die Antwort eines AMIS Zähler wird automatisch von AMIS Cutter bearbeitet sobald der Wert verfügbar ist
+     *
 	 *
 	 *
 	 * @file      

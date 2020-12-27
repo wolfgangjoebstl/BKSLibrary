@@ -79,7 +79,8 @@ class WebCamera
         $this->camConfiguration = array();
         if (isset($installedModules["OperationCenter"]) )
             {
-            Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+            //Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\OperationCenter\OperationCenter_Configuration.inc.php");
+            IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");            
             IPSUtils_Include ("OperationCenter_Library.class.php","IPSLibrary::app::modules::OperationCenter");
             
             $moduleManagerOC = new IPSModuleManager('OperationCenter',$repository);

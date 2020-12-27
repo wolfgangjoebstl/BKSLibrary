@@ -690,6 +690,19 @@
 	
 	*/
 
+	if ( (isset ($installedModules["WebCamera"])) || (isset ($installedModules["IPSCam"])) )
+		{
+		echo "\n"; 
+		echo "=====================================================================================\n"; 
+		echo "Modul WebCamera/IPSCam installiert. Im Verzeichnis Data die Variablen für Übersichtsdarstellungen Pics und Movies anlegen:\n"; 
+		$CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
+		echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
+		$CamTablePictureID=CreateVariable("CamTablePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+		$CamMobilePictureID=CreateVariable("CamMobilePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+
+		$CamTableMovieID=CreateVariable("CamTableMovie",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
+        }
+
 	if (isset ($installedModules["IPSCam"]))
 		{
 		echo "\n"; 
@@ -700,12 +713,6 @@
 		   OperationCenter kopiert alle 150 Sekunden die verfügbaren Cam Snapshot in ein eigenes für die Darstellung im
 		   Webfront geeignetes Verzeichnis */ 
 
-		$CategoryIdDataOverview=CreateCategory("Cams",$CategoryIdData,2000,"");
-		echo $CategoryIdDataOverview."  ".IPS_GetName($CategoryIdDataOverview)."/".IPS_GetName(IPS_GetParent($CategoryIdDataOverview))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($CategoryIdDataOverview))))."\n";
-		$CamTablePictureID=CreateVariable("CamTablePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
-		$CamMobilePictureID=CreateVariable("CamMobilePicture",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
-
-		$CamTableMovieID=CreateVariable("CamTableMovie",3, $CategoryIdDataOverview,0,"~HTMLBox",null,null,"");
 
 		$repositoryIPS = 'https://raw.githubusercontent.com/brownson/IPSLibrary/Development/';
 		$moduleManagerCam = new IPSModuleManager('IPSCam',$repositoryIPS);

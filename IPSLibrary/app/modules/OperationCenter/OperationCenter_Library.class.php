@@ -107,7 +107,10 @@
 class OperationCenter
 	{
 
-    var $dosOps;                        /* verwendete andere Klassen */
+    private $dosOps;                        /* verwendete andere Klassen */
+    private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+    private $debug;                 // zusaetzliche hilfreiche Debugs
+
 	private $log_OperationCenter;
 
 	protected $CategoryIdData, $categoryId_SysPing,$categoryId_RebootCtr,$categoryId_Access,$archiveHandlerID;
@@ -130,12 +133,13 @@ class OperationCenter
 	 * Initialisierung des OperationCenter Objektes
 	 *
 	 */
-	public function __construct($subnet='10.255.255.255')
+	public function __construct($subnet='10.255.255.255',$debug=false)
 		{
-
+        $this->debug=$debug;
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
         $this->dosOps = new dosOps();     // create classes used in this class
+        $this->systemDir     = $this->dosOps->getWorkDirectory();
 
 		$this->subnet=$subnet;
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -158,7 +162,7 @@ class OperationCenter
 		$this->mactable=$this->create_macipTable($this->subnet);
 		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input, "OperationCenter",true);       // File, Objekt und html Logging, und Prefix Classname
+		$this->log_OperationCenter=new Logging($this->systemDir."Log_OperationCenter.csv",$input, "OperationCenter",true);       // File, Objekt und html Logging, und Prefix Classname
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 		$this->oc_Configuration = $this->setConfiguration();
@@ -187,7 +191,7 @@ class OperationCenter
 
         configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
         configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');    
-        configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10));    
+        configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",'{"MOVELOGS":true,"PURGELOGS":true,"PURGESIZE":10}');    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGESIZE"],"PURGESIZE",10);    
@@ -223,11 +227,11 @@ class OperationCenter
         if (function_exists("OperationCenter_Configuration"))
             {
             $configInput = OperationCenter_Configuration();            
-            configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,null);  
-            configfileParser($configInput, $config, ["ROUTER" ],"ROUTER" ,null);  
-            configfileParser($configInput, $config, ["CAM" ],"CAM" ,null);  
-            configfileParser($configInput, $config, ["LED" ],"LED" ,null);  
-            configfileParser($configInput, $config, ["DENON" ],"DENON" ,null);  
+            configfileParser($configInput, $config, ["INTERNET" ],"INTERNET" ,"[]");  
+            configfileParser($configInput, $config, ["ROUTER" ],"ROUTER" ,"[]");  
+            configfileParser($configInput, $config, ["CAM" ],"CAM" ,"[]");  
+            configfileParser($configInput, $config, ["LED" ],"LED" ,"[]");  
+            configfileParser($configInput, $config, ["DENON" ],"DENON" ,"[]");  
 
             }
         $this->oc_Configuration = $config;
@@ -2659,7 +2663,7 @@ class OperationCenter
 			{
 			$host          = $router["IPADRESSE"];
 			$community     = "public";                                                                         // SNMP Community
-			$binary        = "C:\Scripts\ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
+			$binary        = $this->systemDir."ssnmpq\ssnmpq.exe";    // Pfad zur ssnmpq.exe
 			$debug         = true;                                                                             // Bei true werden Debuginformationen (echo) ausgegeben
 			$snmp=new SNMP_OperationCenter($router_categoryId, $host, $community, $binary, $debug);
 			$snmp->registerSNMPObj(".1.3.6.1.2.1.2.2.1.10.4", "eth0_ifInOctets", "Counter32");
@@ -4114,7 +4118,8 @@ class OperationCenter
 
 class BackupIpsymcon extends OperationCenter
 	{
-	var $dosOps, $fileOps;                                                           /* genutzte Objekte/Klassen */
+	private $dosOps, $fileOps;                                                           /* genutzte Objekte/Klassen */
+    private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
 
     var $BackupDrive, $SourceDrive;                                         /* Verzeichnisse für Backup Ort und Quelle */
     var $backupActive;        								                /* Backup Aktiv Status */
@@ -4147,6 +4152,9 @@ class BackupIpsymcon extends OperationCenter
 		{
         //echo "Construct Parent class OperationCenter.\n";   
         parent::__construct($subnet);                       // sonst sind die Config Variablen noch nicht eingelesen
+
+        $this->dosOps = new dosOps();     // create classes used in this class
+        $this->systemDir     = $this->dosOps->getWorkDirectory();
 
         //echo "Construct BackupIpSymcon.\n";
         $configuration=$this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
@@ -4186,7 +4194,6 @@ class BackupIpsymcon extends OperationCenter
 
         $this->BackupDrive    = $this->dosOps->correctDirName($this->getBackupDrive());			// sicherstellen das ein Slash oder Backslash am Ende ist
         $this->fileOps  = new fileOps($this->BackupDrive."Backup.csv"); 
-        $this->dosOps   = new dosOps();
         }
 
     /* adressing of local variables of class */
@@ -6300,8 +6307,11 @@ class DeviceManagement
 
 	var $CategoryIdData       	= 0;
 	var $archiveHandlerID     	= 0;
-    var $debug                  = false;            /* wenig Debug Info ausgeben */
- 
+
+    private $debug                  = false;            /* wenig Debug Info ausgeben */
+    private $dosOps;                        /* verwendete andere Klassen */
+    private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+
 	var $log_OperationCenter  	= array();
 	var $oc_Configuration     	= array();
 	var $oc_Setup			    = array();			/* Setup von Operationcenter, Verzeichnisse, Konfigurationen */
@@ -6323,6 +6333,9 @@ class DeviceManagement
 	public function __construct($debug=false)
 		{
         $this->debug=$debug;
+        $this->dosOps = new dosOps();     // create classes used in this class
+        $this->systemDir     = $this->dosOps->getWorkDirectory();
+
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
 
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -6336,7 +6349,7 @@ class DeviceManagement
 
 		$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $this->CategoryIdData, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$this->log_OperationCenter=new Logging($this->systemDir."Log_OperationCenter.csv",$input);
 
 		$categoryId_DeviceManagement    = IPS_GetObjectIDByName('DeviceManagement',$this->CategoryIdData);
         $this->HMI_ReportStatusID       = IPS_GetObjectIDByName("HMI_ReportStatus",$categoryId_DeviceManagement);
@@ -8286,6 +8299,8 @@ class DeviceManagement
 
 class statusDisplay
 	{
+    private $dosOps;                        /* verwendete andere Klassen */
+    private $systemDir;                     // das SystemDir, gemeinsam für Zugriff zentral gespeichert
 
     private $CategoryIdData,$categoryId_TimerSimulation,$archiveHandlerID;
 
@@ -8303,8 +8318,10 @@ class statusDisplay
 
 	public function __construct()
 		{
-
 		IPSUtils_Include ("OperationCenter_Configuration.inc.php","IPSLibrary::config::modules::OperationCenter");
+
+        $this->dosOps = new dosOps();     // create classes used in this class
+        $this->systemDir     = $this->dosOps->getWorkDirectory();
 
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager))
@@ -8336,7 +8353,7 @@ class statusDisplay
         if (isset($this->installedModules["Autosteuerung"])) echo "Module Autosteuerung installiert.\n";
         $this->auto=new Autosteuerung();
 
-		$this->log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input,"",true);            // mit File, Objekt und html Logging, kein prefix
+		$this->log_OperationCenter=new Logging($this->systemDir."Log_OperationCenter.csv",$input,"",true);            // mit File, Objekt und html Logging, kein prefix
 		$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 		}
 
@@ -8881,7 +8898,7 @@ function dirToArray2($dir)
 			if (isset($NachrichtenScriptID))
 				{
                 $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);    
-				$log_Sprachsteuerung=new Logging("C:\Scripts\Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+				$log_Sprachsteuerung=new Logging($this->systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
 				if ($sk<10) $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk mit \"".$ansagetext."\"");
 				else $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk (".IPS_GetName($sk).") mit \"".$ansagetext."\"");
 				}

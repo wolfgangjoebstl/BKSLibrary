@@ -89,7 +89,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 		$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);     /* Zuletzt empfangener Befehl */
 		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 			
-		$handle=fopen("C:\Scripts\Log_Cutter_".$configPort[$sender]["ID"].".csv","a");
+		$handle=fopen($Amis->systemDir."Log_Cutter_".$configPort[$sender]["ID"].".csv","a");
 		$ausgabewert=date("d.m.y H:i:s").";".$sender.";".strlen($content).";";
 
 		if ($cutterActive == true)
@@ -125,7 +125,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	
 					$content = $ausgabewert;
 
-					$handlelog=fopen("C:\Scripts\Log_".$configPort[$sender]["Name"].".csv","a");
+					$handlelog=fopen($Amis->systemDir."Log_".$configPort[$sender]["Name"].".csv","a");
 					$ausgabewert=date("d.m.y H:i:s").";".$content;
 		 			fwrite($handlelog, $ausgabewert."\r\n");
 		 			fclose($handlelog);

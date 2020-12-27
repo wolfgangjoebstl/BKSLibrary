@@ -136,9 +136,12 @@ Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Au
 
     $StatusTableMapHtml   = CreateVariable("StatusTableView",   3 /*String*/,  $AnwesenheitserkennungID, 1010, '~HTMLBox');
 
-    $MonitorModeID                = IPS_GetObjectIDByName("MonitorMode", $categoryId_Autosteuerung);
-    $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
-	$StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
+    $MonitorModeID                = @IPS_GetObjectIDByName("MonitorMode", $categoryId_Autosteuerung);           // Zum Ein und Ausschalten des Monitors, eigene Routinen sind konfigurierbar, aber nicht notwendig
+    if ($MonitorModeID)
+        {
+        $SchalterMonitorID            = IPS_GetObjectIDByName("SchalterMonitor", $MonitorModeID);
+        $StatusMonitorID              = IPS_GetObjectIDByName("StatusMonitor",$MonitorModeID);
+        }
 
 /********************
  *

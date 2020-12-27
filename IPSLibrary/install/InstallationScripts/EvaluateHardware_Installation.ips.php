@@ -235,7 +235,9 @@ $startexec=microtime(true);
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
 	echo "Evaluate Hardware hat die ScriptID ".$scriptIdEvaluateHardware.". Wird jetzt aufgerufen.\n";
 	echo "Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
-	IPS_RunScriptWait($scriptIdEvaluateHardware);
+    echo "====================================================================================\n";
+	echo IPS_RunScriptWait($scriptIdEvaluateHardware);
+	echo "====================================================================================\n";
 	echo "Script Evaluate Hardware bereits abgeschlossen. Aktuell vergangene Zeit : ".(microtime(true)-$startexec)." Sekunden\n";
 	
 	

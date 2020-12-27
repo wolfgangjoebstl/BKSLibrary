@@ -50,12 +50,14 @@
 
 	class Amis {
 
-        var $CategoryIdData, $CategoryIdApp;
-		var $archiveHandlerID=0;
+        public $CategoryIdData, $CategoryIdApp;
+		private $archiveHandlerID=0;
 		
-		var $MeterConfig;
+		private $MeterConfig;           // die bereinigtre AMIS Meter Config
+        private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+        private $debug;                 // zusaetzliche hilfreiche Debugs
 
-        var $ipsOps;
+        private $ipsOps,$dosOps;
 		
 		/**
 		 * @public
@@ -63,25 +65,30 @@
 		 * Initialisierung der AMIS class
 		 *
 		 */
-		public function __construct() 
+		public function __construct($debug=false) 
 			{
+            $this->debug=$debug;
             $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	        $moduleManager = new IPSModuleManager('Amis',$repository);     /*   <--- change here */
 	        $this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	        $this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 			$this->archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-			$this->MeterConfig = $this->getMeterConfig();
 
             $this->ipsOps = new ipsOps();
+            $this->dosOps = new dosOps();
+            $this->systemDir     = $this->dosOps->getWorkDirectory();
+
+			$this->MeterConfig = $this->setMeterConfig();
 			}
 
         /* aus der offiziellen Config die deaktivierten Zähler herausfiltern, kommen gar nicht soweit
-         *
+         * Umstellung auf set/get Meter Configuration
          */
 
-        public function getMeterConfig()
+        public function setMeterConfig()
             {
+             echo "setMeterConfig aufgerufen. SystemDir ist $this->systemDir.\n";
             $result=array();
             foreach (get_MeterConfiguration() as $index => $config)
                 {
@@ -97,6 +104,13 @@
                 }
 
             return ($result);
+            }
+
+        /* und die Meter Configuration ausgeben */
+
+        public function getMeterConfig()
+            {
+            return ($this->MeterConfig);
             }
 
         /* getWirkenergieID aus der Config
@@ -268,7 +282,7 @@
                             }                                                    							
                         }
                     }  // if AMIS Zähler
-                if (!file_exists("C:\Scripts\Log_Cutter_".$identifierTrim.".csv"))
+                if (!file_exists($this->systemDir."\Log_Cutter_".$identifierTrim.".csv"))
                     {
                     $handle=fopen("C:\Scripts\Log_Cutter_".$identifierTrim.".csv", "a");
                     fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");

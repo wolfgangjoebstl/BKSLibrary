@@ -76,6 +76,7 @@
 
         protected $scriptHighchartsID;                      // für Higcharts, die IPSHighcharts script ID
         private $contentID;                             // für Highcharts als Dummy
+        private $installedModules;                      // welche Module sind installiert
 
 		public $CategoryIdData, $CategoryIdApp;			// die passenden Verzeichnisse
 		
@@ -97,10 +98,12 @@
 
 			$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 			$moduleManager = new IPSModuleManager('Startpage',$repository);
+	        $this->installedModules = $moduleManager->VersionHandler()->GetInstalledModules();
+            //print_R($installedModules);
 
 			$moduleManagerHC = new IPSModuleManager('IPSHighcharts',"");
             $categoryHighchartsID = $moduleManagerHC->GetModuleCategoryID('app');	
-            $this->scriptHighchartsID = IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
+            $this->scriptHighchartsID = @IPS_GetScriptIDByName("IPSHighcharts", $categoryHighchartsID);
             //echo "StartpageHandler, construct, Highcharts App Category : $categoryHighchartsID and ScriptID : $this->scriptHighchartsID\n";
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
@@ -157,10 +160,16 @@
             if (function_exists("startpage_configuration"))  $configInput = startpage_configuration();
             else echo "*************Fehler, Startpage Konfig File nicht included oder Funktion startpage_configuration() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
 
+            if ($debug) 
+                {
+                echo "setStartpageConfiguration aufgerufen. Eingelesene Konfiguration:";
+                print_R($configInput);
+                }
+
             /* Root der Konfig durchgehen, es wird das ganze Unterverzeichnis übernommen */
-            configfileParser($configInput, $config, ["Directories"],"Directories",null);                // null es wird als Default zumindest ein Indexknoten angelegt
-            configfileParser($configInput, $config, ["Display"],"Display",null);    
-            configfileParser($configInput, $configWidget, ["Widgets"],"Widgets",null);    
+            configfileParser($configInput, $config, ["Directories"],"Directories","[]");                // null es wird als Default zumindest ein Indexknoten angelegt
+            configfileParser($configInput, $config, ["Display"],"Display","[]");    
+            configfileParser($configInput, $configWidget, ["Widgets"],"Widgets","[]");                  // wenn Subverarbeitung ansteht dann leeres Array
             configfileParser($configInput, $config, ["Monitor"],"Monitor",null); 
 
             /* Sub Directories */
@@ -177,23 +186,26 @@
             $config["Directories"]["Scripts"] = $dosOps->correctDirName($systemDir.$config["Directories"]["Scripts"]);
 
             /* Sub Display */
-            configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather",null); 
-            configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
+            configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine",null); 
-            configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",["RowMax"=> 2,"ColMax" => 3,"Screens" => 1]); 
+            configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",'{"RowMax":2,"ColMax":3,"Screens":1}');             // bereits als json_encode übergeben
+
+            /* Sub Sub Display */
+            configfileParser($configInput["Display"]["Weather"], $config["Display"]["Weather"], ["Weathertable"],"Weathertable","Active"); 
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["RowMax"],"RowMax",2); 
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["ColMax"],"ColMax",3); 
             configfileParser($configInput["Display"]["WidgetStyle"], $config["Display"]["WidgetStyle"], ["Screens"],"Screens",1); 
 
+
             /* Sub Widgets */
-            $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$config["Display"]["WidgetStyle"], $debug);       // mit oder ohne Debug
+            $config["Widgets"] = $this->transformConfigWidget($configWidget["Widgets"],$config["Display"]["WidgetStyle"], $debug);       // mit oder ohne Debug, return output array, input array, widget config
 
             /* 
             configfileParser($configInput, $config, ["Test"],"Test",null); 
             configfileParser($configInput["Test"], $config["Test"], ["Subtest"],"Subtest","Active"); 
             */
                 
-            if ($debug) 
+            if ($debug && true) 
                 {
                 echo "==============================\n";
                 print_R($config);
@@ -207,6 +219,11 @@
 		function getStartpageConfiguration()
 	        {
  	        return ($this->configuration);
+	        }
+
+		function getStartpageDisplayConfiguration()
+	        {
+ 	        return ($this->configuration["Display"]);
 	        }
 
 		/*
@@ -303,7 +320,7 @@
             if ($debug)
                 {
                 echo "StartPageWrite aufgerufen :\n";
-                //echo "Weather Konfiguration: ".json_encode($Config)."\n";
+                //secho "Weather Konfiguration: ".json_encode($Config)."\n";
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
 			$wert="";
@@ -340,8 +357,9 @@
                     $subscreen=GetValue($switchSubScreenID);
                     if ( ($subscreen>2) || ($subscreen<1) ) $subscreen=1;                     // Wert geht von 1 weg
                     SetValue($switchSubScreenID,$subscreen);
+                    $configDisplay=$this->getStartpageDisplayConfiguration();
 
-                    if ($debug) echo "Page Type Style is Station. Subscreen Nummer ist $subscreen.\n";
+                    if ($debug) echo "Page Type Style is Station. Subscreen Nummer ist $subscreen. Widget Style ist ".json_encode($configDisplay["WidgetStyle"])."\n";
                     $wert.='<table id="startpage">';
 
                     if ( $noweather==true )
@@ -363,115 +381,8 @@
                     else        // Anzeige der Wetterdaten
                         {
                         $wert .= $this->showDisplayStation($subscreen, $debug);
-                        /* $modulname="Astronomy";
-                        //echo "Rausfinden ob Instanz $modulname verfügbar:\n";
-                        $modulhandling = new ModuleHandling();		// true bedeutet mit Debug
-                        $Astronomy=$modulhandling->getInstances($modulname);
-                        if (count($Astronomy)>0)
-                            {
-                            $instanzID=$Astronomy[0];    
-                            $instanzname=IPS_GetName($instanzID);
-                            //echo " ModuleName:".$modulname." hat Instanz:".$instanzname." (".$instanzID.")\n";
-                            //echo " Konfiguration :".IPS_GetConfiguration($instanzID)."\n";
-                            $childs=IPS_GetChildrenIDs($instanzID);
-                            //Print_R($childs);
-
-                            $foundHtmlBox=false; $htmlAstro="";
-                            $foundPicMoon=false; $htmlpicMoon="";
-                            foreach ($childs as $child) 
-                                {
-                                $childName=IPS_GetName($child);
-                                //echo "  $child ($childName)   \n";
-                                //echo GetValue($child)."\n";
-                                if ($childName=="Position Sonne und Mond") $foundHtmlBox=$child;
-                                }
-                            if ($foundHtmlBox !== false) $htmlAstro=GetValue($foundHtmlBox);              // das ist ein iframe mit 
-                            //echo $html;
-                            //SetValue($AstroLinkID,$html);
-                            }
-                        else $htmlAstro=""; 
-
-                        $moonPicId=@IPS_GetObjectIDByName("Mond Ansicht",$instanzID);
-                        if ($moonPicId !== false) 
-                            {
-                            $htmlpicMoon=IPS_GetMedia($moonPicId)["MediaFile"]; 
-                            $pos1=strpos($htmlpicMoon,"Astronomy");
-                            if ($pos1) $htmlpicMoon = 'user/Startpage/user'.substr($htmlpicMoon,$pos1+9);
-                            else $htmlpicMoon=false;   
-                            }
-                        $sunriseID=@IPS_GetObjectIDByName("Sonnenaufgang Uhrzeit",$instanzID);
-                        if ($sunriseID !== false) $sunrise = GetValueIfFormatted($sunriseID);
-                        else $sunrise="";
-                        $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
-                        if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
-                        else $sunset="";    
-
-                                
-                        //echo "$htmlAstro  $htmlpicMoon  ".$weather["today"];
-
-                        //$wert.='<table id="startpage"><tr>';
-                        //$wert.='<tr><td>Hier könnte jetzt Ihre Werbung stehen</td><td>';
-                        // zelle 1 
-                        $wert.='<td width="100%">';
-                        $wert.=$this->showAstronomyWidget("CHART");
-                        $wert.='</td>';
-                        $wert.='<td width="100%">';
-                        $wert.=$this->showAstronomyWidget("MOON");
-                        $wert.='</td>';
-                        if (false)
-                            {
-                            $wert.='<td>';
-                            $weather=$this->getWeatherData();
-                            //$wert.='<table border="0" height="220px" bgcolor="#c1c1c1" cellspacing="10">';
-                            //$wert.='<tr><td>';
-
-                            // zelle 2.1 
-                            $wert.='<table border="0" bgcolor="#f1f1f1">';
-                            $wert.='<tr><td align="center"> <img src="'.$weather["today"].'" alt="Heute" > </td></tr>';
-                            $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow"].'" alt="Heute" > </td></tr>';
-                            $wert.='<tr><td align="center"> <img src="'.$weather["tomorrow1"].'" alt="Heute" > </td></tr>';
-                            $wert.='</table>';
-                            $wert.='</td>';
-
-                            // zelle 2.2 
-                            $wert.='<td><table>';
-                            $wert.='<tr><td><img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td></tr>';
-                            $wert.='<tr><td><strg>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</strg></td></tr>';
-                            $wert.='</table></td>';
-
-                            // zelle 2.3 
-                            $wert.='<td><table border="0" bgcolor="#ffffff" cellspacing="5">';
-                            $wert.='<tr><td><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
-                            $wert.='<tr><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen></td></tr>';
-                            $wert.='</table></td>';
-                            }
-                        else 
-                            {
-                            $wert.='<td>';
-                            $wert.='<table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showWeatherTable();
-                            $wert.='</table>';
-                            $wert.='</td>';
-
-
-                            }
-
-                        
-                        //$wert.='</tr></table>';           // Wetter und Aussen/Innen Temperatur in einer eigenen Tabelle
-                        $wert .= '</td></tr>';
-                        $wert .= '<tr>';
-                        //$wert .= '<td colspan="3">ExtraZeile</td>';             // Extrazeile, 2*3 Widget
-                        $wert .= '<td>';
-                        //$wert .= 'ExtraZeile';
-                        $wert .= $this->showTempGroupTable();
-                        $wert .= '</td>';             // Extrazeile, 2*3 Widget
-
-                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showTemperatureTable();
-                            $wert .= '</td></table>';
-                        */
                         $wert.='<tr>';                                                   // komplette Zeile, diese fällt richtig dick aus  
-                        $wert.='<td colspan="3">';                    
+                        $wert.='<td colspan="'.$configDisplay["WidgetStyle"]["ColMax"].'">';                    
                         $wert.=$this->bottomTableLines($debug);                // komplette zweite Zeile, ist wesentlich dünner
                         $wert.='</td>';
                         $wert.='</tr>';
@@ -529,69 +440,85 @@
             else $config=array();
             if ($debug) 
                 {
-                echo "showDisplayStation: ".json_encode($config)."\n";
+                echo "   showDisplayStation: \n";
+                //echo "showDisplayStation: ".json_encode($config)."\n";
                 //print_R($config);
                 }
             $wert = "";
             foreach ($config as $row => $config2)
                 {
-                if ($debug) echo "Row $row\n";
+                if ($debug) echo "   Row $row\n";
                 $wert.='<tr>';                        
-                foreach ($config2 as $column => $entry)
+                foreach ($config2 as $column => $screens)
                     {
-                    if ($debug) 
+                    if (isset($screens[$subscreen])) 
                         {
-                        echo "  Col $column Show ".$entry["Type"]."\n";
-                        //print_R($entry);
+                        $entry=$screens[$subscreen];
+                
+                        if ($debug) 
+                            {
+                            echo "     Col $column Show ".str_pad($entry["Type"],25)."   ".json_encode($entry)."\n";
+                            //print_R($entry);
+                            }
+                        $tdformat='bgcolor="'.$entry["Format"]["BGColor"].'"';
+
+                        switch (strtoupper($entry["Type"]))
+                            {
+                            case "ASTRONOMY":
+                                //$wert.='<td width="100%">';
+                                //$wert.='<td '.$tdformat.' width="600px">';
+                                $wert.='<td '.$tdformat.' width="100%">';
+                                $wert.=$this->showAstronomyWidget("CHART",$entry,$debug);
+                                $wert.='</td>';
+                                break;
+                            case "MOON":
+                                $wert.='<td '.$tdformat.'>';
+                                $wert.=$this->showAstronomyWidget("MOON",$entry,$debug);
+                                $wert.='</td>';
+                                break;
+                            case "WEATHER":
+                                $wert.='<td '.$tdformat.'>';
+                                $wert.='<table border="0" bgcolor="#f1f1f1">';
+                                $wert .= $this->showWeatherTable(false,$debug);     // statt false können die Wetterdaten übergeben werden
+                                $wert.='</table>';
+                                $wert.='</td>';
+                                break;
+                            case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
+                                $wert .= '<td '.$tdformat.'>';
+                                $wert .= $this->showTempGroupWidget($entry,$debug);
+                                $wert .= '</td>';             
+                                break;
+                            case "PICTURE":
+                                $wert .= '<td '.$tdformat.'>';
+                                $wert.= $this->showPictureWidget(false,$debug);     // statt false könnte das Bild übergeben werden
+                                $wert .= '</td>';             
+                                break;
+                            case "SPECIALREGS":
+                                $wert .= '<td '.$tdformat.'>';
+                                $wert.= $this->showSpecialRegsWidget($entry,$debug);
+                                $wert .= '</td>';             
+                                break;
+                            case "TEMPERATURE":
+                                $wert.='<td '.$tdformat.'><table border="0" bgcolor="#f1f1f1">';
+                                $wert .= $this->showTemperatureTable("",$entry,$debug);         // erster Parameter ist colspan als config für table
+                                $wert .= '</table></td>';
+                                break;
+                            case "EMPTY":
+                                $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                                $wert .= "<td>intentionally left empty</td>";         // erster Parameter ist colspan als config für table
+                                $wert .= '</table></td>';
+                                break;
+                            default:
+                                if ($debug) echo "   Col $column ".$entry["Type"]."\n";                        
+                                break;
+                            }
                         }
-                    switch (strtoupper($entry["Type"]))
+                    else 
                         {
-                        case "ASTRONOMY":
-                            //$wert.='<td width="100%">';
-                            $wert.='<td width="500px">';
-                            $wert.=$this->showAstronomyWidget("CHART",$entry,$debug);
-                            $wert.='</td>';
-                            break;
-                        case "MOON":
-                            $wert.='<td>';
-                            $wert.=$this->showAstronomyWidget("MOON",$entry,$debug);
-                            $wert.='</td>';
-                            break;
-                        case "WEATHER":
-                            $wert.='<td>';
-                            $wert.='<table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showWeatherTable(false,$debug);     // statt false können die Wetterdaten übergeben werden
-                            $wert.='</table>';
-                            $wert.='</td>';
-                            break;
-                        case "GROUPTEMP":               // Verschiedene Gruppen von Temperaturwerten anzeigen
-                            $wert .= '<td>';
-                            $wert .= $this->showTempGroupWidget($entry,$debug);
-                            $wert .= '</td>';             
-                            break;
-                        case "PICTURE":
-                            $wert .= '<td>';
-                            $wert.= $this->showPictureWidget(false,$debug);     // statt false könnte das Bild übergeben werden
-                            $wert .= '</td>';             
-                            break;
-                        case "SPECIALREGS":
-                            $wert .= '<td>';
-                            $wert.= $this->showSpecialRegsWidget($entry,$debug);
-                            $wert .= '</td>';             
-                            break;
-                        case "TEMPERATURE":
-                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                            $wert .= $this->showTemperatureTable("",$entry,$debug);         // erster Parameter ist colspan als config für table
-                            $wert .= '</table></td>';
-                            break;
-                        case "EMPTY":
-                            $wert.='<td><table border="0" bgcolor="#f1f1f1">';
-                            $wert .= "<td>intentionally left empty</td>";         // erster Parameter ist colspan als config für table
-                            $wert .= '</table></td>';
-                            break;
-                        default:
-                            if ($debug) echo "   Col $column ".$entry["Type"]."\n";                        
-                            break;
+                                $wert.='<td><table border="0" bgcolor="#f1f1f1">';
+                                $wert .= "<td>intentionally left empty</td>";         // erster Parameter ist colspan als config für table
+                                $wert .= '</table></td>';
+
                         }
                     }
                 $wert .= '</tr>';    
@@ -896,17 +823,20 @@
         *
         */
 
-        function transformConfigWidget($widgetsConf,$widgetsStyle, $debug=false)
+        function transformConfigWidget($widgetsConf,&$widgetsStyle, $debug=false)
             {
             $config=array();
             if ($debug)  echo "transformConfigWidget aufgerufen: ".json_encode($widgetsStyle)."  ".json_encode($widgetsConf)."\n";
             $maxX=3; $x=0; $y=0;        // automatische Aufteilung ohne Pos
-            foreach ($widgetsConf as $name => $widget)
+            $maxScreens=$widgetsStyle["Screens"];
+            foreach ($widgetsConf as $name => $widget)              // alle Widgets Speks durchgehen, können auf mehrere Screens verteilt sein !
                 {
                 $configWidget=array();   
                 configfileParser($widget, $configWidget, ["TYPE","Type"],"Type" ,$name);  
                 configfileParser($widget, $configWidget, ["NAME","Name"],"Name" ,$name);  
-                configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,"[]"); 
+                configfileParser($widget, $configWidget, ["FORMAT","Format"],"Format" ,'{"BGColor":"darkblue","width":"500px"}'); 
+                configfileParser($widget, $configWidget, ["SCREEN","Screen"],"Screen" ,1);                  
+                configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,"[]");                   // output array ist configWidget, input array ist widget
                 configfileParser($widget, $configWidget, ["POS","Pos"],"Pos" ,null);                            // default keien ANgabe, d.h. der Reihe nach
                 /*if ($debug) print_r($configWidget);
                 if (isset($widget["Type"])) $wType = $widget["Type"]; else $wType = $name;
@@ -916,7 +846,6 @@
                     { 
                     $wX=$configWidget["Pos"][0]; 
                     $wY=$configWidget["Pos"][1]; 
-                    if ($debug) echo "   ".str_pad($configWidget["Type"]."::".$configWidget["Name"],32)." ist auf Pos $wX | $wY.\n";
                     }
                 else 
                     {
@@ -928,6 +857,13 @@
                 //$configWidget["Name"]=$wName;       // referenziert auf die Config des Widgets
                 $configWidget["Pos"]["X"]=$wX;
                 $configWidget["Pos"]["Y"]=$wY;
+                if ($configWidget["Screen"]<1) $configWidget["Screen"]=1;
+                elseif ($configWidget["Screen"]>$maxScreens)
+                    {
+                    $maxScreens=$configWidget["Screen"]; 
+                    $widgetsStyle["Screens"]= $maxScreens; 
+                    }
+                if ($debug) echo "   ".str_pad($configWidget["Type"]."::".$configWidget["Name"],32)." ist auf Pos $wX | $wY von Screen ".$configWidget["Screen"].".\n";
                 $config[$wY][$wX]=$configWidget;
                 }
             //print_R($config);
@@ -937,10 +873,15 @@
                 {
                 for ($col=0;$col<$colmax;$col++)
                     {
-                    if (isset($config[$row+1][$col+1])) $showDisplayConfig[$row][$col] = $config[$row+1][$col+1];
-                    else $showDisplayConfig[$row][$col] = ["Type" => "Empty"];
+                    for ($screen=1;$screen<$maxScreens;$screen++)
+                        {
+                        $screen = $config[$row+1][$col+1]["Screen"];
+                        if (isset($config[$row+1][$col+1])) $showDisplayConfig[$row][$col][$screen] = $config[$row+1][$col+1];
+                        else $showDisplayConfig[$row][$col][$screen] = ["Type" => "Empty"];
+                        }
                     }
-                }            
+                } 
+            //if ($debug) print_r($showDisplayConfig);           
             return ($showDisplayConfig);
             }
 
@@ -1784,64 +1725,67 @@
             $wert .= "<table><tr>";
             if ($config===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
             else $specialRegsConf=$this->getConfigSpecialRegsWidget($config["Config"],$debug);
-            
-            foreach ($specialRegsConf as $index => $config)
+
+            if ($this->scriptHighchartsID)      // ohne Script gehts nicht */
                 {
-                if ($debug) echo "Highcharts Ausgabe von $index (".json_encode($config).") : \n"; 
-                $wert .= "<td>";
-                $endTime=time();
-                $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
-                $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
-
-                // Create Chart with Config File
-                IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
-                $CfgDaten=array();
-                //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
-                //$CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
-                $CfgDaten["HighChartScriptId"]  = $this->scriptHighchartsID;                  // ID des Highcharts Scripts
-
-                $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-                $CfgDaten['ContentVarableId']   = $this->contentID;
-                $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
-                $CfgDaten['StartTime']          = $startTime;
-                $CfgDaten['EndTime']            = $endTime;
-
-                $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
-                $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
-                $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
-
-                // Abmessungen des erzeugten Charts
-                $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
-                $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
-                
-                $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
-                //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
-                $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
-                $CfgDaten["PlotType"]= "Gauge";
-                $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
-
-                $serie = array();
-                $serie['type']                  = $chart_style;
-
-                /* wenn Werte für die Serie aus der geloggten Variable kommen : */
-                $serie['name'] = $config["Name"];
-                $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
-                $serie['Id'] = $config["OID"];
-                //$serie['Id'] = 28664 ;
-                $CfgDaten['series'][] = $serie;
-
-                $CfgDaten    = CheckCfgDaten($CfgDaten);
-                $sConfig     = CreateConfigString($CfgDaten);
-                $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$index");
-                if ($tmpFilename != "")
+                foreach ($specialRegsConf as $index => $config)
                     {
-                    $chartType = $CfgDaten['Ips']['ChartType'];
-                    $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
-                    $callBy="CfgFile";
-                    $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
-                    //$wert .= $tmpFilename;
+                    if ($debug) echo "Highcharts Ausgabe von $index (".json_encode($config).") : \n"; 
+                    $wert .= "<td>";
+                    $endTime=time();
+                    $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
+                    $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
+
+                    // Create Chart with Config File
+                    IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+                    $CfgDaten=array();
+                    //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
+                    //$CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
+                    $CfgDaten["HighChartScriptId"]  = $this->scriptHighchartsID;                  // ID des Highcharts Scripts
+
+                    $CfgDaten["ArchiveHandlerId"]   = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+                    $CfgDaten['ContentVarableId']   = $this->contentID;
+                    $CfgDaten['HighChart']['Theme'] ="ips.js";   // IPS-Theme muss per Hand in in Themes kopiert werden....
+                    $CfgDaten['StartTime']          = $startTime;
+                    $CfgDaten['EndTime']            = $endTime;
+
+                    $CfgDaten['Ips']['ChartType']   = 'Highcharts';           // Highcharts oder Highstock default = Highcharts
+                    $CfgDaten['RunMode']            = "file";     // file nur statisch über .tmp,     script, popup  ist interaktiv und flexibler
+                    $CfgDaten["File"]               = true;        // Übergabe als File oder ScriptID
+
+                    // Abmessungen des erzeugten Charts
+                    $CfgDaten['HighChart']['Width'] = 0;             // in px,  0 = 100%
+                    $CfgDaten['HighChart']['Height'] = 300;         // in px, keine Angabe in Prozent möglich
+                    
+                    $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
+                    //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
+                    $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
+                    $CfgDaten["PlotType"]= "Gauge";
+                    $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+
+                    $serie = array();
+                    $serie['type']                  = $chart_style;
+
+                    /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+                    $serie['name'] = $config["Name"];
+                    $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
+                    $serie['Id'] = $config["OID"];
+                    //$serie['Id'] = 28664 ;
+                    $CfgDaten['series'][] = $serie;
+
+                    $CfgDaten    = CheckCfgDaten($CfgDaten);
+                    $sConfig     = CreateConfigString($CfgDaten);
+                    $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$index");
+                    if ($tmpFilename != "")
+                        {
+                        $chartType = $CfgDaten['Ips']['ChartType'];
+                        $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
+                        $callBy="CfgFile";
+                        $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+                        //$wert .= $tmpFilename;
+                        }
+                    $wert .= "</td>";
                     }
-                $wert .= "</td>";
                 }
             $wert .= "</tr></table>";
             return ($wert);
