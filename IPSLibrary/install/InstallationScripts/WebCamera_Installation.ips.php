@@ -643,7 +643,7 @@
         {
         $full=false;
         $ipsOps=new ipsOps();
-        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) )
+        if ( (isset($configWF["Path"])) && (isset($configWF["TabPaneItem"])) && (isset($configWF["Enabled"])) && (!($configWF["Enabled"]==false)) && (isset($CamTableCaptureID["Base"])) )
             {
             /* im TabPane entweder eine Kategorie oder ein SplitPane mit Unterkategorien anlegen */
             $categoryId_WebFrontMonitor = $CamTableCaptureID["Base"];

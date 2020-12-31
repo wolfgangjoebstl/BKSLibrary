@@ -107,8 +107,8 @@
 class OperationCenter
 	{
 
-    private $dosOps;                        /* verwendete andere Klassen */
-    private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+    protected $dosOps;                        /* verwendete andere Klassen */
+    protected $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
     private $debug;                 // zusaetzliche hilfreiche Debugs
 
 	private $log_OperationCenter;
@@ -4118,8 +4118,9 @@ class OperationCenter
 
 class BackupIpsymcon extends OperationCenter
 	{
-	private $dosOps, $fileOps;                                                           /* genutzte Objekte/Klassen */
-    private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+	//private $dosOps, 
+    //private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
+    protected $fileOps;                                                           /* genutzte Objekte/Klassen */
 
     var $BackupDrive, $SourceDrive;                                         /* Verzeichnisse für Backup Ort und Quelle */
     var $backupActive;        								                /* Backup Aktiv Status */

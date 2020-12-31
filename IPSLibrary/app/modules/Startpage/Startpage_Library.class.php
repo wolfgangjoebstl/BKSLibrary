@@ -187,7 +187,7 @@
 
             /* Sub Display */
             configfileParser($configInput["Display"], $config["Display"], ["Weather"],"Weather","[]"); 
-            configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine",null); 
+            configfileParser($configInput["Display"], $config["Display"], ["BottomLine"],"BottomLine","[]"); 
             configfileParser($configInput["Display"], $config["Display"], ["WidgetStyle"],"WidgetStyle",'{"RowMax":2,"ColMax":3,"Screens":1}');             // bereits als json_encode übergeben
 
             /* Sub Sub Display */
@@ -458,7 +458,7 @@
                         if ($debug) 
                             {
                             echo "     Col $column Show ".str_pad($entry["Type"],25)."   ".json_encode($entry)."\n";
-                            //print_R($entry);
+                            print_R($entry);
                             }
                         $tdformat='bgcolor="'.$entry["Format"]["BGColor"].'"';
 
@@ -834,7 +834,7 @@
                 $configWidget=array();   
                 configfileParser($widget, $configWidget, ["TYPE","Type"],"Type" ,$name);  
                 configfileParser($widget, $configWidget, ["NAME","Name"],"Name" ,$name);  
-                configfileParser($widget, $configWidget, ["FORMAT","Format"],"Format" ,'{"BGColor":"darkblue","width":"500px"}'); 
+                configfileParser($widget, $configWidget, ["FORMAT","Format"],"Format" ,'{"BGColor":"#1f242e","width":"500px"}'); 
                 configfileParser($widget, $configWidget, ["SCREEN","Screen"],"Screen" ,1);                  
                 configfileParser($widget, $configWidget, ["CONFIG","Config"],"Config" ,"[]");                   // output array ist configWidget, input array ist widget
                 configfileParser($widget, $configWidget, ["POS","Pos"],"Pos" ,null);                            // default keien ANgabe, d.h. der Reihe nach
@@ -864,7 +864,7 @@
                     $widgetsStyle["Screens"]= $maxScreens; 
                     }
                 if ($debug) echo "   ".str_pad($configWidget["Type"]."::".$configWidget["Name"],32)." ist auf Pos $wX | $wY von Screen ".$configWidget["Screen"].".\n";
-                $config[$wY][$wX]=$configWidget;
+                $config[$wY][$wX][$configWidget["Screen"]]=$configWidget;
                 }
             //print_R($config);
             $showDisplayConfig=array(); 
@@ -873,11 +873,18 @@
                 {
                 for ($col=0;$col<$colmax;$col++)
                     {
-                    for ($screen=1;$screen<$maxScreens;$screen++)
+                    for ($screen=1;$screen<=$maxScreens;$screen++)
                         {
-                        $screen = $config[$row+1][$col+1]["Screen"];
-                        if (isset($config[$row+1][$col+1])) $showDisplayConfig[$row][$col][$screen] = $config[$row+1][$col+1];
-                        else $showDisplayConfig[$row][$col][$screen] = ["Type" => "Empty"];
+                        if (isset($config[$row+1][$col+1][$screen]))                            // es gibt nicht alle alle Werte
+                            {
+                            $screenConfig = $config[$row+1][$col+1][$screen]["Screen"];          // Einstellung ist immer gesetzt, Default ist 1
+                            if ($screenConfig==$screen) 
+                                {
+                                if ($debug) echo "Row $row Col $col Screen $screen von $maxScreens : ".$config[$row+1][$col+1][$screen]["Type"]."\n";
+                                $showDisplayConfig[$row][$col][$screen] = $config[$row+1][$col+1][$screen];
+                                }
+                            }
+                        else $showDisplayConfig[$row][$col][$screen] = ["Type" => "Empty","Format" => ["BGColor"=>"darkblue","width"=>"500px"]];
                         }
                     }
                 } 
@@ -1719,22 +1726,23 @@
          *
          **************************************/
 
-		function showSpecialRegsWidget($config=false,$debug=false)
+		function showSpecialRegsWidget($configInput=false,$debug=false)
             {
             $wert = "";
             $wert .= "<table><tr>";
-            if ($config===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
-            else $specialRegsConf=$this->getConfigSpecialRegsWidget($config["Config"],$debug);
+            if ($configInput===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
+            else $specialRegsConf=$this->getConfigSpecialRegsWidget($configInput["Config"],$debug);
 
+            if ($debug) { echo "Special Regs Aufruf mit:\n"; print_R($specialRegsConf); }
             if ($this->scriptHighchartsID)      // ohne Script gehts nicht */
                 {
-                foreach ($specialRegsConf as $index => $config)
+                foreach ($specialRegsConf as $indexChart => $config)
                     {
-                    if ($debug) echo "Highcharts Ausgabe von $index (".json_encode($config).") : \n"; 
-                    $wert .= "<td>";
+                    if ($debug) echo "Highcharts Ausgabe von $indexChart (".json_encode($config).") : \n"; 
+
                     $endTime=time();
                     $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
-                    $chart_style='line';            // line spline gauge            gauge benötigt eine andere Formatierung
+                    $chart_style=$config["Style"];            // line spline area gauge            gauge benötigt eine andere Formatierung
 
                     // Create Chart with Config File
                     IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
@@ -1760,28 +1768,64 @@
                     $CfgDaten['title']['text']      = "";                           // weglassen braucht zuviel Platz
                     //$CfgDaten['subtitle']['text']   = "great subtitle";         // hioer steht der Zeitraum, default als Datum zu Datum Angabe
                     $CfgDaten['subtitle']['text']   = "Zeitraum ".nf($config["Duration"],"s");         // hier steht nmormalerweise der Zeitraum, default als Datum zu Datum Angabe
-                    $CfgDaten["PlotType"]= "Gauge";
+                    
+                    //$CfgDaten["PlotType"]= "Gauge"; 
                     $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
+                    $CfgDaten['plotOptions']['area']['stacking']     =	 'normal';
+                    $CfgDaten['chart']['type']      = $chart_style;                   // neue Art der definition
 
-                    $serie = array();
-                    $serie['type']                  = $chart_style;
+                    foreach($config["OID"] as $index => $oid)
+                        {
+                        $serie = array();
+                        $serie['type']                  = $chart_style;                 // muss enthalten sein
 
-                    /* wenn Werte für die Serie aus der geloggten Variable kommen : */
-                    $serie['name'] = $config["Name"];
-                    $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
-                    $serie['Id'] = $config["OID"];
-                    //$serie['Id'] = 28664 ;
-                    $CfgDaten['series'][] = $serie;
-
+                        /* wenn Werte für die Serie aus der geloggten Variable kommen : */
+                        if (isset($config["Name"][$index])) $serie['name'] = $config["Name"][$index];
+                        else $serie['name'] = $config["Name"][0];
+                        $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
+                        $serie['Id'] = $oid;
+                        //$serie['Id'] = 28664 ;
+                        $CfgDaten['series'][] = $serie;
+                        }
                     $CfgDaten    = CheckCfgDaten($CfgDaten);
                     $sConfig     = CreateConfigString($CfgDaten);
-                    $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$index");
+                    $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$indexChart");
                     if ($tmpFilename != "")
                         {
                         $chartType = $CfgDaten['Ips']['ChartType'];
                         $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
                         $callBy="CfgFile";
-                        $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";
+                        if (is_array($config["Size"]))          // Defaultwert
+                            {
+                            $wert .= '<td>';                                
+                            $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";                        
+                            }
+                        elseif (strpos($config["Size"],"x")) 
+                            {
+                            $multiplier=(integer)substr($config["Size"],0,strpos($config["Size"],"x"));
+                            $widthInteger=$CfgDaten['HighChart']['Height']*$multiplier;
+                            // Height wird wirklich so übernommen, nur mehr 316px hoch
+                            $width=$widthInteger."px";
+                            //echo "Neue Width ist jetzt ".$CfgDaten['HighChart']['Height']."*$multiplier=$width.\n";
+                            //$height='700px';                            
+                            $wert .= '<td style="width:'.$width.'px;height:'.$height.'px;background-color:#3f1f1f">';           // width:100%;height:500px; funktioniert nicht, ist zu schmal
+                            //$width="100%";
+                            //$width="auto"; 
+                            //$height="auto";
+                            //$height="100%"; 
+
+
+                            $wert .= '<iframe style="width:'.$width.';height:'.$height.'"'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."' height='".$height."' frameborder='0' scrolling='no'></iframe>";                        
+                            //$wert .= '<iframe style="height:'.$height.'"'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."' frameborder='0' scrolling='no'></iframe>";                        
+                            //$wert .= '<iframe'." src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy=".$tmpFilename."'></iframe>";                        
+                            }
+                        else 
+                            {
+                            //print_R($config["Size"]);
+                            $wert .= '<td???>';                                
+                            $wert .= "<iframe src='./user/IPSHighcharts/IPSTemplates/$chartType.php?$callBy="	. $tmpFilename . "' " ."width='%' height='". $height ."' frameborder='0' scrolling='no'></iframe>";                        
+                            }
+                        
                         //$wert .= $tmpFilename;
                         }
                     $wert .= "</td>";
@@ -1792,7 +1836,7 @@
             }
 
 
-        /* read configuration for showTempGroupWidget */
+        /* read configuration for showTempGroupWidget, eliminate unknown indizes */
 
         function getConfigSpecialRegsWidget($groupsInput=false,$debug=false)
             { 
@@ -1807,12 +1851,16 @@
             $specialRegs=array();
             foreach ($specialRegsConf as $index => $regsConf)
                 {
-                configfileParser($specialRegsConf[$index], $specialRegs[$index], ["OID"],"OID",null); 
-                if ($regsConf["OID"] != null) 
+                configfileParser($specialRegsConf[$index], $specialRegs[$index], ["OID","Oid","oid"],"OID",null);           // input ist $specialRegsConf, bereinigt dann in $specialRegs
+                if ($specialRegs[$index]["OID"] != null) 
                     {
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Dauer","Duration"],"Duration",259200);         //3 Tage ist Default
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME"]     ,"Name",$index);        
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Unit","UNIT"]     ,"Unit","values");        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Style","STYLE"]   ,"Style","line");        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Size","SIZE"]     ,"Size","[]");        
+                    if ((is_array($specialRegs[$index]["OID"]))==false) $specialRegs[$index]["OID"]=[$specialRegs[$index]["OID"]];          // als array umspeichern
+                    if ((is_array($specialRegs[$index]["Name"]))==false) $specialRegs[$index]["Name"]=[$specialRegs[$index]["Name"]];       // als array umpseichern
                     }
                 }
             if ($debug) print_r($specialRegs);
@@ -2562,17 +2610,26 @@
                 $wert.='<table><tr>';
 	            foreach($this->configuration["Display"]["BottomLine"] as $tableEntry)
 	                {
-                    $oid=(integer)$tableEntry["OID"];
-	    			$wert.='<td>';
-                    if ($oid !== false)
+                    configfileParser($tableEntry, $config["Display"]["BottomLine"], ["OID","Oid"],"OID",false); 
+                    if (isset($config["Display"]["BottomLine"]["OID"])) $oid=(integer)$config["Display"]["BottomLine"]["OID"];
+                    if ( (IPS_ObjectExists($oid)) && ($oid !== false) )
                         {
-                        if ($debug) echo "   Eintrag : Name ".$tableEntry["Name"]." OID ".$tableEntry["OID"]." Icon ".$tableEntry["Icon"]." Value ".GetValue($oid)."\n";
-                        $wert .='<addText>'.$tableEntry["Name"].'</addText></td><td><addText>';
-                        if (isset($tableEntry["UNIT"])) $format = $tableEntry["UNIT"];
-                        else $format="";
-                        $wert .= $this->formatEntry($oid, $format).'</addtext>';
+                        $wert.='<td>';
+                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Name","NAME"],"Name",IPS_GetName($oid)); 
+                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","house.jpg");
+                        if ($debug) echo "   Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID ".$config["Display"]["BottomLine"]["OID"]." Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
+                        $wert .='<addText>'.$config["Display"]["BottomLine"]["Name"].'</addText></td><td><addText>';
+                        if (isset($tableEntry["Profile"]))
+                            {
+                            $profile=IPS_GetVariableProfile ($tableEntry["Profile"]);
+                            if ($debug) print_R($profile);
+                            $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                            }
+                        elseif (isset($tableEntry["UNIT"])) $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                        else $wert .= $this->formatEntry($oid, "").'</addtext>';;
+                        
+                        $wert.='</td>';
                         }
-                    $wert.='</td>';
 	                }
                 $wert.='</tr></table>';
 	            //print_r($this->configuration["AddLine"]);

@@ -180,55 +180,63 @@ define("ADR_Programs",'C:/Program Files (x86)/');
  *
  *      POWER FUNCTIONS
  *
+ * useful functions:
+ *
+ * nf                           number format with extended functionality, shifts automatically the unit , i.e. from seconds to minutes and hours etc.
+ * configfileParser             Unit, UNIT Einheit etc  wenn in der Config eines der Synonyme vorhanden ist wird es gemappt (&$inputArray, &$outputArray, [Synonym,2,3,4],$tag,$defaultValue)
+ * rpc_CreateVariableProfile    Variable Profile lokal oder remote erzeugen, $rpc ist entweder eine class oder false
+ * rpc_SetVariableProfileIcon
+ * rpc_SetVariableProfileDigits
+ * rpc_SetVariableProfileText
+ * rpc_SetVariableProfileValues
+ * compareProfiles
+ * createProfiles
+ *
  *************************************************************************/
 
-/* useful functions
- *
- * number format with extended functionality
- * shifts automatically the unit , i.e. from seconds to minutes and hours etc.
- *
- */
 
-function nf($value,$unit="")
-    {
-    $result=false;
-    if (is_integer($unit)) $result = number_format($value, $unit, ",",".");
-    else
+    /* nf       number format with extended functionality, shifts automatically the unit , i.e. from seconds to minutes and hours etc.  */
+
+    function nf($value,$unit="")
         {
-        switch (strtoupper($unit))
+        $result=false;
+        if (is_integer($unit)) $result = number_format($value, $unit, ",",".");
+        else
             {
-            case "S":
-            case "SEC":
-                if ($value <(4*60)) $result = number_format($value, 1, ",",".")." sec";
-                elseif ($value <(4*60*60)) $result = number_format(($value/60), 1, ",",".")." m";
-                elseif ($value <(4*24*60*60)) $result = number_format(($value/60/60), 1, ",",".")." h";
-                elseif ($value <(4*24*60*60)) $result = number_format(($value/24/60/60), 1, ",",".")." d";
-                else $result = number_format(($value/7/24/60/60), 1, ",",".")." w";
-                break;
-            case "M":
-            case "MIN":
-                if ($value <(4*60)) $result = number_format(($value), 1, ",",".")." m";
-                elseif ($value <(4*24*60)) $result = number_format(($value/60), 1, ",",".")." h";
-                elseif ($value <(4*24*60)) $result = number_format(($value/24/60), 1, ",",".")." d";
-                else $result = number_format(($value/7/24/60), 1, ",",".")." w";
-                break;
-            case "KWH":
-                $result = number_format($value, 2, ",",".")." $unit";
-                break;
-            case  "KW":
-                $result = number_format($value, 3, ",",".")." $unit";
-                break;
-            case  "W":
-                $result = number_format($value, 0, ",",".")." $unit";
-                break;
-            default:
-                if (gettype($value)=="boolean") $result = ($value?"true":"false"); 
-                else $result = number_format($value, 2, ",",".")." $unit";           // unit wahrscheinlich empty oder ein Wert den wir nicht kennnen
-                break;
+            switch (strtoupper($unit))
+                {
+                case "S":
+                case "SEC":
+                    if ($value <(4*60)) $result = number_format($value, 1, ",",".")." sec";
+                    elseif ($value <(4*60*60)) $result = number_format(($value/60), 1, ",",".")." m";
+                    elseif ($value <(4*24*60*60)) $result = number_format(($value/60/60), 1, ",",".")." h";
+                    elseif ($value <(4*24*60*60)) $result = number_format(($value/24/60/60), 1, ",",".")." d";
+                    else $result = number_format(($value/7/24/60/60), 1, ",",".")." w";
+                    break;
+                case "M":
+                case "MIN":
+                    if ($value <(4*60)) $result = number_format(($value), 1, ",",".")." m";
+                    elseif ($value <(4*24*60)) $result = number_format(($value/60), 1, ",",".")." h";
+                    elseif ($value <(4*24*60)) $result = number_format(($value/24/60), 1, ",",".")." d";
+                    else $result = number_format(($value/7/24/60), 1, ",",".")." w";
+                    break;
+                case "KWH":
+                    $result = number_format($value, 2, ",",".")." $unit";
+                    break;
+                case  "KW":
+                    $result = number_format($value, 3, ",",".")." $unit";
+                    break;
+                case  "W":
+                    $result = number_format($value, 0, ",",".")." $unit";
+                    break;
+                default:
+                    if (gettype($value)=="boolean") $result = ($value?"true":"false"); 
+                    else $result = number_format($value, 2, ",",".")." $unit";           // unit wahrscheinlich empty oder ein Wert den wir nicht kennnen
+                    break;
+                }
             }
+        return($result);    
         }
-    return($result);    
-    }
 
     /*
     *
@@ -317,12 +325,52 @@ function nf($value,$unit="")
             }
         }
 
-    /* Anlegen und Synchronisieren von Profilen
-    * soll auch gleich Remote gehen
-    *
-    */
+    /* die cvollautomatiosche Function zum synchronisiern von Profilen, lokal oder remote */
 
-    function compareProfiles($server, $master,$target,$masterName,$targetName, $demo=false)
+    function synchronizeProfiles($server,$profilname,$debug=false)
+        {
+        foreach ($profilname as $pname => $masterName)
+            {
+            if (( (IPS_VariableProfileExists($pname) == false) && ($masterName=="new") ) || ($masterName=="update") )
+                {
+                if ($debug) echo "Profile existiert nicht oder neu anlegen/update,\n";
+                createProfiles("local",$pname);
+                }
+            elseif ($masterName == "new") echo "  Profil ".$pname." existiert.\n";          // wenn das Profil existiert kommt man hier vorbei
+            elseif (IPS_VariableProfileExists($masterName) == false)
+                {
+                if (IPS_VariableProfileExists($pname)) 
+                    {
+                    $target=IPS_GetVariableProfile ($pname);
+                    $master=array();
+                    $masterName="new";                              // nicht vorhanden braucht auch einen Namen
+                    $targetName=$target["ProfileName"];
+                    compareProfiles($server,$master, $target,$masterName,$targetName,$debug);      // nur die lokalen Profile anpassem, geht auch Remote
+                    }
+                else 
+                    {
+                    if ($debug) echo "Zu übernehmendes Profil $masterName existiert nicht, vorbereitetes Profil nehmen.\n";
+                    createProfiles($server,$pname);
+                    }
+                }
+            else    
+                {
+                if ($debug) echo "  Profil ".$pname." existiert bereits und erhält Aufruf zum Synchronisieren mit einem vorhandenen Profil namens $masterName.\n";
+                $master=IPS_GetVariableProfile ($masterName);                       // mastername ist die Quelle zum Synchronisieren
+                $target=IPS_GetVariableProfile ($pname);                            // pname wird synchronisiert oder upgedatet
+                $masterName=$master["ProfileName"];         // sonst nicht rekursiv möglich
+                $targetName=$target["ProfileName"];
+                compareProfiles($server,$master, $target,$masterName,$targetName,false, $debug);      // nur die lokalen Profile anpassem, geht auch Remote, false kein demo mode 
+                }
+            } 
+        }
+
+    /* Anlegen und Synchronisieren von Profilen, Aufruf geht auch rekursiv
+     * soll auch gleich Remote gehen
+     *
+     */
+
+    function compareProfiles($server, $master,$target,$masterName,$targetName, $demo=false,$debug=false)
         {
         $prefix=true; $minvalue=true;
 
@@ -332,15 +380,21 @@ function nf($value,$unit="")
             $target["ProfileName"]=$targetName;            
             }
 
-        if (strtoupper($server) != "LOCAL") 
+        if ( (strtoupper($server) == "LOCAL") || ($server===false) )
             {
+            if ($debug) echo "compareProfiles only locally, compare $masterName,$targetName:\n";    
+            $rpc=false;
+            }
+        else
+            {
+            if ($debug) echo "compareProfiles with Server $server, compare $masterName,$targetName:\n";    
             $rpc = new JSONRPC($server);
             $remote=true;
             }
-        else $rpc=false;
+
 
         // Profile name needs to be set
-        echo "compareProfiles($masterName,$targetName)\n";
+        
         //print_r($master); print_r($target);
         foreach ($master as $index => $entry)
             {
