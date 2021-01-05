@@ -319,7 +319,7 @@
 			$noweather=!$Config["Active"];
             if ($debug)
                 {
-                echo "StartPageWrite aufgerufen :\n";
+                echo "StartPageWrite aufgerufen für Seite $PageType:\n";
                 //secho "Weather Konfiguration: ".json_encode($Config)."\n";
                 }                
 	    	/* html file schreiben, Anfang Style für alle gleich */
@@ -407,7 +407,7 @@
                     $wert.= $this->showPictureWidget($showfile);                          // erste Zelle, 
                     if ( $noweather==false ) 
                         {
-                        $wert.= $this->showWeatherTemperatureWidget();     // zweite Zelle, eine dritte gibt es nicht
+                        $wert.= $this->showWeatherTemperatureWidget($debug);     // zweite Zelle, eine dritte gibt es nicht
                         }
                     elseif ($debug) echo "no weather Display configured.\n";
                     $wert.='</td>';
@@ -1884,19 +1884,22 @@
             if ($config===false) $tempTableConf = $this->getTempTableConf(false,$debug);
             else $tempTableConf=$this->getTempTableConf($config["Config"],$debug);
 
+            //if ($debug) echo "showTemperatureTable aufgerufen Config: ".json_encode($tempTableConf)."\n";
+
             $wert="";
             $wert.='<tr><td '.$colspan.'bgcolor="#c1c1c1"> <img src="user/Startpage/user/icons/Start/Aussenthermometer.jpg" alt="Aussentemperatur"></td>';
             $wert.='<td bgcolor="#ffffff"><img src="user/Startpage/user/icons/Start/FHZ.png" alt="Innentemperatur"></td></tr>';
 
             if ( ($tempTableConf===null) || (count($tempTableConf)==0) )
                 {
-                if ($debug) echo "Keine Konfiguration angegeben. So wie früher die beiden functions einlesen.\n";    
+                if ($debug) echo "Keine Konfiguration angegeben. So wie früher die beiden functions innentemperatur() und aussentemperatur() einlesen.\n";    
                 /* get Variables */
                 $innen="innentemperatur";
                 if (function_exists($innen)) $this->innentemperatur=$innen();				
                 $aussen="aussentemperatur";
                 if (function_exists($aussen)) $this->aussentemperatur=$aussen();
                 $wert.='<tr><td '.$colspan.' bgcolor="#c1c1c1"><aussen>'.number_format($this->aussentemperatur, 1, ",", "" ).'°C</aussen></td><td align="center"> <innen>'.number_format($this->innentemperatur, 1, ",", "" ).'°C</innen> </td></tr>';
+                if ($debug) echo "Aussen ".number_format($this->aussentemperatur, 1, ",", "" )."°C Innen ".number_format($this->innentemperatur,1, ",", "" )."°C \n";
                 }
             else
                 {    
@@ -1972,7 +1975,7 @@
          *
          **************************************/
 
-		function showWeatherTemperatureWidget()
+		function showWeatherTemperatureWidget($debug=false)
 			{
             $wert="";
             $weather=$this->getWeatherData();
@@ -1982,7 +1985,7 @@
 
             $wert.='<td><table id="nested">';
 
-            $wert .= $this->showTemperatureTable($colspan);
+            $wert .= $this->showTemperatureTable($colspan,false,$debug);            // keine Config übergeben
             $wert.= '<tr>'.$this->additionalTableLines($colspan).'</tr>';
             $wert .= $this->showWeatherTable($weather);
 

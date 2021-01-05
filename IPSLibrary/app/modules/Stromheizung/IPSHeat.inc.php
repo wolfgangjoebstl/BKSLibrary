@@ -42,10 +42,11 @@
 	 * @param int $variableId ID der Variable
 	 * @param variant $value Neuer Wert der Variable
 	 */
-	function IPSHeat_SetValue($variableId, $value) {
+	function IPSHeat_SetValue($variableId, $value, $debug=false) 
+        {
 		$lightManager = new IPSHeat_Manager();
-		$lightManager->SetValue($variableId, $value);
-	}
+		$lightManager->SetValue($variableId, $value, $debug);
+	    }
 
 	/**
 	 * Setzt den Wert eines Schalters anhand der zugehörigen ID

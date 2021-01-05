@@ -168,9 +168,35 @@ class Hardware
         return ($hardwareType);
         }
 
+
+    /* getDeviceConfiguration für class Hardware
+     *
+     */
+
+    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
+        {
+        $config = @IPS_GetConfiguration($device);
+        if ($config !== false) 
+            {                    
+            $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
+            $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=$config;
+            }
+        }
+
     /* Allgemeine Routine, die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
-     * hier wird nichts erweitert, sondern nur geprüft
+     * hier wird nichts erweitert, sondern nur geprüft. 
      * Antwort ist true wenn alles in Ordnung verlaufen ist. Ein false führt dazu dass kein Eintrag erstellt wird.
+     * Die Geräteliste ist mit Namen indexiert. Das bedeutet zumindest der Name muss eindeutig sein
+     *
+     *  if getDeviceCheck(....)                             // verschiedene checks, zumindest ob schon angelegt ?
+     *       {
+     *       $object->getDeviceParameter(....);             // Ergebnis von erkannten (Sub) Instanzen wird in die deviceList integriert, eine oder mehrer Instanzen einem Gerät zuordnen
+     *       $object->getDeviceChannels(....);              // Ergebnis von erkannten Channels wird in die deviceList integriert, jede Instanz wird zu einem oder mehreren channels eines Gerätes
+     *       $object->getDeviceActuators(....);             // Ergebnis von erkannten Actuators wird in die deviceList integriert, Acftuatoren sind Instanzen die wie in IPSHEAT bezeichnet sind
+     *       $object->getDeviceInformation(....);             // zusaetzlich Geräteinformation, auch das Gateway
+     *       $object->getDeviceTopology(....);              // zusaettlich Topolgie Informationen ablegen
+     *       }
+     *
      *
      */
 
@@ -185,20 +211,6 @@ class Hardware
             return(false);
             }            
         else return (true);
-        }
-
-    /* getDeviceConfiguration für class Hardware
-     *
-     */
-
-    public function getDeviceConfiguration(&$hardware, $device, $hardwareType, $debug=false)
-        {
-        $config = @IPS_GetConfiguration($device);
-        if ($config !== false) 
-            {                    
-            $hardware[$hardwareType][IPS_GetName($device)]["OID"]=$device;
-            $hardware[$hardwareType][IPS_GetName($device)]["CONFIG"]=$config;
-            }
         }
 
     /* die Device Liste (Geräteliste) um die Instances erweitern, ein Gerät kann mehrere Instances haben
@@ -256,6 +268,26 @@ class Hardware
         return (true);
         }
 
+    /* die Device Liste (Geräteliste) um die Beschreibung der Topologie erweitern
+     *
+     */
+
+    public function getDeviceTopology(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        if ($debug) echo"          getDeviceTopology:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
+        return (true);
+        }
+
+    /* die Device Liste (Geräteliste) um die Beschreibung der Devices erweitern, ein Gerät pro Device, die Hardware selber
+     *
+     */
+
+    public function getDeviceInformation(&$deviceList, $name, $type, $entry, $debug=false)
+        {
+        if ($debug) echo"          getDeviceInformation:Allgemein aufgerufen. Keine Funktion hinterlegt.\n";
+        return (true);
+        }
+
     /* die Device Liste (Geräteliste) um die Actuators erweitern, ein Gerät kann Actuators haben, muss aber nicht
      *
      */
@@ -267,7 +299,7 @@ class Hardware
         }
 
 
-    public function getDeviceActuatorsFromIpsHeat(&$deviceList)
+    public function getDeviceActuatorsFromIpsHeat(&$deviceList, $debug=false)
         {
         /* IPS Heat analysieren */
         $actuators = array();
@@ -282,7 +314,7 @@ class Hardware
             foreach ($IPSLightObjects as $name => $object)
                 {
                 $components=explode(",",$object[IPSHEAT_COMPONENT]);
-                echo "  ".str_pad($name,25).str_pad($object[IPSHEAT_TYPE],15).str_pad($components[0],35);           // strukturiert ausgeben und wenn Component bekannt ist erweitern
+                $text = "  ".str_pad($name,30).str_pad($object[IPSHEAT_TYPE],15).str_pad($components[0],35);           // strukturiert ausgeben und wenn Component bekannt ist erweitern
                 switch (strtoupper($components[0]))
                     {
                     case "IPSCOMPONENTSWITCH_HOMEMATIC":
@@ -291,21 +323,40 @@ class Hardware
                     case "IPSCOMPONENTRGB_LW12":
                     case "IPSCOMPONENTHEATSET_HOMEMATIC":
                     case "IPSCOMPONENTHEATSET_HOMEMATICIP":                
-                    //case "IPSCOMPONENTHEATSET_FS20":                              // remote Adresse, OID nicht vorhanden
-                        if (@IPS_ObjectExists($components[1])) echo $components[1]."   ".IPS_GetName($components[1]);
-                        else echo $components[1]."   Error, Object does not exist -------------------------\n";                    
+                        if (@IPS_ObjectExists($components[1])) 
+                            {
+                            $text .= $components[1]."   ".IPS_GetName($components[1]);
+                            if ($debug) echo $text;
+                            }
+                        else 
+                            {
+                            $text .= $components[1]."   Error, Object does not exist -------------------------\n";                    
+                            echo $text."\n";
+                            }
                         //echo $components[1]."   ".IPS_GetName($components[1]);
                         $actuators[$components[1]]["ComponentName"]=$components[0];
                         $actuators[$components[1]]["Type"]=$object[IPSHEAT_TYPE];
+                        $actuators[$components[1]]["Name"]=$name;                           // Name als Referenz, damit wir uns besser auskennen
+                        break;
+                    case "IPSCOMPONENTHEATSET_FS20":                              // remote Adresse, OID nicht vorhanden
+                    case "IPSCOMPONENTTUNER_DENON":
+                    case "IPSCOMPONENTSWITCH_RFS20":
+                    case "IPSCOMPONENTSWITCH_RMONITOR":
+                        $text .= "kein Eintrag, keine lokale Instanz referenziert : ".$object[IPSHEAT_COMPONENT];
+                        echo $text."\n";
                         break;
                     default:
-                        echo "  unbekannter Component -------------------";
+                        $text .=  "  unbekannter Component -------------------> ".strtoupper($components[0]);
+                        echo $text."\n";
                         break;
                     }
-                echo "\n";	
+                if ($debug )echo "\n";	
                 }
             }
         //print_r($actuators); 
+        /* Liste der Aktuatoren in die Deviceliste kopieren, Aktuatoren sind nach OIDs der Instanzen sortiert 
+         * wenn es einen Aktuator mit der OID gibt wird kopiert.
+         */
         foreach ($deviceList as $name => $entry)
             {
             if (isset($entry["Instances"]))
@@ -920,14 +971,15 @@ class HardwareHomematic extends Hardware
         {
         /* Fehlerprüfung, Name bereits in der Devicelist und wenn dann mit Doppelpunkt. Theoretisch werden Namen ohne : erlaubt wenn keine weitere Instanz vorhanden ist.*/
         $nameSelect=explode(":",$name);
+
         if (isset($deviceList[$nameSelect[0]])) 
-            {
+            {       // vorhanden
             if (count($nameSelect)<2) 
                 {
                 echo "        >>HardwareHomematic::getDeviceCheck Fehler, Name \"".$nameSelect[0]."\" bereits definiert und Homematic Gerät Name falsch, ist ohne Doppelpunkt: $name \n";
                 return (false);
                 }
-            else 
+            else            // nicht
                 {
                 if ($debug) 
                     {
@@ -1027,9 +1079,11 @@ class HardwareHomematic extends Hardware
     public function getDeviceParameter(&$deviceList,$name, $type, $entry, $debug=false)
         {
         /* Jeder Entry ist ein Device, oder ? */
-
+        
         /* sehr schwierig, Devices sind nicht automatisch Instanzen */
         /* Zusammenfassen ausprobieren, erster Check alle Homematic Instanzen haben einen Doppelpunkt im Namen */
+
+        $deviceInfo=array();
 
         $nameSelect=explode(":",$name);
         $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
@@ -1044,13 +1098,16 @@ class HardwareHomematic extends Hardware
             switch ($result["Protocol"])
                 {
                 case 0:
-                    $deviceList[$nameSelect[0]]["SubType"]="Funk";                            
+                    //$deviceList[$nameSelect[0]]["SubType"]="Funk"; 
+                    $deviceInfo["SubType"]="Funk";                           
                     break;
                 case 1:
-                    $deviceList[$nameSelect[0]]["SubType"]="Wired";                            
+                    //$deviceList[$nameSelect[0]]["SubType"]="Wired";
+                    $deviceInfo["SubType"]="Wired";                            
                     break;
                 case 2:
-                    $deviceList[$nameSelect[0]]["SubType"]="IP";                            
+                    //$deviceList[$nameSelect[0]]["SubType"]="IP";
+                    $deviceInfo["SubType"]="IP";                            
                     break;
                 default:
                     break;    
@@ -1101,11 +1158,13 @@ class HardwareHomematic extends Hardware
             $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
             if ($infodev<>"")   
                 {
-                $deviceList[$nameSelect[0]]["Information"]=$infodev;
+                //$deviceList[$nameSelect[0]]["Information"]=$infodev;
+                $deviceInfo["Information"]=$infodev;
                 if ($debug) echo "    INFO: $infodev";
                 }
             else echo "\n       >>getDeviceParameter:Homematic Fehler : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";
-            $deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
+            //$deviceList[$nameSelect[0]]["Serialnummer"]=$addressSelect[0];
+            $deviceInfo["Serialnummer"]=$addressSelect[0];
             /*
             $typedev    = $DeviceManager->getHomematicDeviceType($instanz,3);     // wird für CustomComponents verwendet, gibt als echo auch den Typ in standardisierter Weise aus
             if ($typedev<>"")  
@@ -1118,9 +1177,13 @@ class HardwareHomematic extends Hardware
 
             if (isset($deviceList[$nameSelect[0]]["Instances"][$port])) echo "\n     >> Fehler Port $port bereits definiert. Wird ueberschrieben.\n";                          
             $deviceList[$nameSelect[0]]["Type"]=$type;
-            $deviceList[$nameSelect[0]]["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);;
+            //$deviceList[$nameSelect[0]]["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);
+            $deviceInfo["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);
             $entry["NAME"]=$name; 
             $deviceList[$nameSelect[0]]["Instances"][$port]=$entry;             // port ist eine wichtige Information, info um welchen Switch, Taster etc. geht es hier.
+
+
+            //$deviceList[$nameSelect[0]]["Device"][]=$deviceInfo;
             if ($debug) echo "\n";
             return (true);
             }
@@ -1149,6 +1212,7 @@ class HardwareHomematic extends Hardware
 
         /* Fehlerüberprüfung */
         $nameSelect=explode(":",$name);
+
         if (isset($deviceList[$nameSelect[0]]) === false) 
             {
             $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
@@ -1173,6 +1237,7 @@ class HardwareHomematic extends Hardware
             else echo "   >>getDeviceChannels Fehler, Name \"".$nameSelect[0]."\" noch nicht definiert. Keine Seriennummer gefunden.\n";
             $goOn=false;
             }
+
         $port= $this->checkConfig($goOn, $entry["CONFIG"]);     	// gibt Port zurück, wenn alles okay wird goOn nicht auf false gesetzt
         
         /* Durchführung */
@@ -1235,6 +1300,67 @@ class HardwareHomematic extends Hardware
             }
         else return (false);
         }
+
+    /* eigenes Tab mit Device befüllen, wird aktuell von getDeviceParameter gemacht
+     *
+     */
+
+    public function getDeviceInformation(&$deviceList,$name, $type, $entry, $debug=false)
+        {
+        $deviceInfo=array();
+        $nameSelect=explode(":",$name);        
+        $result=json_decode($entry["CONFIG"],true);   // als array zurückgeben 
+        if (isset($result["Protocol"])) 
+            {
+            switch ($result["Protocol"])
+                {
+                case 0:
+                    //$deviceList[$nameSelect[0]]["SubType"]="Funk"; 
+                    $deviceInfo["SubType"]="Funk";                           
+                    break;
+                case 1:
+                    //$deviceList[$nameSelect[0]]["SubType"]="Wired";
+                    $deviceInfo["SubType"]="Wired";                            
+                    break;
+                case 2:
+                    //$deviceList[$nameSelect[0]]["SubType"]="IP";
+                    $deviceInfo["SubType"]="IP";                            
+                    break;
+                default:
+                    break;    
+                }
+            }
+        $addressSelect=explode(":",$result["Address"]);            
+        $deviceInfo["Serialnummer"]=$addressSelect[0];
+        /* Sonderfunktionen wenn OperationCenter Modul installiert ist */
+
+        if (isset($this->installedModules["OperationCenter"])) 
+            {
+            $instanz=$entry["OID"];
+            $deviceInfo["Gateway"]=IPS_GetName(IPS_GetInstance($instanz)['ConnectionID']);
+            $infodev    = $this->DeviceManager->getHomematicHMDevice($instanz,1);     /* Eindeutige Bezeichnung aufgrund des Homematic Gerätenamens */
+            if ($infodev<>"")   
+                {
+                //$deviceList[$nameSelect[0]]["Information"]=$infodev;
+                $deviceInfo["Information"]=$infodev;
+                if ($debug) echo "    INFO: $infodev";
+                }
+            else echo "\n       >>getDeviceInformation:Homematic Fehler : \"".IPS_GetName($instanz)."\" ($instanz/".$result["Address"]."): kein INFO ermittelt.\n";  
+            $deviceInfo["TypeDevice"]=$this->DeviceManager->getHomematicHMDevice($instanz,0);
+            }
+        if (isset($deviceList[$nameSelect[0]]["Device"][0]))
+            {
+            $actual=json_encode($deviceList[$nameSelect[0]]["Device"][0]);
+            $new=json_encode($deviceInfo);
+            if ($actual != $new) echo "Achtung ueberschreiben $actual mit neuem Wert $new.\n";
+            }
+        $deviceList[$nameSelect[0]]["Device"][0]=$deviceInfo;                      
+
+        }
+
+    /* rausfinden ob weitergemacht werden kann, verändert die Variable goOn
+     *
+     */
 
     function checkConfig(&$goOn,$config)
         {

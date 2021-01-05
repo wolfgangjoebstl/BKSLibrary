@@ -6241,7 +6241,7 @@ class ModuleHandling
      *  GUID       Name der Library ausgeben
      *  Name       Name der Library ausgeben
      */
-	public function getLibrary($needleID=false)
+	public function getLibrary($needleID=false, $debug=false)
 		{
         $result=false;
         if ($needleID!==false)
@@ -6250,10 +6250,10 @@ class ModuleHandling
 		    $key=$this->get_string_between($needleID,'{','}');
     		if (strlen($key)==36) 
                 {
-                echo "Gültige GUID mit ".$key."\n";                    
+                if ($debug) echo "Gültige GUID mit ".$key."\n";                    
                 foreach($this->libraries as $index => $library)
                     {
-                    echo "   ".str_pad($index,35)."    ".$library."\n";
+                    if ($debug) echo "   ".str_pad($index,35)."    ".$library."\n";
                     if ($library == $needleID) 
                         {
                         $result=$index;
@@ -6265,7 +6265,7 @@ class ModuleHandling
                 {
                 foreach($this->libraries as $index => $library)
                     {
-                    echo "   ".str_pad($index,35)."    ".$library."\n";
+                    if ($debug) echo "   ".str_pad($index,35)."    ".$library."\n";
                     if ($index == $needleID) 
                         {
                         $result=$index;
@@ -6278,7 +6278,7 @@ class ModuleHandling
             {
     		foreach($this->libraries as $index => $library)
 	    		{
-                echo "   ".str_pad($index,35)."    ".$library."\n";
+                if ($debug) echo "   ".str_pad($index,35)."    ".$library."\n";
     			}
             return($this->libraries);
             }
@@ -6288,7 +6288,8 @@ class ModuleHandling
      */
 	public function printModules($input)
 		{
-		$input=trim($input);
+        $modules = $this->getModules($input);
+		/*$input=trim($input);
 		$key=$this->get_string_between($input,'{','}');
 		if (strlen($key)==36) 
 			{
@@ -6297,14 +6298,14 @@ class ModuleHandling
 			}
 		else
 			{
-			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			// wahrscheinlich keine GUID sondern ein Name eingeben 
 			if (isset($this->libraries[$input])==true)
 				{
 				echo "Library ".$input." mit GUID ".$this->libraries[$input]." hat folgende Module:\n";
 				$modules=IPS_GetLibraryModules($this->libraries[$input]);
 				}
 			else $modules=array();	
-			}
+			} */
 		$pair=array();			
 		foreach($modules as $guid)
 			{
@@ -6431,18 +6432,83 @@ class ModuleHandling
     /* Alle installierten Discovery Instanzen ausgeben
      *
      */
-	public function getDiscovery()
+
+	public function getDiscovery($debug=false)
 		{
-        return ($this->getInstancesByType(5));
+        return ($this->getInstancesByType(5,$debug));
+        }
+
+    /* Alle Module die einer bestimmten Library zugeordnet sind ausgeben 
+     */
+	public function getModules($input, $debug=false)
+		{
+		$input=trim($input);
+		$key=$this->get_string_between($input,'{','}');
+		if (strlen($key)==36) 
+			{
+			if ($debug) echo "Gültige GUID mit ".$key."\n";
+			$modules=IPS_GetLibraryModules($input);
+			}
+		else
+			{
+			/* wahrscheinlich keine GUID sondern ein Name eingeben */
+			if (isset($this->libraries[$input])==true)
+				{
+				if ($debug) echo "Library ".$input." mit GUID ".$this->libraries[$input]." hat folgende Module:\n";
+				$modules=IPS_GetLibraryModules($this->libraries[$input]);
+				}
+			else $modules=array();	
+			}
+        return($modules);
+        }
+
+    /* Alle zusätzlichen nicht automatisierbaren Discovery Instanzen ausgeben
+     *
+     */
+
+	public function addNonDiscovery(&$discovery,$debug=false)
+		{
+        //$discovery=array();       // brauchen wir nicht, wird gleich am lebenden Objekt umgesetzt
+
+        /* wenn keine Discovery verfügbar, dann den Configurator als Übergangslösung verwenden 
+        * {44CAAF86-E8E0-F417-825D-6BFFF044CBF5} = AmazonEchoConfigurator
+        * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
+        *
+        */
+        $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
+        $input["ModuleName"] = "AmazonEchoConfigurator";
+        $discovery[]=$input;
+        $input["ModuleID"] = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
+        $input["ModuleName"] = "NetatmoWeatherConfig";
+        $discovery[]=$input;
+
+        /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
+        *
+        *
+        */
+        $input["ModuleID"] =   "{56800073-A809-4513-9618-1C593EE1240C}";            // FS20EX Instanzen
+        $input["ModuleName"] = "FS20EX Instanzen";  
+        $discovery[]=$input;
+        $input["ModuleID"] =   "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";            // FS20EX Instanzen
+        $input["ModuleName"] = "FS20 Instanzen";          
+        $discovery[]=$input;
+        $input["ModuleID"] =    "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";           // FHT devices Instanzen, kein Konfigurator, kein Discovery, haendische Installation
+        $input["ModuleName"] = "FHT Instanzen";
+        $discovery[]=$input;     
+        $input["ModuleID"] =    "{D26101C0-BE49-7655-87D3-D721064D4E40}";           // OperationCenter Cam Instanzen, kein Konfigurator, kein Discovery, haendische Installation
+        $input["ModuleName"] = "CAM Instanzen";
+        $discovery[]=$input;     
+
+        return ($discovery);
         }
 
     /* Alle installierten Discovery Instanzen ausgeben
      *
      */
-	public function getInstancesByType($type)
+	public function getInstancesByType($type,$debug=false)
 		{
         $configurator=array();
-        //echo "getDiscovery aufgerufen :\n"; 
+        if ($debug) echo "getDiscovery aufgerufen :\n"; 
         $discovery2=IPS_GetInstanceListByModuleType($type);
         $result=array();
         foreach($discovery2 as $instance)
@@ -6451,7 +6517,7 @@ class ModuleHandling
             $result[$instance]["Name"]=IPS_GetName($instance);
             $moduleinfo = IPS_GetInstance($instance)["ModuleInfo"];
             //print_r($moduleinfo);
-            //echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
+            if ($debug) echo "   ".$instance."   ".str_pad(IPS_GetName($instance),42)."    ".$moduleinfo["ModuleName"]."\n";
             $result[$instance]["ModuleName"] = $moduleinfo["ModuleName"];
             $result[$instance]["ModuleID"]   = $moduleinfo["ModuleID"];
             $result[$instance]["ModuleType"] = $moduleinfo["ModuleType"];

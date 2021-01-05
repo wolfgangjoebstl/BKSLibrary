@@ -183,41 +183,15 @@ IPS_SetEventActive($tim1ID,true);
 
     echo "\nAlle installierten Discovery Instances mit zugehörigem Modul und Library:\n";
     $discovery = $modulhandling->getDiscovery();
+    $modulhandling->addNonDiscovery($discovery);    // und zusätzliche noch nicht als Discovery bekannten Module hinzufügen
     echo "\n";
 
-    /* wenn keine Discovery verfügbar, dann den Configurator als Übergangslösung verwenden 
-     * {44CAAF86-E8E0-F417-825D-6BFFF044CBF5} = AmazonEchoConfigurator
-     * {DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8} = NetatmoWeatherConfig
-     *
-     */
-    $input["ModuleID"] = "{44CAAF86-E8E0-F417-825D-6BFFF044CBF5}";        // add EchoControl
-    $input["ModuleName"] = "AmazonEchoConfigurator";
-    $discovery[]=$input;
-    $input["ModuleID"] = "{DCA5D76C-A6F8-4762-A6C3-2FF6601DDEC8}";        // add NetatmoWeather
-    $input["ModuleName"] = "NetatmoWeatherConfig";
-    $discovery[]=$input;
+     
 
-    /* wenn keine Konfiguratoren verfügbar dann die GUIDs der Instanzen eingeben
-     *
-     *
-     */
-    $input["ModuleID"] =   "{56800073-A809-4513-9618-1C593EE1240C}";            // FS20EX Instanzen
-    $input["ModuleName"] = "FS20EX Instanzen";  
-    $discovery[]=$input;
-    $input["ModuleID"] =   "{48FCFDC1-11A5-4309-BB0B-A0DB8042A969}";            // FS20EX Instanzen
-    $input["ModuleName"] = "FS20 Instanzen";          
-    $discovery[]=$input;
-    $input["ModuleID"] =    "{A89F8DFA-A439-4BF1-B7CB-43D047208DDD}";           // FHT devices Instanzen, kein Konfigurator, kein Discovery, haendische Installation
-    $input["ModuleName"] = "FHT Instanzen";
-    $discovery[]=$input;     
-    $input["ModuleID"] =    "{D26101C0-BE49-7655-87D3-D721064D4E40}";           // OperationCenter Cam Instanzen, kein Konfigurator, kein Discovery, haendische Installation
-    $input["ModuleName"] = "CAM Instanzen";
-    $discovery[]=$input;     
-
-    echo "Erstellen der SocketList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    echo "Erstellen der SocketList (I/O Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $socket=array();
     $socket = $topologyLibrary->get_SocketList($discovery);
-    echo "Erstellen der GatewayList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
+    echo "Erstellen der GatewayList (Configurator Instanzen) in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
     $gateway=array();
     $gateway = $topologyLibrary->get_GatewayList($discovery);
     echo "Erstellen der HardwareList in scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php \n";
@@ -243,23 +217,14 @@ IPS_SetEventActive($tim1ID,true);
     $ipsOps->serializeArrayAsPhp($gateway, $includefileDevices);        // gateway array in das include File schreiben
     $includefileDevices .= ';}'."\n\n"; 
 
-    $includefileDevices .= 'function deviceList() { return ';
-    $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
-    $includefileDevices .= ';}'."\n\n";        
-	
-    $includefileDevices .= "\n".'?>';
-	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
-	if (!file_put_contents($filename, $includefileDevices)) {
-        throw new Exception('Create File '.$filename.' failed!');
-    		}       
-
     echo "\n";
-    $result=$modulhandling->printModules('TopologyMappingLibrary');
+    $result=$modulhandling->getModules('TopologyMappingLibrary');
     if (empty($result)) echo "Modul/Bibliothek TopologyMappingLibrary noch nicht installiert.  \n";
     else 
         {
         if (isset($installedModules["DetectMovement"]))         // wenn von EvaluateHardware aufgerufen wird brauchen ich nicht zu überprüfen ob das Modul installiert ist, ich nehme gleich die internen arrays 
             {
+            //echo "TopologyMapping beginnt jetzt:\n";
             IPSUtils_Include ('DetectMovementLib.class.php', 'IPSLibrary::app::modules::DetectMovement');
             IPSUtils_Include ('DetectMovement_Configuration.inc.php', 'IPSLibrary::config::modules::DetectMovement');
 
@@ -269,29 +234,41 @@ IPS_SetEventActive($tim1ID,true);
             $DetectDeviceHandler = new DetectDeviceHandler();                       // alter Handler für channels, das Event hängt am Datenobjekt
             $DetectDeviceListHandler = new DetectDeviceListHandler();               // neuer Handler für die DeviceList, registriert die Devices in EvaluateHarwdare_Configuration
 
-            $modulhandling->printInstances('TopologyDevice');
+            /* wird nicht benötigt, nur zur Orientierung
+            //$modulhandling->printInstances('TopologyDevice');
             $deviceInstances = $modulhandling->getInstances('TopologyDevice',"NAME");
-            $modulhandling->printInstances('TopologyRoom');        
+            //$modulhandling->printInstances('TopologyRoom');        
             $roomInstances = $modulhandling->getInstances('TopologyRoom',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-            $modulhandling->printInstances('TopologyPlace');        
+            //$modulhandling->printInstances('TopologyPlace');        
             $placeInstances = $modulhandling->getInstances('TopologyPlace',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-            $modulhandling->printInstances('TopologyDeviceGroup');        
+            //$modulhandling->printInstances('TopologyDeviceGroup');        
             $devicegroupInstances = $modulhandling->getInstances('TopologyDeviceGroup',"NAME");       // Formatierung ist eine Liste mit dem Instanznamen als Key
-          
+            */
+
             $topology            = $DetectDeviceHandler->Get_Topology();
             $channelEventList    = $DetectDeviceHandler->Get_EventConfigurationAuto();        
             $deviceEventList     = $DetectDeviceListHandler->Get_EventConfigurationAuto();        
             //print_r($topology);
             
             echo "CreateTopologyInstances wird aufgerufen:\n";
+            $topologyLibrary->createTopologyInstances($topology);           // Topologie TopologyDevice, TopologyRoom, TopologyPlace, TopologyDeviceGroup in Kategorie Topologie erstellen
             echo "----------------------------------------\n";
-            $topologyLibrary->createTopologyInstances($topology);
-            echo "SortTopologyInstances wird aufgerufen:\n:";
-            echo "----------------------------------------\n";
+            echo "SortTopologyInstances wird aufgerufen um die einzelnen Geräte in die topologie einzusortieren:\n";
             $topologyLibrary->sortTopologyInstances($deviceList,$channelEventList,$deviceEventList);
+            echo "----------------------------------------\n";
             }           // end isset DetectMovement
         }               // end TopologyMappingLibrary
 
+    $includefileDevices .= 'function deviceList() { return ';
+    $ipsOps->serializeArrayAsPhp($deviceList, $includefileDevices, 0, 0, false);          // true mit Debug
+    $includefileDevices .= ';}'."\n\n";        
+	
+    $includefileDevices .= "\n".'?>';
+	$filename=IPS_GetKernelDir().'scripts\IPSLibrary\config\modules\EvaluateHardware\EvaluateHardware_Devicelist.inc.php';
+	if (!file_put_contents($filename, $includefileDevices)) {
+        throw new Exception('Create File '.$filename.' failed!');
+    		} 
+            
 	/************************************
 	 *
 	 *  Homematic Sender und vorher HomematicSockets, FHT, FS20EX, FS20 einlesen

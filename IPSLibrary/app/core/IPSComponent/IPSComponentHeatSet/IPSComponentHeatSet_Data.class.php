@@ -125,11 +125,12 @@
 				}
 			}
 
-		public function SetLevel($power, $level)
+		public function SetLevel($power, $level, $debug=false)
 			{
-			echo "    IPSComponentHeatSet_Data SetLevel RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Level ".$level." Power ".$power." \n";
+			if ($debug) echo "    IPSComponentHeatSet_Data SetLevel RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Level ".$level." Power ".$power." \n";
             if (isset ($this->installedmodules["Stromheizung"])) 
                 {
+                IPSUtils_Include ('IPSModuleHeatSet_All.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
                 $module = new IPSModuleHeatSet_All();
                 $module->SyncSetTemp($level, $this);                	
                 }
@@ -152,6 +153,7 @@
 			echo "    IPSComponentHeatSet_Data SetMode RPC-Adresse:".$this->rpcADR." InstanceID ".$this->instanceId." und Mode ".$mode." bei Power ".$power." \n";
             if (isset ($this->installedmodules["Stromheizung"])) 
 				{
+                IPSUtils_Include ('IPSModuleHeatSet_All.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentHeatSet');
                 $module = new IPSModuleHeatSet_All();
 				$module->SyncSetMode($mode, $this);
 				} 

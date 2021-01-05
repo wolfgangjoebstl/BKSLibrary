@@ -6990,7 +6990,7 @@ class DeviceManagement
 				{
 				//echo "\n *** ".$name."  \n";
 				//print_r($anzahl);
-                if ( isset($serials[$name])==true ) echo "  !!! Doppelter Eintrag.\n";
+                if ( isset($serials[$name])==true ) echo "  addHomematicSerialList_Typ, Fehler !!! Doppelter Eintrag in HomematicSerialNumberList für $name.\n";
 				else $serials[$name]=$anzahl["Name"];
 				$register=explode(" ",trim($anzahl["Values"]));
 
