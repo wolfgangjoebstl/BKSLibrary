@@ -65,7 +65,7 @@ $MeterConfig = $Amis->getMeterConfig();
 
 /* Configport evaluieren, Konfiguration so umschreiben das sie auf Registervariablen basiert */ 
 $configPort = $Amis->getPortConfiguration($MeterConfig,$cutterActive);
-$amisAvailable = $Amis->getAmisAvailable($MeterConfig);                      /* wird true gesetzt wenn ein AMIS Zähler in der Config vorkommt */
+$amisAvailable = $Amis->getAmisAvailable($MeterConfig);                      /* wird true gesetzt wenn ein AMIS Zähler in der Config vorkommt, MeterConfig wird übergeben */
 	
 /******************************************************
 
@@ -89,7 +89,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 		$AMISReceiveChar1ID = CreateVariableByName($AmisID, "AMIS ReceiveChar1", 3);     /* Zuletzt empfangener Befehl */
 		$zaehlerid = CreateVariableByName($AmisID, "Zaehlervariablen", 3);
 			
-		$handle=fopen($Amis->systemDir."Log_Cutter_".$configPort[$sender]["ID"].".csv","a");
+		$handle=fopen($Amis->getSystemDir()."Log_Cutter_".$configPort[$sender]["ID"].".csv","a");
 		$ausgabewert=date("d.m.y H:i:s").";".$sender.";".strlen($content).";";
 
 		if ($cutterActive == true)
@@ -125,7 +125,7 @@ if ( ($_IPS['SENDER'] == "RegisterVariable")  && ($amisAvailable==true) )
 	
 					$content = $ausgabewert;
 
-					$handlelog=fopen($Amis->systemDir."Log_".$configPort[$sender]["Name"].".csv","a");
+					$handlelog=fopen($Amis->getSystemDir()."Log_".$configPort[$sender]["Name"].".csv","a");
 					$ausgabewert=date("d.m.y H:i:s").";".$content;
 		 			fwrite($handlelog, $ausgabewert."\r\n");
 		 			fclose($handlelog);
@@ -208,6 +208,7 @@ if ($_IPS['SENDER'] == "Execute")
 	echo "\n==================================================================\n";
 	echo "Amis Execute aufgerufen:\n\n";
 	echo "Als erstes die Konfiguration:\n";
+    echo "   AMIS System Dir : ".$Amis->getSystemDir()."\n";    
     print_r($MeterConfig);
     echo "Ermittelte Registervariablen als mögliche Quelle für empfangene Daten von AMIS Zählern:\n";	
     print_r($configPort);
@@ -275,6 +276,8 @@ if ($_IPS['SENDER'] == "Execute")
 			echo "Wirkenergie : ".GetValue($wirkenergie_ID)." kWh\n";
 			}
 		}
+    else echo "\nAmis NOT Available, Keine Auswertung eines AMIS Zählers über Registervariable erfolgt.\n";
+        
 	}
 
 	 

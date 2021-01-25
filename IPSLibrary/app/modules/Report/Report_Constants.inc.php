@@ -20,11 +20,11 @@
 	 * @{
 	 *
 	 * @file          Report_Constants.inc.php
-	 * @author        Wolfgang Jöbstl
+	 * @author        Wolfgang JÃ¶bstl
 	 * @version
 	 *  Version 2.50.1, 2.02.2016<br/>
 	 *
-	 * Definition der Konstanten für Report
+	 * Definition der Konstanten fÃ¼r Report
 	 *
 	 */
 
@@ -43,6 +43,7 @@
 	define ('IPSRP_VALUETYPE_GAS',				'Gas');
 	define ('IPSRP_VALUETYPE_TEMPERATURE',		'Temperatur');
 	define ('IPSRP_VALUETYPE_HUMIDITY',			'Feuchtigkeit');
+	define ('IPSRP_VALUETYPE_CONTROL',			'Aktuator');
 	define ('IPSRP_VALUETYPE_CURRENT',			'Strom');
 	define ('IPSRP_VALUETYPE_POWER',				'Leistung');
 	define ('IPSRP_VALUETYPE_ENERGY',			'Energie');

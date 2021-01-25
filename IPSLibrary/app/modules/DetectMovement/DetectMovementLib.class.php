@@ -918,7 +918,7 @@
 
 		/**
 		 *
-		 * Die Sensor Gesamtauswertung_ Variablen erstellen 
+		 * Die DetectSensorHandler Sensor Gesamtauswertung_ Variablen erstellen 
 		 *
 		 */
 		function InitGroup($group)
@@ -2107,24 +2107,42 @@
 
 		/**
 		 *
-		 * Die HeatControl Gesamtauswertung_ Variablen erstellen 
+		 * Die HeatControl Gesamtauswertung_ Variablen berechnen und erstellen 
 		 *
 		 */
-		function InitGroup($group)
+		function InitGroup($group,$debug=false)
 			{
-			echo "\nDetect HeatControl Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
+			if ($debug) echo "\nDetect HeatControl Gruppe ".$group." behandeln. Ergebnisse werden in ".$this->Detect_DataID." (".IPS_GetName($this->Detect_DataID).") gespeichert.\n";
 			$config=$this->ListEvents($group);
-			$status=false; $status1=false;
+            $power = $this->CalcGroup($config);
+    /*      $status=(float)0;                       // Status zusammenzählen
+            $power=(float)0;                        // Leistung zusammenzählen
+            $count=0;
 			foreach ($config as $oid=>$params)
 				{
-				$status=$status || GetValue($oid);
-				echo "  OID: ".$oid." Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)."Status: ".(integer)GetValue($oid)." ".(integer)$status."\n";
-				$moid=$this->getMirrorRegister($oid);
-				if ($moid !== false) $status1=$status1 || GetValue($moid);
+                $mirrorID=$this->getMirrorRegister($oid);
+                $variablename=IPS_GetName($mirrorID);
+                $mirrorPowerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID);                    
+                $status+=GetValue($oid);
+                if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
+                $count++;                
+                // Ausgabe der Berechnung der Gruppe 
+                echo "OID: ".$oid;
+                //echo " Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)                
+                echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50);
+                echo "Status (LEVEL | POWER) ".GetValue($oid)." ".$status." | ";
+                if ($mirrorPowerID) echo GetValue($mirrorPowerID);
+                else echo "   0  ";
+                echo "   ".$power."\n";
 				}
-			echo "  Gruppe ".$group." hat neuen Status, Wert ohne Delay: ".(integer)$status."  mit Delay:  ".(integer)$status1."\n";
-			$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Power', null,false);
-			SetValue($statusID,$status);
+            if ($count>0) { $status=$status/$count; }
+            echo "Gruppe ".$group." hat neuen Status : ".$status." | ".$power."\n";     */
+
+            /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+            $statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, "~Power", null, null);
+			//$statusID=CreateVariable("Gesamtauswertung_".$group,2,$this->Detect_DataID,1000, '~Power', null,false);
+            echo "Gesamtauswertung_".$group." ist auf OID : ".$statusID."\n";
+            SetValue($statusID,$power);
 			
   			$archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
      		AC_SetLoggingStatus($archiveHandlerID,$statusID,true);
@@ -2133,7 +2151,43 @@
 			return ($statusID);			
 			}			
 			
-			
+		/**
+		 *
+		 * Die HeatControl Gesamtauswertung_ Variablen berechnen 
+		 *
+		 */
+		function CalcGroup($config,$debug=false)
+			{
+			//if ($debug) echo "\nCalcgroup ".json_encode($config)."\n";
+            $status=(float)0;                       // Status zusammenzählen
+            $power=(float)0;                        // Leistung zusammenzählen
+            $count=0;
+			foreach ($config as $oid=>$params)
+				{
+                $mirrorID=$this->getMirrorRegister($oid);
+                $variablename=IPS_GetName($mirrorID);
+                $mirrorPowerID=@IPS_GetObjectIDByName($variablename."_Power",$mirrorID);                    
+                //$status+=GetValue($oid);                  // unterschiede Integer und Power
+                if ($mirrorID) $status+=GetValue($mirrorID);
+                if ($mirrorPowerID) $power+=GetValue($mirrorPowerID);
+                $count++;                
+                /* Ausgabe der Berechnung der Gruppe */
+                if ($debug) 
+                    {
+                    echo "    OID: ".$oid;
+                    //echo " Name: ".str_pad((IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($oid)))),50)                
+                    echo " Name: ".str_pad(IPS_GetName($oid)."/".IPS_GetName(IPS_GetParent($oid)),50);
+                    echo "Status (LEVEL | POWER) ".str_pad(GetValue($oid),10)." ".str_pad($status,10)." | ";
+                    if ($mirrorPowerID) echo str_pad(GetValue($mirrorPowerID),10);
+                    else echo "   0  ";
+                    echo "   ".$power."\n";
+                    }
+				}
+            if ($count>0) { $status=$status/$count; }
+            echo "Gruppe hat neuen Status : ".$status." | ".$power."\n";                
+            /* Herausfinden wo die Variablen gespeichert, damit im selben Bereich auch die Auswertung abgespeichert werden kann */
+			return ($power);			
+			}					
 			
 		}
 

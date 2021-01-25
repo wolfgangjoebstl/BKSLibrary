@@ -488,6 +488,11 @@
                                 $wert .= $this->showTempGroupWidget($entry,$debug);
                                 $wert .= '</td>';             
                                 break;
+                            case "HEATING":               // Heizungsfunktion nachweisen und illustrieren
+                                $wert .= '<td '.$tdformat.'>';
+                                $wert .= $this->showHeatingWidget($entry,$debug);
+                                $wert .= '</td>';             
+                                break;
                             case "PICTURE":
                                 $wert .= '<td '.$tdformat.'>';
                                 $wert.= $this->showPictureWidget(false,$debug);     // statt false könnte das Bild übergeben werden
@@ -564,7 +569,12 @@
                 $sunsetID=@IPS_GetObjectIDByName("Sonnenuntergang Uhrzeit",$instanzID);
                 if ($sunsetID !== false) $sunset = GetValueIfFormatted($sunsetID);
                 else $sunset="";
+                $fullMoonID=@IPS_GetObjectIDByName("Vollmond",$instanzID);
+                if ($fullMoonID !== false) $fullMoon = GetValue($fullMoonID);
+                else $fullMoon="";
 
+                $iconPic = 'user/Startpage/user/icons/Flower.svg';
+                    
                 switch (strtoupper($displayType))
                     {
                     case "CHART":
@@ -577,6 +587,10 @@
                         $wert.='<tr><td><table>';
                         $wert.='<tr><td>Sonnenaufgang</td><td>'.$sunrise.'</td></tr>';
                         $wert.='<tr><td>Sonnenuntergang</td><td>'.$sunset.'</td></tr>';
+                        $wert.='<tr><td>Nächster Vollmond</td><td>'.$fullMoon.'</td></tr>';
+                        $wert.='<tr><td align="center">';
+                        if ($iconPic) $wert.='<img src="'.$iconPic.'" alt="Flower Icon">';
+                        $wert.='</td></tr>';
                         $wert.='</table></td></tr>';
                         break;
                     case "ALL":
@@ -1579,6 +1593,33 @@
 
         /********************
          *
+         * Zelle Tabelleneintrag für die Tabelle für Heating, Illustration der Heizungsfunktion
+         *
+         *
+         **************************************/
+
+		function showHeatingWidget($config=false,$debug=false)
+            {
+            $wert="";
+            $wert .= '<table>';
+            $wert .= '<tr>'; 
+            $wert .= '<td><table>';
+            foreach ($config["Config"] as $room=>$values)
+                {
+                $wert .= '<tr>';
+                $wert .= '<td>'.$room.'</td>';
+                foreach ($values as $value) $wert .= '<td>'.GetValueIfFormatted($value).'</td>';
+                $wert .= '</tr>';
+                } 
+            //$wert .= '<td>'.json_encode($config).'</td><td>'.'</td></tr>';
+            $wert .= '</table></td>';   
+            $wert .= '</tr></table>'; 
+            return ($wert);                                
+            }
+
+
+        /********************
+         *
          * Zelle Tabelleneintrag für die Tabelle für Gruppen Temperaturwerte
          * macht 2 Zeilen mit jeweils 2 Zellen
          *
@@ -1689,7 +1730,11 @@
             return ($wert);
             }
 
-        /* read configuration for showTempGroupWidget */
+        /* read configuration for showTempGroupWidget 
+         *
+         *
+         *
+         */
 
         function getConfigTempGroupWidget($groupsInput=false,$debug=false)
             { 
@@ -1733,19 +1778,21 @@
             if ($configInput===false) $specialRegsConf = $this->getConfigSpecialRegsWidget(false,$debug);
             else $specialRegsConf=$this->getConfigSpecialRegsWidget($configInput["Config"],$debug);
 
-            if ($debug) { echo "Special Regs Aufruf mit:\n"; print_R($specialRegsConf); }
+            //if ($debug) { echo "Special Regs Aufruf mit:\n"; print_R($specialRegsConf); }
             if ($this->scriptHighchartsID)      // ohne Script gehts nicht */
                 {
                 foreach ($specialRegsConf as $indexChart => $config)
                     {
-                    if ($debug) echo "Highcharts Ausgabe von $indexChart (".json_encode($config).") : \n"; 
+                    if ($debug) echo "showSpecialRegsWidget: Highcharts Ausgabe von $indexChart (".json_encode($config).") : \n"; 
 
                     $endTime=time();
                     $startTime=$endTime-$config["Duration"];     /* drei Tage ist Default */
                     $chart_style=$config["Style"];            // line spline area gauge            gauge benötigt eine andere Formatierung
 
                     // Create Chart with Config File
-                    IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");
+                    // IPSUtils_Include ("IPSHighcharts.inc.php", "IPSLibrary::app::modules::Charts::IPSHighcharts");               // ohne class, needs Charts
+                    IPSUtils_Include ('Report_class.php', 					'IPSLibrary::app::modules::Report');
+
                     $CfgDaten=array();
                     //$CfgDaten['HighChartScriptId']= IPS_GetScriptIDByName("HC", $_IPS['SELF'])
                     //$CfgDaten["HighChartScriptId"]  = 11712;                  // ID des Highcharts Scripts
@@ -1772,26 +1819,49 @@
                     //$CfgDaten["PlotType"]= "Gauge"; 
                     $CfgDaten['plotOptions']['spline']['color']     =	 '#FF0000';
                     $CfgDaten['plotOptions']['area']['stacking']     =	 'normal';
-                    $CfgDaten['chart']['type']      = $chart_style;                   // neue Art der definition
+
+                    if ($config["Aggregate"]) $CfgDaten['AggregatedValues']['HourValues']     = 0; 
+                    //if ($config["Step"]) $CfgDaten['plotOptions'][$chart_style]['step']     =	 $config["Step"];               // false oder left , in dieser Highcharts Version noch nicht unterstützt
+
+                    $CfgDaten['plotOptions']['series']['connectNulls'] = true;                      // normalerweise sind Nullen unterbrochene Linien, es wird nicht zwischen null und 0 unterschieden
+                    $CfgDaten['plotOptions']['series']['cursor'] = "pointer";
+
+                    /* floating legend
+                    $CfgDaten['legend']['floating']      = true;                   
+                    $CfgDaten['legend']['align']         = 'left';
+                    $CfgDaten['legend']['verticalAlign'] = 'top';
+                    $CfgDaten['legend']['x']             = 100;
+                    $CfgDaten['legend']['y']             = 70;  */
+
+                    $CfgDaten['tooltip']['enabled']             = true;
+                    $CfgDaten['tooltip']['crosshairs']             = [true, true];                  // um sicherzugehen dass es ein mouseover gibt
+                    //$CfgDaten['tooltip']['shared']             = true;                        // nur für Tablets, braucht update
+
+                    $CfgDaten['chart']['type']      = $chart_style;                                     // neue Art der definition
+                    $CfgDaten['chart']['backgroundColor']   = $config["backgroundColor"];                // helles Gelb ist Default
 
                     foreach($config["OID"] as $index => $oid)
                         {
                         $serie = array();
                         $serie['type']                  = $chart_style;                 // muss enthalten sein
+                        if ($config["Step"]) $serie['step'] = $config["Step"];                // false oder left
 
                         /* wenn Werte für die Serie aus der geloggten Variable kommen : */
                         if (isset($config["Name"][$index])) $serie['name'] = $config["Name"][$index];
                         else $serie['name'] = $config["Name"][0];
+                        //$serie['marker']['enabled'] = false;                  // keine Marker
                         $serie['Unit'] = $config["Unit"];                            // sieht man wenn man auf die Linie geht
                         $serie['Id'] = $oid;
                         //$serie['Id'] = 28664 ;
                         $CfgDaten['series'][] = $serie;
                         }
-                    $CfgDaten    = CheckCfgDaten($CfgDaten);
-                    $sConfig     = CreateConfigString($CfgDaten);
-                    $tmpFilename = CreateConfigFile($sConfig, "WidgetGraph_$indexChart");
+                    $highCharts = new HighCharts();
+                    $CfgDaten    = $highCharts->CheckCfgDaten($CfgDaten);
+                    $sConfig     = $highCharts->CreateConfigString($CfgDaten);
+                    $tmpFilename = $highCharts->CreateConfigFile($sConfig, "WidgetGraph_$indexChart");
                     if ($tmpFilename != "")
                         {
+                        if ($debug) echo "Ausgabe Highcharts:\n";
                         $chartType = $CfgDaten['Ips']['ChartType'];
                         $height = $CfgDaten['HighChart']['Height'] + 16;   // Prozentangaben funktionieren nicht so richtig,wird an verschiedenen Stellen verwendet, iFrame muss fast gleich gross sein
                         $callBy="CfgFile";
@@ -1854,10 +1924,13 @@
                 configfileParser($specialRegsConf[$index], $specialRegs[$index], ["OID","Oid","oid"],"OID",null);           // input ist $specialRegsConf, bereinigt dann in $specialRegs
                 if ($specialRegs[$index]["OID"] != null) 
                     {
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Dauer","Duration"],"Duration",259200);         //3 Tage ist Default
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME"]     ,"Name",$index);        
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Unit","UNIT"]     ,"Unit","values");        
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Style","STYLE"]   ,"Style","line");        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Dauer","Duration","duration","DURATION"],"Duration",259200);         //3 Tage ist Default
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME","name"]     ,"Name",$index);        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Unit","UNIT","unit"]     ,"Unit","values");        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Style","STYLE","style"]  ,"Style","line");        
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Step","STEP","step"]     ,"Step","false");                               // stufenweise Darstellung, statt die Punkte Verbindung, aktiv ist left
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["AGGREGATE","Aggregate","aggregate"]     ,"Aggregate","false");  
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["BackgroundColor","backgroundColor"]   ,"backgroundColor",'#FCFFC5');         // helles Gelb  
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Size","SIZE"]     ,"Size","[]");        
                     if ((is_array($specialRegs[$index]["OID"]))==false) $specialRegs[$index]["OID"]=[$specialRegs[$index]["OID"]];          // als array umspeichern
                     if ((is_array($specialRegs[$index]["Name"]))==false) $specialRegs[$index]["Name"]=[$specialRegs[$index]["Name"]];       // als array umpseichern

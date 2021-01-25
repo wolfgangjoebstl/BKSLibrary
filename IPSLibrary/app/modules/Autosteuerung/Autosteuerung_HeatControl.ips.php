@@ -16,6 +16,8 @@
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Autosteuerung\Autosteuerung_Configuration.inc.php");
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Class.inc.php");
 	
+    $debug=true;
+
 	$kalender=new AutosteuerungStromheizung();
 
 /********************************************************************************************
@@ -49,18 +51,20 @@ Switch ($_IPS['SENDER'])
 	Case "Execute":
         $auto = new Autosteuerung();
         $oid=$kalender->getAutoFillID();
+        if ($debug) echo "Autosteuerung Heatcontrol vomn Timer oder Execute aufgerufen:    ".IPS_GetName($oid)." ($oid)\n";
         if ($oid)
             {
             $configuration = $kalender->get_Configuration();
-
+            if ($debug) print_r($configuration); 
             /*  $kalender->InitLogMessage(true);            // noch einmal Interesse halber anschauen
             $kalender->getStatus();
-            print_r($configuration);  
+             
             $zeile1=$kalender->getZeile1ID();		// OID von Zeile1, aktueller Status
             echo "Execute vom script aufgerufen (AutoFill:$oid  Zeile1:$zeile1):\n";   */
 
             $value=$kalender->getStatusfromProfile(GetValue($oid));                 // value kann auch false sein
-            if ($value)
+            if ($debug) echo "   getStatusfromProfile(".GetValueIfFormatted($oid).") = ".($value?"true":"false")." \n";
+            //if ($value)           // keine Abfrage, value ist der nächste Wert
                 {
                 $kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
                 $kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */

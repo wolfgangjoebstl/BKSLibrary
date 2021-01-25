@@ -17,18 +17,18 @@
 	 * along with the IPSLibrary. If not, see http://www.gnu.org/licenses/gpl.txt.
 	 */  
 
-/*******************************************************
- *
- * schreiben des Startpage html Strings in der htmlbox der Startpage
- *
- * es gibt verschiedene darstellungsarten
- *
- *
- **************************************/
+    /*******************************************************
+    *
+    * schreiben des Startpage html Strings in der htmlbox der Startpage
+    *
+    * es gibt verschiedene darstellungsarten
+    *
+    *
+    **************************************/
 
-$debug=false;
+    $debug=false;
 
-/********************************************* CONFIG *******************************************************/
+    /********************************************* CONFIG *******************************************************/
 
     ini_set('memory_limit', '-1');          // memory unbeschränkt um die Bildbearbeitung zu ermöglichen
 
@@ -58,26 +58,26 @@ $debug=false;
         }
 
 
-$startpage = new StartpageHandler();
-$configuration=$startpage->getStartpageConfiguration();
+    $startpage = new StartpageHandler();
+    $configuration=$startpage->getStartpageConfiguration();
 
-$bilderverzeichnis=$configuration["Directories"]["Pictures"];
+    $bilderverzeichnis=$configuration["Directories"]["Pictures"];
 
-$StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
-if ($debug) 
-    {
-    echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
-    echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
-    }
-$variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
-$AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
+    $StartPageTypeID = IPS_getObjectIdByName("Startpagetype", $startpage->CategoryIdData);   /* 0 Boolean 1 Integer 2 Float 3 String */
+    if ($debug) 
+        {
+        echo "StartpageTypeID : ".$StartPageTypeID." (".IPS_GetName($StartPageTypeID)."/".IPS_GetName(IPS_GetParent($StartPageTypeID))."/".IPS_GetName(IPS_GetParent(IPS_GetParent($StartPageTypeID)))."/".IPS_GetName(IPS_GetParent(IPS_GetParent(IPS_GetParent($StartPageTypeID)))).") ".GetValue($StartPageTypeID)."\n";
+        echo "Kategorienvergleich: ".$startpage->CategoryIdData."   $CategoryIdData  \n";
+        }
+    $variableIdHTML  = CreateVariable("Uebersicht",    3 /*String*/, $CategoryIdData, 40, '~HTMLBox', null,null,"");
+    $AstroLinkID     = CreateVariable("htmlAstroTable",3           , $CategoryIdData,100, "~HTMLBox", null,null,"");
 
-$switchScreenID    = IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
-$switchSubScreenID = IPS_GetVariableIDByName("SwitchSubScreen",$CategoryIdData);  
+    $switchScreenID    = IPS_GetVariableIDByName("SwitchScreen",$CategoryIdData);
+    $switchSubScreenID = IPS_GetVariableIDByName("SwitchSubScreen",$CategoryIdData);  
 
-$showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
+    $showfile=false;            // dann wird auch wenn nicht übergeben es automatisch generiert
 
-/**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
+    /**************************************** Tastendruecke aus dem Webfront abarbeiten *********************************************************/
 
 
  if ($_IPS['SENDER']=="WebFront")
@@ -168,25 +168,25 @@ if (GetValue($StartPageTypeID)==1)      // nur die Fotos von gross auf klein kon
         imagejpeg($image_p, $startpage->picturedir."SmallPics/".$datei, 60);
         }
     }
-    
-/**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
+        
+    /**************************************** und jetzt sich auch noch um das Wetter kuemmern *********************************************************/
 
-/* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
+    /* wenn OpenWeather installiert ist dieses für die Startpage passend aggregieren, die Werte werden automatisch abgeholt */
 
-if ($debug) echo "aggregate Openweather.\n";
-$startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
-if ($debug) echo "write Summary Openweather.\n";
-$startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
+    if ($debug) echo "aggregate Openweather.\n";
+    $startpage->aggregateOpenWeather();						// die Highcharts Darstellung huebsch machen, zusaetzlich die Zusammenfassung für die Wetter-Tabelle auf der Startpage machen
+    if ($debug) echo "write Summary Openweather.\n";
+    $startpage->writeOpenweatherSummarytoFile();			// es gibt eine lange html Zusammenfassung, die man am besten in einen iFrame mit scroll Funktion packt		
 
-/**************************************** und jetzt die Startpage darstellen *********************************************************/
+    /**************************************** und jetzt die Startpage darstellen *********************************************************/
 
-/* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
+    /* mit der Funktion StartPageWrite wird die html Information für die Startpage aufgebaut */
 
-if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
-SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
+    if ($debug) echo "Aufruf StartpageWrite in Startpage Class Library.\n";
+    SetValue($variableIdHTML,$startpage->StartPageWrite(GetValue($StartPageTypeID),$showfile,$debug));
 
 
-/**************************************** PROGRAM EXECUTE *********************************************************/
+    /**************************************** PROGRAM EXECUTE *********************************************************/
 
  if ($_IPS['SENDER']=="Execute")
 	{

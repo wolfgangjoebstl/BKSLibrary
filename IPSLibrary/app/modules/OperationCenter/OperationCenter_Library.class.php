@@ -140,7 +140,15 @@ class OperationCenter
 
         $this->dosOps = new dosOps();     // create classes used in this class
         $this->systemDir     = $this->dosOps->getWorkDirectory();
-
+        if ($debug && false)                                                        //false nicht ausgeben
+            {
+            echo "class OperationCenter: _construct\n";
+            echo "   work Dir is ".$this->systemDir.", used for Logging files.\n";
+            echo "   symcon Dir is ".IPS_GetKernelDir()."\n";
+            echo "   OperatingSystem is ".$this->dosOps->evaluateOperatingSystem()."\n";
+            echo "   install Dir is ".IPS_GetKernelDirEx()."\n";
+            echo "   IPS platform is ".IPS_GetKernelPlatform()."\n";
+            }
 		$this->subnet=$subnet;
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 		if (!isset($moduleManager))
@@ -167,6 +175,7 @@ class OperationCenter
 
 		$this->oc_Configuration = $this->setConfiguration();
 		$this->oc_Setup = $this->setSetUp();
+        //if ($debug) { echo "OperationCenter Konfigurationen: \n"; print_R($this->oc_Configuration); print_R($this->oc_Setup); }
 
         if (isset($this->installedModules["IPSCam"]))
             {
@@ -190,7 +199,18 @@ class OperationCenter
         else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
 
         configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
-        configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');    
+        configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');   
+        configfileParser($configInput, $config, ["DropboxStatusMaxFileCount"],"DropboxStatusMaxFileCount",100);
+
+        configfileParser($configInput, $config, ["Synology"],"Synology",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
+        configfileParser($configInput["Synology"], $config["Synology"], ["Directory"],"Directory",false); 
+        configfileParser($configInput["Synology"], $config["Synology"], ["StatusDirectory"],"StatusDirectory",false); 
+        configfileParser($configInput["Synology"], $config["Synology"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
+
+        configfileParser($configInput, $config, ["MacroDirectory"],"MacroDirectory",false);
+        configfileParser($configInput, $config, ["DownloadDirectory"],"DownloadDirectory",false);
+        configfileParser($configInput, $config, ["FirefoxDirectory"],"FirefoxDirectory",false);
+
         configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",'{"MOVELOGS":true,"PURGELOGS":true,"PURGESIZE":10}');    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
@@ -210,7 +230,18 @@ class OperationCenter
 			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}	*/
-        $this->oc_Setup = $config;       
+
+        configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"\\Backup\\","FREQUENCE":"Day","FULL":{"Mon","Wed"},"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
+        // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","\\Backup\\IpSymcon");  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FREQUENCE", "Frequence"], "FREQUENCE","Day");  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'{"Mon","Wed"}');  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPDAY", "KeepDay","Keepday"], "KEEPDAY",10);
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPMONTH", "KeepMonth","Keepmonth"], "KEEPMONTH",10);
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPYEAR", "KeepYear","Keepyear"], "KEEPYEAR",2);
+
+        //$this->oc_Setup = $config;       
         return ($config);
         }
 
@@ -234,8 +265,8 @@ class OperationCenter
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,"[]");  
 
             }
-        $this->oc_Configuration = $config;
-        return ($this->oc_Configuration);
+        //$this->oc_Configuration = $config;
+        return ($config);
         }
 
 
@@ -4121,6 +4152,7 @@ class BackupIpsymcon extends OperationCenter
 	//private $dosOps, 
     //private $systemDir;              // das SystemDir, gemeinsam für Zugriff zentral gespeichert
     protected $fileOps;                                                           /* genutzte Objekte/Klassen */
+    protected $debug;
 
     var $BackupDrive, $SourceDrive;                                         /* Verzeichnisse für Backup Ort und Quelle */
     var $backupActive;        								                /* Backup Aktiv Status */
@@ -4149,30 +4181,29 @@ class BackupIpsymcon extends OperationCenter
     *
     */
 
-	public function __construct($subnet='10.255.255.255')
+	public function __construct($subnet='10.255.255.255',$debug=false)
 		{
-        //echo "Construct Parent class OperationCenter.\n";   
-        parent::__construct($subnet);                       // sonst sind die Config Variablen noch nicht eingelesen
+        if ($debug) echo "class BackupIpsymcon, Construct Parent class OperationCenter.\n";
+        $this->debug=$debug;   
+        parent::__construct($subnet,$debug);                       // sonst sind die Config Variablen noch nicht eingelesen
 
         $this->dosOps = new dosOps();     // create classes used in this class
-        $this->systemDir     = $this->dosOps->getWorkDirectory();
+        //$this->systemDir     = $this->dosOps->getWorkDirectory();
+        if ($debug) 
+            {
+            echo "class BackupIpsymcon: _construct\n";
+            echo "   work Dir is ".$this->systemDir."\n";
+            echo "   symcon Dir is ".IPS_GetKernelDir()."\n";
+            echo "   OperatingSystem is ".$this->dosOps->evaluateOperatingSystem()."\n";
+            echo "   install Dir is ".IPS_GetKernelDirEx()."\n";
+            echo "   IPS platform is ".IPS_GetKernelPlatform()."\n";
+            }
 
         //echo "Construct BackupIpSymcon.\n";
-        $configuration=$this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
-        if ($configuration !== false) 
-            {
-            //echo "Construct BackupIpSymcon. Backup aktiv. Config now in Setup available.\n";
-            $this->backupActive=true;
-            if (isset($configuration["Directory"])) 
-                {
-                $BackupDrive=$configuration["Directory"];
-                $this->BackupDrive=$BackupDrive;      /* ein eventuelle fehlendes Backslash am Ende wird später in der Routine construct automatisch hinzugefügt */
-                }
-            else $this->BackupDrive='\Backup\IpSymcon';
-            }
-        else $this->backupActive=false;
-
-        $this->SourceDrive="C:\Ip-Symcon";
+        $configuration        = $this->getConfigurationBackup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        $BackupDrive          = $configuration["Directory"];                    // für vorher nachher vergleich
+        $this->backupActive   = $this->setActive($configuration,$debug);
+        $this->SourceDrive    = IPS_GetKernelDirEx();           // das alte C:/IP-Symcon  - sollte eigentlich IPS_GetKernelDir() sein
 	
 		/* Allgemeine Variablen am Webfront, oder im Data Bereich */		
 		$this->categoryId_BackupFunction	= IPS_GetObjectIdByName('Backup', $this->CategoryIdData);
@@ -4183,7 +4214,6 @@ class BackupIpsymcon extends OperationCenter
     	$this->StatusSchalterOverwriteBackupID  = IPS_GetObjectIdByName("Backup-Overwrite", $this->categoryId_BackupFunction);
         $this->StatusSliderMaxcopyID            = IPS_GetObjectIdByName("Maxcopy per Session", $this->categoryId_BackupFunction);
 
-
         $this->StatusBackupID				= IPS_GetObjectIdByName("Status", $this->categoryId_BackupFunction);
 		if ($this->backupActive==false) SetValue($this->StatusSchalterBackupID,0);   // keinen andern Statuzustand erlauben wenn keine Konfiguration vorhanden
 		$this->ConfigurationBackupID		= IPS_GetObjectIdByName("Configuration", $this->categoryId_BackupFunction);
@@ -4193,7 +4223,9 @@ class BackupIpsymcon extends OperationCenter
 	    $this->ExecTimeBackupId             = IPS_GetObjectIdByName("ExecTime", $this->categoryId_BackupFunction);	
         $this->TableStatusBackupId          = IPS_GetObjectIdByName("StatusTable", $this->categoryId_BackupFunction);      /* man kann in einer tabelle alles mögliche darstellen */
 
-        $this->BackupDrive    = $this->dosOps->correctDirName($this->getBackupDrive());			// sicherstellen das ein Slash oder Backslash am Ende ist
+        $this->BackupDrive                  = $this->getAccessToDrive($configuration, $debug);                                                    // wenn notwendig Zugriff auf ein Netzlaufwerk erreichen, wie auch immer
+        if ((is_dir($this->BackupDrive))===false) $this->backupActive=false;
+        if ($this->debug) echo "BackupDrive configured with: $BackupDrive results into ".$this->BackupDrive."  Backup ist : ".($this->BackupDrive?"AKTIV":"DEAKTIVIERT")."\n";
         $this->fileOps  = new fileOps($this->BackupDrive."Backup.csv"); 
         }
 
@@ -4203,6 +4235,18 @@ class BackupIpsymcon extends OperationCenter
         {
         return ($this->backupActive);    			// das ist ein Wert für die Konfiguration im Configfile, aktiv oder disabled (true/false)
         }
+
+    /* Backup aktiv hier ergründen */
+
+    public function setActive($configuration,$debug=false)
+        {
+        if ($debug) print_r($configuration);
+        $status=strtoupper($configuration["Status"]);
+        if ( ($status=="ACTIVE") || ($status=="ENABLED") || ($status==true) ) return (true);       // das ist ein Wert für die Konfiguration im Configfile, aktiv oder disabled (true/false)
+        else return (false);    			
+        }
+
+    /* adressing of local variables of class */
 
     public function getBackupDrive()
         {
@@ -4256,7 +4300,7 @@ class BackupIpsymcon extends OperationCenter
 
     public function getConfigurationBackup()			// hier wird die Konfiguration für das Backup aus dem OperationCenter_Configuration File ausgelesen
         {
-        $oc_setup=$this->getSetup();                // direkter Zugriff auf Parent variablen sollte vermieden werden
+        $oc_setup=$this->getSetup();                // direkter Zugriff auf Parent Variablen sollte vermieden werden
         if (isset($oc_setup["BACKUP"])) return ($oc_setup["BACKUP"]);
         if (isset($oc_setup["Backup"])) return ($oc_setup["Backup"]);
         if (isset($oc_setup["backup"])) return ($oc_setup["backup"]);
@@ -4284,6 +4328,39 @@ class BackupIpsymcon extends OperationCenter
             return ($this->ConfigurationBackupID); 
             }
         } 
+
+    /* Zugriff auf Netzlaufwerke etwas schwieriger, hier die Verbindung machen 
+     * Normalerweise ist das Backuplaufwerk gleich  BACKUP::Directory
+     * wenn zusätzlich 
+                    "Network"       => "\\\\JOEBSTL24\Backup",
+                    "User"          => "wolfgangjoebstl",
+                    "Password"      => "##cloudg06##",
+                    "Drive"         => "Y",  
+     * definiert ist wird versucht mit IP Symcon System user eine Verbindung herzustellen, wenn nicht schon vorhanden.
+     */
+
+    public function getAccessToDrive($configuration,$debug)
+        {
+        $backupDrive=$this->dosOps->correctDirName($configuration["Directory"],$debug);
+        if (isset($configuration["Drive"]))
+            {
+            if ($debug) echo "es gibt einen Drive Letter. Backup Konfiguration erweitern.\n";
+            $backupDrive = $configuration["Drive"].":".$backupDrive;
+            }
+        if (is_dir($backupDrive)) if ($debug) echo "Backup Drive vorhanden.\n";
+        else
+            {
+            $location = $configuration["Network"];
+            $user = $configuration["User"];
+            $pass = $configuration["Password"];
+            $letter = $configuration["Drive"];
+
+            // Map the drive
+            if ($debug) echo "Map the drive system(net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1)\n";
+            system("net use ".$letter.": \"".$location."\" ".$pass." /user:".$user." /persistent:no>nul 2>&1");
+            }
+        return ($backupDrive);
+        }
 
     /* shall return "backup", "cleanup", "finished" */
 
@@ -4482,7 +4559,13 @@ class BackupIpsymcon extends OperationCenter
                 $params["status"]="started";
                 $params["style"]=$mode;
                 $result=$this->startBackupIncrement($params, $debug);
-                $params["BackupTargetDir"]=$BackupToday."_".$params["style"]."_".$result["name"];
+                if ($result == false)       // es gibtr klein full um mit einem increment weiter zu machen 
+                    {
+                    if ($debug) echo "   Noch Kein full Backup vorhanden. Statt increment mit full Backup starten.\n";
+                    $params["style"]="full";
+                    $params["BackupTargetDir"]=$BackupToday;
+                    }
+                else $params["BackupTargetDir"]=$BackupToday."_".$params["style"]."_".$result["name"];
                 break;
             default:
                 $params["status"]="started";            
@@ -4522,11 +4605,16 @@ class BackupIpsymcon extends OperationCenter
             echo "Letztes Backup von SummaryofBackup.csv mit gültigen Status : \n"; 
             print_r($result);
             }
+        $entry=false;                 // if result is empty dann return false
         foreach ($result as $entry)
             {
-            if ($entry == "full") break;
+            if ($entry == "full") 
+                {
+                $params["full"]=$entry["logFilename"];                     
+                break;
+                }
             }
-        $params["full"]=$entry["logFilename"];
+        
         $params["sizeInc"]=0;  $params["countInc"]=0;        
         //$result=$this->pathXinfo($params["full"]); echo "Incremental Backup to ".$result["Directory"]."   ".$result["Path"]."   ".$result["PathX"]."   ".$result["Filename"]."   \n";
         $params["checkChange"]=array();
@@ -6406,355 +6494,469 @@ class DeviceManagement
 
 	function HardwareStatus($text=false)
 		{
-		$result=array(); $index=0;
+		$resultarray=array(); $index=0;
 		$resulttext="";
+        $oldstyle=false;
 		//print_r($this->installedModules);
 		if (isset($this->installedModules["EvaluateHardware"])==true)
 			{
 			/* es gibt nur mehr eine Instanz für die Evaluierung der Hardware und die ist im Modul EvaluateHardware */
 			
 			//IPSUtils_Include ("EvaluateHardware.inc.php","IPSLibrary::app::modules::RemoteReadWrite");
-			IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            IPSUtils_Include ("EvaluateHardware_Devicelist.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+            $componentHandling=new ComponentHandling();
+            echo "Geräte mit getComponent suchen, geht jetzt mit HarwdareList und DeviceList.\n";
+            //$result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "HUMIDITY"],"Install");
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_TEMPERATURE","REGISTER" => "TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            //echo "Insgesamt $count Register für die Temperature Component Installation gefunden.\n";
+            //foreach ($result as $oid) echo "   ".$oid."    ".IPS_GetName($oid)."   \n";           // wenn kein Install
+            $resulttext.="Alle Temperaturwerte ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                //echo "   ".json_encode($Key)."   \n";
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                //echo "   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                $resulttext.= "\n"; 
+                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                /*if ((time()-IPS_GetVariable($Key["COID"])["VariableChanged"])>(60*60*24*2)) 
+                    {  
+                    $result[$index]["Name"]=$Key["Name"];
+                    $result[$index]["OID"]=$Key["COID"];
+                    $index++;					
+                    $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                    $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');             
+                    }*/
+                }
 
-			$Homematic = HomematicList();
-			$FS20= FS20List();
-			
-			$resulttext.="Alle Temperaturwerte ausgeben :\n";
-			foreach ($Homematic as $Key)
-				{
-				$homematicerror=false;
-				/* alle Homematic Temperaturwerte ausgeben */
-				if (isset($Key["COID"]["TEMPERATURE"])==true)
-					{
-					$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).") ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
-					}
-				elseif ( (isset($Key["COID"]["MOTION"])==true) )	
-					{
-					}				
-				elseif (isset($Key["COID"]["HUMIDITY"])==true)
-					{
-					}
-				elseif (isset($Key["COID"]["RSSI_DEVICE"])==true)
-					{
-					}
-				elseif (isset($Key["COID"]["STATE"])==true)
-					{
-					}
-				elseif (isset($Key["COID"]["CURRENT"])==true)
-					{
-					}	
-				elseif (isset($Key["COID"]["PRESS_LONG"])==true)
-					{
-					}	
-				elseif (isset($Key["COID"]["DIRECTION"])==true)
-					{
-					}
-				elseif (isset($Key["COID"]["ACTUAL_TEMPERATURE"])==true)
-					{
-					$oid=(integer)$Key["COID"]["ACTUAL_TEMPERATURE"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
-					}
-				elseif (sizeof($Key["COID"])==0) 
-				  	{
-					}																								
-				else
-					{
-					$resulttext.="**********Homematic Temperatur Geraet unbekannt : ".str_pad($Key["Name"],30)."\n";					
-					print_r($Key);
-					}
-				if ($homematicerror == true)		
-					{
-					$result[$index]["Name"]=$Key["Name"];
-					$result[$index]["OID"]=$oid;
-					$index++;					
-					$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-					$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-					}
-				}
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_HUMIDITY","REGISTER" => "HUMIDITY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Feuchtigkeitswerte ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                }
 
-			$FHT = FHTList();
-			foreach ($FHT as $Key)
-				{
-				/* alle FHT Temperaturwerte ausgeben */
-				if (isset($Key["COID"]["TemeratureVar"])==true)
-					{
-					$oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;	
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_CLIMATE","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $result += $componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "BRIGHTNESS"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Helligkeitswerte ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueIfFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                }
 
-			$resulttext.="Alle Feuchtigkeitswerte ausgeben :\n";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Feuchtigkeitswerte ausgeben */
-				if (isset($Key["COID"]["HUMIDITY"])==true)
-					{
-					$oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_MOTION","REGISTER" => "MOTION"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Bewegungsmelder ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                }
 
-			$resulttext.="Alle Bewegungsmelder ausgeben :\n";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Bewegungsmelder ausgeben */
-				if ( (isset($Key["COID"]["MOTION"])==true) )
-					{
-					/* alle Bewegungsmelder */
-					//print_r($Key);
-					$oid=(integer)$Key["COID"]["MOTION"]["OID"];
-					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					else
-						{
-						$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";
-											
-					/* es kann laenger sein dass keine Bewegung, aber Helligkeitsaenderungen sind immer */	
-					if (isset($Key["COID"]["BRIGHTNESS"]["OID"])==true)
-						{
-						$oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
-						}
-					elseif (isset($Key["COID"]["ILLUMINATION"]["OID"])==true)
-						{
-						$oid=(integer)$Key["COID"]["ILLUMINATION"]["OID"];
-						}					 
-					else	
-						{
-						echo "Bewegungsmelder ohne Helligkeitssensor gefunden:\n";
-						print_r($Key);						
-						}		
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}	
-					}
-				}
-				
-			$resulttext.="Alle Kontakte ausgeben :\n";
-			foreach ($Homematic as $Key)
-				{
-				/* alle Homematic Kontakte ausgeben */
-				if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["LOWBAT"])==true) )
-					{
-					//print_r($Key);
-					$oid=(integer)$Key["COID"]["STATE"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
-				
-			$resulttext.="Alle Energiewerte ausgeben :\n";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Energiesensoren ausgeben */
-				if ( (isset($Key["COID"]["VOLTAGE"])==true) )
-					{
-					/* alle Energiesensoren */
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_CONTACT","REGISTER" => "CONTACT"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Kontakte ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                }
 
-					$oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
-					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					else
-						{
-						$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";						
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_METER_POWER","REGISTER" => "ENERGY"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Energieregister ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                $this->checkVariableChanged($resultarray,$index,$Key);                              // erste zwei Variable als Pointer übergeben                
+                }
 
-			$pad=50;
-			$resulttext.="Aktuelle Heizungswerte ausgeben:\n";
-			$varname="SET_TEMPERATURE";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Stellwerte ausgeben */
-				if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
-					{
-					/* alle Stellwerte der Thermostate */
-					//print_r($Key);
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_THERMOSTAT","REGISTER" => "SET_TEMPERATURE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Sollwerte Thermostate ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                }
 
-					$oid=(integer)$Key["COID"][$varname]["OID"];
-					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					else
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";						
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+            $result=$componentHandling->getComponent(deviceList(),["TYPECHAN" => "TYPE_ACTUATOR","REGISTER" => "VALVE_STATE"],"Install");                        // bei Devicelist brauche ich TYPECHAN und REGISTER, ohne Install werden nur die OIDs ausgegeben
+            $count=(sizeof($result));				
+            $resulttext.="Alle Stellwerte Aktuatoren ausgeben ($count):\n";            
+            foreach ($result as $Key) 
+                {
+                $resulttext.= "   ".str_pad($Key["Name"],50)." = ".str_pad(GetValueFormatted($Key["COID"]),20)."   (".date("d.m H:i",IPS_GetVariable($Key["COID"])["VariableChanged"]).") ";
+                $resulttext.= "\n";                
+                }
 
-			$varname="SET_POINT_TEMPERATURE";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Stellwerte ausgeben */
-				if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
-					{
-					/* alle Stellwerte der Thermostate */
-					//print_r($Key);
-					$oid=(integer)$Key["COID"][$varname]["OID"];
-					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					else
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";						
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+            if ($oldstyle)
+                {
+                IPSUtils_Include ("EvaluateHardware_include.inc.php","IPSLibrary::config::modules::EvaluateHardware");
+                $Homematic = HomematicList();
+                $FS20= FS20List();
+                
+                $resulttext.="Alle Temperaturwerte ausgeben :\n";
+                foreach ($Homematic as $Key)
+                    {
+                    $homematicerror=false;
+                    /* alle Homematic Temperaturwerte ausgeben */
+                    if (isset($Key["COID"]["TEMPERATURE"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).") ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
+                        }
+                    elseif ( (isset($Key["COID"]["MOTION"])==true) )	
+                        {
+                        }				
+                    elseif (isset($Key["COID"]["HUMIDITY"])==true)
+                        {
+                        }
+                    elseif (isset($Key["COID"]["RSSI_DEVICE"])==true)
+                        {
+                        }
+                    elseif (isset($Key["COID"]["STATE"])==true)
+                        {
+                        }
+                    elseif (isset($Key["COID"]["CURRENT"])==true)
+                        {
+                        }
+                    elseif (isset($Key["COID"]["CURRENT_ILLUMINATION"])==true)
+                        {
+                        }	
+                    elseif (isset($Key["COID"]["PRESS_LONG"])==true)
+                        {
+                        }	
+                    elseif (isset($Key["COID"]["DIRECTION"])==true)
+                        {
+                        }
+                    elseif (isset($Key["COID"]["ACTUAL_TEMPERATURE"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["ACTUAL_TEMPERATURE"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2)) $homematicerror=true;
+                        }
+                    elseif (sizeof($Key["COID"])==0) 
+                        {
+                        }																								
+                    else
+                        {
+                        $resulttext.="**********Homematic Temperatur Geraet unbekannt : ".str_pad($Key["Name"],30)."\n";					
+                        print_r($Key);
+                        }
+                    if ($homematicerror == true)		
+                        {
+                        $result[$index]["Name"]=$Key["Name"];
+                        $result[$index]["OID"]=$oid;
+                        $index++;					
+                        $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                        $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                        }
+                    }
 
-			foreach ($FHT as $Key)
-				{
-				/* alle FHT Temperaturwerte ausgeben */
-				if (isset($Key["COID"]["TargetTempVar"])==true)
-					{
-	   				$oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					}
-				}			
-				
-			$resulttext.="Aktuelle Heizungs-Aktuatorenwerte ausgeben:\n";
-			$varname="VALVE_STATE";
-			foreach ($Homematic as $Key)
-				{
-				/* Alle Homematic Stellwerte ausgeben */
-				if ( (isset($Key["COID"][$varname])==true) )
-					{
-					/* alle Stellwerte der Thermostate */
-					//print_r($Key);
-					if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
-					else $oid=(integer)$Key["COID"][$varname]["OID"];
-					$variabletyp=IPS_GetVariable($oid);
-					if ($variabletyp["VariableProfile"]!="")
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					else
-						{
-						$resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-						}
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";						
-					if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-						{
-						$result[$index]["Name"]=$Key["Name"];
-						$result[$index]["OID"]=$oid;
-						$index++;
-						$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-						}
-					}
-				}
+                $FHT = FHTList();
+                foreach ($FHT as $Key)
+                    {
+                    /* alle FHT Temperaturwerte ausgeben */
+                    if (isset($Key["COID"]["TemeratureVar"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["TemeratureVar"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;	
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
 
-			foreach ($FHT as $Key)
-				{
-				/* alle FHT Temperaturwerte ausgeben */
-				if (isset($Key["COID"]["PositionVar"])==true)
-					{
-					$oid=(integer)$Key["COID"]["PositionVar"]["OID"];
-					$resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
-					$resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
-					$resulttext.="\n";					
-					}
-				if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
-					{
-					$result[$index]["Name"]=$Key["Name"];
-					$result[$index]["OID"]=$oid;
-					$index++;
-					$this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-					$this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
-					}					
-				}
+                $resulttext.="Alle Feuchtigkeitswerte ausgeben :\n";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Feuchtigkeitswerte ausgeben */
+                    if (isset($Key["COID"]["HUMIDITY"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["HUMIDITY"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+
+                $resulttext.="Alle Bewegungsmelder ausgeben :\n";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Bewegungsmelder ausgeben */
+                    if ( (isset($Key["COID"]["MOTION"])==true) )
+                        {
+                        /* alle Bewegungsmelder */
+                        //print_r($Key);
+                        $oid=(integer)$Key["COID"]["MOTION"]["OID"];
+                        $variabletyp=IPS_GetVariable($oid);
+                        if ($variabletyp["VariableProfile"]!="")
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        else
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";
+                                                
+                        /* es kann laenger sein dass keine Bewegung, aber Helligkeitsaenderungen sind immer */	
+                        if (isset($Key["COID"]["BRIGHTNESS"]["OID"])==true)
+                            {
+                            $oid=(integer)$Key["COID"]["BRIGHTNESS"]["OID"];
+                            }
+                        elseif (isset($Key["COID"]["ILLUMINATION"]["OID"])==true)
+                            {
+                            $oid=(integer)$Key["COID"]["ILLUMINATION"]["OID"];
+                            }					 
+                        else	
+                            {
+                            echo "Bewegungsmelder ohne Helligkeitssensor gefunden:\n";
+                            print_r($Key);						
+                            }		
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }	
+                        }
+                    }
+                    
+                $resulttext.="Alle Kontakte ausgeben :\n";
+                foreach ($Homematic as $Key)
+                    {
+                    /* alle Homematic Kontakte ausgeben */
+                    if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["LOWBAT"])==true) )
+                        {
+                        //print_r($Key);
+                        $oid=(integer)$Key["COID"]["STATE"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+                    
+                $resulttext.="Alle Energiewerte ausgeben :\n";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Energiesensoren ausgeben */
+                    if ( (isset($Key["COID"]["VOLTAGE"])==true) )
+                        {
+                        /* alle Energiesensoren */
+
+                        $oid=(integer)$Key["COID"]["ENERGY_COUNTER"]["OID"];
+                        $variabletyp=IPS_GetVariable($oid);
+                        if ($variabletyp["VariableProfile"]!="")
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        else
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";						
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+
+                $pad=50;
+                $resulttext.="Aktuelle Heizungswerte ausgeben:\n";
+                $varname="SET_TEMPERATURE";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Stellwerte ausgeben */
+                    if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+                        {
+                        /* alle Stellwerte der Thermostate */
+                        //print_r($Key);
+
+                        $oid=(integer)$Key["COID"][$varname]["OID"];
+                        $variabletyp=IPS_GetVariable($oid);
+                        if ($variabletyp["VariableProfile"]!="")
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        else
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";						
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+
+                $varname="SET_POINT_TEMPERATURE";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Stellwerte ausgeben */
+                    if ( (isset($Key["COID"][$varname])==true) && !(isset($Key["COID"]["VALVE_STATE"])==true) )
+                        {
+                        /* alle Stellwerte der Thermostate */
+                        //print_r($Key);
+                        $oid=(integer)$Key["COID"][$varname]["OID"];
+                        $variabletyp=IPS_GetVariable($oid);
+                        if ($variabletyp["VariableProfile"]!="")
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        else
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";						
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+
+                foreach ($FHT as $Key)
+                    {
+                    /* alle FHT Temperaturwerte ausgeben */
+                    if (isset($Key["COID"]["TargetTempVar"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["TargetTempVar"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        }
+                    }			
+                    
+                $resulttext.="Aktuelle Heizungs-Aktuatorenwerte ausgeben:\n";
+                $varname="VALVE_STATE";
+                foreach ($Homematic as $Key)
+                    {
+                    /* Alle Homematic Stellwerte ausgeben */
+                    if ( (isset($Key["COID"][$varname])==true) )
+                        {
+                        /* alle Stellwerte der Thermostate */
+                        //print_r($Key);
+                        if ( (isset($Key["COID"]["LEVEL"])==true) ) $oid=(integer)$Key["COID"]["LEVEL"]["OID"];
+                        else $oid=(integer)$Key["COID"][$varname]["OID"];
+                        $variabletyp=IPS_GetVariable($oid);
+                        if ($variabletyp["VariableProfile"]!="")
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        else
+                            {
+                            $resulttext.="   ".str_pad($Key["Name"],$pad)." = ".str_pad(GetValue($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                            }
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";						
+                        if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                            {
+                            $result[$index]["Name"]=$Key["Name"];
+                            $result[$index]["OID"]=$oid;
+                            $index++;
+                            $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                            }
+                        }
+                    }
+
+                foreach ($FHT as $Key)
+                    {
+                    /* alle FHT Temperaturwerte ausgeben */
+                    if (isset($Key["COID"]["PositionVar"])==true)
+                        {
+                        $oid=(integer)$Key["COID"]["PositionVar"]["OID"];
+                        $resulttext.="   ".str_pad($Key["Name"],30)." = ".str_pad(GetValueFormatted($oid),30)."   (".date("d.m H:i",IPS_GetVariable($oid)["VariableChanged"]).")  ";
+                        $resulttext.="   ".$Key["Device"]."  ".explode(":",$Key["Adresse"])[0]."  ";
+                        $resulttext.="\n";					
+                        }
+                    if ((time()-IPS_GetVariable($oid)["VariableChanged"])>(60*60*24*2))
+                        {
+                        $result[$index]["Name"]=$Key["Name"];
+                        $result[$index]["OID"]=$oid;
+                        $index++;
+                        $this->log_OperationCenter->LogMessage('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                        $this->log_OperationCenter->LogNachrichten('Homematic Gerät '.$Key["Name"].' meldet sich nicht');
+                        }					
+                    }
+                }               // oldStyle HardwareStatus
 			}
 		
 		if ($text==true) return($resulttext); 
-		else return($result);
+		else return($resultarray);
 		}
 
+    /* einheitliche Überprüfung ob schon länger keine Änderung mehr war */
+
+    private function checkVariableChanged(&$result,&$index,$Key)
+        {
+        if ((time()-IPS_GetVariable($Key["COID"])["VariableChanged"])>(60*60*24*2)) 
+            {           
+            $result[$index]["Name"]=$Key["Name"];
+            $result[$index]["OID"]=$Key["COID"];
+            $index++;					
+            $this->log_OperationCenter->LogMessage('HardwareStatus Gerät '.$Key["Name"].' meldet sich nicht');
+            $this->log_OperationCenter->LogNachrichten('HardwareStatus Gerät '.$Key["Name"].' meldet sich nicht');
+            return (false);
+            }
+        return (true);
+        }
 
 	/********************************************************************
 	 *
@@ -8397,7 +8599,7 @@ class statusDisplay
  * Klasse parsefile
  * ================
  *
- *
+ * Unterstützung beim filetieren von geladenen Web/Homepages
  *
  ***************************************************************************************************/
 
@@ -8545,6 +8747,13 @@ class parsefile
 		echo "Received Bytes : ".$ergebnis_array["RxBytes"]." Transmitted Bytes : ".$ergebnis_array["TxBytes"]." \n";
 		return $ergebnis_array;
 		}
+
+    function parseWebpage($data,$len)
+        {
+
+        $dataOut=substr($data,0,$len);
+        return ($dataOut);    
+        }
 
 	private function removecomma($number)
 	   {

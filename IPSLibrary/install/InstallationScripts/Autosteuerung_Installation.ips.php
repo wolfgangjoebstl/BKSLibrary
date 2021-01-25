@@ -549,7 +549,22 @@
 				echo "    noch ein paar Variablen dazu in $inputWoche anlegen. Action Script $scriptIdHeatControl\n";
 				$oid=CreateVariable("AutoFill",1,$inputWoche, 1000,'AusEinAutoP1P2P3P4',$scriptIdHeatControl,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
 				$descrID=CreateVariable("Beschreibung",3,$inputWoche, 1010,'',null,null,'');  // $Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon=''
-				echo "    und eine neue Kategorie in $CategoryIdData.\n";				
+				echo "    und eine neue Kategorie in $CategoryIdData.\n";	
+
+                echo "    dann noch das Autofill Wochenprogramm, da die Variablenwerte nach einem Install neu angelegt werden:\n";
+                $configuration = $kalender->get_Configuration();
+                //print_r($configuration); 
+                echo "      setAutoFill aufgerufen mit Defaultwert aus Konfiguration    ".$configuration["HeatControl"]["AutoFill"]." \n";        
+                $kalender->setAutoFill($configuration["HeatControl"]["AutoFill"],false,true);           // false kein Shift wenn selber Wertt wie bereits eingestellt, true for D>ebug
+                echo "      aktuell eingestelltes Profil: ".GetValueIfFormatted($oid)." (".GetValue($oid).")\n";
+                for ($i=-16;$i<0;$i++)
+                    {
+                    $value=$kalender->getStatusfromProfile(GetValue($oid),$i);                 
+                    $kalender->ShiftforNextDay($value);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
+                    }
+                $kalender->UpdateLinks($kalender->getWochenplanID());                   /* Update Links für Administrator Webfront */
+                $kalender->UpdateLinks($kalender->getCategoryIdTab());		                            /* Upodate Links for Mobility Webfront */
+
 				$categoryId_Schaltbefehle = CreateCategory('ReglerAktionen-Stromheizung',   $CategoryIdData, 20);
 				// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')				
 				$vid=CreateVariable("ReglerAktionen",3,$categoryId_Schaltbefehle, 0,'',null,'');

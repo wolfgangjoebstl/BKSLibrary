@@ -173,6 +173,7 @@ class AutosteuerungHandler
                 configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["EVENT_IPSHEAT","SwitchName" ],"SwitchName" ,null);  
                 configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Module" ],"Module" ,"IPSHeat");  
                 configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
+                configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
                 }
             return ($config);
             }
@@ -6205,48 +6206,65 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
      *
      */
 
-    function setAutoFill($value)
+    function setAutoFill($value, $shift=true, $debug=false)
         {
+        if ($debug) echo "      setAutoFill($value) aufgerufen:\n";
+        if (is_numeric($value)) $value=(string)$value;
         $oid=$this->getAutoFillID();		// OID von Profilvariable für Autofill        
         $descrID=IPS_GetVariableIDByName("Beschreibung",$this->getWochenplanID());		// OID von Profilvariable für Autofill
         $text="";
         //echo "Einstellung Werte $oid ".GetValue($oid)."  ".GetValueFormatted($oid)."  --> neuer Wert : ".$value."\n";
         switch ($value)
             {
-            case 0:
+            case "Aus":
+            case "0":
+                $finalValue=0;
                 $text="Nächster Tag immer AUS";
                 break;
-            case 1:
+            case "Ein":
+            case "1":
+                $finalValue=1;
                 $text="Nächster Tag immer EIN";
                 break;
-            case 2:
+            case "Auto":
+            case "2":
+                $finalValue=2;
                 $text="Nächster Tag gleich wie die Woche davor";
                 break;
-            case 3:
+            case "Profil 1":
+            case "3":
+                $finalValue=3;
                 $text="An allen Freitagen auf EIN";
                 break;
-            case 4:
+            case "Profil 2":
+            case "4":
+                $finalValue=4;
                 $text="An allen Freitagen und einen Tag davor auf EIN";
                 break;
-            case 5:
+            case "Profil 3":
+            case "5":
+                $finalValue=5;
                 $text="An allen Freitagen und zwei Tage davor auf EIN";
                 break;
-            case 6:
+            case "Profil 4":
+            case "6":
+                $finalValue=6;
                 $text="An allen Arbeitstagen auf EIN";
                 break;
             default:
-                $value=0;
+                $finalValue=0;
             }    
-        if (GetValue($oid) == $value) 
+        if ($shift && (GetValue($oid) == $finalValue)) 
             {
-            //echo "Gleiche Funktion gedrueckt";   
+            if ($debug) echo "     Gleiche Funktion noch einmal gedrueckt.\n";   
             $oidWP=IPS_GetVariableIDByName("AutoFill",$this->getWochenplanID());		// OID von Profilvariable für Autofill
             $valueNext=$this->getStatusfromProfile(GetValue($oidWP));                   
             $this->ShiftforNextDay($valueNext);                                     /* die Werte im Wochenplan durchschieben, neuer Wert ist der Parameter, die Links heissen aber immer noch gleich */
             $this->UpdateLinks($this->getWochenplanID());                   /* Update Links für Administrator Webfront */
             $this->UpdateLinks($this->categoryIdTab);		                            /* Upodate Links for Mobility Webfront */
             }
-        SetValue($oid,$value);
+        if ($debug) echo "      Es wird $value / $finalValue und \"$text\" geschrieben.\n";   
+        SetValue($oid,$finalValue);
         SetValue($descrID,$text);
         }
 
@@ -6257,13 +6275,13 @@ class AutosteuerungStromheizung extends AutosteuerungFunktionen
 	 * Profil 4  nur Freitage plus 2, wenn zu Hause plus 2 Tag Vorwärmzeit
 	 * Profil 5 nur Arbeitstage
 	 */
-	function getStatusfromProfile($profile=0)
+	function getStatusfromProfile($profile=0,$day=0)
 		{
 		$status=false;
 
-		$result0=$this->EvaluateAutoStatus(0);
-		$result1=$this->EvaluateAutoStatus(1);
-		$result2=$this->EvaluateAutoStatus(2);
+		$result0=$this->EvaluateAutoStatus($day);                           // 0 ist +16, -16 ist 0
+		$result1=$this->EvaluateAutoStatus($day+1);
+		$result2=$this->EvaluateAutoStatus($day+2);
 
 		switch ($profile)
 			{

@@ -88,7 +88,7 @@
 
         public function setMeterConfig()
             {
-             echo "setMeterConfig aufgerufen. SystemDir ist $this->systemDir.\n";
+            echo "setMeterConfig aufgerufen. SystemDir ist ".$this->getSystemDir().".\n";
             $result=array();
             foreach (get_MeterConfiguration() as $index => $config)
                 {
@@ -282,7 +282,7 @@
                             }                                                    							
                         }
                     }  // if AMIS Zähler
-                if (!file_exists($this->systemDir."\Log_Cutter_".$identifierTrim.".csv"))
+                if (!file_exists($this->getSystemDir()."\Log_Cutter_".$identifierTrim.".csv"))
                     {
                     $handle=fopen("C:\Scripts\Log_Cutter_".$identifierTrim.".csv", "a");
                     fwrite($handle, date("d.m.y H:i:s").";Quelle;Laenge;Zählerdatensatz\r\n");
@@ -292,6 +292,13 @@
                 }
             //echo "Ermittelte Registervariablen als mögliche Quelle für empfangene Daten.\n";	
             return ($configPort);		
+            }
+
+        /* systemDir ist private */
+
+        public function getSystemDir()
+            {
+            return ($this->systemDir);
             }
 
 

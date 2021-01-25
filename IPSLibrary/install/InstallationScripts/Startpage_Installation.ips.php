@@ -120,6 +120,7 @@
     else echo "Unix System. Kein Handling von externen Programmen. \n";
 
     echo "Hinweis: Schwierigkeiten bei Programmaufrufs Pfaden mit einem Blank dazwischen.\n";  
+
 /*******************************
  *
  * Webfront Vorbereitung, hier werden keine Webfronts mehr installiert, nur mehr konfigurierte ausgelesen

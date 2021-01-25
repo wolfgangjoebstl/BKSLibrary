@@ -33,7 +33,7 @@ IPSUtils_Include ("SNMP_Library.class.php","IPSLibrary::app::modules::OperationC
 IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
 IPSUtils_Include ('IPSComponentLogger_Configuration.inc.php', 'IPSLibrary::config::core::IPSComponent');
 
-$ExecuteExecute=false;             	// Execute machen
+$ExecuteExecute=true;             	// Execute machen
 $debug=false;	                    // keine lokalen Echo Ausgaben
 
 /******************************************************
@@ -340,7 +340,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,30)." ".$modules."\n";
+		$inst_modules.="   ".str_pad($name,30)." ".$modules."\n";
 		}
 	echo $inst_modules."\n\n";
 
@@ -377,8 +377,9 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 	/********************************************************
    	Erreichbarkeit Hardware im Execute
 	**********************************************************/
-
-	$DeviceManager->HardwareStatus();
+    echo "Ausgabe HardwareStatus aus dem DeviceManager:\n";
+	$ergebnis=$DeviceManager->HardwareStatus(true);                     // true ist Output als Text
+    print_r($ergebnis);
 
 	/********************************************************
    	Externe Ip Adresse immer ermitteln
@@ -845,7 +846,7 @@ if (($_IPS['SENDER']=="Execute") && $ExecuteExecute)
 		IPSUtils_Include ('Amis_class.inc.php', 'IPSLibrary::app::modules::Amis');
 			
 		$amis=new Amis();
-		$MeterConfig = getMeterConfig();
+		$MeterConfig = $amis->getMeterConfig();
 		$dataOID=$amis->getAMISDataOids();
 		$tableID = CreateVariableByName($dataOID, "Historie-Energie", 3);
 		$regID = CreateVariableByName($dataOID, "Aktuelle-Energie", 3);

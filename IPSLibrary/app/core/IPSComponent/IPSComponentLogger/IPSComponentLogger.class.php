@@ -455,8 +455,9 @@ class Logging
 
 
     /* wird beim construct aufgerufen, wenn keine Datanbank angelegt wurde
-        * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
-        */
+     * kann auch direkt für die Speicherung der Daten in der Datenbank verwendet werden. 
+     * Variable muss gesetzt sein, variablename kann null sein, value ebenfalls
+     */
 
     public function do_init_motion($variable, $variablename, $value,$debug=false)
         {
@@ -898,8 +899,8 @@ class Logging
         }
 
     /* wird beim construct aufgerufen, wenn keine Variable übergeben wurde.
-        * Klasse wird für Statistische Auswertungen verwendet.
-        */
+     * Klasse wird für Statistische Auswertungen verwendet.
+     */
 
     public function do_init_statistics($debug=false)
         {

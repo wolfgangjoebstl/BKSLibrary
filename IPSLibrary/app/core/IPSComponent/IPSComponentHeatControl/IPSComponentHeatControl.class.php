@@ -207,12 +207,15 @@
                     $this->variableEnergyLogID = $this->setVariableId($this->variablename."_Energy",$this->variableLogID,2,'~Electricity');
                     $this->variablePowerLogID = $this->setVariableId($this->variablename."_Power",$this->variableLogID,2,'~Power');
                     $this->variableTimeLogID = $this->setVariableId($this->variablename."_ChangeTime",$this->variableLogID,1,'~UnixTimestamp');
+                    echo "   ".$this->variablename."_ChangeTime hat OID ".$this->variableTimeLogID."\n";
                     if (GetValue($this->variableTimeLogID) == 0) SetValue($this->variableTimeLogID,time());
                     }
                 else 
                     {
-                    echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in Configuration not available !\n";
-                    //$this->powerConfig=Null;
+                    echo "\n**************************\n";
+                    echo "Attention, Variable ID ".$variable." (".IPS_GetName($variable).") in Configuration IPSDetectHeatControlHandler_GetEventConfiguration() als Erweiterung Power->ppp not available !\n";
+                    print_r($this->powerConfig);
+                    $this->powerConfig=Null;        // damit bei HeatControl_LogValue keine Berechnungen statt finden
                     }	
 				}
 

@@ -1,6 +1,6 @@
 <?
 
-/*
+    /*
 	 * @defgroup Startpage Copy Files
 	 *
 	 * Script zur Ansteuerung der Startpage, Kopiert die Bilddateien in das Webfront
@@ -10,15 +10,15 @@
 	 * @author        Wolfgang Joebstl
 	 * @version
 	 *  Version 2.50.52, 07.08.2014<br/>
-*/
+    */
 
 
-/*
- *
- *
- *
- *
- */
+    /*
+    * wie der Name scon sagt die Dateien aus dem Dropbox/Synology Drive Laufwerk in die Webfront Umgebung kopieren
+    * aus Sicherheitsgründen dürfen die Browser nicht extern zugreifen
+    *
+    *
+    */
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
 
@@ -33,15 +33,15 @@
 		$moduleManager = new IPSModuleManager('Startpage',$repository);
 	}
 
-/****************************************
- *
- *  INITIALISIERUNG
- *
- *
- *  Bilderverzeichnis initialisieren 
- *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
- *
- *****************************/
+    /****************************************
+    *
+    *  INITIALISIERUNG
+    *
+    *
+    *  Bilderverzeichnis initialisieren 
+    *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
+    *
+    *****************************/
  
 	$parentid  = IPSUtil_ObjectIDByPath('Program.IPSLibrary.data.modules.Startpage');
 
@@ -60,31 +60,40 @@
 	$dosOps->mkdirtree($imagedirM);
    	$imagedirMT = $startpage->imagedir."/mondtransparent/";
 	$dosOps->mkdirtree($imagedirMT);
-    $icondir = $startpage->icondir."/Start/";
+    $icondir = $startpage->icondir."/";
 	$dosOps->mkdirtree($icondir);
+    $iconStartdir = $icondir."Start/";
+	$dosOps->mkdirtree($icondir);
+    $iconClockdir = $iconStartdir."clock/";
+	$dosOps->mkdirtree($iconClockdir);
 
 
 	//$picturedir=IPS_GetKernelDir()."webfront\\user\\Startpage\\user\\pictures\\";
     //echo "Zum Vergleich $picturedir   und $check \n";
 
 
-/***************************************************************************************************
- *
- *  Bilderverzeichnis initialisieren 
- *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
- *
- *******************************/
+    /***************************************************************************************************
+    *
+    *  Bilderverzeichnis initialisieren 
+    *  file:///C|/Users/Wolfgang/Dropbox/Privat/IP-Symcon/pictures/07340IMG_1215.jpg
+    *
+    *******************************/
 
-$iconverzeichnis = $iconverzeichnis."/start/";
-copyIfNeeded($iconverzeichnis,$icondir);           // true debug
+    copyIfNeeded($iconverzeichnis."/",$icondir);           // true debug
 
-$imageverzeichnisMond = $imageverzeichnis."/mond/";                       // mond und mondtransparent
-copyIfNeeded($imageverzeichnisMond,$imagedirM);           // true debug
+    $iconStartVerzeichnis = $iconverzeichnis."/start/";
+    copyIfNeeded($iconStartVerzeichnis,$iconStartdir);           // true debug
 
-$imageverzeichnisMondTransparent = $imageverzeichnis."/mondtransparent/";                       // mond und mondtransparent
-copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
+    $iconClockVerzeichnis = $iconverzeichnis."/clock/";
+    copyIfNeeded($iconClockVerzeichnis,$iconClockdir);           // true debug
 
-copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
+    $imageverzeichnisMond = $imageverzeichnis."/mond/";                       // mond und mondtransparent
+    copyIfNeeded($imageverzeichnisMond,$imagedirM);           // true debug
+
+    $imageverzeichnisMondTransparent = $imageverzeichnis."/mondtransparent/";                       // mond und mondtransparent
+    copyIfNeeded($imageverzeichnisMondTransparent,$imagedirMT);           // true debug
+
+    copyIfNeeded($bilderverzeichnis,$picturedir);           // true debug
 
 
 if (false)

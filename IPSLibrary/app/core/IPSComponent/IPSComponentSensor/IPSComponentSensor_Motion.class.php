@@ -192,7 +192,7 @@
         /* Set_LogValue  */
         // $EreignisID;                     // verwendet Variable von Logging
 
-		//private $motionDetect_NachrichtenID, $motionDetect_DataID;            /* zusätzliche Auswertungen */
+		protected $motionDetect_NachrichtenID, $motionDetect_DataID;            /* zusätzliche Auswertungen */
         
 		/* Unter Klassen 		
         protected $DetectHandler;		        // Unterklasse 
@@ -212,9 +212,10 @@
 		 *
 		 *************************************************************************/
 		 	
-		function __construct($variable,$variablename=Null, $value, $typedev="unkown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
+		function __construct($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
 			{
-            if ($debug) echo "Motion_Logging::construct do_init mit \"$typedev\" aufrufen:\n";
+            $this->debug=$debug;
+            if ($this->debug) echo "Motion_Logging::construct do_init mit \"$typedev\" aufrufen:\n";
             $this->startexecute=microtime(true); 
             $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
             $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
@@ -287,7 +288,8 @@
                     }
                 else echo "Fehler, kenne den Variable Typ nicht.\n";
                 }
-            else $NachrichtenID=$this->do_init_statistics($debug);                
+            else $NachrichtenID=$this->do_init_statistics($debug);  
+            if ($debug) echo "---------do_init abgeschlossen.\n";
             return ($NachrichtenID);    // damit die Nachrichtenanzeige richtig aufgesetzt wird 
             }
 
@@ -347,8 +349,9 @@
 			if ( ($variable<>null) && ($variable<>false) )
 				{
 				echo "Set_LogValue, Add Variable ID : ".$variable." (".IPS_GetName($variable).") für IPSComponentSensor Motion Logging.\n";
-                $this->do_init($variable,Null,false,"",$this->debug);                                                                                                  // initialisiserung gleich wie in construct
-                $this->variableLogID=$this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->Type,$this->variableProfile);                   // $this->variableLogID schreiben aus do_setVariableLogId
+                $this->do_init($variable,Null,false,"",$this->debug);               // do_init($variable,$variablename,$value, $typedev, $debug)     initialisiserung gleich wie in construct
+                //$this->variableLogID = $this->do_setVariableLogID($variable,$this->debug);      // this->setVariableLogId($this->variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile,$debug);
+                $this->variableLogID=$this->setVariableLogId($variable,$this->variablename,$this->AuswertungID,$this->variableType,$this->variableProfile);                   // $this->variableLogID schreiben aus do_setVariableLogId
 				}
 			else echo "Set_LogValue aufgerufen mit variable mit Null oder False.\n"; 
 
@@ -868,12 +871,12 @@
             if (isset ($this->installedmodules["DetectMovement"]))
                 {
                 if ($gesamt)
-                {
+                    {
                     $value=GetValue($this->GesamtID);
                     $diftimemax=60;
                     }
                 else
-                {
+                    {
                     $value=GetValue($this->EreignisID);
                     $diftimemax=15;
                     }

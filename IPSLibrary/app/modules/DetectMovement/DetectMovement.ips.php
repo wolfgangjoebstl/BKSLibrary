@@ -82,7 +82,8 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 		   		/* alle Bewegungsmelder */
 				echo "*******\nBearbeite Bewegungsmelder ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-				$log=new Motion_Logging($oid);
+				$log=new Motion_Logging(false);                            // variablename und value sind null
+                $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
 			if ( (isset($Key["COID"]["STATE"])==true) and (isset($Key["COID"]["ERROR"])==true) )
@@ -90,7 +91,8 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 			   	/* alle Kontakte */
 				echo "*******\nBearbeite Kontakt ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["STATE"]["OID"];
-				$log=new Motion_Logging($oid);
+				$log=new Motion_Logging(false);                  //Variable false wird nur do_init_statistic aufgerufen, true for Debug
+                $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
 			}
@@ -105,7 +107,8 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 		   		/* alle Bewegungsmelder */
 				echo "*******\nBearbeite FS20 Bewegungsmelder ".$Name."\n";
 			    $oid=(integer)$Key["COID"]["MOTION"]["OID"];
-				$log=new Motion_Logging($oid);
+				$log=new Motion_Logging(false);
+                $log->Set_LogValue($oid);
 				$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 				}
 			/* Manche FS20 Variablen sind noch nicht umprogrammiert daher mit Config Datei verknüpfen */
@@ -119,7 +122,8 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 	      				$oid=(integer)$Key["COID"]["StatusVariable"]["OID"];
 			  	      	$variabletyp=IPS_GetVariable($oid);
 			  	      	IPS_SetName($oid,"MOTION");
-						$log=new Motion_Logging($oid);
+						$log=new Motion_Logging(false);
+                        $log->Set_LogValue($oid);
 						$alleMotionWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 		   		      	}
 		   	   		}
@@ -220,8 +224,9 @@ IPSUtils_Include ("EvaluateHardware_Include.inc.php","IPSLibrary::config::module
 				{
 				/* alle Feuchtigkeits oder Temperaturwerte ausgeben */
 				if (isset($Key["COID"]["TEMPERATURE"])==true)
-	   			{
+	   			    {
 	 				$oid=(integer)$Key["COID"]["TEMPERATURE"]["OID"];
+                    echo "$oid\n";
 					$log=new Temperature_Logging($oid);
 					$alleTempWerte.="********* ".$Key["Name"]."\n".$log->writeEvents()."\n\n";
 					}
