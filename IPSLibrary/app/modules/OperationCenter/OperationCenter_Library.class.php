@@ -231,10 +231,10 @@ class OperationCenter
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}	*/
 
-        configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"\\Backup\\","FREQUENCE":"Day","FULL":{"Mon","Wed"},"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
+        configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"/Backup/","FREQUENCE":"Day","FULL":["Mon","Wed"],"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
         // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
-        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","\\Backup\\IpSymcon");  
+        configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Directory"], "Directory","/Backup/IpSymcon");  
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FREQUENCE", "Frequence"], "FREQUENCE","Day");  
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["FULL", "Full"], "FULL",'{"Mon","Wed"}');  
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["KEEPDAY", "KeepDay","Keepday"], "KEEPDAY",10);
