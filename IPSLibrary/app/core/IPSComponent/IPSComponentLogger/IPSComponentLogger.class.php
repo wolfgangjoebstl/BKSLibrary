@@ -371,7 +371,7 @@ class Logging
         return ($this->configuration);
         }
 
-    protected function set_IPSComponentLoggerConfig()
+    protected function set_IPSComponentLoggerConfig($debug=false)
         {
         $config=array();
         if ((function_exists("get_IPSComponentLoggerConfig"))===false) IPSUtils_Include ("IPSComponentLogger_Configuration.inc.php","IPSLibrary::config::core::IPSComponent");				
@@ -385,7 +385,7 @@ class Logging
         /* check BasicConfigs and fill them automatically */
         $dosOps = new dosOps();
         $operatingSystem = $dosOps->evaluateOperatingSystem();
-        //echo "Operating System $operatingSystem\n";
+        if ($debug) echo "Operating System $operatingSystem\n";
         if ($operatingSystem ==  "WINDOWS") configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","C:/Scripts/");   
         else configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["SystemDir"],"SystemDir","/var/");
         configfileParser($configInput["BasicConfigs"], $config["BasicConfigs"], ["OperatingSystem"],"OperatingSystem",$operatingSystem);     
@@ -407,7 +407,7 @@ class Logging
         configfileParser($configInput["LogDirectories"], $config["LogDirectories"], ["ClimateLog"],"ClimateLog","/Climate/");    
         $this->createFullDir($config["LogDirectories"]["ClimateLog"],$config["BasicConfigs"]["SystemDir"]);
 
-        //print_r($config);
+        if ($debug) print_r($config);
         return ($config);
         }
 

@@ -175,6 +175,7 @@ class AutosteuerungHandler
                 configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["Type" ],"Type" ,"Switch");  
                 configfileParser($configInput["HeatControl" ], $config["HeatControl" ], ["AutoFill","Autofill","autofill","AUTOFILL" ],"AutoFill" ,"Aus");          //Default bedeutet Heizung Aus nach einem Update, ReInstall
                 }
+            //print_r($config);
             return ($config);
             }
 
@@ -1480,6 +1481,7 @@ class Autosteuerung
 	var $CategoryId_Ansteuerung, $CategoryId_Status;        // werden immer in Install generiert
 	var $availableModules;							// eigentlich Liste aller GUIDs der Module, für check ob Parameter ein gültige Modul GID hat
     var $configuration;                     // die Konfiguration
+    var $debug;                                             // centrally set Debug Mode
 
 	var $log;										// logging class, called with this class
 	
@@ -1511,8 +1513,9 @@ class Autosteuerung
 	 *
 	 *************************************************************/
 	
-	public function __construct()
+	public function __construct($debug=false)
 		{
+        $this->debug=$debug;
 		// Sonnenauf.- u. Untergang berechnen
 		$longitude = 16.36; //14.074881;
 		$latitude = 48.21;  //48.028615;
@@ -1552,7 +1555,7 @@ class Autosteuerung
 		$NachrichtenID = $object_data->osearch("Nachricht");
 		$NachrichtenScriptID  = $object_app->osearch("Nachricht");
 
-        $this->configuration = $this->set_Configuration();
+        $this->configuration = $this->set_Configuration($debug);
 		if (isset($NachrichtenScriptID))
 			{
 			$object3= new ipsobject($NachrichtenID);
@@ -1646,10 +1649,11 @@ class Autosteuerung
 
     /* Konfigurationsmanagement , Abstraktion mit set und get im AutosteuerungHandler */
 
-    private function set_Configuration()
+    private function set_Configuration($debug=false)
         {
         $autosteuerungHandler = new AutosteuerungHandler();         // nur zum Configuration einlesen anlegen
         $setup = $autosteuerungHandler->get_Configuration();
+        if ($debug) { echo "AutosteuerungHandler->get_Configuration benutzt um Konfiguration zentral einzulesen\n"; print_r($setup); }
         return ($setup);
         }
 

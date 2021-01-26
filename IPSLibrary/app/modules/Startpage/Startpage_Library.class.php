@@ -1928,8 +1928,8 @@
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Name","NAME","name"]     ,"Name",$index);        
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Unit","UNIT","unit"]     ,"Unit","values");        
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Style","STYLE","style"]  ,"Style","line");        
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Step","STEP","step"]     ,"Step","false");                               // stufenweise Darstellung, statt die Punkte Verbindung, aktiv ist left
-                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["AGGREGATE","Aggregate","aggregate"]     ,"Aggregate","false");  
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Step","STEP","step"]     ,"Step",false);                               // stufenweise Darstellung, statt die Punkte Verbindung, aktiv ist left
+                    configfileParser($specialRegsConf[$index], $specialRegs[$index], ["AGGREGATE","Aggregate","aggregate"]     ,"Aggregate",false);  
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["BackgroundColor","backgroundColor"]   ,"backgroundColor",'#FCFFC5');         // helles Gelb  
                     configfileParser($specialRegsConf[$index], $specialRegs[$index], ["Size","SIZE"]     ,"Size","[]");        
                     if ((is_array($specialRegs[$index]["OID"]))==false) $specialRegs[$index]["OID"]=[$specialRegs[$index]["OID"]];          // als array umspeichern

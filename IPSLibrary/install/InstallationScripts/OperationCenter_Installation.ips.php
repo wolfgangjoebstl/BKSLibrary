@@ -927,6 +927,11 @@
 	$CategoryIdHomematicInventory = CreateCategoryPath('Program.IPSLibrary.data.hardware.IPSHomematic.HomematicInventory');
 	$HomematicInventory = CreateVariable("HomematicInventory",   3 /*String*/,  $CategoryIdHomematicInventory, 60 , '~HTMLBox',null,null,"");
 
+    /* EvaluateHarwdare erstellt taeglich um 1:10 eine neue Homematic Liste. 
+     * Die function Homematic ist in EvaluateHardware_include in der Config gespeichert
+     * nur die Geräte die gemeinsam mit Type abgespeichert wurden werden für die RSSI Ermittlung in Betracht gezogen
+     *
+     */
 	$homematic=HomematicList();
 	$seriennumernliste=array();
 	foreach ($homematic as $instance => $entry)
@@ -945,22 +950,28 @@
 			else $seriennumernliste[$adresse]["Protocol"]=HM_PROTOCOL_BIDCOSWI;
 			}		
 		}
-	echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste.\n";	
+	echo "Es gibt ".sizeof($seriennumernliste)." Seriennummern also Homematic Geräte in der Liste. Die ohne Type Parameter oder HM_TYPE_BUTTON rausnehmen:\n";	
 	foreach ($seriennumernliste as $zeile)
 		{
 		if (trim($zeile["Type"])=="") 
 			{
-			echo "---> kein RSSI Monitoring : ";
+			//echo "---> kein RSSI Monitoring : ";
 			unset($seriennumernliste[$zeile["Adresse"]]);
+            //echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  ".$zeile["Type"]."  ".$zeile["Device"]."  \n";            
 			}
-		echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  ".$zeile["Type"]."  ".$zeile["Device"]."  \n";
+		elseif (trim($zeile["Type"])=="HM_TYPE_BUTTON")  
+            {
+			unset($seriennumernliste[$zeile["Adresse"]]);
+            }
+        else echo "   ".str_pad($zeile["Adresse"],18).str_pad($zeile["Name"],50).str_pad($zeile["Type"],20).str_pad($zeile["Device"],20)."  \n";            
+
 		}
 	echo "\n";
-	echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Button, Switch oder Dimmer.\n";
+	echo "Davon sind noch ".sizeof($seriennumernliste)." Geraete entweder Switch oder Dimmer und damit ohne Batteriebetrieb.\n";
 	$homematicConfiguration=array();
 	foreach ($seriennumernliste as $zeile)
 		{
-		echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
+		//echo "   ".$zeile["Adresse"]."  ".$zeile["Name"]."  \n";
 		$name=explode(":",$zeile["Name"])[0];
 		$homematicConfiguration[$name][]=$zeile["Adresse"];
 		$homematicConfiguration[$name][]=$zeile["Channel"];
@@ -1807,7 +1818,7 @@
 				return $HomematicModuleId;
 			    }
 		    }
-        echo "Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol\n";
+        echo "CreateHomematicInstance: Create HomaticModule Instabce with '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol\n";
 		$moduleManager->LogHandler()->Log("Create HomaticModule '$Name' Address=$Address, Channel=$Channel, Protocol=$Protocol");
 		$HomematicModuleId = IPS_CreateInstance("{EE4A81C6-5C90-4DB7-AD2F-F6BBD521412E}");
 		IPS_SetParent($HomematicModuleId, $ParentId);
