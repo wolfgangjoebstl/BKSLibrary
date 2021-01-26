@@ -260,11 +260,27 @@ define("ADR_Programs",'C:/Program Files (x86)/');
                 else echo "*****configfileParser, Configuration Fehler, Synonym mehrmals vorhanden.\n";
                 }
             }
-        if ($found===false)
+        if ($found===false)         // keines der Synonyme vorhanden, den json dekodierten Defaultwert übernehmen
             {
-            $outputArray[$tag] = json_decode($defaultValue,true);
-            if ($debug) echo "not found, use default ".$outputArray[$tag]."\n";
-            if ($outputArray[$tag]===null) $outputArray[$tag]=$defaultValue;
+            //if ($debug) echo "not found, use default ".$outputArray[$tag]."\n";
+            if (is_array($defaultValue))
+                {
+                $outputArray[$tag] = $defaultValue;
+                }
+            elseif ($defaultValue==null)
+                {
+                $outputArray[$tag] = $defaultValue;
+                if ($debug) echo "configfileParser: Tag $tag Null detected as default value.\n";    
+                }
+            else  
+                {
+                if ($debug) echo "not found, use default \"$defaultValue\" for \"$tag\".\n";
+                $input=json_decode($defaultValue,true);
+                if ( ($defaultValue != "") && (is_array($input)) ) $outputArray[$tag] = $input;                 // input ist ein json encodiertes array
+                elseif ($input !== false) $outputArray[$tag] = $defaultValue;                               // input ist ein Wert
+                else echo "json decode failed on \"$defaultValue\" for $tag.\n";
+                }
+            //if ($outputArray[$tag]===null) $outputArray[$tag]=$defaultValue;                
             } 
         }
 
@@ -3722,11 +3738,13 @@ class dosOps
         IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');	                
         $logging=new Logging();
         $config=$logging->get_IPSComponentLoggerConfig();
-        //echo json_encode($config["BasicConfigs"]);
-        //print_r($config);
+        //echo "GetWorkDirectory: .json_encode($config["BasicConfigs"])."\n";
         $verzeichnis=$config["BasicConfigs"]["SystemDir"];
-        $ls=$this->readdirToArray($verzeichnis);
-        if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
+        if ($verzeichnis != "")
+            {
+            $ls=$this->readdirToArray($verzeichnis);
+            if ($ls===false) echo "********Fehler Verzeichnis $verzeichnis nicht vorhanden.\n";
+            }
 /*        $verzeichnis="C:/scripts/";
         $ls=$this->readdirToArray($verzeichnis);
         if ($ls===false) 
@@ -3938,7 +3956,7 @@ class dosOps
 	public function readdirToArray($dir,$recursive=false,$newest=0,$debug=false)
 		{
 	   	$result = array();
-
+        if ($debug) echo "readdirToArray aufgerufen für $dir\n";
 		// Test, ob ein Verzeichnis angegeben wurde
 		if ( is_dir ( $dir ) )
 			{		
@@ -4095,16 +4113,22 @@ class dosOps
 
     /* einem Verzeichnisbaum ein Backslash oder Slash anhängen, sonst wäre die letzte Position eventuell auch eine Datei */
 
-	function correctDirName($verzeichnis)
+	function correctDirName($verzeichnis,$debug=false)
 		{
 		$len=strlen($verzeichnis); 
         $pos1=strrpos($verzeichnis,"\\"); $pos2=strrpos($verzeichnis,"/");          // letzte Position bekommen
-		//echo "Auswertungen: $len $pos1 $pos2 \n";			// am Schluss muss ein Backslash oder Slash sein !
-		if ( ($pos1) && ($pos1<($len-1)) )   $verzeichnis .= "\\";
-        if ($pos1) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);
-        
-		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		
-        if ($pos2) $verzeichnis = str_replace("//","/",$verzeichnis);
+        $pos3=strpos($verzeichnis,"\\"); $pos4=strpos($verzeichnis,"/");          // erste Position bekommen
+
+		if ($debug) 
+            {
+            echo "correctDirName Auswertungen: Len:$len pos1:$pos1 pos2:$pos2 pos3:$pos3 pos4:$pos4\n";			// am Schluss muss ein Backslash oder Slash sein !
+            if ($pos1 && $pos2) echo "   mixed usage of / und \\  \n";
+            }
+		if ( ($pos1) && ($pos1<($len-1)) )   $verzeichnis .= "\\";          // Backslash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Backslash am Ende erweitern
+		if ( ($pos2) && ($pos2<($len-1)) ) $verzeichnis .= "/";		        // Slash kommt im String ausser auf Pos 0 vor, wenn nicht am Ende mit Slash am Ende erweitern
+
+        if ($pos3) $verzeichnis = str_replace("\\\\","\\",$verzeichnis);        // wenn ein Doppelzeichen ausser am Anfang ist dieses vereinfachen
+        if ($pos4) $verzeichnis = str_replace("//","/",$verzeichnis);
 		return ($verzeichnis);
 		}
 
@@ -5134,6 +5158,12 @@ class ComponentHandling
                 $variabletyp=1; 		/* Integer */					
                 $index="Helligkeit";
                 $profile="Helligkeit";                  // Variablen Profil
+                break;
+            case "ENERGY":                              // selber Component wie State
+                //$detectmovement="Helligkeit";
+                $variabletyp=2; 		            // Float 
+                $index="Stromverbrauch";
+                $profile="~Electricity";                  // Variablen Profil
                 break;
             case "CONTACT":
                 $detectmovement="Contact";
