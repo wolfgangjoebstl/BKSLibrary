@@ -210,8 +210,6 @@
 
 		public $variableLogID;		/* ID der entsprechenden lokalen Spiegelvariable */
 
-        private $startexecute;                  /* interne Zeitmessung */
-
 		/* Unter Klassen */
 		
 		protected $installedmodules;              /* installierte Module */

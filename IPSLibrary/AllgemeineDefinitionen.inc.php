@@ -28,6 +28,8 @@
 	  * GetInstanceIDFromHMID
 	  * writeLogEvent
 	  * writeLogEventClass
+      *
+	  * GetValueIfFormattedEx
 	  * GetValueIfFormatted
 	  *
       * CreateVariableByName
@@ -1815,6 +1817,47 @@ function writeLogEventClass($event,$class)
 	fclose($handle);
     }
 
+
+/*****************************************************************
+ *
+ *
+ ************************************************************************/
+
+function GetValueIfFormattedEx($oid,$value, $html=false)
+    {
+   	$variabletyp=IPS_GetVariable($oid);
+	if ( ($variabletyp["VariableProfile"]!="")  or ($variabletyp["VariableCustomProfile"]!="") )
+		{
+        if ($variabletyp["VariableProfile"]!="")        $profile = $variabletyp["VariableProfile"];
+        if ($variabletyp["VariableCustomProfile"]!="")  $profile = $variabletyp["VariableCustomProfile"];
+        $profileConfig = IPS_GetVariableProfile($profile);
+	    $result=GetValueFormattedEx($oid,$value);
+        if ($html && (isset($profileConfig["Associations"])) ) 
+            {
+            foreach ($profileConfig["Associations"] as $index => $association)
+                {
+                if ($association["Value"]==$value) 
+                    {
+                    //print_R($association);
+                    $color = "000000".dechex($association["Color"]);
+                    $color = substr($color,-6);
+                    if (hexdec($color) > 1000000) $color="1F2F1F";
+                    echo "Farbe Association ist #$color\n";
+                    //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
+                    $result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                    }
+
+                }
+            
+            }
+		}
+	else
+	   	{
+		$result=$value;
+		}
+    return ($result);  
+
+    }
 
 /*****************************************************************
  *
@@ -5097,6 +5140,7 @@ class ComponentHandling
             case "SET_TEMPERATURE":
                 $variabletyp=2; 		/* Float */
                 $index="HeatSet";
+                $detectmovement="HeatSet";
                 //$profile="TemperaturSet";		/* Umstellung auf vorgefertigte Profile, da besser in der Darstellung */
                 $profile="~Temperature";
                 break;	
@@ -5211,7 +5255,7 @@ class ComponentHandling
         $keyName["INDEXNAMEEXT"]=$indexNameExt;	 
         if (isset($keyName["COID"])) 
             {
-            if ($debug) echo "addonkeyname, wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
+            if ($debug) echo "addonkeyname based on ".(strtoupper($keyName["KEY"])).", wichtig für ".$keyName["Name"]." ist COID: ".$keyName["COID"]." \n";
             $variableType=IPS_GetVariable($keyName["COID"]);
             if (isset($variableType["VariableProfile"])) $keyName["VarProfile"]=$variableType["VariableProfile"];
             elseif (isset($variableType["VariableCustomProfile"])) $keyName["CustProfile"]=$variableType["VariableCustomProfile"];
@@ -5445,6 +5489,10 @@ class ComponentHandling
 						    case "HeatControl":					
 							    $DetectHeatControlHandler = new DetectHeatControlHandler();						
     							$DetectHeatControlHandler->RegisterEvent($oid,"HeatControl",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
+	    						break;
+						    case "HeatSet":					
+							    $DetectHeatSetHandler = new DetectHeatSetHandler();						
+    							$DetectHeatSetHandler->RegisterEvent($oid,"HeatSet",'','');     /* par2, par3 Parameter frei lassen, dann wird ein bestehender Wert nicht überschreiben */
 	    						break;
 		    				case "Feuchtigkeit":
 			    				$DetectHumidityHandler = new DetectHumidityHandler();		

@@ -208,7 +208,6 @@
 		private $motionDetect_NachrichtenID;            /* zusätzliche Auswertungen */
 		private $motionDetect_DataID;
 		
-        private $startexecute;                  /* interne Zeitmessung */
         
 		/* Unter Klassen */
 		
@@ -230,9 +229,7 @@
 		 	
 		function __construct($variable,$variablename=Null)          // construct ohne variable nicht mehr akzeptieren
 			{
-            $this->startexecute=microtime(true); 
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            $this->constructFirst();
 
             $this->do_init($variable,$variablename);              // $variable kann auch false sein
 			parent::__construct($this->filename);                                       // this->filename wird ion do_init_xxx geschrieben

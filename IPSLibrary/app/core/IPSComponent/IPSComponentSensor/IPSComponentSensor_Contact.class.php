@@ -18,9 +18,9 @@
 	 */
 
    /**
-    * @class IPSComponentSensor_Motion
+    * @class IPSComponentSensor_Contact
     *
-    * Definiert ein IPSComponentSensor_Motion Object, das ein IPSComponentSensor Object für einen Bewegungsmelder implementiert.
+    * Definiert ein IPSComponentSensor_Contact Object, das ein IPSComponentSensor Object für einen Kontaktgeber implementiert.
 	*
 	* Eine Veränderung der Variable im Gerät löst ein Event aus und ruft den MessageHandler auf:  IPSMessageHandler::HandleEvent($variable, $value);
 	* HandleEvent im IPSMessageHandler sucht sich die passende Konfiguration und ermittelt den richtigen Component und das übergeordnet Modul für mehrere Components
@@ -49,11 +49,11 @@
 
 	/******************************************************************************************************
 	 *
-	 *   Class IPSComponentSensor_Motion
+	 *   Class IPSComponentSensor_Contact
 	 *
 	 ************************************************************************************************************/
 
-	class IPSComponentSensor_Motion extends IPSComponentSensor {
+	class IPSComponentSensor_Contact extends IPSComponentSensor {
 
 		private $tempObject;
 		private $RemoteOID;
@@ -111,10 +111,10 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-			echo "IPSComponentSensor_Motion, HandleEvent für VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert : ".($value?"Bewegung":"Still")." \n";
+			echo "IPSComponentSensor_Contact, HandleEvent für VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert : ".($value?"Bewegung":"Still")." \n";
 			IPSLogger_Dbg(__file__, 'IPSComponentSensor_Motion, HandleEvent: für VariableID '.$variable.'('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);
 
-			$log=new Motion_Logging($variable);
+			$log=new MContact_Logging($variable);
             $mirrorValue=$log->updateMirorVariableValue($value);
             
 			$result=$log->Motion_LogValue($value);      // hier könnte man gleiche Werte noch unterdrücken
@@ -180,14 +180,14 @@
 
 	/******************************************************************************************************
 	 *
-	 *   Class Motion_Logging
+	 *   Class Contact_Logging
      *
      *  Erweiterung, diese Klasse kann jetzt zwischen Motion, Contact und Helligkeit unterscheiden
      *
 	 *
 	 ************************************************************************************************************/
 	
-	class Motion_Logging extends Logging
+	class Contact_Logging extends Logging
 		{
 
 		private $variable, $variablename, $variableTypeReg;              /* Untergruppen, hier MOTION oder BRIGHTNESS */
@@ -207,8 +207,6 @@
 
 		private $motionDetect_NachrichtenID;            /* zusätzliche Auswertungen */
 		private $motionDetect_DataID;
-		
-        private $startexecute;                  /* interne Zeitmessung */
         
 		/* Unter Klassen */
 		
@@ -230,9 +228,7 @@
 		 	
 		function __construct($variable,$variablename=Null)          // construct ohne variable nicht mehr akzeptieren
 			{
-            $this->startexecute=microtime(true); 
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            $this->constructFirst();
 
             $this->do_init($variable,$variablename);              // $variable kann auch false sein
 			parent::__construct($this->filename);                                       // this->filename wird ion do_init_xxx geschrieben

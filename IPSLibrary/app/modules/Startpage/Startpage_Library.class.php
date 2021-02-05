@@ -249,13 +249,28 @@
 			$weather=array();
 			$weather["Active"]=false;
 			$weather["Source"]="WU";
-			if ( isset ($this->configuration["Display"]["Weathertable"]) == true ) { if ( $this->configuration["Display"]["Weathertable"] == "Active" ) { $weather["Active"]=true; } }
+			if ( isset ($this->configuration["Display"]["Weathertable"]) == true ) 
+                { 
+                if ( $this->configuration["Display"]["Weathertable"] == "Active" ) { $weather["Active"]=true; } 
+                }
 			if ( isset ($this->configuration["Display"]["Weather"]) == true ) 
 				{
 				/* mehr Parameter verfügbar */
-				if ( isset ($this->configuration["Display"]["Weather"]["Weathertable"]) == true ) { if ( $this->configuration["Display"]["Weather"]["Weathertable"] == "Active" ) { $weather["Active"]=true; } }
-				if ( isset ($this->configuration["Display"]["Weather"]["WeatherSource"]) == true ) { if ( $this->configuration["Display"]["Weather"]["WeatherSource"] != "WunderGround" ) { $weather["Source"]="OWD"; } }
-				}
+				if ( isset ($this->configuration["Display"]["Weather"]["Weathertable"]) == true ) 
+                    { 
+                    if ( $this->configuration["Display"]["Weather"]["Weathertable"] == "Active" ) { $weather["Active"]=true; } 
+                    }
+				if ( isset ($this->configuration["Display"]["Weather"]["WeatherSource"]) == true ) 
+                    { 
+                    if ( $this->configuration["Display"]["Weather"]["WeatherSource"] != "WunderGround" ) 
+                        { 
+                        $weather["Source"]="OWD";
+                        if (count($this->getOWDs())==0) $weather["Active"]=false; 
+                        }
+                    elseif ( (isset($this->installedModules["IPSWeatherForcastAT"])) === false ) $weather["Active"]=false; 
+ 
+                    }
+                }
 			return($weather);
 			}
 		
@@ -329,7 +344,7 @@
                 {
                 case 4:        // Hierarchie
                     if ($debug) echo "Page Type Style is Hierarchy.\n";
-                    //echo "Hierarchiedarstellung erster Entwurf, verwendet showPictureWidget und showTopology.\n";
+                    //echo "Hierarchiedarstellung erster Entwurf, verwendet showHierarchy.\n";
                     //$wert.='<div style="width: 400px; height: 200px; overflow: scroll;">';
                     //$wert.='<div style="overflow-x:auto;">';        // funktioniert nur wenn y nicht zu gross
                     $wert.='<div style="overflow:scroll; height:900px;">';
@@ -349,7 +364,7 @@
                     $wert.= $this->showPictureWidget($showfile);
                     $wert.='</td>';
 
-                    $wert.= $this->showTopology();
+                    $wert.= $this->showTopology($debug);
                     $wert.='</tr></table>';
                     break;
                 case 2:   //echo "NOWEATHER false. PageType 2. NoPicture.\n";  
@@ -679,19 +694,24 @@
             $DetectDeviceHandler = new DetectDeviceHandler();
             $topology=$DetectDeviceHandler->Get_Topology();
 
-            /* die Topologie mit den Geräten anreichen. Es gibt Links zu Chíldren, INSTANCE und OBJECT 
-             * Children, listet die untergeordneten Eintraege
-             * OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
-             * INSTANCE ist der vollständigkeit halber für die Geräte
+            /* die Topologie mit den Geräten anreichen:
+             *    wir starten mit Name, Parent, Type, OID, Children  
+             * Es gibt Links zu Chíldren, INSTANCE und OBJECT 
+             *    Children, listet die untergeordneten Eintraege
+             *    OBJECT sind dann wenn das Gewerk in der Eventliste angegeben wurde, wie zB Temperature, Humidity aso
+             *    INSTANCE ist der vollständigkeit halber für die Geräte
+             *
+             * Damit diese Tabelle funktioniert muss der DetDeviceHandler fleissig register definieren
              */
 
             $topologyPlusLinks=$this->mergeTopologyObjects($topology,IPSDetectDeviceHandler_GetEventConfiguration(),$debug);
 
             if ($debug) 
                 {
+                echo "=====================================================================================\n";
                 print_r($topologyPlusLinks);
                 echo "=====================================================================================\n";
-                echo "Topology Status Ausgabe:\n";
+                echo "Berechnung Topology Status, dann Ausgabe:\n";
                 }
 
             /* Konfiguration aus der Topologie in eine Struktur mit aktuellen Werten bringen 
@@ -745,7 +765,7 @@
                 {
                 echo "=====================================================================================\n";
                 echo "Status Topologie für Ausgabe vorbereitet:\n";
-                print_r($topologyStatus);
+                //print_r($topologyStatus);
                 }
 
             ksort($topologyStatus);
@@ -755,7 +775,7 @@
             //$wert.="#topology p { color:lightblue; margin:0;   }";
 
             $wert.="#topology { border-collapse: collapse; border: 1px solid #ddd; background-color:#020304; color:#c3d4e5; }";
-            $wert.="#topology td, #topology th { border: 1px solid #ddd; text-align:center; height:10px; width:10px; }";
+            $wert.="#topology td, #topology th { border: 1px solid #ddd; text-align:center; height:50px; width:100px; }";
             $wert.="#topology p { color:lightblue; margin:0;   }";
             $wert.="#valuecell { width:100%; height:100%; border-collapse: collapse; color:orange;  }";
             $wert.="#valuecell td { border-style:dotted; border-color:111111; }";
@@ -775,6 +795,7 @@
 
         function mergeTopologyObjects($topology, $objectsConfig, $debug=false)
             {
+            if ($debug) echo "mergeTopologyObjects mit informationen aus IPSDetectDeviceHandler_GetEventConfiguration() aufgerufen:\n";
             $text="";                
             $topologyPlusLinks=$topology;
             foreach ($objectsConfig as $index => $entry)
@@ -782,7 +803,7 @@
                 if ($debug) 
                     {
                     $newText=$entry[0]."|".$entry[1]."|".$entry[2];
-                    if ($newText != $text) echo "$newText\n";
+                    if ($newText != $text) echo "$index   \"$newText\"\n";
                     $text=$newText;
                     }
                 $name=IPS_GetName($index);
@@ -794,7 +815,7 @@
                         {
                         if ( isset($topology[$place]["OID"]) != true ) 
                             {
-                            if ($debug) echo "   Kategorie $place anlegen.\n";
+                            if ($debug) echo "   Fehler, zumindest erst einmal die Kategorie \"$place\" anlegen.\n";
                             }
                         else
                             {
@@ -927,8 +948,8 @@
             if ($debug) 
                 {
                 echo "**************************************************************************************\n";
-                echo "Aufruf writeTable, Darstellung der Informationen innerhalb einer Topologie.\n";
-                //print_r($topologyStatus);
+                echo "Aufruf writeTable, Darstellung der Informationen innerhalb einer Topologie: ".json_encode($config)."\n";
+                //print_r($topologyStatusInput);
                 }
             $topologyStatus=array();
             if (isset($config["Scale"])) $scale=$config["Scale"]; 
@@ -1058,12 +1079,12 @@
                                 }
                             else $background="";
                             $starttext='<table id=valuecell style="'.$background.';border-style:none;"><tr>';
-                            $midtext  =  '<td></td><td></td></tr>';
-                            $midtext .= '<tr><td></td><td>';
+                            $midtext  =  '<td>m00</td><td>m01</td></tr>';
+                            $midtext .= '<tr><td>m10</td><td>m11';
                             $endtext  = '</td><td></td></tr><tr><td></td><td></td><td></td></tr></table>';
                             $texte=array();                 // Array mit bis zu 9 Eintraegen
                             $texte[1]='<td>'.$shortname.'</td>';
-                            $texte[2]='<td></td>';$texte[3]='<td></td>';$texte[4]='<td></td>';$texte[5]='<td></td>';$texte[6]='<td></td>';$texte[7]='<td></td>';$texte[8]='<td></td>';$texte[9]='<td></td>';
+                            $texte[2]='<td>t02</td>';$texte[3]='<td>t03</td>';$texte[4]='<td></td>';$texte[5]='<td></td>';$texte[6]='<td></td>';$texte[7]='<td></td>';$texte[8]='<td></td>';$texte[9]='<td></td>';
                             $shortname=$texte[1];
                             }                        
                         if (isset($line[$x]["Status"])) 
@@ -1598,13 +1619,17 @@
          *
          **************************************/
 
-		function showHeatingWidget($config=false,$debug=false)
+		function showHeatingWidget($configInput=false,$debug=false)
             {
             $wert="";
+            if ($configInput===false) $heatingConf = $this->getConfigHeatingWidget(false,$debug);
+            else $heatingConf=$this->getConfigHeatingWidget($configInput,$debug);                               // Config wird im getConfig behandelt, aber dann nicht zurückgegeben
+            if ($debug) echo "showHeatingWidget ".json_encode($heatingConf)." \n";
+
             $wert .= '<table>';
             $wert .= '<tr>'; 
             $wert .= '<td><table>';
-            foreach ($config["Config"] as $room=>$values)
+            foreach ($heatingConf["Values"] as $room=>$values)
                 {
                 $wert .= '<tr>';
                 $wert .= '<td>'.$room.'</td>';
@@ -1617,6 +1642,60 @@
             return ($wert);                                
             }
 
+        /* read configuration for showHeatingWidget, eliminate unknown indizes */
+
+        function getConfigHeatingWidget($groupsInput=false,$debug=false)
+            { 
+            if ($groupsInput===false)
+                {
+                if (isset($this->configuration["Heating"]) ) $heatingConf=$this->configuration["Heating"];
+                else $heatingConf=array();
+                }
+            else $heatingConf = $groupsInput;                
+
+            //$heatingConf=array();       // Test
+            if ($debug) echo "getConfigHeatingWidget Configuration analysieren: ".json_encode($heatingConf)."\n";
+            configfileParser($heatingConf, $config, ["Config","Configuration","config","CONFIGURATION"],"Config",["Values" => array()]);         //wenn config fehlt nur Values
+            $heatingConf=$config["Config"]; $config=array();
+            configfileParser($heatingConf, $config, ["Values","VALUES"],"Values",array());
+            configfileParser($heatingConf, $config, ["Auto","AUTO"],"Auto",null);
+            if ($config["Auto"] != null) 
+                {
+                if (isset($this->installedModules["DetectMovement"])) 
+                    {
+                    if ($debug) echo "DetectMovement installiert, automatische Erkennung verwenden\n";    
+                    $DetectTemperatureHandler  = new DetectTemperatureHandler();	
+                    $DetectHeatSetHandler      = new DetectHeatSetHandler();	
+                    $DetectHeatControlHandler  = new DetectHeatControlHandler();	
+                    $configurationSet = $DetectHeatSetHandler->Get_EventConfigurationAuto();
+                    $configurationTemp = $DetectTemperatureHandler->Get_EventConfigurationAuto();
+                    $configurationLevel = $DetectHeatControlHandler->Get_EventConfigurationAuto();
+                    $fullpicture=array();
+                    foreach ($configurationLevel as $oid => $entry) 
+                        {
+                        $fullpicture[IPS_GetParent($oid)]["Level"]=$oid;
+                        //echo "   $oid  ".str_pad(IPS_getName($oid)."/".IPS_getName(IPS_GetParent($oid)),60)." ".GetValue($oid)."   \n"; 
+                        }
+                    foreach ($configurationTemp as $oid => $entry) 
+                        {
+                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Temperature"]=$oid;
+                        }
+                    foreach ($configurationSet as $oid => $entry) 
+                        {
+                        if (isset($fullpicture[IPS_GetParent($oid)])) $fullpicture[IPS_GetParent($oid)]["Set_Temperature"]=$oid;
+                        }
+                    foreach ($fullpicture as $index => $values)
+                        {
+                        if (sizeof($values)>2)      // drei Werte
+                            {
+                            $config["Values"][IPS_GetName($index)]=[$values["Temperature"],$values["Set_Temperature"],$values["Level"],];
+                            }
+                        }
+                    //print_r($fullpicture);
+                    }
+                }
+            return($config);
+            }
 
         /********************
          *
@@ -2692,17 +2771,42 @@
                         {
                         $wert.='<td>';
                         configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Name","NAME"],"Name",IPS_GetName($oid)); 
-                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","house.jpg");
+                        configfileParser($tableEntry, $config["Display"]["BottomLine"], ["Icon","ICON"],"Icon","IPS");
                         if ($debug) echo "   Eintrag : Name ".$config["Display"]["BottomLine"]["Name"]." OID ".$config["Display"]["BottomLine"]["OID"]." Icon ".$config["Display"]["BottomLine"]["Icon"]." Value ".GetValue($oid)."\n";
-                        $wert .='<addText>'.$config["Display"]["BottomLine"]["Name"].'</addText></td><td><addText>';
+                        $wert.='<img src="user/Startpage/user/icons/'.$config["Display"]["BottomLine"]["Icon"].'.svg" alt="'.$config["Display"]["BottomLine"]["Icon"].' Icon">';
+                        $wert.='</td><td>';                        
+                        //$wert .='<addText>'.$config["Display"]["BottomLine"]["Name"].'   ';
+                        //$wert .='</addText></td><td><addText>';
                         if (isset($tableEntry["Profile"]))
                             {
-                            $profile=IPS_GetVariableProfile ($tableEntry["Profile"]);
-                            if ($debug) print_R($profile);
+                            $profileConfig=IPS_GetVariableProfile ($tableEntry["Profile"]);
+                            if (isset($profileConfig["Associations"]))  
+                                {
+                                foreach ($profileConfig["Associations"] as $index => $association)
+                                    {
+                                    if ($association["Value"]<=GetValue($oid))                  // Wert groesser 0 color setzen usw.
+                                        {
+                                        //print_R($association);
+                                        $color = "000000".dechex($association["Color"]);
+                                        $color = substr($color,-6);
+                                        if ($debug) echo "Farbe Association ist #$color  (".$association["Color"].")\n";
+                                        //if (hexdec($color) > 1000000) $color="1F2F1F";
+                                        }
+                                    }
+                                //$result='<p style="background-color:black;color:#'.$color.'";>'.$result.'</p>';
+                                //$result='<p style="background-color:'.$color.';color:white;">'.$result.'</p>';
+                                }
+                            else $color="F1F1F1";
+                            if ($debug) 
+                                {
+                                //print_R($profileConfig);
+                                echo "Letzte Farbe Association ist #$color\n";
+                                }
+                            $wert .='<addText style="background-color:#'.$color.';color:darkgrey;">'.$config["Display"]["BottomLine"]["Name"].'   ';
                             $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
                             }
-                        elseif (isset($tableEntry["UNIT"])) $wert .= $this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
-                        else $wert .= $this->formatEntry($oid, "").'</addtext>';;
+                        elseif (isset($tableEntry["UNIT"])) $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   '.$this->formatEntry($oid, $tableEntry["UNIT"]).'</addtext>';
+                        else $wert .= '<addText>'.$config["Display"]["BottomLine"]["Name"].'   '.$this->formatEntry($oid, "").'</addtext>';;
                         
                         $wert.='</td>';
                         }

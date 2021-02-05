@@ -123,8 +123,6 @@
 
 	class HeatControl_Logging extends Logging
 		{
-        private $startexecute;                  /* interne Zeitmessung */        
-
 		private $variable;
 		public $variableLogID;					/* ID der entsprechenden lokalen Spiegelvariable */
 		
@@ -265,7 +263,7 @@
 				SetValue($this->variableEnergyLogID,(GetValue($this->variableEnergyLogID)+$oldvalue/100*$unchanged/60/60/1000*$this->powerConfig[$this->variable]));
 				SetValue($this->variablePowerLogID,($value/100/1000*$this->powerConfig[$this->variable]));
 				echo 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.GetValue($this->variableEnergyLogID)." kWh.\n";
-				IPSLogger_Inf(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.number_format(GetValue($this->variableEnergyLogID),2,',','.').' kWh.');	
+				if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'HeatControl Logger für VariableID '.$this->variable.' ('.IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).') mit Wert '.$value.' % und '.$this->powerConfig[$this->variable].' W ergibt '.GetValue($this->variablePowerLogID).' kW und bislang '.number_format(GetValue($this->variableEnergyLogID),2,',','.').' kWh.');	
 				$results=$result.";".$unchanged.";".number_format(GetValue($this->variablePowerLogID),2,',','.').' kW;'.number_format(GetValue($this->variableEnergyLogID),2,',','.')." kWh";
 				}				
 			

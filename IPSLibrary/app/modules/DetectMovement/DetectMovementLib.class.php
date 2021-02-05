@@ -579,6 +579,9 @@
 			
 			switch ($eventType)
 				{
+				case 'HeatSet':
+					$triggerType = 7;
+					break;
 				case 'Climate':
 					$triggerType = 6;
 					break;
@@ -2248,8 +2251,9 @@
 			{
 			if (self::$eventConfigurationAuto == null)
 				{
-				if ( function_exists('IPSDetectHeatSetHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatSetHandler_GetEventConfiguration();       /* <-------- change here */
+                if ( function_exists('IPSDetectHeatSetHandler_GetEventConfiguration') ) self::$eventConfigurationAuto = IPSDetectHeatSetHandler_GetEventConfiguration();       /* <-------- change here */
 				else self::$eventConfigurationAuto = array();					
+                //echo "GetEventConf\n"; print_R(self::$eventConfigurationAuto);
 				}
 			return self::$eventConfigurationAuto;
 			}
@@ -2353,6 +2357,9 @@
 	 * Class Definitionen DetectDeviceHandler
      *
      * erzegugt die Config Liste IPSDetectDeviceHandler_GetEventConfiguration in scripts/IPSLibrary/config/modules/EvaluateHardware/EvaluateHardware_Configuration.inc.php
+     * das ist die config Liste die die Topology zu Instanzen herstellt, etwas mühsam zum EIngeben, da es oft mehrere Instanzen in einem Gerät gibt
+     * für die Zuordnung Geräte zu Topolgie siehe:            IPSDetectDeviceListHandler_GetEventConfiguration 
+     *
      *
 	 * DetectDeviceHandler extends DetectHandler with
 	 *	    __construct

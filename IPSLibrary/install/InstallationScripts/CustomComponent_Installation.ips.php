@@ -75,6 +75,26 @@
 
     $dosOps = new dosOps();
 
+    /*******************************
+    *
+    * Basic-Init
+    *
+    ********************************/
+
+	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+
+    $mirrorCat      = CreateCategoryByName($CategoryIdData,"Mirror",10001);
+    $loggingConfCat = CreateCategoryByName($CategoryIdData,"LoggingConfig",10001);
+    $loggingConf    = CreateVariableByName($loggingConfCat, "Logging_Variable", 1); /* 0 Boolean 1 Integer 2 Float 3 String */   // nur eine Variable Loggen, ist übersichtlicher
+    SetValue($loggingConf,false);         // false no logg, true logg all, OID value log OID
+
+    /*******************************
+    *
+    * Install von anderen Modulen zuerst
+    *
+    ********************************/
+
 	if (isset ($installedModules["DetectMovement"])) { echo "Modul DetectMovement ist installiert.\n"; } else { echo "Modul DetectMovement ist NICHT installiert.\n"; }
 	if (isset ($installedModules["EvaluateHardware"])) 
         { 
@@ -94,7 +114,7 @@
             }
         else 
             {
-            echo "Modul EvaluateHardware ist zwar installiert, aber EvaluateHarwdare wurde noch nicht aufgerufen.\n"; 
+            echo "Modul EvaluateHardware ist zwar installiert, aber EvaluateHardware wurde noch nicht aufgerufen.\n"; 
             $deviceList = array();    
             }
         $statistic = $hardwareTypeDetect->getRegisterStatistics($deviceList,false);                // false keine Warnings ausgeben
@@ -168,9 +188,6 @@
     * Webfront Vorbereitung
     *
     ********************************/
-
-	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
 	echo "\n";
 	echo "Custom Component Category OIDs for data : ".$CategoryIdData." for App : ".$CategoryIdApp."\n";

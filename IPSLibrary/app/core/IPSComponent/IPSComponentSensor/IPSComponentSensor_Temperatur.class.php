@@ -123,7 +123,7 @@
             $mirrorValue=$log->updateMirorVariableValue($value);
             if ( ($value != $mirrorValue)  || (GetValue($variable) != $value) )     // kann so nicht festgetsellt werden, da der Wert in value bereits die Änderung auslöst. Dazu Spiegelvariable verwenden.
                 {
-			    IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent mit VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+			    //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent mit VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "  IPSComponentSensor_Temperatur:HandleEvent mit VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 //echo "Aktuelle Laufzeit nach construct Logging ".exectime($startexec)." Sekunden.\n"; 
                 $result=$log->Temperature_LogValue();
@@ -134,7 +134,7 @@
                 }
             else 
                 {
-                IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
+                //IPSLogger_Inf(__file__, 'IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> Temperature Message Handler für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value);			
 			    echo "  IPSComponentSensor_Temperatur:HandleEvent: Unchanged -> für VariableID $variable (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.$value."\n";
                 }
 			}
@@ -226,8 +226,6 @@
 
 		public $variableLogID;			/* ID der entsprechenden lokalen Spiegelvariable */
 
-
-        private $startexecute;                  /* interne Zeitmessung */
         protected $debug;
 
 		/* Unter Klassen */
@@ -244,12 +242,11 @@
 
 		function __construct($variable,$variablename=Null,$variableTypeReg="unknown",$debug=false)
 			{
-            $this->startexecute=microtime(true);
-            $this->debug=$debug;   
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            if ($this->debug) echo "   Temperatur_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
 
-			echo "   Temperatur_Logging, construct : ($variable,$variablename,$variableTypeReg).\n";
+            $this->constructFirst();
 
             $this->variableProfile=IPS_GetVariable($variable)["VariableProfile"];
             if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];

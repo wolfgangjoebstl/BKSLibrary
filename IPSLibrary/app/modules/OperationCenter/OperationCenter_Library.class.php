@@ -921,7 +921,7 @@ class OperationCenter
    			elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices every hour.");
             $hourPassed=true;
             }
-        elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices: $SysPingCount every 5 Minutes");
+        //elseif ($debug==false) IPSLogger_Inf(__file__, "$ipsEvent SysPingAllDevices: $SysPingCount every 5 Minutes");
         SetValue($SysPingCountID,$SysPingCount);
 
         $SysPingTableID = @IPS_GetObjectIDByName("SysPingTable",$categoryId_SysPingControl);
@@ -7678,8 +7678,16 @@ class DeviceManagement
             $result[0]="Stellmotor";   
             $i=0;                            
             $resultType[$i]="TYPE_ACTUATOR";
-            if (array_search("LEVEL",$registerNew) !== false) $resultReg[$i]["VALVE_STATE"]="LEVEL"; 
-            else $resultReg[$i]["VALVE_STATE"]="VALVE_STATE";
+            if (array_search("LEVEL",$registerNew) !== false)           // di emodernere Variante
+                {
+                $resultReg[$i]["VALVE_STATE"]="LEVEL"; 
+                if (array_search("SET_POINT_TEMPERATURE",$registerNew) !== false)$resultReg[$i]["SET_TEMPERATURE"]="SET_POINT_TEMPERATURE";
+                }
+            else 
+                {
+                $resultReg[$i]["VALVE_STATE"]="VALVE_STATE";
+                if (array_search("SET_TEMPERATURE",$registerNew) !== false)$resultReg[$i]["SET_TEMPERATURE"]="SET_TEMPERATURE";                
+                }
             if (array_search("ACTUAL_TEMPERATURE",$registerNew) !== false) 
                 {
                 $i++;

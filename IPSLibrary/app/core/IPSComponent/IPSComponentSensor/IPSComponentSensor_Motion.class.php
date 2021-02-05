@@ -75,7 +75,7 @@
 		 */
 		public function __construct($var1=null, $lightObject=null, $lightValue=null)
 			{
-		    echo "Build Motion Sensor with OID ".$var1.", RemoteOIds $lightObject und Type Definitionen: $lightValue.\n";
+		    //echo "Build Motion Sensor with OID ".$var1.", RemoteOIds $lightObject und Type Definitionen: $lightValue.\n";
 			$this->tempObject   = $lightObject;
 			$this->RemoteOID    = $var1;                    // par1 manchmal auch par2
 			$this->tempValue    = $lightValue;
@@ -114,7 +114,7 @@
 		 */
 		public function HandleEvent($variable, $value, IPSModuleSensor $module)
 			{
-            $debug=true;
+            $debug=false;
 			/* if ($value<2) 
                 {
                 if ($debug) echo "IPSComponentSensor_Motion, HandleEvent für VariableID : ".$variable." (".IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).") mit Wert : ".($value?"Bewegung":"Still")." \n";
@@ -169,7 +169,6 @@
 	class Motion_Logging extends Logging
 		{
         /* init at construct */
-        private     $startexecute;                              /* interne Zeitmessung */
         protected   $archiveHandlerID;                          /* Zugriff auf Archivhandler iD, muss nicht jedesmal neu berechnet werden */ 
         protected   $debug;       
 
@@ -214,19 +213,24 @@
 		 	
 		function __construct($variable,$variablename=Null, $value=Null, $typedev="unknown", $debug=false)          // construct ohne variable nicht mehr akzeptieren
 			{
-            $this->debug=$debug;
-            if ($this->debug) echo "Motion_Logging::construct do_init mit \"$typedev\" aufrufen:\n";
-            $this->startexecute=microtime(true); 
-            $this->archiveHandlerID=IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0]; 
-            $this->configuration=$this->set_IPSComponentLoggerConfig();             /* configuration verifizieren und vervollstaendigen, muss vorher erfolgen */
+            if ( ($this->GetDebugInstance()) && ($this->GetDebugInstance()==$variable) ) $this->debug=true;
+            else $this->debug=$debug;
+            if ($this->debug) echo "Motion_Logging::construct mit \"$typedev\" aufrufen für $variable, jetzt do_init aufrufen:\n";
 
-            $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $debug);              // $variable kann auch false sein
+            $this->constructFirst();
+
+            $NachrichtenID=$this->do_init($variable,$variablename,$value, $typedev, $this->debug);              // $variable kann auch false sein
 			parent::__construct($this->filename,$NachrichtenID);                                       // this->filename wird von do_init_xxx geschrieben
 			}
 
+        /* allgemeine Initialisierung.
+         * Es wird bereits ein typedev übergeben, trotzdem Datenbank befragen
+         * 
+         */
 
         private function do_init($variable,$variablename=NULL,$value, $typedev, $debug=false)
             {
+            $debugSql=false;
             /**************** installierte Module und verfügbare Konfigurationen herausfinden */
             $moduleManager = new IPSModuleManager('', '', sys_get_temp_dir(), true);
             $this->installedmodules=$moduleManager->GetInstalledModules();     
@@ -244,7 +248,7 @@
                 if ($this->variableProfile=="") $this->variableProfile=IPS_GetVariable($variable)["VariableCustomProfile"];
                 $this->variableType=IPS_GetVariable($variable)["VariableType"];
                 //echo "do_init machen und getfromDatabase aufrufen.\n";                                
-                $rows=getfromDatabase("COID",$variable,false,$debug);                // Bestandteil der MySQL_Library, false Alternative
+                $rows=getfromDatabase("COID",$variable,false,$debugSql);                // Bestandteil der MySQL_Library, false Alternative
                 if ( ($rows === false) || (sizeof($rows) != 1) )
                     {
                     if ($typedev==Null)
@@ -410,7 +414,7 @@
                 }
             $resultLog=GetValueIfFormatted($this->variable);
             echo "CustomComponent Motion_LogValue Log Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
-            IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Motion '.$this->variable." (".IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+            if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Motion '.$this->variable." (".IPS_GetName($this->variable)."/".IPS_GetName(IPS_GetParent($this->variable)).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
             if ( (isset($this->configuration["LogConfigs"]["DelayMotion"])) == true)
                 {
                 if ($result==true)
@@ -546,7 +550,7 @@
             {
             $resultLog=GetValueIfFormatted($this->variable);
             echo "CustomComponent Motion_LogValue Log Brightness Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
-            IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Brightness '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+            if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Motion_LogValue: Lets log Brightness '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
             SetValue($this->variableLogID,$result);		
             return ($resultLog);
             }
@@ -560,7 +564,7 @@
             {
             $resultLog=GetValueIfFormatted($this->variable);
             echo "CustomComponent Motion_LogValue Log Contact Variable ID : ".$this->variable." (".IPS_GetName($this->variable)."), aufgerufen von Script ID : ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert : $resultLog\n";
-            IPSLogger_Inf(__file__, 'CustomComponent Brightness Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
+            if ($this->CheckDebugInstance($this->variable)) IPSLogger_Inf(__file__, 'CustomComponent Brightness Log: Lets log motion '.$this->variable." (".IPS_GetName($this->variable).") ".$_IPS['SELF']." (".IPS_GetName($_IPS['SELF']).") mit Wert $resultLog");
             SetValue($this->variableLogID,$result);		
             return ($resultLog);
             }

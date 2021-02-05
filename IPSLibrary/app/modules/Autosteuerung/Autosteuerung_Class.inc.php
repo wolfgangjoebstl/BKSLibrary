@@ -745,7 +745,7 @@ abstract class AutosteuerungConfiguration
 					$print[$id]["COMMAND"]=$command;
 					}
 				/* sortieren */
-                print_r($print);
+                //print_r($print);
 				unset($entry);
 				foreach ($this->sortList("NAME",$print,"SORT_ASC") as $entry) echo "  ".$entry["ID"]." (".str_pad($entry["NAME"].")",50)." => (".$entry["MODE"]."|".$entry["FUNCTION"]."|".$entry["COMMAND"].",)\n";
 
@@ -3293,7 +3293,7 @@ class Autosteuerung
 					}						
 
 			case "ON":
-                echo "    --> ON Befehl erkannt ....\n";
+                //echo "    --> ON Befehl erkannt ....\n";
 				if ( ($result["STATUS"] !== false) || ($result["SOURCE"] == "ONUPDATE") )   
 					{
 					/* nimmt den Wert des auslösenden Ereignisses, ON Befehl wird nur abgearbeitet wenn Wert des Ereignis auf true steht oder als Auslöser update eingetragen wird (statt onchange) 
@@ -3374,7 +3374,7 @@ class Autosteuerung
 							break;
 						}		
 					}
-					
+				echo "   ON Befehl ".$result["SWITCH"]."   ".$result["ON"]."\n";	
 				break;
 			case "OFF#COLOR":
 			case "OFF#LEVEL":
@@ -3684,7 +3684,7 @@ class Autosteuerung
                         {
                         $result["SWITCH"] = $state;
                         }                      		
-                    echo "   Ergebnis Evaluierung ".($result["SWITCH"]?"true":"false")."\n";
+                    echo "   Ergebnis Evaluierung $Befehl0 $Befehl1:".($result["SWITCH"]?"true":"false")."\n";
 				break;
 			case "IFDIF":           /* bei Temperaturwerten ist das der Abstand, der zum alten Wert erreicht werden muss bevor der befehl ausgeführt wird */
 				$dif=(float)($befehl[1]);
@@ -4982,7 +4982,7 @@ class Autosteuerung
 					}
 				}
 			}
-        if ($simulate) echo "SwitchObject Ergebnis : $ergebnis .\n";
+        if ($simulate) echo "SwitchObject Ergebnis : \"$ergebnis\" \n";
 		else 
 			{
 			$ergebnis.= "SwitchObject Undo with $undo.\n";
@@ -5144,7 +5144,7 @@ class Autosteuerung
 		    		$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
 			    	$befehl.='  $heatManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
 				    $befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-				    $befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
+				    $befehl.='IPSLogger_Dbg(__file__, "Timer Switch Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
                     }
                 else
                     {                    
@@ -5153,7 +5153,7 @@ class Autosteuerung
 		    		$befehl.='if ($value<=('.$result["DIM#LEVEL"].')) {'."\n";
 			    	$befehl.='  $lightManager->SetValue('.$result["OID"].',$value); } '."\n".'else {'."\n";
 				    $befehl.='  IPS_SetEventActive('.$EreignisID.',false);}'."\n";
-				    $befehl.='IPSLogger_Dbg(__file__, "Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
+				    $befehl.='IPSLogger_Dbg(__file__, "Timer Switch Command Dim '.$result["NAME"].' mit aktuellem Wert : ".$value."   ");'."\n";
                     }
                 echo "===================\n".$befehl."\n===================\n";
 				echo "   Script für Timer für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$result["COMMAND"])."\n";
@@ -5171,9 +5171,13 @@ class Autosteuerung
 					if (isset($result["DELAY#CHECK"])==true)
 						{
                         echo "Aufruf timerCommand für DELAY#CHECK mit :".json_encode($result)."\n";
-						$EreignisID = $this->getEventTimerID($result["NAME"]."_EVENT");						
+						$EreignisID = $this->getEventTimerID($result["NAME"]."_EVENT_DIM");		// damit der richtige Timer deaktiviert wird				
 						$befehl="include(IPS_GetKernelDir().\"scripts\IPSLibrary\app\modules\Autosteuerung\Autosteuerung_Switch.inc.php\");\n";
-						$befehl.='if (GetValue('.$result["SOURCEID"].')==false) { IPS_SetEventActive('.$EreignisID.',false); '.$result["UNDO"].'   }';
+						$befehl.='if (GetValue('.$result["SOURCEID"].")==false) {\n";
+                        $befehl.='  IPS_SetEventActive('.$EreignisID.',false);'."\n";
+                        $befehl.='  '.$result["UNDO"]."\n";
+        			    $befehl.='  IPSLogger_Inf(__file__, "Timer Switch Command Delay '.$result["NAME"].' mit aktuellem Wert : false, wird ausgeschaltet "); }'."\n";
+                        $befehl.='else IPSLogger_Inf(__file__, "Timer Switch Command Delay '.$result["NAME"].' mit aktuellem Wert : true, bedeutet retrigger ");'."\n";
 						echo "Execute Command Delay#Check , Script für Timer ".$result["NAME"]." für Register \"".$result["IPSLIGHT"]."\" : ".str_replace("\n","",$befehl)."\n";
 						//print_r($result);
 						if ($simulate==false)

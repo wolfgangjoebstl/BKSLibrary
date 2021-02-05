@@ -146,7 +146,7 @@
 		public function HandleEvent($variable, $value, IPSModuleSwitch $module)
       	    {
 			echo "IPSComponentSwitch_RHomematic:HandleEvent für VariableID : ".$variable." (".IPS_GetName($variable).") mit Wert : ".($value?"Ein":"Aus")." \n";
-	   	    IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic: HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
+	   	    //IPSLogger_Inf(__file__, 'HandleEvent: IPSComponentSwitch_RHomematic: HandleEvent für VariableID '.$variable.' ('.IPS_GetName(IPS_GetParent($variable)).'.'.IPS_GetName($variable).') mit Wert '.($value?"Ein":"Aus"));			
             $startexec=microtime(true);
 			$module->SyncState($value, $this);
             echo "Aktuelle Laufzeit nach SyncState ".exectime($startexec)." Sekunden.\n";        

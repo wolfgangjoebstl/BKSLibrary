@@ -174,7 +174,6 @@
 
 	class HeatSet_Logging extends Logging
 		{
-        private $startexecute;                  /* interne Zeitmessung */
 		protected $installedmodules;                    /* installierte Module */
         protected $debug;                           /* zusaetzliche Echo Ausgaben */
 

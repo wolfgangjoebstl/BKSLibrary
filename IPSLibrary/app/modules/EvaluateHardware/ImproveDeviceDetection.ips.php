@@ -277,13 +277,13 @@
         $topID=@IPS_GetObjectIDByName("Topology", 0 );
         if ($topID === false) 	$topID = CreateCategory("Topology",0,20);       // Kategorie anlegen wenn noch nicht da
 
-        if (false)              /* für das Anlegen der TopologyDevices */
+        //if (false)              /* für das Anlegen der TopologyDevices */
             {
             $i=0;
             $onlyOne=true;      // schön vorsichtig, nur eine Instanz nach der anderen anschauen
             $parent=$topID;
 
-            echo "   Die EvaluateHardware_Devicelist devicelist() jetzt Gerät für Gerät durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen:\n\n";
+            echo "\nDie EvaluateHardware_Devicelist devicelist() jetzt Gerät für Gerät durchgehen und wenn noch nicht vorhanden ein Topology Device anlegen:\n\n";
             foreach ($deviceList as $name => $entry)
                 {
                 $instances=$entry["Instances"];
@@ -291,8 +291,8 @@
                     {
                     if ( (isset($deviceInstances[$name])) === false )
                         {
-                        echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
-                        $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
+                        echo str_pad($i,4)."Eine Topology Device Instanz in der Kategorie Topology mit dem Namen $name unter ".IPS_GetName($parent)." ($parent) erstellen:\n";
+                        /* $InsID = IPS_CreateInstance("{5F6703F2-C638-B4FA-8986-C664F7F6319D}");          //Topology Device Instanz erstellen 
                         if ($InsID !== false)
                             {
                             IPS_SetName($InsID, $name); // Instanz benennen
@@ -302,13 +302,13 @@
                             //IPS_SetProperty($InsID, "HomeCode", "12345678"); // Ändere Eigenschaft "HomeCode"
                             IPS_ApplyChanges($InsID);           // Übernehme Änderungen -> Die Instanz benutzt den geänderten HomeCode
                             }
-                        else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n";
+                        else echo "Fehler beim Instanz erstellen. Wahrscheinlich ein echo Befehl im Modul versteckt. \n"; */
                         }
                     else
                         {
                         /* wenn schon angelegt die DeviceList() auf die richtige Topology setzen */
                         $InstanzID = $deviceInstances[$name];    
-                        echo str_pad($i,4)."Eine Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
+                        echo str_pad($i,4)."Eine Topology Device Instanz mit dem Namen $name unter ".IPS_GetName(IPS_GetParent($InstanzID))." (".IPS_GetParent($InstanzID).") gibt es bereits und lautet: ". $InstanzID."   \n";
                         $room="";
                         $writeChannels=false;
                         $writeDevices=false;
@@ -346,7 +346,7 @@
                             if ( IPS_GetParent($InstanzID) != $roomInstances[$room])
                                 {
                                 echo "    -> Instanz Room vorhanden. Parent auf $room setzen.\n";
-                                IPS_SetParent($InstanzID,$roomInstances[$room]);
+                                //IPS_SetParent($InstanzID,$roomInstances[$room]);
                                 }
                             }
                         elseif (isset($devicegroupInstances[$room]))    
@@ -354,7 +354,7 @@
                             if ( IPS_GetParent($InstanzID) != $devicegroupInstances[$room])
                                 {
                                 echo "    -> Instanz DeviceGroup vorhanden. Parent $room setzen.\n";
-                                IPS_SetParent($InstanzID,$devicegroupInstances[$room]);
+                                //IPS_SetParent($InstanzID,$devicegroupInstances[$room]);
                                 }
                             }
 
@@ -368,7 +368,7 @@
                         echo "Neue geplante Konfiguration wäre : $newconfig \n";
                         IPS_SetConfiguration($InstanzID,$newconfig);
                         */
-                        TOPD_SetDeviceList($InstanzID,$instances);
+                        echo "   TOPD_SetDeviceList($InstanzID,".json_encode($instances).")\n";
                         if (isset($installedModules["DetectMovement"]))  
                             {
                             //echo "     RegisterEvent DetectDeviceListHandler $InstanzID,'Topology',$room,''\n";
@@ -377,8 +377,8 @@
                                 {
                                 if ($writeChannels)
                                     {
-                                    if (isset($channelEventList[$instance["OID"]])) echo "     RegisterEvent DetectDeviceHandler ".$instance["OID"].",'Topology',$room,''\n";
-                                    else echo "   Channel ".$instance["OID"]." nicht Bestandteil der Eventliste.\n";
+                                    if (isset($channelEventList[$instance["OID"]])) echo "  Channel ".$instance["OID"]." update Eventliste DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
+                                    else echo "   Channel ".$instance["OID"]." nicht Bestandteil der Eventliste. DetectDeviceHandler->RegisterEvent(".$instance["OID"].",'Topology',$room,'')\n";
                                     $DetectDeviceHandler->RegisterEvent($instance["OID"],'Topology',$room,'');	                    /* für Topology registrieren, ich brauch eine OID damit die Liste erzeugt werden kann */
                                     }
                                 }       // ende foreach
