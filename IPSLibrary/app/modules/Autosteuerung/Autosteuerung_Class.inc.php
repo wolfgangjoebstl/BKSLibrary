@@ -149,7 +149,8 @@ class AutosteuerungHandler
                     }
                 $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
                 $scriptID  = IPS_GetScriptIDByName('Autosteuerung', $CategoryIdApp);                    
-                }    
+                } 
+            /* standardize configuration */       
             $this->configuration = $this->set_Configuration();
 			self::$scriptID=$scriptID;
 		    }

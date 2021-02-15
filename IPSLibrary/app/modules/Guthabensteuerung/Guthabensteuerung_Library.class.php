@@ -26,13 +26,8 @@
 		public function __construct($ausgeben=false,$ergebnisse=false,$speichern=false)
 			{
 			/* standardize configuration */
-			
-            $this->configuration["CONTRACTS"] = get_GuthabenConfiguration();
-            $this->configuration["CONFIG"]    = get_GuthabenAllgemeinConfig();
+			$this->configuration = $this->setConfiguration($ausgeben,$ergebnisse,$speichern);       // Übergabe von drei Control Flags
 
-            $this->configuration["EXECUTE"]["AUSGEBEN"]=$ausgeben;
-            $this->configuration["EXECUTE"]["ERGEBNISSE"]=$ergebnisse;
-            $this->configuration["EXECUTE"]["SPEICHERN"]=$speichern;
             
             //print_r($this->configuration);
 
@@ -46,6 +41,83 @@
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
 			}
 			
+        /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben */
+
+		public function getConfiguration()
+	        {
+	        return ($this->configuration);
+	        }
+
+        /* die gesamte Konfiguration einlesen und eventuell anpassen, prüfen und bearbeiten */
+
+		public function setConfiguration($ausgeben,$ergebnisse,$speichern)
+	        {
+            if ( ((function_exists("get_GuthabenConfiguration"))===false) || ((function_exists("get_GuthabenAllgemeinConfig"))===false) ) IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+            if ( (function_exists("get_GuthabenConfiguration")) && (function_exists("get_GuthabenAllgemeinConfig")) )
+                {
+                $phoneID=array();
+                $i=0;
+                foreach (get_GuthabenConfiguration() as $TelNummerInput)
+                    {
+                    configfileParser($TelNummerInput, $TelNummer, ["STATUS","Status","status" ],"Status" ,"Active");  
+                    configfileParser($TelNummerInput, $TelNummer, ["NUMMER","Nummer","nummer" ],"Nummer" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["NAME","Name","name" ],"Name" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["PASSWORD","Password","password" ],"Password" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["TARIF","Tarif","tarif" ],"Tarif" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["TYP","Typ","typ" ],"Typ" ,"Drei");  
+                    //echo "Telefonnummer ".$TelNummer["Nummer"]." und Status ".$TelNummer["Status"]."\n";
+                    if ($TelNummer["Status"]=="Active")
+                        {
+                        $phoneID[$i]=$TelNummer;
+                        $phoneID[$i]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
+                        $i++;
+                        }
+                    } // ende foreach
+
+                $configuration["CONTRACTS"] = $phoneID;
+                $configInput=get_GuthabenAllgemeinConfig();
+
+                configfileParser($configInput, $config, ["WebResultDirectory","Webresultdirectory","webresultdirectory" ],"WebResultDirectory" ,"/Guthaben/"); 
+                $dosOps = new dosOps();
+               	$systemDir     = $dosOps->getWorkDirectory(); 
+                if (strpos($config["WebResultDirectory"],"C:/Scripts/")===0) $config["WebResultDirectory"]=substr($config["WebResultDirectory"],10);      // Workaround für C:/Scripts"
+                $config["WebResultDirectory"] = $dosOps->correctDirName($systemDir.$config["WebResultDirectory"]);
+                $dosOps->mkdirtree($config["WebResultDirectory"]);
+
+                configfileParser($configInput, $config, ["OPERATINGMODE","OperatingMode","Operatingmode","operatingmode" ],"OperatingMode" ,"iMacroDefault");  
+                if (($config["OperatingMode"])=="iMacroDefault") 
+                    {       /* bestehende alte Konfiguration vor Bearbeitung ummodeln */
+                    $configInput["iMacro"]=$configInput;
+                    $config["OperatingMode"]="iMacro";
+                    }
+                if ( (strtoupper($config["OperatingMode"]))=="SELENIUM")
+                    {
+                    echo "Operating Mode is Selenium WebDriver.\n";
+                    configfileParser($configInput, $config, ["Selenium","SELENIUM","selenium" ],"Selenium" , null);  
+                    configfileParser($configInput["Selenium"], $config["Selenium"], ["BROWSER","Browser","browser" ],"Browser" , "Chrome");  
+                    configfileParser($configInput["Selenium"], $config["Selenium"], ["WEBDRIVER","WebDriver","Webdriver","webdriver" ],"WebDriver" , 'http://10.0.0.34:4444/wd/hub');
+
+                    }
+                elseif  ( (strtoupper($config["OperatingMode"]))=="IMACRO")
+                    {
+
+
+
+                    }
+                else echo "ERROR GuthabenHandler::setConfiguration, Do not know the Operating Mode ".$config["OperatingMode"]."\n";
+                $configuration["CONFIG"]    = $config;
+                }
+
+            $configuration["EXECUTE"]["AUSGEBEN"]=$ausgeben;
+            $configuration["EXECUTE"]["ERGEBNISSE"]=$ergebnisse;
+            $configuration["EXECUTE"]["SPEICHERN"]=$speichern;                
+	        return ($configuration);
+	        }
+
+        /* nur dei SIM Karten Informationen ausgeben, zusaetztlich
+         * nach einer bestimmten telefonnummer suchen und nur diese ausgeben
+         */ 
+
 		public function getContractsConfiguration($telNummerFind="")
 	        {
             if ($telNummerFind=="") return ($this->configuration["CONTRACTS"]);
@@ -55,11 +127,8 @@
                 $result=array();
             	foreach ($this->configuration["CONTRACTS"] as $TelNummer)
 		            {
-               		if ( (isset($TelNummer["STATUS"])) && (strtoupper($TelNummer["STATUS"]) == "ACTIVE") )
-                        {
-                        //print_r($TelNummer);
-            		    if ( (isset($TelNummer["NUMMER"])) && ($TelNummer["NUMMER"] == $telNummerFind) ) $result=$TelNummer;
-                        }
+                    //print_r($TelNummer);
+                    if ($TelNummer["Nummer"] == $telNummerFind)  $result=$TelNummer;
                     }
                 return $result;
                 }
@@ -68,6 +137,25 @@
 		public function getGuthabenConfiguration()
 	        {
 	        return ($this->configuration["CONFIG"]);
+	        }
+
+		public function printAllContractsConfiguration()
+	        {
+            if ( ((function_exists("get_GuthabenConfiguration"))===false) || ((function_exists("get_GuthabenAllgemeinConfig"))===false) ) IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
+            if ( (function_exists("get_GuthabenConfiguration")) && (function_exists("get_GuthabenAllgemeinConfig")) )
+                {
+                foreach (get_GuthabenConfiguration() as $TelNummerInput)
+                    {
+                    configfileParser($TelNummerInput, $TelNummer, ["STATUS","Status","status" ],"Status" ,"Active");  
+                    configfileParser($TelNummerInput, $TelNummer, ["NUMMER","Nummer","nummer" ],"Nummer" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["NAME","Name","name" ],"Name" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["PASSWORD","Password","password" ],"Password" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["TARIF","Tarif","tarif" ],"Tarif" ,"");  
+                    configfileParser($TelNummerInput, $TelNummer, ["TYP","Typ","typ" ],"Typ" ,"");  
+
+                    echo "Telefonnummer ".$TelNummer["Nummer"]." Name ".str_pad($TelNummer["Name"],20)." Typ ".str_pad($TelNummer["Typ"],12)." und Status ".$TelNummer["Status"]."\n";
+                    } // ende foreach
+                }
 	        }
 
         public function createVariableGuthaben($lookfor="")
@@ -183,23 +271,25 @@
         *
         ************************************************************************************************************/
 
-        function parsetxtfile($lookfor="")
+        function parsetxtfile($lookfor="",$verzeichnis=false,$filename=false)
             {
             if ($lookfor=="") return (false);
-            $verzeichnis=$this->getGuthabenConfiguration()["DownloadDirectory"];
+            if ($verzeichnis === false) $verzeichnis=$this->getGuthabenConfiguration()["iMacro"]["DownloadDirectory"];
             $config=$this->getContractsConfiguration($lookfor);
             //print_r($config);
-            $nummer=$config["NUMMER"];
-            if (isset($config["TYP"])) $typ=strtoupper($config["TYP"]);
-            else $typ="Drei";
+            $nummer=$config["Nummer"];
+            $typ=strtoupper($config["Typ"]);
+            if ($filename === false) $filename = "/report_dreiat_".$nummer.".txt";
+
             //$startdatenguthaben=7;
             $startdatenguthaben=0;
             $ausgeben   = $this->configuration["EXECUTE"]["AUSGEBEN"];
             $ergebnisse = $this->configuration["EXECUTE"]["ERGEBNISSE"];
             $speichern  = $this->configuration["EXECUTE"]["SPEICHERN"];
 
-            if ($ausgeben) echo "Parse Textfile für $lookfor in Verzeichnis $verzeichnis :\n";
-            $handle = @fopen($verzeichnis."/report_dreiat_".$nummer.".txt", "r");
+            if ($ausgeben) echo "Parse Textfile $filename / ".$config["Name"]." für $lookfor in Verzeichnis $verzeichnis . Typ ist $typ :\n";
+            $handle = @fopen($verzeichnis.$filename, "r");
+
             $result1="";$result2="";$result3="";$result4="";$result5="";$result6="";
             $result4g="";$result4v="";$result4f="";  $result4unlimited = false; $result7=""; $result8="";
             $entgelte=false;
@@ -211,7 +301,8 @@
                 if ($ausgeben) 
                     {
                     //echo "Rückmeldung fopen : "; print_r($handle); echo "\n";
-                    echo "Aufruf von parsetxtfile mit folgender Config: ".$config["NAME"]." / ".$config["NUMMER"]." (".$config["PASSWORD"].")  -> ".$config["TARIF"]."   ";
+                    print_r($config);
+                    echo "Aufruf von parsetxtfile mit folgender Config: ".$config["Name"]." / ".$config["Nummer"]." (".$config["Password"].")  -> ".$config["Tarif"]."   ";
                     if ($typ=="DREI") echo "Drei prepaid oder postpaid Karte.\n";
                     else echo "Alternative erkannt, UPC.\n";
                     if ($ergebnisse) echo "==========================================================================================================================\n";
@@ -563,7 +654,7 @@
                     }  /* ende while buffer schleife */
                     
 
-                if ($result1=="") $result1=$config["TARIF"];	// wenn der Username nicht gefunden wurde einen Ersatzwert nehmen
+                if ($result1=="") $result1=$config["Tarif"];	// wenn der Username nicht gefunden wurde einen Ersatzwert nehmen
                 else $result1.=$tarif1;							// wenn Username gefunden wurde gleich auch mit dem ermittelten Tarif zusammanhaengen
                 
                 //$ergebnis="User:".$result1." Nummer:".$result2." Status:".$result4." Wert vom:".$result3." Guthaben:".$result5."\n";

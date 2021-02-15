@@ -50,6 +50,9 @@ if ($tim2ID==false)
 $GuthabenConfig = get_GuthabenConfiguration();
 $GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
 	
+
+
+
 $phoneID=array();
 $i=0;
 foreach ($GuthabenConfig as $TelNummer)

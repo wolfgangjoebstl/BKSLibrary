@@ -36,6 +36,7 @@
  *******************************************************************/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+    IPSUtils_Include ("Guthabensteuerung_Library.class.php","IPSLibrary::app::modules::Guthabensteuerung");    
 
 	// max. Scriptlaufzeit definieren
 	ini_set('max_execution_time', 500);
@@ -61,7 +62,7 @@
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	//echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Guthabensteuerung');
-	//echo "\nRemoteAccess Version : ".$ergebnis;
+	//echo "\nGuthabensteuerung Version : ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
@@ -92,10 +93,9 @@
 	$statusReadID = CreateVariable("StatusWebread", 3, $CategoryIdData,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	$testInputID = CreateVariable("TestInput", 3, $CategoryIdData,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 	
-	IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config::modules::Guthabensteuerung");
-
-	$GuthabenConfig = get_GuthabenConfiguration();
-	$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
+    $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
+	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
+	$GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();
 	//print_r($GuthabenConfig);
 
 	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}');
@@ -104,26 +104,29 @@
 	$phoneID=array();           // wird für die Links im Webfront verwendet, nur die aktiven SIM Karten bekommen einen Link
 	$i=0;
 	foreach ($GuthabenConfig as $TelNummer)
-		{
-		if ( strtoupper($TelNummer["STATUS"]) == "ACTIVE" )
-			{   /* nur für die noch aktiven Nummern die Scripts anlegen und auch im Webfront darstellen */	
-			if (isset($TelNummer["TYP"]) == false) $TelNummer["TYP"]="Drei";
-			$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["NUMMER"].".iim","w");
+		{   /* nur für die noch aktiven Nummern die Scripts anlegen und auch im Webfront darstellen */	
+        if ((strtoupper($GuthabenAllgConfig["OperatingMode"]))=="SELENIUM")
+            {
+
+            }
+        else
+            {
+			$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_".$TelNummer["Nummer"].".iim","w");
 			fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
 			fwrite($handle2,'TAB T=1'."\n");
 			fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
 			fwrite($handle2,'SET !EXTRACT NULL'."\n");
 			fwrite($handle2,'SET !VAR0 '.$TelNummer["NUMMER"]."\n");
 			fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-			if ( strtoupper($TelNummer["TYP"]) == "DREI" )
+			if ( strtoupper($TelNummer["Typ"]) == "DREI" )
 				{
 				//fwrite($handle2,'URL GOTO=https://www.drei.at/'."\n");
 				fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");			
 				//fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");		// alte version vor Sep 2018
 				fwrite($handle2,'TAG POS=1 TYPE=A ATTR=TXT:Kundenzone'."\n");
-				fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["NUMMER"]."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$TelNummer["Nummer"]."\n");
 				fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-				fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["PASSWORD"]."\n");
+				fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$TelNummer["Password"]."\n");
 				fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
 				fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
 				fwrite($handle2,'\'Ausloggen'."\n");
@@ -145,45 +148,46 @@
 				}	
 			fwrite($handle2,'TAB CLOSE'."\n");
 			fwrite($handle2,'TAB CLOSE'."\n");
-			fclose($handle2);			
-			$phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$TelNummer["NUMMER"], 3);
-			$phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Summary", 3);
-			$phoneID[$i]["Nummer"]=$TelNummer["NUMMER"];
-			$phoneID[$i]["Short"]=substr($TelNummer["NUMMER"],(strlen($TelNummer["NUMMER"])-3),10);
-			$phoneID[$i++]["Summ"]=$phone_Summ_ID;
-	    	$phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_User", 3);
-    	 	$phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Status", 3);
-     		$phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Date", 3);
-	     	$phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_unchangedDate", 3);
-    	 	$phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Bonus", 3);
+			fclose($handle2);	
+            }		
+        $phone1ID = CreateVariableByName($CategoryIdData, "Phone_".$TelNummer["Nummer"], 3);
+        $phone_Summ_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Summary", 3);
+        $phoneID[$i]["Nummer"]=$TelNummer["Nummer"];
+        $phoneID[$i]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
+        $phoneID[$i]["Summ"]=$phone_Summ_ID;
+        $phone_User_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_User", 3);
+        $phone_Status_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Status", 3);
+        $phone_Date_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Date", 3);
+        $phone_unchangedDate_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_unchangedDate", 3);
+        $phone_Bonus_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Bonus", 3);
 
-			$phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Volume", 2);
-			IPS_SetVariableCustomProfile($phone_Volume_ID,'MByte');
-			AC_SetLoggingStatus($archiveHandlerID,$phone_Volume_ID,true);
-			AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,0);
-			IPS_ApplyChanges($archiveHandlerID);
+        $phone_Volume_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Volume", 2);
+        IPS_SetVariableCustomProfile($phone_Volume_ID,'MByte');
+        AC_SetLoggingStatus($archiveHandlerID,$phone_Volume_ID,true);
+        AC_SetAggregationType($archiveHandlerID,$phone_Volume_ID,0);
+        IPS_ApplyChanges($archiveHandlerID);
 
-			$phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_VolumeCumm", 2);
-			IPS_SetVariableCustomProfile($phone_VolumeCumm_ID,'MByte');
-			AC_SetLoggingStatus($archiveHandlerID,$phone_VolumeCumm_ID,true);
-			AC_SetAggregationType($archiveHandlerID,$phone_VolumeCumm_ID,0);
-			IPS_ApplyChanges($archiveHandlerID);
+        $phone_VolumeCumm_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_VolumeCumm", 2);
+        IPS_SetVariableCustomProfile($phone_VolumeCumm_ID,'MByte');
+        AC_SetLoggingStatus($archiveHandlerID,$phone_VolumeCumm_ID,true);
+        AC_SetAggregationType($archiveHandlerID,$phone_VolumeCumm_ID,0);
+        IPS_ApplyChanges($archiveHandlerID);
 
-			$phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Cost", 2);
-			IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
-	  		IPS_SetPosition($phone_nCost_ID, 130);
-			AC_SetLoggingStatus($archiveHandlerID,$phone_nCost_ID,true);
-			AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,0);
-			IPS_ApplyChanges($archiveHandlerID);
+        $phone_nCost_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Cost", 2);
+        IPS_SetVariableCustomProfile($phone_nCost_ID,'Euro');
+        IPS_SetPosition($phone_nCost_ID, 130);
+        AC_SetLoggingStatus($archiveHandlerID,$phone_nCost_ID,true);
+        AC_SetAggregationType($archiveHandlerID,$phone_nCost_ID,0);
+        IPS_ApplyChanges($archiveHandlerID);
 
-	     	$phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["NUMMER"]."_Load", 2);
-			IPS_SetVariableCustomProfile($phone_nLoad_ID,'Euro');
-	  		IPS_SetPosition($phone_nLoad_ID, 140);
-			AC_SetLoggingStatus($archiveHandlerID,$phone_nLoad_ID,true);
-			AC_SetAggregationType($archiveHandlerID,$phone_nLoad_ID,0);
-			IPS_ApplyChanges($archiveHandlerID);
-			}
-		}
+        $phone_nLoad_ID = CreateVariableByName($phone1ID, "Phone_".$TelNummer["Nummer"]."_Load", 2);
+        IPS_SetVariableCustomProfile($phone_nLoad_ID,'Euro');
+        IPS_SetPosition($phone_nLoad_ID, 140);
+        AC_SetLoggingStatus($archiveHandlerID,$phone_nLoad_ID,true);
+        AC_SetAggregationType($archiveHandlerID,$phone_nLoad_ID,0);
+        IPS_ApplyChanges($archiveHandlerID);
+        $i++;
+        }
 	$maxcount=$i;
 	
   	$phone_CL_Change_ID = CreateVariableByName($CategoryIdData, "Phone_CL_Change", 2);
