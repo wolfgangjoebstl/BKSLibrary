@@ -12,7 +12,9 @@
 	 **/
 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");
 
 	$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
 	if (!isset($moduleManager)) 
@@ -25,23 +27,23 @@
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSModuleManager','2.50.3');
 	$moduleManager->VersionHandler()->CheckModuleVersion('IPSLogger','2.50.2');
 
-	echo "\nKernelversion : ".IPS_GetKernelVersion();
+	echo "\nKernelversion :          ".IPS_GetKernelVersion();
 	$ergebnis=$moduleManager->VersionHandler()->GetScriptVersion();
-	echo "\nIPS Version : ".$ergebnis;
+	echo "\nIPS Version :            ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetModuleState();
 	echo " ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('IPSModuleManager');
 	echo "\nIPSModulManager Version : ".$ergebnis;
 	$ergebnis=$moduleManager->VersionHandler()->GetVersion('Watchdog');
-	echo "\nWatchdog Version : ".$ergebnis;
+	echo "\nWatchdog Version :        ".$ergebnis;
 
  	$installedModules = $moduleManager->GetInstalledModules();
 	$inst_modules="\nInstallierte Module:\n";
 	foreach ($installedModules as $name=>$modules)
 		{
-		$inst_modules.=str_pad($name,20)." ".$modules."\n";
+		$inst_modules.=str_pad($name,30)." ".$modules."\n";
 		}
-	echo $inst_modules;
+	//echo $inst_modules;
 	
 	IPSUtils_Include ("IPSInstaller.inc.php",                       "IPSLibrary::install::IPSInstaller");
 	IPSUtils_Include ("IPSModuleManagerGUI.inc.php",                "IPSLibrary::app::modules::IPSModuleManagerGUI");
@@ -64,6 +66,13 @@
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
+
+	/******************************************************
+	 *
+	 *			MODULE, Event Control
+	 *
+	 *************************************************************/
+
 	//Alle Modulnamen mit GUID ausgeben
 	foreach(IPS_GetModuleList() as $guid)
 		{
@@ -76,9 +85,14 @@
 		//echo $key." = ".$guid."\n";
 		}
 
-$name=IPS_GetModule("{ED573B53-8991-4866-B28C-CBE44C59A2DA}");
-$oid=IPS_GetInstanceListByModuleID("{ED573B53-8991-4866-B28C-CBE44C59A2DA}")["0"];
-echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid." und Name : ".IPS_GetName($oid)."\n";
+    $name=IPS_GetModule("{ED573B53-8991-4866-B28C-CBE44C59A2DA}");
+    $oid=IPS_GetInstanceListByModuleID("{ED573B53-8991-4866-B28C-CBE44C59A2DA}")["0"];
+    echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid." und Name : ".IPS_GetName($oid)."\n";
+
+	$config = IPS_GetConfiguration($oid);
+	echo "Konfiguration vorher: \n";
+	echo $config;
+    echo "\n";
 
 	/******************************************************
 	 *
@@ -86,9 +100,6 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	 *
 	 *************************************************************/
 
-	$config = IPS_GetConfiguration($oid);
-	echo "Konfiguration vorher: \n";
-	echo $config;
 
 	$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 	$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
@@ -98,10 +109,10 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	$scriptIdShutdownWD    = IPS_GetScriptIDByName('Shutdown', $CategoryIdApp);
 
 	echo "Die Scripts sind auf               ".$CategoryIdApp."\n";
-	echo "StartIPSWatchDog hat die ScriptID ".$scriptIdStartWD." \n";
-	echo "StopIPSWatchDog hat die ScriptID ".$scriptIdStopWD." \n";
-	echo "Shutdown hat die ScriptID ".$scriptIdShutdownWD." \n";
-	echo "Alive WatchDog hat die ScriptID ".$scriptIdAliveWD." \n";
+	echo "StartIPSWatchDog hat die ScriptID  ".$scriptIdStartWD." \n";
+	echo "StopIPSWatchDog hat die ScriptID   ".$scriptIdStopWD." \n";
+	echo "Shutdown hat die ScriptID          ".$scriptIdShutdownWD." \n";
+	echo "Alive WatchDog hat die ScriptID    ".$scriptIdAliveWD." \n";
 	
 	IPS_SetConfiguration($oid, '{"ShutdownScript":'.$scriptIdStopWD.',"StartupScript":'.$scriptIdStartWD.'}');
 	IPS_ApplyChanges($oid);
@@ -207,19 +218,14 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	 *
 	 *************************************************************/
 
-	$verzeichnis="C:/scripts/";
-	$unterverzeichnis="process/";
-	if (is_dir($verzeichnis.$unterverzeichnis))
-		{
-		}
-	else
-		{
-		mkdir($verzeichnis.$unterverzeichnis);	
-		}
+    $watchDog = new watchDogAutoStart();
+    $configWD = $watchDog->getConfiguration();
+    print_r($configWD);
+    if ($configWD["RemoteShutDown"]) echo "Remote Shutdown wird unterstützt.\n";
 
+	$verzeichnis=$configWD["WatchDogDirectory"];
+	$unterverzeichnis="";
 
-	$configWD=Watchdog_Configuration();
-	
 	$handle2=fopen($verzeichnis.$unterverzeichnis."read_username.bat","w");
 	fwrite($handle2,'echo %username% >>username.txt'."\r\n");
 	//fwrite($handle2,"pause\r\n");
@@ -238,11 +244,26 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 	fwrite($handle2,'pause'."\r\n");
 	fwrite($handle2,'shutdown /a'."\r\n");
 	fclose($handle2);
-	
-	if (isset($configWD["Software"]["Firefox"]["Directory"])==true )
+
+    if (strtoupper($configWD["Software"]["Selenium"]["Autostart"])=="YES")
+        {
+        echo "Write Selenium Startup Script to ".$verzeichnis.$unterverzeichnis."start_Selenium.bat\n";
+        $handle2=fopen($verzeichnis.$unterverzeichnis."start_Selenium.bat","w");
+        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
+        fwrite($handle2,'cd '.$configWD["Software"]["Selenium"]["Directory"]."\r\n");
+        fwrite($handle2,'java -jar '.$configWD["Software"]["Selenium"]["Execute"]."\r\n");
+        /*  cd C:\Scripts\Selenium\ 
+            java -jar selenium-server-standalone-3.141.59.jar
+            pause       */
+        fwrite($handle2,'pause'."\r\n");
+        fclose($handle2);
+        }
+
+	if (strtoupper($configWD["Software"]["Firefox"]["Autostart"])=="YES" )
 	    {
 	    echo "Schreibe Batchfile zum automatischen Start von Firefox.\n";
         $handle2=fopen($verzeichnis.$unterverzeichnis."start_firefox.bat","w");        
+        fwrite($handle2,'# written '.date("H:m:i d.m.Y")."\r\n");
         if (is_array($configWD["Software"]["Firefox"]["Url"]))
             {
             echo "   mehrere Urls sollen gestartet werden.\n";
@@ -256,7 +277,7 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 		fclose($handle2);
 		}
 		
-	if (isset($configWD["Software"]["iTunes"]["Directory"])==true )
+	if (strtoupper($configWD["Software"]["iTunes"]["Autostart"])=="YES" )
 	   {
   	   echo "Schreibe Batchfile zum automatischen Kill von Java und Soap zur Steuerung von iTunes.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."kill_java.bat","w");
@@ -293,21 +314,22 @@ echo "Wir interessieren uns für Modul : ".$name['ModuleName']." mit OID: ".$oid
 		
 		}
 		
-	if (isset($configWD["Software"]["VMware"]["Directory"])==true )
+	if (strtoupper($configWD["Software"]["VMware"]["Autostart"])=="YES" )
 	   {
 	   echo "Schreib Batchfile zum automatischen Start der VMware.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_VMware.bat","w");
   		fwrite($handle2,'"'.$configWD["Software"]["VMware"]["Directory"].'vmplayer.exe" "'.$configWD["Software"]["VMware"]["DirFiles"].$configWD["Software"]["VMware"]["FileName"].'"'."\r\n");
 		fclose($handle2);
 		}
-		
+        
+    /* Depreciated, kein IPSWatchdog mehr notwendig
 	if (isset($configWD["Software"]["Watchdog"]["Directory"])==true )
 	   {
 	   echo "Schreib Batchfile zum automatischen Start des Watchdogs.\n";
 		$handle2=fopen($verzeichnis.$unterverzeichnis."start_Watchdog.bat","w");
   		fwrite($handle2,'"'.$configWD["Software"]["Watchdog"]["Directory"].'IPSWatchDog.exe"'."\r\n");
 		fclose($handle2);
-		}
+		}   */
 
   		
 ?>

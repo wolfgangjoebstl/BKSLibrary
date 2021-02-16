@@ -60,8 +60,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	 *
 	 **********************************************************************/
 
-	$WDconfig=Watchdog_Configuration();
-	//print_r($config);
+    $watchDog = new watchDogAutoStart();
+    $WDconfig = $watchDog->getConfiguration();;
 
 	$tim5ID = @IPS_GetEventIDByName("ShutdownWD", $ShutdownId);
 	echo "Timer ID : ".$tim5ID." Script ID : ".$ShutdownId."\n";
@@ -71,8 +71,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	$ShutRestart=true;  	/* true bedeutet restart */
 	$debug=false;         /* für debug Zwecke die eigene Maschine nicht neu starten */
 
-	$verzeichnis="C:/scripts/";
-	$unterverzeichnis="process/";
+	$verzeichnis=$WDconfig["WatchDogDirectory"];
+	$unterverzeichnis="";
 
 	/********************************************************************
 	 *
@@ -81,7 +81,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	 **********************************************************************/
 
 	echo "\n";
-	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
+	$processStart=array("selenium.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On");
 	$processStart=$sysOps->checkProcess($processStart);
 	echo "Die folgenden Programme muessen gestoppt (wenn Off) werden:\n";
 	print_r($processStart);
@@ -91,7 +91,7 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		echo "Von einem anderen Script aus gestartet, Shutdown Prozess beginnen.\n";
 		tts_play(1,"IP Symcon Visualisierung herunterfahren",'',2);
 		IPS_SetEventActive($tim5ID,true);
-   	SetValue($ScriptCounterID,1);
+   	    SetValue($ScriptCounterID,1);
 		if (isset($state) == true )
 			{
 			IPSLogger_Dbg(__file__, "Shutdown: Script extern aufgerufen mit Befehl : ".$state." *****************  ");
@@ -116,8 +116,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 		echo "Von der Console aus gestartet, Shutdown Prozess beginnen.\n";
 		tts_play(1,"IP Symcon Visualisierung herunterfahren",'',2);
 		IPS_SetEventActive($tim5ID,true);
-   	SetValue($ScriptCounterID,1);
-	   IPSLogger_Dbg(__file__, "Shutdown: Script direkt aufgerufen ***********************************************");
+   	    SetValue($ScriptCounterID,1);
+	    IPSLogger_Dbg(__file__, "Shutdown: Script direkt aufgerufen ***********************************************");
 		$log_OperationCenter->LogMessage(    'Lokaler Server wird durch Aufruf per Script restartet');
 		$log_OperationCenter->LogNachrichten('Lokaler Server wird durch Aufruf per Script restartet');
 		}
@@ -125,8 +125,8 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 	if ($_IPS['SENDER']=="TimerEvent")
 		{
 		switch ($_IPS['EVENT'])
-		   {
-	   	case $tim5ID:
+		    {
+	   	    case $tim5ID:
 				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Shutdown durchführen. ScriptcountID:".GetValue($ScriptCounterID));
 
 				/******************************************************************************************
@@ -136,10 +136,10 @@ IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSCom
 
 				$counter=GetValue($ScriptCounterID);
 				switch ($counter)
-				   {
+				    {
 					case 4:
-			   	   SetValue($ScriptCounterID,0);
-			      	IPS_SetEventActive($tim5ID,false);
+			   	        SetValue($ScriptCounterID,0);
+			      	    IPS_SetEventActive($tim5ID,false);
 						IPSLogger_Dbg(__file__, "Shutdown: Prozess abgeschlossen");
 			      	break;
 					case 3:

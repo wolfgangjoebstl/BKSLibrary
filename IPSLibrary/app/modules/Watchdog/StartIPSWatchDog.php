@@ -83,7 +83,9 @@
 	 *
 	 **********************************************************************/
 
-	$config=Watchdog_Configuration();
+    $watchDog = new watchDogAutoStart();
+    $config = $watchDog->getConfiguration();
+	//$config=Watchdog_Configuration();
 	//print_r($config);
 	
 	$tim2ID = @IPS_GetEventIDByName("KeepAlive", $scriptIdAliveWD);
@@ -91,8 +93,8 @@
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
 
-	$verzeichnis="C:/scripts/";
-	$unterverzeichnis="process/";
+	$verzeichnis=$configWD["WatchDogDirectory"];
+	$unterverzeichnis="";
 	
 	/********************************************************************
 	 *
@@ -101,35 +103,35 @@
 	 **********************************************************************/
 
 	echo "\n";
-	$processStart=array("IPSWatchDog.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On", "Firefox.exe" => "On");
+	$processStart=array("selenium.exe" => "On","vmplayer.exe" => "On", "iTunes.exe" => "On", "Firefox.exe" => "On");
 	$processStart=$sysOps->checkProcess($processStart);
 	echo "Die folgenden Programme muessen gestartet (wenn On) werden:\n";
 	print_r($processStart);
 
-	if (isset($config["Software"]["Watchdog"]["Directory"])==true )
-	   {
-		if ( ($dosOps->fileAvailable("IPSWatchDog.exe",$config["Software"]["Watchdog"]["Directory"])) == false )
-		   {
-	   	echo "Keine Installation von IPSWatchdog vorhanden.\n";
-		   $processStart["IPSWatchDog.exe"]="Off";
+	if (strtoupper($config["Software"]["Selenium"]["Autostart"])=="YES" )
+	    {
+		if ( ($dosOps->fileAvailable(($config["Software"]["Selenium"]["Execute"],$config["Software"]["Selenium"]["Directory"])) == false )
+		    {
+	   	    echo "Keine Installation von Java Selenium vorhanden.\n";
+		    $processStart["selenium.exe"]="Off";
 			}
 		}
 	else
 	   {
-	   $processStart["IPSWatchDog.exe"]="Off";
+	   $processStart["selenium.exe"]="Off";
 	   }
 
-	if (isset($config["Software"]["VMware"]["Directory"])==true )
-	   {
+	if (strtoupper($config["Software"]["VMware"]["Autostart"])=="YES" )
+	    {
 		if ( ($dosOps->fileAvailable("vmplayer.exe",$config["Software"]["VMware"]["Directory"])) == false )
-		   {
-		   echo "Keine Installation von VMware vorhanden.\n";
-		   $processStart["vmplayer.exe"]="Off";
+		    {
+		    echo "Keine Installation von VMware vorhanden.\n";
+		    $processStart["vmplayer.exe"]="Off";
 			}
 		if ( ($dosOps->fileAvailable("*.vmx",$config["Software"]["VMware"]["DirFiles"])) == false )
-		   {
-	   	echo "Keine Images für VMPlayer vorhanden.\n";
-		   $processStart["vmplayer.exe"]="Off";
+		    {
+	   	    echo "Keine Images für VMPlayer vorhanden.\n";
+		    $processStart["vmplayer.exe"]="Off";
 			}
 		}
 	else
@@ -137,12 +139,12 @@
 	   $processStart["vmplayer.exe"]="Off";
 	   }
 
-	if (isset($config["Software"]["iTunes"]["Directory"])==true )
+	if (strtoupper($config["Software"]["iTunes"]["Autostart"])=="YES" )
 	   {
 		if ( ($dosOps->fileAvailable("iTunes.exe",$config["Software"]["iTunes"]["Directory"])) == false )
-		   {
-		   echo "Keine Installation von iTunes vorhanden.\n";
-		   $processStart["iTunes.exe"]="Off";
+		    {
+		    echo "Keine Installation von iTunes vorhanden.\n";
+		    $processStart["iTunes.exe"]="Off";
 			}
 		}
 	else
@@ -150,12 +152,12 @@
 	   $processStart["iTunes.exe"]="Off";
 	   }
 
-	if (isset($config["Software"]["Firefox"]["Directory"])==true )
+	if (strtoupper($config["Software"]["Firefox"]["Autostart"])=="YES" )
 	   {
 		if ( ($dosOps->fileAvailable("firefox.exe",$config["Software"]["Firefox"]["Directory"])) == false )
-		   {
-		   echo "Keine Installation von Firefox vorhanden.\n";
-		   $processStart["Firefox.exe"]="Off";
+		    {
+		    echo "Keine Installation von Firefox vorhanden.\n";
+		    $processStart["Firefox.exe"]="Off";
 			}
 		}
 	else
@@ -289,9 +291,9 @@
 					case 4:
 						//if (GetValueBoolean(50871))
 						if ($processStart["iTunes.exe"] == "On")
-						   {
+						    {
 							echo "SOAP Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
-					   	/* Soap ausschalten */
+					   	    /* Soap ausschalten */
 							//IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
 							writeLogEvent("Autostart (SOAP)");
@@ -301,9 +303,9 @@
 					case 3:
 						//if (GetValueBoolean(46719))
 						if ($processStart["iTunes.exe"] == "On")
-					   	{
+					   	    {
 							echo "Itunes Ausschalten und gleich wieder einschalten, wie auch immer um Mitternacht.\n";
-				   		/* iTunes ausschalten */
+				   		    /* iTunes ausschalten */
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
 							writeLogEvent("Autostart (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
@@ -327,19 +329,19 @@
 						SetValue($ScriptCounterID,$counter+1);
 						break;
 					case 1:
-						if ($processStart["IPSWatchDog.exe"] == "On")
+						if ($processStart["selenium.exe"] == "On")
 							{
-							echo "IPSWatchdog.exe wird neu gestartet.\n";
-							IPSLogger_Dbg(__file__, "Autostart: Watchdog wird gestartet");
+							echo "selenium.exe wird neu gestartet.\n";
+							IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
 
 							/*********************************************************************/
-							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Watchdog"]["Directory"]."IPSWatchDog.exe");
+							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
 
-							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Watchdog.bat","",true,false,-1);
+							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
 							}
 						else
 							{
-							echo "IPSWatchdog.exe muss daher nicht erneut gestartet werden.\n";
+							echo "Selenium.exe muss daher nicht erneut gestartet werden.\n";
 							}
 					 	// Parent-ID der Kategorie ermitteln
 						$parentID = IPS_GetObject($IPS_SELF);
