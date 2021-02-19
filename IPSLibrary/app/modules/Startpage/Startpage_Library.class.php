@@ -241,13 +241,19 @@
 		 *
 		 *     ob eine Wettertabelle angezeigt werden soll
 		 *     ob Wunderground oder OpenWeatherTable verwendet werden soll
+         *
+         * Weathertable mit externer Frage deaktivieren:
+         *	"Display"    => array (
+		 *		"Weathertable"	=> 'InActive', 		// Active or InActive 
+		 *							),	
 		 *
 		 *********************************************************************************************/
 
-		function configWeather()
+		function configWeather($debug=false)
 			{
+            if ($debug) echo "configWeather aufgerufen.\n";                
 			$weather=array();
-			$weather["Active"]=false;
+			$weather["Active"]=false;           // keine externen Wetterdaten verwenden
 			$weather["Source"]="WU";
 			if ( isset ($this->configuration["Display"]["Weathertable"]) == true ) 
                 { 
@@ -268,8 +274,8 @@
                         if (count($this->getOWDs())==0) $weather["Active"]=false; 
                         }
                     elseif ( (isset($this->installedModules["IPSWeatherForcastAT"])) === false ) $weather["Active"]=false; 
- 
                     }
+                else $weather["Active"]=false;
                 }
 			return($weather);
 			}

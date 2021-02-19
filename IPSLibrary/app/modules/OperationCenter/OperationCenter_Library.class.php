@@ -91,8 +91,8 @@
  * imgsrcstring, extracttime	Hilfsroutinen
  * DirLogs, readdirToArray		Hilfsroutinen
  *
- * CopyScripts			Scriptfiles auf Dropbox kopieren
- * FileStatus			Statusfiles auf Dropbox kopieren
+ * CopyScripts			Scriptfiles auf Cloud (Synology,Dropbox) kopieren
+ * FileStatus			Statusfiles auf Cloud (Synology,Dropbox) kopieren
  * FileStatusDir		StatusFiles in Verzeichnisse verschieben
  * FileStatusDelete		verschobene Files gemeinsam mit den Verzeichnisssen loeschen
  * getFileStatusDir
@@ -198,19 +198,42 @@ class OperationCenter
         if (function_exists("OperationCenter_SetUp")) $configInput=OperationCenter_SetUp();
         else echo "*************Fehler, OperationCenter_Configuration.inc.php Konfig File nicht included oder Funktion OperationCenter_SetUp() nicht vorhanden. Es wird mit Defaultwerten gearbeitet.\n";
 
+        /* Dropbox/Synology Switcher */
+        configfileParser($configInput, $config, ["CloudMode","CLOUDMODE","cloudmode"],"CloudMode",'Synology');
+
+        /* Compatibility for Dropbox, to be removed sometimes */
         configfileParser($configInput, $config, ["DropboxDirectory"],"DropboxDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/');    
         configfileParser($configInput, $config, ["DropboxStatusDirectory"],"DropboxStatusDirectory",'C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/');   
         configfileParser($configInput, $config, ["DropboxStatusMaxFileCount"],"DropboxStatusMaxFileCount",100);
 
-        configfileParser($configInput, $config, ["Synology"],"Synology",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
-        configfileParser($configInput["Synology"], $config["Synology"], ["Directory"],"Directory",false); 
-        configfileParser($configInput["Synology"], $config["Synology"], ["StatusDirectory"],"StatusDirectory",false); 
-        configfileParser($configInput["Synology"], $config["Synology"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
+        switch (strtoupper($config["CloudMode"]))
+            {
+            case "NONE":
+            case "DEFAULT":
+            case "DROPBOX":
+                /* Dropbox Profile */
 
+                /* Dropbox Profile, new Style */
+                configfileParser($configInput, $config, ["Dropbox"],"Dropbox",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["Directory"],"Directory",$config["DropboxDirectory"]); 
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",$config["DropboxStatusDirectory"]); 
+                configfileParser($configInput["Dropbox"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",$config["DropboxStatusMaxFileCount"]); 
+                break;
+            case "SYNOLOGY":
+                /* Synology Profile*/
+                configfileParser($configInput, $config, ["Synology"],"Synology",'{"Directory":false,"StatusDirectory":false,"StatusMaxFileCount":100}');
+                configfileParser($configInput["Synology"], $config["Cloud"], ["Directory"],"Directory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusDirectory"],"StatusDirectory",false); 
+                configfileParser($configInput["Synology"], $config["Cloud"], ["StatusMaxFileCount"],"StatusMaxFileCount",100); 
+                break;
+            }
+
+        /* iMacro, depreciated, not needed */
         configfileParser($configInput, $config, ["MacroDirectory"],"MacroDirectory",false);
         configfileParser($configInput, $config, ["DownloadDirectory"],"DownloadDirectory",false);
         configfileParser($configInput, $config, ["FirefoxDirectory"],"FirefoxDirectory",false);
 
+        /* log Handling */
         configfileParser($configInput, $config, ["CONFIG","Config","Configuration"],"CONFIG",'{"MOVELOGS":true,"PURGELOGS":true,"PURGESIZE":10}');    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["MOVELOGS"],"MOVELOGS",true);    
         configfileParser($configInput["CONFIG"], $config["CONFIG"], ["PURGELOGS"],"PURGELOGS",true);    
@@ -218,8 +241,6 @@ class OperationCenter
 
 		
 		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
-		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
-		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
 		if (isset($this->oc_Setup['CONFIG'])===false) 
 			{
 			$this->oc_Setup['CONFIG']= array("MOVELOGS"  => true,"PURGELOGS" => true,"PURGESIZE"  => 10,);
@@ -231,6 +252,7 @@ class OperationCenter
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
 			}	*/
 
+        /* Backup */
         configfileParser($configInput, $config, ["BACKUP","Backup"],"BACKUP",'{"Directory":"/Backup/","FREQUENCE":"Day","FULL":["Mon","Wed"],"KEEPDAY":10,"KEEPMONTH":10,"KEEPYEAR":2}');  
         // es werden alle Subkonfigurationen kopiert, wenn das nicht sein soll einmal umsetzen
         configfileParser($configInput["BACKUP"], $config["BACKUP"], ["Status","STATUS","status"], "Status","disabled"); 
@@ -3757,12 +3779,16 @@ class OperationCenter
 	 *
 	 */
 
-	function CopyScripts()
+	function CopyScripts($debug=false)
 		{
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
-		echo "CopyScripts, relevante Configuration mit Dropbox Verzeichnissen:\n";
-		print_r($this->oc_Setup);
-		$DIR_copyscriptsdropbox = $this->oc_Setup['DropboxDirectory'].IPS_GetName(0).'/';
+		$DIR_copyscriptsdropbox = $this->oc_Setup['Cloud']['Directory'].IPS_GetName(0).'/';
+        if ($debug)
+            {
+            echo "CopyScripts, relevante Configuration mit Cloud Verzeichnis:\n";
+            print_r($this->oc_Setup["Cloud"]);
+            echo "Zielverzeichnis ist $DIR_copyscriptsdropbox.\n";
+            }
 
 		$this->dosOps->mkdirtree($DIR_copyscriptsdropbox);
 
@@ -3837,14 +3863,14 @@ class OperationCenter
 
 	function FileStatus($filename="", $debug=false)
 		{
+		$DIR_copystatusdropbox = $this->oc_Setup['Cloud']['StatusDirectory'].IPS_GetName(0).'/';
         if ($debug)
             {
-            echo "OperationCenter::FilesStatus aufgerufen. Filename \"$filename\"\n";
-		    print_r($this->oc_Setup);
-            }
+            echo "CopyScripts, relevante Configuration mit Cloud Verzeichnis:\n";
+            print_r($this->oc_Setup["Cloud"]);
+            echo "Zielverzeichnis für Ergebnisse von send_status ist $DIR_copystatusdropbox.\n";
+            }        
 		/* sicherstellen dass es das Dropbox Verzeichnis auch gibt */
-		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
-        if ($debug)echo "Name Directory für Ergebnisse von send_status ist $DIR_copystatusdropbox.\n";
 		$this->dosOps->mkdirtree($DIR_copystatusdropbox);
         if ($debug) 
             {
@@ -3893,13 +3919,16 @@ class OperationCenter
 	 *
 	 */
 
-	function FileStatusDir()
+	function FileStatusDir($debug=false)
 		{
-		echo "FileStatusDir: Konfiguration:\n";
-		print_r($this->oc_Setup);
-		echo "Verzeichnis für Status Files:\n";
-		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';	
-		echo $DIR_copystatusdropbox."\n";   
+		$DIR_copystatusdropbox = $this->oc_Setup['Cloud']['StatusDirectory'].IPS_GetName(0).'/';	
+		if ($debug)
+            {
+            echo "FileStatusDir: Konfiguration:\n";
+		    print_r($this->oc_Setup);
+		    echo "Verzeichnis für Status Files:\n";
+    		echo $DIR_copystatusdropbox."\n";   
+            }
 	   	$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
 		if ($statusdir !== false)	// Verzeichnis vorhanden
 			{		
@@ -3921,12 +3950,12 @@ class OperationCenter
 		$delete=0;	
 		echo "FileStatusDelete: ";
 		//print_r($this->oc_Setup);		
-		if ( isset($this->oc_Setup['DropboxStatusMaxFileCount']) == true )
+		if ( isset($this->oc_Setup['Cloud']['StatusMaxFileCount']) == true )
 			{
-			echo "Wenn mehr als ".$this->oc_Setup['DropboxStatusMaxFileCount']." Status Dateien gespeichert, diese loeschen.\n";
-			if ( $this->oc_Setup['DropboxStatusMaxFileCount'] > 0)
+			echo "Wenn mehr als ".$this->oc_Setup['Cloud']['StatusMaxFileCount']." Status Dateien gespeichert, diese loeschen.\n";
+			if ( $this->oc_Setup['Cloud']['StatusMaxFileCount'] > 0)
 				{
-				$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';
+				$DIR_copystatusdropbox = $this->oc_Setup['Cloud']['StatusDirectory'].IPS_GetName(0).'/';
 	   			$statusdir=$this->readdirToArray($DIR_copystatusdropbox);
 				if ($statusdir !== false)	// Verzeichnis vorhanden
 					{
@@ -3934,7 +3963,7 @@ class OperationCenter
 					$i=0; 			   
 					foreach ($statusdir as $index => $name)
 						{
-						if ($i > $this->oc_Setup['DropboxStatusMaxFileCount'])
+						if ($i > $this->oc_Setup['Cloud']['StatusMaxFileCount'])
 							{	/* delete File */
 							echo "delete File :".$DIR_copystatusdropbox.$name."\n";
 							unlink($DIR_copystatusdropbox.$name);
@@ -3955,7 +3984,7 @@ class OperationCenter
 
 	function getFileStatusDir()
 		{
-		$DIR_copystatusdropbox = $this->oc_Setup['DropboxStatusDirectory'].IPS_GetName(0).'/';	
+		$DIR_copystatusdropbox = $this->oc_Setup['Cloud']['StatusDirectory'].IPS_GetName(0).'/';	
 		return($DIR_copystatusdropbox);
 		}
 
@@ -6449,7 +6478,7 @@ class DeviceManagement
         $this->oc_Configuration = OperationCenter_Configuration();
 		$this->oc_Setup = OperationCenter_SetUp();
 		
-		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt */
+		/* Defaultwerte vergeben, falls nicht im Configfile eingestellt 
 		if (isset($this->oc_Setup['DropboxDirectory'])===false) {$this->oc_Setup['DropboxDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/scripts/';}
 		if (isset($this->oc_Setup['DropboxStatusDirectory'])===false) {$this->oc_Setup['DropboxStatusDirectory']='C:/Users/Wolfgang/Dropbox/PrivatIPS/IP-Symcon/Status/';}
 		if (isset($this->oc_Setup['CONFIG'])===false) 
@@ -6461,7 +6490,7 @@ class DeviceManagement
 			if (isset($this->oc_Setup['CONFIG']['MOVELOGS'])===false) {$this->oc_Setup['CONFIG']['MOVELOGS']=true;}
 			if (isset($this->oc_Setup['CONFIG']['PURGELOGS'])===false) {$this->oc_Setup['CONFIG']['PURGELOGS']=true;}
 			if (isset($this->oc_Setup['CONFIG']['PURGESIZE'])===false) {$this->oc_Setup['CONFIG']['PURGESIZE']=10;}
-			}
+			}  */
         if ($debug) 
             { 
             echo "Aufbau des OperationCenter Setups. Fehlende Werte in der Konfiguration ersetzen.\n";
@@ -9083,6 +9112,8 @@ function dirToArray2($dir)
  		{
 		$tts_status=true;		
 		$sprachsteuerung=false; $remote=false;
+        $dosOps = new dosOps();     // create classes used in this class
+        $systemDir     = $dosOps->getWorkDirectory();
 
 		if ($debug) echo "Aufgerufen als Teil der Library des OperationCenter.\n";
 		$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
@@ -9116,7 +9147,7 @@ function dirToArray2($dir)
 			if (isset($NachrichtenScriptID))
 				{
                 $NachrichtenInputID = $ipsOps->searchIDbyName("Input",$NachrichtenID);    
-				$log_Sprachsteuerung=new Logging($this->systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
+				$log_Sprachsteuerung=new Logging($systemDir."Sprachsteuerung\Log_Sprachsteuerung.csv",$NachrichtenInputID);
 				if ($sk<10) $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk mit \"".$ansagetext."\"");
 				else $log_Sprachsteuerung->LogNachrichten("Sprachsteuerung $sk (".IPS_GetName($sk).") mit \"".$ansagetext."\"");
 				}

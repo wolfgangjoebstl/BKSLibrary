@@ -6,98 +6,91 @@ IPSUtils_Include ("Guthabensteuerung_Configuration.inc.php","IPSLibrary::config:
 
 /******************************************************
 
-				INIT
+                INIT
 
 *************************************************************/
 
-$repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
-If (!isset($moduleManager)) {
-	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
-	$moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
-}
-$installedModules = $moduleManager->GetInstalledModules();
-$CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
-$CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
+    $repository = 'https://raw.githubusercontent.com//wolfgangjoebstl/BKSLibrary/master/';
+    If (!isset($moduleManager)) {
+        IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
+        $moduleManager = new IPSModuleManager('Guthabensteuerung',$repository);
+    }
+    $installedModules = $moduleManager->GetInstalledModules();
+    $CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
+    $CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');
 
-$ParseGuthabenID		= IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
-$GuthabensteuerungID	= IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
+    $guthabenHandler = new GuthabenHandler(true,true,true);         // true,true,true Steuerung für parsetxtfile
+	$GuthabenConfig         = $guthabenHandler->getContractsConfiguration();            // get_GuthabenConfiguration();
+	$GuthabenAllgConfig     = $guthabenHandler->getGuthabenConfiguration();                              //get_GuthabenAllgemeinConfig();
 
-$ScriptCounterID		= IPS_GetObjectIDByName("ScriptCounter",$CategoryIdData);
-$startImacroID 			= IPS_GetObjectIDByName("StartImacro", $CategoryIdData);
-$statusReadID 			= IPS_GetObjectIDByName("StatusWebread", $CategoryIdData);
+    /* ScriptIDs finden für Timer */
+    $ParseGuthabenID		= IPS_GetScriptIDByName('ParseDreiGuthaben',$CategoryIdApp);
+    $GuthabensteuerungID	= IPS_GetScriptIDByName('Guthabensteuerung',$CategoryIdApp);
 
-$tim1ID = @IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
-if ($tim1ID==false)
-	{
-	$tim1ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim1ID, $_IPS['SELF']);
-	IPS_SetName($tim1ID, "Aufruftimer");
-	IPS_SetEventCyclic($tim1ID,0,0,0,0,0,0);
-	IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
-	}
-IPS_SetEventActive($tim1ID,true);
+    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+        {
+        case "IMACRO":
+           	$categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
+            $categoryId_iMacro          = CreateCategory('iMacro',          $CategoryIdData, 90);
+            $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);
+            $statusReadID       = CreateVariable("StatusWebread", 3, $CategoryId_iMacro,1010,"~HTMLBox",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+            $testInputID        = CreateVariable("TestInput", 3, $CategoryId_iMacro,1020,"",$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
+	        $startImacroID      = CreateVariable("StartImacro", 1, $CategoryId_iMacro,1000,$pname,$GuthabensteuerungID,null,"");		// CreateVariable ($Name, $Type, $ParentId, $Position=0, $Profile="", $Action=null, $ValueDefault='', $Icon='')
 
-$tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
-if ($tim2ID==false)
-	{
-	$tim2ID = IPS_CreateEvent(1);
-	IPS_SetParent($tim2ID, $_IPS['SELF']);
-	IPS_SetName($tim2ID, "Exectimer");
-	IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
-	//IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
-	}
+            $firefox=$GuthabenAllgConfig["FirefoxDirectory"]."firefox.exe";
+            //echo "Firefox verzeichnis : ".$firefox."\n";				
+            /*  $firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
+                echo "Firefox Verzeichnis (old style aus AllgemeineDefinitionen): ".$firefox."\n";  */
+            break;
+        case "SELENIUM":
+           	$categoryId_Guthaben        = CreateCategory('Guthaben',        $CategoryIdData, 10);
+            $categoryId_Selenium        = CreateCategory('Selenium',        $CategoryIdData, 20);
+            $categoryId_GuthabenArchive = CreateCategory('GuthabenArchive', $CategoryIdData, 900);
+            $sessionID      = $guthabenHandler->getSeleniumSessionID();
+            break;
+        case "NONE":
+            $DoInstall=false;
+            break;
+        default:    
+            echo "Guthaben Mode \"".$GuthabenAllgConfig["OperatingMode"]."\" not supported.\n";
+            break;
+        }
 
-$GuthabenConfig = get_GuthabenConfiguration();
-$GuthabenAllgConfig = get_GuthabenAllgemeinConfig();
-	
+    $ScriptCounterID=CreateVariableByName($CategoryIdData,"ScriptCounter",1);
+	$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
+
+	/*****************************************************
+	 *
+	 * initialize Timer 
+	 *
+	 ******************************************************************/
+
+    $tim1ID = IPS_GetEventIDByName("Aufruftimer", $_IPS['SELF']);
+    if ($tim1ID==false) echo "Fehler timer nicht definiert.\n";
+
+    $tim2ID = @IPS_GetEventIDByName("Exectimer", $_IPS['SELF']);
+    if ($tim2ID==false)
+        {
+        $tim2ID = IPS_CreateEvent(1);
+        IPS_SetParent($tim2ID, $_IPS['SELF']);
+        IPS_SetName($tim2ID, "Exectimer");
+        IPS_SetEventCyclic($tim2ID,2,1,0,0,1,150);      /* alle 150 sec */
+        //IPS_SetEventCyclicTimeFrom($tim1ID,2,10,0);  /* immer um 02:10 */
+        }
+
+    $phoneID=array();
+    $i=0;
+    foreach ($GuthabenConfig as $TelNummer)
+        {
+        //echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
+        if ($TelNummer["Status"]=="Active")
+            {
+            $phoneID[$i++]["Short"]=substr($TelNummer["Nummer"],(strlen($TelNummer["Nummer"])-3),10);
+            }
+        } // ende foreach
+    $maxcount=$i;
 
 
-
-$phoneID=array();
-$i=0;
-foreach ($GuthabenConfig as $TelNummer)
-	{
-	//echo "Telefonnummer ".$TelNummer["NUMMER"]."\n";
-	if (isset($TelNummer["STATUS"])==true)
-		{
-		if ($TelNummer["STATUS"]=="Active")
-			{
-			$phoneID[$i]["Nummer"]=$TelNummer["NUMMER"];
-			$phoneID[$i]["Password"]=$TelNummer["PASSWORD"];
-			$phoneID[$i++]["Short"]=substr($TelNummer["NUMMER"],(strlen($TelNummer["NUMMER"])-3),10);
-			}
-		}
-	else	
-		{
-		$phoneID[$i]["Nummer"]=$TelNummer["NUMMER"];
-		$phoneID[$i]["Password"]=$TelNummer["PASSWORD"];		
-		$phoneID[$i++]["Short"]=substr($TelNummer["NUMMER"],(strlen($TelNummer["NUMMER"])-3),10);
-		}
-	} // ende foreach
-$maxcount=$i;
-
-//print_r($GuthabenAllgConfig);	
-if ( isset($GuthabenAllgConfig["FirefoxDirectory"]) == true )
-	{
-	$firefox=$GuthabenAllgConfig["FirefoxDirectory"]."firefox.exe";
-	//echo "Firefox verzeichnis : ".$firefox."\n";				
-	}
-else
-	{
-	if ( isset($GuthabenAllgConfig["FireFoxDirectory"]) == true )
-		{
-		$firefox=$GuthabenAllgConfig["FireFoxDirectory"]."firefox.exe";
-		//echo "Firefox verzeichnis : ".$firefox."\n";				
-		}
-	else
-		{		
-		$firefox=ADR_Programs."Mozilla Firefox/firefox.exe";
-		echo "Firefox Verzeichnis (old style aus AllgemeineDefinitionen): ".$firefox."\n";
-		}					
-	}
-
-	
-$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
 
 /******************************************************
  *
@@ -123,34 +116,41 @@ if ($_IPS['SENDER']=="TimerEvent")
 			//IPS_SetScriptTimer($_IPS['SELF'], 150);
 			if ($ScriptCounter < $maxcount)
 				{
-				// keine Anführungszeichen verwenden
-				IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
-				if ($ScriptCounter>0) 
+                switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
                     {
-                    $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
-                    if (is_file($fileName))
-                        {
-                        $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
-                        $note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
-                        }
+                    case "IMACRO":                    
+                        // keine Anführungszeichen verwenden
+                        IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$ScriptCounter]["Nummer"].".iim", false, false, -1);
+                        if ($ScriptCounter>0) 
+                            {
+                            $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+                            if (is_file($fileName))
+                                {
+                                $filedate=date ("d.m.Y H:i:s.", filemtime($fileName) );
+                                $note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim. Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                                }
+                            }
+                        else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
+                        SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
+                        break;
                     }
-				else 	$note="Letzte Abfrage war um ".date("d.m.Y H:i:s")." für dreiat_".$phoneID[($ScriptCounter)]["Nummer"].".iim.";
-				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);	
 			    SetValue($ScriptCounterID,GetValue($ScriptCounterID)+1);                	
 				}
 			else
 				{
 				IPS_RunScript($ParseGuthabenID);            // ParseDreiGuthaben wird aufgerufen
-                $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
-                if (file_exists($fileName)==true)
+                if (strtoupper($GuthabenAllgConfig["OperatingMode"])=="IMACRO") 
                     {
-                    $fileMTimeDatei=filemtime($fileName);   // Liefert Datum und Uhrzeit der letzten Dateiänderung
-				    $filedate=date ("d.m.Y H:i:s.", $fileMTimeDatei);
-				    $note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                    $fileName=$GuthabenAllgConfig["DownloadDirectory"]."report_dreiat_".$phoneID[($ScriptCounter-1)]["Nummer"].".txt";
+                    if (file_exists($fileName)==true)
+                        {
+                        $fileMTimeDatei=filemtime($fileName);   // Liefert Datum und Uhrzeit der letzten Dateiänderung
+                        $filedate=date ("d.m.Y H:i:s.", $fileMTimeDatei);
+                        $note="Parse Files war um ".date("d.m.Y H:i:s").". Letztes Ergebnis für ".$phoneID[($ScriptCounter-1)]["Nummer"]." mit Datum ".$filedate." ";
+                        }
+                    else $note="File ".$fileName." does not exists.";
+                    SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
                     }
-                else $note="File ".$fileName." does not exists.";
-				SetValue($statusReadID,GetValue($statusReadID)."<br>".$note);		
-
 				SetValue($ScriptCounterID,0);
 				//IPS_SetScriptTimer($_IPS['SELF'], 0);
 				IPS_SetEventActive($tim2ID,false);
@@ -173,69 +173,73 @@ if ($_IPS['SENDER']=="WebFront")
 
 	SetValue($_IPS['VARIABLE'],$_IPS['VALUE']);
 	$value=$_IPS['VALUE']; $variable=$_IPS['VARIABLE'];
-	switch ($variable)
-		{
-		case ($startImacroID):
-			switch ($value)
-				{
-				case $maxcount:			// Alle
-					IPS_SetEventActive($tim2ID,true);
-					SetValue($ScriptCounterID,0);
-					SetValue($statusReadID,"Abfrage für Alle um ".date("d.m.Y H:i:s")." gestartet.");			// Beim Erstaufruf Html Log loeschen.					
-					//echo "Ja Alle";
-					break;
-				case ($maxcount+1):		// Test
-					$handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_test.iim","w");
-					fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
-					fwrite($handle2,'TAB T=1'."\n");
-					fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
-					fwrite($handle2,'SET !EXTRACT NULL'."\n");
-					fwrite($handle2,'SET !VAR0 '.$phoneID[6]["Nummer"]."\n");
-					fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
-					if (false)
-						{
-					//fwrite($handle2,'URL GOTO=http://www.drei.at/'."\n");
-					fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");
-					fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
-					fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$phoneID[0]["Nummer"]."\n");
-					fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-					fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$phoneID[0]["Password"]."\n");
-					fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
-					fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-					fwrite($handle2,'\'Ausloggen'."\n");
-					fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
-					fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");
-					fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
-					fwrite($handle2,'TAB CLOSE'."\n");					
-						}
-					else
-						{
-						fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
-						//fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
-						fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
-						fwrite($handle2,'SET !ENCRYPTION NO'."\n");
-						fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
-						fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
-						fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
-						fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
-						fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
-						fwrite($handle2,'TAB CLOSE'."\n");							
-						}	
-					
-					fclose($handle2);
-					IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_test.iim", false, false, -1);
-					break;
-				default:
-					//echo "ImacroAufruf von ".$phoneID[$value]["Nummer"]." mit Index ".$value.".\n";
-					IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$value]["Nummer"].".iim", false, false, -1);
-					break;
-				}			
-			break;
-		default:
-			break;	
-		}
-	
-	}
+    switch (strtoupper($GuthabenAllgConfig["OperatingMode"]))
+        {    
+        case "IMACRO":
+            switch ($variable)
+                {
+                case ($startImacroID):
+                    switch ($value)
+                        {
+                        case $maxcount:			// Alle
+                            IPS_SetEventActive($tim2ID,true);
+                            SetValue($ScriptCounterID,0);
+                            SetValue($statusReadID,"Abfrage für Alle um ".date("d.m.Y H:i:s")." gestartet.");			// Beim Erstaufruf Html Log loeschen.					
+                            //echo "Ja Alle";
+                            break;
+                        case ($maxcount+1):		// Test
+                            $handle2=fopen($GuthabenAllgConfig["MacroDirectory"]."dreiat_test.iim","w");
+                            fwrite($handle2,'VERSION BUILD=8970419 RECORDER=FX'."\n");
+                            fwrite($handle2,'TAB T=1'."\n");
+                            fwrite($handle2,'SET !EXTRACT_TEST_POPUP NO'."\n");
+                            fwrite($handle2,'SET !EXTRACT NULL'."\n");
+                            fwrite($handle2,'SET !VAR0 '.$phoneID[6]["Nummer"]."\n");
+                            fwrite($handle2,'ADD !EXTRACT {{!VAR0}}'."\n");
+                            if (false)
+                                {
+                            //fwrite($handle2,'URL GOTO=http://www.drei.at/'."\n");
+                            fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMyProfile.do'."\n");
+                            fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:Kundenzone'."\n");
+                            fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ID:loginForm ATTR=ID:userName CONTENT='.$phoneID[0]["Nummer"]."\n");
+                            fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                            fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ID:loginForm ATTR=ID:password CONTENT='.$phoneID[0]["Password"]."\n");
+                            fwrite($handle2,'TAG POS=1 TYPE=BUTTON FORM=ID:loginForm ATTR=TXT:Login'."\n");
+                            fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                            fwrite($handle2,'\'Ausloggen'."\n");
+                            fwrite($handle2,'URL GOTO=https://www.drei.at/selfcare/restricted/prepareMainPage.do'."\n");
+                            fwrite($handle2,'TAG POS=2 TYPE=A ATTR=TXT:Kundenzone'."\n");
+                            fwrite($handle2,'TAG POS=1 TYPE=A ATTR=ID:logout'."\n");
+                            fwrite($handle2,'TAB CLOSE'."\n");					
+                                }
+                            else
+                                {
+                                fwrite($handle2,'URL GOTO=https://service.upc.at/myupc/portal/mobile'."\n");
+                                //fwrite($handle2,'URL GOTO=https://service.upc.at/login/?TAM_OP=login&USERNAME=unauthenticated&ERROR_CODE=0x00000000&URL=%2Fmyupc%2Fportal%2Fmobile&REFERER=&OLDSESSION='."\n");
+                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:TEXT FORM=ACTION:/pkmslogin.form ATTR=ID:username CONTENT=wolfgangjoebstl@yahoo.com'."\n");
+                                fwrite($handle2,'SET !ENCRYPTION NO'."\n");
+                                fwrite($handle2,'TAG POS=1 TYPE=INPUT:PASSWORD FORM=ACTION:/pkmslogin.form ATTR=ID:password CONTENT=##cloudG06##'."\n");
+                                fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:lbl_login_signin'."\n");
+                                fwrite($handle2,'SAVEAS TYPE=TXT FOLDER=* FILE=report_dreiat_{{!VAR0}}'."\n");
+                                fwrite($handle2,'TAG POS=1 TYPE=SPAN ATTR=ID:MYUPC_child.logout_dsLoggedInAs'."\n");
+                                fwrite($handle2,'TAG POS=1 TYPE=STRONG ATTR=TXT:Abmelden'."\n");						
+                                fwrite($handle2,'TAB CLOSE'."\n");							
+                                }	
+                            
+                            fclose($handle2);
+                            IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_test.iim", false, false, -1);
+                            break;
+                        default:
+                            //echo "ImacroAufruf von ".$phoneID[$value]["Nummer"]." mit Index ".$value.".\n";
+                            IPS_ExecuteEX($firefox, "imacros://run/?m=dreiat_".$phoneID[$value]["Nummer"].".iim", false, false, -1);
+                            break;
+                        }			
+                    break;
+                default:
+                    break;	
+                }       // end switch
+            break;
+        }            //end switch
+	}           // ende if
 
 /******************************************************
 
@@ -244,7 +248,7 @@ if ($_IPS['SENDER']=="WebFront")
 *************************************************************/
 
 //if (($_IPS['SENDER']=="Execute") or ($_IPS['SENDER']=="WebFront"))
-if ($_IPS['SENDER']=="Execute")
+if ( ($_IPS['SENDER']=="Execute") && false)
 	{
 	echo "Category Data ID            : ".$CategoryIdData."\n";
 	echo "Category App ID             : ".$CategoryIdApp."\n";

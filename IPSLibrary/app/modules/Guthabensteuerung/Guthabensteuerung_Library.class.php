@@ -39,7 +39,8 @@
 
 			$this->CategoryIdData     = $moduleManager->GetModuleCategoryID('data');
 			$this->CategoryIdApp      = $moduleManager->GetModuleCategoryID('app');		
-			}
+
+    		}
 			
         /* Konfiguration ist gekapselt, hier die gesamte Konfiguration ausgeben */
 
@@ -85,7 +86,7 @@
                 $dosOps->mkdirtree($config["WebResultDirectory"]);
 
                 configfileParser($configInput, $config, ["OPERATINGMODE","OperatingMode","Operatingmode","operatingmode" ],"OperatingMode" ,"iMacroDefault");  
-                if (($config["OperatingMode"])=="iMacroDefault") 
+                if ( (strtoupper($config["OperatingMode"]))=="IMACRODEFAULT") 
                     {       /* bestehende alte Konfiguration vor Bearbeitung ummodeln */
                     $configInput["iMacro"]=$configInput;
                     $config["OperatingMode"]="iMacro";
@@ -104,6 +105,13 @@
 
 
                     }
+                elseif  ( (strtoupper($config["OperatingMode"]))=="NONE")
+                    {
+
+
+
+                    }
+
                 else echo "ERROR GuthabenHandler::setConfiguration, Do not know the Operating Mode ".$config["OperatingMode"]."\n";
                 $configuration["CONFIG"]    = $config;
                 }
@@ -157,6 +165,51 @@
                     } // ende foreach
                 }
 	        }
+
+        /* die SessionID zeigt auf die Variable die die Session des Selenium Webdrivers anzeigt 
+         * wenn es die Session noch gibt wird kein neues Fenster aufgemacht
+          */
+
+        public function getSeleniumSessionID()
+            {
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            $categoryId_Selenium    = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            $sessionID              = @IPS_GetObjectIDByName("SessionId", $categoryId_Selenium,); 
+            return ($sessionID);
+            }
+
+        /* jedes Fenster hat eine eigene WindowId
+         * diese Window ID gemeinsam mit einem passenden Index serialisieren und wegspeichern
+         */
+
+        public function setSeleniumHandler($handler)
+            {
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            $handlerID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium,); 
+            if ($handlerID)
+                {
+                SetValue($handlerID,json_encode($handler));
+                return (true);
+                }
+            else return (false);
+            }
+
+        public function getSeleniumHandler()
+            {
+            if ( (strtoupper($this->configuration["CONFIG"]["OperatingMode"]))!="SELENIUM") return (false);
+            $categoryId_Selenium  = @IPS_GetObjectIDByName("Selenium", $this->CategoryIdData);
+            $handleID            = @IPS_GetObjectIDByName("HandleId", $categoryId_Selenium,); 
+            echo "getSeleniumHandler Werte gespeichert in $handleID.\n";
+            if ($handleID)
+                {
+                echo "  --> Wert ist ".GetValue($handleID)."\n";
+                return (GetValue($handleID));
+                }
+            else return (false);
+            }
+
+        /******************************************************************************/
 
         public function createVariableGuthaben($lookfor="")
             {

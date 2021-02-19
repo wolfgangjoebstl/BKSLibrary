@@ -28,7 +28,9 @@
 	 */
 	 
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\AllgemeineDefinitionen.inc.php");
+
 	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\config\modules\Watchdog\Watchdog_Configuration.inc.php");
+	Include_once(IPS_GetKernelDir()."scripts\IPSLibrary\app\modules\Watchdog\Watchdog_Library.inc.php");    
 
 	IPSUtils_Include ('IPSModuleManager.class.php', 'IPSLibrary::install::IPSModuleManager');
 	IPSUtils_Include ('IPSComponentLogger.class.php', 'IPSLibrary::app::core::IPSComponent::IPSComponentLogger');
@@ -50,10 +52,12 @@
     $dosOps = new dosOps();
     $sysOps = new sysOps();
 
+    $systemDir     = $dosOps->getWorkDirectory();       // systemdir festlegen, typisch auf Windows C:/Scripts/
+
 	echo "\nStartIPSWatchdog: Eigenen Logspeicher für Watchdog und OperationCenter vorbereiten.\n";
 	$categoryId_Nachrichten    = CreateCategory('Nachrichtenverlauf',   $CategoryIdData, 20);
 	$input = CreateVariable("Nachricht_Input",3,$categoryId_Nachrichten, 0, "",null,null,""  );
-	$log_Watchdog=new Logging("C:\Scripts\Log_Watchdog.csv",$input);
+	$log_Watchdog=new Logging($systemDir."Log_Watchdog.csv",$input);
 	
 	if (isset ($installedModules["OperationCenter"]))
 		{
@@ -63,7 +67,7 @@
 		$CategoryIdDataOC     = $moduleManagerOC->GetModuleCategoryID('data');
 		$categoryId_NachrichtenOC    = CreateCategory('Nachrichtenverlauf',   $CategoryIdDataOC, 20);
 		$input = CreateVariable("Nachricht_Input",3,$categoryId_NachrichtenOC, 0, "",null,null,""  );
-		$log_OperationCenter=new Logging("C:\Scripts\Log_OperationCenter.csv",$input);
+		$log_OperationCenter=new Logging($systemDir."Log_OperationCenter.csv",$input);
 		}
 	else
 		{
@@ -93,7 +97,7 @@
 	IPS_SetEventCyclicTimeBounds($tim3ID,time()+60,0);
 	$ScriptCounterID=CreateVariableByName($CategoryIdData,"AutostartScriptCounter",1);
 
-	$verzeichnis=$configWD["WatchDogDirectory"];
+	$verzeichnis=$config["WatchDogDirectory"];
 	$unterverzeichnis="";
 	
 	/********************************************************************
@@ -110,7 +114,7 @@
 
 	if (strtoupper($config["Software"]["Selenium"]["Autostart"])=="YES" )
 	    {
-		if ( ($dosOps->fileAvailable(($config["Software"]["Selenium"]["Execute"],$config["Software"]["Selenium"]["Directory"])) == false )
+		if ( ($dosOps->fileAvailable($config["Software"]["Selenium"]["Execute"],$config["Software"]["Selenium"]["Directory"])) == false )
 		    {
 	   	    echo "Keine Installation von Java Selenium vorhanden.\n";
 		    $processStart["selenium.exe"]="Off";
@@ -246,14 +250,8 @@
 		switch ($_IPS['EVENT'])
 			{
 			case $tim3ID:
-				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID:".GetValue($ScriptCounterID));
-
-				/******************************************************************************************
-				 *
-				 *
-				 *********************************************************************************************/
-
 				$counter=GetValue($ScriptCounterID);
+				IPSLogger_Dbg(__file__, "TimerEvent from :".$_IPS['EVENT']." Autostart durchführen. ScriptcountID: $counter. Process ".json_encode($processStart));
 				switch ($counter)
 					{
 					case 7:
@@ -268,6 +266,7 @@
 							$subnet='10.255.255.255';
 							$OperationCenter=new OperationCenter($subnet);
 							$OperationCenter->SystemInfo();
+        					IPSLogger_Dbg(__file__, "Autostart: OperationCenter::SystemInfo aufgerufen.");                            
 							}
 						SetValue($ScriptCounterID,$counter+1);
 						break;
@@ -283,6 +282,7 @@
                                 foreach ($config["Software"]["Firefox"]["Url"] as $address) $logtext .= $address." ";
                                 }
                             else $logtext="Autostart (Firefox) ".$config["Software"]["Firefox"]["Directory"]."firefox.exe ".$config["Software"]["Firefox"]["Url"];
+        					IPSLogger_Dbg(__file__, "Autostart: $logtext.");                            
 							writeLogEvent($logtext);
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_firefox.bat","", true, false,-1);
 							}
@@ -296,6 +296,7 @@
 					   	    /* Soap ausschalten */
 							//IPS_ExecuteEx("c:/scripts/process_kill_java.bat","", true, true,-1);  // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_soap.bat","",true,false,-1);  // kill wird schon von startsoap mitgemacht
+        					IPSLogger_Dbg(__file__, "Autostart: (SOAP)).");                            
 							writeLogEvent("Autostart (SOAP)");
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -308,6 +309,7 @@
 				   		    /* iTunes ausschalten */
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."kill_itunes.bat","", true, true,-1); // Warten auf true gesetzt, das ist essentiell
 							IPS_ExecuteEx($verzeichnis.$unterverzeichnis."start_iTunes.bat","",true,false,-1);  // C:\Program Files\iTunes
+                            IPSLogger_Dbg(__file__, "Autostart: (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							writeLogEvent("Autostart (iTunes) ".$config["Software"]["iTunes"]["Directory"]."iTunes.exe");
 							}
 						SetValue($ScriptCounterID,$counter+1);
@@ -317,9 +319,6 @@
 						   {
 							writeLogEvent("Autostart (VMPlayer) ".'\"'.$config["Software"]["VMware"]["Directory"].'vmplayer.exe\" \"'.$config["Software"]["VMware"]["DirFiles"].$config["Software"]["VMware"]["FileName"].'\"');
 							IPSLogger_Dbg(__file__, "Autostart: VMWare Player wird gestartet");
-
-							/*********************************************************************/
-
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_VMWare.bat","",true,false,-1);
 							}
 						else
@@ -333,10 +332,7 @@
 							{
 							echo "selenium.exe wird neu gestartet.\n";
 							IPSLogger_Dbg(__file__, "Autostart: Selenium wird gestartet");
-
-							/*********************************************************************/
 							writeLogEvent("Autostart (Watchdog)".$config["Software"]["Selenium"]["Directory"].$config["Software"]["Selenium"]["Execute"]);
-
 							IPS_EXECUTEEX($verzeichnis.$unterverzeichnis."start_Selenium.bat","",true,false,-1);
 							}
 						else
