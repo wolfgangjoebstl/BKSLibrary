@@ -286,6 +286,8 @@ class OperationCenter
             configfileParser($configInput, $config, ["LED" ],"LED" ,"[]");  
             configfileParser($configInput, $config, ["DENON" ],"DENON" ,"[]");  
 
+            /* Router, nur die aktiven, kopieren */
+
             }
         //$this->oc_Configuration = $config;
         return ($config);

@@ -2495,6 +2495,7 @@ class Autosteuerung
 		/************************** 
 		 *
 		 * keine Befehlsevaluierung, nur Festlegung des Rahmengerüsts und Vereinheitlichung der Abkürzer
+         * danach kommt erst EvaluateCommand
 		 *
 		 * Abkürzer unterschiedlich behandeln für: Ventilator(HeatControl, Heizung), Anwesenheit und alle anderen 
 		 * 
@@ -3143,6 +3144,8 @@ class Autosteuerung
 
     function switchByTypeModule($ergebnisTyp, $state, $debug=false)
         {
+        if ($debug) echo "switchByTypeModule Type ".json_encode($ergebnisTyp)."\n";
+
         switch ($ergebnisTyp["TYP"])
             {
             case "Switch":
@@ -3180,14 +3183,17 @@ class Autosteuerung
 	/*********************************************************************************************************
 	 *
 	 * Auch das Evaluieren kann gemeinsam erfolgen, es gibt nur kleine Unterschiede zwischen den Befehlen 
+     * Vorher wurde ParseCommand aufgerufen, der versucht einen String mit Abkürzerne etc. in eine allgemein verständliche Form zu bringen
 	 *
 	 * beim Evaluieren wird auch der Wert bevor er geändert wird als VALUE, VALUE#LEVEL, VALUE#COLOR erfasst
 	 *
 	 * SOURCE, OID, NAME, 
-	 * ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF,
+     * MODULE, DEVICE, COMMAND
+     * SPEAK, LOUDSPEAKER
+	 * STATUS, ON#COLOR, ON#LEVEL, ON, OFF#COLOR, OFF#LEVEL, OFF,
 	 * MODE, SETPPOINT, THRESHOLD, NOFROST 
 	 * DELAY, DIM, DIM#LEVEL, DIM#TIME, 
-	 * ENVELOPE, LEVEL, SPEAK, MONITOR, MUTE, IF, IFNOT
+	 * ENVELOPE, LEVEL, MONITOR, MUTE, IF, IFNOT
 	 *
 	 * IF: oder IFNOT:<parameter>     DARK, LIGHT, SLEEP, WAKEUP, AWAKE, HEATDAY, ON, OFF oder einen Variablenwert 
 	 *			DARK,LIGHT sind vom Sonneauf/unteragng abhängig
@@ -3220,7 +3226,7 @@ class Autosteuerung
 		{
         $modulhandling = new ModuleHandling();		// true bedeutet mit Debug, für EchoControl Loadspeaker Ausgabe verwendet
 		//$this->log->LogMessage("EvaluateCommand : ".json_encode($befehl));		
-		//echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
+		if ($debug) echo "       EvaluateCommand: Befehl ".$befehl[0]." ".$befehl[1]." abarbeiten.\n";
 		$Befehl0=trim(strtoupper($befehl[0]));	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
 		$Befehl1=trim(strtoupper($befehl[1]));	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
 		switch ($Befehl0)	/* nur Grossbuchstaben, Leerzeichen am Anfang und Ende entfernen */
@@ -3374,8 +3380,9 @@ class Autosteuerung
 							$result["VALUE_ON"]=self::parseValue($befehl[1],$result);
 							break;
 						}		
+				    echo "   ON Befehl ".$result["SWITCH"]."   ".$result["ON"]."\n";
 					}
-				echo "   ON Befehl ".$result["SWITCH"]."   ".$result["ON"]."\n";	
+                else echo "     ON Befehl nicht ausgeführt. Status war ".$result["STATUS"]." Source war  ".$result["SOURCE"]."\n";
 				break;
 			case "OFF#COLOR":
 			case "OFF#LEVEL":
@@ -3587,7 +3594,7 @@ class Autosteuerung
 			case "IFAND":	/* überschreibt den Wert vom vorigen if wenn false, gleich wie mehrere if hintereinander */
             case "ANDIF":
 			case "IF":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
-                $state=true;            // Rückgabewert
+                $state=true;            // Rückgabewert, Input für evalcondition, wenn nicht zutrifft wird state zu false
                 $if=trim(strtoupper($befehl[0]));
                 if ($this->evalCondition($befehl,$result,$state,$debug)) ;                // gleich bekannte Befehle gemeinsam abarbeiten  dritter Parameter true normal, false invertiert, vierter Debug
                 else
@@ -3595,7 +3602,7 @@ class Autosteuerung
                     $result["COND"]=$Befehl1;                             // Befehl1 wäre mit trim und strtoupper
                     switch ($result["COND"])
                         {
-                        case "STATUS": 		/* andere Befehldarstellung IF:STATUS:EQ:parameter */
+                        case "STATUS": 		/* andere Befehldarstellung IF:STATUS:EQ:parameter, funktioniert nicht mit NOTIF/IFNOT */
                             $comp=strtoupper($befehl[2]);
                             $val=(integer)$befehl[3];
                             switch ($comp)
@@ -3603,38 +3610,23 @@ class Autosteuerung
                                 case "EQ":
                                     if ($result["STATUS"] != $val)
                                         {
-                                        $result["SWITCH"]=false;						
+                                        $state=false;						
                                         IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:eq ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
                                         }
-                                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                        {
-                                        $result["SWITCH"]=true;
-                                        IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:eq gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
-                                        }									
                                     break;							
                                 case "LT":
                                     if ( ($result["STATUS"] == $val) or ($result["STATUS"] > $val) ) 
                                         {
-                                        $result["SWITCH"]=false;						
+                                        $state=false;						
                                         IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:lt ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
                                         }
-                                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                        {
-                                        $result["SWITCH"]=true;
-                                        IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:lt gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
-                                        }									
                                     break;								
                                 case "GT":
                                     if ( ($result["STATUS"] == $val) or ($result["STATUS"] < $val) ) 
                                         {
-                                        $result["SWITCH"]=false;						
+                                        $state=false;						
                                         IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:status:gt ungleich '.$val.'. Nicht Schalten, Triggervariable ist false ');
                                         }
-                                    elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                        {
-                                        $result["SWITCH"]=true;
-                                        IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:status:gt gleich '.$val.'. Nicht Schalten, Triggervariable ist true ');								
-                                        }									
                                     break;								
                                 default:
                                     break;
@@ -3658,34 +3650,34 @@ class Autosteuerung
                                 }	
                             if ($gefunden==false)
                                 {
-                                $result["SWITCH"]=false;
+                                $state=false;
                                 IPSLogger_Dbg(__file__, 'Autosteuerung Befehl if:'.$result["COND"].' ');
-                                }
-                            elseif ( (strtoupper($befehl[0]) == "IFOR") || (strtoupper($befehl[0]) == "ORIF") ) 
-                                {
-                                $result["SWITCH"]=true;
-                                IPSLogger_Dbg(__file__, 'Autosteuerung Befehl ifor:'.$result["COND"].' ');
                                 }
                             break;
                         default:
                             if ($this->evalConditionExtended($befehl,$result,$state,$debug)) echo "erfolgreich\n";
                             break;
-                            }       // ende switch cond
-                        }           // ende else
-                    /* Berechnung von IF Ergebnis gesamt */
-                    if ( $if == "IF" )
-                        {
-                        $result["SWITCH"] = $state;
-                        }
-                    elseif ( $if == "IFOR" ) 
-                        {
-                        if ($state) $result["SWITCH"] = $state;
-                        }
-                    elseif ( $if == "IFAND" )
-                        {
-                        $result["SWITCH"] = $state;
-                        }                      		
-                    echo "   Ergebnis Evaluierung $Befehl0 $Befehl1:".($result["SWITCH"]?"true":"false")."\n";
+                        }       // ende switch cond
+                    }           // ende else
+                /* Berechnung von IF Ergebnis gesamt, Berücksichtigung vorheriges Ergebnis in $result["SWITCH"] */
+                switch ($if)
+                    {
+                    case "IF":
+                        $result["SWITCH"] = $state;     // keine Verknüpfung mit vorherigem Ergebnis
+                        break;
+                    case "IFOR":
+                    case "ORIF":
+                        $result["SWITCH"] = $result["SWITCH"] || $state;
+                        break;
+                    case "IFAND":
+                    case "ANDIF":
+                        $result["SWITCH"] = $result["SWITCH"] && $state; 
+                        break;
+                    default:
+                        echo "Kenne Befehl $if nicht.\n";
+                        break;
+                    }                      		
+                echo "   Ergebnis Evaluierung $Befehl0 $Befehl1:".($result["SWITCH"]?"true":"false")."\n";
 				break;
 			case "IFDIF":           /* bei Temperaturwerten ist das der Abstand, der zum alten Wert erreicht werden muss bevor der befehl ausgeführt wird */
 				$dif=(float)($befehl[1]);
@@ -3695,7 +3687,12 @@ class Autosteuerung
 				//print_r($result);
 				break;	
 			case "IFANDNOT":
+			case "NOTIFAND":
+            case "ANDNOTIF":
 			case "IFORNOT":	
+			case "NOTIFOR":            
+			case "ORNOTIF":            
+            case "NOTIF":
 			case "IFNOT":     /* parges hat nur die Parameter übermittelt, hier die Auswertung machen. Es gibt zumindest light, dark und einen IPS Light Variablenname (wird zum Beispiel für die Heizungs Follow me Funktion verwendet) */
                 $state=false;            // Rückgabewert
                 $if=trim(strtoupper($befehl[0]));
@@ -3710,23 +3707,31 @@ class Autosteuerung
                         default:
                             if ($this->evalConditionExtended($befehl,$result,$state,$debug)) echo "erfolgreich\n";
                             break;          // von default
-                            }           // ende switch
-                        }	        // ende else von eval condition
-                    /* Berechnung von IF Ergebnis gesamt */
-                    if ( $if == "IFNOT" )
-                        {
-                        $result["SWITCH"] = $state;             // IF ist der Beginn, Status Switch wird bestimmt
-                        }
-                    elseif ( $if == "IFORNOT" ) 
-                        {
-                        if ($state) $result["SWITCH"] = $state;     // bei OR überschrebt true
-                        }
-                    elseif ( $if == "IFANDNOT" )
-                        {
-                        $result["SWITCH"] = $state;             // bei AND überschreibt der aktuelle Wert
-                        }
-                    echo "   Ergebnis Evaluierung ".($result["SWITCH"]?"true":"false")."\n";
-                    break;
+                        }           // ende switch
+                    }	        // ende else von eval condition
+                /* Berechnung von IFNOT Ergebnis gesamt, Berücksichtigung vorheriges Ergebnis in $result["SWITCH"] , AND oder OR bezieht sich nicht auf das NOT, das NOT bezieht sich auf das IF */
+                switch ($if)
+                    {
+                    case "NOTIF":
+                    case "IFNOT":
+                        $result["SWITCH"] = $state;     // keine Verknüpfung mit vorherigem Ergebnis
+                        break;
+                    case "IFORNOT":	
+                    case "NOTIFOR":            
+                    case "ORNOTIF":            
+                        $result["SWITCH"] = $result["SWITCH"] || $state;
+                        break;
+                    case "IFANDNOT":
+                    case "NOTIFAND":
+                    case "ANDNOTIF":
+                        $result["SWITCH"] = $result["SWITCH"] && $state; 
+                        break;
+                    default:
+                        echo "Kenne Befehl $if nicht.\n";
+                        break;
+                    }                      		
+                echo "   Ergebnis Evaluierung ".($result["SWITCH"]?"true":"false")."\n";
+                break;
             default:
                 echo "Function EvaluateCommand, Befehl unbekannt: \"".strtoupper($befehl[0])."\" ".$befehl[1]."   \n";
                 break;				
@@ -3739,14 +3744,24 @@ class Autosteuerung
      *
      * IF Befehl wird mehrfach evaluiert, einmal bei IF und einmal bei IFNOT, in einer Routine soweit möglich zusammenfassen zu versuchen
      * wenn true rückgemeldet wird, ist der Befehl bearbeitet worden, sonst muss er noch weiter bearbeitet werden. 
-     * es werden sowohl befehl und result als Zeiger übergeben und abgeändert. dritter Parameter state für Funktion true normal, false invertiert,
+     * es werden sowohl befehl,result und state als Zeiger übergeben und abgeändert. 
      *
+     * state wird als Defaultwert übergeben, bei IF als true und bei IFNOT als false
+     *
+     * Befehl wird als einfaches index array übergeben. Die : sind bereits in ein array umgewandelt
      * Befehl[0]  ist IF, IFNOT, IFOR etc.
-     * Befehl[1]
-     *          ON,OFF überprüft "STATUS" für die Entscheidung
-     *          ist ein bekannter Zustand wie LIGHT,DARK,SLEEP,AWAKE,WAKEUP,MOVE,HOME,ALARM,HEATDAY der überprüft wird 
-     *          oder ein Ausdruck oder sonst irgend etwas neues, !!!! wird noch nicht hier behandelt
-     *          zusaetzlich gibt es BOUNCE, BOUNCES
+     * Befehl[1]  ON,OFF überprüft "STATUS" für die Entscheidung: 
+     *                       IF:   state=true,  STATUS=false IF:ON =>  false  STATUS=true IF:ON  => true
+     *                                          STATUS=false IF:OFF => true   STATUS=true IF:OFF => false
+     *                       IFNOT:state=false, STATUS=false IF:ON =>  true   STATUS=true IF:ON  => false
+     *                                          STATUS=false IF:OFF => false  STATUS=true IF:OFF => true
+     *        LIGHT,DARK,SLEEP,AWAKE,WAKEUP,MOVE,HOME,ALARM,HEATDAY werden überprüft, wenn nicht zutrifft (false) wird state invertiert 
+     *        oder ein Ausdruck oder sonst irgend etwas neues, !!!! wird noch nicht hier behandelt
+     *        zusaetzlich gibt es :
+     *            BOUNCE, BOUNCES   IF:BOUNCES:4 ruft setnewstatusBounce, wenn ein Bounce wird state auf false gesetzt
+     * Befehl [2..n] werden in remain gesammelt
+     *
+     * result["COND"] ist Befehl[1]
      *
      */
 
@@ -4003,8 +4018,9 @@ class Autosteuerung
      *
      **************************************/
 
-    function evalWertOpt(&$control, $wertOptInput)
+    function evalWertOpt(&$control, $wertOptInput, $variableID, $status, $debug=false)
         {
+        $token=false;            
         echo "evalWertOpt wurde aufgerufen mit Eingabewert ".json_encode($wertOptInput).".\n";
         $control["note"]=false;
         $control["log"]=false;
@@ -6803,9 +6819,8 @@ function Status($params,$status,$variableID,$simulate=false,$wertOptInput="",$de
     $auto=new Autosteuerung(); /* um Auto Klasse auch in der Funktion verwenden zu können */
 
     $exectime=hrtime(true)/1000000;
-    $token=false;
 
-    $auto->evalWertOpt($control, $wertOptInput);
+    $auto->evalWertOpt($control, $wertOptInput, $variableID, $status, $debug);
 
     /*$control["note"]=false;
     $control["log"]=false;

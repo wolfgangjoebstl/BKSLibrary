@@ -239,6 +239,34 @@
         AC_SetLoggingStatus($archiveHandlerID,$phone_Load_ID,true);
         AC_SetAggregationType($archiveHandlerID,$phone_Load_ID,0);
         IPS_ApplyChanges($archiveHandlerID);
+
+        $pname="GuthabenKonto";
+        if (IPS_VariableProfileExists($pname) == false)
+            {
+                //Var-Profil erstellen
+            IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
+            IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
+            IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
+            for ($i=0;$i<$maxcount;$i++)
+                {
+                IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+                }	
+            IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+            IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+            echo "Profil ".$pname." erstellt;\n";
+            }
+        else
+            {	/* profil sicherheitshalber überarbeiten */
+            IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
+            for ($i=0;$i<$maxcount;$i++)
+                {
+                IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
+                }
+            IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
+            IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau	
+            echo "Profil ".$pname." überarbeitet;\n";		
+            }
+
         }
 
 	/****************************************************************
@@ -274,34 +302,6 @@
 		{
 		//print_r(IPS_GetVariableProfile($pname));
 		}
-
-	$pname="GuthabenKonto";
-	if (IPS_VariableProfileExists($pname) == false)
-		{
-			//Var-Profil erstellen
-		IPS_CreateVariableProfile($pname, 1); /* PName, Typ 0 Boolean 1 Integer 2 Float 3 String */
-		IPS_SetVariableProfileDigits($pname, 0); // PName, Nachkommastellen
-		IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
-		for ($i=0;$i<$maxcount;$i++)
-			{
-			IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-			}	
-		IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-		IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-		echo "Profil ".$pname." erstellt;\n";
-		}
-	else
-		{	/* profil sicherheitshalber überarbeiten */
-		IPS_SetVariableProfileValues($pname, 0, ($maxcount+1), 1); //PName, Minimal, Maximal, Schrittweite
-		for ($i=0;$i<$maxcount;$i++)
-			{
-			IPS_SetVariableProfileAssociation($pname, $i, $phoneID[$i]["Short"], "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau
-			}
-		IPS_SetVariableProfileAssociation($pname, $i++, "Alle", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau			
-		IPS_SetVariableProfileAssociation($pname, $i++, "Test", "", (1040+200*$i)); //P-Name, Value, Assotiation, Icon, Color=grau	
-		echo "Profil ".$pname." überarbeitet;\n";		
-		}
-
 
 
 	/*****************************************************

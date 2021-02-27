@@ -272,7 +272,7 @@
 
 		/*************************************************************************************************/
 
-    public function getVariableGuthabenNummer($lookfor="")
+        public function getVariableGuthabenNummer($lookfor="")
             {
             if ($lookfor=="") return (false);
             $config=$this->getContractsConfiguration($lookfor);
