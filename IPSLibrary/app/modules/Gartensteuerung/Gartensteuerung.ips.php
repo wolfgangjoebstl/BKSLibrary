@@ -122,10 +122,13 @@ IPS_SetEventActive($allofftimer2ID,true);
 $giessTime=GetValue($GiessTimeID);
 $GiessStartzeitpunkt=GetValue($GiessStartzeitpunktID);         // true ist Abends
 echo "Naechstes mal Giessen erfolgt ".($GiessStartzeitpunkt ? "Abends":"Morgens")." fuer ".$giessTime." Minuten.\n";
-$GartensteuerungConfiguration=getGartensteuerungConfiguration();
 
 $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
-	
+$GartensteuerungConfiguration =	$gartensteuerung->getConfig_Gartensteuerung();              // von construct berechnet und Teil der class 
+
+//$GartensteuerungConfiguration=getGartensteuerungConfiguration();
+
+
 /******************************************************
 
 				EXECUTE
@@ -183,7 +186,7 @@ $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
 		
 	echo "Jetzt umstellen auf berechnete Werte. Es reicht ein Regen und ein Aussentemperaturwert.\n";
 	$endtime=time();
-	$starttime=$endtime-60*60*24*2;  /* die letzten zwei Tage */
+	$starttime=$endtime-60*60*24*3;  /* die letzten zwei Tage, sicherheitshalber drei nehmen */
 	$starttime2=$endtime-60*60*24*10;  /* die letzten 10 Tage */
 
 	$Server=RemoteAccess_Address();
@@ -191,13 +194,14 @@ $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
 		{
 		echo "Regen und Temperaturdaten : \n\n";		
 		$archiveHandlerID = IPS_GetInstanceListByModuleID('{43192F0B-135B-4CE7-A0A7-1475603F3060}')[0];
-		$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);
+		$tempwerte = AC_GetAggregatedValues($archiveHandlerID, $variableTempID, 1, $starttime, $endtime,0);                // 1 für tägliche Aggregation der Temperaturwerte
 		$tempwerteLog = AC_GetLoggedValues($archiveHandlerID, $variableTempID, $starttime, $endtime,0);		
 		$variableTempName = IPS_GetName($variableTempID);
 		$werteLog = AC_GetLoggedValues($archiveHandlerID, $variableID, $starttime2, $endtime,0);
 		$werte = AC_GetAggregatedValues($archiveHandlerID, $variableID, 1, $starttime2, $endtime,0);	/* Tageswerte agreggiert */
 		$werteStd = AC_GetAggregatedValues($archiveHandlerID, $variableID, 0, $starttime2, $endtime,0);	/* Stundenwerte agreggiert */
 		$variableName = IPS_GetName($variableID);
+        if (count($tempwerte)<2) AC_ReAggregateVariable ($archiveHandlerID, $variableTempID);    
 		}
 	else
 		{
@@ -219,10 +223,15 @@ $gartensteuerung = new Gartensteuerung();   // default, default, debug=false
 
 	echo "Regenwerte täglich agreggiert (Min Time ist der Beginn und Maxtime das Ende) :\n";
 	print_r($werte);
-
-	echo "Aussentemperaturwerte:\n";	
-	print_r($tempwerte);
-	echo "Aussentemperaturwerte Log:\n";	
+    */
+    if (count($tempwerte)<2)
+        {        
+    	echo "Fehler, Aussentemperaturwerte aggregiert liefert zu wenig Einträge:\n";	
+	    print_r($tempwerte);
+        //$tempwert = $tempwerte[0];         echo "  aggregierter Wert : ".date("d.m.Y H:i:s",$tempwert["TimeStamp"])."   ".($tempwert["Duration"]/60)." Minuten.\n";
+        }
+    /*
+    echo "Aussentemperaturwerte Log:\n";	
 	foreach ($tempwerteLog as $wert) { echo date("d.m H:i",$wert["TimeStamp"])."  ".$wert["Value"]."\n"; }
 	*/
 	

@@ -21,7 +21,7 @@
 	 * @ingroup ipstwilight
 	 * @{
 	 *
-	 * Konfigurations File f¸r IPSTwilight
+	 * Konfigurations File f√ºr IPSTwilight
 	 *
 	 * @file          Gartensteuerung_Configuration.inc.php
 	 * @author        Wolfgang Joebstl
@@ -67,16 +67,18 @@
 		return $failure;
 	   }
 
+    /* direkt das Register aus dem Homematic Ger√§t holen */
+
 	function get_raincounterID()
 	   /* Regenzaehler mit Vorwerten je nach RemoteAccess_Adress lokal oder Remote*/
-		{ return 20417 /*[Hardware\Homematic\Wetterstation\RAIN_COUNTER]*/; }
+		{ return 47194 /*[Hardware\Homematic\Wetterstation\RAIN_COUNTER]*/; }
 
 	function get_aussentempID()
 	   /* Aussentemperatur mit Vorwerten je nach RemoteAccess_Adress lokal oder Remote */
 		{ return 41941 /*[Program\IPSLibrary\data\core\IPSComponent\Temperatur-Auswertung\Gesamtauswertung_Temp_Aussen]*/; }
 
 	function RemoteAccess_Address()
-	   /* Liest Werte von einem entfernten Ger‰t ein, empty wenn nicht */
+	   /* Liest Werte von einem entfernten Ger√§t ein, empty wenn nicht */
 		//{ return 'http://wolfgangjoebstl@yahoo.com:cloudg06@10.0.1.6:82/api/';	}
 		{ return "";	}
 
